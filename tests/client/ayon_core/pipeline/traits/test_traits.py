@@ -7,12 +7,16 @@ import pytest
 from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
+    FileLocations,
+    FrameRanged,
+    GapPolicy,
     Image,
     MimeType,
     Overscan,
     PixelBased,
     Planar,
     Representation,
+    Sequence,
     TraitBase,
 )
 from ayon_core.pipeline.traits.representation import (
@@ -369,6 +373,91 @@ def test_from_dict() -> None:
     representation = Representation.from_dict(
         "test", trait_data=traits_data)
     """
+
+
+def test_from_dict_nested_and_typed_values() -> None:
+    """Nested traits, paths, patterns and enums are restored.
+
+    Both `traits_as_dict()` output and its JSON serialized form (as stored
+    on the server) must produce an equal representation.
+    """
+    import json
+    import re
+
+    from ayon_core.plugins.publish.integrate_traits import prepare_for_json
+
+    representation = Representation(name="exr", traits=[
+        FileLocations(file_paths=[
+            FileLocation(
+                file_path=Path(f"/path/to/render.{frame}.exr"),
+                file_size=1024,
+                file_hash="abc",
+            )
+            for frame in (1001, 1002)
+        ]),
+        FrameRanged(frame_start=1001, frame_end=1002),
+        Sequence(
+            frame_padding=4,
+            gaps_policy=GapPolicy.missing,
+            frame_regex=re.compile(
+                r"render\.(?P<index>(?P<padding>0*)\d+)\.exr$"),
+            frame_spec="1001-1002",
+        ),
+    ])
+    trait_data = representation.traits_as_dict()
+    json_data = json.loads(json.dumps(prepare_for_json(trait_data)))
+
+    for data in (trait_data, json_data):
+        result = Representation.from_dict(
+            "exr",
+            representation_id=representation.representation_id,
+            trait_data=data,
+        )
+        assert result == representation
+        file_paths = result.get_trait(FileLocations).file_paths
+        assert all(isinstance(item, FileLocation) for item in file_paths)
+        assert isinstance(file_paths[0].file_path, Path)
+        sequence = result.get_trait(Sequence)
+        assert sequence.gaps_policy is GapPolicy.missing
+        assert isinstance(sequence.frame_regex, re.Pattern)
+        result.validate()
+
+
+def test_from_dict_bundle() -> None:
+    """Bundle items are restored by their trait ids, also nested."""
+    import json
+
+    from ayon_core.plugins.publish.integrate_traits import prepare_for_json
+
+    representation = Representation(name="bundle", traits=[
+        Bundle(items=[
+            [
+                FileLocation(file_path=Path("/path/to/diffuse.png")),
+                MimeType(mime_type="image/png"),
+            ],
+            [Bundle(items=[
+                [FileLocation(file_path=Path("/path/to/bump.exr"))],
+            ])],
+        ]),
+    ])
+    trait_data = representation.traits_as_dict()
+    assert trait_data[Bundle.id]["items"][0] == {
+        FileLocation.id: {
+            "file_path": Path("/path/to/diffuse.png"),
+            "file_size": None,
+            "file_hash": None,
+        },
+        MimeType.id: {"mime_type": "image/png"},
+    }
+    json_data = json.loads(json.dumps(prepare_for_json(trait_data)))
+
+    for data in (trait_data, json_data):
+        result = Representation.from_dict(
+            "bundle",
+            representation_id=representation.representation_id,
+            trait_data=data,
+        )
+        assert result == representation
 
 
 def test_representation_equality() -> None:

@@ -570,6 +570,49 @@ class Bundle(TraitBase):
     persistent: ClassVar[bool] = True
     items: list[list[TraitBase]]
 
+    def as_dict(self) -> dict:
+        """Return a trait as a dictionary.
+
+        Trait ids are class variables, so they would be lost by
+        `dataclasses.asdict()`. Each item is serialized as a dictionary
+        with trait ids as keys, the same way as
+        `Representation.traits_as_dict()`, so it can be restored by
+        `from_dict()`.
+
+        Returns:
+            dict: Trait as dictionary.
+
+        """
+        return {
+            "items": [
+                {trait.id: trait.as_dict() for trait in item}
+                for item in self.items
+            ]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Bundle:
+        """Create a trait from a dictionary.
+
+        Trait classes of items are resolved by their trait ids, including
+        version upgrades, the same way as in `Representation.from_dict()`.
+
+        Args:
+            data (dict): Trait data.
+
+        Returns:
+            Bundle: Trait instance.
+
+        """
+        items = []
+        for item in data.get("items", []):
+            if isinstance(item, dict):
+                representation = Representation.from_dict(
+                    name=cls.name, trait_data=item)
+                item = list(representation.get_traits().values())
+            items.append(item)
+        return cls(items=items)
+
     def to_representations(self) -> Generator[Representation]:
         """Convert a bundle to representations.
 

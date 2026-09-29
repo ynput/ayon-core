@@ -622,7 +622,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
                     error_msg = f"Trait model with ID {trait_id} not found."
                     raise ValueError(error_msg)
 
-                traits.append(trait_class(**value))
+                traits.append(trait_class.from_dict(value))
 
         return cls(
             name=name, representation_id=representation_id, traits=traits)

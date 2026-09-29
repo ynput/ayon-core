@@ -1,10 +1,23 @@
 """Defines the base trait model and representation."""
 from __future__ import annotations
 
+import inspect
 import re
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, Generic, Optional, TypeVar
+from dataclasses import asdict, dataclass, fields
+from enum import Enum
+from pathlib import Path
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Optional,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 if TYPE_CHECKING:
     from .representation import Representation
@@ -87,6 +100,83 @@ class TraitBase(ABC):
 
         """
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls: type[T], data: dict) -> T:
+        """Create a trait from a dictionary.
+
+        This is the reverse of `as_dict()` and also accepts its JSON
+        serialized form. Values are converted based on field type hints,
+        so nested traits (e.g. `FileLocation` items of `FileLocations`),
+        paths, regex patterns and enums are restored to their types.
+
+        Args:
+            data (dict): Trait data.
+
+        Returns:
+            TraitBase: Trait instance.
+
+        """
+        type_hints = _get_field_type_hints(cls)
+        init_fields = {field.name for field in fields(cls) if field.init}
+        kwargs = {}
+        for key, value in data.items():
+            if key in init_fields and key in type_hints:
+                value = _convert_value(value, type_hints[key])
+            kwargs[key] = value
+        return cls(**kwargs)
+
+
+def _get_field_type_hints(trait_class: type) -> dict[str, Any]:
+    """Resolve field type hints of a trait class.
+
+    Annotations are strings because of `from __future__ import annotations`
+    and they are resolved in the module namespace of the class. If it is
+    not possible (e.g. type imported only for type checking), values
+    are not converted.
+    """
+    try:
+        return get_type_hints(trait_class)
+    except (NameError, TypeError):
+        return {}
+
+
+def _convert_value(value: Any, type_hint: Any) -> Any:  # noqa: PLR0911
+    """Convert value to the type defined by type hint, if possible."""
+    if value is None:
+        return value
+
+    origin = get_origin(type_hint)
+    if origin is Union:
+        args = [arg for arg in get_args(type_hint) if arg is not type(None)]
+        if len(args) == 1:
+            return _convert_value(value, args[0])
+        return value
+
+    if origin in (list, tuple, set):
+        args = get_args(type_hint)
+        if not args or not isinstance(value, (list, tuple)):
+            return value
+        return origin(_convert_value(item, args[0]) for item in value)
+
+    if not isinstance(type_hint, type) or isinstance(value, type_hint):
+        return value
+
+    if issubclass(type_hint, Path) and isinstance(value, str):
+        return Path(value)
+    if type_hint is re.Pattern and isinstance(value, str):
+        return re.compile(value)
+    if issubclass(type_hint, Enum):
+        if isinstance(value, str) and value in type_hint.__members__:
+            return type_hint[value]
+        return type_hint(value)
+    if (
+        issubclass(type_hint, TraitBase)
+        and not inspect.isabstract(type_hint)
+        and isinstance(value, dict)
+    ):
+        return type_hint.from_dict(value)
+    return value
 
 
 class IncompatibleTraitVersionError(Exception):

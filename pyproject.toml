@@ -45,7 +45,8 @@ test = [
     "pytest-timeout",
     "pytest-qt",
     "pytest-regressions[image]",
-    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
+    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git",
+    "python-dotenv",
 ]
 
 [tool.codespell]
