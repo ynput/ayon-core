@@ -189,7 +189,7 @@ class AYSkeletonLoader(QWidget):
                 self._opacity * max(0.25, 1.0 - (row / fade_rows) * 0.75)
             )
             top = row * row_height
-            x = 6 + (level + 1) * indent
+            x = 16 + (level * indent)
             icon_rect = QRectF(
                 x,
                 top + (row_height - icon_size) / 2,
