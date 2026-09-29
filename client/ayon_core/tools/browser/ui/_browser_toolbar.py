@@ -793,6 +793,9 @@ class GroupByMenu(AYFilter):
             self._filters[default_key].selected = True
         elif "none" in self._filters:
             self._filters["none"].selected = True
+        # Options change on each project switch and creating their
+        #   widgets is slow, they are recreated when the dropdown opens
+        self._list_dirty = False
 
         super().__init__(parent=parent, label="Group By")
         self._sync_tags()
@@ -813,7 +816,13 @@ class GroupByMenu(AYFilter):
         self._populate_list()
         return self._dropdown
 
+    def _on_toggle_dropdown(self) -> None:
+        if not self._dropdown_visible and self._list_dirty:
+            self._populate_list()
+        super()._on_toggle_dropdown()
+
     def _populate_list(self) -> None:
+        self._list_dirty = False
         self._filterable_list.clear_items()
 
         kw = {
@@ -914,7 +923,10 @@ class GroupByMenu(AYFilter):
         if selected_key not in self._filters and "none" in self._filters:
             self._filters["none"].selected = True
         self._sync_tags()
-        self._populate_list()
+        if self._dropdown_visible:
+            self._populate_list()
+        else:
+            self._list_dirty = True
 
     def get_selected_keys(self) -> list[str]:
         """Return the list of selected filter keys.

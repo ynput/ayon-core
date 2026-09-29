@@ -19,6 +19,7 @@ from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.time_sliced_job import TimeSlicedJob
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models import (
         StatusItem,
@@ -37,6 +38,7 @@ FOLDER_TYPE_ROLE = Qt.ItemDataRole.UserRole + 4
 FOLDER_STATUS_ROLE = Qt.ItemDataRole.UserRole + 5
 FOLDER_STATUS_ICON_ROLE = Qt.ItemDataRole.UserRole + 6
 FOLDER_PATH_FILTER_ROLE = Qt.ItemDataRole.UserRole + 7
+FOLDER_SORT_KEY_ROLE = Qt.ItemDataRole.UserRole + 8
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
 
 
@@ -107,6 +109,8 @@ class BrowserFoldersModel(QStandardItemModel):
             controller.
     """
     reset_finished = Signal()
+    # Used by 'AYTreeView' to show loading placeholder
+    loading_changed = Signal(bool)
 
     def __init__(
         self,
@@ -118,36 +122,70 @@ class BrowserFoldersModel(QStandardItemModel):
         self.setColumnCount(2)
         self.setHeaderData(0, Qt.Orientation.Horizontal, "Folders")
         self.setHeaderData(1, Qt.Orientation.Horizontal, "")
+        self.setSortRole(FOLDER_SORT_KEY_ROLE)
 
         self._ui_controller = ui_controller
         self._be_controller = be_controller
         self._fill_data = _FillData()
 
         self._last_project_name = None
+        self._is_loading = False
+        self._build_job: TimeSlicedJob | None = None
+        # Project with a fetch in flight, a reset for it does not start
+        #   another fetch
+        self._fetching_project_name: str | None = None
+        # Only result of the last started fetch is used
+        self._fetch_id = 0
         self._context_id: str = f"folders_model_{id(self)}_v0"
 
-    def reset(self) -> None:
+    def is_loading(self) -> bool:
+        """Model is loading folders.
+
+        Returns:
+            bool: True if folders are being fetched.
+        """
+        return self._is_loading
+
+    def reset(self, project_name: str | None = None) -> None:
         """Refresh folders for last selected project.
 
         Force to update folders model from controller. This may or may not
         trigger query from server, that's based on controller's cache.
+
+        Args:
+            project_name (str | None): Project to load, current project
+                of the UI controller is used when not passed. Allows to
+                start loading before the project switch finishes.
         """
-        project_name = self._ui_controller.current_project
+        if project_name is None:
+            project_name = self._ui_controller.current_project
         if not project_name:
+            self._fetching_project_name = None
+            self._fetch_id += 1
             self._last_project_name = project_name
             self._fill_items(
                 project_name, {}, [], []
             )
             return
 
+        self._set_loading(True)
         if self._last_project_name != project_name:
             self._clear_items()
         self._last_project_name = project_name
+        if self._fetching_project_name == project_name:
+            return
+        self._fetching_project_name = project_name
+        self._fetch_id += 1
+        fetch_id = self._fetch_id
         task = AsyncTask(
             name="fetch_all_folders",
             function=lambda: self._fetch_folders_data(project_name),
-            callback=self._on_data_fetched,
-            priority=5,
+            callback=lambda result: self._on_fetch_finished(
+                fetch_id, project_name, result
+            ),
+            # Folders are the entry point of the browser, fetch them before
+            #   other queued tasks (e.g. thumbnails of the previous project)
+            priority=0,
             context_id=self._context_id,
             cancellable=True,
         )
@@ -196,6 +234,7 @@ class BrowserFoldersModel(QStandardItemModel):
         return path
 
     def _clear_items(self) -> None:
+        self._cancel_build()
         self._fill_data = _FillData()
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
@@ -219,24 +258,44 @@ class BrowserFoldersModel(QStandardItemModel):
             status_items=status_items,
         )
 
-    def _on_data_fetched(self, result: FetchData | None) -> None:
+    def _set_loading(self, loading: bool) -> None:
+        if self._is_loading == loading:
+            return
+        self._is_loading = loading
+        self.loading_changed.emit(loading)
+
+    def _on_fetch_finished(
+        self, fetch_id: int, project_name: str, result: FetchData | None
+    ) -> None:
+        # A newer fetch was started meanwhile, e.g. when switching
+        #   project A -> B -> A the first result for A is outdated
+        if fetch_id != self._fetch_id:
+            return
+        self._fetching_project_name = None
+        self._on_data_fetched(project_name, result)
+
+    def _on_data_fetched(
+        self, project_name: str, result: FetchData | None
+    ) -> None:
         """Callback when the fetch task is finished.
 
         Several fetches can be in flight at the same time; a result for
         a project other than the last requested one is ignored.
 
         Args:
+            project_name (str): Project for which the fetch was requested.
             result (FetchData | None): Result from refresh.
 
         """
+        if self._last_project_name != project_name:
+            return
+
         # Fetching failed
         # TODO handle by showing the information to user. Probably by showing
         #   overlay or item without flags.
         if result is None:
             self._clear_items()
-            return
-
-        if self._last_project_name != result.project_name:
+            self._set_loading(False)
             return
 
         self._fill_items(
@@ -285,6 +344,7 @@ class BrowserFoldersModel(QStandardItemModel):
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
         item.setData(folder_item.label, Qt.ItemDataRole.DisplayRole)
+        item.setData(folder_item.label.casefold(), FOLDER_SORT_KEY_ROLE)
         item.setData(icon, Qt.ItemDataRole.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
         status_icon = status_icon_by_name.get(folder_item.status)
@@ -313,6 +373,10 @@ class BrowserFoldersModel(QStandardItemModel):
 
         """
         item = old_fill_item.item
+        if new_fill_item.label != old_fill_item.label:
+            item.setData(
+                new_fill_item.label.casefold(), FOLDER_SORT_KEY_ROLE
+            )
         update_icon = folder_types_changed
         if new_fill_item.folder_type != old_fill_item.folder_type:
             update_icon = True
@@ -398,9 +462,17 @@ class BrowserFoldersModel(QStandardItemModel):
         folder_type_items: list[FolderTypeItem],
         status_items: list[StatusItem],
     ) -> None:
+        """Fill model with folder items and end loading state.
+
+        Creating items for a big project takes a while, when the model is
+        empty the items are created in time slices so the UI stays
+        responsive and are added to the model at once when done.
+        """
+        self._cancel_build()
         if project_name is None or not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
+            self._set_loading(False)
             return
 
         fill_data = _FillData(project_name)
@@ -438,42 +510,94 @@ class BrowserFoldersModel(QStandardItemModel):
         # Update items if we already have some, otherwise fill from scratch
         # - Update is slower as it has to compare existing items with new
         #   ones, but it preserves expanded and selected state in the view.
-        old_fill_data, self._fill_data = self._fill_data, fill_data
-        if old_fill_data.items_by_id:
-            self._fill_update(
-                fill_data,
-                old_fill_data,
-                folder_items_by_id,
-                folder_type_icons_by_name,
-                status_icon_by_name,
+        if not self._fill_data.items_by_id:
+            top_items = []
+            build_job = TimeSlicedJob(
+                self._build_from_scratch(
+                    top_items,
+                    fill_data,
+                    folder_items_by_id,
+                    folder_type_icons_by_name,
+                    status_icon_by_name,
+                ),
+                parent=self,
             )
-        else:
-            self._fill_from_scratch(
-                fill_data,
-                folder_items_by_id,
-                folder_type_icons_by_name,
-                status_icon_by_name,
+            build_job.finished.connect(
+                lambda success: self._on_build_finished(
+                    success, fill_data, top_items
+                )
             )
-        self.reset_finished.emit()
+            self._build_job = build_job
+            build_job.start()
+            return
 
-    def _fill_from_scratch(
+        old_fill_data, self._fill_data = self._fill_data, fill_data
+        self._fill_update(
+            fill_data,
+            old_fill_data,
+            folder_items_by_id,
+            folder_type_icons_by_name,
+            status_icon_by_name,
+        )
+        self.reset_finished.emit()
+        self._set_loading(False)
+
+    def _cancel_build(self) -> None:
+        build_job, self._build_job = self._build_job, None
+        if build_job is not None:
+            build_job.cancel()
+            build_job.deleteLater()
+
+    def _on_build_finished(
         self,
+        success: bool,
+        fill_data: _FillData,
+        top_items: list[QStandardItem],
+    ) -> None:
+        self._build_job.deleteLater()
+        self._build_job = None
+        # Do not show partially created hierarchy
+        if not success:
+            self._clear_items()
+            self._set_loading(False)
+            return
+        self._fill_data = fill_data
+        # Children are already parented, only top level rows are inserted
+        #   so proxy model and view process one insert
+        if top_items:
+            self.invisibleRootItem().appendRows(top_items)
+        self.reset_finished.emit()
+        self._set_loading(False)
+
+    def _build_from_scratch(
+        self,
+        top_items: list[QStandardItem],
         fill_data: _FillData,
         folder_items_by_id: dict[str, FolderItem],
         folder_type_icons_by_name: dict[str, QIcon | None],
         status_icon_by_name: dict[str, QIcon | None],
-    ) -> None:
+    ) -> typing.Generator[None, None, None]:
+        """Create items detached from the model.
+
+        Generator for 'TimeSlicedJob', yields after each created item.
+        Top level items are added to 'top_items'.
+        """
         folder_items_by_parent = defaultdict(list)
         for folder_item in folder_items_by_id.values():
             folder_items_by_parent[folder_item.parent_id].append(folder_item)
+        yield
 
         hierarchy_queue = deque()
-        hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+        hierarchy_queue.append((None, None, ""))
 
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
             parent_item, parent_id, parent_path = item
-            folder_items = folder_items_by_parent[parent_id]
+            # Created in the final order, so the model needs no sorting
+            folder_items = sorted(
+                folder_items_by_parent[parent_id],
+                key=lambda folder_item: folder_item.label.casefold(),
+            )
 
             new_items = []
             for folder_item in folder_items:
@@ -497,8 +621,13 @@ class BrowserFoldersModel(QStandardItemModel):
                 fill_data.items_by_id[item_id] = fill_item
 
                 hierarchy_queue.append((item, item_id, folder_label_path))
+                yield
 
-            if new_items:
+            if not new_items:
+                continue
+            if parent_item is None:
+                top_items.extend(new_items)
+            else:
                 parent_item.appendRows(new_items)
 
     def _fill_update(
@@ -540,6 +669,8 @@ class BrowserFoldersModel(QStandardItemModel):
         )
         hierarchy_queue = deque()
         hierarchy_queue.append((self.invisibleRootItem(), None, ""))
+        # Order of the rows changes only with added, moved or renamed items
+        needs_sort = False
 
         # Keep pointers to removed items until the refresh finishes
         #   - some children of the items could be moved and reused elsewhere
@@ -573,6 +704,8 @@ class BrowserFoldersModel(QStandardItemModel):
                     )
                     if fill_item.parent_id != parent_id:
                         new_items.append(item)
+                    if fill_item.label != folder_item.label:
+                        needs_sort = True
                     self._update_item_data(
                         statuses_changed,
                         folder_types_changed,
@@ -587,7 +720,11 @@ class BrowserFoldersModel(QStandardItemModel):
                 hierarchy_queue.append((item, item_id, folder_label_path))
 
             if new_items:
+                needs_sort = True
                 parent_item.appendRows(new_items)
+
+        if needs_sort:
+            self.sort(0)
 
 
 class BrowserFoldersProxyModel(QSortFilterProxyModel):
@@ -595,7 +732,6 @@ class BrowserFoldersProxyModel(QSortFilterProxyModel):
         super().__init__()
 
         self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.setRecursiveFilteringEnabled(True)
 
         self._folder_ids_filter = None

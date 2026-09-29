@@ -96,6 +96,9 @@ class LauncherWindow(AYContainer):
 
         # - Second page - Hierarchy (folders & tasks)
         hierarchy_page = HierarchyPage(controller, pages_widget)
+        # Folders load while the page slides in, show loading placeholder
+        #   only if they are not loaded when the slide finishes.
+        hierarchy_page.set_folders_loading_delay(self.page_side_anim_interval)
 
         pages_layout = AYHBoxLayout(pages_widget, margin=0, spacing=0)
         pages_layout.addWidget(projects_page, 1)

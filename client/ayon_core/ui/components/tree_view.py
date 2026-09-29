@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from qtpy.QtCore import (
+    QAbstractItemModel,
+    QAbstractProxyModel,
     QEvent,
     QItemSelection,
     QModelIndex,
@@ -35,6 +37,7 @@ from ..drawers import enum_to_str
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QTreeViewVariants
 from .scroll_area import AYScrollBar
+from .skeleton import AYSkeletonLoader
 from .style_mixin import StyleMixin
 from .header_view import AYHeaderView
 
@@ -45,6 +48,13 @@ class AYTreeView(StyleMixin, QTreeView):
     Fully self-contained: uses AYONStyle for all painting, a custom
     item delegate that draws directly bypassing any parent QSS, and
     AYScrollBar instances for scrollbars.
+
+    The view shows an animated skeleton placeholder (`AYSkeletonLoader`)
+    while its model is loading and has no rows to show yet. A model opts
+    in by exposing a ``loading_changed = Signal(bool)`` signal and,
+    optionally, an ``is_loading() -> bool`` method. The model is found
+    automatically when set with ``setModel``, also through proxy models.
+    Loading state can be also set manually with ``set_loading``.
 
     Args:
         parent: Optional parent widget.
@@ -120,6 +130,133 @@ class AYTreeView(StyleMixin, QTreeView):
 
         # No default frame — drawn manually in paintEvent.
         self.setFrameShape(QTreeView.Shape.NoFrame)
+
+        # Loading placeholder, created lazily when first needed.
+        self._skeleton: AYSkeletonLoader | None = None
+        self._skeleton_delay: int = 80
+        self._loading: bool = False
+        self._loading_model: QAbstractItemModel | None = None
+
+    def setModel(self, model: QAbstractItemModel | None) -> None:
+        """Set model and connect to its loading state if it has one.
+
+        Args:
+            model: Model to show, can be a proxy model.
+        """
+        self._disconnect_loading_model()
+        super().setModel(model)
+        self._connect_loading_model(model)
+
+    def is_loading(self) -> bool:
+        """Whether the view is in loading state.
+
+        Returns:
+            bool: True if the view's data are loading.
+        """
+        return self._loading
+
+    def set_loading(self, loading: bool) -> None:
+        """Show animated placeholder rows while data are loading.
+
+        The placeholder shows only when the model has no rows, a refresh
+        of visible rows happens in place. Called automatically when
+        the model has ``loading_changed`` signal.
+
+        Args:
+            loading: Whether the model is loading data.
+        """
+        self._loading = loading
+        self._update_skeleton()
+
+    def set_loading_delay(self, delay: int) -> None:
+        """Delay before the loading placeholder appears.
+
+        Loads finishing sooner never show the placeholder.
+
+        Args:
+            delay: Delay in milliseconds.
+        """
+        self._skeleton_delay = delay
+        if self._skeleton is not None:
+            self._skeleton.set_show_delay(delay)
+
+    def _update_skeleton(self) -> None:
+        show = self._loading
+        if show:
+            model = self._loading_model or self.model()
+            show = model is None or model.rowCount() == 0
+
+        if self._skeleton is None:
+            if not show:
+                return
+            self._skeleton = AYSkeletonLoader(
+                self,
+                variant=QTreeViewVariants(self._variant_str),
+                show_delay=self._skeleton_delay,
+            )
+        self._skeleton.set_loading(show)
+
+    def _on_loading_model_rows_changed(self, *args) -> None:
+        # Rows appeared or were removed while loading
+        if self._loading:
+            self._update_skeleton()
+
+    @staticmethod
+    def _find_loading_model(
+        model: QAbstractItemModel | None,
+    ) -> QAbstractItemModel | None:
+        """Find model with 'loading_changed' signal, look through proxies.
+
+        Args:
+            model: Model set to the view.
+
+        Returns:
+            QAbstractItemModel | None: Model reporting its loading state.
+        """
+        while model is not None:
+            if hasattr(model, "loading_changed"):
+                return model
+            if not isinstance(model, QAbstractProxyModel):
+                break
+            model = model.sourceModel()
+        return None
+
+    def _connect_loading_model(
+        self, model: QAbstractItemModel | None
+    ) -> None:
+        loading_model = self._find_loading_model(model)
+        self._loading_model = loading_model
+        if loading_model is None:
+            self.set_loading(False)
+            return
+
+        loading_model.loading_changed.connect(self.set_loading)
+        for signal in self._loading_model_row_signals(loading_model):
+            signal.connect(self._on_loading_model_rows_changed)
+
+        is_loading = getattr(loading_model, "is_loading", None)
+        self.set_loading(bool(is_loading()) if is_loading else False)
+
+    def _disconnect_loading_model(self) -> None:
+        loading_model, self._loading_model = self._loading_model, None
+        if loading_model is None:
+            return
+        try:
+            loading_model.loading_changed.disconnect(self.set_loading)
+            for signal in self._loading_model_row_signals(loading_model):
+                signal.disconnect(self._on_loading_model_rows_changed)
+        except (RuntimeError, TypeError):
+            # Model was already deleted or signals were not connected
+            pass
+
+    @staticmethod
+    def _loading_model_row_signals(model: QAbstractItemModel) -> list:
+        return [
+            model.rowsInserted,
+            model.rowsRemoved,
+            model.modelReset,
+            model.layoutChanged,
+        ]
 
     def _sync_viewport_palette(self) -> None:
         """Apply the variant background colour to the viewport palette."""

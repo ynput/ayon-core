@@ -384,6 +384,10 @@ class BrowserSlicer(AYContainer):
         )
 
     def _on_project_change(self, project_name: str) -> None:
+        # Start loading folders before the project switch, it blocks the
+        #   UI thread for a while and the folders can load meanwhile.
+        if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
+            self._folders_model.reset(project_name)
         self._ui_controller.set_project(project_name)
         # The "My Tasks" scope is re-resolved for the new project by the
         # controller, but without a filter-changed signal - re-apply it.
@@ -637,7 +641,6 @@ class BrowserSlicer(AYContainer):
         self._apply_tree_selection(explicit_ids, ids)
 
     def _on_folders_reset(self):
-        self._folders_proxy.sort(0, QtCore.Qt.SortOrder.AscendingOrder)
         # A search typed while the folders were still loading had
         # nothing to expand yet - expand the now-filled tree.
         if self._categories.filter_text():
