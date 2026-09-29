@@ -29,9 +29,9 @@ from .icon_definitions import (
 )
 
 if typing.TYPE_CHECKING:
-    from typing import Self, Tuple, Union, TypedDict, Pattern
+    from typing import Self, Tuple, Union, TypedDict, Pattern, NotRequired
 
-    class _EnumItemDict(TypedDict):
+    class EnumItemDict(TypedDict):
         label: str
         value: Any
         icon: NotRequired[IconBase | dict[str, str] | None]
