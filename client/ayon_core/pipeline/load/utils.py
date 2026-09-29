@@ -575,6 +575,7 @@ def switch_container(
     container,
     representation,
     loader_plugin=None,
+    project_name=None,
 ):
     """Switch a container to representation
 
@@ -607,7 +608,8 @@ def switch_container(
         )
 
     # Get the new representation to switch to
-    project_name = container.get("project_name")
+    if project_name is None:
+        project_name = container.get("project_name")
     if project_name is None:
         project_name = get_current_project_name()
 
