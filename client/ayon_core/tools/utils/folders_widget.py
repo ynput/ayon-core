@@ -934,10 +934,6 @@ class FoldersWidget(QtWidgets.QWidget):
             self._on_project_selection_change,
         )
         controller.register_event_callback(
-            "folders.refresh.finished",
-            self._on_folders_refresh_finished
-        )
-        controller.register_event_callback(
             "controller.refresh.finished",
             self._on_controller_refresh
         )
@@ -1152,10 +1148,6 @@ class FoldersWidget(QtWidgets.QWidget):
     def _on_project_selection_change(self, event):
         project_name = event["project_name"]
         self.set_project_name(project_name)
-
-    def _on_folders_refresh_finished(self, event):
-        if event["sender"] != FOLDERS_MODEL_SENDER_NAME:
-            self.set_project_name(event["project_name"])
 
     def _on_controller_refresh(self):
         self._update_expected_selection()
