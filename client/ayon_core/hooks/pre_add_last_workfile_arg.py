@@ -18,6 +18,7 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "maya",
         "nuke",
         "nukex",
+        "nukeassist",
         "hiero",
         "houdini",
         "nukestudio",
