@@ -31,13 +31,11 @@ from .icon_definitions import (
 if typing.TYPE_CHECKING:
     from typing import Self, Tuple, Union, TypedDict, Pattern
 
-    class _EnumItemDictRequired(TypedDict):
+    class _EnumItemDict(TypedDict):
         label: str
         value: Any
-
-    class EnumItemDict(_EnumItemDictRequired, total=False):
-        icon: Optional[IconBase]
-        tooltip: Optional[str]
+        icon: NotRequired[IconBase | dict[str, str] | None]
+        tooltip: NotRequired[str | None]
 
     EnumItemsInputType = Union[
         Dict[Any, str],
