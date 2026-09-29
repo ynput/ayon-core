@@ -35,9 +35,17 @@ class SettingsModel:
             return mode
 
         settings = self.get_settings(project_name)
-        use_task_type_sorting = (
-            settings["core"]["tools"]["general"]["use_task_type_sorting"]
-        )
+        use_task_type_sorting = False
+        try:
+            use_task_type_sorting = (
+                settings["core"]["tools"]["general"]["use_task_type_sorting"]
+            )
+        except KeyError:
+            # Project might be using project bundle with older settings
+            # - fallback to studio settings
+            if project_name:
+                return self.get_task_sorting_mode()
+
         mode: TaskSortMode = "type" if use_task_type_sorting else "name"
         self._task_sorting_mode[project_name] = mode
         return mode

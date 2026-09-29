@@ -17,16 +17,15 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class CollectOtioSubsetResources(
+class CollectOTIOProductResources(
     pyblish.api.InstancePlugin,
     publish.ColormanagedPyblishPluginMixin
 ):
     """Get Resources for a product version"""
-
-    label = "Collect OTIO Subset Resources"
+    label = "Collect OTIO Product Resources"
     order = pyblish.api.CollectorOrder + 0.491
-    families = ["clip"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["otio.clip.resources"]
+    HAS_RUN_KEY = "__CollectOTIOProductResources_Run__"
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -37,11 +36,20 @@ class CollectOtioSubsetResources(
             make_sequence_collection
         )
 
+        # Mark instance for 'CollectOtioSubsetResources'
+        instance.data[self.HAS_RUN_KEY] = True
+
         product_base_type = instance.data.get("productBaseType")
         if not product_base_type:
             product_base_type = instance.data["productType"]
 
-        if "audio" in product_base_type:
+        # TODO remove when 'CollectOtioSubsetResources'
+        # - if instance has family 'otio.resources' it should be
+        #   processed
+        if (
+            "audio" in product_base_type
+            and "otio.resources" not in instance.data["families"]
+        ):
             return
 
         if not instance.data.get("representations"):
@@ -211,7 +219,7 @@ class CollectOtioSubsetResources(
             self.staging_dir = dirname
             if trimmed_duration < available_duration:
                 self.log.debug("Ready for Trimming")
-                instance.data["families"].append("trim")
+                instance.data["families"].append("otio.trim.video")
                 instance.data["otioTrimmingRange"] = trimmed_media_range_h
                 _trim = True
 
@@ -307,3 +315,19 @@ class CollectOtioSubsetResources(
             project_settings=context.data["project_settings"],
             logger=self.log
         )
+
+
+class CollectOtioSubsetResources(CollectOTIOProductResources):
+    label = "Collect OTIO Product Resources (old)"
+    order = CollectOTIOProductResources.order + 0.00001
+    families = ["clip"]
+    hosts = ["resolve", "hiero", "flame"]
+
+    def process(self, instance):
+        if instance.data.pop(
+            CollectOTIOProductResources.HAS_RUN_KEY, False
+        ) is True:
+            self.log.debug("Skipping, CollectOTIOProductResources has run.")
+            return
+        self.log.debug("Using old CollectOtioSubsetResources plugin")
+        super().process(instance)

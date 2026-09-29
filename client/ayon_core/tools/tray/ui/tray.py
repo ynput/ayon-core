@@ -3,10 +3,11 @@ import sys
 import time
 import collections
 import atexit
+from packaging.version import parse
 import platform
 
 import ayon_api
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets, QT_VERSION
 from aiohttp.web import Response, json_response, Request
 
 from ayon_core import resources, style
@@ -43,9 +44,8 @@ from ayon_core.tools.publisher.publish_report_viewer import (
 from .addons_manager import TrayAddonsManager
 from .host_console_listener import HostListener
 from .info_widget import InfoWidget
-from .dialogs import (
-    UpdateDialog,
-)
+from .dialogs import UpdateDialog
+from ._macos_fix import install_clickcount_fix
 
 
 class TrayManager:
@@ -782,7 +782,32 @@ class TrayStarter(QtCore.QObject):
         return splash
 
 
+def _fix_macos() -> None:
+    """Fix issue with click count on MacOS > 27 for PySide6.
+
+    See '_macos_fix.py' for more details.
+    """
+    if platform.system().lower() != "darwin":
+        return
+
+    # Issue was fixed in Qt 6.12
+    if parse(QT_VERSION) >= parse("6.12"):
+        return
+
+    try:
+        major = int(platform.mac_ver()[0].split(".", 1)[0])
+    except (IndexError, ValueError):
+        major = -1
+
+    if major < 27:
+        return
+
+    install_clickcount_fix()
+
+
 def main():
+    _fix_macos()
+
     app = get_ayon_qt_app()
 
     starter = TrayStarter(app)  # noqa F841

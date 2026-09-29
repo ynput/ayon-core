@@ -9,6 +9,7 @@ from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.utils import (
     FoldersWidget,
     FoldersFiltersWidget,
+    GoToCurrentButton,
 )
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
@@ -65,6 +66,16 @@ class FoldersDialog(QtWidgets.QDialog):
 
         filters_widget = FoldersFiltersWidget(self)
 
+        current_context_btn = GoToCurrentButton(self)
+        current_context_btn.setToolTip("Go to current context")
+        current_context_btn.setVisible(False)
+
+        header_layout = QtWidgets.QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(5)
+        header_layout.addWidget(filters_widget, 1)
+        header_layout.addWidget(current_context_btn, 0)
+
         folders_controller = FoldersDialogController(controller)
         folders_widget = FoldersWidget(folders_controller, self)
         folders_widget.set_deselectable(True)
@@ -79,7 +90,7 @@ class FoldersDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(5)
-        layout.addWidget(filters_widget, 0)
+        layout.addLayout(header_layout, 0)
         layout.addWidget(folders_widget, 1)
         layout.addLayout(btns_layout, 0)
 
@@ -90,11 +101,13 @@ class FoldersDialog(QtWidgets.QDialog):
         folders_widget.double_clicked.connect(self._on_ok_clicked)
         filters_widget.text_changed.connect(self._on_filter_change)
         filters_widget.my_tasks_changed.connect(self._on_my_tasks_change)
+        current_context_btn.clicked.connect(self._on_current_context_click)
         ok_btn.clicked.connect(self._on_ok_clicked)
         cancel_btn.clicked.connect(self._on_cancel_clicked)
 
         self._controller = controller
         self._filters_widget = filters_widget
+        self._current_context_btn = current_context_btn
         self._ok_btn = ok_btn
         self._cancel_btn = cancel_btn
 
@@ -131,6 +144,7 @@ class FoldersDialog(QtWidgets.QDialog):
 
         self._folders_widget.set_project_name(self._project_name)
         self._on_my_tasks_change(self._filters_widget.is_my_tasks_checked())
+        self._update_current_context_btn()
 
     def get_selected_folder_path(self) -> str | None:
         """Get selected folder path."""
@@ -180,6 +194,17 @@ class FoldersDialog(QtWidgets.QDialog):
             self._folders_widget.get_selected_folder_path()
         )
         self.done(1)
+
+    def _update_current_context_btn(self) -> None:
+        # Hide button if there is no current context folder
+        folder_path = self._controller.get_current_folder_path()
+        self._current_context_btn.setVisible(bool(folder_path))
+
+    def _on_current_context_click(self) -> None:
+        folder_path = self._controller.get_current_folder_path()
+        folder_id = self._controller.get_folder_id_from_path(folder_path)
+        if folder_id:
+            self._folders_widget.set_selected_folder(folder_id)
 
     def _on_my_tasks_change(self, enabled: bool) -> None:
         folder_ids = None

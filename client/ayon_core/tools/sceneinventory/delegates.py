@@ -3,12 +3,18 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.utils import get_qt_icon
 
-from .model import VERSION_LABEL_ROLE, CONTAINER_VERSION_LOCKED_ROLE
+from .model import (
+    VERSION_LABEL_ROLE,
+    CONTAINER_VERSION_LOCKED_ROLE,
+    CONTAINER_VERSION_PARTIALLY_LOCKED,
+    InventoryModel,
+)
 
 
 class VersionDelegate(QtWidgets.QStyledItemDelegate):
     """A delegate that display version integer formatted as version string."""
     _locked_icon = None
+    _partially_locked_icon = None
 
     def paint(self, painter, option, index):
         fg_color = index.data(QtCore.Qt.ForegroundRole)
@@ -20,7 +26,10 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             else:
                 fg_color = None
 
-        if not fg_color:
+        lock_state = index.data(CONTAINER_VERSION_LOCKED_ROLE)
+
+        # Nothing custom to draw over the default rendering.
+        if not fg_color and not lock_state:
             return super().paint(painter, option, index)
 
         if option.widget:
@@ -37,11 +46,6 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
         painter.save()
 
-        text = index.data(VERSION_LABEL_ROLE)
-        pen = painter.pen()
-        pen.setColor(fg_color)
-        painter.setPen(pen)
-
         text_rect = style.subElementRect(
             QtWidgets.QStyle.SE_ItemViewItemText,
             option
@@ -54,13 +58,34 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             text_margin, 0, - text_margin, 0
         )
 
+        font = index.data(QtCore.Qt.FontRole)
+        if isinstance(font, QtGui.QFont):
+            painter.setFont(font)
+
+        if not fg_color:
+            role = (
+                QtGui.QPalette.HighlightedText
+                if option.state & QtWidgets.QStyle.State_Selected
+                else QtGui.QPalette.Text
+            )
+            fg_color = option.palette.color(role)
+
+        pen = painter.pen()
+        pen.setColor(fg_color)
+        painter.setPen(pen)
+
+        text = index.data(VERSION_LABEL_ROLE)
         painter.drawText(
             text_rect_f,
             option.displayAlignment,
             text
         )
-        if index.data(CONTAINER_VERSION_LOCKED_ROLE) is True:
-            icon = self._get_locked_icon()
+
+        if lock_state:
+            if lock_state == CONTAINER_VERSION_PARTIALLY_LOCKED:
+                icon = self._get_partially_locked_icon()
+            else:
+                icon = self._get_locked_icon()
             size = max(text_rect_f.height() // 2, 16)
             margin = (text_rect_f.height() - size) // 2
 
@@ -80,3 +105,13 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
                 MaterialSymbolsIcon("lock", color="white")
             )
         return cls._locked_icon
+
+    def _get_partially_locked_icon(cls):
+        if cls._partially_locked_icon is None:
+            cls._partially_locked_icon = get_qt_icon(
+                MaterialSymbolsIcon(
+                    "lock_open",
+                    color=InventoryModel.GRAYOUT_COLOR.name()
+                )
+            )
+        return cls._partially_locked_icon

@@ -97,6 +97,22 @@ class IntegrateHeroVersionTraits(
 
     use_hardlinks = False
 
+    @classmethod
+    def apply_settings(cls, settings):
+        # Inherit settings from IntegrateHeroVersion so that essentially
+        # the enabled state is shared between the two plugins.
+        integrate_hero_settings = (
+            settings["core"]["publish"]["IntegrateHeroVersion"]
+        )
+        for option, value in integrate_hero_settings.items():
+            cls.log.debug(
+                "Plugin %s - Attr: %s -> %s",
+                cls.__name__,
+                option,
+                value,
+            )
+            setattr(cls, option, value)
+
     def process(self, instance: pyblish.api.Instance) -> None:
         """Integrate Hero version with representation traits.
 
@@ -105,6 +121,13 @@ class IntegrateHeroVersionTraits(
 
         """
         if not self.is_active(instance.data):
+            return
+
+        if not instance.data.get("published_representations"):
+            self.log.debug(
+                "Instance has no published representations. "
+                "Skipping hero version with traits integration."
+            )
             return
 
         if not has_trait_representations(instance):
