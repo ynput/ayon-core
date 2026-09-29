@@ -7,6 +7,7 @@ default, and the "No/Has {label}" options for fields that can be empty.
 from unittest.mock import Mock
 
 import pytest
+from qtpy.QtWidgets import QWidget
 
 from ayon_core.ui.components.table_filter import (
     AYTableFilterProxyModel,
@@ -56,7 +57,7 @@ def test_single_select_preselects_first_value(qtbot, boolean_entry):
 
     assert _checked(dropdown) == ["Yes"]
     dropdown._on_apply()
-    assert ready == [("hasReviewables", ["Yes"], False)]
+    assert ready == [("hasReviewables", ["Yes"], False, False)]
 
 
 def test_untouched_preselection_is_not_applied_on_dismiss(
@@ -245,3 +246,57 @@ def test_bulk_selection_hidden_for_single_select(qtbot, boolean_entry):
     dropdown = _dropdown(qtbot, [boolean_entry])
     dropdown._on_attr_selected("hasReviewables", "Has Reviewables")
     assert all(btn.isHidden() for btn in dropdown._multiselect_btns)
+
+
+@pytest.mark.parametrize(
+    ("cell", "expected"),
+    [("model", False), ("rig", False), ("render", True), (None, True)],
+)
+def test_proxy_exclude_inverts_match(qapp, cell, expected):
+    proxy = AYTableFilterProxyModel()
+    proxy.set_row_value_getter(lambda _index, _key: cell)
+    source = Mock()
+    proxy.sourceModel = lambda: source
+    proxy.set_criteria(
+        [
+            FilterCriterion(
+                "productType", "Product type", ["model", "rig"],
+                exclude=True,
+            )
+        ],
+        [],
+        [FilterEntry("productType", "Product type")],
+    )
+
+    assert proxy._direct_match(0, Mock()) is expected
+
+
+def test_exclude_is_emitted_and_restored_on_edit(qtbot):
+    entry = FilterEntry("tags", "Tags", options=["a", "b"])
+    dropdown = _dropdown(qtbot, [entry])
+    ready = []
+    dropdown.criterion_ready.connect(lambda *args: ready.append(args))
+
+    dropdown._on_attr_selected("tags", "Tags")
+    assert not dropdown._exclude_checkbox.isChecked()
+    dropdown._value_buttons["a"].click()
+    dropdown._exclude_checkbox.setChecked(True)
+    dropdown._on_apply()
+    assert ready == [("tags", ["a"], False, True)]
+
+    anchor = QWidget()
+    qtbot.addWidget(anchor)
+    dropdown.open_for_edit(
+        FilterCriterion("tags", "Tags", ["a"], exclude=True), anchor
+    )
+    assert dropdown._exclude_checkbox.isChecked()
+
+    # Picking a filter afresh starts out including again.
+    dropdown._on_attr_selected("tags", "Tags")
+    assert not dropdown._exclude_checkbox.isChecked()
+
+
+def test_exclude_roundtrips_through_view_payload():
+    criterion = FilterCriterion("tags", "Tags", ["a"], exclude=True)
+    assert FilterCriterion.from_def(criterion.to_def()) == criterion
+    assert FilterCriterion.from_def({"key": "tags"}).exclude is False
