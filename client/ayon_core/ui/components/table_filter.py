@@ -568,13 +568,41 @@ class _FilterDropdown(AYDropdownPopup):
         )
         layout.addWidget(self._value_content_container, stretch=1)
 
-        # Footer: Apply button
+        # Footer: multi-select helpers on the left, Confirm on the right
         footer = AYContainer(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Low,
             layout_margin=4,
-            layout_spacing=8,
+            layout_spacing=4,
         )
+        self._select_all_btn = AYButton(
+            "Select all",
+            variant=AYButton.Variants.Text,
+            tooltip="Select all listed values",
+        )
+        self._select_all_btn.clicked.connect(self._on_select_all)
+        self._clear_btn = AYButton(
+            "Clear",
+            variant=AYButton.Variants.Text,
+            tooltip="Deselect all values",
+        )
+        self._clear_btn.clicked.connect(self._on_clear_selection)
+        self._toggle_btn = AYButton(
+            "Toggle",
+            variant=AYButton.Variants.Text,
+            tooltip="Invert the selection of listed values",
+        )
+        self._toggle_btn.clicked.connect(self._on_toggle_selection)
+        self._multiselect_btns = (
+            self._select_all_btn,
+            self._clear_btn,
+            self._toggle_btn,
+        )
+        for btn in self._multiselect_btns:
+            btn.installEventFilter(self)
+            footer.add_widget(btn)
+        footer.addStretch()
+
         self._apply_btn = AYButton(
             "Confirm",
             variant=AYButton.Variants.Filled,
@@ -1043,6 +1071,14 @@ class _FilterDropdown(AYDropdownPopup):
         else:
             self._value_scroll = None
 
+        # Bulk selection only makes sense for a list of regular values
+        # that can be combined.
+        is_multiselect = bool(distinct) and not (
+            entry is not None and entry.single_select
+        )
+        for btn in self._multiselect_btns:
+            btn.setVisible(is_multiselect)
+
         # Only a text filter carries its value in the search box; a
         # multi-select shows its values in the list above and leaves the
         # box free for searching.
@@ -1087,6 +1123,33 @@ class _FilterDropdown(AYDropdownPopup):
             ):
                 other_button.setChecked(False)
 
+    def _listed_value_buttons(self) -> list[AYButton]:
+        """Return buttons of regular values matching the value search.
+
+        The "No value"/"Has value" options are left out: selecting both
+        would match everything, so bulk actions leave them alone.
+        """
+        return [
+            button
+            for value, button in self._value_buttons.items()
+            if value not in EMPTY_VALUE_OPTIONS and not button.isHidden()
+        ]
+
+    def _on_select_all(self) -> None:
+        self._preselected = False
+        for button in self._listed_value_buttons():
+            button.setChecked(True)
+
+    def _on_clear_selection(self) -> None:
+        self._preselected = False
+        for button in self._value_buttons.values():
+            button.setChecked(False)
+
+    def _on_toggle_selection(self) -> None:
+        self._preselected = False
+        for button in self._listed_value_buttons():
+            button.setChecked(not button.isChecked())
+
     def _get_value_navigation_widgets(self) -> list[QWidget]:
         """Return controls in the value-page keyboard navigation order.
 
@@ -1104,6 +1167,7 @@ class _FilterDropdown(AYDropdownPopup):
         widgets.extend(self._value_buttons.values())
         if self._value_back_btn is not None:
             widgets.append(self._value_back_btn)
+        widgets.extend(self._multiselect_btns)
         widgets.append(self._apply_btn)
         return [
             widget for widget in widgets

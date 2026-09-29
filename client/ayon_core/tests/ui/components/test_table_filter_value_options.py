@@ -207,3 +207,41 @@ def test_proxy_matches_empty_options(qapp, values, cell, expected):
     )
 
     assert proxy._direct_match(0, Mock()) is expected
+
+
+def test_bulk_selection_actions(qtbot):
+    entry = FilterEntry(
+        "tags", "Tags", options=["a", "b", "c"], show_has_value_filters=True,
+    )
+    dropdown = _dropdown(qtbot, [entry])
+    dropdown._on_attr_selected("tags", "Tags")
+    assert all(not btn.isHidden() for btn in dropdown._multiselect_btns)
+
+    dropdown._value_buttons[NO_VALUE].click()
+    dropdown._on_select_all()
+    # "No/Has value" options are left alone by bulk actions.
+    assert _checked(dropdown) == [NO_VALUE, "a", "b", "c"]
+
+    dropdown._value_buttons["b"].click()
+    dropdown._on_toggle_selection()
+    assert _checked(dropdown) == [NO_VALUE, "b"]
+
+    dropdown._on_clear_selection()
+    assert _checked(dropdown) == []
+
+
+def test_bulk_selection_respects_value_search(qtbot):
+    entry = FilterEntry("tags", "Tags", options=["apple", "avocado", "kiwi"])
+    dropdown = _dropdown(qtbot, [entry])
+    dropdown._on_attr_selected("tags", "Tags")
+    dropdown._stack.setCurrentIndex(1)
+    dropdown._attr_search.setText("a")
+
+    dropdown._on_select_all()
+    assert _checked(dropdown) == ["apple", "avocado"]
+
+
+def test_bulk_selection_hidden_for_single_select(qtbot, boolean_entry):
+    dropdown = _dropdown(qtbot, [boolean_entry])
+    dropdown._on_attr_selected("hasReviewables", "Has Reviewables")
+    assert all(btn.isHidden() for btn in dropdown._multiselect_btns)
