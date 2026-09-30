@@ -970,6 +970,15 @@ class OptionalActionWidget(QtWidgets.QWidget):
         # (NOTE) For removing ugly QLable shadow FX when highlighted in Nuke.
         #   See https://stackoverflow.com/q/52838690/4145300
         label.setStyle(QtWidgets.QStyleFactory.create("Plastique"))
+
+        label.setTextInteractionFlags(
+            QtCore.Qt.TextInteractionFlag.NoTextInteraction,
+        )
+        label.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            True
+        )
+
         option = OptionBox(body_widget)
         option.setObjectName("OptionalActionOption")
 
