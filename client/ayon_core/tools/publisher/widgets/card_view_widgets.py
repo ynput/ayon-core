@@ -837,10 +837,11 @@ class InstanceCardView(AbstractInstanceView):
 
             widget_idx += 1
 
-            for instance in sorted(
-               instances_by_group[group_name],
-               key=lambda i: (i.get_folder_path() or "", i.product_name))
-            ):
+            instances = sorted(
+                instances_by_group[group_name],
+                key=lambda i: (i.get_folder_path() or "", i.product_name)
+            )
+            for instance in instances:
                 group_by_instance_id[instance.id] = group_name
                 instance_ids_by_group_name[group_name].append(instance.id)
 
