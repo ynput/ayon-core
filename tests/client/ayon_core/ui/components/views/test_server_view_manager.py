@@ -313,7 +313,12 @@ def test_save_view_forces_public_when_access_has_positive_values() -> None:
          patch("ayon_core.ui.components.views.server_view_manager"
                ".get_bundle_information",
                return_value=MagicMock(
-                   addons=[type("Addon", (), {"name": "powerpack", "version": "1.6.3"})()]
+                   addons=[
+                       type(
+                           "Addon", (),
+                           {"name": "powerpack", "version": "1.6.3"}
+                       )()
+                   ]
                )), \
          patch("ayon_core.ui.components.views.server_view_manager"
                ".ayon_api.get_server_api_connection", return_value=conn):

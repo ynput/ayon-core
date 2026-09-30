@@ -46,8 +46,12 @@ class FrameDrawer:
         # get style
         variant = getattr(w, "_variant_str", "")
         row_state = w.property("row_state") if w is not None else None
-        is_selected = bool(row_state and row_state & QStyle.StateFlag.State_Selected)
-        is_hover = bool(row_state and row_state & QStyle.StateFlag.State_MouseOver) or (
+        is_selected = bool(
+            row_state and row_state & QStyle.StateFlag.State_Selected
+        )
+        is_hover = bool(
+            row_state and row_state & QStyle.StateFlag.State_MouseOver
+        ) or (
             getattr(w, "_hover_enabled", False)
             and (
                 option.state & QStyle.StateFlag.State_MouseOver

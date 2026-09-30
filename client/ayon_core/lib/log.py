@@ -287,6 +287,7 @@ _log_timing_enabled = env_value_to_bool("AYON_CORE_TIMERS")
 _timing_logger = Logger.get_logger("ayon-core-timers")
 _timing_logger.setLevel(logging.INFO)
 
+
 @contextmanager
 def log_timing(message: str) -> Generator[None, None, None]:
     """Context manager to log the execution time of a code block.

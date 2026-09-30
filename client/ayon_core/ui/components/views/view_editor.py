@@ -32,7 +32,7 @@ from ..combo_box import AYComboBox
 from ..container import AYContainer
 from ..searchable_combo_box import AYSearchableComboBox
 from ..label import AYLabel
-from ..layouts import AYVBoxLayout, AYHBoxLayout
+from ..layouts import AYVBoxLayout
 from ..line_edit import AYLineEdit
 from ..user_image import AYUserImage
 from .data_models import Scope, View, Visibility
@@ -107,7 +107,8 @@ class AYViewEditor(QDialog):
         self._allow_sharing = bool(allow_sharing)
         self._delete_requested = False
 
-        # Access control state: {key: access_level} where key is "user:name" or "group:name"
+        # Access control state: {key: access_level}
+        #   where key is "user:name" or "group:name"
         self._access_dict: dict[str, int] = {}
         # Stores row widgets by access key
         self._access_row_widgets: dict[str, QWidget] = {}
@@ -180,7 +181,7 @@ class AYViewEditor(QDialog):
         )
         self._owner_avatar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._owner_label = AYLabel("-")
-        
+
         owner_row = AYContainer(
             layout=AYContainer.Layout.HBox,
             layout_spacing=8,
@@ -294,7 +295,7 @@ class AYViewEditor(QDialog):
         # Update Owner
         owner_name = self._view.owner or self._current_user or "-"
         self._owner_label.setText(owner_name)
-        
+
         # Recreate owner avatar with updated name
         self._owner_avatar._name = owner_name
         self._owner_avatar._full_name = owner_name
@@ -394,7 +395,10 @@ class AYViewEditor(QDialog):
 
         access_combo = AYComboBox(show_chevron=True)
         access_combo.setFixedWidth(120)
-        access_items = [{"text": ACCESS_LEVELS[level]} for level in ACCESS_LEVEL_VALUES]
+        access_items = [
+            {"text": ACCESS_LEVELS[level]}
+            for level in ACCESS_LEVEL_VALUES
+        ]
         access_combo.update_items(access_items)
 
         if access_level not in ACCESS_LEVEL_VALUES:
@@ -444,7 +448,7 @@ class AYViewEditor(QDialog):
         Args:
             row: The _ItemRow widget to customize.
             entry: The item dict containing metadata.
-        """
+        """  # noqa: E501
         entry_type = entry.get("type", "")
         identifier = entry.get("identifier", "")
         label = entry.get("label", "")

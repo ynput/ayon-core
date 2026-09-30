@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Iterable
 
 import ayon_api
 
@@ -109,7 +108,7 @@ class ProductsModel:
 
         Args:
             project_name (str): Where to look for representations.
-            repre_ids (Iterable[str]): Representation ids.
+            repre_ids (set[str] | list[str]): Representation ids.
 
         Returns:
             set[str]: Product ids for passed representation ids.

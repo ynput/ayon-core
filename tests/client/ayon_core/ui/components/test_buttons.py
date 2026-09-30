@@ -451,4 +451,3 @@ def test_aybuttonmenu_popup_close_on_button_press_does_not_reopen(
     assert btn._dropdown.isVisible() is False, (
         "Dropdown must not reopen in the same close/release click cycle"
     )
-

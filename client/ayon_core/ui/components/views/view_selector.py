@@ -113,8 +113,9 @@ class _SectionHeader(AYContainer):
         )
 
     def mouseReleaseEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
-            event.pos()
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(event.pos())
         ):
             self._on_toggle()
         super().mouseReleaseEvent(event)
@@ -401,7 +402,9 @@ class AYViewSelector(AYButtonMenu):
         sep.setStyleSheet("QFrame { border-top: 1px solid #41474d; }")
         return sep
 
-    def _make_section_header(self, title: str, section_key: str) -> _SectionHeader:
+    def _make_section_header(
+        self, title: str, section_key: str
+    ) -> _SectionHeader:
         """Return a clickable, collapsible section header."""
         return _SectionHeader(
             title,
@@ -411,8 +414,8 @@ class AYViewSelector(AYButtonMenu):
 
     def _on_section_toggle(self, section_key: str) -> None:
         """Flip a section's collapsed state and redraw the dropdown."""
-        self._collapsed_sections[section_key] = not self._collapsed_sections.get(
-            section_key
+        self._collapsed_sections[section_key] = (
+            not self._collapsed_sections.get(section_key)
         )
         self._rebuild_menu()
 

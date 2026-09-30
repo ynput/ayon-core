@@ -171,7 +171,10 @@ class ViewManager(QObject):
             The project default view for *view_type*, or ``None``.
         """
         for view in self.list_views(view_type):
-            if view.scope == Scope.PROJECT and view.label == DEFAULT_VIEW_LABEL:
+            if (
+                view.scope == Scope.PROJECT
+                and view.label == DEFAULT_VIEW_LABEL
+            ):
                 return view
         return None
 

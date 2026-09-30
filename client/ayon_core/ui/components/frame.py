@@ -61,7 +61,10 @@ class AYFrame(StyleMixin, QtWidgets.QFrame):
     def _set_row_state_bit(
         self, bit: QtWidgets.QStyle.StateFlag, on: bool
     ) -> None:
-        state = self.property("row_state") or QtWidgets.QStyle.StateFlag.State_None
+        state = (
+            self.property("row_state")
+            or QtWidgets.QStyle.StateFlag.State_None
+        )
         state = (state | bit) if on else (state & ~bit)
         self.setProperty("row_state", state)
         self.update()
