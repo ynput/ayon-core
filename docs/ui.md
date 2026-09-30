@@ -132,7 +132,6 @@ Notes:
 | `filterable_list.py` | `AYFilterableList` |
 | `tag.py` | `AYTag` |
 | `tag_selector.py` | `AYTagSelector`, `TagData` |
-| `slicer.py` | `AYSlicer` |
 | `dropdown.py` | `AYDropdownPopup` |
 
 ### Layout and Utility Components
