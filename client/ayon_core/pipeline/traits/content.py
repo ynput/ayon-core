@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path  # noqa: TCH003
 from typing import ClassVar, Generator, Optional
 
-from clique import assemble
+from clique import PATTERNS, assemble
 
 from .representation import Representation
 from .temporal import FrameRanged, Handles, Sequence
@@ -290,8 +290,11 @@ class FileLocations(TraitBase):
                 representation.
 
         """
-        tmp_frame_ranged: FrameRanged = self.get_sequence_from_files(
-                    [f.file_path for f in self.file_paths])
+        try:
+            tmp_frame_ranged: FrameRanged = self.get_sequence_from_files(
+                [f.file_path for f in self.file_paths])
+        except ValueError as exc:
+            raise TraitValidationError(self.name, str(exc)) from exc
 
         frames_from_spec: list[int] = []
         with contextlib.suppress(MissingTraitError):
@@ -444,8 +447,11 @@ class FileLocations(TraitBase):
             ValueError: If paths cannot be assembled into one collection
 
         """
+        # only frame number right before the extension, other numbers
+        # in file names (e.g. version) must not split the collection
         cols, rems = assemble(
             [path.name for path in paths],
+            patterns=[PATTERNS["frames"]],
             minimum_items=1)
         if rems:
             msg = (
