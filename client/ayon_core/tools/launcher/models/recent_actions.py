@@ -93,11 +93,11 @@ class RecentActionsModel:
         self._worker: Optional[threading.Thread] = None
         self._prewarmed = False
 
-        controller.register_event_callback(
+        self._controller.register_event_callback(
             "action.trigger.finished",
             self._on_action_trigger_finished,
         )
-        controller.register_event_callback(
+        self._controller.register_event_callback(
             "webaction.trigger.finished",
             self._on_webaction_trigger_finished,
         )
@@ -414,6 +414,12 @@ class RecentActionsModel:
                     job = None
                     to_save = list(self._items or [])
                 else:
+                    # Forget this thread while still holding the lock. The
+                    # thread only finishes exiting after the lock is
+                    # released - work queued in between would otherwise
+                    # see it as still alive, start no new worker, and
+                    # stay queued until some later event came along.
+                    self._worker = None
                     return
 
             if job is None:
