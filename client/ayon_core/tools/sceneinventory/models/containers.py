@@ -9,6 +9,9 @@ from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models.projects import StatusStates
 
 
+_log = Logger.get_logger(__name__)
+
+
 # --- Implementation that should be in ayon-python-api ---
 # The implementation is not available in all versions of ayon-python-api.
 RepresentationHierarchy = collections.namedtuple(
@@ -72,8 +75,29 @@ def get_representations_hierarchy(project_name, representation_ids):
     query.set_variable_value("representationIds", list(repre_ids))
 
     con = ayon_api.get_server_api_connection()
-    parsed_data = query.query(con)
-    for repre in parsed_data["project"]["representations"]:
+    try:
+        parsed_data = query.query(con)
+        project = parsed_data["project"]
+    except Exception:
+        # Query can fail e.g. because of missing access to the project,
+        #   or because the project does not exist (was renamed/removed).
+        # Treat it the same as "nothing found" instead of letting it
+        #   propagate and break the whole scene inventory refresh.
+        _log.error(
+            "Failed to query representations hierarchy for project"
+            f" '{project_name}'.",
+            exc_info=True
+        )
+        return output
+
+    if project is None:
+        _log.warning(
+            f"Project '{project_name}' does not exist or is not"
+            " accessible. Treating its representations as not found."
+        )
+        return output
+
+    for repre in project["representations"]:
         repre_id = repre["id"]
         version = repre.pop("version")
         product = version.pop("product")
