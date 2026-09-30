@@ -18,7 +18,6 @@ from .abstract import (
     AbstractLauncherFrontEnd,
     AbstractLauncherBackend,
     ActionItem,
-    ContextLabels,
     RecentActionItem,
     WebactionContext,
     WorkfileItem,
@@ -165,75 +164,6 @@ class BaseLauncherController(
 
     def get_task_entity(self, project_name, task_id):
         return self._hierarchy_model.get_task_entity(project_name, task_id)
-
-    def get_context_labels(
-        self,
-        project_name: Optional[str],
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        workfile_id: Optional[str],
-    ) -> ContextLabels:
-        labels = ContextLabels()
-        if not project_name:
-            return labels
-
-        project_entity = self.get_project_entity(project_name)
-        if project_entity:
-            labels.project_code = project_entity.get("code")
-
-        if folder_id:
-            folder_entity = self.get_folder_entity(project_name, folder_id)
-            if folder_entity:
-                labels.folder_path = folder_entity["path"]
-                folder_type = self._find_type_item(
-                    self.get_folder_type_items,
-                    project_name,
-                    folder_entity.get("folderType"),
-                )
-                if folder_type is not None:
-                    labels.folder_icon = folder_type.icon
-
-        if not task_id:
-            return labels
-
-        task_entity = self.get_task_entity(project_name, task_id)
-        if task_entity:
-            labels.task_name = task_entity["name"]
-            task_type = self._find_type_item(
-                self.get_task_type_items,
-                project_name,
-                task_entity.get("taskType") or task_entity.get("type"),
-            )
-            if task_type is not None:
-                labels.task_icon = task_type.icon
-                labels.task_color = task_type.color
-
-        if workfile_id:
-            for workfile_item in self.get_workfile_items(
-                project_name, task_id
-            ):
-                if workfile_item.workfile_id == workfile_id:
-                    labels.workfile_name = workfile_item.filename
-                    break
-        return labels
-
-    def _find_type_item(self, getter, project_name, type_name):
-        """Folder or task type item by name.
-
-        The icons only decorate a label, so failing to get them must not
-        take the label - or the history entry it belongs to - down.
-        """
-        try:
-            for type_item in getter(project_name):
-                if type_item.name == type_name:
-                    return type_item
-        except Exception:
-            self.log.warning(
-                "Failed to get type items of project '%s'.",
-                project_name,
-                exc_info=True,
-            )
-        return None
 
     def get_action_item(
         self,

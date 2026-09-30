@@ -12,11 +12,18 @@ import ayon_api
 
 from ayon_core.tools.launcher.abstract import (
     RECENT_ACTIONS_MAX,
-    ContextLabels,
+    WorkfileItem,
 )
 from ayon_core.tools.launcher.models.recent_actions import (
     RecentActionsModel,
 )
+
+
+class TypeItem:
+    def __init__(self, name, icon, color=None) -> None:
+        self.name = name
+        self.icon = icon
+        self.color = color
 
 
 class FakeController:
@@ -24,6 +31,7 @@ class FakeController:
 
     def __init__(self) -> None:
         self.callbacks: dict[str, Any] = {}
+        self.fail_type_items = False
 
     def register_event_callback(self, topic, callback) -> None:
         self.callbacks[topic] = callback
@@ -37,10 +45,37 @@ class FakeController:
     def get_local_action_label_icon(self, identifier) -> Optional[Any]:
         return None
 
-    def get_context_labels(
-        self, project_name, folder_id, task_id, workfile_id
-    ) -> ContextLabels:
-        return ContextLabels(folder_path=f"/{folder_id}")
+    def get_project_entity(self, project_name) -> dict[str, Any]:
+        return {"name": project_name, "code": "PRJ"}
+
+    def get_folder_entity(self, project_name, folder_id):
+        return {"path": f"/{folder_id}", "folderType": "Asset"}
+
+    def get_task_entity(self, project_name, task_id):
+        return {"name": f"name_{task_id}", "taskType": "Modeling"}
+
+    def get_folder_type_items(self, project_name):
+        if self.fail_type_items:
+            raise RuntimeError("No server")
+        return [TypeItem("Asset", "category")]
+
+    def get_task_type_items(self, project_name):
+        if self.fail_type_items:
+            raise RuntimeError("No server")
+        return [TypeItem("Modeling", "language", "#ff0000")]
+
+    def get_workfile_items(self, project_name, task_id):
+        return [
+            WorkfileItem(
+                workfile_id="wf1",
+                filename="scene_v001.ma",
+                exists=True,
+                host_name="maya",
+                icon=None,
+                version=1,
+                updated_at_time=0.0,
+            )
+        ]
 
 
 @pytest.fixture
@@ -113,6 +148,33 @@ def test_triggered_action_is_recorded_and_stored(
     # Stored on the server as well, not just kept in memory.
     stored = user_data["data"]["recentActions"]
     assert [entry["record_id"] for entry in stored] == [item.record_id]
+
+
+def test_context_is_stored_with_names_and_type_icons(controller, model):
+    trigger(controller, model, task_id="t1", workfile_id="wf1")
+
+    (item,) = model.get_recent_action_items()
+    assert item.project_code == "PRJ"
+    assert item.folder_path == "/f1"
+    assert item.folder_icon == "category"
+    assert item.task_name == "name_t1"
+    assert item.task_icon == "language"
+    assert item.task_color == "#ff0000"
+    assert item.workfile_name == "scene_v001.ma"
+
+
+def test_entry_is_recorded_even_if_type_icons_cannot_be_read(
+    controller, model
+):
+    controller.fail_type_items = True
+
+    trigger(controller, model, task_id="t1")
+
+    (item,) = model.get_recent_action_items()
+    assert item.folder_path == "/f1"
+    assert item.task_name == "name_t1"
+    assert item.folder_icon is None
+    assert item.task_icon is None
 
 
 def test_failed_action_is_not_recorded(controller, model):

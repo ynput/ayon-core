@@ -17,7 +17,10 @@ from ayon_core.tools.launcher.abstract import (
 )
 
 if TYPE_CHECKING:
-    from ayon_core.tools.launcher.abstract import AbstractLauncherBackend
+    from ayon_core.tools.launcher.abstract import (
+        AbstractLauncherBackend,
+        AbstractLauncherFrontEnd,
+    )
 
 
 _USER_DATA_KEY = "recentActions"
@@ -53,6 +56,30 @@ def _icon_to_data(icon) -> Optional[dict]:
     return None
 
 
+@dataclasses.dataclass
+class ContextLabels:
+    """Human readable names of a launcher context.
+
+    Attributes:
+        project_code (Optional[str]): Project code.
+        folder_path (Optional[str]): Folder path.
+        task_name (Optional[str]): Task name.
+        workfile_name (Optional[str]): Workfile filename.
+        folder_icon (Optional[str]): Material symbol of the folder type.
+        task_icon (Optional[str]): Material symbol of the task type.
+        task_color (Optional[str]): Color of the task type.
+
+    """
+
+    project_code: Optional[str] = None
+    folder_path: Optional[str] = None
+    task_name: Optional[str] = None
+    workfile_name: Optional[str] = None
+    folder_icon: Optional[str] = None
+    task_icon: Optional[str] = None
+    task_color: Optional[str] = None
+
+
 class RecentActionsModel:
     """Persistent store for recently triggered launcher actions.
 
@@ -75,13 +102,18 @@ class RecentActionsModel:
     Args:
         controller (AbstractLauncherBackend): Controller used for event
             subscription and for resolving what a triggered action and its
-            context looked like.
+            context looked like. Names and types of the context entities
+            are read through the same methods the UI uses, which are
+            declared by 'AbstractLauncherFrontEnd'.
 
     """
 
     log = Logger.get_logger("RecentActionsModel")
 
-    def __init__(self, controller: AbstractLauncherBackend) -> None:
+    def __init__(
+        self,
+        controller: AbstractLauncherBackend | AbstractLauncherFrontEnd,
+    ) -> None:
         self._controller = controller
 
         # Guards '_items' and the recording queue. Both are touched by the
@@ -340,6 +372,83 @@ class RecentActionsModel:
     # Recording
     # ------------------------------------------------------------------
 
+    def _get_context_labels(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        workfile_id: Optional[str],
+    ) -> ContextLabels:
+        """Get human readable names of a context that is in use.
+
+        Served from what the launcher already has loaded whenever possible.
+        """
+        labels = ContextLabels()
+        if not project_name:
+            return labels
+
+        project_entity = self._controller.get_project_entity(project_name)
+        if project_entity:
+            labels.project_code = project_entity.get("code")
+
+        if folder_id:
+            folder_entity = self._controller.get_folder_entity(
+                project_name, folder_id
+            )
+            if folder_entity:
+                labels.folder_path = folder_entity["path"]
+                folder_type = self._find_type_item(
+                    self._controller.get_folder_type_items,
+                    project_name,
+                    folder_entity.get("folderType"),
+                )
+                if folder_type is not None:
+                    labels.folder_icon = folder_type.icon
+
+        if not task_id:
+            return labels
+
+        task_entity = self._controller.get_task_entity(
+            project_name, task_id
+        )
+        if task_entity:
+            labels.task_name = task_entity["name"]
+            task_type = self._find_type_item(
+                self._controller.get_task_type_items,
+                project_name,
+                task_entity.get("taskType") or task_entity.get("type"),
+            )
+            if task_type is not None:
+                labels.task_icon = task_type.icon
+                labels.task_color = task_type.color
+
+        if workfile_id:
+            for workfile_item in self._controller.get_workfile_items(
+                project_name, task_id
+            ):
+                if workfile_item.workfile_id == workfile_id:
+                    labels.workfile_name = workfile_item.filename
+                    break
+        return labels
+
+    def _find_type_item(self, getter, project_name, type_name):
+        """Folder or task type item by name.
+
+        The icons only decorate a label, so failing to get them must not
+        take the label - or the history entry it belongs to - down.
+        """
+        try:
+            for type_item in getter(project_name):
+                if type_item.name == type_name:
+                    return type_item
+        except Exception:
+            self.log.warning(
+                "Failed to get type items of project '%s'.",
+                project_name,
+                exc_info=True,
+            )
+        return None
+
     def _on_action_trigger_finished(self, event: dict) -> None:
         if event["failed"]:
             return
@@ -465,7 +574,7 @@ class RecentActionsModel:
             item.label = action_item.full_label
             item.icon = _icon_to_data(action_item.icon)
 
-        labels = self._controller.get_context_labels(
+        labels = self._get_context_labels(
             item.project_name,
             item.folder_id,
             item.task_id,

@@ -81,30 +81,6 @@ class WorkfileItem:
 
 
 @dataclass
-class ContextLabels:
-    """Human readable names of a launcher context.
-
-    Attributes:
-        project_code (Optional[str]): Project code.
-        folder_path (Optional[str]): Folder path.
-        task_name (Optional[str]): Task name.
-        workfile_name (Optional[str]): Workfile filename.
-        folder_icon (Optional[str]): Material symbol of the folder type.
-        task_icon (Optional[str]): Material symbol of the task type.
-        task_color (Optional[str]): Color of the task type.
-
-    """
-
-    project_code: Optional[str] = None
-    folder_path: Optional[str] = None
-    task_name: Optional[str] = None
-    workfile_name: Optional[str] = None
-    folder_icon: Optional[str] = None
-    task_icon: Optional[str] = None
-    task_color: Optional[str] = None
-
-
-@dataclass
 class RecentActionItem:
     """A triggered action, the context it ran in and how to display it.
 
@@ -241,31 +217,6 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
             dict[str, Any]: Folder entity data.
         """
 
-        pass
-
-    @abstractmethod
-    def get_context_labels(
-        self,
-        project_name: Optional[str],
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        workfile_id: Optional[str],
-    ) -> ContextLabels:
-        """Get human readable names of a context.
-
-        Meant to label a context that is currently in use, so it is served
-        from what the launcher already has loaded whenever possible.
-
-        Args:
-            project_name (Optional[str]): Project name.
-            folder_id (Optional[str]): Folder id.
-            task_id (Optional[str]): Task id.
-            workfile_id (Optional[str]): Workfile id.
-
-        Returns:
-            ContextLabels: Names of the context entities.
-
-        """
         pass
 
     @abstractmethod
