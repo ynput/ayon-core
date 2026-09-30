@@ -204,3 +204,12 @@ def test_get_sequence_from_files() -> None:
 
     assert single.frame_start == 1001
     assert single.frame_end == 1001
+
+    # other numbers in published file names must not split the sequence
+    published = [
+        Path(f"TP_7e2_sh010_renderMain_v001.{frame}.exr")
+        for frame in range(1001, 1006)
+    ]
+    seq = FileLocations.get_sequence_from_files(paths=published)
+    assert seq.frame_start == 1001
+    assert seq.frame_end == 1005

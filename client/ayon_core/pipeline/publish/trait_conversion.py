@@ -30,6 +30,7 @@ from ayon_core.pipeline.traits import (
     Sequence,
     Tagged,
     TraitBase,
+    Variant,
 )
 from ayon_core.pipeline.publish.review_utils import (
     DEFAULT_IMAGE_EXTS,
@@ -166,6 +167,10 @@ def representation_to_legacy_dict(representation: Representation) -> dict:
         result["custom_tags"] = list(
             representation.get_trait(CustomTags).tags
         )
+    # legacy "outputName" fills `{output}` in publish templates,
+    # `Variant` is used for it on trait representations
+    if representation.contains_trait(Variant):
+        result["outputName"] = representation.get_trait(Variant).variant
 
     if representation.contains_trait(ColorManaged):
         cm = representation.get_trait(ColorManaged)
@@ -245,6 +250,9 @@ def legacy_dict_to_representation(
     custom_tags = new_repre.get("custom_tags")
     if custom_tags:
         traits.append(CustomTags(tags=list(custom_tags)))
+    output_name = new_repre.get("outputName")
+    if output_name:
+        traits.append(Variant(variant=output_name))
 
     color_managed = color_managed_from_colorspace_data(
         new_repre.get("colorspaceData")

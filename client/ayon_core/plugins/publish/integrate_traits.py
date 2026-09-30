@@ -35,9 +35,16 @@ from ayon_core.pipeline.publish import (
     get_version_data_from_instance,
     get_instance_template_name,
 )
+from ayon_core.pipeline.publish.trait_conversion import (
+    sequence_traits_from_files,
+)
 from ayon_core.pipeline.traits import (
+    Bundle,
+    FileLocations,
     Persistent,
     Representation,
+    Sequence,
+    TraitValidationError,
 
     get_transfers_from_representations,
     get_template_data_from_representation,
@@ -168,6 +175,42 @@ def _prepare_value_for_json(value: Any) -> Any:
     return value
 
 
+def update_sequence_traits(representation: Representation) -> None:
+    """Update `Sequence` traits to match published file names.
+
+    Publish template renames the files, but not the frames, so the frame
+    regex and padding are updated from the new file names while the frame
+    spec stays valid. Sequences in `Bundle` items are updated too.
+
+    Args:
+        representation (Representation): Representation with file paths
+            already replaced by the published ones.
+
+    """
+    trait_groups = [list(representation.get_traits().values())]
+    if representation.contains_trait(Bundle):
+        trait_groups.extend(representation.get_trait(Bundle).items)
+
+    for traits in trait_groups:
+        sequence = next(
+            (trait for trait in traits if isinstance(trait, Sequence)), None)
+        file_locations = next(
+            (trait for trait in traits if isinstance(trait, FileLocations)),
+            None)
+        if sequence is None or file_locations is None:
+            continue
+
+        sequence_traits = sequence_traits_from_files([
+            Path(file_location.file_path)
+            for file_location in file_locations.file_paths
+        ])
+        if sequence_traits is None:
+            continue
+        _, published_sequence = sequence_traits
+        sequence.frame_regex = published_sequence.frame_regex
+        sequence.frame_padding = published_sequence.frame_padding
+
+
 class IntegrateTraits(pyblish.api.InstancePlugin):
     """Integrate representations with traits."""
 
@@ -259,6 +302,16 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             transfer.related_trait.file_size = transfer.size
             transfer.related_trait.file_hash = transfer.checksum
 
+        # file names changed by the publish template, sequence traits
+        # describing them must match the published files
+        for representation in representations:
+            update_sequence_traits(representation)
+        try:
+            self.validate_representations(instance, representations)
+        except PublishError:
+            file_transactions.rollback()
+            raise
+
         # 9) Create representation entities
         for representation in representations:
             attributes = {
@@ -345,6 +398,45 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         # 8) Transfer files
         # 9) Commit the session to AYON
         # 10) Finalize represetations - add integrated path Trait etc.
+
+    @staticmethod
+    def validate_representations(
+            instance: pyblish.api.Instance,
+            representations: list[Representation]) -> None:
+        """Validate traits of all representations.
+
+        Representations are validated before transfer (see
+        `get_transfers_from_representations`), this is for traits updated
+        after the transfer - invalid traits would be stored on representation
+        entities and fail only later when loaded.
+
+        Args:
+            instance (pyblish.api.Instance): Instance to process.
+            representations (list[Representation]): Representations
+                to validate.
+
+        Raises:
+            PublishError: If any representation is invalid.
+
+        """
+        errors = []
+        for representation in representations:
+            try:
+                representation.validate()
+            except TraitValidationError as exc:
+                errors.append(str(exc))
+
+        if errors:
+            joined_errors = "\n".join(f"- {error}" for error in errors)
+            raise PublishError(
+                f"Instance '{instance.name}' has invalid representation"
+                f" traits:\n{joined_errors}",
+                title="Invalid representation traits",
+                description=(
+                    "Representation traits are not consistent with"
+                    f" the files:\n\n{joined_errors}"
+                ),
+            )
 
     @staticmethod
     def filter_lifecycle(
