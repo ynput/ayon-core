@@ -463,32 +463,28 @@ def test_delete_view_empty_project_is_noop() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_set_project_emits_per_known_type_after_list_views() -> None:
-    """set_project should emit views_changed per known type."""
+def test_set_project_emits_project_changed() -> None:
+    """set_project announces the switch via project_changed only."""
     mgr = ServerViewManager(project_name="P")
     with patch(_MODULE + ".ayon_api.get") as fake_get:
         fake_get.return_value = _resp([_payload("v1")])
         mgr.list_views("versions")
 
-    emitted: list[str] = []
-    mgr.views_changed.connect(emitted.append)
+    projects: list[str] = []
+    changed_types: list[str] = []
+    mgr.project_changed.connect(projects.append)
+    mgr.views_changed.connect(changed_types.append)
     mgr.set_project("Q")
-    assert mgr.project_name == "Q"
-    assert emitted == ["versions"]
-
-
-def test_set_project_emits_sentinel_when_no_types_known() -> None:
-    """Empty string sentinel is emitted when no view type has been listed."""
-    mgr = ServerViewManager(project_name="P")
-    emitted: list[str] = []
-    mgr.views_changed.connect(emitted.append)
-    mgr.set_project("Q")
-    assert emitted == [""]
+    mgr.set_project("R")
+    assert mgr.project_name == "R"
+    assert projects == ["Q", "R"]
+    assert changed_types == []
 
 
 def test_set_project_noop_when_same() -> None:
     mgr = ServerViewManager(project_name="P")
     emitted: list[str] = []
+    mgr.project_changed.connect(emitted.append)
     mgr.views_changed.connect(emitted.append)
     mgr.set_project("P")
     assert emitted == []
@@ -506,22 +502,3 @@ def test_set_project_clears_both_caches() -> None:
     mgr.set_project("Q")
     assert mgr._id_to_view_attributes == {}
     assert mgr._cache == {}
-
-
-def test_set_project_retains_known_types_across_clears() -> None:
-    """_known_types persists so the next set_project can still emit."""
-    mgr = ServerViewManager(project_name="P")
-    with patch(_MODULE + ".ayon_api.get") as fake_get:
-        fake_get.return_value = _resp([])
-        mgr.list_views("versions")
-
-    # First switch: emits "versions" (known type)
-    emitted: list[str] = []
-    mgr.views_changed.connect(emitted.append)
-    mgr.set_project("Q")
-    assert emitted == ["versions"]
-    emitted.clear()
-
-    # Second switch without new list_views: should still know "versions"
-    mgr.set_project("R")
-    assert emitted == ["versions"]
