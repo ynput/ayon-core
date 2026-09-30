@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ayon_core.ui.components.views import (
+    Scope,
     ServerViewManager,
     View,
     ViewSettings,
@@ -147,7 +148,9 @@ def test_list_views_populates_id_to_type_map() -> None:
                ".ayon_api.get") as fake_get:
         fake_get.return_value = _resp([_payload("v1", "A")])
         mgr.list_views("versions")
-    assert mgr._id_to_type.get("v1") == "versions"
+    assert mgr._id_to_view_attributes.get("v1") == (
+        "versions", Scope.PROJECT
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +489,8 @@ def test_delete_view_unknown_id_emits_error_only() -> None:
 def test_delete_view_empty_project_is_noop() -> None:
     """delete_view must silently no-op when project_name is empty."""
     mgr = ServerViewManager(project_name="")
-    mgr._id_to_type["v1"] = "versions"  # inject manually
+    # inject manually
+    mgr._id_to_view_attributes["v1"] = ("versions", Scope.PROJECT)
     with patch("ayon_core.ui.components.views.server_view_manager"
                ".ayon_api.delete") as fake_delete:
         mgr.delete_view("v1")
@@ -537,11 +541,11 @@ def test_set_project_clears_both_caches() -> None:
         fake_get.return_value = _resp([_payload("v1")])
         mgr.list_views("versions")
 
-    assert "v1" in mgr._id_to_type
+    assert "v1" in mgr._id_to_view_attributes
     assert "versions" in mgr._cache
 
     mgr.set_project("Q")
-    assert mgr._id_to_type == {}
+    assert mgr._id_to_view_attributes == {}
     assert mgr._cache == {}
 
 
