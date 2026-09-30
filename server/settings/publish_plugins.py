@@ -1031,13 +1031,13 @@ class ExtractOTIOReviewModel(BaseSettingsModel):
         disabled=True,
     )
     default_width: int = SettingsField(
-        0,
+        1280,
         ge=0,
         le=100000,
         title="Default width"
     )
     default_height: int = SettingsField(
-        0,
+        720,
         ge=0,
         le=100000,
         title="Default height"
@@ -1892,8 +1892,8 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractOTIOReview": {
         "representation_name": "review_png",
-        "default_to_width": 1280,
-        "default_to_height": 720,
+        "default_width": 1280,
+        "default_height": 720,
         "output_ext": "png",
     },
     "ExtractOIIOTranscode": {

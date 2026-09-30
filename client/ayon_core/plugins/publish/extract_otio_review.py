@@ -58,8 +58,8 @@ class ExtractOTIOReview(
     # Configurable by Settings
     representation_name = None
     output_ext = "png"
-    default_to_width = 1280
-    default_to_height = 720
+    default_width = 1280
+    default_height = 720
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -95,10 +95,13 @@ class ExtractOTIOReview(
         #       end frame since start could be lower then 1000
         self.padding = len(str(instance.data.get("frameEnd", 1001)))
         self.used_frames.append(self.workfile_start)
-        self.to_width = instance.data.get(
-            "resolutionWidth") or self.default_to_width
-        self.to_height = instance.data.get(
-            "resolutionHeight") or self.default_to_height
+
+        self.to_width = instance.data.get("resolutionWidth")
+        self.to_height = instance.data.get("resolutionHeight")
+
+        if self.to_width is None or self.to_height is None:
+            self.to_width = self.default_width
+            self.to_height = self.default_height
 
         # skip instance if no reviewable data available
         if (
