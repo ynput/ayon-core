@@ -27,7 +27,10 @@ from ayon_core.pipeline.publish import (
     get_trait_representations,
     add_trait_representations,
 )
-from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers,
+)
 from ayon_core.pipeline.traits import (
     CustomTags,
     FileLocation,
@@ -212,6 +215,9 @@ class ExtractReviewTraits(pyblish.api.InstancePlugin):
                 review_layers=review_layers,
             )
             for new_repre_dict in new_repre_dicts:
+                # same as legacy - rendered files are intermediate,
+                # integration copies them
+                add_repre_files_for_cleanup(instance, new_repre_dict)
                 new_trait_representations.append(
                     legacy_dict_to_representation(
                         new_repre_dict, source_repre
