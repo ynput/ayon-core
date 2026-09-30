@@ -1030,13 +1030,13 @@ class ExtractOTIOReviewModel(BaseSettingsModel):
         # before we allow more than 'png' extension.
         disabled=True,
     )
-    default_to_width: int = SettingsField(
+    default_width: int = SettingsField(
         0,
         ge=0,
         le=100000,
         title="Default width"
     )
-    default_to_height: int = SettingsField(
+    default_height: int = SettingsField(
         0,
         ge=0,
         le=100000,
