@@ -152,3 +152,32 @@ class AYContainer(AYFrame):
 
     def clear(self):
         self._layout.clear()
+
+
+class AYClickableRow(AYContainer):
+    """A list row that is itself the primary click target.
+
+    Its label is plain, non-interactive text (not a button), so the row
+    "wraps" its trailing action buttons the way a single button would:
+    clicking anywhere in the row's own background or margins - including
+    the gaps around a trailing icon button - triggers *on_click*.
+    Clicking directly on one of those icon buttons still reaches that
+    button first (Qt routes the event to the topmost widget under the
+    cursor) and never reaches here.
+
+    Args:
+        on_click: Called when the row body is clicked.
+    """
+
+    def __init__(self, *args, on_click, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_click = on_click
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(event.pos())
+        ):
+            self._on_click()
+        super().mouseReleaseEvent(event)
