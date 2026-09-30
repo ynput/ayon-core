@@ -465,9 +465,13 @@ class RecentActionsModel:
             item.task_id,
             item.workfile_id,
         )
+        item.project_code = labels.project_code
         item.folder_path = labels.folder_path
         item.task_name = labels.task_name
         item.workfile_name = labels.workfile_name
+        item.folder_icon = labels.folder_icon
+        item.task_icon = labels.task_icon
+        item.task_color = labels.task_color
 
         with self._lock:
             items = [] if self._items is None else list(self._items)

@@ -1,7 +1,10 @@
+from collections import namedtuple
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.lib import Logger
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import pretty_timestamp
 from ayon_core.tools.utils.lib import RefreshThread
@@ -18,6 +21,11 @@ _FAVORITE_COLOR = "#E9B949"
 # rows aligned and still reads as something that can be run.
 _DEFAULT_ICON = MaterialSymbolsIcon("bolt")
 _REMOVE_ICON = MaterialSymbolsIcon("delete")
+# Entries recorded before the type icons were kept, or of a type without one.
+_DEFAULT_FOLDER_ICON = "folder"
+_DEFAULT_TASK_ICON = "task_alt"
+_WORKFILE_ICON = "description"
+_BREADCRUMB_ICON_SIZE = 14
 
 log = Logger.get_logger("RecentActionsWidget")
 
@@ -53,8 +61,11 @@ def _get_icon(icon_def):
     return icon
 
 
-def _build_breadcrumb(action_item) -> str:
-    """Build breadcrumb string: project › folder path › task › workfile.
+_SEPARATOR = " \u203a "
+
+
+def _build_full_context(action_item) -> str:
+    """Build the complete context: project › folder path › task › workfile.
 
     The item already carries the resolved context, pieces that do not exist
     anymore are simply missing and get skipped.
@@ -63,7 +74,7 @@ def _build_breadcrumb(action_item) -> str:
         action_item (RecentActionItem): Recent action item.
 
     Returns:
-        str: Breadcrumb of the context the action was triggered in.
+        str: Full context the action was triggered in.
 
     """
     parts = [
@@ -72,7 +83,127 @@ def _build_breadcrumb(action_item) -> str:
         action_item.task_name,
         action_item.workfile_name,
     ]
-    return " \u203a ".join([part for part in parts if part])
+    return _SEPARATOR.join([part for part in parts if part])
+
+
+_Segment = namedtuple("_Segment", ("text", "icon", "color"))
+
+
+def _build_breadcrumb(action_item):
+    """Build the short context shown in a row: code > folder > task > file.
+
+    The project is reduced to its code (falling back to its full name for
+    an entry recorded before the code was kept) and the folder to its name,
+    always shown - not just when it differs from the project being
+    browsed, which used to make the row's context shift shape depending on
+    what else was open. The whole context stays available through
+    :func:`_build_full_context`, used for the tooltips.
+
+    Args:
+        action_item (RecentActionItem): Recent action item.
+
+    Returns:
+        list[_Segment]: Text, type icon and icon color of each part.
+
+    """
+    folder_path = (action_item.folder_path or "").rstrip("/")
+    folder_name = folder_path.rsplit("/", 1)[-1]
+    default_color = get_default_entity_icon_color()
+    segments = []
+    project_text = action_item.project_code or action_item.project_name
+    if project_text:
+        segments.append(_Segment(project_text, None, None))
+    if folder_name:
+        segments.append(_Segment(
+            folder_name, action_item.folder_icon or _DEFAULT_FOLDER_ICON,
+            default_color,
+        ))
+    if action_item.task_name:
+        segments.append(_Segment(
+            action_item.task_name,
+            action_item.task_icon or _DEFAULT_TASK_ICON,
+            action_item.task_color or default_color,
+        ))
+    if action_item.workfile_name:
+        # Just an icon: enough to show a workfile was part of the context
+        # too, without spelling out its (often long) filename here as
+        # well - that stays one hover away, in the full context tooltip.
+        segments.append(_Segment("", _WORKFILE_ICON, default_color))
+    return segments
+
+
+class _BreadcrumbSegmentLabel(AYLabel):
+    """An 'AYLabel' with a couple of extra px of reserved width.
+
+    'AYLabel.sizeHint()' measures text with 'QFontMetrics.boundingRect()',
+    while 'elidedText()' (used to actually elide it) measures the wider
+    'horizontalAdvance()' - close enough that it rarely mattered when a
+    breadcrumb was one label getting far more room than its own sizeHint,
+    but each segment here is sized to exactly its sizeHint, so that couple
+    of px is now the difference between showing a short segment in full
+    and having it chopped down to barely more than an ellipsis.
+    """
+
+    _WIDTH_MARGIN = 3
+
+    def sizeHint(self) -> QtCore.QSize:
+        hint = super().sizeHint()
+        return QtCore.QSize(hint.width() + self._WIDTH_MARGIN, hint.height())
+
+
+class _BreadcrumbWidget(QtWidgets.QWidget):
+    """Short context of an entry, each part with the icon of its type.
+
+    Every part elides on its own, so a long name gives way instead of
+    pushing the row's buttons out of view.
+    """
+
+    def __init__(self, segments, parent=None):
+        super().__init__(parent)
+        layout = AYHBoxLayout(self, margin=0, spacing=4)
+        for index, segment in enumerate(segments):
+            if index:
+                layout.addWidget(AYLabel(
+                    _SEPARATOR.strip(), dim=True, parent=self
+                ))
+            label = _BreadcrumbSegmentLabel(
+                # PySide resolves 'QLabel("")' to the wrong constructor
+                # overload, colliding with the 'parent' kwarg below - an
+                # icon-only segment (the workfile marker) has no text
+                # positional to pass in the first place, so it is skipped
+                # rather than passed as an empty string.
+                *([segment.text] if segment.text else []),
+                dim=True,
+                elide_mode=QtCore.Qt.ElideMiddle,
+                icon=segment.icon or "",
+                icon_color=segment.color or "",
+                icon_size=_BREADCRUMB_ICON_SIZE,
+                icon_text_spacing=4,
+                parent=self,
+            )
+            # 'flexible' (Ignored) is not used here: it drops the label's
+            # own full-text width from the layout's growth calculation
+            # entirely, so with several segments plus the trailing stretch
+            # below, every segment would get squeezed to its bare minimum
+            # first and hand all the real room to the stretch instead.
+            # 'Preferred' keeps that full width as what the segment tries
+            # to reach - and only shrinks it, sparing the fixed-size
+            # favorite/go-to buttons, once the row is actually too tight.
+            label.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Preferred,
+                QtWidgets.QSizePolicy.Policy.Preferred,
+            )
+            # The floor it can still shrink to, so a segment never
+            # disappears completely. Only an icon actually shown (not the
+            # project code) reserves its own width - reserving one
+            # unconditionally puffed up icon-less, already-short segments
+            # (like the project code) with dead space they never used.
+            label.setMinimumWidth(
+                (_BREADCRUMB_ICON_SIZE if segment.icon else 0)
+                + (24 if segment.text else 0)
+            )
+            layout.addWidget(label)
+        layout.addStretch(1)
 
 
 class _RecentActionRow(QtWidgets.QWidget):
@@ -84,7 +215,12 @@ class _RecentActionRow(QtWidgets.QWidget):
     context_menu_requested = QtCore.Signal(str, QtCore.QPoint)
 
     def __init__(
-        self, action_item, breadcrumb, timestamp_label, parent=None
+        self,
+        action_item,
+        breadcrumb,
+        timestamp_label,
+        parent=None,
+        full_context=None,
     ):
         super().__init__(parent)
         self._record_id = action_item.record_id
@@ -95,13 +231,13 @@ class _RecentActionRow(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
 
         label = action_item.label
-        tooltip_lines = []
-        if breadcrumb:
-            tooltip_lines.append(f"Run: {label}\n{breadcrumb}")
-        if timestamp_label:
-            tooltip_lines.append(f"Triggered: {timestamp_label}")
-        if tooltip_lines:
-            self.setToolTip("\n\n".join(tooltip_lines))
+        # The label shows the short form, hovering gives the whole thing.
+        full_context = full_context or _SEPARATOR.join(
+            [segment.text for segment in breadcrumb if segment.text]
+        )
+        if full_context:
+            tooltip = f"Run: {label}\n{full_context}"
+            self.setToolTip(tooltip)
 
         icon_label = QtWidgets.QLabel(self)
         icon_label.setFixedSize(32, 32)
@@ -111,17 +247,9 @@ class _RecentActionRow(QtWidgets.QWidget):
         text_label = AYLabel(label, bold=True, parent=self)
         text_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        breadcrumb_label = AYLabel(
-            breadcrumb, dim=True,
-            elide_mode=QtCore.Qt.ElideMiddle,
-            flexible=True,
-            parent=self,
-        )
-        breadcrumb_label.setAlignment(
-            QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        )
-        breadcrumb_label.setObjectName("RecentActionBreadcrumb")
-        breadcrumb_label.setVisible(bool(breadcrumb))
+        breadcrumb_widget = _BreadcrumbWidget(breadcrumb, self)
+        breadcrumb_widget.setObjectName("RecentActionBreadcrumb")
+        breadcrumb_widget.setVisible(bool(breadcrumb))
 
         timestamp_widget = AYLabel(
             timestamp_label, dim=True, rel_text_size=-1, parent=self,
@@ -130,7 +258,10 @@ class _RecentActionRow(QtWidgets.QWidget):
             QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
         )
         timestamp_widget.setObjectName("RecentActionTimestamp")
-        timestamp_widget.setVisible(bool(timestamp_label))
+        # Only shown while hovering the row, it is also in the tooltip.
+        timestamp_widget.setVisible(False)
+        self._timestamp_widget = timestamp_widget
+        self._has_timestamp = bool(timestamp_label)
 
         favorite = action_item.favorite
         favorite_btn = AYButton(
@@ -153,7 +284,7 @@ class _RecentActionRow(QtWidgets.QWidget):
         go_to_btn = AYButton(
             variant=AYButton.Variants.Surface,
             icon="my_location", icon_size=18,
-            tooltip=f"Go to: {breadcrumb}",
+            tooltip=f"Go to: {full_context}",
             parent=self,
         )
         go_to_btn.setCursor(QtCore.Qt.PointingHandCursor)
@@ -164,19 +295,27 @@ class _RecentActionRow(QtWidgets.QWidget):
 
         text_col = AYVBoxLayout(margin=0, spacing=1)
         text_col.addLayout(top_row)
-        text_col.addWidget(breadcrumb_label)
+        text_col.addWidget(breadcrumb_widget)
 
         row_layout = AYHBoxLayout(self, margin=4, spacing=4)
         row_layout.addWidget(icon_label, 0, QtCore.Qt.AlignVCenter)
         row_layout.addLayout(text_col, 1)
-        row_layout.addWidget(favorite_btn, 0)
         row_layout.addWidget(go_to_btn, 0)
+        row_layout.addWidget(favorite_btn, 0)
 
         self._favorite_btn = favorite_btn
         self._play_btn = go_to_btn
         favorite_btn.clicked.connect(self._on_favorite_clicked)
         go_to_btn.clicked.connect(self._on_go_to_clicked)
         self.setObjectName("RecentActionRow")
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._timestamp_widget.setVisible(self._has_timestamp)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._timestamp_widget.setVisible(False)
 
     def _on_go_to_clicked(self):
         self.navigate_requested.emit(self._record_id)
@@ -346,6 +485,7 @@ class RecentActionsPopup(AYDropdownPopup):
                 _build_breadcrumb(action_item),
                 pretty_timestamp(action_item.timestamp) or "",
                 self._rows_container,
+                full_context=_build_full_context(action_item),
             )
             row.navigate_requested.connect(self._on_navigate)
             row.replay_requested.connect(self._on_replay)
@@ -442,7 +582,7 @@ class RecentActionsButton(AYButton):
 
     def __init__(self, controller, parent=None):
         super().__init__(
-            icon="history",
+            icon="bookmark",
             variant=AYButton.Variants.Surface,
             tooltip="Recent Actions",
             parent=parent,

@@ -85,15 +85,23 @@ class ContextLabels:
     """Human readable names of a launcher context.
 
     Attributes:
+        project_code (Optional[str]): Project code.
         folder_path (Optional[str]): Folder path.
         task_name (Optional[str]): Task name.
         workfile_name (Optional[str]): Workfile filename.
+        folder_icon (Optional[str]): Material symbol of the folder type.
+        task_icon (Optional[str]): Material symbol of the task type.
+        task_color (Optional[str]): Color of the task type.
 
     """
 
+    project_code: Optional[str] = None
     folder_path: Optional[str] = None
     task_name: Optional[str] = None
     workfile_name: Optional[str] = None
+    folder_icon: Optional[str] = None
+    task_icon: Optional[str] = None
+    task_color: Optional[str] = None
 
 
 @dataclass
@@ -120,6 +128,7 @@ class RecentActionItem:
         identifier (str): Action identifier used to re-trigger the action.
         timestamp (float): Unix timestamp of when the action was triggered.
         project_name (Optional[str]): Project name at trigger time.
+        project_code (Optional[str]): Project code at trigger time.
         folder_id (Optional[str]): Folder id at trigger time.
         task_id (Optional[str]): Task id at trigger time.
         workfile_id (Optional[str]): Workfile id at trigger time.
@@ -128,6 +137,11 @@ class RecentActionItem:
         folder_path (Optional[str]): Folder path at trigger time.
         task_name (Optional[str]): Task name at trigger time.
         workfile_name (Optional[str]): Workfile filename at trigger time.
+        folder_icon (Optional[str]): Material symbol of the folder type at
+            trigger time.
+        task_icon (Optional[str]): Material symbol of the task type at
+            trigger time.
+        task_color (Optional[str]): Color of the task type at trigger time.
         icon (Optional[dict[str, str]]): Icon definition of the action, same
             format as :attr:`ActionItem.icon`.
         favorite (bool): Entry is pinned to the top of the history and is
@@ -140,6 +154,7 @@ class RecentActionItem:
     identifier: str
     timestamp: float
     project_name: Optional[str] = None
+    project_code: Optional[str] = None
     folder_id: Optional[str] = None
     task_id: Optional[str] = None
     workfile_id: Optional[str] = None
@@ -148,6 +163,9 @@ class RecentActionItem:
     folder_path: Optional[str] = None
     task_name: Optional[str] = None
     workfile_name: Optional[str] = None
+    folder_icon: Optional[str] = None
+    task_icon: Optional[str] = None
+    task_color: Optional[str] = None
     icon: Optional[dict[str, str]] = None
     favorite: bool = False
 
