@@ -482,6 +482,186 @@ def test_publish_message_handler_does_not_mutate_record():
     assert handler.get_records()[0].msg == "Value x"
 
 
+@pytest.fixture
+def span_logger_level():
+    """Restore level of span logger changed by tests."""
+    logger = logging.getLogger(ayon_core.lib.log.SPAN_LOGGER_NAME)
+    orig_level = logger.level
+    yield
+    logger.setLevel(orig_level)
+
+
+def _event_dicts(handler, module, logger_name):
+    return [
+        getattr(record, module._EVENT_DICT_ATTR)[2]
+        for record in handler.records
+        if record.name == logger_name
+    ]
+
+
+def test_span_logged_only_when_enabled(
+    log_module, monkeypatch, foreign_handler
+):
+    module = log_module()
+    with module.log_span("tests.disabled"):
+        pass
+    assert _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME) == []
+
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    module = log_module()
+    with module.log_span("tests.enabled", key="a/b") as span:
+        span.set(cache_hit=True)
+
+    (event,) = _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME)
+    assert event["event"] == "tests.enabled"
+    assert event["level"] == "debug"
+    assert event["status"] == "ok"
+    assert event["key"] == "a/b"
+    assert event["cache_hit"] is True
+    assert event["duration_ms"] >= 0
+    assert event["trace_id"] == span.trace_id
+    assert event["span_id"] == span.span_id
+    assert "parent_span_id" not in event
+    assert event["module"] == __name__
+    assert event["func_name"] == "test_span_logged_only_when_enabled"
+
+
+def test_span_nesting_and_log_correlation(
+    log_module, monkeypatch, foreign_handler
+):
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.span_inner")
+
+    with module.log_span("tests.outer") as outer:
+        with module.log_span("tests.inner") as inner:
+            log.info("Inside")
+    log.info("Outside")
+
+    assert inner.trace_id == outer.trace_id
+    assert inner.span_id != outer.span_id
+    spans = {
+        event["event"]: event
+        for event in _event_dicts(
+            foreign_handler, module, module.SPAN_LOGGER_NAME
+        )
+    }
+    assert spans["tests.inner"]["parent_span_id"] == outer.span_id
+    inside, outside = _event_dicts(
+        foreign_handler, module, "ayon_core.tests.span_inner"
+    )
+    assert inside["trace_id"] == inner.trace_id
+    assert inside["span_id"] == inner.span_id
+    assert "trace_id" not in outside
+    assert "span_id" not in outside
+
+    # A new root span starts a new trace
+    with module.log_span("tests.other") as other:
+        pass
+    assert other.trace_id != outer.trace_id
+
+
+def test_span_records_error(log_module, monkeypatch, foreign_handler):
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    module = log_module()
+
+    with pytest.raises(ValueError):
+        with module.log_span("tests.error"):
+            raise ValueError("boom")
+
+    (event,) = _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME)
+    assert event["status"] == "error"
+    assert event["error_type"] == "ValueError"
+
+
+def test_slow_span_logged_as_warning(log_module, foreign_handler):
+    module = log_module()
+
+    with module.log_span("tests.fast", slow_threshold=60.0):
+        pass
+    with module.log_span("tests.slow", slow_threshold=0.0):
+        pass
+
+    (event,) = _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME)
+    assert event["event"] == "tests.slow"
+    assert event["level"] == "warning"
+    assert event["slow"] is True
+
+
+def test_span_decorator(log_module, monkeypatch, foreign_handler):
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    module = log_module()
+
+    @module.log_span("tests.decorated", kind="unit")
+    def decorated(value):
+        return value * 2
+
+    assert decorated(2) == 4
+    assert decorated(3) == 6
+
+    events = _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME)
+    assert len(events) == 2
+    assert events[0]["span_id"] != events[1]["span_id"]
+    assert events[0]["kind"] == "unit"
+    assert events[0]["func_name"].endswith("decorated")
+    assert events[0]["module"] == __name__
+
+
+def test_span_ids_hidden_in_console(log_module, monkeypatch):
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    module = log_module()
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+
+    with module.log_span("tests.console") as span:
+        pass
+
+    output = stream.getvalue()
+    assert "tests.console" in output
+    assert "duration_ms" in output
+    assert span.span_id not in output
+    assert span.trace_id not in output
+
+
+def test_log_timing_compatibility(
+    log_module, monkeypatch, foreign_handler, span_logger_level
+):
+    monkeypatch.setenv("AYON_CORE_TIMERS", "1")
+    module = log_module()
+
+    with pytest.warns(DeprecationWarning):
+        timing = module.log_timing("Loading activities")
+    with timing:
+        pass
+
+    (event,) = _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME)
+    assert event["event"] == "Loading activities"
+    assert event["func_name"] == "test_log_timing_compatibility"
+
+
+def test_task_queue_runs_task_in_requester_context(log_module):
+    task_queue = pytest.importorskip("ayon_core.ui.components.task_queue")
+    AsyncTask = task_queue.AsyncTask
+
+    module = log_module()
+    with module.log_span("tests.enqueue") as span:
+        task = AsyncTask(
+            name="test",
+            function=structlog.contextvars.get_contextvars,
+            callback=lambda _result: None,
+        )
+
+    results = []
+    thread = threading.Thread(
+        target=lambda: results.append(task._context.run(task.function))
+    )
+    thread.start()
+    thread.join()
+
+    assert results[0]["trace_id"] == span.trace_id
+    assert results[0]["span_id"] == span.span_id
+
+
 def test_host_context_change_binds_flat_keys(log_module):
     log_module()
     from ayon_core.host.host import HostBase

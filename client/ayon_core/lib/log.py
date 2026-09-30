@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import atexit
+import contextlib
 import copy
 import functools
+import datetime
 import getpass
+import inspect
 import logging
 import queue
 from logging.handlers import (
@@ -12,17 +15,24 @@ from logging.handlers import (
 )
 import os
 import platform
+import secrets
 import socket
 import sys
 import time
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from contextvars import ContextVar, Token
 from typing import Any
 import warnings
 
 import structlog
 
 from .local_settings import get_launcher_local_dir
+
+from .env_tools import env_value_to_bool
+
+# force the logger to use the same format for all log levels.
+USE_STD_FMT = env_value_to_bool("AYON_USE_STD_LOG_FORMAT", default=False)
 
 
 # Record attribute holding the structlog logger, method name and event
@@ -430,6 +440,7 @@ def _is_running_from_sources() -> bool:
     Same check as 'ayon_info.is_running_from_build', which can't be
     imported here because of an import cycle.
 
+
     Returns:
         bool: True if running from sources, False otherwise.
 
@@ -581,6 +592,13 @@ class _StderrHandler(logging.StreamHandler):
         except Exception:
             self.handleError(record)
 
+    def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
+        return (
+            datetime.datetime.fromtimestamp(record.created)
+            .astimezone(datetime.timezone.utc)
+            .isoformat(timespec="milliseconds")
+        )
+
 
 def _deprecated_getter(func):
     def _get_logger_deprecate(cls, name: str | None = None) -> Any:
@@ -703,7 +721,7 @@ class Logger:
             "hostip": host_ip,
             "username": getpass.getuser(),
             "system_name": platform.system(),
-            "process_name": process_name
+            "process_name": process_name,
         }
         return copy.deepcopy(cls.process_data)
 
@@ -732,6 +750,7 @@ class Logger:
         if not process_name:
             try:
                 import psutil
+
                 process = psutil.Process(os.getpid())
                 process_name = process.name()
 
@@ -776,8 +795,14 @@ class Logger:
         def _drop_log_context(logger, method_name, event_dict):
             # Keep context fields in JSON sent to Vector but not
             # in console output
-            event_dict.pop("site_id", None)
-            event_dict.pop("session_id", None)
+            for key in (
+                "site_id",
+                "session_id",
+                "trace_id",
+                "span_id",
+                "parent_span_id",
+            ):
+                event_dict.pop(key, None)
             return event_dict
 
         shared_processors: list[Callable] = [
@@ -870,3 +895,213 @@ class Logger:
         if VECTOR_LOG_URL:
             root_logger.addHandler(queue_handler)
         root_logger.setLevel(get_log_level_from_env())
+
+
+# Logger receiving span events, see 'log_span'. Its level controls which
+#   spans are logged, e.g. 'AYON_LOG_LEVEL=DEBUG' enables all of them.
+SPAN_LOGGER_NAME = "ayon.span"
+# Currently open span in this context as '(trace_id, span_id)'.
+_current_span: ContextVar[tuple[str, str] | None] = ContextVar(
+    "ayon_current_span", default=None
+)
+_span_logger = None
+
+
+def _get_span_logger() -> Any:
+    """Structlog logger for span events, created on first use.
+
+    Created lazily so importing 'ayon_core.lib' does not configure
+    logging.
+    """
+    global _span_logger
+    if _span_logger is None:
+        logger = Logger.get_logger(SPAN_LOGGER_NAME)
+        # Backwards compatibility of 'log_timing' enabled by env variable
+        if env_value_to_bool("AYON_CORE_TIMERS"):
+            logging.getLogger(SPAN_LOGGER_NAME).setLevel(logging.DEBUG)
+        _span_logger = logger
+    return _span_logger
+
+
+class log_span(contextlib.ContextDecorator):  # noqa: N801
+    """Measure a block of code and log it as one structured span event.
+
+    Event is logged when the block ends, with fields 'duration_ms',
+    'status' ('ok' or 'error'), 'trace_id', 'span_id', 'parent_span_id',
+    'module', 'func_name' and passed attributes. The span name is used
+    as the event, it should be stable and low-cardinality
+    (e.g. 'thumbnail.fetch'), variable data belong to attributes.
+
+    While the block runs, 'trace_id' and 'span_id' are bound to structlog
+    context variables, so all records logged inside carry them. Nested
+    spans share 'trace_id' of the outermost span. Correlation across
+    processes is done by 'session_id', see 'AYON_SESSION_ID'.
+
+    Spans are logged at 'level' by 'SPAN_LOGGER_NAME' logger, DEBUG by
+    default. A span taking longer than 'slow_threshold' seconds is logged
+    at least as WARNING, so slow operations are visible even when DEBUG
+    logs are disabled.
+
+    Can be used as a context manager or as a decorator.
+
+    Args:
+        name (str): Span name used as the log event.
+        level (int): Log level of the span event.
+        slow_threshold (Optional[float]): Duration in seconds from which
+            the span is considered slow.
+        **attributes (Any): Additional fields of the span event.
+
+    Example:
+        with log_span("thumbnail.fetch", key=key) as span:
+            path = cache.get(key)
+            span.set(cache_hit=bool(path))
+
+        @log_span("activities.load", slow_threshold=2.0)
+        def load_activities():
+            ...
+
+    """
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        level: int = logging.DEBUG,
+        slow_threshold: float | None = None,
+        **attributes: Any,
+    ) -> None:
+        self._name = name
+        self._level = level
+        self._slow_threshold = slow_threshold
+        self._attributes = attributes
+        self._callsite: tuple[str, str] | None = None
+        self._start = 0.0
+        self._trace_id = ""
+        self._span_id = ""
+        self._parent_span_id: str | None = None
+        self._span_token: Token[tuple[str, str] | None] | None = None
+        self._contextvars_tokens: Mapping[str, Token[Any]] = {}
+
+    def __call__(self, func: Callable) -> Callable:
+        self._callsite = (
+            getattr(func, "__module__", "") or "",
+            getattr(func, "__qualname__", "") or "",
+        )
+        return super().__call__(func)
+
+    def _recreate_cm(self) -> "log_span":
+        # Decorated function gets a new span on each call, which also
+        #   makes the decorator thread safe
+        span = type(self)(
+            self._name,
+            level=self._level,
+            slow_threshold=self._slow_threshold,
+            **self._attributes,
+        )
+        span._callsite = self._callsite
+        return span
+
+    @property
+    def trace_id(self) -> str:
+        return self._trace_id
+
+    @property
+    def span_id(self) -> str:
+        return self._span_id
+
+    def set(self, **attributes: Any) -> None:
+        """Add attributes known only inside the block.
+
+        Args:
+            **attributes (Any): Additional fields of the span event.
+
+        """
+        self._attributes.update(attributes)
+
+    def __enter__(self) -> "log_span":
+        if self._callsite is None:
+            frame = inspect.currentframe()
+            caller = frame.f_back if frame is not None else None
+            if caller is not None:
+                self._callsite = (
+                    caller.f_globals.get("__name__", ""),
+                    caller.f_code.co_name,
+                )
+            # Break reference cycle of frames
+            del frame, caller
+
+        parent = _current_span.get()
+        if parent is None:
+            self._trace_id = secrets.token_hex(16)
+            self._parent_span_id = None
+        else:
+            self._trace_id, self._parent_span_id = parent
+        self._span_id = secrets.token_hex(8)
+        self._span_token = _current_span.set((self._trace_id, self._span_id))
+        self._contextvars_tokens = structlog.contextvars.bind_contextvars(
+            trace_id=self._trace_id,
+            span_id=self._span_id,
+        )
+        self._start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb) -> None:
+        duration = time.perf_counter() - self._start
+        structlog.contextvars.reset_contextvars(**self._contextvars_tokens)
+        if self._span_token is not None:
+            _current_span.reset(self._span_token)
+
+        level = self._level
+        slow = (
+            self._slow_threshold is not None
+            and duration >= self._slow_threshold
+        )
+        if slow:
+            level = max(level, logging.WARNING)
+
+        span_logger = _get_span_logger()
+        if not logging.getLogger(SPAN_LOGGER_NAME).isEnabledFor(level):
+            return
+
+        fields: dict[str, Any] = dict(self._attributes)
+        if self._slow_threshold is not None:
+            fields["slow"] = slow
+        if exc_type is None:
+            fields["status"] = "ok"
+        else:
+            fields["status"] = "error"
+            fields["error_type"] = exc_type.__name__
+        if self._parent_span_id is not None:
+            fields["parent_span_id"] = self._parent_span_id
+        if self._callsite is not None:
+            fields["module"], fields["func_name"] = self._callsite
+
+        span_logger.log(
+            level,
+            self._name,
+            trace_id=self._trace_id,
+            span_id=self._span_id,
+            duration_ms=round(duration * 1000, 3),
+            **fields,
+        )
+
+
+def log_timing(message: str) -> log_span:
+    """Log execution time of a code block.
+
+    Deprecated:
+        Use 'log_span' with a stable name and attributes instead.
+
+    Args:
+        message (str): Description of the operation being timed.
+
+    Returns:
+        log_span: Span measuring the code block.
+
+    """
+    warnings.warn(
+        "'log_timing' is deprecated, use 'log_span' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return log_span(message)

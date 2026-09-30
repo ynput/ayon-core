@@ -25,6 +25,7 @@ time.
 from __future__ import annotations
 
 import concurrent.futures
+import contextvars
 import logging
 import queue
 import threading
@@ -93,6 +94,15 @@ class AsyncTask:
     # Internal state
     _counter: int = field(default=0, init=False, compare=True)
     _cancelled: bool = field(default=False, init=False, repr=False)
+    # Context of the code creating the task. The function runs in it, so
+    #   logs of the task keep context variables of the requester, e.g.
+    #   'trace_id' of the span that created the task, see 'log_span'.
+    _context: contextvars.Context = field(
+        default_factory=contextvars.copy_context,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def cancel(self) -> None:
         """Mark this task as cancelled.
@@ -376,7 +386,7 @@ class AsyncTaskQueue(QThread):
             )
 
         try:
-            result = task.function()
+            result = task._context.run(task.function)
 
             # Double-check cancellation after execution.
             if task.is_cancelled():
