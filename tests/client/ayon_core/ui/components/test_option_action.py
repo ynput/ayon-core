@@ -17,6 +17,7 @@ from ayon_core.ui.components import (
     AYOptionalAction,
     AYOptionalMenu,
 )
+from ayon_core.ui.style_types import get_ayon_style
 from qtpy import QtCore, QtWidgets
 from utils.composite_widget import CompositeWidget
 from widget_test import WidgetTest
@@ -182,10 +183,12 @@ def test_optional_menu_updates_explicit_hover_state(qtbot) -> None:
     assert action.widget._hovered is True
 
 
-def test_optional_menu_inherits_application_style(qtbot, qapp) -> None:
+def test_optional_menu_uses_ayon_style(qtbot) -> None:
     menu = AYOptionalMenu()
     qtbot.addWidget(menu)
 
-    assert menu.style() is qapp.style()
+    # AYMenu forces AYONStyle so rows are measured and painted by the
+    # same style, regardless of the application style.
+    assert menu.style() is get_ayon_style()
     assert "paintEvent" not in AYOptionalMenu.__dict__
     assert AYOptionalMenu.paintEvent is AYMenu.paintEvent
