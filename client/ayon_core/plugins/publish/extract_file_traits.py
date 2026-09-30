@@ -48,6 +48,9 @@ from ayon_core.pipeline.publish.review_utils import (
     DEFAULT_IMAGE_EXTS,
     DEFAULT_VIDEO_EXTS,
 )
+from ayon_core.pipeline.publish.trait_conversion import (
+    sequence_traits_from_files,
+)
 
 
 def fill_mimetype_and_image(representation: Representation, log) -> None:
@@ -83,9 +86,9 @@ def fill_sequence_from_filenames(
 ) -> None:
     """Fill missing Sequence/FrameRanged from FileLocations filenames.
 
-    Purely a filename-pattern inference (same logic
-    `FileLocations.get_sequence_from_files` already uses elsewhere) - safe
-    and cheap, no file content is read.
+    Purely a filename-pattern inference (shared with host integrations via
+    `sequence_traits_from_files`) - safe and cheap, no file content is read.
+    Padding, frame spec (gaps) and frame regex are derived from the files.
     """
     if not representation.contains_trait(FileLocations):
         return
@@ -97,26 +100,24 @@ def fill_sequence_from_filenames(
     if len(file_locs.file_paths) < 2:
         return
 
-    try:
-        frame_ranged = FileLocations.get_sequence_from_files(
-            [Path(f.file_path) for f in file_locs.file_paths]
-        )
-    except ValueError:
+    sequence_traits = sequence_traits_from_files(
+        [Path(f.file_path) for f in file_locs.file_paths]
+    )
+    if sequence_traits is None:
         # Files don't assemble into a single collection - not a sequence
         # we can safely describe, leave it alone.
         return
 
+    frame_ranged, sequence = sequence_traits
     representation.add_trait(frame_ranged)
     log.debug(
         f"Repre '{representation.name}': inferred FrameRanged"
-        f" {frame_ranged.frame_start}-{frame_ranged.frame_end} from"
-        " filenames."
+        f" {frame_ranged.frame_start}-{frame_ranged.frame_end}"
+        f" (frames {sequence.frame_spec}) from filenames."
     )
 
     if not representation.contains_trait(Sequence):
-        representation.add_trait(Sequence(
-            frame_padding=len(str(frame_ranged.frame_end))
-        ))
+        representation.add_trait(sequence)
 
 
 def _fill_pixel_based_from_oiio(
