@@ -77,6 +77,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                     # Pass headers to fix bug in ayon-api (fixed in 1.2.15)
                     headers={},
                 )
+                instance.data["hasWebreview"] = True
             except Exception as exc:
                 self.log.warning(
                     f"Review upload failed after {time.time() - start}s.",

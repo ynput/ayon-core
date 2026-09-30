@@ -13,7 +13,7 @@ import copy
 
 import pyblish.api
 
-from ayon_core.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.publish import get_publish_template_name, PublishError
 
 
 class CollectResourcesPath(pyblish.api.InstancePlugin):
@@ -25,53 +25,7 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
 
     label = "Collect Resources Path"
     order = pyblish.api.CollectorOrder + 0.495
-    families = ["workfile",
-                "pointcache",
-                "proxyAbc",
-                "camera",
-                "animation",
-                "model",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "ass",
-                "vdbcache",
-                "scene",
-                "vrayproxy",
-                "render",
-                "prerender",
-                "imagesequence",
-                "rendersetup",
-                "rig",
-                "plate",
-                "look",
-                "mvLook",
-                "yetiRig",
-                "yeticache",
-                "nukenodes",
-                "gizmo",
-                "source",
-                "matchmove",
-                "image",
-                "source",
-                "assembly",
-                "fbx",
-                "gltf",
-                "textures",
-                "action",
-                "background",
-                "effect",
-                "staticMesh",
-                "skeletalMesh",
-                "xgen",
-                "yeticacheUE",
-                "tycache",
-                "usd",
-                "oxrig",
-                "sbsar",
-                "zfab",
-                ]
+    families = ["*"]
 
     def process(self, instance):
         anatomy = instance.context.data["anatomy"]
@@ -104,6 +58,20 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
 
         publish_template = anatomy.get_template_item(
             "publish", template_name, "directory")
+
+        if "{originalDirname}" in publish_template:
+            original_directory = instance.data.get("originalDirname")
+            if not original_directory:
+                original_directory = instance.data.get("stagingDir")
+
+            if not original_directory:
+                raise PublishError(
+                    "Publish template requires 'originalDirname'"
+                    " but 'originalDirname' is not set on instance"
+                    " and 'stagingDir' is not yet filled."
+                )
+
+            template_data["originalDirname"] = original_directory
 
         publish_folder = os.path.normpath(
             publish_template.format_strict(template_data)

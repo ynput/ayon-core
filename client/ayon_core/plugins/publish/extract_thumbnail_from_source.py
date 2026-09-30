@@ -25,6 +25,7 @@ from ayon_core.lib import (
     run_subprocess,
     get_rescaled_command_arguments,
 )
+from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 
 
 class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
@@ -58,7 +59,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             return
 
         dst_filepath = self._create_thumbnail(
-            instance.context, thumbnail_source
+            instance.context, thumbnail_source,
         )
         if not dst_filepath:
             return
@@ -106,6 +107,8 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         )
         # Store new staging to cleanup paths
         context.data["cleanupFullPaths"].append(dst_staging)
+        project_settings = context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
 
         thumbnail_created = False
         oiio_supported = is_oiio_supported()
@@ -120,7 +123,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             # If the input can read by OIIO then use OIIO method for
             # conversion otherwise use ffmpeg
             thumbnail_created = self.create_thumbnail_oiio(
-                thumbnail_source, full_output_path
+                thumbnail_source, full_output_path, review_layers
             )
 
         # Try to use FFMPEG if OIIO is not supported or for cases when
@@ -133,7 +136,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
                 )
 
             thumbnail_created = self.create_thumbnail_ffmpeg(
-                thumbnail_source, full_output_path
+                thumbnail_source, full_output_path, review_layers
             )
 
         # Skip representation and try next one if  wasn't created
@@ -158,11 +161,12 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
+        review_layers: list[str],
     ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
         try:
             resolution_args = self._get_resolution_args(
-                "oiiotool", src_path
+                "oiiotool", src_path, review_layers
             )
         except Exception:
             self.log.warning("Failed to get resolution args for OIIO.")
@@ -192,10 +196,11 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
+        review_layers: list[str],
     ) -> bool:
         try:
             resolution_args = self._get_resolution_args(
-                "ffmpeg", src_path
+                "ffmpeg", src_path, review_layers
             )
         except Exception:
             self.log.warning("Failed to get resolution args for ffmpeg.")
@@ -243,6 +248,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         application: str,
         input_path: str,
+        review_layers: list[str],
     ) -> List[str]:
         # get settings
         if self.target_size["type"] == "source":
@@ -260,4 +266,5 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             target_height,
             bg_color=self.background_color,
             log=self.log,
+            review_layers=review_layers
         )

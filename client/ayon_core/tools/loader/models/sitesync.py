@@ -9,6 +9,7 @@ from ayon_api import (
 )
 
 from ayon_core.lib import Logger, NestedCacheItem
+from ayon_core.lib.icon_definitions import AwesomeFontIcon
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.loader.abstract import ActionItem
 
@@ -488,11 +489,7 @@ class SiteSyncModel:
             "sitesync.loader.action",
             label=label,
             group_label=None,
-            icon={
-                "type": "awesome-font",
-                "name": icon_name,
-                "color": "#999999"
-            },
+            icon=AwesomeFontIcon(icon_name, color="#999999"),
             tooltip=tooltip,
             order=1,
             data={

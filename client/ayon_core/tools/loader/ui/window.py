@@ -4,6 +4,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
 from ayon_core.pipeline.actions import LoaderActionResult
@@ -168,7 +169,6 @@ class LoaderWindow(QtWidgets.QWidget):
             handle_expected_selection=True
         )
         projects_combobox.set_select_item_visible(True)
-        projects_combobox.set_libraries_separator_visible(True)
         projects_combobox.set_standard_filter_enabled(
             controller.is_standard_projects_filter_enabled()
         )
@@ -178,6 +178,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         context_top_layout = QtWidgets.QHBoxLayout(context_top_widget)
         context_top_layout.setContentsMargins(0, 0, 0, 0,)
+        context_top_layout.setSpacing(4)
         context_top_layout.addWidget(projects_combobox, 1)
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)
@@ -655,11 +656,9 @@ class LoaderWindow(QtWidgets.QWidget):
         ]
         filter_status_items = [
             {
-                "icon": {
-                    "type": "material-symbols",
-                    "name": status_item.icon,
-                    "color": status_item.color
-                },
+                "icon": MaterialSymbolsIcon(
+                    status_item.icon, color=status_item.color
+                ),
                 "color": status_item.color,
                 "value": status_item.name,
             }
