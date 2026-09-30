@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-import collections
 import contextlib
 from dataclasses import dataclass
+import threading
 import time
 from typing import Any, Generator
 
@@ -52,6 +52,16 @@ class FolderItem:
         label (str): Folder label.
         status (str): Folder status name.
     """
+    # TODO: Use `@dataclass(slots=True)` when we drop Python 3.9 support.
+    __slots__ = (
+        "entity_id",
+        "parent_id",
+        "name",
+        "path",
+        "folder_type",
+        "label",
+        "status",
+    )
     entity_id: str
     parent_id: str | None
     name: str
@@ -91,26 +101,22 @@ class FolderItem:
         return cls(**data)
 
     @classmethod
-    def from_hierarchy_item(cls, item: dict[str, Any]) -> FolderItem:
-        """Creates folder item from hierarchy item.
+    def from_rest_data(cls, data: dict[str, Any]) -> FolderItem:
+        """Creates folder item from 'get_rest_folders' flat item.
 
         Args:
-            item (dict[str, Any]): Hierarchy item.
+            data (dict[str, Any]): Flat folder item from REST endpoint.
 
         """
-        name = item["name"]
-        path_parts = list(item["parents"])
-        path_parts.append(name)
-        path_parts.insert(0, "")
-        path = "/".join(path_parts)
-        return FolderItem(
-            entity_id=item["id"],
-            parent_id=item["parentId"],
+        name = data["name"]
+        return cls(
+            entity_id=data["id"],
+            parent_id=data["parentId"],
             name=name,
-            path=path,
-            folder_type=item["folderType"],
-            label=item["label"] or name,
-            status=item["status"]
+            path=f"/{data['path']}",
+            folder_type=data["folderType"],
+            label=data["label"] or name,
+            status=data["status"],
         )
 
     @classmethod
@@ -252,7 +258,9 @@ class HierarchyModel:
         self._entity_ids_by_assignee = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
-        self._folders_refreshing = set()
+        # Project name -> ident of thread refreshing its folders
+        self._folders_refreshing: dict[str, int] = {}
+        self._folders_refreshing_cond = threading.Condition()
         self._tasks_refreshing = set()
         self._controller = controller
 
@@ -605,7 +613,6 @@ class HierarchyModel:
     def _folder_refresh_event_manager(
         self, project_name: str, sender: str | None
     ) -> Generator[None, None, None]:
-        self._folders_refreshing.add(project_name)
         self._controller.emit_event(
             "folders.refresh.started",
             {"project_name": project_name, "sender": sender},
@@ -620,7 +627,6 @@ class HierarchyModel:
                 {"project_name": project_name, "sender": sender},
                 HIERARCHY_MODEL_SENDER
             )
-            self._folders_refreshing.remove(project_name)
 
     @contextlib.contextmanager
     def _task_refresh_event_manager(
@@ -654,24 +660,37 @@ class HierarchyModel:
     def _refresh_folders_cache(
         self, project_name: str, sender: str | None = None
     ) -> None:
-        if project_name in self._folders_refreshing:
-            return
+        thread_id = threading.get_ident()
+        cond = self._folders_refreshing_cond
+        with cond:
+            refreshing_thread = self._folders_refreshing.get(project_name)
+            # Re-entered from a refresh event callback in the same thread
+            if refreshing_thread == thread_id:
+                return
+            # Other thread is already querying, wait for its result
+            #   instead of returning not yet filled cache.
+            if refreshing_thread is not None:
+                cond.wait_for(
+                    lambda: project_name not in self._folders_refreshing
+                )
+                return
+            self._folders_refreshing[project_name] = thread_id
 
-        with self._folder_refresh_event_manager(project_name, sender):
-            folder_items = self._query_folders(project_name)
-            self._folders_items[project_name].update_data(folder_items)
+        try:
+            with self._folder_refresh_event_manager(project_name, sender):
+                folder_items = self._query_folders(project_name)
+                self._folders_items[project_name].update_data(folder_items)
+        finally:
+            with cond:
+                self._folders_refreshing.pop(project_name, None)
+                cond.notify_all()
 
     def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
-        hierarchy = ayon_api.get_folders_hierarchy(project_name)
-
-        folder_items = {}
-        hierachy_queue = collections.deque(hierarchy["hierarchy"])
-        while hierachy_queue:
-            item = hierachy_queue.popleft()
-            folder_item = FolderItem.from_hierarchy_item(item)
-            folder_items[folder_item.entity_id] = folder_item
-            hierachy_queue.extend(item["children"] or [])
-        return folder_items
+        folders = ayon_api.get_rest_folders(project_name, include_attrib=False)
+        return {
+            folder["id"]: FolderItem.from_rest_data(folder)
+            for folder in folders
+        }
 
     def _query_folder_entities(
         self, project_name: str, folder_ids: set[str]

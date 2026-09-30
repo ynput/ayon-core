@@ -63,7 +63,7 @@ def _get_staging_dir_config_wrap(func):
             )
             log.warning(msg)
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
-            args, rem = args[:6], args[6:]
+            args, rem = args[:6], list(args[6:])
             for kwarg in ("project_settings", "anatomy", "logger"):
                 if not rem:
                     break
@@ -191,14 +191,14 @@ def _get_staging_dir_info_wrap(func):
             )
             log.warning(msg)
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
-            args, rem = args[:6], args[6:]
+            args, rem = args[:6], list(args[6:])
             for kwarg in (
                 "anatomy",
                 "project_settings",
                 "template_data",
                 "always_return_path",
                 "force_tmp_dir",
-                "log",
+                "logger",
                 "prefix",
                 "suffix",
                 "username",
@@ -207,6 +207,15 @@ def _get_staging_dir_info_wrap(func):
                     break
                 kwargs[kwarg] = rem.pop(0)
 
+        # This change is to unify kwargs
+        if "log" in kwargs:
+            msg = (
+                "Got 'log' instead of 'logger' in 'get_staging_dir_info'."
+                " Please update the kwarg."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+            kwargs["logger"] = kwargs.pop("log")
         return func(*args, **kwargs)
     return wrapper
 

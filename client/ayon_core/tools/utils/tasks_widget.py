@@ -17,7 +17,7 @@ from ayon_core.ui.components import AYTreeView
 
 from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
-from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .lib import RefreshThread, get_qt_icon
 
@@ -29,12 +29,6 @@ TASK_TYPE_ROLE = QtCore.Qt.UserRole + 4
 TASK_TYPE_ORDER_ROLE = QtCore.Qt.UserRole + 5
 TASK_STATUS_ROLE = QtCore.Qt.UserRole + 6
 TASK_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 7
-
-
-class CenteredIconDelegate(TreeViewItemDelegate):
-    def initStyleOption(self, option, index):
-        super().initStyleOption(option, index)
-        option.displayAlignment = QtCore.Qt.AlignHCenter
 
 
 class TasksQtModel(QtGui.QStandardItemModel):
