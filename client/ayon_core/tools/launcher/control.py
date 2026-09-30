@@ -24,6 +24,7 @@ from .abstract import (
     WorkfileItem,
 )
 from .models import (
+    LauncherExpectedSelection,
     LauncherSelectionModel,
     ActionsModel,
     RecentActionsModel,
@@ -56,6 +57,7 @@ class BaseLauncherController(
         self._hierarchy_model = HierarchyModel(self)
         self._actions_model = ActionsModel(self)
         self._recent_actions_model = RecentActionsModel(self)
+        self._expected_selection = LauncherExpectedSelection(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
 
@@ -463,14 +465,13 @@ class BaseLauncherController(
             )
 
     def apply_recent_action_context(self, record_id: str):
-        """Apply stored context of a recent action to the current selection.
+        """Ask the UI to navigate to the context of a recent action.
 
-        This is the "Locate" affordance – it navigates the launcher to the
-        project/folder/task that was active when the action was triggered,
-        without re-running the action itself.
+        This is the "Locate" affordance - it does not re-run the action.
 
-        Emits ``locate.context.requested`` after updating the selection so
-        that UI widgets can visibly navigate to the stored context.
+        Only states which context is expected to end up selected, the
+        widgets select it once their data is loaded and report the
+        selection back like for any selection made by the user.
         """
         item = self._recent_actions_model.get_recent_action_item(record_id)
         if item is None:
@@ -484,20 +485,38 @@ class BaseLauncherController(
             if task_entity:
                 task_name = task_entity["name"]
 
-        self.set_selected_project(item.project_name)
-        self.set_selected_folder(item.folder_id)
-        self.set_selected_task(item.task_id, task_name)
-        self.set_selected_workfile(item.workfile_id)
-
-        # Signal the UI to visibly navigate – selection events alone do not
-        # drive widget tree to select the specific row.
-        self._emit_event(
-            "locate.context.requested",
-            {
-                "project_name": item.project_name,
-                "folder_id": item.folder_id,
-                "task_id": item.task_id,
-                "task_name": task_name,
-                "workfile_id": item.workfile_id,
-            },
+        self.set_expected_selection(
+            item.project_name,
+            item.folder_id,
+            task_name,
+            item.workfile_id,
         )
+
+    # Expected selection
+    def set_expected_selection(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str] = None,
+        task_name: Optional[str] = None,
+        workfile_id: Optional[str] = None,
+    ):
+        self._expected_selection.set_expected_selection(
+            project_name, folder_id, task_name, workfile_id
+        )
+
+    def get_expected_selection_data(self):
+        return self._expected_selection.get_expected_selection_data()
+
+    def expected_project_selected(self, project_name):
+        self._expected_selection.expected_project_selected(project_name)
+
+    def expected_folder_selected(self, folder_id):
+        self._expected_selection.expected_folder_selected(folder_id)
+
+    def expected_task_selected(self, folder_id, task_name):
+        self._expected_selection.expected_task_selected(
+            folder_id, task_name
+        )
+
+    def expected_workfile_selected(self, workfile_id):
+        self._expected_selection.expected_workfile_selected(workfile_id)

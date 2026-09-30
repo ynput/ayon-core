@@ -68,6 +68,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._selected_folder_id = None
         self._selected_task_id = None
 
+        # Cache
         self._transparent_icon = None
         self._cached_icons = {}
         self._host_items_by_name = {}
@@ -455,58 +456,63 @@ class WorkfilesPage(AYContainer):
         self._workfiles_proxy = workfiles_proxy
         self._resize_timer = resize_timer
         self._resize_counter = 0
-        self._pending_locate_workfile_id = None
+
+        # Workfile the expected selection is waiting to select, in a tuple
+        #   as 'None' is a valid expectation - there is no workfile.
+        self._expected_workfile = None
+
+        controller.register_event_callback(
+            "expected_selection_changed",
+            self._on_expected_selection_changed,
+        )
+        workfiles_model.loading_changed.connect(
+            self._on_workfiles_loading_changed
+        )
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
 
         self._resize_timer.start()
 
-    def select_workfile(self, workfile_id: Optional[str]) -> None:
-        """Visibly select a workfile row by its id.
-
-        When the row is not in the model yet the selection is deferred and
-        retried once the model is refreshed.
-
-        Args:
-            workfile_id (Optional[str]): Workfile id to select, or 'None' to
-                drop a pending deferred selection.
-
-        """
-        self._pending_locate_workfile_id = workfile_id
-        if workfile_id is not None:
-            self._apply_pending_workfile_selection()
-
-    def _apply_pending_workfile_selection(self) -> None:
-        workfile_id = self._pending_locate_workfile_id
-        if workfile_id is None:
-            return
-
-        index = self._workfiles_model.get_index_by_workfile_id(workfile_id)
-        if not index.isValid():
-            return
-
-        proxy_index = self._workfiles_proxy.mapFromSource(index)
-        if not proxy_index.isValid():
-            return
-
-        selection_model = self._workfiles_view.selectionModel()
-        selection_model.setCurrentIndex(
-            proxy_index,
-            QtCore.QItemSelectionModel.ClearAndSelect
-            | QtCore.QItemSelectionModel.Rows
-        )
-        self._workfiles_view.scrollTo(proxy_index)
-        self._pending_locate_workfile_id = None
-
     def refresh(self) -> None:
         self._workfiles_model.refresh()
-        # Model content is authoritative right after a refresh. Apply a
-        # deferred selection and stop waiting for it either way, so that a
-        # workfile which is gone - or hidden inside a grouped host - cannot
-        # hijack a later, unrelated refresh.
-        self._apply_pending_workfile_selection()
-        self._pending_locate_workfile_id = None
+
+    def _on_expected_selection_changed(self, event):
+        workfile_data = event.data.get("workfile")
+        if not workfile_data or not workfile_data["current"]:
+            return
+        self._expected_workfile = (workfile_data["id"],)
+        self._select_expected_workfile()
+
+    def _on_workfiles_loading_changed(self, loading: bool) -> None:
+        if not loading:
+            self._select_expected_workfile()
+
+    def _select_expected_workfile(self) -> None:
+        # Workfiles of the selected task are fetched in the background, the
+        #   model tells when they arrived and are filled in.
+        if (
+            self._expected_workfile is None
+            or self._workfiles_model.is_loading()
+        ):
+            return
+
+        workfile_id = self._expected_workfile[0]
+        self._expected_workfile = None
+        if workfile_id is not None:
+            index = self._workfiles_model.get_index_by_workfile_id(
+                workfile_id
+            )
+            # Not in the model if the workfile is gone, or its host grouped.
+            proxy_index = self._workfiles_proxy.mapFromSource(index)
+            if proxy_index.isValid():
+                self._workfiles_view.selectionModel().setCurrentIndex(
+                    proxy_index,
+                    QtCore.QItemSelectionModel.ClearAndSelect
+                    | QtCore.QItemSelectionModel.Rows,
+                )
+                self._workfiles_view.scrollTo(proxy_index)
+        self._controller.expected_workfile_selected(workfile_id)
 
     def deselect(self):
         sel_model = self._workfiles_view.selectionModel()

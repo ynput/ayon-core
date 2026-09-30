@@ -798,15 +798,74 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
     @abstractmethod
     def apply_recent_action_context(self, record_id: str):
-        """Apply context stored in a recent action to the current selection.
+        """Ask the UI to navigate to the context of a recent action.
 
-        Changes the launcher's project/folder/task/workfile selection to match
-        the context that was active when *record_id* was originally triggered.
-        This is the "Locate" affordance – it does **not** re-run the action.
+        This is the "Locate" affordance - it does **not** re-run the action.
+        The selection is not changed here, the context is set as expected
+        selection (see :meth:`set_expected_selection`) and the widgets select
+        it themselves.
 
         Args:
             record_id (str): The :attr:`RecentActionItem.record_id` of the
                 history entry whose context should be restored.
 
         """
+        pass
+
+    # Expected selection
+    @abstractmethod
+    def set_expected_selection(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str] = None,
+        task_name: Optional[str] = None,
+        workfile_id: Optional[str] = None,
+    ):
+        """Set which context the UI should navigate to.
+
+        Triggers 'expected_selection_changed' event. Each widget selects its
+        part once the previous part is selected and its own data is loaded,
+        and confirms it with the 'expected_*_selected' methods.
+
+        Args:
+            project_name (Optional[str]): Project name.
+            folder_id (Optional[str]): Folder id.
+            task_name (Optional[str]): Task name.
+            workfile_id (Optional[str]): Workfile id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_expected_selection_data(self) -> dict[str, dict[str, Any]]:
+        """Get the expected selection and how far it got.
+
+        Returns:
+            dict[str, dict[str, Any]]: Data of 'project', 'folder', 'task'
+                and 'workfile'. Each has 'current' (it is its turn to be
+                selected) and 'selected' (already confirmed).
+
+        """
+        pass
+
+    @abstractmethod
+    def expected_project_selected(self, project_name: Optional[str]):
+        """UI selected the expected project."""
+        pass
+
+    @abstractmethod
+    def expected_folder_selected(self, folder_id: Optional[str]):
+        """UI selected the expected folder."""
+        pass
+
+    @abstractmethod
+    def expected_task_selected(
+        self, folder_id: Optional[str], task_name: Optional[str]
+    ):
+        """UI selected the expected task."""
+        pass
+
+    @abstractmethod
+    def expected_workfile_selected(self, workfile_id: Optional[str]):
+        """UI selected the expected workfile."""
         pass

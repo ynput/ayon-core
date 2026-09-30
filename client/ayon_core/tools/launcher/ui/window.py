@@ -176,6 +176,10 @@ class LauncherWindow(AYContainer):
             "recent_action.unavailable",
             self._on_recent_action_unavailable,
         )
+        controller.register_event_callback(
+            "expected_selection_changed",
+            self._on_expected_selection_changed,
+        )
 
         self._overlay_object = overlay_object
 
@@ -241,6 +245,27 @@ class LauncherWindow(AYContainer):
 
         elif self._is_on_projects_page:
             self._go_to_hierarchy_page(project_name)
+
+    def _on_expected_selection_changed(self, event):
+        # Only the project is handled here, it is picked in the projects
+        #   list that lives in this window. The rest of the expected
+        #   selection is handled by the widgets of the hierarchy page.
+        project_data = event.data.get("project")
+        if (
+            not project_data
+            or not project_data["current"]
+            or project_data["selected"]
+        ):
+            return
+
+        project_name = project_data["name"]
+        # Opens the hierarchy page if the projects page is shown.
+        self._projects_widget.set_selected_project(project_name)
+        # Already on the hierarchy page - show the project in its header.
+        self._hierarchy_page.set_selected_project(project_name)
+        # The project may not be available anymore.
+        if self._controller.get_selected_project_name() == project_name:
+            self._controller.expected_project_selected(project_name)
 
     def _on_project_filter_change(self, text):
         self._projects_widget.set_name_filter(text)
