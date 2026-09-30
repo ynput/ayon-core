@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from qtpy.QtCore import (
+    QAbstractItemModel,
+    QAbstractProxyModel,
     QEvent,
     QItemSelection,
     QModelIndex,
@@ -11,11 +13,11 @@ from qtpy.QtCore import (
     QSize,
     Qt,
     Signal,
+    QPoint,
 )
 from qtpy.QtGui import (
     QBrush,
     QColor,
-    QCursor,
     QIcon,
     QMouseEvent,
     QPainter,
@@ -35,7 +37,9 @@ from ..drawers import enum_to_str
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QTreeViewVariants
 from .scroll_area import AYScrollBar
+from .skeleton import AYSkeletonLoader
 from .style_mixin import StyleMixin
+from .header_view import AYHeaderView
 
 
 class AYTreeView(StyleMixin, QTreeView):
@@ -44,6 +48,13 @@ class AYTreeView(StyleMixin, QTreeView):
     Fully self-contained: uses AYONStyle for all painting, a custom
     item delegate that draws directly bypassing any parent QSS, and
     AYScrollBar instances for scrollbars.
+
+    The view shows an animated skeleton placeholder (`AYSkeletonLoader`)
+    while its model is loading and has no rows to show yet. A model opts
+    in by exposing a ``loading_changed = Signal(bool)`` signal and,
+    optionally, an ``is_loading() -> bool`` method. The model is found
+    automatically when set with ``setModel``, also through proxy models.
+    Loading state can be also set manually with ``set_loading``.
 
     Args:
         parent: Optional parent widget.
@@ -65,6 +76,15 @@ class AYTreeView(StyleMixin, QTreeView):
         super().__init__(parent)
 
         style = get_ayon_style()
+
+        header = AYHeaderView(
+            Qt.Orientation.Horizontal,
+            parent=self,
+            style_model=style.model,
+            variant=self._variant_str,
+        )
+        self.setHeader(header)
+
         self.setStyle(style)
 
         # Self-contained: do not inherit parent background or stylesheet.
@@ -79,7 +99,7 @@ class AYTreeView(StyleMixin, QTreeView):
         self.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.viewport().setMouseTracking(True)
         self.viewport().installEventFilter(self)
-        self._hovered_row_key: tuple | None = None
+        self._mouse_pos: QPoint = QPoint(-1, -1)
         self._sync_viewport_palette()
 
         # Custom item delegate — paints items directly, avoids QSS.
@@ -99,7 +119,6 @@ class AYTreeView(StyleMixin, QTreeView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         # No header — single-column hierarchical browser.
-        self.setHeaderHidden(True)
 
         # Indentation from style data.
         tv_style = style.model.get_style("QTreeView", self._variant_str)
@@ -111,6 +130,133 @@ class AYTreeView(StyleMixin, QTreeView):
 
         # No default frame — drawn manually in paintEvent.
         self.setFrameShape(QTreeView.Shape.NoFrame)
+
+        # Loading placeholder, created lazily when first needed.
+        self._skeleton: AYSkeletonLoader | None = None
+        self._skeleton_delay: int = 80
+        self._loading: bool = False
+        self._loading_model: QAbstractItemModel | None = None
+
+    def setModel(self, model: QAbstractItemModel | None) -> None:
+        """Set model and connect to its loading state if it has one.
+
+        Args:
+            model: Model to show, can be a proxy model.
+        """
+        self._disconnect_loading_model()
+        super().setModel(model)
+        self._connect_loading_model(model)
+
+    def is_loading(self) -> bool:
+        """Whether the view is in loading state.
+
+        Returns:
+            bool: True if the view's data are loading.
+        """
+        return self._loading
+
+    def set_loading(self, loading: bool) -> None:
+        """Show animated placeholder rows while data are loading.
+
+        The placeholder shows only when the model has no rows, a refresh
+        of visible rows happens in place. Called automatically when
+        the model has ``loading_changed`` signal.
+
+        Args:
+            loading: Whether the model is loading data.
+        """
+        self._loading = loading
+        self._update_skeleton()
+
+    def set_loading_delay(self, delay: int) -> None:
+        """Delay before the loading placeholder appears.
+
+        Loads finishing sooner never show the placeholder.
+
+        Args:
+            delay: Delay in milliseconds.
+        """
+        self._skeleton_delay = delay
+        if self._skeleton is not None:
+            self._skeleton.set_show_delay(delay)
+
+    def _update_skeleton(self) -> None:
+        show = self._loading
+        if show:
+            model = self._loading_model or self.model()
+            show = model is None or model.rowCount() == 0
+
+        if self._skeleton is None:
+            if not show:
+                return
+            self._skeleton = AYSkeletonLoader(
+                self,
+                variant=QTreeViewVariants(self._variant_str),
+                show_delay=self._skeleton_delay,
+            )
+        self._skeleton.set_loading(show)
+
+    def _on_loading_model_rows_changed(self, *args) -> None:
+        # Rows appeared or were removed while loading
+        if self._loading:
+            self._update_skeleton()
+
+    @staticmethod
+    def _find_loading_model(
+        model: QAbstractItemModel | None,
+    ) -> QAbstractItemModel | None:
+        """Find model with 'loading_changed' signal, look through proxies.
+
+        Args:
+            model: Model set to the view.
+
+        Returns:
+            QAbstractItemModel | None: Model reporting its loading state.
+        """
+        while model is not None:
+            if hasattr(model, "loading_changed"):
+                return model
+            if not isinstance(model, QAbstractProxyModel):
+                break
+            model = model.sourceModel()
+        return None
+
+    def _connect_loading_model(
+        self, model: QAbstractItemModel | None
+    ) -> None:
+        loading_model = self._find_loading_model(model)
+        self._loading_model = loading_model
+        if loading_model is None:
+            self.set_loading(False)
+            return
+
+        loading_model.loading_changed.connect(self.set_loading)
+        for signal in self._loading_model_row_signals(loading_model):
+            signal.connect(self._on_loading_model_rows_changed)
+
+        is_loading = getattr(loading_model, "is_loading", None)
+        self.set_loading(bool(is_loading()) if is_loading else False)
+
+    def _disconnect_loading_model(self) -> None:
+        loading_model, self._loading_model = self._loading_model, None
+        if loading_model is None:
+            return
+        try:
+            loading_model.loading_changed.disconnect(self.set_loading)
+            for signal in self._loading_model_row_signals(loading_model):
+                signal.disconnect(self._on_loading_model_rows_changed)
+        except (RuntimeError, TypeError):
+            # Model was already deleted or signals were not connected
+            pass
+
+    @staticmethod
+    def _loading_model_row_signals(model: QAbstractItemModel) -> list:
+        return [
+            model.rowsInserted,
+            model.rowsRemoved,
+            model.modelReset,
+            model.layoutChanged,
+        ]
 
     def _sync_viewport_palette(self) -> None:
         """Apply the variant background colour to the viewport palette."""
@@ -142,15 +288,9 @@ class AYTreeView(StyleMixin, QTreeView):
     def eventFilter(self, obj, event):
         if obj is self.viewport():
             if event.type() == QEvent.Type.MouseMove:
-                idx = self.indexAt(event.pos())
-                key = (idx.row(), idx.parent()) if idx.isValid() else None
-                if key != self._hovered_row_key:
-                    self._hovered_row_key = key
-                    self.viewport().update()
+                self._mouse_pos = event.pos()
             elif event.type() == QEvent.Type.Leave:
-                if self._hovered_row_key is not None:
-                    self._hovered_row_key = None
-                    self.viewport().update()
+                self._mouse_pos = QPoint(-1, -1)
         return super().eventFilter(obj, event)
 
     def drawBranches(self, painter, rect, index):
@@ -177,14 +317,9 @@ class AYTreeView(StyleMixin, QTreeView):
             state |= QStyle.StateFlag.State_Enabled
 
         # Row-level hover: is the cursor on the same row as `index`?
-        hovered_index = self.indexAt(
-            self.viewport().mapFromGlobal(QCursor.pos())
-        )
-        if (
-            hovered_index.isValid()
-            and hovered_index.row() == index.row()
-            and hovered_index.parent() == index.parent()
-        ):
+        hovered_idx = self.indexAt(self._mouse_pos)
+        idx_rows = self._get_index_rows(index)
+        if idx_rows == self._get_index_rows(hovered_idx):
             state |= QStyle.StateFlag.State_MouseOver
 
         opt.state = state
@@ -197,6 +332,14 @@ class AYTreeView(StyleMixin, QTreeView):
                 "QTreeView",
             )
         ](opt, painter, self)
+
+    def _get_index_rows(self, index: QModelIndex) -> list[int]:
+        """Return a list of row numbers from the given index to the root."""
+        rows = []
+        while index.isValid():
+            rows.append(index.row())
+            index = index.parent()
+        return rows
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Emit double_clicked signal on double-click."""
@@ -251,16 +394,30 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         self._style_model = style_model
         self._variant_str = variant
         self._icon_cache: dict[str, QIcon] = {}
+        self._styles_cache: dict[str, dict] | None = None
 
     def _tv_styles(self) -> dict[str, dict]:
-        """Return *base*, *hover* and *selected* style dicts at once."""
-        if self._style_model is None:
-            return {"base": {}, "hover": {}, "selected": {}}
-        return self._style_model.get_styles(
-            "QTreeView",
-            self._variant_str,
-            ["base", "hover", "selected"],
-        )
+        """Return *base*, *hover* and *selected* style dicts at once.
+
+        Resolved once and kept: every state lookup deep-copies the style
+        data, which is too costly to repeat for each painted row.  The
+        underlying style data is loaded once per process, so the cached
+        result never goes stale.
+        """
+        if self._styles_cache is None:
+            if self._style_model is None:
+                return {
+                    "base": {},
+                    "hover": {},
+                    "selected": {},
+                    "selected-hover": {},
+                }
+            self._styles_cache = self._style_model.get_styles(
+                "QTreeView",
+                self._variant_str,
+                ["base", "hover", "selected", "selected-hover"],
+            )
+        return self._styles_cache
 
     def initStyleOption(
         self,
@@ -277,6 +434,10 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         super().initStyleOption(option, index)
         option.font = self.font()
         option.fontMetrics = self.fontMetrics()
+        option.decorationAlignment = Qt.AlignmentFlag.AlignCenter
+        option.displayAlignment = (
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+        )
 
     def sizeHint(
         self,
@@ -292,11 +453,11 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         Returns:
             The size hint for the item.
         """
-        if self._style_model:
-            style = self._style_model.get_style("QTreeView", self._variant_str)
-            h = int(style.get("item-height", 28))
-        else:
-            h = 28
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
+
+        h = int(self._tv_styles()["base"].get("item-height", 28))
         return QSize(option.rect.width(), h)
 
     def paint(
@@ -324,49 +485,31 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
 
         styles = self._tv_styles()
         base_style = styles["base"]
-        hover_style = styles["hover"]
-        selected_style = styles["selected"]
-
-        item_padding = base_style.get("item-padding", [4, 8])
-        icon_text_spacing = int(base_style.get("icon-text-spacing", 6))
-
-        # --- background ------------------------------------------------
-        if is_selected:
-            bg_color = QColor(
-                selected_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
+        colors_style = {}
+        if is_selected and is_hovered:
+            colors_style = styles["selected-hover"]
+        elif is_selected:
+            colors_style = styles["selected"]
         elif is_hovered:
-            bg_color = QColor(
-                hover_style.get(
-                    "background-color",
-                    base_style.get("background-color", "transparent"),
-                )
-            )
+            colors_style = styles["hover"]
+
+        # --- bg and fg colors ------------------------------------------
+        if state & QStyle.StateFlag.State_Enabled:
+            bg_color = QColor(colors_style.get(
+                "background-color",
+                base_style.get("background-color", "transparent")
+            ))
+            text_color = QColor(colors_style.get(
+                "color",
+                base_style.get("color", "#f4f5f5"),
+            ))
         else:
+            # Use base colors for disabled state
             bg_color = QColor(
                 base_style.get("background-color", "transparent")
             )
-
-        painter.setBrush(QBrush(bg_color))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRect(opt.rect)
-
-        # --- text colour -----------------------------------------------
-        if is_selected:
-            text_color = QColor(
-                selected_style.get(
-                    "color",
-                    base_style.get("color", "#f4f5f5"),
-                )
-            )
-        else:
             text_color = QColor(base_style.get("color", "#f4f5f5"))
-
-        # disabled dimming
-        if not (state & QStyle.StateFlag.State_Enabled):
+            # - apply disabled opacity to text color
             text_color.setAlpha(
                 int(
                     text_color.alpha()
@@ -374,46 +517,195 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
                 )
             )
 
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
+
         # --- icon + text layout ----------------------------------------
+        item_padding = base_style.get("item-padding", [4, 8])
+        icon_text_spacing = int(base_style.get("icon-text-spacing", 6))
         content_rect = QRect(opt.rect).adjusted(
             item_padding[1],
             item_padding[0],
             -item_padding[1],
             -item_padding[0],
         )
-        content_left = content_rect.left()
 
-        if not opt.icon.isNull():
+        icon = opt.icon
+        icon_offset = 0
+        content_left = content_rect.left()
+        if not icon.isNull():
             icon_size = opt.decorationSize
-            icon_rect = QRect(
-                content_left,
-                opt.rect.center().y() - icon_size.height() // 2,
-                icon_size.width(),
-                icon_size.height(),
-            )
+            icon_rect = QRect(content_rect)
+            icon_rect.setSize(icon_size)
+            if opt.decorationAlignment & Qt.AlignmentFlag.AlignBottom:
+                icon_rect.moveTop(
+                    (content_rect.bottom() - icon_size.height()) + 1
+                )
+            elif opt.decorationAlignment & Qt.AlignmentFlag.AlignVCenter:
+                icon_rect.moveTop(
+                    (
+                        content_rect.center().y() - (icon_size.height() // 2)
+                    ) + 1
+                )
+
+            icon_offset = icon_rect.width()
+            if opt.text:
+                icon_offset += icon_text_spacing
+
+            content_left = icon_rect.right() + icon_text_spacing
             mode = (
                 QIcon.Mode.Normal
                 if state & QStyle.StateFlag.State_Enabled
                 else QIcon.Mode.Disabled
             )
-            opt.icon.paint(
+            icon.paint(
                 painter,
                 icon_rect,
-                Qt.AlignmentFlag.AlignCenter,
+                opt.decorationAlignment,
                 mode,
             )
-            content_left = icon_rect.right() + icon_text_spacing
 
         if opt.text:
-            text_rect = QRect(opt.rect)
+            metrics = opt.fontMetrics
+            bound = metrics.boundingRect(opt.text)
+
+            content_width = icon_offset + bound.width()
+            if content_width > content_rect.width():
+                # Text is too long to fit in the available space, so elide it.
+                metrics = opt.fontMetrics
+                elided_text = metrics.elidedText(
+                    opt.text,
+                    opt.textElideMode,
+                    content_rect.width() - icon_offset,
+                )
+                opt.text = elided_text
+
+        if opt.text:
+            text_rect = QRect(content_rect)
             text_rect.setLeft(content_left)
-            text_rect.setRight(content_rect.right())
             painter.setPen(text_color)
             painter.setFont(opt.font)
             painter.drawText(
                 text_rect,
-                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                opt.displayAlignment,
                 opt.text,
             )
 
         painter.restore()
+
+
+class CenteredIconDelegate(TreeViewItemDelegate):
+    def paint(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> None:
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+
+        state = opt.state
+        is_selected = bool(state & QStyle.StateFlag.State_Selected)
+        is_hovered = bool(state & QStyle.StateFlag.State_MouseOver)
+
+        styles = self._tv_styles()
+        base_style = styles["base"]
+        colors_style = {}
+        if is_selected and is_hovered:
+            colors_style = styles["selected-hover"]
+        elif is_selected:
+            colors_style = styles["selected"]
+        elif is_hovered:
+            colors_style = styles["hover"]
+
+        # --- bg and fg colors ------------------------------------------
+        if state & QStyle.StateFlag.State_Enabled:
+            bg_color = QColor(colors_style.get(
+                "background-color",
+                base_style.get("background-color", "transparent")
+            ))
+        else:
+            # Use base colors for disabled state
+            bg_color = QColor(
+                base_style.get("background-color", "transparent")
+            )
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QBrush(bg_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRect(opt.rect)
+
+        icon = opt.icon
+        if icon.isNull():
+            painter.restore()
+            return
+
+        item_padding = base_style.get("item-padding", [4, 8])
+        content_rect = QRect(opt.rect).adjusted(
+            item_padding[1],
+            item_padding[0],
+            -item_padding[1],
+            -item_padding[0],
+        )
+        icon_rect = QRect(content_rect)
+        icon_rect.setSize(opt.decorationSize)
+        icon_rect.moveCenter(content_rect.center())
+        icon.paint(painter, icon_rect, Qt.AlignmentFlag.AlignCenter)
+        painter.restore()
+
+
+# =============================================================================
+# __main__ - visual test harness
+# =============================================================================
+
+
+if __name__ == "__main__":
+    from qtpy import QtWidgets
+
+    from qtmaterialsymbols import get_icon  # type: ignore  # noqa: F401
+
+    from ..tester import Style, test
+
+    def _build() -> QtWidgets.QWidget:
+        """Show one AYTreeView per variant with lazy-loaded fake data."""
+        from .layouts import AYVBoxLayout
+        from .tree_model import PRODUCTS_TEST_DATA, LazyTreeModel, TreeNode
+
+        def fetch_children(
+            parent_id: str | None,
+        ) -> list[TreeNode]:
+            print(f"fetching children of {parent_id}")
+            return PRODUCTS_TEST_DATA.get(parent_id, [])
+
+        # ----------------------------------------------------------
+
+        container = QtWidgets.QWidget()
+        root_lyt = AYVBoxLayout(container, margin=8, spacing=8)
+
+        for variant in AYTreeView.Variants:
+            label = QtWidgets.QLabel(f"variant: {variant.value}")
+            label.setFixedHeight(20)
+            root_lyt.addWidget(label)
+
+            tv = AYTreeView(variant=variant)
+            tv.setModel(LazyTreeModel(fetch_children=fetch_children))
+            tv.setMinimumHeight(160)
+            root_lyt.addWidget(tv)
+
+            tv.selection_changed.connect(
+                lambda selected, deselected, tv=tv: print(
+                    "selection changed: "
+                    f"Selected {[i.data() for i in selected.indexes()]} "
+                    "and deselected "
+                    f"{[i.data() for i in deselected.indexes()]}) "
+                    "(full selection: "
+                    f"{[i.data() for i in tv.selectedIndexes()]})"
+                )
+            )
+
+        container.setMinimumWidth(360)
+        return container
+
+    test(_build, style=Style.AyonStyleOverCSS)
