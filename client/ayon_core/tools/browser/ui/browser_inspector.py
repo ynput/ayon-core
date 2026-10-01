@@ -1,0 +1,634 @@
+from __future__ import annotations
+
+import time
+from collections import defaultdict
+
+from ayon_core.ui.components.buttons import AYButton
+from ayon_core.ui.components.container import AYContainer
+from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
+from ayon_core.ui.components.label import AYLabel
+from ayon_core.ui.components.layouts import AYHBoxLayout
+from ayon_core.ui.components.table_view import AYTableView
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.image_cache import ImageCache
+from qtpy import QtCore, QtGui, QtWidgets, shiboken
+
+from ayon_core.tools.browser.abstract import RepreItem
+from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
+from ayon_core.tools.browser.ui.browser_controller import (
+    BrowserWidgetController,
+)
+from ayon_core.tools.utils import get_qt_icon
+
+from ._browser_cell_delegates import format_relative_time
+from ._browser_thumbnails import _thumbnail_loader
+
+
+class ReviewInspector(AYContainer):
+    """A placeholder widget for the review inspector panel."""
+
+    def __init__(
+        self,
+        controller: BrowserWidgetController,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(
+            *args,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=10,
+            layout_spacing=10,
+            **kwargs,
+        )
+        self._layout.setAlignment(QtCore.Qt.AlignTop)
+        self.setMinimumWidth(300)
+
+        self._controller = controller
+        self._view: QtWidgets.QAbstractItemView | None = None
+        self._current_thumb_key: str = ""
+        # Use a dict as an ordered set to track the currently selected indices
+        self._current_selection: dict[QtCore.QModelIndex, None] = {}
+        # Track if mouse is currently pressed for drag selection
+        self._mouse_pressed: bool = False
+        # Timer for throttling updates during drag selection
+        self._update_timer = QtCore.QTimer()
+        self._update_timer.setSingleShot(True)
+        self._update_timer.timeout.connect(self._throttled_update)
+        # Interval for throttling updates (in milliseconds)
+        self._base_update_time: int = 0
+        # Flag to indicate if the first update has been measured
+        self._first_update_measured: bool = False
+
+        self._build()
+
+    def _build(self) -> None:
+        """Build the inspector UI. This is a placeholder method."""
+
+        # top bar with path and close button
+        top_bar = AYHBoxLayout(margin=0, spacing=5)
+        self._path_label = AYLabel(
+            "",
+            dim=True,
+            elide_mode=QtCore.Qt.TextElideMode.ElideMiddle,
+            rel_text_size=-1,
+            copy_text=True,
+        )
+        self._close_btn = AYButton(
+            variant=AYButton.Variants.Nav_Small, icon="close", icon_size=14
+        )
+        self._close_btn.clicked.connect(self._on_close)
+        top_bar.addWidget(
+            self._path_label, stretch=10, alignment=QtCore.Qt.AlignLeft
+        )
+        top_bar.addStretch()
+        top_bar.addWidget(self._close_btn)
+        self.add_layout(top_bar)
+
+        # thumbnail
+        self._thumbnail = AYEntityThumbnail(
+            variant=AYEntityThumbnail.Variants.Entity_Card,
+            size=(280, 160),
+        )
+        thumb_wrapper = AYHBoxLayout(margin=0, spacing=0)
+        thumb_wrapper.setAlignment(QtCore.Qt.AlignCenter)
+        thumb_wrapper.addWidget(self._thumbnail)
+        self.add_layout(thumb_wrapper)
+
+        # Version info
+        self.add_widget(
+            AYLabel(
+                "Version Info",
+                variant=AYLabel.Variants.Default,
+                rel_text_size=1,
+            )
+        )
+        self.info_lyt = AYContainer(
+            layout=AYContainer.Layout.Form,
+            variant=AYContainer.Variants.Low,
+            layout_spacing=(10, 8),
+        )
+        self.info_lyt.set_label_alignment(QtCore.Qt.AlignRight)
+        self.add_widget(self.info_lyt)
+        # product name
+        self._product_value = AYLabel("-")
+        self.info_lyt.add_row(
+            AYLabel("Product:", dim=True), self._product_value
+        )
+        # version name
+        self._version_value = AYLabel("-")
+        self.info_lyt.add_row(
+            AYLabel("Version:", dim=True), self._version_value
+        )
+        # comment
+        self._comment_value = AYLabel("-", copy_text=True)
+        self._comment_value.setWordWrap(True)
+        cmt_wrapper = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
+        cmt_wrapper.add_widget(self._comment_value, stretch=1)
+        self.info_lyt.add_row(AYLabel("Comment:", dim=True), cmt_wrapper)
+        # created
+        self._created_value = AYLabel("-")
+        self.info_lyt.add_row(
+            AYLabel("Created:", dim=True), self._created_value
+        )
+        # source
+        self._source_value = AYLabel(
+            "-",
+            copy_text=True,
+            elide_mode=QtCore.Qt.TextElideMode.ElideLeft,
+        )
+        self._source_value.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft
+            | QtCore.Qt.AlignmentFlag.AlignTop
+        )
+        self._source_value.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+        self.info_lyt.add_row(
+            AYLabel("Source:", dim=True),
+            self._source_value,
+        )
+
+        # representations
+        self.add_widget(
+            AYLabel(
+                "Representations",
+                variant=AYLabel.Variants.Default,
+                rel_text_size=1,
+            )
+        )
+        self._representations = Representations(self._controller)
+        self.add_widget(self._representations)
+
+    def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
+        """Set the view for the inspector."""
+        if self._view is view:
+            # already configured
+            return
+
+        if self._view is not None:
+            # disconnect from previous view signals, if any
+            try:
+                self._view.activated.disconnect(self._on_activated)
+                self._view.selection_changed.disconnect(
+                    self._on_selection_changed
+                )
+                self._view.model().modelReset.disconnect(self._on_model_reset)
+                # Remove event filter from previous view's viewport
+                self._view.viewport().removeEventFilter(self)
+            except (RuntimeError, TypeError):
+                pass
+
+        self._view = view
+        self._view.activated.connect(self._on_activated)
+        self._view.selection_changed.connect(self._on_selection_changed)
+        self._view.model().modelReset.connect(self._on_model_reset)
+        # Install event filter on the viewport to track mouse press/release
+        self._view.viewport().installEventFilter(self)
+
+    def _throttled_update(self) -> None:
+        """Update the inspector during drag selection."""
+        if self._mouse_pressed:
+            start_time = time.time()
+            self._update()
+            elapsed_time_ms = (time.time() - start_time) * 1000
+            num_selected = len(self._current_selection)
+            if not self._first_update_measured and num_selected > 0:
+                # Calculate the update interval based on the first update time
+                self._base_update_time = max(
+                    16,
+                    int(elapsed_time_ms / num_selected),
+                )
+                self._first_update_measured = True
+            self._update_timer.start(
+                max(16, self._base_update_time * num_selected)
+            )
+
+    def _on_model_reset(self) -> None:
+        """Clear the selection when the model is reset."""
+        self._current_selection.clear()
+        self._update()
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """Track mouse press/release events on the view's viewport.
+
+        Args:
+            obj: The watched object.
+            event: The event.
+
+        Returns:
+            True if the event was handled, False otherwise.
+        """
+        if obj is self._view.viewport():
+            if event.type() == QtCore.QEvent.Type.MouseButtonPress:
+                self._mouse_pressed = True
+                # Trigger an immediate update on first mouse down
+                self._throttled_update()
+            elif event.type() == QtCore.QEvent.Type.MouseButtonRelease:
+                self._mouse_pressed = False
+                self._update_timer.stop()
+                # Trigger update on mouse release for finalized selection
+                if self.isVisible():
+                    self._update()
+        return super().eventFilter(obj, event)
+
+    def _on_activated(self, index: QtCore.QModelIndex) -> None:
+        """Activation is typically when the user double-clicks on an item.
+        We want to show the inspector in this case if it's not visible.
+        """
+        self.show()
+        self._update()
+
+    def refresh_selection(self) -> None:
+        """Refresh the inspector after selected row data changes."""
+        self._update()
+
+    def _on_selection_changed(
+        self,
+        selected: QtCore.QItemSelection,
+        deselected: QtCore.QItemSelection,
+    ) -> None:
+        """Record the selection changes and update the inspector.
+
+        Args:
+            selected (QtCore.QItemSelection): The selected items.
+            deselected (QtCore.QItemSelection): The deselected items.
+        """
+        # NOTE: only consider column 0 as we select entire rows in all views
+        for idx in selected.indexes():
+            if idx.column() == 0:
+                self._current_selection[idx] = None
+        for idx in deselected.indexes():
+            if idx.column() == 0:
+                self._current_selection.pop(idx, None)
+        # Only update immediately if mouse is not pressed (keyboard selection)
+        # Otherwise, update will be triggered on mouse release
+        if not self._mouse_pressed:
+            self._update()
+
+    @staticmethod
+    def _get_version_id(data: dict) -> str:
+        """Return a version ID, excluding folders and synthetic group rows."""
+        version_id = data.get("_version_id", "")
+        if version_id:
+            return version_id
+        if str(data.get("entityType", "")).casefold() != "version":
+            return ""
+        entity_id = data.get("id", "")
+        if str(entity_id).startswith(("grp:", "attr:")):
+            return ""
+        return entity_id
+
+    def _update(self) -> None:
+        """Update the inspector with the current selection, if visible."""
+        if not self.isVisible():
+            return
+
+        selected_data = [
+            data
+            for idx in self._current_selection
+            if (
+                (data := idx.data(QtCore.Qt.ItemDataRole.UserRole) or {})
+                and self._get_version_id(data)
+            )
+        ]
+        n_sel = len(selected_data)
+        single = n_sel <= 1
+        default = "-" if single else f"{n_sel} items selected"
+
+        data = selected_data[0] if selected_data else {}
+
+        self._path_label.setText(
+            data.get("path", default) if single else default
+        )
+        self._product_value.setText(
+            data.get("productName", default) if single else default
+        )
+        self._version_value.setText(
+            data.get("version", default) if single else default
+        )
+        self._comment_value.setText(
+            data.get("comment", default) or default if single else default
+        )
+        created = (
+            format_relative_time(data.get("createdAt", "")) if single else ""
+        )
+        self._created_value.setText(created or default)
+        # The relative text is the readable one; keep the exact local
+        # timestamp a hover away.
+        self._created_value.setToolTip(
+            data.get("createdAt__tooltip", "") if single else ""
+        )
+        source = data.get("source", default) if single else default
+        self._source_value.setToolTip(source)
+        self._source_value.setText(source)
+
+        thumb_keys: list[str] = []
+        version_ids: list[str] = []
+        project_name: str = data.get("project_name", "")
+        for d in selected_data:
+            tid = d.get("thumbnailId", "")
+            vid = self._get_version_id(d)
+            pname = d.get("project_name", "")
+            if tid and vid and pname:
+                thumb_keys.append(f"{pname}/{vid}/{tid}")
+            version_ids.append(vid)
+
+        if thumb_keys:
+            thumb_keys = sorted(thumb_keys)  # limit cache misses
+            self._load_thumbnail(thumb_keys)
+        else:
+            self._current_thumb_key = ""
+            self._thumbnail.set_thumbnail("")
+
+        # Fetch and display representations for all selected versions.
+        if self._controller and project_name and version_ids:
+            repre_items = self._controller.get_representation_items(
+                project_name, version_ids
+            )
+            self._representations.set_items(
+                repre_items,
+                multi_version=len(version_ids) > 1,
+            )
+        else:
+            self._representations.set_items([])
+
+    def _load_thumbnail(self, keys: list[str]) -> None:
+        """Load and display thumbnails for *keys* as a composite image.
+
+        Resolves each key from :class:`ImageCache` synchronously where
+        possible, and enqueues async fetches at priority 1 for any
+        cache misses.  Once all slots are resolved the widget is updated
+        with a comma-separated path string so that
+        :meth:`AYEntityThumbnail.set_thumbnail` can build a composite.
+
+        Args:
+            keys: One or more cache keys, each in the form
+                ``"<project_name>/<version_id>/<thumbnail_id>"``.
+        """
+        combined_key = ",".join(keys)
+        self._current_thumb_key = combined_key
+
+        ic = ImageCache.get_instance()
+        resolved: dict[str, str] = {}
+        missing: list[str] = []
+        for key in keys:
+            cached_path = ic.get_path(key) if key else None
+            if cached_path:
+                resolved[key] = cached_path
+            else:
+                missing.append(key)
+
+        if not missing:
+            paths = ",".join(resolved[k] for k in keys)
+            self._thumbnail.set_thumbnail(paths)
+            return
+
+        inspector = self
+        pending: dict[str, int] = {"count": len(missing)}
+
+        def _make_callback(k: str):
+            def _on_loaded(fpath: str) -> None:
+                if not shiboken.isValid(inspector):
+                    return
+                resolved[k] = fpath or ""
+                pending["count"] -= 1
+                if pending["count"] > 0:
+                    return
+                if inspector._current_thumb_key != combined_key:
+                    return
+                paths = ",".join(resolved.get(key, "") for key in keys)
+                inspector._thumbnail.set_thumbnail(paths)
+
+            return _on_loaded
+
+        for key in missing:
+            get_task_queue().enqueue(
+                AsyncTask(
+                    name=f"inspector_thumb_{key}",
+                    function=lambda k=key: _thumbnail_loader(k),
+                    callback=_make_callback(key),
+                    priority=1,
+                    cancellable=True,
+                )
+            )
+
+    def _on_close(self) -> None:
+        """Hide the inspector."""
+        self.hide()
+
+
+class Representations(AYContainer):
+    """Widget displaying the representations for an inspected version.
+
+    When multiple versions share common representation names the widget
+    switches to tree mode: each shared name becomes a collapsible parent
+    row and the individual representations appear as its children.  Names
+    that are unique across the current selection are shown as flat root
+    rows regardless of the mode.
+    """
+
+    def __init__(self, controller: BrowserWidgetController, *args, **kwargs):
+        super().__init__(
+            *args,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.High,
+            layout_margin=0,
+            **kwargs,
+        )
+        self._controller = controller
+        self._current_project_name: str = ""
+        self._controller.project_changed.connect(self._on_project_change)
+
+        self._layout.setAlignment(QtCore.Qt.AlignTop)
+        self._table: AYTableView = AYTableView(
+            variant=AYTableView.Variants.Low,
+        )
+        self._model = QtGui.QStandardItemModel()
+        self._model.setHorizontalHeaderLabels(["Name", "Folder"])
+        self._table.setModel(self._model)
+        self._table.setShowGrid(False)
+        self._table.setSortingEnabled(True)
+        self._table.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self._table.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._table.customContextMenuRequested.connect(self._on_context_menu)
+
+        self.add_widget(self._table)
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _on_project_change(self, project_name: str) -> None:
+        self._current_project_name = project_name
+
+    def _get_selected_ids(self) -> set[str]:
+        selected_ids = set()
+        for midx in self._table.selectedIndexes():
+            if midx.column() > 0:
+                continue
+            user_data = midx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            if user_data.get("is_group", False):
+                # If this is a group row, include all its children.
+                model = midx.model()
+                for i in range(model.rowCount(midx)):
+                    child_idx = model.index(i, 0, midx)
+                    child_user_data = (
+                        child_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+                    )
+                    selected_ids.add(child_user_data.get("id", ""))
+            else:
+                selected_ids.add(user_data.get("id", ""))
+        selected_ids.discard("")
+        return selected_ids
+
+    def _on_context_menu(self, pos: QtCore.QPoint) -> None:
+        selected_ids = self._get_selected_ids()
+        action_items = self._controller.get_action_items(
+            self._current_project_name, selected_ids, "representation"
+        )
+        global_point = self._table.mapToGlobal(pos)
+        result = show_actions_menu(
+            action_items, global_point, len(selected_ids) == 1, self
+        )
+        action_item, options = result
+        if action_item is None or options is None:
+            return
+
+        self._controller.trigger_action_item(
+            identifier=action_item.identifier,
+            project_name=self._current_project_name,
+            selected_ids=selected_ids,
+            selected_entity_type="representation",
+            data=action_item.data,
+            options=options,
+            form_values={},
+        )
+
+    def _set_tree_mode(self, enabled: bool) -> None:
+        """Enable or disable tree decoration on the view.
+
+        Args:
+            enabled: ``True`` to show collapse/expand indicators.
+        """
+        self._table._apply_tree_mode(enabled)
+
+    def _make_row(self, repre: RepreItem) -> list[QtGui.QStandardItem]:
+        """Build the two-column item list for a representation.
+
+        Args:
+            repre: A
+                :class:`~ayon_core.tools.browser.abstract.RepreItem`
+                instance.
+
+        Returns:
+            A two-element list ``[name_item, folder_item]`` ready for
+            :meth:`QtGui.QStandardItemModel.appendRow`.
+        """
+        name_item = QtGui.QStandardItem(repre.representation_name)
+        name_item.setEditable(False)
+        icon = get_qt_icon(repre.representation_icon)
+        if icon is not None:
+            name_item.setIcon(icon)
+        name_item.setData(
+            {"id": repre.representation_id, "is_group": False},
+            QtCore.Qt.ItemDataRole.UserRole,
+        )
+
+        folder_item = QtGui.QStandardItem(repre.folder_label)
+        folder_item.setEditable(False)
+
+        return [name_item, folder_item]
+
+    def _make_group_row(
+        self, name: str, sample_repre: RepreItem
+    ) -> QtGui.QStandardItem:
+        """Build the parent (group) item for a shared representation name.
+
+        The group item spans the Name column only; the Folder cell is
+        intentionally left empty.
+
+        Args:
+            name: The shared representation name used as the label.
+            sample_repre: Any child
+                :class:`~ayon_core.tools.browser.abstract.RepreItem`
+                from this group — used to copy the icon.
+
+        Returns:
+            A :class:`QtGui.QStandardItem` to use as the parent row.
+        """
+        group_item = QtGui.QStandardItem(name)
+        group_item.setEditable(False)
+        icon = get_qt_icon(sample_repre.representation_icon)
+        if icon is not None:
+            group_item.setIcon(icon)
+        group_item.setData({"is_group": True}, QtCore.Qt.ItemDataRole.UserRole)
+        return group_item
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def set_items(
+        self,
+        repre_items: list[RepreItem],
+        multi_version: bool = False,
+    ) -> None:
+        """Populate the table from a list of RepreItem.
+
+        When *multi_version* is ``True`` and at least one representation
+        name is shared across the provided items, the view switches to
+        tree mode.  Each shared name gets a collapsible parent row; its
+        individual representations appear as children below it.  Names
+        that appear only once remain as flat root rows.
+
+        When *multi_version* is ``False`` (or no duplicate names exist)
+        the view renders as a plain flat table.
+
+        Args:
+            repre_items: List of
+                :class:`~ayon_core.tools.browser.abstract.RepreItem`
+                objects to display.
+            multi_version: ``True`` when the items come from more than
+                one selected version.
+        """
+        self._model.removeRows(0, self._model.rowCount())
+        sort_column = self._table.header().sortIndicatorSection()
+
+        if not multi_version:
+            self._set_tree_mode(False)
+            for repre in repre_items:
+                self._model.appendRow(self._make_row(repre))
+            self._model.sort(sort_column, QtCore.Qt.SortOrder.AscendingOrder)
+            return
+
+        # Group representations by name to detect shared names.
+        groups: dict[str, list[RepreItem]] = defaultdict(list)
+        for repre in repre_items:
+            groups[repre.representation_name].append(repre)
+
+        has_groups = any(len(items) > 1 for items in groups.values())
+        self._set_tree_mode(has_groups)
+
+        for name, items in groups.items():
+            if len(items) == 1:
+                # Unique name — keep as a flat root row.
+                self._model.appendRow(self._make_row(items[0]))
+            else:
+                # Shared name — create a collapsible parent.
+                group_item = self._make_group_row(name, items[0])
+                for repre in items:
+                    group_item.appendRow(self._make_row(repre))
+                self._model.appendRow(group_item)
+
+        self._model.sort(sort_column, QtCore.Qt.SortOrder.AscendingOrder)

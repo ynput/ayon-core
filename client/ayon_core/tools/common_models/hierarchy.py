@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import contextlib
 from dataclasses import dataclass
+import threading
 import time
 from typing import Any, Generator
 
@@ -257,7 +258,9 @@ class HierarchyModel:
         self._entity_ids_by_assignee = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
-        self._folders_refreshing = set()
+        # Project name -> ident of thread refreshing its folders
+        self._folders_refreshing: dict[str, int] = {}
+        self._folders_refreshing_cond = threading.Condition()
         self._tasks_refreshing = set()
         self._controller = controller
 
@@ -610,7 +613,6 @@ class HierarchyModel:
     def _folder_refresh_event_manager(
         self, project_name: str, sender: str | None
     ) -> Generator[None, None, None]:
-        self._folders_refreshing.add(project_name)
         self._controller.emit_event(
             "folders.refresh.started",
             {"project_name": project_name, "sender": sender},
@@ -625,7 +627,6 @@ class HierarchyModel:
                 {"project_name": project_name, "sender": sender},
                 HIERARCHY_MODEL_SENDER
             )
-            self._folders_refreshing.remove(project_name)
 
     @contextlib.contextmanager
     def _task_refresh_event_manager(
@@ -659,12 +660,30 @@ class HierarchyModel:
     def _refresh_folders_cache(
         self, project_name: str, sender: str | None = None
     ) -> None:
-        if project_name in self._folders_refreshing:
-            return
+        thread_id = threading.get_ident()
+        cond = self._folders_refreshing_cond
+        with cond:
+            refreshing_thread = self._folders_refreshing.get(project_name)
+            # Re-entered from a refresh event callback in the same thread
+            if refreshing_thread == thread_id:
+                return
+            # Other thread is already querying, wait for its result
+            #   instead of returning not yet filled cache.
+            if refreshing_thread is not None:
+                cond.wait_for(
+                    lambda: project_name not in self._folders_refreshing
+                )
+                return
+            self._folders_refreshing[project_name] = thread_id
 
-        with self._folder_refresh_event_manager(project_name, sender):
-            folder_items = self._query_folders(project_name)
-            self._folders_items[project_name].update_data(folder_items)
+        try:
+            with self._folder_refresh_event_manager(project_name, sender):
+                folder_items = self._query_folders(project_name)
+                self._folders_items[project_name].update_data(folder_items)
+        finally:
+            with cond:
+                self._folders_refreshing.pop(project_name, None)
+                cond.notify_all()
 
     def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
         folders = ayon_api.get_rest_folders(project_name, include_attrib=False)

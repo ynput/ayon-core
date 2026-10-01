@@ -6,7 +6,6 @@ from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import (
     DeselectableTreeView,
     FoldersQtModel,
-    FOLDERS_MODEL_SENDER_NAME,
 )
 from ayon_core.tools.utils.folders_widget import (
     FoldersProxyModel,
@@ -205,9 +204,9 @@ class LoaderFoldersModel(FoldersQtModel):
                 changes[folder_id].append(folder_color)
 
         for folder_id, color_value in changes.items():
-            item = self._items_by_id.get(folder_id)
-            if item is not None:
-                item.setData(color_value, UNDERLINE_COLORS_ROLE)
+            fill_item = self._fill_data.items_by_id.get(folder_id)
+            if fill_item is not None:
+                fill_item.item.setData(color_value, UNDERLINE_COLORS_ROLE)
 
         self._colored_items = all_folder_ids
 
@@ -269,10 +268,6 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         controller.register_event_callback(
             "selection.project.changed",
             self._on_project_selection_change,
-        )
-        controller.register_event_callback(
-            "folders.refresh.finished",
-            self._on_folders_refresh_finished
         )
         controller.register_event_callback(
             "controller.refresh.finished",
@@ -338,10 +333,6 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
 
     def _clear(self):
         self._folders_model.clear()
-
-    def _on_folders_refresh_finished(self, event):
-        if event["sender"] != FOLDERS_MODEL_SENDER_NAME:
-            self._set_project_name(event["project_name"])
 
     def _on_controller_refresh(self):
         self._update_expected_selection()
