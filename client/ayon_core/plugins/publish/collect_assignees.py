@@ -46,6 +46,13 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         if not self.assignee_profiles:
             return
 
+        if not instance.data.get("taskEntity"):
+            self.log.warning(
+                "Instance '{}' has assignees but no task, skipping."
+                .format(instance.data.get("name") or instance.name)
+            )
+            return
+
         if instance.data.get("assignees"):
             # already set so we won't override it
             return
@@ -68,7 +75,8 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
 
         # 'IntegrateAssignees' writes these onto the task entity,
         # 'assignees' is a task level field in AYON.
-        instance.data["assignees"] = list(dict.fromkeys(assignees))
+        instance.data["assignees"] = list(assignees)
+        instance.data["replace_existing_assignees"] = self.replace_existing_assignees
 
     @classmethod
     def get_attr_defs_for_instance(

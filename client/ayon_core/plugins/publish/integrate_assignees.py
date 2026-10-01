@@ -18,9 +18,6 @@ class IntegrateAssignees(pyblish.api.ContextPlugin):
     order = pyblish.api.IntegratorOrder + 0.6
     label = "Integrate Assignees"
 
-    enabled = False
-    replace_existing_assignees: bool = False
-
     def process(self, context: pyblish.api.Context) -> None:
         project_name = context.data.get("projectName")
         if not project_name:
@@ -52,12 +49,9 @@ class IntegrateAssignees(pyblish.api.ContextPlugin):
                     task_entity.get("assignees") or []
                 )
 
-            if self.replace_existing_assignees:
-                merged = list(assignees)
-            else:
-                # Multiple instances can share one task, merge them all.
-                merged = list(pending.get(task_id, original[task_id]))
-                merged += list(assignees)
+            # Multiple instances can share one task, merge them all.
+            merged = list(pending.get(task_id, original[task_id]))
+            merged += list(assignees)
 
             # keep order, drop duplicates
             pending[task_id] = list(dict.fromkeys(merged))
