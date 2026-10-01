@@ -1,14 +1,31 @@
-import time
-import collections
+from __future__ import annotations
 
-InitInfo = collections.namedtuple(
-    "InitInfo",
-    ["default_factory", "lifetime"]
-)
+from dataclasses import dataclass
+import time
+from typing import Callable
 
 
 def _default_factory_func():
     return None
+
+
+@dataclass
+class InitInfo:
+    default_factory: Callable = _default_factory_func
+    lifetime: int = 120
+
+    @classmethod
+    def new(
+        cls,
+        default_factory: Callable | None = None,
+        lifetime: int | None = None
+    ) -> InitInfo:
+        kwargs = {}
+        if default_factory is not None:
+            kwargs["default_factory"] = default_factory
+        if lifetime is not None:
+            kwargs["lifetime"] = lifetime
+        return cls(**kwargs)
 
 
 class CacheItem:
@@ -25,14 +42,9 @@ class CacheItem:
 
     """
     def __init__(self, default_factory=None, lifetime=None):
-        if lifetime is None:
-            lifetime = 120
-        self._lifetime = lifetime
+        self._init_info = InitInfo.new(default_factory, lifetime)
         self._last_update = None
-        if default_factory is None:
-            default_factory = _default_factory_func
-        self._default_factory = default_factory
-        self._data = default_factory()
+        self._data = self._init_info.default_factory()
 
     @property
     def is_valid(self):
@@ -45,7 +57,10 @@ class CacheItem:
         if self._last_update is None:
             return False
 
-        return (time.time() - self._last_update) < self._lifetime
+        return (time.time() - self._last_update) < self._init_info.lifetime
+
+    def get_lifetime(self):
+        return self._init_info.lifetime
 
     def set_lifetime(self, lifetime):
         """Change lifetime of cache item.
@@ -54,7 +69,7 @@ class CacheItem:
             lifetime (int): Lifetime of the cache data in seconds.
         """
 
-        self._lifetime = lifetime
+        self._init_info.lifetime = lifetime
 
     def set_invalid(self):
         """Set cache as invalid."""
@@ -65,7 +80,7 @@ class CacheItem:
         """Set cache as invalid and reset data."""
 
         self._last_update = None
-        self._data = self._default_factory()
+        self._data = self._init_info.default_factory()
 
     def get_data(self):
         """Receive cached data.
@@ -122,7 +137,7 @@ class NestedCacheItem:
             raise ValueError("Nested levels must be greater than 0")
         self._data_by_key = {}
         if _init_info is None:
-            _init_info = InitInfo(default_factory, lifetime)
+            _init_info = InitInfo.new(default_factory, lifetime)
         self._init_info = _init_info
         self._levels = levels
 
