@@ -863,6 +863,12 @@ class BrowserTable(AYContainer):
 
     def _on_display_type_changed(self, display_type: str) -> None:
         log.debug("Display type changed: %s", display_type)
+        # The views query different fields, so the loaded rows may need a
+        # refetch.
+        if self._controller.set_display_type(display_type):
+            self._model.set_fetch_enabled(self._controller.has_selection)
+            self._reset_expansion_state()
+            self._model.reset_data()
         if display_type == "grid":
             self._views_stack.setCurrentWidget(self._card_view)
         else:
