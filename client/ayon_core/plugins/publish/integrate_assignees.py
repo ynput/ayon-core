@@ -82,6 +82,4 @@ class IntegrateAssignees(pyblish.api.ContextPlugin):
             )
             return
 
-        self.log.info(
-            "Updated assignees on {} task(s).".format(len(updates))
-        )
+        self.log.info(f"Updated assignees on {len(updates)} task(s).")
