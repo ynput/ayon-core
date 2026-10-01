@@ -268,6 +268,10 @@ class BrowserWidgetController(QtCore.QObject):
         self._folder_id_scope: set[str] | None = None
         self._task_id_scope: set[str] | None = None
         self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
+        self._display_type: str = BROWSER_VIEW_DEFAULTS.display_type
+        self._ungroup_empty_values: bool = (
+            BROWSER_VIEW_DEFAULTS.ungroup_empty_values
+        )
         self._requested_column_keys: set[str] | None = None
         # Project info by project name, '(fetch time, data)'
         self._project_info_cache: dict[str, tuple[float, dict]] = {}
@@ -315,6 +319,69 @@ class BrowserWidgetController(QtCore.QObject):
         if self._requested_column_keys == normalized:
             return False
         self._requested_column_keys = normalized
+        self._reset_pagination()
+        return True
+
+    @property
+    def display_type(self) -> str:
+        """Return the displayed view, ``"table"`` or ``"grid"``."""
+        return self._display_type
+
+    def set_display_type(self, display_type: str) -> bool:
+        """Set the displayed view.
+
+        Args:
+            display_type: ``"table"`` or ``"grid"``.
+
+        Returns:
+            Whether the loaded rows are outdated and must be fetched
+            again, because the grouping changed.
+        """
+        if display_type == self._display_type:
+            return False
+        ungrouped = self.ungroups_empty_values
+        self._display_type = display_type
+        if self.ungroups_empty_values == ungrouped:
+            return False
+        self._reset_pagination()
+        return True
+
+    @property
+    def ungroup_empty_values(self) -> bool:
+        """Return whether versions without a group value stay ungrouped.
+
+        This is the user setting, see :attr:`ungroups_empty_values` for
+        whether it currently applies.
+        """
+        return self._ungroup_empty_values
+
+    @property
+    def ungroups_empty_values(self) -> bool:
+        """Return whether versions without a group value are ungrouped.
+
+        They are only ungrouped in the table, the grid shows every row at
+        the root as a group, so there they get a group of their own.
+        """
+        return self._ungroup_empty_values and self._display_type == "table"
+
+    def set_ungroup_empty_values(self, enabled: bool) -> bool:
+        """Set whether versions without a group value stay ungrouped.
+
+        Args:
+            enabled: List them below the groups instead of in a group of
+                their own.
+
+        Returns:
+            Whether the loaded rows are outdated and must be fetched
+            again.
+        """
+        enabled = bool(enabled)
+        if enabled == self._ungroup_empty_values:
+            return False
+        ungrouped = self.ungroups_empty_values
+        self._ungroup_empty_values = enabled
+        if self.ungroups_empty_values == ungrouped:
+            return False
         self._reset_pagination()
         return True
 
@@ -1440,8 +1507,10 @@ class BrowserWidgetController(QtCore.QObject):
             if parent_id is None:
                 # Group headers are computed in one shot on page 0, later
                 # pages only continue the ungrouped versions.
-                ungrouped_filters = self._build_ungrouped_filter(
-                    self.group_by
+                ungrouped_filters = (
+                    self._build_ungrouped_filter(self.group_by)
+                    if self.ungroups_empty_values
+                    else None
                 )
                 cached_counts = self._group_counts_cache.get(
                     (self._pagination_generation, self.group_by_key)
@@ -1491,7 +1560,18 @@ class BrowserWidgetController(QtCore.QObject):
                 version_filter = ""
                 product_filter = ""
 
-                if group_key == GROUP_BY_PRODUCT_KEY:
+                if group_value is None:
+                    # The group of versions without a value.
+                    group_option = self._group_by_options.get(group_key)
+                    empty_filters = (
+                        self._build_ungrouped_filter(group_option)
+                        if group_option is not None
+                        else None
+                    )
+                    if empty_filters is None:
+                        return []
+                    version_filter, product_filter = empty_filters
+                elif group_key == GROUP_BY_PRODUCT_KEY:
                     product_ids = [group_value]
                 else:
                     version_filter, product_filter = (
@@ -2154,6 +2234,11 @@ class BrowserWidgetController(QtCore.QObject):
             rows = self._fetch_attribute_group_headers(
                 self.group_by,
                 group_counts,
+                num_ungrouped=(
+                    filtered_counts.ungrouped
+                    if filtered_counts is not None
+                    else None
+                ),
             )
         else:
             self.log.warning("Unknown group-by key: %s", self.group_by_key)
@@ -2447,21 +2532,26 @@ class BrowserWidgetController(QtCore.QObject):
         group_option: GroupByOption,
         group_counts: dict[str, int] | None,
         values: list[str] | None = None,
+        num_ungrouped: int | None = None,
     ) -> list[dict[str, Any]]:
         """Return attribute rows with filter-aware version counts.
+
+        Versions without a value are listed ungrouped at the root (see
+        '_build_ungrouped_filter') or, when they should not be, get a
+        group of their own after the value groups.
 
         Args:
             group_option: Attribute group-by axis.
             group_counts: Filter-aware version counts per value, or
                 ``None`` when unknown.
             values: Group values to use when *group_counts* is ``None``.
+            num_ungrouped: Number of versions without a value, or
+                ``None`` when unknown.
         """
         attr_name = group_option.attribute_name
         if not attr_name:
             return []
 
-        # Versions without a value are listed ungrouped at the root, see
-        # '_build_ungrouped_filter'.
         values = sorted(
             (value for value in group_counts or values or () if value),
             key=str.casefold,
@@ -2470,7 +2560,7 @@ class BrowserWidgetController(QtCore.QObject):
             values = [
                 value for value in values if group_counts.get(value, 0) > 0
             ]
-        return [
+        rows = [
             self._build_group_header_row(
                 group_option,
                 value,
@@ -2482,6 +2572,20 @@ class BrowserWidgetController(QtCore.QObject):
             )
             for value in values
         ]
+        if not self.ungroups_empty_values and not (
+            self._hide_empty_groups and num_ungrouped == 0
+        ):
+            row = self._build_group_header_row(
+                group_option,
+                "",
+                icon="label_off",
+                label=f"No {group_option.label}",
+                num_versions=num_ungrouped,
+            )
+            # No value part, see '_parse_group_id'.
+            row["id"] = f"grp:{group_option.key}"
+            rows.append(row)
+        return rows
 
     def _get_products_page(
         self,
@@ -2716,23 +2820,28 @@ class BrowserWidgetController(QtCore.QObject):
         return rows
 
     @staticmethod
-    def _parse_group_id(group_id: str) -> tuple[str, str]:
+    def _parse_group_id(group_id: str) -> tuple[str, str | None]:
         """Parse a group header id into (group_type, group_value).
 
         Attribute group keys hold a colon themselves (``"attr:<name>"``
         or ``"product_attr:<name>"``), so their ids are
-        ``"grp:attr:<name>:<value>"``.
+        ``"grp:attr:<name>:<value>"``. The group of versions without a
+        value has no value part at all, ``"grp:attr:<name>"``, so it can
+        not collide with a value (not even an empty string).
 
         Args:
             group_id: String in the form ``"grp:<type>:<value>"``.
 
         Returns:
-            Tuple of ``(group_type, group_value)``.
+            Tuple of ``(group_type, group_value)``. The value is ``None``
+            for the group of versions without a value.
         """
         _, group_type, group_value = group_id.split(":", 2)
         if group_type in ATTRIBUTE_GROUP_PREFIXES.values():
-            attribute_name, group_value = group_value.split(":", 1)
+            attribute_name, sep, group_value = group_value.partition(":")
             group_type = f"{group_type}:{attribute_name}"
+            if not sep:
+                return group_type, None
         return group_type, group_value
 
     def _build_version_filter(
@@ -3155,8 +3264,7 @@ class BrowserWidgetController(QtCore.QObject):
             options.extend(build_attribute_groups(
                 product_attributes,
                 scope="product",
-                label_suffix=" (Product)",
-                suffixed_names=set(self._version_attributes),
+                menu_prefix="Product",
             ))
         self._group_by_options = {option.key: option for option in options}
         if self._group_by_key not in self._group_by_options:

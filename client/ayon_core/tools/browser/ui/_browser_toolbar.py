@@ -374,6 +374,7 @@ class Customize(AYButtonMenu):
     """Customize button that controls card size, empty groups, etc."""
 
     show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
+    ungroup_empty_values_changed = QtCore.Signal(bool)  # type: ignore
     card_size_changed = QtCore.Signal(int)  # type: ignore
     card_size_committed = QtCore.Signal(int)  # type: ignore
     row_height_changed = QtCore.Signal(int)  # type: ignore
@@ -395,6 +396,14 @@ class Customize(AYButtonMenu):
     _ROW_HEIGHT_MIN = 24
     _ROW_HEIGHT_MAX = 160
 
+    _CARD_SIZE_TOOLTIP = "Adjust card size in the cards view"
+    _ROW_HEIGHT_TOOLTIP = "Adjust row height in the table view"
+    _UNGROUP_EMPTY_VALUES_TOOLTIP = (
+        "When grouping, list versions that have nothing filled in for the"
+        " grouped field below the groups, instead of in a group of their"
+        " own."
+    )
+
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
@@ -402,11 +411,15 @@ class Customize(AYButtonMenu):
         initial_card_width: int,
         initial_row_height: int,
         initial_show_empty_groups: bool,
+        initial_ungroup_empty_values: bool,
+        initial_display_type: str,
         initial_featured_version_order: tuple[str, ...],
         initial_latest_per_folder: bool,
         initial_include_children: bool,
     ) -> None:
         self._show_empty_groups = bool(initial_show_empty_groups)
+        self._ungroup_empty_values = bool(initial_ungroup_empty_values)
+        self._display_type = initial_display_type
         self._latest_per_folder = bool(initial_latest_per_folder)
         self._include_children = bool(initial_include_children)
         self._featured_version_order = tuple(
@@ -471,6 +484,7 @@ class Customize(AYButtonMenu):
             maximum=self._CARD_WIDTH_MAX,
             step=10,
         )
+        self.card_size_slider.setToolTip(self._CARD_SIZE_TOOLTIP)
         layout.addWidget(self.card_size_slider, stretch=1)
         self.card_size_slider.value_changed.connect(self.card_size_changed)
         self.card_size_slider.value_committed.connect(
@@ -485,9 +499,7 @@ class Customize(AYButtonMenu):
             maximum=self._ROW_HEIGHT_MAX,
             step=2,
         )
-        self.row_height_slider.setToolTip(
-            "Adjust row height in the table view"
-        )
+        self.row_height_slider.setToolTip(self._ROW_HEIGHT_TOOLTIP)
         layout.addWidget(self.row_height_slider, stretch=1)
         self.row_height_slider.value_changed.connect(
             self.row_height_changed
@@ -508,6 +520,22 @@ class Customize(AYButtonMenu):
         )
         layout.addWidget(self.show_empty_grps_ui, stretch=0)
         self.show_empty_grps_ui.toggled.connect(self.show_empty_groups_changed)
+
+        self.ungroup_empty_values_ui = AYCheckBox(
+            "Leave blank values ungrouped",
+            checked=self._ungroup_empty_values,
+            variant=AYCheckBox.Variants.Menu,
+            parent=self,
+        )
+        self.ungroup_empty_values_ui.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        layout.addWidget(self.ungroup_empty_values_ui, stretch=0)
+        self.ungroup_empty_values_ui.toggled.connect(
+            self.ungroup_empty_values_changed
+        )
+        self._update_display_type_widgets()
 
         self.latest_per_folder_ui = AYCheckBox(
             "Latest per folder",
@@ -632,6 +660,55 @@ class Customize(AYButtonMenu):
             return
         with QSignalBlocker(self.show_empty_grps_ui):
             self.show_empty_grps_ui.setChecked(enabled)
+
+    def set_ungroup_empty_values(self, enabled: bool) -> None:
+        """Update checkbox state without re-emitting change signal."""
+        self._ungroup_empty_values = bool(enabled)
+        if not hasattr(self, "ungroup_empty_values_ui"):
+            return
+        with QSignalBlocker(self.ungroup_empty_values_ui):
+            self.ungroup_empty_values_ui.setChecked(
+                self._ungroup_empty_values
+            )
+
+    def set_display_type(self, display_type: str) -> None:
+        """Enable only the settings that apply to the displayed view.
+
+        Args:
+            display_type: ``"table"`` or ``"grid"``.
+        """
+        self._display_type = display_type
+        self._update_display_type_widgets()
+
+    def _update_display_type_widgets(self) -> None:
+        if not hasattr(self, "ungroup_empty_values_ui"):
+            return
+        is_table = self._display_type != "grid"
+        for widget, enabled, tooltip, disabled_tooltip in (
+            (
+                self.card_size_slider,
+                not is_table,
+                self._CARD_SIZE_TOOLTIP,
+                "Only applies to the cards view",
+            ),
+            (
+                self.row_height_slider,
+                is_table,
+                self._ROW_HEIGHT_TOOLTIP,
+                "Only applies to the table view",
+            ),
+            (
+                self.ungroup_empty_values_ui,
+                is_table,
+                self._UNGROUP_EMPTY_VALUES_TOOLTIP,
+                (
+                    "Only applies to the table view. The cards view"
+                    " always shows them in a group of their own."
+                ),
+            ),
+        ):
+            widget.setEnabled(enabled)
+            widget.setToolTip(tooltip if enabled else disabled_tooltip)
 
     def set_card_width(self, width: int) -> None:
         """Update slider value without re-emitting change signal."""
@@ -838,14 +915,16 @@ class GroupByMenu(AYFilter):
 
         for option in self._options_by_key.values():
             wdgt_name = f"grp_by_{option.key.replace(':', '_')}"
-            w = AYButton(option.label, icon=option.icon, **kw)
+            # The selected value shows the short 'label'.
+            menu_label = option.menu_label or option.label
+            w = AYButton(menu_label, icon=option.icon, **kw)
             w.setProperty("group_by_key", option.key)
             setattr(self, wdgt_name, w)
             if self._filters[option.key].selected:
                 w.setChecked(True)
             self._filterable_list.add_item(
                 w,
-                match_fn=lambda text, n=option.label: (
+                match_fn=lambda text, n=menu_label: (
                     not text.lower().strip()
                     or text.lower().strip() in n.lower()
                 ),
