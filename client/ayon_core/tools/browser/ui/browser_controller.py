@@ -3258,13 +3258,16 @@ class BrowserWidgetController(QtCore.QObject):
         old_options = self._group_by_options.copy()
         options = list(BUILTIN_GROUPS)
         if self._version_attributes:
-            options.extend(build_attribute_groups(self._version_attributes))
+            options.extend(build_attribute_groups(
+                self._version_attributes,
+                menu_group="Version",
+            ))
         product_attributes = self._attributes_by_scope.get("product")
         if product_attributes:
             options.extend(build_attribute_groups(
                 product_attributes,
                 scope="product",
-                menu_prefix="Product",
+                menu_group="Product",
             ))
         self._group_by_options = {option.key: option for option in options}
         if self._group_by_key not in self._group_by_options:

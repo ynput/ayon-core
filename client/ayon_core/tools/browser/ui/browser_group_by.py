@@ -91,9 +91,9 @@ class GroupByOption:
     attribute_name: str | None = None
     # Entity type the attribute lives on, ``"version"`` or ``"product"``.
     attribute_scope: str = "version"
-    # Label in the Group By dropdown, when it differs from 'label' (which
-    # shows as the selected value).
-    menu_label: str | None = None
+    # Submenu of the Group By menu the option is listed in, e.g.
+    # ``"Version"``. Options without one are listed at the top level.
+    menu_group: str | None = None
 
 
 # Keys for the built-in group-by options.
@@ -145,7 +145,7 @@ def parse_attribute_group_key(key: str) -> tuple[str, str] | None:
 def build_attribute_groups(
     attributes: dict[str, dict[str, Any]],
     scope: str = "version",
-    menu_prefix: str = "",
+    menu_group: str | None = None,
 ) -> list[GroupByOption]:
     """Build attribute-based group-by options from project attributes.
 
@@ -154,8 +154,8 @@ def build_attribute_groups(
             dict (as returned by ``ayon_api.get_attributes_for_type``).
         scope: Entity type the attributes belong to, ``"version"`` or
             ``"product"``.
-        menu_prefix: Prefix of the labels in the Group By dropdown, e.g.
-            ``"Product"`` for ``"Product > Product Group"``.
+        menu_group: Submenu of the Group By menu to list the options
+            in, e.g. ``"Product"``.
 
     Returns:
         List of :class:`GroupByOption` instances, one per attribute.
@@ -172,10 +172,9 @@ def build_attribute_groups(
     for attr_name, attr_def in attributes.items():
         if attr_def.get("type") not in supported_types:
             continue
-        label = attr_def.get("title") or attr_name
         options.append(GroupByOption(
             key=f"{prefix}:{attr_name}",
-            label=label,
+            label=attr_def.get("title") or attr_name,
             icon=get_attribute_icon(
                 attr_name,
                 attr_def.get("type"),
@@ -184,6 +183,6 @@ def build_attribute_groups(
             source=GroupBySource.ATTRIBUTE,
             attribute_name=attr_name,
             attribute_scope=scope,
-            menu_label=f"{menu_prefix} > {label}" if menu_prefix else None,
+            menu_group=menu_group,
         ))
     return options
