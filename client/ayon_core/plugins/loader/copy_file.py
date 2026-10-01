@@ -18,9 +18,9 @@ class CopyFileActionPlugin(LoaderActionPlugin):
     identifier = "core.copy-action"
 
     def apply_settings(self, settings):
-        loader_settings = settings.get(
-            self.host_name, {}
-        ).get("load", {})
+        loader_settings = settings.get("core", {}).get(
+            "tools", {}
+        ).get("loader", {})
 
         self.enabled = loader_settings.get(
             "enable_copy_file_action",

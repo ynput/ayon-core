@@ -320,6 +320,14 @@ class LoaderToolModel(BaseSettingsModel):
         title="Use legacy loader",
         description="Use legacy loader UI.",
     )
+    enable_copy_file_action: bool = SettingsField(
+        True,
+        title="Enable copy file action",
+        description=(
+            "Show the action for copying a published file to the clipboard"
+            " in the loader."
+        ),
+    )
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
     )
@@ -681,6 +689,7 @@ DEFAULT_TOOLS_VALUES = {
     },
     "loader": {
         "use_legacy_loader": False,
+        "enable_copy_file_action": True,
         "product_type_filter_profiles": []
     },
     "publish": {
