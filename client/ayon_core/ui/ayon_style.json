@@ -386,7 +386,8 @@
         },
         "QCheckBox": {
             "states": [
-                "checked"
+                "checked",
+                "disabled"
             ],
             "default-variant": "default",
             "variants": {
@@ -401,6 +402,9 @@
                     "checked": {
                         "indicator-color": "--md-sys-color-on-primary-dark",
                         "indicator-background-color": "--md-sys-color-primary-dark"
+                    },
+                    "disabled": {
+                        "opacity": 0.5
                     }
                 },
                 "secondary": {
