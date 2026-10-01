@@ -25,7 +25,7 @@ wheels = [
 
 [[package]]
 name = "ayon-core"
-version = "1.9.7+dev"
+version = "1.9.14+dev"
 source = { virtual = "." }
 dependencies = [
     { name = "arrow" },
@@ -42,6 +42,7 @@ dependencies = [
     { name = "pre-commit" },
     { name = "pyblish-base" },
     { name = "pyside6" },
+    { name = "qtawesome" },
     { name = "qtpy" },
     { name = "ruff" },
     { name = "semver" },
@@ -84,6 +85,7 @@ requires-dist = [
     { name = "pytest-qt", marker = "extra == 'test'" },
     { name = "pytest-regressions", extras = ["image"], marker = "extra == 'test'" },
     { name = "pytest-timeout", marker = "extra == 'test'" },
+    { name = "qtawesome", specifier = "==0.7.3" },
     { name = "qtpy", specifier = ">=2.4.3" },
     { name = "ruff", specifier = ">=0.11.7" },
     { name = "semver", specifier = ">=3.0.2" },
@@ -612,6 +614,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f2/6a/b627b4e0c1dd03718543519ffb2f1deea4a1e6d42fbab8021936a4d22589/pyyaml-6.0.3-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:37503bfbfc9d2c40b344d06b2199cf0e96e97957ab1c1b546fd4f87e53e5d3e4", size = 794986, upload-time = "2025-09-25T21:32:07.367Z" },
     { url = "https://files.pythonhosted.org/packages/45/91/47a6e1c42d9ee337c4839208f30d9f09caa9f720ec7582917b264defc875/pyyaml-6.0.3-cp311-cp311-win32.whl", hash = "sha256:8098f252adfa6c80ab48096053f512f2321f0b998f98150cea9bd23d83e1467b", size = 142543, upload-time = "2025-09-25T21:32:08.95Z" },
     { url = "https://files.pythonhosted.org/packages/da/e3/ea007450a105ae919a72393cb06f122f288ef60bba2dc64b26e2646fa315/pyyaml-6.0.3-cp311-cp311-win_amd64.whl", hash = "sha256:9f3bfb4965eb874431221a3ff3fdcddc7e74e3b07799e0e84ca4a0f867d449bf", size = 158763, upload-time = "2025-09-25T21:32:09.96Z" },
+]
+
+[[package]]
+name = "qtawesome"
+version = "0.7.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "qtpy" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6c/ae/5b347693c657b4eb550ef74373bd93c4f3f0ff2dd779e35dd795ab4e9d61/QtAwesome-0.7.3.tar.gz", hash = "sha256:b98b9038d19190e83ab26d91c4d8fc3a36591ee2bc7f5016d4438b8240d097bd", size = 847355, upload-time = "2020-09-21T20:31:07.246Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/78/bf4bd25aedee11851337f0b74b8e60426c05c644bb02b888626e07fda213/QtAwesome-0.7.3-py2.py3-none-any.whl", hash = "sha256:ddf4530b4af71cec13b24b88a4cdb56ec85b1e44c43c42d0698804c7137b09b0", size = 832106, upload-time = "2020-09-21T20:30:57.334Z" },
 ]
 
 [[package]]
