@@ -156,10 +156,14 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
     Widget can't handle multiselection values.
     """
 
+    # Type 'object' may not work with older PySide versions
+    value_changed = QtCore.Signal(object, str)
+
     def __init__(self, attr_defs=None, parent=None):
         super().__init__(parent)
 
         self._widgets_by_id = {}
+        self._widgets_by_key = {}
         self._labels_by_id = {}
         self._current_keys = set()
 
@@ -168,6 +172,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
     def clear_attr_defs(self):
         """Remove all existing widgets and reset layout if needed."""
         self._widgets_by_id = {}
+        self._widgets_by_key = {}
         self._labels_by_id = {}
         self._current_keys = set()
 
@@ -211,6 +216,8 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                 self._current_keys.add(attr_def.key)
             widget = create_widget_for_attr_def(attr_def, self)
             self._widgets_by_id[attr_def.id] = widget
+            if attr_def.is_value_def:
+                self._widgets_by_key[attr_def.key] = widget
 
             if not attr_def.visible:
                 continue
@@ -283,13 +290,32 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         if widget is not None:
             widget.set_value(widget.attr_def.default)
 
+    def set_completions(self, completions_by_key):
+        """Set completion suggestions of text inputs.
+
+        Suggestions are only hints for the user, they don't limit what can
+        be filled in. Keys that don't have a matching widget are ignored.
+
+        Args:
+            completions_by_key (dict[str, list[str]]): Completion values by
+                attribute definition key.
+
+        """
+        for key, completions in completions_by_key.items():
+            widget = self._widgets_by_key.get(key)
+            if widget is not None:
+                widget.set_completions(completions)
+
     def _on_value_change(self, value, attr_id):
         widget = self._widgets_by_id.get(attr_id)
         if widget is None:
             return
+
         label = self._labels_by_id.get(attr_id)
         if label is not None:
             label.set_overridden(value != widget.attr_def.default)
+
+        self.value_changed.emit(value, attr_id)
 
 
 class BaseAttrDefWidget(QtWidgets.QWidget):
@@ -344,6 +370,18 @@ class BaseAttrDefWidget(QtWidgets.QWidget):
                 self.__class__.__name__
             )
         )
+
+    def set_completions(self, completions):
+        """Change completion suggestions of the input.
+
+        Only implemented by widgets with free text input, other widgets
+        ignore the call.
+
+        Args:
+            completions (Optional[list[str]]): Suggested values.
+
+        """
+        pass
 
 
 class SeparatorAttrWidget(BaseAttrDefWidget):
@@ -541,6 +579,9 @@ class TextAttrWidget(BaseAttrDefWidget):
         # TODO Solve how to handle regex
         # self.attr_def.regex
 
+        self._completer = None
+        self._completer_model = None
+
         self.multiline = self.attr_def.multiline
         if self.multiline:
             input_widget = PlaceholderPlainTextEdit(self)
@@ -570,6 +611,35 @@ class TextAttrWidget(BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+        self.set_completions(self.attr_def.completions)
+
+    def set_completions(self, completions):
+        # Completer can be attached only to single line inputs
+        if self.multiline:
+            return
+
+        if not completions:
+            if self._completer is not None:
+                self._input_widget.setCompleter(None)
+                self._completer = None
+                self._completer_model = None
+            return
+
+        if self._completer is None:
+            model = QtCore.QStringListModel(self)
+            completer = QtWidgets.QCompleter(model, self)
+            completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+            completer.setFilterMode(QtCore.Qt.MatchContains)
+            completer.setCompletionMode(
+                QtWidgets.QCompleter.PopupCompletion
+            )
+            self._completer_model = model
+            self._completer = completer
+            self._input_widget.setCompleter(completer)
+
+        if self._completer_model.stringList() != list(completions):
+            self._completer_model.setStringList(list(completions))
 
     def _input_widget_context_event(self, event):
         menu = self._input_widget.createStandardContextMenu()
