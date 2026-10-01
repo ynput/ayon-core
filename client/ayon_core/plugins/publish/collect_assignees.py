@@ -42,6 +42,9 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     enabled = False
     assignee_profiles: list[dict] = []
 
+    # Cache of project user items by project name
+    _user_items_cache: dict[str, list[dict]] = {}
+
     def process(self, instance: pyblish.api.Instance) -> None:
         if not self.assignee_profiles:
             return
@@ -76,7 +79,6 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         # 'IntegrateAssignees' writes these onto the task entity,
         # 'assignees' is a task level field in AYON.
         instance.data["assignees"] = list(assignees)
-        instance.data["replace_existing_assignees"] = self.replace_existing_assignees
 
     @classmethod
     def get_attr_defs_for_instance(
@@ -87,24 +89,14 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         )
         output = [assignees_state_attr]
         if not cls.assignee_profiles:
-            cls._set_instance_state(instance, assignees_state_attr, "dont_use")
+            cls._set_instance_state(instance, "dont_use")
             return output
 
         project_name = create_context.get_current_project_name()
-        users = ayon_api.get_users(project_name=project_name)
-        assignees_items = []
-        for user in users:
-            user_name = user["name"]
-            assignees_items.append({
-                "value": user_name,
-                "label": (
-                    user.get("attrib", {}).get("fullName") or user_name
-                ),
-                "icon": AYONUrlIcon(f"users/{user_name}/avatar"),
-            })
+        assignees_items = cls._get_user_items(project_name)
         if not assignees_items:
             cls.log.warning("No project users found to assign.")
-            cls._set_instance_state(instance, assignees_state_attr, "dont_use")
+            cls._set_instance_state(instance, "dont_use")
             return output
 
         folder_path = instance.get("folderPath")
@@ -153,17 +145,14 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         if not artist_can_change:
             cls._set_instance_state(
                 instance,
-                assignees_state_attr,
-                f"assignees|{','.join(default_assignees)}",
+                f"assignees|{','.join(default_assignees)}"
             )
             cls.log.debug(
                 "Artist cannot change assignees based on profile settings."
             )
             return output
 
-        cls._set_instance_state(
-            instance, assignees_state_attr, "use_assignees"
-        )
+        cls._set_instance_state(instance, "use_assignees")
 
         output.append(EnumDef(
             "assignees",
@@ -175,13 +164,38 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
         return output
 
     @classmethod
+    def _get_user_items(cls, project_name: str) -> list[dict]:
+        """Return items for users available in a project.
+
+        The result is cached by project name, users are queried once
+        per publish session.
+
+        Args:
+            project_name (str): Name of the project.
+
+        Returns:
+            list[dict]: Enum items for the project users.
+        """
+        if project_name not in cls._user_items_cache:
+            items: list[dict] = []
+            for user in ayon_api.get_users(project_name=project_name):
+                user_name = user["name"]
+                items.append({
+                    "value": user_name,
+                    "label": (
+                        user.get("attrib", {}).get("fullName") or user_name
+                    ),
+                    "icon": AYONUrlIcon(f"users/{user_name}/avatar"),
+                })
+            cls._user_items_cache[project_name] = items
+        return cls._user_items_cache[project_name]
+
+    @classmethod
     def _set_instance_state(
         cls,
         instance: "CreatedInstance",
-        assignees_state_attr: "TextDef",
         state: str
     ) -> None:
-        assignees_state_attr.default = state
         plugin_attributes = instance.publish_attributes.get(cls.__name__)
         if plugin_attributes is None:
             return
