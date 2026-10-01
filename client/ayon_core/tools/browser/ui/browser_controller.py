@@ -11,6 +11,8 @@ import re
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 import arrow
@@ -44,6 +46,7 @@ from ayon_core.tools.browser.sitesync_columns import (
 )
 from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 from ayon_core.tools.browser.ui.browser_group_by import (
+    ATTRIBUTE_GROUP_PREFIXES,
     BUILTIN_GROUPS,
     GROUP_BY_NONE_KEY,
     GROUP_BY_PRODUCT_KEY,
@@ -54,6 +57,7 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     GroupByOption,
     GroupBySource,
     build_attribute_groups,
+    parse_attribute_group_key,
 )
 from ayon_core.tools.browser.ui.browser_queries import (
     EMPTY_ROW,
@@ -72,6 +76,23 @@ log = Logger.get_logger(__name__)
 # Each page contains up to 1 000 products, so this caps the total at
 # 50 000 products before a warning is logged.
 _MAX_GROUP_PAGES: int = 50
+
+
+@dataclass
+class _GroupCounts:
+    """Filter-aware version counts of a group-by axis.
+
+    Attributes:
+        counts: Number of versions per group value.
+        total: Number of versions matching the filters, including those
+            without a group value, or ``None`` when unknown.
+        ungrouped: Number of versions matching the filters without a
+            group value, or ``None`` when unknown.
+    """
+
+    counts: dict[str, int]
+    total: int | None = None
+    ungrouped: int | None = None
 
 
 def _collect_product_base_types(
@@ -214,6 +235,10 @@ class BrowserWidgetController(QtCore.QObject):
         # Cursor of every page that can be fetched next, keyed by
         # ``_page_key()`` + page number.
         self._page_cursors: dict[tuple[Any, ...], str] = {}
+        # Filter-aware group counts, keyed by pagination generation and
+        # group-by key. Sorting does not change them, anything that does
+        # (filters, selection, refresh) starts a new generation.
+        self._group_counts_cache: dict[tuple[int, str], _GroupCounts] = {}
         self._pagination_generation: int = 0
         self._tree_mode = (
             BROWSER_VIEW_DEFAULTS.group_by_key != GROUP_BY_NONE_KEY
@@ -1266,6 +1291,63 @@ class BrowserWidgetController(QtCore.QObject):
             return
         self._page_cursors[(*page_key, page_number + 1)] = next_cursor
 
+    def _fetch_filtered_versions_page(
+        self,
+        query_filters: dict[str, Any],
+        page_key: tuple[Any, ...],
+        page_number: int,
+        page_size: int,
+        cursor: str,
+        sort_by: str | None,
+        descending: bool,
+        version_filter: str,
+        product_filter: str,
+        product_ids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fetch a page of version rows narrowed down by a group-by.
+
+        Args:
+            query_filters: Result of :meth:`_get_query_filters`.
+            page_key: Key from :meth:`_page_key`.
+            page_number: Zero-based page index.
+            page_size: Number of rows per page.
+            cursor: Cursor the page is requested with.
+            sort_by: GraphQL ``sortBy`` value, or ``None``.
+            descending: Whether to sort in descending order.
+            version_filter: Version filter merged into the active one.
+            product_filter: Product filter merged into the active one.
+            product_ids: Limit the versions to these products.
+
+        Returns:
+            List of version row dicts.
+        """
+        edges, page_info = self._get_versions_page(
+            self._current_project,
+            None,
+            page_size,
+            cursor=cursor,
+            sort_by=sort_by,
+            descending=descending,
+            version_ids=None,
+            include_folder_children=self._include_folder_children,
+            folder_ids=self._selected_folder_ids or None,
+            product_ids=product_ids,
+            **self._version_query_kwargs(
+                query_filters,
+                self._merge_query_filters(
+                    query_filters["version_filter"], version_filter
+                ),
+                self._merge_query_filters(
+                    query_filters["product_filter"], product_filter
+                ),
+            ),
+        )
+        rows = [self._transform_version_edge(e) for e in edges]
+        self._store_next_page_cursor(
+            page_key, page_number, cursor, page_info, descending
+        )
+        return rows
+
     def fetch_versions_page(
         self,
         page_number: int,
@@ -1353,12 +1435,53 @@ class BrowserWidgetController(QtCore.QObject):
             self._current_category == BrowserSlicerCategory.HIERARCHY.value
             and self.group_by_key != GROUP_BY_NONE_KEY
         ):
-            # Root level: return group header rows.
+            # Root level: group header rows, followed by the versions that
+            # have no value to be grouped by.
             if parent_id is None:
-                # Group headers are computed in one shot; only page 0 is valid.
+                # Group headers are computed in one shot on page 0, later
+                # pages only continue the ungrouped versions.
+                ungrouped_filters = self._build_ungrouped_filter(
+                    self.group_by
+                )
+                cached_counts = self._group_counts_cache.get(
+                    (self._pagination_generation, self.group_by_key)
+                )
+                if (
+                    ungrouped_filters is None
+                    or cursor is None
+                    # Counts of the current filters are known already
+                    # (e.g. on a re-sort) and nothing is ungrouped.
+                    or (
+                        cached_counts is not None
+                        and cached_counts.ungrouped == 0
+                    )
+                ):
+                    if page_number > 0:
+                        return []
+                    return self._fetch_group_headers(sort_by, descending)
+
+                version_filter, product_filter = ungrouped_filters
+                fetch_ungrouped = partial(
+                    self._fetch_filtered_versions_page,
+                    query_filters,
+                    page_key,
+                    page_number,
+                    page_size,
+                    cursor,
+                    sort_by,
+                    descending,
+                    version_filter,
+                    product_filter,
+                )
                 if page_number > 0:
-                    return []
-                return self._fetch_group_headers(sort_by, descending)
+                    return fetch_ungrouped()
+
+                # Fetch the ungrouped versions while the group headers
+                # are being built.
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    ungrouped_future = executor.submit(fetch_ungrouped)
+                    rows = self._fetch_group_headers(sort_by, descending)
+                    return rows + ungrouped_future.result()
 
             # Expanding a group header: fetch filtered versions.
             if parent_id.startswith("grp:"):
@@ -1374,40 +1497,21 @@ class BrowserWidgetController(QtCore.QObject):
                     version_filter, product_filter = (
                         self._build_version_filter(group_key, group_value)
                     )
-                version_filter = self._merge_query_filters(
-                    query_filters["version_filter"], version_filter
-                )
-                product_filter = self._merge_query_filters(
-                    query_filters["product_filter"], product_filter
-                )
 
                 if cursor is None:
                     return []
-                folder_ids = self._selected_folder_ids or None
-
-                edges, page_info = self._get_versions_page(
-                    self._current_project,
-                    None,
+                return self._fetch_filtered_versions_page(
+                    query_filters,
+                    page_key,
+                    page_number,
                     page_size,
-                    cursor=cursor,
-                    sort_by=sort_by,
-                    descending=descending,
-                    version_ids=None,
-                    include_folder_children=self._include_folder_children,
-                    folder_ids=folder_ids,
+                    cursor,
+                    sort_by,
+                    descending,
+                    version_filter,
+                    product_filter,
                     product_ids=product_ids,
-                    **self._version_query_kwargs(
-                        query_filters, version_filter, product_filter
-                    ),
                 )
-                rows = [
-                    self._transform_version_edge(e)
-                    for e in edges
-                ]
-                self._store_next_page_cursor(
-                    page_key, page_number, cursor, page_info, descending
-                )
-                return rows
 
         # -- Default hierarchy / flat mode --------------------------------
 
@@ -1769,6 +1873,7 @@ class BrowserWidgetController(QtCore.QObject):
         """
         self._pagination_generation += 1
         self._page_cursors = {}
+        self._group_counts_cache = {}
 
     def _fetch_root_folders(
         self, selected_folder_ids: list[str] | None = None
@@ -1996,15 +2101,28 @@ class BrowserWidgetController(QtCore.QObject):
             List of expandable group-header rows.
         """
         inventory_counts = self._get_group_inventory_counts(self.group_by)
-        filtered_counts = self._get_group_counts(self.group_by)
+        filtered_counts = self._get_cached_group_counts(self.group_by)
+        total: int | None = None
         if filtered_counts is None:
             group_counts = inventory_counts or None
+            if (
+                group_counts
+                and self.group_by.source == GroupBySource.ATTRIBUTE
+                and self.group_by.attribute_scope != "version"
+            ):
+                # Grouping metadata of a product attribute counts
+                # products, not versions. Keep the values but leave the
+                # version counts unknown.
+                return self._fetch_attribute_group_headers(
+                    self.group_by, None, values=list(group_counts)
+                )
         else:
             group_counts = {
-                value: filtered_counts.get(value, 0)
+                value: filtered_counts.counts.get(value, 0)
                 for value in inventory_counts
             }
-            group_counts.update(filtered_counts)
+            group_counts.update(filtered_counts.counts)
+            total = filtered_counts.total
         if self.group_by_key == GROUP_BY_STATUS_KEY:
             rows = self._fetch_simple_group_headers(
                 "statuses", GROUP_BY_STATUS_KEY, "circle", group_counts
@@ -2041,7 +2159,9 @@ class BrowserWidgetController(QtCore.QObject):
             self.log.warning("Unknown group-by key: %s", self.group_by_key)
             return []
 
-        total = sum(group_counts.values()) if group_counts else 0
+        if total is None:
+            # Without statistics only the grouped versions are known.
+            total = sum(group_counts.values()) if group_counts else 0
         for row in rows:
             count = row.get("child_count")
             if count is not None:
@@ -2050,10 +2170,27 @@ class BrowserWidgetController(QtCore.QObject):
                 )
         return rows
 
+    def _get_cached_group_counts(
+        self,
+        group_option: GroupByOption,
+    ) -> _GroupCounts | None:
+        """Return filtered counts, reusing them while the filters hold.
+
+        Unavailable statistics (``None``) are not cached, so they are
+        retried on the next fetch.
+        """
+        cache_key = (self._pagination_generation, group_option.key)
+        group_counts = self._group_counts_cache.get(cache_key)
+        if group_counts is None:
+            group_counts = self._get_group_counts(group_option)
+            if group_counts is not None:
+                self._group_counts_cache[cache_key] = group_counts
+        return group_counts
+
     def _get_group_counts(
         self,
         group_option: GroupByOption,
-    ) -> dict[str, int] | None:
+    ) -> _GroupCounts | None:
         """Return filtered counts, or ``None`` when stats are unavailable."""
         target_field = {
             GROUP_BY_PRODUCT_KEY: "product_id",
@@ -2062,17 +2199,25 @@ class BrowserWidgetController(QtCore.QObject):
             GROUP_BY_TAGS_KEY: "tags",
             GROUP_BY_TASK_TYPE_KEY: "task_type",
         }.get(group_option.key)
-        if group_option.source == GroupBySource.ATTRIBUTE:
+        is_product_attribute = (
+            group_option.source == GroupBySource.ATTRIBUTE
+            and group_option.attribute_scope == "product"
+        )
+        if is_product_attribute:
+            # Product columns are exposed to the statistics with the
+            # ``_product_`` prefix once the query selects the product.
+            target_field = f"_product_attrib.{group_option.attribute_name}"
+        elif group_option.source == GroupBySource.ATTRIBUTE:
             target_field = f"attrib.{group_option.attribute_name}"
         if not target_field:
-            return {}
+            return _GroupCounts({})
 
         query_filters = self._get_query_filters()
         version_ids = query_filters["version_ids"]
         folder_ids: list[str] | None = self._selected_folder_ids or None
         if self._current_category == BrowserSlicerCategory.REVIEWS.value:
             if not self._review_session_version_ids:
-                return {}
+                return _GroupCounts({}, 0)
             review_ids = set(self._review_session_version_ids or ())
             if version_ids:
                 review_ids.intersection_update(version_ids)
@@ -2110,10 +2255,22 @@ class BrowserWidgetController(QtCore.QObject):
             }],
         }
         response = con.query_graphql(
-            get_version_group_counts_query(),
+            get_version_group_counts_query(
+                include_product=is_product_attribute
+            ),
             variables,
         )
         if response.errors:
+            if is_product_attribute:
+                # Counting versions by a product field depends on how the
+                # server builds its statistics, fall back to metadata.
+                self.log.warning(
+                    "Version group statistics for %r failed: %s. "
+                    "Falling back to grouping metadata.",
+                    target_field,
+                    response.errors,
+                )
+                return None
             raise RuntimeError(response.errors)
 
         versions = response.data["data"]["project"]["versions"]
@@ -2176,7 +2333,23 @@ class BrowserWidgetController(QtCore.QObject):
                         else str(value)
                     )
                     output[key] = output.get(key, 0) + count
-        return output
+
+        # Every matching version is either filled or not filled, so the
+        # two add up to all versions matching the filters - including
+        # those without a group value (and not double counting versions
+        # in multiple groups, e.g. with several tags).
+        filled = stats.get("valueFilledCount")
+        not_filled = stats.get("valueNotFilledCount")
+        total = (
+            int(filled) + int(not_filled)
+            if filled is not None and not_filled is not None
+            else None
+        )
+        return _GroupCounts(
+            output,
+            total,
+            int(not_filled) if not_filled is not None else None,
+        )
 
     def _get_group_inventory_counts(
         self,
@@ -2191,7 +2364,7 @@ class BrowserWidgetController(QtCore.QObject):
         }.get(group_option.key)
         if group_option.source == GroupBySource.ATTRIBUTE:
             endpoint = (
-                "grouping/version/"
+                f"grouping/{group_option.attribute_scope}/"
                 f"attrib.{group_option.attribute_name}"
             )
         if not endpoint:
@@ -2273,13 +2446,26 @@ class BrowserWidgetController(QtCore.QObject):
         self,
         group_option: GroupByOption,
         group_counts: dict[str, int] | None,
+        values: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Return attribute rows with filter-aware version counts."""
+        """Return attribute rows with filter-aware version counts.
+
+        Args:
+            group_option: Attribute group-by axis.
+            group_counts: Filter-aware version counts per value, or
+                ``None`` when unknown.
+            values: Group values to use when *group_counts* is ``None``.
+        """
         attr_name = group_option.attribute_name
         if not attr_name:
             return []
 
-        values = sorted(group_counts or {}, key=str.casefold)
+        # Versions without a value are listed ungrouped at the root, see
+        # '_build_ungrouped_filter'.
+        values = sorted(
+            (value for value in group_counts or values or () if value),
+            key=str.casefold,
+        )
         if self._hide_empty_groups and group_counts is not None:
             values = [
                 value for value in values if group_counts.get(value, 0) > 0
@@ -2533,8 +2719,9 @@ class BrowserWidgetController(QtCore.QObject):
     def _parse_group_id(group_id: str) -> tuple[str, str]:
         """Parse a group header id into (group_type, group_value).
 
-        Attribute group keys hold a colon themselves (``"attr:<name>"``),
-        so their ids are ``"grp:attr:<name>:<value>"``.
+        Attribute group keys hold a colon themselves (``"attr:<name>"``
+        or ``"product_attr:<name>"``), so their ids are
+        ``"grp:attr:<name>:<value>"``.
 
         Args:
             group_id: String in the form ``"grp:<type>:<value>"``.
@@ -2543,9 +2730,9 @@ class BrowserWidgetController(QtCore.QObject):
             Tuple of ``(group_type, group_value)``.
         """
         _, group_type, group_value = group_id.split(":", 2)
-        if group_type == "attr":
+        if group_type in ATTRIBUTE_GROUP_PREFIXES.values():
             attribute_name, group_value = group_value.split(":", 1)
-            group_type = f"attr:{attribute_name}"
+            group_type = f"{group_type}:{attribute_name}"
         return group_type, group_value
 
     def _build_version_filter(
@@ -2619,10 +2806,12 @@ class BrowserWidgetController(QtCore.QObject):
                     ]
                 }
             )
-        elif group_key.startswith("attr:"):
-            attribute_name = group_key.split(":", 1)[1]
-            attr_type = self._version_attributes.get(attribute_name, {}).get(
-                "type"
+        elif parse_attribute_group_key(group_key) is not None:
+            scope, attribute_name = parse_attribute_group_key(group_key)
+            attr_type = (
+                self._attributes_by_scope.get(scope, {})
+                .get(attribute_name, {})
+                .get("type")
             )
             typed_value: Any = group_value
             if attr_type in {"integer", "float"}:
@@ -2632,7 +2821,7 @@ class BrowserWidgetController(QtCore.QObject):
             elif attr_type == "boolean":
                 typed_value = group_value.lower() in {"1", "true", "yes"}
 
-            version_filter = json.dumps(
+            attribute_filter = json.dumps(
                 {
                     "conditions": [
                         {
@@ -2643,7 +2832,51 @@ class BrowserWidgetController(QtCore.QObject):
                     ]
                 }
             )
+            if scope == "product":
+                product_filter = attribute_filter
+            else:
+                version_filter = attribute_filter
         return version_filter, product_filter
+
+    def _build_ungrouped_filter(
+        self,
+        group_option: GroupByOption,
+    ) -> tuple[str, str] | None:
+        """Build filters matching versions without a group-by value.
+
+        Only attribute group-by axes can have no value; those versions
+        are listed ungrouped at the root, next to the group headers.
+
+        Args:
+            group_option: Group-by axis.
+
+        Returns:
+            Tuple of ``(version_filter, product_filter)`` JSON strings, or
+            ``None`` when every version belongs to a group of the axis.
+        """
+        if group_option.source != GroupBySource.ATTRIBUTE:
+            return None
+        attribute_key = f"attrib.{group_option.attribute_name}"
+        conditions: list[dict[str, Any]] = [
+            {"key": attribute_key, "operator": "isnull"},
+        ]
+        attr_type = (
+            self._attributes_by_scope.get(group_option.attribute_scope, {})
+            .get(group_option.attribute_name, {})
+            .get("type")
+        )
+        if attr_type == "string":
+            # An empty string is no group either, see
+            # '_fetch_attribute_group_headers'.
+            conditions.append(
+                {"key": attribute_key, "value": "", "operator": "eq"}
+            )
+        empty_filter = json.dumps(
+            {"conditions": [{"operator": "or", "conditions": conditions}]}
+        )
+        if group_option.attribute_scope == "product":
+            return "", empty_filter
+        return empty_filter, ""
 
     def _fetch_reviews(self, parent_id: str | None) -> list[TreeNode]:
         """Return tree nodes for review sessions.
@@ -2917,6 +3150,14 @@ class BrowserWidgetController(QtCore.QObject):
         options = list(BUILTIN_GROUPS)
         if self._version_attributes:
             options.extend(build_attribute_groups(self._version_attributes))
+        product_attributes = self._attributes_by_scope.get("product")
+        if product_attributes:
+            options.extend(build_attribute_groups(
+                product_attributes,
+                scope="product",
+                label_suffix=" (Product)",
+                suffixed_names=set(self._version_attributes),
+            ))
         self._group_by_options = {option.key: option for option in options}
         if self._group_by_key not in self._group_by_options:
             self._group_by_key = GROUP_BY_NONE_KEY
@@ -3257,7 +3498,10 @@ class BrowserWidgetController(QtCore.QObject):
             "product/version": (
                 f"{product.get('name', '')} - {version_name}"
             ),
-            "product/version__icon": "layers",
+            "product/version__icon": (
+                product_icon if product_type else "layers"
+            ),
+            "product/version__icon_color": product_icon_color,
             "status": status,
             "productStatus": product.get("status", ""),
             "folderStatus": folder.get("status", ""),
