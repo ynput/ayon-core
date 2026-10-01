@@ -121,7 +121,7 @@ class LoaderActionsModel:
             self._get_loaders(project_name)
             self._loader_actions.prepare_plugins()
 
-    def prefetch_version_contexts(
+    def prefetch_versions_context(
         self, project_name: str, version_ids: set[str]
     ) -> None:
         """Cache entities needed for version action items.

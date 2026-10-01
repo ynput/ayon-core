@@ -178,7 +178,7 @@ class BrowserController(AbstractBrowserController):
     def prefetch_version_action_contexts(
         self, project_name: str, version_ids: set[str]
     ) -> None:
-        self._loader_actions_model.prefetch_version_contexts(
+        self._loader_actions_model.prefetch_versions_context(
             project_name, version_ids
         )
 
