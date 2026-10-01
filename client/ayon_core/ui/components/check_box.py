@@ -69,6 +69,14 @@ class AYCheckBox(StyleMixin, QCheckBox):
         self.initStyleOption(option)
         _style = get_ayon_style()
 
+        if not self.isEnabled():
+            # Fade the whole checkbox, the toggle is painted with its
+            # checked / unchecked colors only.
+            disabled_style = _style.model.get_style(
+                "QCheckBox", variant=self._variant_str, state="disabled"
+            )
+            p.setOpacity(disabled_style.get("opacity", 1.0))
+
         _expanding = self.sizePolicy().horizontalPolicy() in (
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.MinimumExpanding,
