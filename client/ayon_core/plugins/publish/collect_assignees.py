@@ -102,8 +102,7 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
                 ),
                 "icon": AYONUrlIcon(f"users/{user_name}/avatar"),
             })
-        assignees = [item["value"] for item in assignees_items]
-        if not assignees:
+        if not assignees_items:
             cls.log.warning("No project users found to assign.")
             cls._set_instance_state(instance, assignees_state_attr, "dont_use")
             return output
