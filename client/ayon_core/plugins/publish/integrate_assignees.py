@@ -77,7 +77,8 @@ class IntegrateAssignees(pyblish.api.ContextPlugin):
             # Changing task assignees needs a dedicated permission, which
             # artists may not have. Never fail the whole publish for it.
             self.log.warning(
-                "Failed to assign reviewers to task(s): {}".format(exc)
+                "Failed to assign reviewers to task(s)",
+                exc_info=True,
             )
             return
 
