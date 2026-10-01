@@ -57,7 +57,6 @@ class ProductsModel:
         self._repre_items_cache = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime
         )
-        # Representations are fetched from background threads
         self._refresh_lock = threading.Lock()
 
     def reset(self) -> None:
