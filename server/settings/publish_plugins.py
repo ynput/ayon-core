@@ -1,6 +1,7 @@
 from pydantic import validator
 from typing import Any
 
+from ayon_server.entities import UserEntity
 from ayon_server.enum import EnumItem
 from ayon_server.settings import (
     BaseSettingsModel,
@@ -12,18 +13,26 @@ from ayon_server.settings import (
 )
 from ayon_server.lib.postgres import Postgres
 from ayon_server.settings.anatomy import Anatomy
-from ayon_server.exceptions import BadRequestException
+from ayon_server.exceptions import (
+    BadRequestException,
+    NotFoundException,
+)
 from ayon_server.types import ColorRGBA_uint8
 from ayon_server.helpers.anatomy import get_project_anatomy
 
 try:
     # Available since AYON server 1.15.13 or 1.16.0 (not released yet)
-    from ayon_server.enum.resolvers import StatusesEnumResolver
+    from ayon_server.enum.resolvers import (
+        StatusesEnumResolver,
+        UsersEnumResolver,
+    )
     from ayon_server.enum import EnumRegistry
     if not hasattr(StatusesEnumResolver, "for_type"):
         StatusesEnumResolver = None
 except ImportError:
     StatusesEnumResolver = None
+    UsersEnumResolver = None
+    EnumRegistry = None
 
 
 CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
@@ -93,6 +102,42 @@ async def folder_attributes_enum() -> list[EnumItem]:
                 label=data.get("title") or name,
             )
         )
+    return result
+
+
+async def _assignee_enum(
+    project_name: str | None = None,
+) -> list[EnumItem]:
+    """Return the project users that can be assigned as reviewer.
+
+    Options are resolved dynamically from the project users. Service
+    users are excluded, they should not be assignable.
+
+    Args:
+        project_name (str | None): Project name used to resolve the
+            assignees available in the project.
+
+    Returns:
+        list[EnumItem]: Assignee options. Empty list when no options
+            could be resolved.
+    """
+    if UsersEnumResolver is None:
+        return []
+
+    items = await EnumRegistry.resolve(
+        "users",
+        project_name=project_name,
+    )
+
+    # Service users are not artists, they should not be assignable.
+    result: list[EnumItem] = []
+    for item in items:
+        try:
+            user = await UserEntity.load(item.value)
+        except NotFoundException:
+            continue
+        if not user.is_service:
+            result.append(item)
     return result
 
 
@@ -1533,6 +1578,45 @@ class CollectStatusProfile(BaseSettingsModel):
     )
 
 
+class CollectAssigneesProfile(BaseSettingsModel):
+    _layout = "expanded"
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+    )
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    artist_can_change: bool = SettingsField(
+        True,
+        title="Artist can change",
+        description=(
+            "Allow the artist to change the assignees in the publisher UI. "
+            "This does not affect if the assignees are set or not, just if "
+            "it is editable in UI."
+        )
+    )
+    default_assignees: list[str] = SettingsField(
+        default_factory=list,
+        title="Default assignees",
+        description=(
+            "Reviewers preselected in the publisher UI. They are set on "
+            "the task the published versions belong to."
+        ),
+        enum_resolver=_assignee_enum,
+    )
+
+
 class IntegrateProductGroupProfile(BaseSettingsModel):
     product_base_types: list[str] = SettingsField(
         default_factory=list,
@@ -1559,6 +1643,32 @@ class CollectStatusModel(BaseSettingsModel):
     status_profiles: list[CollectStatusProfile] = SettingsField(
         default_factory=list,
         title="Status profiles"
+    )
+
+
+class CollectAssigneesModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False)
+    assignee_profiles: list[CollectAssigneesProfile] = SettingsField(
+        default_factory=list,
+        title="Assignee profiles"
+    )
+
+
+class IntegrateAssigneesModel(BaseSettingsModel):
+    """Write the collected reviewers onto the task of published versions.
+
+    ``assignees`` is a task level field in AYON, so the reviewers picked
+    in the publisher are set on the task entity the versions belong to.
+    """
+
+    enabled: bool = SettingsField(False)
+    replace_existing_assignees: bool = SettingsField(
+        False,
+        title="Replace existing assignees",
+        description=(
+            "Replace the assignees already set on the task, instead of "
+            "adding the reviewers collected in the publisher to them."
+        ),
     )
 
 
@@ -1679,6 +1789,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectStatusModel,
         title="Collect Status"
     )
+    CollectAssignees: CollectAssigneesModel = SettingsField(
+        default_factory=CollectAssigneesModel,
+        title="Collect Assignees"
+    )
     CollectFramesFixDef: CollectFramesFixDefModel = SettingsField(
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
@@ -1786,6 +1900,14 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=PreIntegrateThumbnailsModel,
         title="Override Integrate Thumbnail Representations"
     )
+    IntegrateAssignees: IntegrateAssigneesModel = SettingsField(
+        default_factory=IntegrateAssigneesModel,
+        title="Integrate Assignees",
+        description=(
+            "Assign the reviewers collected in the publisher to the task "
+            "the published versions belong to."
+        ),
+    )
     IntegrateProductGroup: IntegrateProductGroupModel = SettingsField(
         default_factory=IntegrateProductGroupModel,
         title="Integrate Product Group"
@@ -1872,6 +1994,10 @@ DEFAULT_PUBLISH_VALUES = {
     "CollectStatus": {
         "enabled": False,
         "status_profiles": [],
+    },
+    "CollectAssignees": {
+        "enabled": False,
+        "assignee_profiles": [],
     },
     "CollectFramesFixDef": {
         "enabled": True,
@@ -2364,6 +2490,10 @@ DEFAULT_PUBLISH_VALUES = {
     "PreIntegrateThumbnails": {
         "enabled": True,
         "integrate_profiles": []
+    },
+    "IntegrateAssignees": {
+        "enabled": False,
+        "replace_existing_assignees": False,
     },
     "IntegrateProductGroup": {
         "product_grouping_profiles": [
