@@ -32,24 +32,32 @@ def log_module(monkeypatch):
     of pytest (live logging re-installs its capture as 'sys.stderr' on
     each record) and of AYON logging initialized on import of other
     modules during collection.
+
+    Console handler is forced by 'AYON_LOG_CONSOLE', pytest adds its
+    handlers to the root logger during the test.
     """
     root = logging.getLogger()
     ayon_root = logging.getLogger("AYON")
+    package_logger = logging.getLogger("ayon_core")
     orig_root_handlers = list(root.handlers)
     orig_root_level = root.level
     orig_ayon_handlers = list(ayon_root.handlers)
+    orig_package_level = package_logger.level
     for handler in orig_root_handlers:
         root.removeHandler(handler)
+    package_logger.setLevel(logging.NOTSET)
     for key in (
         "AYON_LOG_LEVEL",
         "AYON_DEBUG",
         "AYON_LOG_FILE",
         "AYON_VECTOR_LOG_URL",
         "AYON_EXECUTABLE",
+        "AYON_CORE_TIMERS",
         "NO_COLOR",
         "FORCE_COLOR",
     ):
         monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("AYON_LOG_CONSOLE", "1")
 
     def _reset_structlog():
         structlog.reset_defaults()
@@ -73,6 +81,7 @@ def log_module(monkeypatch):
             ayon_root.removeHandler(handler)
             handler.close()
     root.setLevel(orig_root_level)
+    package_logger.setLevel(orig_package_level)
     monkeypatch.undo()
     _reset_structlog()
     importlib.reload(ayon_core.lib.log)
@@ -483,15 +492,6 @@ def test_publish_message_handler_does_not_mutate_record():
     assert handler.get_records()[0].msg == "Value x"
 
 
-@pytest.fixture
-def span_logger_level():
-    """Restore level of span logger changed by tests."""
-    logger = logging.getLogger(ayon_core.lib.log.SPAN_LOGGER_NAME)
-    orig_level = logger.level
-    yield
-    logger.setLevel(orig_level)
-
-
 def _event_dicts(handler, module, logger_name):
     return [
         getattr(record, module._EVENT_DICT_ATTR)[2]
@@ -624,9 +624,7 @@ def test_span_ids_hidden_in_console(log_module, monkeypatch):
     assert span.trace_id not in output
 
 
-def test_log_timing_compatibility(
-    log_module, monkeypatch, foreign_handler, span_logger_level
-):
+def test_log_timing_compatibility(log_module, monkeypatch, foreign_handler):
     monkeypatch.setenv("AYON_CORE_TIMERS", "1")
     module = log_module()
 
@@ -637,6 +635,7 @@ def test_log_timing_compatibility(
 
     (event,) = _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME)
     assert event["event"] == "Loading activities"
+    assert event["level"] == "info"
     assert event["func_name"] == "test_log_timing_compatibility"
 
 
@@ -785,3 +784,190 @@ def test_without_structlog_skips_file_and_vector(
         "require 'structlog'" in message
         for message in foreign_handler.messages
     )
+
+
+def _capture_stderr(monkeypatch):
+    # Must be called in the test, pytest replaces 'sys.stderr' after
+    #   fixtures are set up
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+    return stream
+
+
+@pytest.fixture
+def restore_logger_levels():
+    """Restore levels of loggers changed by the test."""
+    orig_levels = {}
+
+    def _get_logger(name):
+        logger = logging.getLogger(name)
+        orig_levels.setdefault(name, logger.level)
+        return logger
+
+    yield _get_logger
+
+    for name, level in orig_levels.items():
+        logging.getLogger(name).setLevel(level)
+
+
+def test_root_logger_level_is_not_changed(log_module, monkeypatch):
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    root = logging.getLogger()
+    root.setLevel(logging.WARNING)
+
+    log_module()
+
+    assert root.level == logging.WARNING
+
+
+@pytest.mark.parametrize("log_level", ["INFO", "DEBUG"])
+def test_handlers_filter_pyblish_by_ayon_level(
+    log_module,
+    monkeypatch,
+    tmp_path,
+    restore_logger_levels,
+    log_level,
+):
+    """Pyblish sets DEBUG level on plugin loggers, handlers filter it."""
+    monkeypatch.setenv("AYON_LOG_LEVEL", log_level)
+    monkeypatch.setenv("AYON_LOG_FILE", "1")
+    monkeypatch.setattr(
+        "ayon_core.lib.local_settings.get_launcher_local_dir",
+        lambda *args: str(tmp_path.joinpath(*args)),
+    )
+    module = log_module()
+    stderr_stream = _capture_stderr(monkeypatch)
+    plugin_log = restore_logger_levels("pyblish.TestHandlerLevelPlugin")
+    plugin_log.setLevel(logging.DEBUG)
+
+    plugin_log.debug("Plugin debug")
+
+    handlers = [
+        handler for handler in logging.getLogger().handlers
+        if isinstance(
+            handler, (module._StderrHandler, TimedRotatingFileHandler)
+        )
+    ]
+    assert len(handlers) == 2
+    for handler in handlers:
+        assert any(
+            isinstance(log_filter, module._PyblishLevelFilter)
+            for log_filter in handler.filters
+        )
+    shown = "Plugin debug" in stderr_stream.getvalue()
+    assert shown is (log_level == "DEBUG")
+
+
+def test_explicit_logger_level_is_respected(
+    log_module, monkeypatch, restore_logger_levels
+):
+    """DEBUG level set on a single logger shows its debug records."""
+    module = log_module()
+    stderr_stream = _capture_stderr(monkeypatch)
+    restore_logger_levels(module.SPAN_LOGGER_NAME).setLevel(logging.DEBUG)
+    restore_logger_levels("ayon_core.tests.explicit").setLevel(logging.DEBUG)
+
+    with module.log_span("tests.explicit"):
+        pass
+    logging.getLogger("ayon_core.tests.explicit").debug("Explicit debug")
+    logging.getLogger("ayon_core.tests.implicit").debug("Implicit debug")
+
+    output = stderr_stream.getvalue()
+    assert "tests.explicit" in output
+    assert "Explicit debug" in output
+    assert "Implicit debug" not in output
+
+
+def test_package_module_loggers_use_ayon_level(
+    log_module, monkeypatch, restore_logger_levels
+):
+    module = log_module()
+    stderr_stream = _capture_stderr(monkeypatch)
+    # Host application owns the root logger level
+    logging.getLogger().setLevel(logging.WARNING)
+    restore_logger_levels("ayon_tests_addon")
+    module.Logger.register_package_logger("ayon_tests_addon")
+
+    logging.getLogger("ayon_core.tests.module").info("Core module")
+    logging.getLogger("ayon_tests_addon.module").info("Addon module")
+    logging.getLogger("thirdparty.module").info("Third party")
+
+    output = stderr_stream.getvalue()
+    assert "Core module" in output
+    assert "Addon module" in output
+    assert "Third party" not in output
+
+
+def test_register_package_logger_keeps_explicit_level(
+    log_module, restore_logger_levels
+):
+    module = log_module()
+    explicit = restore_logger_levels("ayon_tests_explicit")
+    explicit.setLevel(logging.ERROR)
+    restore_logger_levels("ayon_tests_implicit")
+
+    module.Logger.register_package_logger("ayon_tests_explicit")
+    module.Logger.register_package_logger("ayon_tests_implicit")
+
+    assert logging.getLogger("ayon_tests_explicit").level == logging.ERROR
+    assert logging.getLogger("ayon_tests_implicit").level == logging.INFO
+
+
+@pytest.mark.parametrize(
+    "env_value, root_handlers, expected",
+    [
+        ("", [], True),
+        ("", [logging.NullHandler()], True),
+        ("", [_ListHandler()], False),
+        ("0", [], False),
+        ("1", [_ListHandler()], True),
+    ],
+)
+def test_console_handler_enabled(
+    log_module, monkeypatch, env_value, root_handlers, expected
+):
+    module = log_module()
+    monkeypatch.setenv("AYON_LOG_CONSOLE", env_value)
+    monkeypatch.setattr(logging.getLogger(), "handlers", root_handlers)
+
+    assert module._console_handler_enabled() is expected
+
+
+def test_host_handler_replaces_console_handler(
+    log_module, monkeypatch, foreign_handler
+):
+    """Host handler on root logger shows AYON records, no duplicates."""
+    monkeypatch.delenv("AYON_LOG_CONSOLE")
+    module = log_module()
+
+    module.Logger.get_logger("ayon_core.tests.host").info("In host")
+
+    assert not any(
+        isinstance(handler, module._StderrHandler)
+        for handler in logging.getLogger().handlers
+    )
+    assert foreign_handler.messages == ["In host"]
+
+
+def test_publish_report_captures_debug_with_info_level(
+    log_module, monkeypatch, restore_logger_levels
+):
+    pytest.importorskip("pyblish.plugin")
+    from ayon_core.pipeline.publish.logic import MessageHandler, PublishLogic
+
+    log_module()
+    stderr_stream = _capture_stderr(monkeypatch)
+    plugin_log = restore_logger_levels("pyblish.TestReportDebugPlugin")
+    plugin_log.setLevel(logging.DEBUG)
+    plugin = types.SimpleNamespace(log=plugin_log)
+    publish_logic = types.SimpleNamespace(
+        _log_handler=MessageHandler(),
+        _log_to_console=True,
+    )
+
+    with PublishLogic._log_manager(publish_logic, plugin) as handler:
+        plugin_log.debug("Plugin debug")
+        messages = [record.getMessage() for record in handler.get_records()]
+
+    assert messages == ["Plugin debug"]
+    assert "Plugin debug" not in stderr_stream.getvalue()

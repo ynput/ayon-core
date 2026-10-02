@@ -654,6 +654,48 @@ class _StderrHandler(logging.StreamHandler):
         )
 
 
+class _PyblishLevelFilter(logging.Filter):
+    """Apply AYON log level to records of pyblish loggers.
+
+    Pyblish sets DEBUG level on logger of every plugin when the plugin
+    class is created, see 'pyblish.plugin.append_logger'. Without this
+    filter all debug records of publish plugins would be handled.
+    Levels of other loggers are respected, e.g. DEBUG level set on
+    a single logger to debug it.
+    """
+
+    def __init__(self, level: int):
+        super().__init__()
+        self._level = level
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.name == "pyblish" or record.name.startswith("pyblish."):
+            return record.levelno >= self._level
+        return True
+
+
+def _console_handler_enabled() -> bool:
+    """AYON console handler should be added to the root logger.
+
+    'AYON_LOG_CONSOLE' set to '1' or '0' forces it on or off. When not set,
+    the console handler is added only if the root logger has no handlers.
+    Host applications (e.g. Maya script editor) attach their own handler
+    to the root logger, AYON records propagate to it and a second console
+    handler would show them twice.
+
+    Returns:
+        bool: Console handler should be added.
+
+    """
+    value = os.getenv("AYON_LOG_CONSOLE", "").strip()
+    if value:
+        return env_value_to_bool(value=value, default=True)
+    return all(
+        isinstance(handler, logging.NullHandler)
+        for handler in logging.getLogger().handlers
+    )
+
+
 def _deprecated_getter(func):
     def _get_logger_deprecate(cls, name: str | None = None) -> Any:
         if name is None:
@@ -745,15 +787,36 @@ class Logger:
         # Records propagate to the stdlib root logger which holds
         #   the handlers, see 'configure_logger'.
         cls._root_logger = root_logger
-
-        if cls.log_level < logging.INFO:
-            # force silence for some very noisy loggers
-            logging.getLogger("urllib3").setLevel(logging.WARNING)
-            logging.getLogger("requests").setLevel(logging.WARNING)
-            logging.getLogger("GlobalServerAPI").setLevel(logging.WARNING)
+        cls._set_package_log_level("ayon_core")
 
         # Mark as initialized
         cls.initialized = True
+
+    @classmethod
+    def register_package_logger(cls, package_name: str) -> None:
+        """Apply AYON log level to module loggers of a package.
+
+        Modules commonly use 'logging.getLogger(__name__)'. Those loggers
+        are not under the 'AYON' logger and inherit level of the root
+        logger, which is owned by the host application. With AYON log
+        level set on the package logger their records are handled with
+        the same level as records of AYON loggers.
+
+        Level explicitly set on the package logger is kept.
+
+        Args:
+            package_name (str): Top level package name, e.g. 'ayon_maya'.
+
+        """
+        if not cls.initialized:
+            cls.initialize()
+        cls._set_package_log_level(package_name)
+
+    @classmethod
+    def _set_package_log_level(cls, package_name: str) -> None:
+        logger = logging.getLogger(package_name)
+        if cls.log_level is not None and logger.level == logging.NOTSET:
+            logger.setLevel(cls.log_level)
 
     @classmethod
     def get_process_data(cls):
@@ -828,7 +891,13 @@ class Logger:
 
         Adds handlers for console, log file and Vector HTTP to the root
         logger. Log file and Vector are available only with 'structlog',
-        without it only console output is configured.
+        without it only console output is configured. Console handler is
+        not added when the host application already handles root logger
+        records, see '_console_handler_enabled'.
+
+        Level of the root logger is not changed, it belongs to the host
+        application. Records of pyblish loggers are filtered by AYON log
+        level, see '_PyblishLevelFilter'.
 
         Safe to call multiple times, and safe even if another package (e.g.
         'ayon_common' in ayon-launcher) configures logging first - only the
@@ -853,11 +922,13 @@ class Logger:
                 cls._configure_structlog()
             )
 
-        handler = _StderrHandler(color_formatter=color_formatter)
-        handler.setFormatter(console_formatter)
+        pyblish_filter = _PyblishLevelFilter(get_log_level_from_env())
         root_logger = logging.getLogger()
-        root_logger.addHandler(handler)
-        root_logger.setLevel(get_log_level_from_env())
+        if _console_handler_enabled():
+            handler = _StderrHandler(color_formatter=color_formatter)
+            handler.addFilter(pyblish_filter)
+            handler.setFormatter(console_formatter)
+            root_logger.addHandler(handler)
 
         if json_formatter is None:
             if LOG_FILE_ENABLED or VECTOR_LOG_URL:
@@ -878,6 +949,7 @@ class Logger:
                 backupCount=LOG_FILE_RETENTION_DAYS,
                 encoding="utf-8",
             )
+            file_handler.addFilter(pyblish_filter)
             file_handler.setFormatter(json_formatter)
             root_logger.addHandler(file_handler)
 
@@ -890,6 +962,7 @@ class Logger:
                 VECTOR_QUEUE_MAX_SIZE
             )
             queue_handler = _DroppingQueueHandler(log_queue)
+            queue_handler.addFilter(pyblish_filter)
             queue_handler.setFormatter(json_formatter)
             vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
             vector_sender.start()
@@ -1002,8 +1075,8 @@ class Logger:
         )
 
 
-# Logger receiving span events, see 'log_span'. Its level controls which
-#   spans are logged, e.g. 'AYON_LOG_LEVEL=DEBUG' enables all of them.
+# Logger receiving span events, see 'log_span'. AYON log level controls
+#   which spans are logged, e.g. 'AYON_LOG_LEVEL=DEBUG' enables all of them.
 SPAN_LOGGER_NAME = "ayon.span"
 # Currently open span in this context as '(trace_id, span_id)'.
 _current_span: ContextVar[tuple[str, str] | None] = ContextVar(
@@ -1020,11 +1093,7 @@ def _get_span_logger() -> Any:
     """
     global _span_logger
     if _span_logger is None:
-        logger = Logger.get_logger(SPAN_LOGGER_NAME)
-        # Backwards compatibility of 'log_timing' enabled by env variable
-        if env_value_to_bool("AYON_CORE_TIMERS"):
-            logging.getLogger(SPAN_LOGGER_NAME).setLevel(logging.DEBUG)
-        _span_logger = logger
+        _span_logger = Logger.get_logger(SPAN_LOGGER_NAME)
     return _span_logger
 
 
@@ -1205,6 +1274,9 @@ class log_span(contextlib.ContextDecorator):  # noqa: N801
 def log_timing(message: str) -> log_span:
     """Log execution time of a code block.
 
+    Logged at DEBUG level, or at INFO level when 'AYON_CORE_TIMERS'
+    is enabled, for backwards compatibility.
+
     Deprecated:
         Use 'log_span' with a stable name and attributes instead.
 
@@ -1220,4 +1292,7 @@ def log_timing(message: str) -> log_span:
         DeprecationWarning,
         stacklevel=2,
     )
-    return log_span(message)
+    level = logging.DEBUG
+    if env_value_to_bool("AYON_CORE_TIMERS"):
+        level = logging.INFO
+    return log_span(message, level=level)
