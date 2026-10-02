@@ -151,6 +151,7 @@ from .ayon_info import (
     is_in_tests,
     get_settings_variant,
 )
+from .progress import ProgressState, ProgressReporter
 
 terminal = Terminal
 
@@ -174,6 +175,9 @@ __all__ = [
 
     "CacheItem",
     "NestedCacheItem",
+
+    "ProgressState",
+    "ProgressReporter",
 
     "emit_event",
     "register_event_callback",

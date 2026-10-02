@@ -159,6 +159,11 @@ class AYCardViewVariants(Enum):
     High = "high"
 
 
+class AYProgressBarVariants(Enum):
+    Default = "default"
+    Inline = "inline"
+
+
 # END OF VARIANTs DEFINITIONS -------------------------------------------------
 
 
