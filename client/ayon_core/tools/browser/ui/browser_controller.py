@@ -1660,6 +1660,27 @@ class BrowserWidgetController(QtCore.QObject):
             project_name, entity_ids, entity_type
         )
 
+    def warm_up_action_items(self, project_name: str) -> None:
+        """Discover action plugins for a project, main thread only.
+
+        Args:
+            project_name: AYON project name.
+        """
+        self._loader_controller.warm_up_action_items(project_name)
+
+    def prefetch_version_action_contexts(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
+        """Cache data for version action items, background thread safe.
+
+        Args:
+            project_name: AYON project name.
+            version_ids: Selected version ids.
+        """
+        self._loader_controller.prefetch_version_action_contexts(
+            project_name, version_ids
+        )
+
     def get_representation_items(
         self,
         project_name: str,

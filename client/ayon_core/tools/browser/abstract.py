@@ -432,6 +432,35 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
+    def warm_up_action_items(self, project_name: str) -> None:
+        """Discover action plugins for a project.
+
+        Makes the first context menu for the project open faster. Must be
+        called from the main thread as plugins may use host APIs.
+
+        Args:
+            project_name (str): Project name.
+
+        """
+        pass
+
+    @abstractmethod
+    def prefetch_version_action_contexts(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
+        """Cache data needed for version action items.
+
+        Makes the context menu for the selection open faster. Only queries
+        the server, so it is safe to call from a background thread.
+
+        Args:
+            project_name (str): Project name.
+            version_ids (set[str]): Selected version ids.
+
+        """
+        pass
+
+    @abstractmethod
     def trigger_action_item(
         self,
         identifier: str,

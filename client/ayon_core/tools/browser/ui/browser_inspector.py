@@ -47,6 +47,10 @@ class ReviewInspector(AYContainer):
         self._controller = controller
         self._view: QtWidgets.QAbstractItemView | None = None
         self._current_thumb_key: str = ""
+        # Key of the latest representations request, older results are
+        #   ignored
+        self._repre_request_key: str = ""
+        self._repre_context_id: str = f"inspector_repres_{id(self)}"
         # Use a dict as an ordered set to track the currently selected indices
         self._current_selection: dict[QtCore.QModelIndex, None] = {}
         # Track if mouse is currently pressed for drag selection
@@ -349,15 +353,55 @@ class ReviewInspector(AYContainer):
 
         # Fetch and display representations for all selected versions.
         if self._controller and project_name and version_ids:
-            repre_items = self._controller.get_representation_items(
-                project_name, version_ids
-            )
-            self._representations.set_items(
-                repre_items,
-                multi_version=len(version_ids) > 1,
-            )
+            self._load_representations(project_name, version_ids)
         else:
+            self._repre_request_key = ""
             self._representations.set_items([])
+
+    def _load_representations(
+        self, project_name: str, version_ids: list[str]
+    ) -> None:
+        """Fetch representations in the background and display them.
+
+        Fetching on the main thread would block the UI, e.g. delaying the
+        context menu on right-click which also changes the selection.
+
+        Args:
+            project_name: Project name.
+            version_ids: Selected version ids.
+        """
+        request_key = f"{project_name}|{','.join(sorted(version_ids))}"
+        self._repre_request_key = request_key
+        multi_version = len(version_ids) > 1
+        controller = self._controller
+        inspector = self
+
+        def _on_loaded(repre_items: list[RepreItem] | None) -> None:
+            if not shiboken.isValid(inspector):
+                return
+            # Selection changed in the meantime
+            if inspector._repre_request_key != request_key:
+                return
+            inspector._representations.set_items(
+                repre_items or [],
+                multi_version=multi_version,
+            )
+
+        task_queue = get_task_queue()
+        # Only the latest selection is relevant
+        task_queue.clear_context_tasks(self._repre_context_id)
+        task_queue.enqueue(
+            AsyncTask(
+                name="inspector_representations",
+                function=lambda: controller.get_representation_items(
+                    project_name, version_ids
+                ),
+                callback=_on_loaded,
+                priority=1,
+                context_id=self._repre_context_id,
+                cancellable=True,
+            )
+        )
 
     def _load_thumbnail(self, keys: list[str]) -> None:
         """Load and display thumbnails for *keys* as a composite image.
