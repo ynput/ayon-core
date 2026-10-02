@@ -892,6 +892,9 @@ class GroupByMenu(AYFilter):
         self._sync_tags()
 
     def _on_toggle_dropdown(self) -> None:
+        if self._menu is not None:
+            self._menu.close()
+            return
         # The click that closes the menu can also land on the toggle
         # button, which must not reopen it right away.
         if time.monotonic() - self._menu_hidden_at < 0.2:
@@ -1046,6 +1049,9 @@ class GroupByMenu(AYFilter):
             options: New list of :class:`GroupByOption` items.
             selected_key: Key of the option that should be selected.
         """
+        # An open menu lists the previous options.
+        if self._menu is not None:
+            self._menu.close()
         self._options_by_key = {option.key: option for option in options}
         self._filters = {
             option.key: FilterItem(

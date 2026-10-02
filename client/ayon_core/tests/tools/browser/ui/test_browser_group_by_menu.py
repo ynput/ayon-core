@@ -34,19 +34,27 @@ def _listed_actions(qmenu) -> dict:
     return actions
 
 
+def _close(menu: GroupByMenu) -> None:
+    if menu._menu is not None:
+        menu._menu.close()
+    # Closing right before reopening is what a click on the toggle
+    # button does, which the menu ignores for a moment.
+    menu._menu_hidden_at = 0.0
+
+
 def _open(menu: GroupByMenu) -> dict:
     """Open the menu and return its listed option actions by key."""
+    _close(menu)
     menu._on_toggle_dropdown()
     return _listed_actions(menu._menu)
 
 
 def _checked_keys(menu: GroupByMenu) -> list[str]:
-    actions = _open(menu)
-    menu._menu.close()
-    # Closing right before reopening is what a click on the toggle button
-    # does, which the menu ignores for a moment.
-    menu._menu_hidden_at = 0.0
-    return [key for key, action in actions.items() if action.isChecked()]
+    checked = [
+        key for key, action in _open(menu).items() if action.isChecked()
+    ]
+    _close(menu)
+    return checked
 
 
 def test_clicking_active_group_deselects_it(qtbot):
@@ -91,9 +99,30 @@ def test_set_options_lists_new_options_when_menu_opens(qtbot):
 
     assert menu.get_selected_keys() == ["none"]
     assert list(_open(menu)) == [option.key for option in options]
-    menu._menu.close()
-    menu._menu_hidden_at = 0.0
     assert _checked_keys(menu) == ["none"]
+
+
+def test_toggling_open_menu_closes_it(qtbot):
+    menu = _menu(qtbot)
+    _open(menu)
+    opened = menu._menu
+
+    menu._on_toggle_dropdown()
+
+    assert not opened.isVisible()
+    assert menu._menu is None
+    assert menu._dropdown_visible is False
+
+
+def test_set_options_closes_open_menu(qtbot):
+    menu = _menu(qtbot)
+    _open(menu)
+
+    menu.set_options(BUILTIN_GROUPS[:2], "none")
+
+    assert menu._menu is None
+    assert list(_open(menu)) == ["none", "product"]
+    _close(menu)
 
 
 def test_grouped_options_are_listed_in_submenus(qtbot):
