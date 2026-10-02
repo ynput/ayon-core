@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import typing
 from typing import Literal, Optional, Any
 
@@ -84,7 +84,7 @@ class WorkfileItem:
 class RecentActionItem:
     """A triggered action, the context it ran in and how to display it.
 
-    Stored as is in current user's data on the AYON server, so that showing
+    Stored as is with the current user on the AYON server, so that showing
     the history costs a single request and never has to resolve entities or
     actions first.
 
@@ -144,6 +144,18 @@ class RecentActionItem:
     task_color: Optional[str] = None
     icon: Optional[dict[str, str]] = None
     favorite: bool = False
+
+    def to_data(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> RecentActionItem:
+        # Data stored by a different version may contain unknown keys.
+        return cls(**{
+            key: value
+            for key, value in data.items()
+            if key in cls.__dataclass_fields__
+        })
 
 
 class AbstractLauncherCommon(ABC):

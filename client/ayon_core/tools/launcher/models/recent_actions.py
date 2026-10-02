@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import collections
-import dataclasses
 import threading
 import time
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional
 
 import ayon_api
 
-from ayon_core.lib import Logger
+from ayon_core.lib import (
+    Logger,
+    get_ayon_user_entity,
+    get_ayon_username,
+)
 from ayon_core.lib.icon_definitions import IconBase
 from ayon_core.tools.launcher.abstract import (
     RecentActionItem,
@@ -23,12 +26,13 @@ if TYPE_CHECKING:
     )
 
 
-_USER_DATA_KEY = "recentActions"
-# Fields that are persisted per item. Anything else found in stored data is
-# ignored, so entries written by another version never break loading.
-_ITEM_FIELDS = frozenset(
-    field.name for field in dataclasses.fields(RecentActionItem)
-)
+# Key in 'data.frontendPreferences' of the user. Preferences are the only
+# part of user data a user without manager rights can change.
+_PREFERENCES_KEY = "launcherRecentActions"
+# The history was stored directly in user data at first, where the server
+# ignores changes of users that are not managers. Still read from there so
+# that those who could store it keep their history.
+_LEGACY_USER_DATA_KEY = "recentActions"
 
 
 def _icon_to_data(icon) -> Optional[dict]:
@@ -56,38 +60,28 @@ def _icon_to_data(icon) -> Optional[dict]:
     return None
 
 
-@dataclasses.dataclass
-class ContextLabels:
-    """Human readable names of a launcher context.
-
-    Attributes:
-        project_code (Optional[str]): Project code.
-        folder_path (Optional[str]): Folder path.
-        task_name (Optional[str]): Task name.
-        workfile_name (Optional[str]): Workfile filename.
-        folder_icon (Optional[str]): Material symbol of the folder type.
-        task_icon (Optional[str]): Material symbol of the task type.
-        task_color (Optional[str]): Color of the task type.
-
-    """
-
-    project_code: Optional[str] = None
-    folder_path: Optional[str] = None
-    task_name: Optional[str] = None
-    workfile_name: Optional[str] = None
-    folder_icon: Optional[str] = None
-    task_icon: Optional[str] = None
-    task_color: Optional[str] = None
+def _action_key(item: RecentActionItem) -> tuple:
+    """What makes two entries the same action in the same context."""
+    return (
+        item.action_type,
+        item.identifier,
+        item.addon_name,
+        item.project_name,
+        item.folder_id,
+        item.task_id,
+        item.workfile_id,
+    )
 
 
 class RecentActionsModel:
     """Persistent store for recently triggered launcher actions.
 
-    Keeps up to :data:`RECENT_ACTIONS_MAX` entries in current user's
-    ``data.recentActions`` on AYON server. Duplicate entries (same action in
-    the same context) are deduplicated, the newest execution ends up on top.
-    Favorited entries are pinned - they are listed first and newer actions
-    never push them out.
+    Keeps up to :data:`RECENT_ACTIONS_MAX` entries per user, in
+    ``data.frontendPreferences.launcherRecentActions`` of the user on AYON
+    server - so the history follows the user to any machine. Duplicate
+    entries (same action in the same context) are deduplicated, the newest
+    execution ends up on top. Favorited entries are pinned - they are listed
+    first and newer actions never push them out.
 
     Everything needed to display an entry is stored with it, so showing the
     history costs a single request and needs no entity or action lookups.
@@ -116,12 +110,16 @@ class RecentActionsModel:
     ) -> None:
         self._controller = controller
 
-        # Guards '_items' and the recording queue. Both are touched by the
-        # worker thread and by the thread loading the history.
+        # Guards everything below. It is touched by the recording worker,
+        # by the threads loading the history and by the main thread.
         self._lock = threading.Lock()
         self._items: Optional[list[RecentActionItem]] = None
+        # Changes whenever the items are changed locally, so that a load
+        # which was running meanwhile knows its result is outdated.
+        self._revision = 0
         self._queued_triggers = collections.deque()
         self._save_requested = False
+        self._saving = False
         self._worker: Optional[threading.Thread] = None
         self._prewarmed = False
 
@@ -171,25 +169,7 @@ class RecentActionsModel:
         A single request. Blocks, so it is meant to be called from a worker
         thread.
         """
-        items = self._load_from_user_data()
-        self._relabel_local_actions(items)
-        # An entry without a label cannot be presented in any useful way.
-        # Relabeling just had its chance to give installed actions their
-        # label back, so whatever is still nameless here is left over from
-        # an older version - drop it for good.
-        kept = [item for item in items if (item.label or "").strip()]
-        dropped = len(items) - len(kept)
-        with self._lock:
-            # Changes still waiting to be written are newer than whatever
-            # the server just returned, keep what we have in that case.
-            if self._queued_triggers or self._save_requested:
-                return
-            self._items = kept
-            if dropped:
-                self.log.info(
-                    "Removed %s recent action(s) without a label.", dropped
-                )
-                self._request_save()
+        self._load(use_cached_user=False)
 
     def prewarm(self) -> None:
         """Load the history in the background, once.
@@ -204,42 +184,14 @@ class RecentActionsModel:
                 return
             self._prewarmed = True
 
+        # The launcher has just asked for the user while starting up, which
+        # is recent enough to not ask the server again.
         threading.Thread(
-            target=self._prewarm_loop,
+            target=self._load,
+            kwargs={"use_cached_user": True},
             name="recent-actions-prewarm",
             daemon=True,
         ).start()
-
-    def _prewarm_loop(self) -> None:
-        try:
-            self.refresh()
-        except Exception:
-            self.log.warning(
-                "Failed to pre-load recent actions.", exc_info=True
-            )
-
-    def _relabel_local_actions(
-        self, items: list[RecentActionItem]
-    ) -> None:
-        """Update stored labels of local actions to their current ones.
-
-        Local actions are known to this process, so how they are labelled
-        right now can be read without contacting the server. Webactions
-        keep the label stored with them, refreshing those would need a
-        request per context and is not worth it - they are corrected the
-        next time the action runs.
-        """
-        for item in items:
-            if item.action_type != "local":
-                continue
-            label_icon = self._controller.get_local_action_label_icon(
-                item.identifier
-            )
-            if label_icon is None:
-                continue
-            label, icon = label_icon
-            item.label = label
-            item.icon = _icon_to_data(icon)
 
     def remove_recent_action(self, record_id: str) -> None:
         """Drop an entry from the history and persist the change."""
@@ -252,8 +204,7 @@ class RecentActionsModel:
             ]
             if len(items) == len(self._items):
                 return
-            self._items = items
-            self._request_save()
+            self._set_items(items)
 
     def set_favorite(self, record_id: str, favorite: bool) -> None:
         """Pin an entry to the top of the history, or unpin it."""
@@ -270,8 +221,7 @@ class RecentActionsModel:
                 return
             item.favorite = favorite
             # Unfavoriting may push the entry out of the capped part.
-            self._items = self._capped(self._items)
-            self._request_save()
+            self._set_items(self._capped(self._items))
 
     @staticmethod
     def _capped(
@@ -296,158 +246,119 @@ class RecentActionsModel:
                 output.append(item)
         return output
 
+    def _set_items(self, items: list[RecentActionItem]) -> None:
+        """Change the items locally and have them stored.
+
+        Expects '_lock' to be held.
+        """
+        self._items = items
+        self._revision += 1
+        self._save_requested = True
+        self._start_worker()
+
     # ------------------------------------------------------------------
     # Persistence
     # ------------------------------------------------------------------
 
-    def _deserialize_items(
-        self, raw: Optional[list[Any]]
-    ) -> list[RecentActionItem]:
-        items: list[RecentActionItem] = []
-        for entry in raw or []:
-            if not isinstance(entry, dict):
-                self.log.warning("Skipped invalid recent action: %s", entry)
-                continue
+    def _load(self, use_cached_user: bool) -> None:
+        with self._lock:
+            revision = self._revision
+            # What the server returns while a change is on its way to it
+            # may or may not contain that change.
+            is_storing = self._save_requested or self._saving
 
-            # Only known fields are used, entries written by a different
-            # version may carry keys this one does not know about.
-            kwargs = {
-                key: value
-                for key, value in entry.items()
-                if key in _ITEM_FIELDS
-            }
+        items = self._fetch_items(use_cached_user)
+        if items is None:
+            return
+
+        with self._lock:
+            if not is_storing and revision == self._revision:
+                self._items = items
+
+    def _fetch_items(
+        self, use_cached_user: bool = False
+    ) -> Optional[list[RecentActionItem]]:
+        """Get the stored history, ready to be shown.
+
+        Returns:
+            Optional[list[RecentActionItem]]: Stored items, 'None' if they
+                could not be loaded.
+
+        """
+        try:
+            if use_cached_user:
+                user = get_ayon_user_entity()
+            else:
+                user = ayon_api.get_user()
+        except Exception:
+            self.log.error(
+                "Failed to load recent actions from AYON user.",
+                exc_info=True,
+            )
+            return None
+
+        user_data = user.get("data") or {}
+        preferences = user_data.get("frontendPreferences") or {}
+        raw = preferences.get(_PREFERENCES_KEY)
+        if raw is None:
+            raw = user_data.get(_LEGACY_USER_DATA_KEY)
+
+        items = []
+        for entry in raw or []:
             try:
-                items.append(RecentActionItem(**kwargs))
-            except TypeError:
+                item = RecentActionItem.from_data(entry)
+            except (TypeError, AttributeError):
                 self.log.warning(
                     "Skipped invalid recent action: %s", entry, exc_info=True
                 )
+                continue
+            # The row is unusable without something to call it.
+            item.label = item.label or item.identifier
+            items.append(item)
+
+        self._update_local_actions(items)
         return items
 
-    @staticmethod
-    def _serialize_items(items: list[RecentActionItem]) -> list[dict]:
-        return [dataclasses.asdict(item) for item in items]
+    def _update_local_actions(self, items: list[RecentActionItem]) -> None:
+        """Use current label and icon of local actions.
 
-    def _load_from_user_data(self) -> list[RecentActionItem]:
-        try:
-            user = ayon_api.get_user()
-        except Exception:
-            self.log.error(
-                "Failed to load recent actions from AYON user data.",
-                exc_info=True,
+        The history is shared by all machines of the user, but the icon of
+        a local action is usually a path to a file of an addon installed on
+        the machine that recorded it. Local actions are known to this
+        process, so how they look here can be read without any request.
+
+        Webactions keep what is stored with them, their icons are urls and
+        refreshing their labels would need a request per context.
+        """
+        for item in items:
+            if item.action_type != "local":
+                continue
+            label_icon = self._controller.get_local_action_label_icon(
+                item.identifier
             )
-            return []
+            if label_icon is None:
+                continue
+            label, icon = label_icon
+            item.label = label
+            item.icon = _icon_to_data(icon)
 
-        user_data = user.get("data")
-        if not isinstance(user_data, dict):
-            return []
-
-        raw = user_data.get(_USER_DATA_KEY)
-        if raw is None:
-            # Entries stored under a nested 'data' key by older versions.
-            nested = user_data.get("data")
-            if isinstance(nested, dict):
-                raw = nested.get(_USER_DATA_KEY)
-        return self._deserialize_items(raw)
-
-    def _save_to_user_data(self, items: list[RecentActionItem]) -> None:
+    def _store_items(self, items: list[RecentActionItem]) -> None:
         try:
-            # Name and data come from the same response, so the history is
-            # always written back to the user it was read from.
-            user = ayon_api.get_user()
-            user_data = user.get("data")
-            user_data = dict(user_data) if isinstance(user_data, dict) else {}
-            user_data[_USER_DATA_KEY] = self._serialize_items(items)
+            # Only the passed key of the preferences is changed.
             response = ayon_api.raw_patch(
-                f"users/{user['name']}", json={"data": user_data}
+                f"users/{get_ayon_username()}/frontendPreferences",
+                json={_PREFERENCES_KEY: [item.to_data() for item in items]},
             )
             response.raise_for_status()
         except Exception:
             self.log.error(
-                "Failed to save recent actions to AYON user data.",
+                "Failed to store recent actions to AYON user.",
                 exc_info=True,
             )
 
     # ------------------------------------------------------------------
     # Recording
     # ------------------------------------------------------------------
-
-    def _get_context_labels(
-        self,
-        project_name: Optional[str],
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        workfile_id: Optional[str],
-    ) -> ContextLabels:
-        """Get human readable names of a context that is in use.
-
-        Served from what the launcher already has loaded whenever possible.
-        """
-        labels = ContextLabels()
-        if not project_name:
-            return labels
-
-        project_entity = self._controller.get_project_entity(project_name)
-        if project_entity:
-            labels.project_code = project_entity.get("code")
-
-        if folder_id:
-            folder_entity = self._controller.get_folder_entity(
-                project_name, folder_id
-            )
-            if folder_entity:
-                labels.folder_path = folder_entity["path"]
-                folder_type = self._find_type_item(
-                    self._controller.get_folder_type_items,
-                    project_name,
-                    folder_entity.get("folderType"),
-                )
-                if folder_type is not None:
-                    labels.folder_icon = folder_type.icon
-
-        if not task_id:
-            return labels
-
-        task_entity = self._controller.get_task_entity(
-            project_name, task_id
-        )
-        if task_entity:
-            labels.task_name = task_entity["name"]
-            task_type = self._find_type_item(
-                self._controller.get_task_type_items,
-                project_name,
-                task_entity.get("taskType") or task_entity.get("type"),
-            )
-            if task_type is not None:
-                labels.task_icon = task_type.icon
-                labels.task_color = task_type.color
-
-        if workfile_id:
-            for workfile_item in self._controller.get_workfile_items(
-                project_name, task_id
-            ):
-                if workfile_item.workfile_id == workfile_id:
-                    labels.workfile_name = workfile_item.filename
-                    break
-        return labels
-
-    def _find_type_item(self, getter, project_name, type_name):
-        """Folder or task type item by name.
-
-        The icons only decorate a label, so failing to get them must not
-        take the label - or the history entry it belongs to - down.
-        """
-        try:
-            for type_item in getter(project_name):
-                if type_item.name == type_name:
-                    return type_item
-        except Exception:
-            self.log.warning(
-                "Failed to get type items of project '%s'.",
-                project_name,
-                exc_info=True,
-            )
-        return None
 
     def _on_action_trigger_finished(self, event: dict) -> None:
         if event["failed"]:
@@ -490,15 +401,6 @@ class RecentActionsModel:
             }))
             self._start_worker()
 
-    def _request_save(self) -> None:
-        """Persist the current items in the background.
-
-        Expects '_lock' to be held. Repeated requests collapse into a
-        single write.
-        """
-        self._save_requested = True
-        self._start_worker()
-
     def _start_worker(self) -> None:
         """Start the recording worker. Expects '_lock' to be held."""
         if self._worker is not None and self._worker.is_alive():
@@ -515,13 +417,14 @@ class RecentActionsModel:
     def _worker_loop(self) -> None:
         while True:
             with self._lock:
+                job = to_store = None
                 if self._queued_triggers:
                     job = self._queued_triggers.popleft()
-                    to_save = None
                 elif self._save_requested:
+                    # Changes made until now are stored by a single write.
                     self._save_requested = False
-                    job = None
-                    to_save = list(self._items or [])
+                    self._saving = True
+                    to_store = list(self._items or [])
                 else:
                     # Forget this thread while still holding the lock. The
                     # thread only finishes exiting after the lock is
@@ -532,7 +435,11 @@ class RecentActionsModel:
                     return
 
             if job is None:
-                self._save_to_user_data(to_save)
+                try:
+                    self._store_items(to_store)
+                finally:
+                    with self._lock:
+                        self._saving = False
                 continue
 
             action_type, data = job
@@ -574,42 +481,91 @@ class RecentActionsModel:
             item.label = action_item.full_label
             item.icon = _icon_to_data(action_item.icon)
 
-        labels = self._get_context_labels(
-            item.project_name,
-            item.folder_id,
-            item.task_id,
-            item.workfile_id,
-        )
-        item.project_code = labels.project_code
-        item.folder_path = labels.folder_path
-        item.task_name = labels.task_name
-        item.workfile_name = labels.workfile_name
-        item.folder_icon = labels.folder_icon
-        item.task_icon = labels.task_icon
-        item.task_color = labels.task_color
+        self._fill_context_labels(item)
+
+        # Storing replaces the whole history, so it has to be known first.
+        loaded_items = None
+        if not self.is_loaded():
+            loaded_items = self._fetch_items()
+            if loaded_items is None:
+                self.log.warning(
+                    "Recent action '%s' was not recorded, the history"
+                    " could not be loaded.",
+                    item.identifier,
+                )
+                return
 
         with self._lock:
-            items = [] if self._items is None else list(self._items)
+            if self._items is None:
+                self._items = loaded_items
+
             # Drop the same action executed on the same context, but carry
             # over whether it was favorited - re-running a favorite must
             # not quietly unpin it.
+            key = _action_key(item)
             kept = []
-            for existing in items:
-                if (
-                    existing.identifier == item.identifier
-                    and existing.action_type == item.action_type
-                    and existing.addon_name == item.addon_name
-                    and existing.project_name == item.project_name
-                    and existing.folder_id == item.folder_id
-                    and existing.task_id == item.task_id
-                    and existing.workfile_id == item.workfile_id
-                ):
+            for existing in self._items:
+                if _action_key(existing) == key:
                     item.favorite = item.favorite or existing.favorite
                     continue
                 kept.append(existing)
 
             kept.insert(0, item)
-            self._items = self._capped(kept)
-            to_save = list(self._items)
+            self._set_items(self._capped(kept))
 
-        self._save_to_user_data(to_save)
+    def _fill_context_labels(self, item: RecentActionItem) -> None:
+        """Store names and type icons of the context with the item.
+
+        Served from what the launcher already has loaded whenever possible.
+        """
+        project_name = item.project_name
+        if not project_name:
+            return
+
+        project_entity = self._controller.get_project_entity(project_name)
+        if project_entity:
+            item.project_code = project_entity.get("code")
+
+        if item.folder_id:
+            folder_entity = self._controller.get_folder_entity(
+                project_name, item.folder_id
+            )
+            if folder_entity:
+                item.folder_path = folder_entity["path"]
+                folder_type = self._find_type_item(
+                    self._controller.get_folder_type_items(project_name),
+                    folder_entity.get("folderType"),
+                )
+                if folder_type is not None:
+                    item.folder_icon = folder_type.icon
+
+        if not item.task_id:
+            return
+
+        task_entity = self._controller.get_task_entity(
+            project_name, item.task_id
+        )
+        if task_entity:
+            item.task_name = task_entity["name"]
+            task_type = self._find_type_item(
+                self._controller.get_task_type_items(project_name),
+                task_entity.get("taskType") or task_entity.get("type"),
+            )
+            if task_type is not None:
+                item.task_icon = task_type.icon
+                item.task_color = task_type.color
+
+        if item.workfile_id:
+            for workfile_item in self._controller.get_workfile_items(
+                project_name, item.task_id
+            ):
+                if workfile_item.workfile_id == item.workfile_id:
+                    item.workfile_name = workfile_item.filename
+                    break
+
+    @staticmethod
+    def _find_type_item(type_items, type_name):
+        for type_item in type_items:
+            if type_item.name == type_name:
+                return type_item
+        return None
