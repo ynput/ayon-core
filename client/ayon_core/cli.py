@@ -3,9 +3,7 @@
 
 import os
 import sys
-import logging
 import code
-import traceback
 from pathlib import Path
 
 import click
@@ -285,10 +283,8 @@ def deliver(
         version_ids (str): Comma separated version ids.
 
     """
-
-    print(f">>> Launching browser for Delivery action '{project}'.")
-
     log = Logger.get_logger("delivery")
+    log.debug(f"Launching browser for Delivery action for '{project}'.")
 
     try:
         from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
@@ -411,8 +407,7 @@ def _cleanup_project_args():
 
 
 def main(*args, **kwargs):
-    logging.basicConfig()
-
+    logger = Logger.get_logger("main")
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
@@ -429,10 +424,9 @@ def main(*args, **kwargs):
             sys.path.insert(0, path)
     os.environ["PYTHONPATH"] = os.pathsep.join(split_paths)
 
-    print(">>> loading environments ...")
-    print("  - global AYON ...")
+    logger.debug("Loading environment for AYON.")
     _set_global_environments()
-    print("  - for addons ...")
+    logger.debug("Loading environment for addons.")
     addons_manager = AddonsManager()
     _set_addons_environments(addons_manager)
     _add_addons(addons_manager)
@@ -446,7 +440,5 @@ def main(*args, **kwargs):
             args=(sys.argv[1:]),
         )
     except Exception:  # noqa
-        exc_info = sys.exc_info()
-        print("!!! AYON crashed:")
-        traceback.print_exception(*exc_info)
+        logger.error("AYON crashed", exc_info=True)
         sys.exit(1)

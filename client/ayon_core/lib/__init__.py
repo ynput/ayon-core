@@ -3,7 +3,7 @@
 """AYON lib functions."""
 
 from .terminal import Terminal
-from .log import Logger, log_timing
+from .log import Logger, log_span, log_timing
 from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,

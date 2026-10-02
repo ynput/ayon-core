@@ -11,7 +11,7 @@ from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
-from ayon_core.lib import Logger, log_timing
+from ayon_core.lib import Logger, log_span
 
 if TYPE_CHECKING:
     from ._browser_model import VisibilityAwarePaginatedTableModel
@@ -60,7 +60,7 @@ def _thumbnail_loader(key: str) -> str:
         Absolute path to the saved image file, or empty string when the
         version has no thumbnail.
     """
-    with log_timing(f"Fetching thumbnail for key {key}"):
+    with log_span("thumbnail.fetch", key=key):
         if not key:
             log.debug("  |_ No thumbnail key provided; skipping fetch")
             return ""
@@ -200,9 +200,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
                 ic.get_path(self._thumb_key) if self._thumb_key else None
             )
             if cached_path:
-                with log_timing(
-                    "Thumbnail sync-load for key %r" % self._thumb_key
-                ):
+                with log_span("thumbnail.set_cached", key=self._thumb_key):
                     self.set_thumbnail(cached_path)
             else:
                 w = self
