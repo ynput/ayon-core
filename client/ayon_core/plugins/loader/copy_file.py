@@ -6,26 +6,17 @@ from typing import Optional, Any
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.actions import (
-    LoaderActionPlugin,
+    CoreLoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
 )
 
 
-class CopyFileActionPlugin(LoaderActionPlugin):
+class CopyFileActionPlugin(CoreLoaderActionPlugin):
     """Copy published file path to clipboard"""
     identifier = "core.copy-action"
-
-    def apply_settings(self, settings):
-        loader_settings = settings.get("core", {}).get(
-            "tools", {}
-        ).get("loader", {})
-
-        self.enabled = loader_settings.get(
-            "enable_copy_file_action",
-            True,
-        )
+    settings_key = "copy_file_action"
 
     def get_action_items(
         self, selection: LoaderActionSelection
