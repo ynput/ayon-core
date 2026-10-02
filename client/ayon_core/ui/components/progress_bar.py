@@ -369,7 +369,7 @@ class AYProgressView(AYContainer):
     """
 
     progress_changed = Signal(int, int)
-    progress_ping = Signal()
+    progress_ping = Signal(object)
     completed = Signal()
 
     def __init__(
@@ -421,11 +421,10 @@ class AYProgressView(AYContainer):
         self._sync_value()
 
         self._reporter: ProgressReporter | None = None
-        self._pending: ProgressState | None = None
         # Reporter callbacks can arrive on a worker thread; hop to the Qt
         # thread before touching any widget.
         self.progress_ping.connect(
-            self._drain, Qt.ConnectionType.QueuedConnection
+            self._apply, Qt.ConnectionType.QueuedConnection
         )
 
     def bind(self, reporter: ProgressReporter) -> None:
@@ -446,15 +445,7 @@ class AYProgressView(AYContainer):
 
     def _on_state(self, state: ProgressState) -> None:
         """Queue a reporter snapshot for the Qt thread."""
-        self._pending = state
-        self.progress_ping.emit()
-
-    def _drain(self) -> None:
-        """Apply the most recent queued snapshot."""
-        state = self._pending
-        self._pending = None
-        if state is not None:
-            self._apply(state)
+        self.progress_ping.emit(state)
 
     def _apply(self, state: ProgressState) -> None:
         """Mirror a reporter snapshot onto the bar."""

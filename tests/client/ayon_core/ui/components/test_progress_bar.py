@@ -122,3 +122,35 @@ def test_view_updates_from_worker_thread(qtbot):
     assert view.progress_bar.current == 50
     assert view.progress_bar.is_indeterminate is False
     assert completed == [True]
+
+
+def test_view_queues_each_worker_snapshot(qtbot, monkeypatch):
+    reporter = ProgressReporter(total=4, min_interval=0.0)
+    seen = []
+    gui_thread = threading.get_ident()
+    original_apply = AYProgressView._apply
+
+    def record_apply(self, state):
+        seen.append((state, threading.get_ident()))
+        original_apply(self, state)
+
+    monkeypatch.setattr(AYProgressView, "_apply", record_apply)
+    view = AYProgressView()
+    qtbot.addWidget(view)
+    view.bind(reporter)
+
+    def publish():
+        reporter.set_progress(1)
+        reporter.set_progress(2)
+        reporter.fail("Upload failed")
+
+    worker = threading.Thread(target=publish)
+    worker.start()
+    worker.join(timeout=3)
+    assert not worker.is_alive()
+    assert seen == []
+    qtbot.waitUntil(lambda: len(seen) == 4, timeout=3000)
+    assert [state.completed for state, _ in seen] == [0, 1, 2, 2]
+    assert seen[-1][0].failed
+    assert view._caption.text() == "Upload failed"
+    assert all(thread_id == gui_thread for _, thread_id in seen)
