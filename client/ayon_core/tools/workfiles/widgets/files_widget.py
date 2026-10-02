@@ -358,6 +358,10 @@ class FilesWidget(AYContainer):
             return
 
         description = result["description"]
+        lines = description.split("\n")
+        if lines[-1].startswith("Copied from:"):
+            lines.pop(-1)
+            description = "\n".join(lines)
         result["description"] = (
             f"{description}"
             f"\nCopied from: {repre_info['filepath']}"
