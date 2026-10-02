@@ -29,10 +29,6 @@ if TYPE_CHECKING:
 # Key in 'data.frontendPreferences' of the user. Preferences are the only
 # part of user data a user without manager rights can change.
 _PREFERENCES_KEY = "launcherRecentActions"
-# The history was stored directly in user data at first, where the server
-# ignores changes of users that are not managers. Still read from there so
-# that those who could store it keep their history.
-_LEGACY_USER_DATA_KEY = "recentActions"
 
 
 def _icon_to_data(icon) -> Optional[dict]:
@@ -300,8 +296,6 @@ class RecentActionsModel:
         user_data = user.get("data") or {}
         preferences = user_data.get("frontendPreferences") or {}
         raw = preferences.get(_PREFERENCES_KEY)
-        if raw is None:
-            raw = user_data.get(_LEGACY_USER_DATA_KEY)
 
         items = []
         for entry in raw or []:

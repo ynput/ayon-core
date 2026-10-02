@@ -181,19 +181,6 @@ def test_history_is_loaded_from_where_it_is_stored(
     assert folders == ["b", "a"]
 
 
-def test_history_stored_in_user_data_before_is_still_read(
-    controller, model, user_data
-):
-    trigger(controller, model)
-    preferences = user_data["data"].pop("frontendPreferences")
-    user_data["data"]["recentActions"] = preferences["launcherRecentActions"]
-
-    other_session = RecentActionsModel(FakeController())
-    other_session.refresh()
-
-    assert len(other_session.get_recent_action_items()) == 1
-
-
 def test_unknown_stored_keys_do_not_break_loading(
     controller, model, user_data
 ):
