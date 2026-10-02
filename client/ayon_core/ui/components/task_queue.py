@@ -401,8 +401,9 @@ class AsyncTaskQueue(QThread):
             log.debug("Task completed successfully: %s", task.name)
 
         except Exception as e:
-            log.exception("Task %s failed: %s", task.name, e)
-
+            # Deliver the failure before logging it. Logging may itself
+            # raise (e.g. a host stream that is unusable from a worker
+            # thread) and the caller must still learn the task ended.
             if task.callback:
                 self._invoke_callback_safely(task.callback, None, task.name)
 
@@ -414,6 +415,8 @@ class AsyncTaskQueue(QThread):
                     task.name,
                     exc_info=True,
                 )
+
+            log.exception("Task %s failed: %s", task.name, e)
 
     def _invoke_callback_safely(
         self, callback: Callable, result: Any, task_name: str
