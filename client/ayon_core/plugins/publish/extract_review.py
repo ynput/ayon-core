@@ -9,7 +9,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 import tempfile
 
-import clique
 import pyblish.api
 
 from ayon_core.lib import (
@@ -19,7 +18,8 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.pipeline.publish.lib import (
-    fill_sequence_gaps_with_previous_version
+    fill_sequence_gaps_with_previous_version,
+    get_file_collections,
 )
 from ayon_core.lib.file_transaction import copyfile
 from ayon_core.lib.transcoding import (
@@ -58,6 +58,7 @@ class TempData:
         resolution_height: int,
         origin_repre: dict[str, Any],
         input_is_sequence: bool,
+        input_is_single_file: bool,
         first_sequence_frame: int,
         input_allow_bg: bool,
         with_audio: bool,
@@ -89,6 +90,7 @@ class TempData:
         self.resolution_height = resolution_height
         self.origin_repre = origin_repre
         self.input_is_sequence = input_is_sequence
+        self.input_is_single_file = input_is_single_file
         self.first_sequence_frame = first_sequence_frame
         self.input_allow_bg = input_allow_bg
         self.with_audio = with_audio
@@ -485,9 +487,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 self.log.debug("Checking sequence to fill gaps in sequence..")
 
                 files = temp_data.origin_repre["files"]
-                collections = clique.assemble(
-                    files,
-                )[0]
+                collections, _ = get_file_collections(files)
                 if len(collections) != 1:
                     raise PublishError(
                         "Found multiple collections, expected one."
@@ -621,7 +621,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "outputDef": output_def,
                 "ffmpeg_cmd": subprcs_cmd
             })
-
             # Force to pop these key if are in new repre
             new_repre.pop("thumbnail", None)
             if "clean_name" in new_repre.get("tags", []):
@@ -706,7 +705,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         if input_is_sequence and repre["files"]:
             # Calculate first frame that should be used
-            cols, _ = clique.assemble(repre["files"])
+            cols, _ = get_file_collections(repre["files"])
             input_frames = list(sorted(cols[0].indexes))
             first_sequence_frame = input_frames[0]
             # WARNING: This is an issue as we don't know if first frame
@@ -722,8 +721,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"][0])[1].replace(".", "")
             if ext.lower() in self.alpha_exts:
                 input_allow_bg = True
+            # Determine if input is single file or sequence based on extension
+            # If extension is not in image extensions then input is single file
+            input_is_single_file = ext.lower() not in self.image_exts
         else:
             ext = os.path.splitext(repre["files"])[1].replace(".", "")
+            input_is_single_file = True
 
         return TempData(
             fps=float(instance.data["fps"]),
@@ -740,6 +743,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             resolution_height=instance.data.get("resolutionHeight"),
             origin_repre=repre,
             input_is_sequence=input_is_sequence,
+            input_is_single_file=input_is_single_file,
             first_sequence_frame=first_sequence_frame,
             input_allow_bg=input_allow_bg,
             with_audio=with_audio,
@@ -1187,7 +1191,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         dst_staging_dir = new_repre["stagingDir"]
 
         if temp_data.input_is_sequence:
-            collections = clique.assemble(repre["files"])[0]
+            collections, _ = get_file_collections(repre["files"])
             full_input_path = os.path.join(
                 src_staging_dir,
                 collections[0].format("{head}{padding}{tail}")
@@ -1241,7 +1245,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         output_ext_is_image = bool(output_ext in self.image_exts)
         output_is_sequence = bool(
             output_ext_is_image
-            and "sequence" in output_def["tags"]
+            and not temp_data.input_is_single_file
         )
         if output_is_sequence:
             new_repre_files = []
