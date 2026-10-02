@@ -12,9 +12,7 @@ import clique
 import pyblish.api
 
 from ayon_core.pipeline import publish
-from ayon_core.pipeline.publish import (
-    get_publish_template_name
-)
+from ayon_core.pipeline.publish import get_publish_template_object
 
 
 class CollectOTIOProductResources(
@@ -58,11 +56,9 @@ class CollectOTIOProductResources(
         if not instance.data.get("versionData"):
             instance.data["versionData"] = {}
 
-        template_name = self.get_template_name(instance)
-        anatomy = instance.context.data["anatomy"]
-        publish_path_template = anatomy.get_template_item(
-            "publish", template_name, "path"
-        ).template
+        publish_path_template = get_publish_template_object(
+            instance, logger=self.log
+        )["path"].template
         template = os.path.normpath(publish_path_template)
         self.log.debug(
             ">> template: {}".format(template))
@@ -289,32 +285,6 @@ class CollectOTIOProductResources(
                 representation_data["tags"].append(tag_name)
 
         return representation_data
-
-    def get_template_name(self, instance):
-        """Return anatomy template name to use for integration"""
-
-        # Anatomy data is pre-filled by Collectors
-        context = instance.context
-        project_name = context.data["projectName"]
-
-        # Task can be optional in anatomy data
-        host_name = context.data["hostName"]
-
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = instance.data["productType"]
-        anatomy_data = instance.data["anatomyData"]
-        task_info = anatomy_data.get("task") or {}
-
-        return get_publish_template_name(
-            project_name,
-            host_name,
-            product_base_type=product_base_type,
-            task_name=task_info.get("name"),
-            task_type=task_info.get("type"),
-            project_settings=context.data["project_settings"],
-            logger=self.log
-        )
 
 
 class CollectOtioSubsetResources(CollectOTIOProductResources):
