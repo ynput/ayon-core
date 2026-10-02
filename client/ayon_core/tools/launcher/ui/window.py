@@ -18,6 +18,7 @@ from ayon_core.ui.components import (
 
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
+from .recent_actions_widget import RecentActionsButton
 
 LAUNCHER_CSS_PATH = Path(__file__).parent / "launcher_style.css"
 
@@ -85,8 +86,13 @@ class LauncherWindow(AYContainer):
         projects_header_layout = AYHBoxLayout(
             projects_header_widget, margin=0, spacing=4
         )
+        recent_actions_btn = RecentActionsButton(
+            controller, projects_header_widget
+        )
+
         projects_header_layout.addWidget(projects_filter_text, 1)
         projects_header_layout.addWidget(refresh_btn, 0)
+        projects_header_layout.addWidget(recent_actions_btn, 0)
 
         projects_widget = ProjectsWidget(controller, pages_widget)
 
@@ -166,6 +172,14 @@ class LauncherWindow(AYContainer):
             "webaction.trigger.finished",
             self._on_webaction_trigger_finished,
         )
+        controller.register_event_callback(
+            "recent_action.unavailable",
+            self._on_recent_action_unavailable,
+        )
+        controller.register_event_callback(
+            "expected_selection_changed",
+            self._on_expected_selection_changed,
+        )
 
         self._overlay_object = overlay_object
 
@@ -180,6 +194,7 @@ class LauncherWindow(AYContainer):
         self._pages_layout = pages_layout
         self._projects_page = projects_page
         self._projects_widget = projects_widget
+        self._projects_filter_text = projects_filter_text
         self._hierarchy_page = hierarchy_page
         self._actions_widget = actions_widget
         # self._action_history = action_history
@@ -232,6 +247,34 @@ class LauncherWindow(AYContainer):
         elif self._is_on_projects_page:
             self._go_to_hierarchy_page(project_name)
 
+    def _on_expected_selection_changed(self, event):
+        # Only the project is handled here, it is picked in the projects
+        #   list that lives in this window. The rest of the expected
+        #   selection is handled by the widgets of the hierarchy page.
+        project_data = event.data.get("project")
+        if (
+            not project_data
+            or not project_data["current"]
+            or project_data["selected"]
+        ):
+            return
+
+        project_name = project_data["name"]
+        # Opens the hierarchy page if the projects page is shown.
+        self._projects_widget.set_selected_project(project_name)
+        if (
+            self._projects_filter_text.text()
+            and self._projects_widget.get_selected_project() != project_name
+        ):
+            # The project is hidden by the filter
+            self._projects_filter_text.setText("")
+            self._projects_widget.set_selected_project(project_name)
+        # Already on the hierarchy page - show the project in its header.
+        self._hierarchy_page.set_selected_project(project_name)
+        # The project may not be available anymore.
+        if self._controller.get_selected_project_name() == project_name:
+            self._controller.expected_project_selected(project_name)
+
     def _on_project_filter_change(self, text):
         self._projects_widget.set_name_filter(text)
 
@@ -259,6 +302,13 @@ class LauncherWindow(AYContainer):
 
         self._overlay_object.add_message(
             message, message_type, message_id=message_id
+        )
+
+    def _on_recent_action_unavailable(self, event):
+        self._show_toast_message(
+            "Not available anymore: {}".format(event["full_label"]),
+            success=False,
+            message_id=event["record_id"],
         )
 
     def _on_action_trigger_started(self, event):
