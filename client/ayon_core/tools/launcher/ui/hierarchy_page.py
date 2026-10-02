@@ -171,6 +171,14 @@ class HierarchyPage(QtWidgets.QWidget):
         """
         self._projects_combobox.set_selection(project_name)
 
+    def clear_filters(self):
+        """Show all folders and tasks again.
+
+        What is being navigated to must not stay hidden by a filter.
+        """
+        self._filters_widget.set_text("")
+        self._filters_widget.set_my_tasks_checked(False)
+
     def refresh(self):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()

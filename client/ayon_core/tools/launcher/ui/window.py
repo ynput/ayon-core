@@ -194,6 +194,7 @@ class LauncherWindow(AYContainer):
         self._pages_layout = pages_layout
         self._projects_page = projects_page
         self._projects_widget = projects_widget
+        self._projects_filter_text = projects_filter_text
         self._hierarchy_page = hierarchy_page
         self._actions_widget = actions_widget
         # self._action_history = action_history
@@ -259,6 +260,9 @@ class LauncherWindow(AYContainer):
             return
 
         project_name = project_data["name"]
+        # Filters could hide what is about to be selected.
+        self._projects_filter_text.setText("")
+        self._hierarchy_page.clear_filters()
         # Opens the hierarchy page if the projects page is shown.
         self._projects_widget.set_selected_project(project_name)
         # Already on the hierarchy page - show the project in its header.
