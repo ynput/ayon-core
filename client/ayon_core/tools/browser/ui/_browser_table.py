@@ -253,6 +253,10 @@ class BrowserTable(AYContainer):
             initial_show_empty_groups=(
                 BROWSER_VIEW_DEFAULTS.show_empty_groups
             ),
+            initial_ungroup_empty_values=(
+                self._controller.ungroup_empty_values
+            ),
+            initial_display_type=self._display_type.display_type,
             initial_featured_version_order=(
                 BROWSER_VIEW_DEFAULTS.featured_version_order
             ),
@@ -292,6 +296,9 @@ class BrowserTable(AYContainer):
         )
         self._customize.show_empty_groups_changed.connect(
             self._on_show_empty_groups_changed
+        )
+        self._customize.ungroup_empty_values_changed.connect(
+            self._on_ungroup_empty_values_changed
         )
         self._customize.card_size_changed.connect(
             self._card_view.set_card_width
@@ -369,6 +376,9 @@ class BrowserTable(AYContainer):
             self._view_selector.notify_view_modified
         )
         self._customize.show_empty_groups_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.ungroup_empty_values_changed.connect(
             self._view_selector.notify_view_modified
         )
         self._customize.card_size_committed.connect(
@@ -863,6 +873,13 @@ class BrowserTable(AYContainer):
 
     def _on_display_type_changed(self, display_type: str) -> None:
         log.debug("Display type changed: %s", display_type)
+        self._customize.set_display_type(display_type)
+        # The views group versions without a value differently, so the
+        # loaded rows may need a refetch.
+        if self._controller.set_display_type(display_type):
+            self._model.set_fetch_enabled(self._controller.has_selection)
+            self._reset_expansion_state()
+            self._model.reset_data()
         if display_type == "grid":
             self._views_stack.setCurrentWidget(self._card_view)
         else:
@@ -1011,6 +1028,11 @@ class BrowserTable(AYContainer):
             None if group_by_key == "none" else group_by_key
         )
 
+    def _on_ungroup_empty_values_changed(self, enabled: bool) -> None:
+        if self._controller.set_ungroup_empty_values(enabled):
+            self._reset_expansion_state()
+            self._model.reset_data()
+
     def _on_show_empty_groups_changed(self, show_empty: bool) -> None:
         self._controller.set_hide_empty_groups(not show_empty)
         self._reset_expansion_state()
@@ -1035,6 +1057,9 @@ class BrowserTable(AYContainer):
             ``gridHeight`` (card width),
             ``featuredVersionOrder`` (hero/latest version order),
             ``displayType`` (``"table"`` or ``"grid"``),
+            ``ungroupEmptyValues`` (whether versions without a value
+            for the grouped field are listed below the groups, defaults
+            to ``True`` for views saved before it existed),
             ``myTasksFilter`` (whether the "My Tasks" slicer filter
             is active).
 
@@ -1081,6 +1106,13 @@ class BrowserTable(AYContainer):
                     log.debug(
                         "Failed to set featuredVersionOrder: %r", order
                     )
+        ungroup_empty_values = bool(extra.get(
+            "ungroupEmptyValues",
+            BROWSER_VIEW_DEFAULTS.ungroup_empty_values,
+        ))
+        self._customize.set_ungroup_empty_values(ungroup_empty_values)
+        if self._controller.set_ungroup_empty_values(ungroup_empty_values):
+            self._model.reset_data()
         if "displayType" in extra:
             display_type: Literal["table", "grid"] = extra["displayType"]
             self._display_type.set_display_type(display_type)
@@ -1132,6 +1164,7 @@ class BrowserTable(AYContainer):
             ),
             "latestPerFolder": self._controller.latest_per_folder,
             "includeChildren": self._controller.include_folder_children,
+            "ungroupEmptyValues": self._controller.ungroup_empty_values,
             "myTasksFilter": self._controller.my_tasks_filter_enabled,
         }
         return extra
