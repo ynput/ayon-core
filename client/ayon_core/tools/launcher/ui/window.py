@@ -260,11 +260,15 @@ class LauncherWindow(AYContainer):
             return
 
         project_name = project_data["name"]
-        # Filters could hide what is about to be selected.
-        self._projects_filter_text.setText("")
-        self._hierarchy_page.clear_filters()
         # Opens the hierarchy page if the projects page is shown.
         self._projects_widget.set_selected_project(project_name)
+        if (
+            self._projects_filter_text.text()
+            and self._projects_widget.get_selected_project() != project_name
+        ):
+            # The project is hidden by the filter
+            self._projects_filter_text.setText("")
+            self._projects_widget.set_selected_project(project_name)
         # Already on the hierarchy page - show the project in its header.
         self._hierarchy_page.set_selected_project(project_name)
         # The project may not be available anymore.

@@ -18,10 +18,25 @@ from .recent_actions_widget import RecentActionsButton
 
 class LauncherFoldersWidget(FoldersWidget):
     focused_in = QtCore.Signal()
+    # Folder that should be selected is hidden by a filter
+    filtered_folder_requested = QtCore.Signal(str)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._folders_view.installEventFilter(self)
+
+    def is_folder_filtered(self, folder_id: str) -> bool:
+        """Folder is available but hidden by a filter."""
+        index = self._folders_model.get_index_by_id(folder_id)
+        if not index.isValid():
+            return False
+        return not self._folders_proxy_model.mapFromSource(index).isValid()
+
+    def set_selected_folder(self, folder_id):
+        if folder_id is not None and self.is_folder_filtered(folder_id):
+            # Give a chance to turn off what hides the folder
+            self.filtered_folder_requested.emit(folder_id)
+        return super().set_selected_folder(folder_id)
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.FocusIn:
@@ -31,10 +46,30 @@ class LauncherFoldersWidget(FoldersWidget):
 
 class LauncherTasksWidget(TasksWidget):
     focused_in = QtCore.Signal()
+    # Task that should be selected is hidden by a filter
+    filtered_task_requested = QtCore.Signal()
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._tasks_view.installEventFilter(self)
+
+    def _set_expected_selection(self):
+        expected = self._expected_selection_data
+        if (
+            expected is not None
+            and expected["task_name"] is not None
+            and expected["folder_id"] == self._tasks_model.get_last_folder_id()
+        ):
+            index = self._tasks_model.get_index_by_name(
+                expected["task_name"]
+            )
+            if (
+                index.isValid()
+                and not self._tasks_proxy_model.mapFromSource(index).isValid()
+            ):
+                # Give a chance to turn off what hides the task
+                self.filtered_task_requested.emit()
+        return super()._set_expected_selection()
 
     def deselect(self):
         sel_model = self._tasks_view.selectionModel()
@@ -127,6 +162,12 @@ class HierarchyPage(QtWidgets.QWidget):
         )
         folders_widget.focused_in.connect(self._on_folders_focus)
         tasks_widget.focused_in.connect(self._on_tasks_focus)
+        folders_widget.filtered_folder_requested.connect(
+            self._on_filtered_folder_requested
+        )
+        tasks_widget.filtered_task_requested.connect(
+            self._on_filtered_task_requested
+        )
 
         self._is_visible = False
         self._controller = controller
@@ -171,14 +212,6 @@ class HierarchyPage(QtWidgets.QWidget):
         """
         self._projects_combobox.set_selection(project_name)
 
-    def clear_filters(self):
-        """Show all folders and tasks again.
-
-        What is being navigated to must not stay hidden by a filter.
-        """
-        self._filters_widget.set_text("")
-        self._filters_widget.set_my_tasks_checked(False)
-
     def refresh(self):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
@@ -209,6 +242,27 @@ class HierarchyPage(QtWidgets.QWidget):
 
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
+
+    def _on_filtered_folder_requested(self, folder_id: str) -> None:
+        """Turn off only what hides a folder that is navigated to."""
+        filters_widget = self._filters_widget
+        text = filters_widget.text()
+        if text:
+            filters_widget.set_text("")
+            if not self._folders_widget.is_folder_filtered(folder_id):
+                return
+
+        if filters_widget.is_my_tasks_checked():
+            filters_widget.set_my_tasks_checked(False)
+            # It may have been just 'my tasks' that was hiding the folder
+            if text:
+                filters_widget.set_text(text)
+                if self._folders_widget.is_folder_filtered(folder_id):
+                    filters_widget.set_text("")
+
+    def _on_filtered_task_requested(self) -> None:
+        # Tasks are only filtered by 'my tasks'
+        self._filters_widget.set_my_tasks_checked(False)
 
     def _on_folders_focus(self):
         self._workfiles_page.deselect()
