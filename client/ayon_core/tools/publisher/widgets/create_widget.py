@@ -460,6 +460,8 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
 
     def refresh(self) -> None:
+        self._pre_create_widget.reset_cache()
+
         current_folder_path = self._controller.get_current_folder_path()
         current_task_name = self._controller.get_current_task_name()
 
@@ -752,18 +754,6 @@ class CreateWidget(QtWidgets.QWidget):
     def _on_controler_reset(self) -> None:
         # Trigger refresh only if is visible
         self.refresh()
-
-    def _pre_create_attr_changed(self, event) -> None:
-        if (
-            self._selected_creator_identifier is None
-            or self._selected_creator_identifier not in event["identifiers"]
-        ):
-            return
-
-        self._set_creator_by_identifier(
-            self._selected_creator_identifier,
-            self._selected_product_type,
-        )
 
     def _on_folder_change(self) -> None:
         self._refresh_product_name()
