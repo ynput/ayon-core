@@ -359,8 +359,8 @@ class FilesWidget(AYContainer):
 
         description = result["description"]
         result["description"] = (
-            f"Copied from: {repre_info['filepath']}\n"
-            f"Description: {description}"
+            f"{description}"
+            f"\nCopied from: {repre_info['filepath']}"
         )
 
         self._controller.copy_workfile_representation(
