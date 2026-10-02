@@ -21,17 +21,18 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     ActionForm,
-    LoaderActionPlugin,
+    CoreLoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
 )
 
 
-class DeleteOldVersions(LoaderActionPlugin):
+class DeleteOldVersions(CoreLoaderActionPlugin):
     """Deletes specific number of old version"""
 
     is_multiple_contexts_compatible = True
+    settings_key = "delete_old_versions"
     sequence_splitter = "__sequence_splitter__"
 
     requires_confirmation = True

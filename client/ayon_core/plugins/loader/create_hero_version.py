@@ -20,7 +20,7 @@ from ayon_core.pipeline.publish import get_publish_template_name
 from ayon_core.pipeline.template_data import get_template_data
 
 from ayon_core.pipeline.actions import (
-    LoaderActionPlugin,
+    CoreLoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
@@ -59,10 +59,11 @@ def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
     return changes
 
 
-class CreateHeroVersion(LoaderActionPlugin):
+class CreateHeroVersion(CoreLoaderActionPlugin):
     """Create hero version from selected context."""
 
     is_multiple_contexts_compatible = False
+    settings_key = "create_hero_version"
     ignored_representation_names: list[str] = []
     db_representation_context_keys = [
         "project",

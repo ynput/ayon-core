@@ -9,7 +9,7 @@ from typing import Optional, Any, Callable
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.actions import (
-    LoaderActionPlugin,
+    CoreLoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
@@ -260,9 +260,10 @@ def open_file(filepath: str) -> None:
         subprocess.call(("xdg-open", filepath))
 
 
-class OpenFileAction(LoaderActionPlugin):
+class OpenFileAction(CoreLoaderActionPlugin):
     """Open Image Sequence or Video with system default"""
     identifier = "core.open-file"
+    settings_key = "open_file_action"
 
     def get_action_items(
         self, selection: LoaderActionSelection
