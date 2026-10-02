@@ -161,8 +161,3 @@ ActionMenuPopup ActionsView {
     margin: 4px 8px;
 }
 
-/* The row's context menu is an 'AYMenu' (see recent_actions_widget.py) -
-   it paints itself directly through AYONStyle rather than through Qt
-   stylesheets, so a 'QMenu::item:selected' rule here would never be
-   reached. It already renders its own themed hover; nothing to add. */
-

@@ -173,8 +173,8 @@ class ActionsModel:
 
     def get_action_item(
         self,
-        identifier: str,
         action_type: str,
+        identifier: str,
         addon_name: str | None,
         project_name: str | None,
         folder_id: str | None,
@@ -194,8 +194,8 @@ class ActionsModel:
         a previously seen action use the version that is enabled now.
 
         Args:
-            identifier (str): Action identifier.
             action_type (str): Type of action, 'local' or 'webaction'.
+            identifier (str): Action identifier.
             addon_name (str | None): Addon name (webactions only).
             project_name (str | None): Project name.
             folder_id (str | None): Folder id.

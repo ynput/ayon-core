@@ -176,8 +176,8 @@ class BaseLauncherController(
         workfile_id: Optional[str],
     ) -> Optional[ActionItem]:
         return self._actions_model.get_action_item(
-            identifier,
             action_type,
+            identifier,
             addon_name,
             project_name,
             folder_id,

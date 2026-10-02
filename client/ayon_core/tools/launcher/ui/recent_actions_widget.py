@@ -5,7 +5,7 @@ from qtpy import QtWidgets, QtCore
 from ayon_core.lib import Logger
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
 from ayon_core.tools.utils.delegates import pretty_timestamp
 from ayon_core.tools.utils.lib import RefreshThread
 from ayon_core.ui.components import AYButton, AYLabel, AYMenu
@@ -28,6 +28,22 @@ _WORKFILE_ICON = "description"
 _BREADCRUMB_ICON_SIZE = 14
 
 log = Logger.get_logger("RecentActionsWidget")
+
+
+def _get_icon_url(icon_def):
+    """Url of an icon which has to be downloaded to be shown.
+
+    Args:
+        icon_def (Optional[dict[str, str]]): Stored icon definition.
+
+    Returns:
+        Optional[str]: Url of the icon, 'None' for icons that are built
+            from what is available locally.
+
+    """
+    if icon_def and icon_def.get("type") in ("url", "ayon_url"):
+        return icon_def.get("url")
+    return None
 
 
 def _get_icon(icon_def):
@@ -92,12 +108,9 @@ _Segment = namedtuple("_Segment", ("text", "icon", "color"))
 def _build_breadcrumb(action_item):
     """Build the short context shown in a row: code > folder > task > file.
 
-    The project is reduced to its code (falling back to its full name for
-    an entry recorded before the code was kept) and the folder to its name,
-    always shown - not just when it differs from the project being
-    browsed, which used to make the row's context shift shape depending on
-    what else was open. The whole context stays available through
-    :func:`_build_full_context`, used for the tooltips.
+    The project is reduced to its code (its name for an entry recorded
+    without one) and the folder to its name. The whole context stays
+    available through :func:`_build_full_context`, used for the tooltips.
 
     Args:
         action_item (RecentActionItem): Recent action item.
@@ -207,7 +220,10 @@ class _BreadcrumbWidget(QtWidgets.QWidget):
 
 
 class _RecentActionRow(QtWidgets.QWidget):
-    """Single row: icon, label/breadcrumb, timestamp, favorite and replay."""
+    """Single row: icon, label and context, go to context and favorite.
+
+    Clicking the row runs the action again.
+    """
 
     navigate_requested = QtCore.Signal(str)
     replay_requested = QtCore.Signal(str)
@@ -217,10 +233,11 @@ class _RecentActionRow(QtWidgets.QWidget):
     def __init__(
         self,
         action_item,
+        icon,
         breadcrumb,
+        full_context,
         timestamp_label,
         parent=None,
-        full_context=None,
     ):
         super().__init__(parent)
         self._record_id = action_item.record_id
@@ -231,24 +248,19 @@ class _RecentActionRow(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
 
         label = action_item.label
-        # The label shows the short form, hovering gives the whole thing.
-        full_context = full_context or _SEPARATOR.join(
-            [segment.text for segment in breadcrumb if segment.text]
-        )
+        # The row shows the short context, hovering gives the whole thing.
         if full_context:
-            tooltip = f"Run: {label}\n{full_context}"
-            self.setToolTip(tooltip)
+            self.setToolTip(f"Run: {label}\n{full_context}")
 
         icon_label = QtWidgets.QLabel(self)
         icon_label.setFixedSize(32, 32)
         icon_label.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-        icon_label.setPixmap(_get_icon(action_item.icon).pixmap(28, 28))
+        icon_label.setPixmap(icon.pixmap(28, 28))
 
         text_label = AYLabel(label, bold=True, parent=self)
         text_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
         breadcrumb_widget = _BreadcrumbWidget(breadcrumb, self)
-        breadcrumb_widget.setObjectName("RecentActionBreadcrumb")
         breadcrumb_widget.setVisible(bool(breadcrumb))
 
         timestamp_widget = AYLabel(
@@ -257,8 +269,7 @@ class _RecentActionRow(QtWidgets.QWidget):
         timestamp_widget.setAlignment(
             QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
         )
-        timestamp_widget.setObjectName("RecentActionTimestamp")
-        # Only shown while hovering the row, it is also in the tooltip.
+        # Only shown while hovering the row.
         timestamp_widget.setVisible(False)
         self._timestamp_widget = timestamp_widget
         self._has_timestamp = bool(timestamp_label)
@@ -279,7 +290,6 @@ class _RecentActionRow(QtWidgets.QWidget):
         )
         favorite_btn.setChecked(favorite)
         favorite_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        favorite_btn.setObjectName("RecentFavoriteBtn")
 
         go_to_btn = AYButton(
             variant=AYButton.Variants.Surface,
@@ -304,7 +314,7 @@ class _RecentActionRow(QtWidgets.QWidget):
         row_layout.addWidget(favorite_btn, 0)
 
         self._favorite_btn = favorite_btn
-        self._play_btn = go_to_btn
+        self._go_to_btn = go_to_btn
         favorite_btn.clicked.connect(self._on_favorite_clicked)
         go_to_btn.clicked.connect(self._on_go_to_clicked)
         self.setObjectName("RecentActionRow")
@@ -355,12 +365,13 @@ class RecentActionsPopup(AYDropdownPopup):
         super().__init__(
             parent, variant=AYDropdownPopup.Variants.Low_Framed_Thin
         )
-        self.setObjectName("RecentActionsPopup")
         self._controller = controller
         self._rows = []
         self._refresh_thread = None
-        self._refresh_again = False
         self._anchor_widget = None
+        # Urls of icons that were downloaded by the refresh thread. Until
+        # then an icon is not asked for, as that would download it here.
+        self._fetched_icon_urls = set()
 
         scroll_area = AYScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -397,32 +408,39 @@ class RecentActionsPopup(AYDropdownPopup):
         fresh ones.
         """
         self._rebuild_rows(self._controller.get_recent_action_items())
-        self._start_refresh_thread()
-
-    def _start_refresh_thread(self):
         if self._refresh_thread is not None:
             return
 
-        refresh_thread = RefreshThread(
-            "recent_actions",
-            self._controller.refresh_recent_action_items,
-        )
+        refresh_thread = RefreshThread("recent_actions", self._fetch_items)
         refresh_thread.refresh_finished.connect(self._on_refresh_finished)
         self._refresh_thread = refresh_thread
         refresh_thread.start()
 
+    def _fetch_items(self):
+        """Called in a worker thread, must not touch any widget."""
+        self._controller.refresh_recent_action_items()
+        items = self._controller.get_recent_action_items()
+        # Download url icons here so building the rows does not wait
+        prefetch_qt_icons([item.icon for item in items])
+        return items
+
     def _on_refresh_finished(self):
+        refresh_thread = self._refresh_thread
+        self._refresh_thread = None
         # 'RefreshThread' logs its own traceback, a failed refresh simply
         # leaves the previously prepared items on screen.
-        self._refresh_thread = None
-        self._rebuild_rows(self._controller.get_recent_action_items())
+        items = refresh_thread.get_result()
+        if items is None:
+            return
+
+        for item in items:
+            icon_url = _get_icon_url(item.icon)
+            if icon_url:
+                self._fetched_icon_urls.add(icon_url)
+        self._rebuild_rows(items)
 
         if self.isVisible() and self._anchor_widget is not None:
             self._place(self._anchor_widget)
-
-        if self._refresh_again:
-            self._refresh_again = False
-            self._start_refresh_thread()
 
     def show_near(self, widget):
         self._anchor_widget = widget
@@ -455,14 +473,12 @@ class RecentActionsPopup(AYDropdownPopup):
         )
 
     def _rebuild_rows(self, items):
-        for row in self._rows:
-            self._rows_layout.removeWidget(row)
-            row.deleteLater()
+        # Everything but the label for an empty list
         self._rows = []
         while self._rows_layout.count() > 1:
-            item = self._rows_layout.takeAt(1)
-            if item and item.widget():
-                item.widget().deleteLater()
+            layout_item = self._rows_layout.takeAt(1)
+            if layout_item.widget():
+                layout_item.widget().deleteLater()
 
         if items:
             self._empty_label.setVisible(False)
@@ -480,12 +496,19 @@ class RecentActionsPopup(AYDropdownPopup):
                 self._add_row_widget(self._build_separator())
             previous_favorite = action_item.favorite
 
+            icon_def = action_item.icon
+            icon_url = _get_icon_url(icon_def)
+            if icon_url and icon_url not in self._fetched_icon_urls:
+                # Shown with default icon until it is downloaded
+                icon_def = None
+
             row = _RecentActionRow(
                 action_item,
+                _get_icon(icon_def),
                 _build_breadcrumb(action_item),
+                _build_full_context(action_item),
                 pretty_timestamp(action_item.timestamp) or "",
                 self._rows_container,
-                full_context=_build_full_context(action_item),
             )
             row.navigate_requested.connect(self._on_navigate)
             row.replay_requested.connect(self._on_replay)
@@ -536,20 +559,12 @@ class RecentActionsPopup(AYDropdownPopup):
         self._reload_rows()
 
     def _on_context_menu(self, record_id, global_pos):
-        """Show the menu for a row, owned by the popup rather than the row.
+        """Show the menu of a row.
 
-        Built parented to 'self' (the popup) and shown via '.popup()'
-        rather than the blocking '.exec_()' - a right click reaches here
-        directly from the row's own 'mouseReleaseEvent' (a direct signal
-        connection), so blocking here would nest a whole event loop
-        inside that handler; a refresh finishing in it can rebuild the
-        row list and delete the very row still on the call stack once
-        that loop returns. Parenting 'AYMenu' inside an already-open
-        popup used to crash the tool - or leave its hover silently dead -
-        both since fixed at the source (AYONStyle's own window-flag and
-        style-hint handling), so there is no longer any reason to keep it
-        unparented here. 'WA_DeleteOnClose' cleans it up once it closes,
-        a fresh one is built on every right click.
+        Shown with 'popup' instead of the blocking 'exec_'. This is called
+        from the mouse event of the row, and a refresh finishing inside of
+        a nested event loop would delete the row while it is still handling
+        that event.
         """
         menu = AYMenu(self)
         menu.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
@@ -587,11 +602,15 @@ class RecentActionsButton(AYButton):
             tooltip="Recent Actions",
             parent=parent,
         )
-        self.setObjectName("RecentActionsButton")
-        self._popup = RecentActionsPopup(controller, self)
+        self._controller = controller
+        # Created when it is first asked for
+        self._popup = None
         self.clicked.connect(self._on_clicked)
 
     def _on_clicked(self):
+        if self._popup is None:
+            self._popup = RecentActionsPopup(self._controller, self)
+
         if self._popup.isVisible():
             self._popup.hide()
         else:
