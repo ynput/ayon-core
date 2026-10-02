@@ -3,10 +3,14 @@ from __future__ import annotations
 
 import threading
 
+import pytest
+
 from ayon_core.lib.progress import ProgressReporter
 from ayon_core.ui.components.progress_bar import (
     AYProgressBar,
+    AYProgressDialog,
     AYProgressView,
+    ProgressBarState,
 )
 from ayon_core.ui.variants import AYProgressBarVariants
 
@@ -154,3 +158,61 @@ def test_view_queues_each_worker_snapshot(qtbot, monkeypatch):
     assert seen[-1][0].failed
     assert view._caption.text() == "Upload failed"
     assert all(thread_id == gui_thread for _, thread_id in seen)
+
+
+@pytest.mark.parametrize("total", [None, 0, 4])
+def test_view_reporter_finishes_once(qtbot, qapp, total):
+    reporter = ProgressReporter(total=total, min_interval=0.0)
+    view = AYProgressView()
+    qtbot.addWidget(view)
+    completed = []
+    view.completed.connect(lambda: completed.append(True))
+    view.bind(reporter)
+    reporter.set_progress(4)
+    qapp.processEvents()
+    assert completed == []
+
+    reporter.finish()
+    reporter.flush()
+    reporter.flush()
+    qtbot.waitUntil(lambda: bool(completed))
+    qapp.processEvents()
+    assert completed == [True]
+    assert view.progress_bar._state is ProgressBarState.Success
+
+    next_reporter = ProgressReporter(min_interval=0.0)
+    view.bind(next_reporter)
+    next_reporter.finish()
+    qtbot.waitUntil(lambda: len(completed) == 2)
+    assert completed == [True, True]
+
+
+def test_view_failed_reporter_does_not_complete(qtbot, qapp):
+    reporter = ProgressReporter(total=1, min_interval=0.0)
+    view = AYProgressView()
+    qtbot.addWidget(view)
+    completed = []
+    view.completed.connect(lambda: completed.append(True))
+    view.bind(reporter)
+    reporter.set_progress(1)
+    reporter.fail("Upload failed")
+    reporter.finish()
+    qapp.processEvents()
+    assert completed == []
+    assert view.progress_bar._state is ProgressBarState.Error
+
+
+def test_dialog_closes_when_indeterminate_reporter_finishes(qtbot):
+    reporter = ProgressReporter()
+    dialog = AYProgressDialog(close_on_complete=True)
+    qtbot.addWidget(dialog)
+    dialog.progress_view.bind(reporter)
+    canceled = []
+    dialog.canceled.connect(lambda: canceled.append(True))
+    dialog.show()
+    assert dialog.isVisible()
+
+    reporter.finish()
+    qtbot.waitUntil(lambda: not dialog.isVisible())
+    assert dialog.result() == dialog.DialogCode.Accepted
+    assert canceled == []

@@ -365,7 +365,8 @@ class AYProgressView(AYContainer):
 
     Signals:
         progress_changed(int, int): Re-emitted from the inner bar.
-        completed(): Re-emitted from the inner bar.
+        completed(): Emitted once when the bound reporter finishes, or
+            when the inner bar completes if no reporter is bound.
     """
 
     progress_changed = Signal(int, int)
@@ -417,10 +418,11 @@ class AYProgressView(AYContainer):
         self._value_label.setVisible(self._show_value)
         self._bar.progress_changed.connect(self._on_progress_changed)
         self._bar.progress_changed.connect(self.progress_changed.emit)
-        self._bar.completed.connect(self.completed.emit)
+        self._bar.completed.connect(self._on_bar_completed)
         self._sync_value()
 
         self._reporter: ProgressReporter | None = None
+        self._reporter_completed = False
         # Reporter callbacks can arrive on a worker thread; hop to the Qt
         # thread before touching any widget.
         self.progress_ping.connect(
@@ -435,6 +437,7 @@ class AYProgressView(AYContainer):
         """
         self.unbind()
         self._reporter = reporter
+        self._reporter_completed = False
         reporter.add_listener(self._on_state)
 
     def unbind(self) -> None:
@@ -457,8 +460,18 @@ class AYProgressView(AYContainer):
             self.set_label(caption)
         if state.failed:
             self.set_state(ProgressBarState.Error)
+        elif state.finished:
+            self.set_state(ProgressBarState.Success)
+            if not self._reporter_completed:
+                self._reporter_completed = True
+                self.completed.emit()
 
     # --- private
+    def _on_bar_completed(self) -> None:
+        """Forward bar completion only when no reporter is bound."""
+        if self._reporter is None:
+            self.completed.emit()
+
     def _on_progress_changed(self, current: int, total: int) -> None:
         """Refresh the percentage readout when progress changes."""
         self._sync_value()
@@ -515,6 +528,7 @@ class AYProgressView(AYContainer):
 
     def reset(self) -> None:
         """Reset the bar and clear the percentage readout."""
+        self._reporter_completed = False
         self._bar.reset()
 
 
