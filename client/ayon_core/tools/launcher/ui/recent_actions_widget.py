@@ -597,7 +597,7 @@ class RecentActionsButton(AYButton):
 
     def __init__(self, controller, parent=None):
         super().__init__(
-            icon="bookmark",
+            icon="work_history",
             variant=AYButton.Variants.Surface,
             tooltip="Recent Actions",
             parent=parent,
