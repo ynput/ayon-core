@@ -131,7 +131,7 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
             default_assignees = assignees_profile["default_assignees"] or []
 
         unavailable = [
-            name for name in default_assignees if name not in assignees
+            name for name in default_assignees if name not in default_assignees
         ]
         if unavailable:
             cls.log.warning(
@@ -139,7 +139,7 @@ class CollectAssignees(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
                 f" '{project_name}': {unavailable}"
             )
             default_assignees = [
-                name for name in default_assignees if name in assignees
+                name for name in default_assignees if name in default_assignees
             ]
 
         if not artist_can_change:
