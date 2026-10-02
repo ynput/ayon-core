@@ -22,10 +22,19 @@ import time
 import threading
 from collections.abc import Callable, Mapping
 from contextvars import ContextVar, Token
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import warnings
 
-import structlog
+try:
+    import structlog
+except ImportError:
+    # Older AYON launcher or dependency package without 'structlog'.
+    #   Logging falls back to standard library 'logging' without structured
+    #   fields, log file and Vector delivery.
+    structlog = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    from structlog.typing import ExceptionRenderer
 
 from .local_settings import get_launcher_local_dir
 
@@ -77,46 +86,68 @@ def _render_for_stdlib(
     return (str(event_dict.get("event", "")),), kwargs
 
 
-class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
-    """ProcessorFormatter reading the event dict from the record.
+if structlog is not None:
+    class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
+        """ProcessorFormatter reading the event dict from the record.
 
-    Counterpart of '_render_for_stdlib'. Other handlers may modify
-    'record.msg' (pyblish does), the event dict is not affected.
-    Records from 'wrap_for_formatter' and foreign stdlib records are
-    processed as by 'ProcessorFormatter'.
-    """
-
-    def format(self, record: logging.LogRecord) -> str:
-        """Format the log record, extracting the event dict if present.
-        Args:
-            record (logging.LogRecord): The log record to format.
-
-        Returns:
-            str: The formatted log message.
-
+        Counterpart of '_render_for_stdlib'. Other handlers may modify
+        'record.msg' (pyblish does), the event dict is not affected.
+        Records from 'wrap_for_formatter' and foreign stdlib records are
+        processed as by 'ProcessorFormatter'.
         """
-        structlog_data = getattr(record, _EVENT_DICT_ATTR, None)
-        if structlog_data is not None:
-            logger, method_name, event_dict = structlog_data
-            # Attributes are set only on the copy, see '_EVENT_DICT_ATTR'
-            record = logging.makeLogRecord(record.__dict__)
-            record._logger = logger
-            record._name = method_name
-            record.msg = event_dict
-            record.args = ()
-        return super().format(record)
+
+        def format(self, record: logging.LogRecord) -> str:
+            """Format the log record, extracting the event dict if present.
+
+            Args:
+                record (logging.LogRecord): The log record to format.
+
+            Returns:
+                str: The formatted log message.
+
+            """
+            structlog_data = getattr(record, _EVENT_DICT_ATTR, None)
+            if structlog_data is not None:
+                logger, method_name, event_dict = structlog_data
+                # Attributes are set only on the copy, see '_EVENT_DICT_ATTR'
+                record = logging.makeLogRecord(record.__dict__)
+                record._logger = logger
+                record._name = method_name
+                record.msg = event_dict
+                record.args = ()
+            return super().format(record)
 
 
-def bind_contextvars(**kwargs):
+def bind_contextvars(**kwargs) -> Mapping[str, Token[Any]]:
+    """Bind values to the logging context of the current thread or task.
+
+    Does nothing when 'structlog' is not available.
+
+    Returns:
+        Mapping[str, Token[Any]]: Tokens to reset the bound values.
+
+    """
+    if structlog is None:
+        return {}
     return structlog.contextvars.bind_contextvars(**kwargs)
 
 
-def clear_contextvars():
-    structlog.contextvars.clear_contextvars()
+def clear_contextvars() -> None:
+    """Clear the logging context of the current thread or task.
+
+    Does nothing when 'structlog' is not available.
+    """
+    if structlog is not None:
+        structlog.contextvars.clear_contextvars()
 
 
-def unbind_contextvars(*keys):
-    structlog.contextvars.unbind_contextvars(*keys)
+def unbind_contextvars(*keys: str) -> None:
+    """Remove keys from the logging context of the current thread or task.
+
+    Does nothing when 'structlog' is not available.
+    """
+    if structlog is not None:
+        structlog.contextvars.unbind_contextvars(*keys)
 
 
 def _get_level_names_mapping() -> dict[str, int]:
@@ -449,8 +480,7 @@ def _is_running_from_sources() -> bool:
     return "python" in os.path.basename(executable).lower()
 
 
-def _get_console_exception_formatter(
-        colors: bool) -> structlog.types.Processor:
+def _get_console_exception_formatter(colors: bool) -> ExceptionRenderer:
     """Exception formatter for console output.
 
     Rich tracebacks are used only when running from sources. Builds use
@@ -458,9 +488,11 @@ def _get_console_exception_formatter(
     sensitive values (e.g. credentials).
 
     Returns:
-        structlog.types.Processor: The exception formatter for console output.
+        ExceptionRenderer: The exception formatter for console output.
 
     """
+    if structlog is None:
+        raise RuntimeError("Console exception formatter requires 'structlog'.")
     if _is_running_from_sources():
         try:
             import rich  # noqa: F401
@@ -468,25 +500,47 @@ def _get_console_exception_formatter(
             pass
         else:
             return structlog.dev.RichTracebackFormatter(
-                color_system="truecolor" if colors else None,
+                color_system="truecolor" if colors else None,  # ty: ignore[invalid-argument-type]
                 show_locals=False,
             )
     return structlog.dev.plain_traceback
 
 
-class _ConsoleRenderer(structlog.dev.ConsoleRenderer):
-    """ConsoleRenderer not initializing colorama on Windows.
+if structlog is not None:
+    class _ConsoleRenderer(structlog.dev.ConsoleRenderer):
+        """ConsoleRenderer not initializing colorama on Windows.
 
-    'colorama.init()' replaces 'sys.stdout' and 'sys.stderr' of the whole
-    process, which breaks hosts redirecting them. Whether the stream
-    supports colors is resolved by '_StderrHandler' instead.
-    """
+        'colorama.init()' replaces 'sys.stdout' and 'sys.stderr' of the
+        whole process, which breaks hosts redirecting them. Whether the
+        stream supports colors is resolved by '_StderrHandler' instead.
+        """
 
-    @classmethod
-    def get_default_column_styles(cls, colors, force_colors=False):
-        if colors:
-            return structlog.dev._colorful_styles
-        return structlog.dev._plain_styles
+        _COLORFUL_STYLES = structlog.dev._colorful_styles
+        _PLAIN_STYLES = structlog.dev._plain_styles
+
+        @classmethod
+        def get_default_column_styles(cls, colors, force_colors=False):
+            if colors:
+                return cls._COLORFUL_STYLES
+            return cls._PLAIN_STYLES
+
+
+class _PlainFormatter(logging.Formatter):
+    """Console formatter used when 'structlog' is not available."""
+
+    FORMAT = (
+        "%(asctime)s %(levelname)8s [%(name)s]  %(funcName)s: %(message)s"
+    )
+
+    def __init__(self):
+        super().__init__(self.FORMAT)
+
+    def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
+        return (
+            datetime.datetime.fromtimestamp(record.created)
+            .astimezone(datetime.timezone.utc)
+            .isoformat(timespec="milliseconds")
+        )
 
 
 # Console mode flag enabling ANSI escape sequences on Windows
@@ -616,6 +670,8 @@ def _deprecated_getter(func):
 class Logger:
     # Is static class initialized
     initialized = False
+    # Handlers were added to root logger, see 'configure_logger'
+    _logging_configured = False
     _init_lock = threading.Lock()
     _root_logger = None
 
@@ -641,8 +697,9 @@ class Logger:
             name (str): The name of the logger to retrieve.
 
         Returns:
-            structlog.stdlib.BoundLogger: The logger associated with
-                the given name.
+            structlog.stdlib.BoundLogger | logging.Logger: The logger
+                associated with the given name. Standard library logger
+                when 'structlog' is not available.
 
         """
         if not cls.initialized:
@@ -654,6 +711,8 @@ class Logger:
         if logger is not cls._root_logger:
             logger.parent = cls._root_logger
 
+        if structlog is None:
+            return logger
         return structlog.get_logger(name)
 
     @classmethod
@@ -765,9 +824,11 @@ class Logger:
 
     @classmethod
     def configure_logger(cls) -> None:
-        """Configure structlog.
+        """Configure logging handlers and structlog.
 
-        Including structlog and handlers for console and Vector HTTP.
+        Adds handlers for console, log file and Vector HTTP to the root
+        logger. Log file and Vector are available only with 'structlog',
+        without it only console output is configured.
 
         Safe to call multiple times, and safe even if another package (e.g.
         'ayon_common' in ayon-launcher) configures logging first - only the
@@ -775,10 +836,86 @@ class Logger:
         duplicate handlers.
 
         """
+        if cls._logging_configured:
+            return
         # 'structlog.is_configured()' is process-wide, so it also guards
         # against other packages configuring logging first.
-        if structlog.is_configured():
+        if structlog is not None and structlog.is_configured():
             return
+        cls._logging_configured = True
+
+        if structlog is None:
+            console_formatter = _PlainFormatter()
+            color_formatter = None
+            json_formatter = None
+        else:
+            console_formatter, color_formatter, json_formatter = (
+                cls._configure_structlog()
+            )
+
+        handler = _StderrHandler(color_formatter=color_formatter)
+        handler.setFormatter(console_formatter)
+        root_logger = logging.getLogger()
+        root_logger.addHandler(handler)
+        root_logger.setLevel(get_log_level_from_env())
+
+        if json_formatter is None:
+            if LOG_FILE_ENABLED or VECTOR_LOG_URL:
+                logging.getLogger(__name__).warning(
+                    "Log file and Vector logging require 'structlog',"
+                    " which is not available. Update AYON launcher"
+                    " or dependency package."
+                )
+            return
+
+        if LOG_FILE_ENABLED:
+            log_dir = get_launcher_local_dir("logs")
+            os.makedirs(log_dir, exist_ok=True)
+            _remove_old_log_files(log_dir, LOG_FILE_RETENTION_DAYS)
+            file_handler = TimedRotatingFileHandler(
+                _get_log_file_path(log_dir),
+                when="midnight",
+                backupCount=LOG_FILE_RETENTION_DAYS,
+                encoding="utf-8",
+            )
+            file_handler.setFormatter(json_formatter)
+            root_logger.addHandler(file_handler)
+
+        if VECTOR_LOG_URL:
+            # Send logs to Vector asynchronously so HTTP calls
+            # don't block the app.
+            # Queue is bounded so a Vector outage drops records instead of
+            # growing memory without bound.
+            log_queue: queue.Queue[str | None] = queue.Queue(
+                VECTOR_QUEUE_MAX_SIZE
+            )
+            queue_handler = _DroppingQueueHandler(log_queue)
+            queue_handler.setFormatter(json_formatter)
+            vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
+            vector_sender.start()
+            # The sender thread is a daemon thread, it would be killed on
+            # interpreter exit with records still in the queue. Stopping it
+            # at exit delivers the queued records first.
+            atexit.register(vector_sender.stop)
+            root_logger.addHandler(queue_handler)
+
+    @staticmethod
+    def _configure_structlog() -> tuple[
+        logging.Formatter, logging.Formatter, logging.Formatter
+    ]:
+        """Configure structlog and create formatters for its records.
+
+        Returns:
+            tuple[logging.Formatter, logging.Formatter, logging.Formatter]:
+                Console formatter without colors, console formatter with
+                colors and JSON formatter for log file and Vector.
+
+        Raises:
+            RuntimeError: 'structlog' is not available.
+
+        """
+        if structlog is None:
+            raise RuntimeError("'structlog' is not available.")
 
         def _add_site_id(logger, method_name, event_dict):
             event_dict.setdefault(
@@ -830,11 +967,15 @@ class Logger:
             cache_logger_on_first_use=True,
         )
 
+        remove_processors_meta = (
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta
+        )
+
         def _create_console_formatter(colors):
             return _EventDictProcessorFormatter(
                 foreign_pre_chain=shared_processors,
                 processors=[
-                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                    remove_processors_meta,
                     _drop_log_context,
                     _ConsoleRenderer(
                         colors=colors,
@@ -848,53 +989,17 @@ class Logger:
         json_formatter = _EventDictProcessorFormatter(
             foreign_pre_chain=shared_processors,
             processors=[
-                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                remove_processors_meta,
                 structlog.processors.format_exc_info,
                 structlog.processors.JSONRenderer(),
             ],
         )
 
-        handler = _StderrHandler(
-            color_formatter=_create_console_formatter(colors=True)
+        return (
+            _create_console_formatter(colors=False),
+            _create_console_formatter(colors=True),
+            json_formatter,
         )
-        handler.setFormatter(_create_console_formatter(colors=False))
-
-        if LOG_FILE_ENABLED:
-            log_dir = get_launcher_local_dir("logs")
-            os.makedirs(log_dir, exist_ok=True)
-            _remove_old_log_files(log_dir, LOG_FILE_RETENTION_DAYS)
-            file_handler = TimedRotatingFileHandler(
-                _get_log_file_path(log_dir),
-                when="midnight",
-                backupCount=LOG_FILE_RETENTION_DAYS,
-                encoding="utf-8",
-            )
-            file_handler.setFormatter(json_formatter)
-
-        if VECTOR_LOG_URL:
-            # Send logs to Vector asynchronously so HTTP calls
-            # don't block the app.
-            # Queue is bounded so a Vector outage drops records instead of
-            # growing memory without bound.
-            log_queue: queue.Queue[str | None] = queue.Queue(
-                VECTOR_QUEUE_MAX_SIZE
-            )
-            queue_handler = _DroppingQueueHandler(log_queue)
-            queue_handler.setFormatter(json_formatter)
-            vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
-            vector_sender.start()
-            # The sender thread is a daemon thread, it would be killed on
-            # interpreter exit with records still in the queue. Stopping it
-            # at exit delivers the queued records first.
-            atexit.register(vector_sender.stop)
-
-        root_logger = logging.getLogger()
-        root_logger.addHandler(handler)
-        if LOG_FILE_ENABLED:
-            root_logger.addHandler(file_handler)
-        if VECTOR_LOG_URL:
-            root_logger.addHandler(queue_handler)
-        root_logger.setLevel(get_log_level_from_env())
 
 
 # Logger receiving span events, see 'log_span'. Its level controls which
@@ -1038,7 +1143,7 @@ class log_span(contextlib.ContextDecorator):  # noqa: N801
             self._trace_id, self._parent_span_id = parent
         self._span_id = secrets.token_hex(8)
         self._span_token = _current_span.set((self._trace_id, self._span_id))
-        self._contextvars_tokens = structlog.contextvars.bind_contextvars(
+        self._contextvars_tokens = bind_contextvars(
             trace_id=self._trace_id,
             span_id=self._span_id,
         )
@@ -1047,7 +1152,10 @@ class log_span(contextlib.ContextDecorator):  # noqa: N801
 
     def __exit__(self, exc_type, exc_value, exc_tb) -> None:
         duration = time.perf_counter() - self._start
-        structlog.contextvars.reset_contextvars(**self._contextvars_tokens)
+        if structlog is not None:
+            structlog.contextvars.reset_contextvars(
+                **self._contextvars_tokens
+            )
         if self._span_token is not None:
             _current_span.reset(self._span_token)
 
@@ -1063,7 +1171,12 @@ class log_span(contextlib.ContextDecorator):  # noqa: N801
         if not logging.getLogger(SPAN_LOGGER_NAME).isEnabledFor(level):
             return
 
-        fields: dict[str, Any] = dict(self._attributes)
+        fields: dict[str, Any] = {
+            "trace_id": self._trace_id,
+            "span_id": self._span_id,
+            "duration_ms": round(duration * 1000, 3),
+        }
+        fields.update(self._attributes)
         if self._slow_threshold is not None:
             fields["slow"] = slow
         if exc_type is None:
@@ -1076,13 +1189,16 @@ class log_span(contextlib.ContextDecorator):  # noqa: N801
         if self._callsite is not None:
             fields["module"], fields["func_name"] = self._callsite
 
+        if structlog is not None:
+            span_logger.log(level, self._name, **fields)
+            return
+
+        # Standard library logger does not accept event fields
         span_logger.log(
             level,
+            "%s %s",
             self._name,
-            trace_id=self._trace_id,
-            span_id=self._span_id,
-            duration_ms=round(duration * 1000, 3),
-            **fields,
+            " ".join(f"{key}={value!r}" for key, value in fields.items()),
         )
 
 

@@ -13,6 +13,7 @@ import threading
 import time
 import types
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from logging.handlers import TimedRotatingFileHandler
 
 import pytest
 import structlog
@@ -703,3 +704,84 @@ def test_host_context_change_binds_flat_keys(log_module):
     assert context["folder"] == "/b"
     assert context["task"] == "two"
     assert "ayon_context" not in context
+
+
+@pytest.fixture
+def log_module_without_structlog(log_module, monkeypatch):
+    """'ayon_core.lib.log' imported as if 'structlog' is not installed.
+
+    Older AYON launchers and dependency packages don't have 'structlog'.
+    """
+    def _load():
+        monkeypatch.setitem(sys.modules, "structlog", None)
+        return log_module()
+
+    return _load
+
+
+def test_without_structlog_uses_stdlib_logger(
+    log_module_without_structlog, monkeypatch, foreign_handler
+):
+    module = log_module_without_structlog()
+    assert module.structlog is None
+
+    log = module.Logger.get_logger("ayon_core.tests.fallback")
+    assert isinstance(log, logging.Logger)
+    assert log.parent is logging.getLogger("AYON")
+
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+    log.info("Loaded %s", "asset")
+
+    assert foreign_handler.messages == ["Loaded asset"]
+    output = stream.getvalue()
+    assert "Loaded asset" in output
+    assert "[ayon_core.tests.fallback]" in output
+
+
+def test_without_structlog_contextvars_are_noop(log_module_without_structlog):
+    module = log_module_without_structlog()
+
+    assert module.bind_contextvars(project="project") == {}
+    module.unbind_contextvars("project")
+    module.clear_contextvars()
+
+
+def test_without_structlog_span_is_logged(
+    log_module_without_structlog, monkeypatch, foreign_handler
+):
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    module = log_module_without_structlog()
+
+    with module.log_span("tests.fallback", key="a/b") as span:
+        pass
+
+    (record,) = [
+        record for record in foreign_handler.records
+        if record.name == module.SPAN_LOGGER_NAME
+    ]
+    message = record.getMessage()
+    assert message.startswith("tests.fallback ")
+    assert "key='a/b'" in message
+    assert f"span_id='{span.span_id}'" in message
+    assert "duration_ms=" in message
+
+
+def test_without_structlog_skips_file_and_vector(
+    log_module_without_structlog, monkeypatch, foreign_handler
+):
+    monkeypatch.setenv("AYON_LOG_FILE", "1")
+    monkeypatch.setenv("AYON_VECTOR_LOG_URL", "http://127.0.0.1:1/")
+    module = log_module_without_structlog()
+    # Repeated configuration does not add handlers
+    module.Logger.configure_logger()
+
+    # Root also holds handlers of pytest log capture
+    handler_types = [type(handler) for handler in logging.getLogger().handlers]
+    assert handler_types.count(module._StderrHandler) == 1
+    assert TimedRotatingFileHandler not in handler_types
+    assert module._DroppingQueueHandler not in handler_types
+    assert any(
+        "require 'structlog'" in message
+        for message in foreign_handler.messages
+    )
