@@ -3,6 +3,8 @@
 The reporter holds an immutable :class:`ProgressState` snapshot and fans
 it out to listeners.  Listeners are always invoked **outside** the
 internal lock, so a callback may safely call back into the reporter.
+Delivery is serialised, so a listener never observes an older snapshot
+after a newer one.
 
 Updates are coalesced to at most one notification per ``min_interval``
 seconds.  Because coalescing drops intermediate states, ``finish()``,
@@ -73,6 +75,10 @@ class ProgressReporter:
         self._last_update = 0.0
         self._phases: dict[str, float] = {}
         self._phase_progress: dict[str, float] = {}
+        # Serialises capture+delivery so a thread that read an older
+        # snapshot can never deliver it after a newer one.  Reentrant
+        # because a listener is allowed to call back into the reporter.
+        self._publish_lock = threading.RLock()
         self._state = ProgressState(label=label, total=total)
 
     # --- describing the run
@@ -216,17 +222,19 @@ class ProgressReporter:
     ) -> None:
         """Register *callback* for future state changes.
 
-        The callback is invoked outside the internal lock.
+        The callback is invoked outside the state lock, and the immediate
+        delivery is serialised with other publications.
 
         Args:
             callback: Called with the latest :class:`ProgressState`.
             emit_immediately: Deliver the current state right away.
         """
-        with self._lock:
-            self._listeners.append(callback)
-            state = self._state if emit_immediately else None
-        if state is not None:
-            self._notify([callback], state)
+        with self._publish_lock:
+            with self._lock:
+                self._listeners.append(callback)
+                state = self._state if emit_immediately else None
+            if state is not None:
+                self._notify([callback], state)
 
     def remove_listener(
         self, callback: Callable[[ProgressState], None]
@@ -262,25 +270,39 @@ class ProgressReporter:
     def _publish(self, force: bool = False) -> None:
         """Fan the current state out to every listener.
 
+        Capture and delivery are serialised by ``_publish_lock``, so a
+        thread that read an older snapshot can never deliver it after a
+        newer one.  ``_lock`` is still released before any callback runs.
+
         Args:
             force: Publish even when still inside the coalescing window.
         """
-        with self._lock:
-            now = time.monotonic()
-            if not force and now - self._last_update < self._min_interval:
-                return
-            self._last_update = now
-            state = self._state
-            listeners = list(self._listeners)
-        self._notify(listeners, state)
+        with self._publish_lock:
+            with self._lock:
+                now = time.monotonic()
+                elapsed = now - self._last_update
+                if not force and elapsed < self._min_interval:
+                    return
+                self._last_update = now
+                state = self._state
+                listeners = list(self._listeners)
+            self._notify(listeners, state)
 
     def _notify(
         self,
         listeners: list[Callable[[ProgressState], None]],
         state: ProgressState,
     ) -> None:
-        """Invoke *listeners* outside the lock, isolating failures."""
+        """Invoke *listeners*, isolating failures.
+
+        Must be called with ``_publish_lock`` held, never with ``_lock``
+        held, so callbacks cannot deadlock or arrive out of order.  Stops
+        early once a listener has moved the state on, so a re-entrant
+        publish cannot be followed by this older snapshot.
+        """
         for callback in listeners:
+            if state is not self._state:
+                return
             try:
                 callback(state)
             except Exception:
