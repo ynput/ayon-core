@@ -172,6 +172,16 @@ class BrowserController(AbstractBrowserController):
             project_name, entity_ids, entity_type
         )
 
+    def warm_up_action_items(self, project_name: str) -> None:
+        self._loader_actions_model.warm_up(project_name)
+
+    def prefetch_version_action_contexts(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
+        self._loader_actions_model.prefetch_versions_context(
+            project_name, version_ids
+        )
+
     def trigger_action_item(
         self,
         identifier: str,
