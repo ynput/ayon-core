@@ -12,6 +12,7 @@ import pyblish.api
 import pyblish.logic
 import pyblish.plugin
 
+from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
@@ -862,8 +863,9 @@ class PublishLogic:
             blocking_crashed_paths,
         )
 
+        plugins_by_targets_set = set(plugins_by_targets)
         for plugin in discovered_publish_plugins:
-            if plugin not in plugins_by_targets:
+            if plugin not in plugins_by_targets_set:
                 self._publish_report.set_plugin_skipped(
                     self.get_publish_plugin_id(plugin)
                 )
@@ -1017,22 +1019,27 @@ class PublishLogic:
     @contextmanager
     def _log_manager(self, plugin: PluginType):
         root = logging.getLogger()
+        ayon_root = Logger.get_root_logger()
+        plugin_log_has_handler = False
+        orig_propagate = plugin.log.propagate
         if not self._log_to_console:
             plugin.log.propagate = False
+
+        if not plugin.log.propagate:
+            plugin_log_has_handler = True
             plugin.log.addHandler(self._log_handler)
-            root.addHandler(self._log_handler)
+        root.addHandler(self._log_handler)
+        ayon_root.addHandler(self._log_handler)
 
         try:
-            if self._log_to_console:
-                yield None
-            else:
-                yield self._log_handler
+            yield self._log_handler
 
         finally:
-            if not self._log_to_console:
-                plugin.log.propagate = True
+            if plugin_log_has_handler:
                 plugin.log.removeHandler(self._log_handler)
-                root.removeHandler(self._log_handler)
+            plugin.log.propagate = orig_propagate
+            root.removeHandler(self._log_handler)
+            ayon_root.removeHandler(self._log_handler)
             self._log_handler.clear_records()
 
     def _process_plugin(

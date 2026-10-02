@@ -366,7 +366,7 @@ class AbstractPublisherCommon(ABC):
     def emit_event(
         self, topic: str,
         data: dict[str, Any] | None = None,
-        source: str | None = None
+        source: str | None = None,
     ) -> None:
         """Emit event.
 
@@ -382,7 +382,7 @@ class AbstractPublisherCommon(ABC):
     def emit_card_message(
         self,
         message: str,
-        message_type: str | None = CardMessageTypes.standard
+        message_type: str = CardMessageTypes.standard
     ) -> None:
         """Emit a card message which can have a lifetime.
 
@@ -391,8 +391,7 @@ class AbstractPublisherCommon(ABC):
 
         Args:
             message (str): Message that will be shown.
-            message_type (Optional[str]): Message type.
-
+            message_type (str): Message type.
         """
         pass
 
@@ -569,14 +568,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def get_task_items_by_folder_paths(
-        self, folder_paths: Iterable[str]
+        self, folder_paths: set[str]
     ) -> dict[str, list[TaskItem]]:
         pass
 
     @abstractmethod
     def get_folder_items(
         self, project_name: str, sender: str | None = None
-    ) -> list[FolderItem]:
+    ) -> dict[str, FolderItem]:
         pass
 
     @abstractmethod
@@ -675,6 +674,19 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_pre_create_attribute_defs(
+        self, identifier: str
+    ) -> list[AbstractAttrDef]:
+        """Get pre create attributes for creator item.
+
+        Returns:
+            list[AbstractAttrDef]: Pre create attribute definitions for
+                the creator item.
+
+        """
+        pass
+
+    @abstractmethod
     def get_convertor_items(self) -> dict[str, ConvertorItem]:
         """Convertor items by identifier.
 
@@ -720,7 +732,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, folder_path: str) -> list[str]:
+    def get_existing_product_names(self, folder_path: str) -> set[str] | None:
         pass
 
     @abstractmethod

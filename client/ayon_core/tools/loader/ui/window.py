@@ -169,7 +169,6 @@ class LoaderWindow(QtWidgets.QWidget):
             handle_expected_selection=True
         )
         projects_combobox.set_select_item_visible(True)
-        projects_combobox.set_libraries_separator_visible(True)
         projects_combobox.set_standard_filter_enabled(
             controller.is_standard_projects_filter_enabled()
         )
@@ -179,6 +178,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         context_top_layout = QtWidgets.QHBoxLayout(context_top_widget)
         context_top_layout.setContentsMargins(0, 0, 0, 0,)
+        context_top_layout.setSpacing(4)
         context_top_layout.addWidget(projects_combobox, 1)
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)

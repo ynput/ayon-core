@@ -1,18 +1,29 @@
 from __future__ import annotations
 
+from typing import Any
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.lib import AbstractAttrDef, ButtonDef, UILabelDef
-
-from ayon_core.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.tools.attribute_defs import (
+    BaseAttrDefWidget,
+    create_widget_for_attr_def,
+)
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    INPUTS_LAYOUT_HSPACING,
+    INPUTS_LAYOUT_VSPACING,
+)
 
 from .utils import PreCreateButtonCallback
 
-from ..constants import INPUTS_LAYOUT_HSPACING, INPUTS_LAYOUT_VSPACING
-
 
 class PreCreateWidget(QtWidgets.QWidget):
-    def __init__(self, controller, parent):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         # Precreate attribute defininitions of Creator
@@ -56,26 +67,40 @@ class PreCreateWidget(QtWidgets.QWidget):
         main_layout.addWidget(scroll_area, 1)
         main_layout.addWidget(empty_widget, 1)
 
+        controller.register_event_callback(
+            "create.context.pre.create.attrs.changed",
+            self._pre_create_attr_changed
+        )
+
+        self._controller = controller
+
         self._scroll_area = scroll_area
         self._empty_widget = empty_widget
 
         self._empty_label = empty_label
         self._no_creator_label = no_creator_label
         self._attributes_widget = attributes_widget
+        self._current_identifier = None
+        self._attrs_cache = {}
+
+    def reset_cache(self) -> None:
+        self._attrs_cache = {}
 
     def current_value(self):
         return self._attributes_widget.current_value()
 
     def set_creator_item(self, creator_item):
-        attr_defs = []
         creator_selected = False
-        plugin_id = None
+        identifier = None
         if creator_item is not None:
             creator_selected = True
-            plugin_id = creator_item.identifier
-            attr_defs = creator_item.pre_create_attributes_defs
+            identifier = creator_item.identifier
 
-        self._attributes_widget.set_attr_defs(plugin_id, attr_defs)
+        self._current_identifier = identifier
+
+        attr_defs = self._get_pre_create_attr_defs(identifier)
+
+        self._attributes_widget.set_attr_defs(identifier, attr_defs)
 
         attr_defs_available = len(attr_defs) > 0
         self._scroll_area.setVisible(attr_defs_available)
@@ -84,9 +109,38 @@ class PreCreateWidget(QtWidgets.QWidget):
         self._empty_label.setVisible(creator_selected)
         self._no_creator_label.setVisible(not creator_selected)
 
+    def _pre_create_attr_changed(self, event):
+        identifier = event["identifiers"]
+        self._attrs_cache.pop(identifier, None)
+        if self._current_identifier != identifier:
+            return
+
+        attr_defs = self._get_pre_create_attr_defs(identifier)
+
+        self._attributes_widget.set_attr_defs(identifier, attr_defs)
+
+        attr_defs_available = len(attr_defs) > 0
+        self._scroll_area.setVisible(attr_defs_available)
+        self._empty_widget.setVisible(not attr_defs_available)
+
+    def _get_pre_create_attr_defs(self, identifier):
+        if identifier is None:
+            return []
+
+        if identifier in self._attrs_cache:
+            return self._attrs_cache[identifier]
+
+        attr_defs = self._controller.get_pre_create_attribute_defs(identifier)
+        self._attrs_cache[identifier] = attr_defs
+        return attr_defs
+
 
 class AttributesWidget(QtWidgets.QWidget):
-    def __init__(self, controller, parent=None):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         layout = QtWidgets.QGridLayout(self)
@@ -96,11 +150,11 @@ class AttributesWidget(QtWidgets.QWidget):
         layout.setColumnStretch(0, 0)
         layout.setColumnStretch(1, 1)
 
-        self._controller = controller
-        self._layout = layout
-        self._widgets = []
+        self._controller: AbstractPublisherFrontend = controller
+        self._layout: QtWidgets.QGridLayout = layout
+        self._widgets: list[BaseAttrDefWidget] = []
 
-    def current_value(self):
+    def current_value(self) -> dict[str, Any]:
         output = {}
         for widget in self._widgets:
             attr_def = widget.attr_def
@@ -108,7 +162,7 @@ class AttributesWidget(QtWidgets.QWidget):
                 output[attr_def.key] = widget.current_value()
         return output
 
-    def clear_attr_defs(self):
+    def clear_attr_defs(self) -> None:
         while self._layout.count():
             item = self._layout.takeAt(0)
             widget = item.widget()
