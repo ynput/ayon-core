@@ -65,7 +65,7 @@ def test_bundles() -> None:
         }
 
 
-def test_file_locations_validation() -> None:
+def test_file_locations_validation(tmp_path: Path) -> None:
     """Test FileLocations trait validation."""
     file_locations_list = [
         FileLocation(
@@ -122,25 +122,29 @@ def test_file_locations_validation() -> None:
     with pytest.raises(TraitValidationError):
         file_locations_trait.validate_trait(representation)
 
-    # invalid representation with multiple file locations but
-    # unrelated to either Sequence or Bundle traits
+    # valid representation with multiple file locations that share
+    # a common root and preserve their hierarchy
+    common_root = tmp_path / "textures"
     representation = Representation(name="test", traits=[
         FileLocations(file_paths=[
             FileLocation(
-                file_path=Path("/path/to/file_foo.exr"),
+                file_path=common_root / "diffuse" / "file_foo.exr",
                 file_size=1024,
                 file_hash=None,
             ),
             FileLocation(
-                file_path=Path("/path/to/anotherfile.obj"),
+                file_path=common_root / "specular" / "anotherfile.obj",
                 file_size=1234,
                 file_hash=None,
             )
         ])
     ])
 
-    with pytest.raises(TraitValidationError):
-        representation.validate()
+    representation.validate()
+    assert (
+        representation.get_trait(FileLocations).get_common_root()
+        == common_root
+    )
 
 
 def test_get_file_location_from_frame() -> None:
@@ -182,3 +186,21 @@ def test_get_file_location_from_frame() -> None:
     assert file_locations_trait.get_file_location_for_frame(
         frame=1001, sequence_trait=sequence) == \
             file_locations_list[0]
+
+
+def test_get_sequence_from_files() -> None:
+    """Test get_sequence_from_files method."""
+    file_paths = [
+        Path(f"foo.{frame}.exr") for frame in range(1001, 1051)
+    ]
+    single_frame_sequence = [Path("foo.1001.exr")]
+
+    seq = FileLocations.get_sequence_from_files(paths=file_paths)
+    assert seq.frame_start == 1001
+    assert seq.frame_end == 1050
+
+    single = FileLocations.get_sequence_from_files(
+        paths=single_frame_sequence)
+
+    assert single.frame_start == 1001
+    assert single.frame_end == 1001

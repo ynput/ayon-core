@@ -74,10 +74,13 @@ def construct_ayon_entity_uri(
     """
     if isinstance(version, int) and version < 0:
         version = "hero"
-    if not (isinstance(version, int) or version in {"latest", "hero"}):
+    if not (
+        isinstance(version, int)
+        or version in {"latest", "latestDone", "hero"}
+    ):
         raise ValueError(
-            "Version must either be integer, 'latest' or 'hero'. "
-            "Got: {}".format(version)
+            "Version must either be integer, 'latest', 'latestDone' or "
+            f"'hero'. Got: {version}"
         )
     return (
         "ayon://{project}/{folder_path}?product={product}&version={version}"

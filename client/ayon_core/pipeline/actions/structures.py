@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional, Any
 
+from ayon_core.lib.icon_definitions import IconBase
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     serialize_attr_defs,
@@ -35,9 +38,9 @@ class ActionForm:
     title: str
     fields: list[AbstractAttrDef]
     submit_label: Optional[str] = "Submit"
-    submit_icon: Optional[dict[str, Any]] = None
+    submit_icon: IconBase | dict[str, Any] | None = None
     cancel_label: Optional[str] = "Cancel"
-    cancel_icon: Optional[dict[str, Any]] = None
+    cancel_icon: IconBase | dict[str, Any] | None = None
 
     def to_json_data(self) -> dict[str, Any]:
         fields = self.fields

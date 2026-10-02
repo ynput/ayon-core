@@ -16,15 +16,166 @@ from pprint import pformat
 import pyblish.api
 
 
-class CollectOtioReview(pyblish.api.InstancePlugin):
-    """Get matching otio track from defined review layer"""
-
-    label = "Collect OTIO Review"
+class CollectOTIOReviewTrack(pyblish.api.InstancePlugin):
+    label = "Collect OTIO Review Track"
     order = pyblish.api.CollectorOrder - 0.078
+    families = ["otio.review.track"]
+
+    HAS_RUN_KEY = "__CollectOTIOReviewTrack_Run__"
+
+    def process(self, instance):
+        # Mark instance for 'CollectOtioReview'
+        instance.data[self.HAS_RUN_KEY] = True
+
+        otio_review_clips = self._get_review_clips(instance)
+        if not otio_review_clips:
+            return
+
+        # add review track to instance and change label to reflect it
+        label = instance.data.get("label", instance.data["productName"])
+        instance.data["label"] = label + " (review)"
+        instance.data["families"] += [
+            "review",
+            "otio.clip.review",
+            # TODO find out why is needed?
+            "ftrack",
+        ]
+        instance.data["otioReviewClips"] = otio_review_clips
+
+        self.log.debug(f"Creating review track: {otio_review_clips}")
+
+        self._set_review_colorspace(instance, otio_review_clips)
+
+    def _get_review_clips(self, instance):
+        import opentimelineio as otio
+
+        # Review clips were already collected
+        otio_review_clips = instance.data.get("otioReviewClips")
+        if otio_review_clips is not None:
+            self.log.debug("Review clips already collected on instance.")
+            return otio_review_clips
+
+        # Use `reviewTrack` to find the correct track in the timeline
+        review_track_name = instance.data.get("reviewTrack")
+        if not review_track_name:
+            self.log.debug(
+                "Instance does not have set 'reviewTrack', skipping."
+            )
+            return []
+
+        otio_timeline = instance.context.data["otioTimeline"]
+        review_track = next(
+            (
+                track
+                for track in otio_timeline.tracks
+                if review_track_name == track.name
+            ),
+            None
+        )
+        if review_track is None:
+            self.log.info(
+                f"No track named '{review_track_name}' found in timeline"
+                ", skipping."
+            )
+            return []
+
+        otio_clip = instance.data["otioClip"]
+
+        # generate range in parent
+        otio_tl_range = otio_clip.range_in_parent()
+
+        # calculate real timeline end needed for the clip
+        clip_frame_end = int(
+            otio_tl_range.start_time.value + otio_tl_range.duration.value
+        )
+
+        # get track parent range
+        track_rip = review_track.range_in_parent()
+
+        # calculate real track end frame
+        track_frame_end = int(track_rip.end_time_exclusive().value)
+
+        otio_gap = None
+        # check if the end of track is not lower then clip requirement
+        if clip_frame_end > track_frame_end:
+            # calculate diference duration
+            gap_duration = clip_frame_end - track_frame_end
+            # create rational time range for gap
+            otio_gap_range = otio.opentime.TimeRange(
+                start_time=otio.opentime.RationalTime(
+                    float(0),
+                    track_rip.start_time.rate
+                ),
+                duration=otio.opentime.RationalTime(
+                    float(gap_duration),
+                    track_rip.start_time.rate
+                )
+            )
+            # crate gap
+            otio_gap = otio.schema.Gap(source_range=otio_gap_range)
+
+        # trim available clips from devined track as reviewable source
+        otio_review_clips = otio.algorithms.track_trimmed_to_range(
+            review_track,
+            otio_tl_range
+        )
+        # add gap at the end if track end is shorter then needed
+        if otio_gap is not None:
+            otio_review_clips.append(otio_gap)
+        return otio_review_clips
+
+    def _set_review_colorspace(self, instance, otio_review_clips):
+        import opentimelineio as otio
+
+        # get colorspace from metadata if available
+        # get metadata from first clip with media reference
+        r_otio_cl = next(
+            (
+                clip
+                for clip in otio_review_clips
+                if (
+                    isinstance(clip, otio.schema.Clip)
+                    and clip.media_reference
+                )
+            ),
+            None
+        )
+        if r_otio_cl is None:
+            return
+
+        media_ref = r_otio_cl.media_reference
+        media_metadata = media_ref.metadata
+
+        # TODO: we might need some alternative method since
+        #       native OTIO exports do not support ayon metadata
+        review_colorspace = media_metadata.get(
+            "ayon.source.colorspace"
+        )
+        if review_colorspace is None:
+            # Backwards compatibility for older scenes
+            review_colorspace = media_metadata.get(
+                "openpype.source.colourtransform"
+            )
+
+        if review_colorspace:
+            instance.data["reviewColorspace"] = review_colorspace
+            self.log.debug(f"Review colorspace: {review_colorspace}")
+
+
+class CollectOtioReview(CollectOTIOReviewTrack):
+    label = "Collect OTIO Review (old)"
+    order = CollectOTIOReviewTrack.order + 0.00001
     families = ["clip"]
     hosts = ["resolve", "hiero", "flame"]
 
     def process(self, instance):
+        if instance.data.pop(
+            CollectOTIOReviewTrack.HAS_RUN_KEY, False
+        ) is True:
+            self.log.debug("Skipping, CollectOTIOReviewTrack has run.")
+            return
+        self.log.debug("Using old CollectOtioReview plugin")
+
         # Not all hosts can import this module.
         import opentimelineio as otio
 
@@ -105,7 +256,12 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
             # add review track to instance and change label to reflect it
             label = instance.data.get("label", instance.data["productName"])
             instance.data["label"] = label + " (review)"
-            instance.data["families"] += ["review", "ftrack"]
+            instance.data["families"] += [
+                "review",
+                "otio.clip.review",
+                # TODO find out why is needed?
+                "ftrack",
+            ]
             instance.data["otioReviewClips"] = otio_review_clips
 
             self.log.info(

@@ -1,6 +1,7 @@
 import os
-
-from ayon_core.pipeline.publish.lib import get_template_name_for_instance
+from ayon_core.pipeline.publish import (
+    get_publish_template_name_for_instance,
+)
 
 
 def get_published_workfile_instance(context):
@@ -58,15 +59,19 @@ def from_published_scene(instance, replace_in_path=True):
     template_data["representation"] = rep.get("name")
     template_data["ext"] = rep.get("ext")
     template_data["comment"] = None
-    template_name = get_template_name_for_instance(instance)
 
     anatomy = instance.context.data['anatomy']
+    template_name = get_publish_template_name_for_instance(
+        workfile_instance
+    )
     template_obj = anatomy.get_template_item("publish", template_name, "path")
     template_filled = template_obj.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
     if not os.path.exists(file_path):
-        raise
+        raise FileNotFoundError(
+            f"Published scene does not exist: {file_path}"
+        )
 
     if not replace_in_path:
         return file_path

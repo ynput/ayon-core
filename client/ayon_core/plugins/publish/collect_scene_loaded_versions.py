@@ -6,6 +6,10 @@ import ayon_api.utils
 from ayon_core.host import ILoadHost
 from ayon_core.pipeline import registered_host
 
+from ayon_core.pipeline.publish.input_versions import (
+    version_ids_to_input_versions
+)
+
 import pyblish.api
 
 
@@ -60,7 +64,7 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
 
         # QUESTION should we add same representation id when loaded multiple
         #   times?
-        loaded_versions = []
+        loaded_versions: list[str] = []
         for con in containers:
             repre_id = con["representation"]
             repre_entity = repre_entities_by_id.get(repre_id)
@@ -73,15 +77,16 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
 
             # NOTE:
             # may have more than one representation that are same version
-            version = {
-                "container_name": con["name"],
-                "representation_id": repre_entity["id"],
-                "version_id": repre_entity["versionId"],
-            }
-            loaded_versions.append(version)
-
+            version_id: str = repre_entity["versionId"]
+            loaded_versions.append(version_id)
         self.log.debug(f"Collected {len(loaded_versions)} loaded versions.")
-        context.data["loadedVersions"] = loaded_versions
+
+        input_versions = version_ids_to_input_versions(
+            project_name=project_name,
+            version_ids=loaded_versions,
+            log=self.log
+        )
+        context.data["loadedVersions"] = input_versions
 
     def _filter_invalid_containers(
         self,

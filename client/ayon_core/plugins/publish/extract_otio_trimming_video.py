@@ -11,7 +11,9 @@ from copy import deepcopy
 import pyblish.api
 
 from ayon_core.lib import (
+    get_ffprobe_data,
     get_ffmpeg_tool_args,
+    get_ffmpeg_codec_args,
     run_subprocess,
 )
 from ayon_core.pipeline import publish
@@ -24,8 +26,7 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
     """
     order = pyblish.api.ExtractorOrder
     label = "Extract OTIO trim longer video"
-    families = ["trim"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["otio.trim.video"]
 
     def process(self, instance):
         self.staging_dir = self.staging_dir(instance)
@@ -74,9 +75,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             otio_range (opentime.TimeRange): range to trim to
 
         """
-        # create path to destination
-        output_path = self._get_ffmpeg_output(input_file_path)
-
         # start command list
         command = get_ffmpeg_tool_args("ffmpeg")
 
@@ -89,9 +87,33 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             "-ss", str(sec_start),
             "-t", str(sec_duration),
             "-i", video_path,
-            "-c", "copy",
-            output_path
         ])
+
+        ffprobe_data = get_ffprobe_data(input_file_path, self.log)
+        video_codec_args = get_ffmpeg_codec_args(ffprobe_data)
+
+        # Trim the video by re-encoding the relevant part of it to
+        # the same codec. This is the only way to ensure a precise
+        # output duration.
+        if video_codec_args:
+            command.extend(video_codec_args)
+
+        # Cannot identify video codec, won't be able to re-encode and ensure
+        # precise duration. FFmpeg will cut at keyframes.
+        # https://video.stackexchange.com/questions/16750/
+        # Use '-c copy' which preserve the original video codec.
+        else:
+            self.log.warning(
+                "FFmpeg could not identify the video codec for %s. "
+                "Falling back to '-c copy' which may lead to"
+                " duration mismatches.",
+                input_file_path,
+            )
+            command.extend(["-c", "copy"])
+
+        # create and append path to destination
+        output_path = self._get_ffmpeg_output(input_file_path)
+        command.append(output_path)
 
         # execute
         self.log.debug("Executing: {}".format(" ".join(command)))

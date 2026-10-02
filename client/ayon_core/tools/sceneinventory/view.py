@@ -526,7 +526,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             for action in custom_actions:
                 color = action.color or DEFAULT_COLOR
                 icon_def = action.icon
-                if not isinstance(action.icon, dict):
+                if isinstance(action.icon, str):
                     icon_def = {
                         "type": "awesome-font",
                         "name": icon_def,

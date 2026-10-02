@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from typing import Generator
 
 from qtpy import QtWidgets, QtCore
@@ -17,6 +18,9 @@ from .widgets import (
 )
 from .create_widget import CreateWidget
 from .product_info import ProductInfoWidget
+
+if typing.TYPE_CHECKING:
+    from .widgets import InstancesSelection
 
 
 class OverviewWidget(QtWidgets.QFrame):
@@ -282,7 +286,8 @@ class OverviewWidget(QtWidgets.QFrame):
         self.create_requested.emit()
 
     def _on_delete_clicked(self):
-        instance_ids, _, _ = self.get_selected_items()
+        selection = self.get_selected_items()
+        instance_ids = selection.instance_ids
 
         # Ask user if he really wants to remove instances
         dialog = QtWidgets.QMessageBox(self)
@@ -316,24 +321,25 @@ class OverviewWidget(QtWidgets.QFrame):
         if self._refreshing_instances:
             return
 
-        instance_ids, context_selected, convertor_identifiers = (
-            self.get_selected_items()
-        )
+        selection = self.get_selected_items()
 
         # Disable delete button if nothing is selected
-        self._delete_btn.setEnabled(len(instance_ids) > 0)
+        self._delete_btn.setEnabled(len(selection.instance_ids) > 0)
         instances_by_id = self._controller.get_instance_items_by_id(
-            instance_ids
+            selection.instance_ids
         )
         instances = [
             instances_by_id[instance_id]
-            for instance_id in instance_ids
+            for instance_id in selection.instance_ids
         ]
+        # TODO find out if we can just pass in 'selection'
         self._product_attributes_widget.set_current_instances(
-            instances, context_selected, convertor_identifiers
+            instances,
+            selection.context_selected,
+            selection.convertor_identifiers,
         )
 
-    def _on_change_anim(self, value):
+    def _on_change_anim(self, value: float) -> None:
         self._create_widget.setVisible(True)
         self._product_attributes_wrap.setVisible(True)
         layout_spacing = self._product_content_layout.spacing()
@@ -364,7 +370,7 @@ class OverviewWidget(QtWidgets.QFrame):
         self._create_widget.setGeometry(create_geo)
         self._product_attributes_wrap.setGeometry(product_attrs_geo)
 
-    def _on_change_anim_finished(self):
+    def _on_change_anim_finished(self) -> None:
         self._change_visibility_for_state()
         self._product_content_layout.addWidget(self._create_widget, 7)
         self._product_content_layout.addWidget(self._product_views_widget, 3)
@@ -372,7 +378,7 @@ class OverviewWidget(QtWidgets.QFrame):
             self._product_attributes_wrap, 7
         )
 
-    def _change_visibility_for_state(self):
+    def _change_visibility_for_state(self) -> None:
         self._create_widget.setVisible(
             self._current_state == "create"
         )
@@ -380,16 +386,16 @@ class OverviewWidget(QtWidgets.QFrame):
             self._current_state == "publish"
         )
 
-    def _on_instance_context_change(self, event):
+    def _on_instance_context_change(self, event) -> None:
         self._refresh_instance_states(event["instance_ids"])
 
-    def _on_instance_requirement_changed(self, event):
+    def _on_instance_requirement_changed(self, event) -> None:
         self._refresh_instance_states(event["instance_ids"])
 
-    def _on_instance_parent_changed(self, event):
+    def _on_instance_parent_changed(self, event) -> None:
         self._refresh_instance_states(event["instance_ids"])
 
-    def _refresh_instance_states(self, instance_ids):
+    def _refresh_instance_states(self, instance_ids: set[str]) -> None:
         current_view = self._get_current_view()
         for view in self._iter_views():
             if view is current_view:
@@ -399,14 +405,14 @@ class OverviewWidget(QtWidgets.QFrame):
 
         current_view.refresh_instance_states(instance_ids)
 
-    def _on_convert_requested(self):
+    def _on_convert_requested(self) -> None:
         self.convert_requested.emit()
 
-    def get_selected_items(self):
+    def get_selected_items(self) -> InstancesSelection:
         """Selected items in current view widget.
 
         Returns:
-            tuple[list[str], bool, list[str]]: Selected items. List of
+            InstancesSelection: Selected items. List of
                 instance ids, context is selected, list of selected legacy
                 convertor plugins.
         """
@@ -414,18 +420,18 @@ class OverviewWidget(QtWidgets.QFrame):
         view = self._get_current_view()
         return view.get_selected_items()
 
-    def get_selected_legacy_convertors(self):
+    def get_selected_legacy_convertors(self) -> set[str]:
         """Selected legacy convertor identifiers.
 
         Returns:
-            list[str]: Selected legacy convertor identifiers.
+            set[str]: Selected legacy convertor identifiers.
                 Example: ['io.ayon.creators.houdini.legacy']
         """
 
-        _, _, convertor_identifiers = self.get_selected_items()
-        return convertor_identifiers
+        selection = self.get_selected_items()
+        return selection.convertor_identifiers
 
-    def _change_view_type(self):
+    def _change_view_type(self) -> None:
         old_view = self._get_current_view()
 
         idx = self._product_views_layout.currentIndex()
@@ -438,12 +444,8 @@ class OverviewWidget(QtWidgets.QFrame):
         else:
             new_view.refresh_instance_states()
 
-        instance_ids, context_selected, convertor_identifiers = (
-            old_view.get_selected_items()
-        )
-        new_view.set_selected_items(
-            instance_ids, context_selected, convertor_identifiers
-        )
+        new_view.set_selected_items(old_view.get_selected_items())
+
         view_type = "list"
         if new_view is self._product_list_view_grouped:
             view_type = "card"
@@ -480,7 +482,7 @@ class OverviewWidget(QtWidgets.QFrame):
             "Current widget is not instance of 'AbstractInstanceView'"
         )
 
-    def _refresh_instances(self):
+    def _refresh_instances(self) -> None:
         if self._refreshing_instances:
             return
 
@@ -503,7 +505,7 @@ class OverviewWidget(QtWidgets.QFrame):
         # Trigger update geometry
         view.updateGeometry()
 
-    def _on_publish_start(self):
+    def _on_publish_start(self) -> None:
         """Publish started."""
 
         self._create_btn.setEnabled(False)
@@ -511,13 +513,13 @@ class OverviewWidget(QtWidgets.QFrame):
         for view in self._iter_views():
             view.set_active_toggle_enabled(False)
 
-    def _on_controller_reset_start(self):
+    def _on_controller_reset_start(self) -> None:
         """Controller reset started."""
 
         for view in self._iter_views():
             view.set_active_toggle_enabled(True)
 
-    def _on_publish_reset(self):
+    def _on_publish_reset(self) -> None:
         """Context in controller has been reseted."""
 
         self._create_btn.setEnabled(True)
@@ -526,10 +528,10 @@ class OverviewWidget(QtWidgets.QFrame):
             self._controller.is_host_valid()
         )
 
-    def _on_create_model_reset(self):
+    def _on_create_model_reset(self) -> None:
         self._refresh_instances()
 
-    def _on_instances_added(self):
+    def _on_instances_added(self) -> None:
         view = self._get_current_view()
         is_card_view = False
         count = 0
@@ -544,5 +546,5 @@ class OverviewWidget(QtWidgets.QFrame):
             if new_count > count and new_count >= 10:
                 self._change_view_type()
 
-    def _on_instances_removed(self):
+    def _on_instances_removed(self) -> None:
         self._refresh_instances()

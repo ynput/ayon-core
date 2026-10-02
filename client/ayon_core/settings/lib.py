@@ -69,22 +69,11 @@ def _get_addons_settings(
 
 
 class _AyonSettingsCache:
-    use_bundles = None
     variant = None
     addon_versions = CacheItem.create_outdated()
     studio_settings = CacheItem.create_outdated()
     cache_by_project_name = collections.defaultdict(
         CacheItem.create_outdated)
-
-    @classmethod
-    def _use_bundles(cls):
-        if _AyonSettingsCache.use_bundles is None:
-            major, minor, _, _, _ = ayon_api.get_server_version_tuple()
-            use_bundles = True
-            if (major, minor) < (0, 3):
-                use_bundles = False
-            _AyonSettingsCache.use_bundles = use_bundles
-        return _AyonSettingsCache.use_bundles
 
     @classmethod
     def _get_variant(cls):
