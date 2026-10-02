@@ -820,42 +820,60 @@ def test_root_logger_level_is_not_changed(log_module, monkeypatch):
     assert root.level == logging.WARNING
 
 
-@pytest.mark.parametrize("log_level", ["INFO", "DEBUG"])
-def test_handlers_filter_pyblish_by_ayon_level(
-    log_module,
-    monkeypatch,
-    tmp_path,
-    restore_logger_levels,
-    log_level,
-):
-    """Pyblish sets DEBUG level on plugin loggers, handlers filter it."""
-    monkeypatch.setenv("AYON_LOG_LEVEL", log_level)
+@pytest.fixture
+def log_root(tmp_path_factory):
+    """Directory unique for the test.
+
+    'tmp_path' of 'pytest_ayon' plugin is shared by the whole session.
+    """
+    return tmp_path_factory.mktemp("log_root")
+
+
+def _enable_log_file(monkeypatch, tmp_path):
     monkeypatch.setenv("AYON_LOG_FILE", "1")
     monkeypatch.setattr(
         "ayon_core.lib.local_settings.get_launcher_local_dir",
         lambda *args: str(tmp_path.joinpath(*args)),
     )
-    module = log_module()
+
+
+def _log_file_events(tmp_path):
+    """Events written to the log file of this process."""
+    (path,) = (tmp_path / "logs").glob(f"*_{os.getpid()}.ndjson")
+    return [
+        json.loads(line)["event"]
+        for line in path.read_text().splitlines()
+    ]
+
+
+@pytest.mark.parametrize("log_level", ["INFO", "DEBUG"])
+def test_log_file_filters_pyblish_by_ayon_level(
+    log_module,
+    monkeypatch,
+    log_root,
+    restore_logger_levels,
+    log_level,
+):
+    """Pyblish sets DEBUG level on plugin loggers, log file filters it.
+
+    Console shows all plugin records as before structured logging.
+    """
+    monkeypatch.setenv("AYON_LOG_LEVEL", log_level)
+    _enable_log_file(monkeypatch, log_root)
+    log_module()
     stderr_stream = _capture_stderr(monkeypatch)
     plugin_log = restore_logger_levels("pyblish.TestHandlerLevelPlugin")
     plugin_log.setLevel(logging.DEBUG)
 
     plugin_log.debug("Plugin debug")
+    plugin_log.info("Plugin info")
 
-    handlers = [
-        handler for handler in logging.getLogger().handlers
-        if isinstance(
-            handler, (module._StderrHandler, TimedRotatingFileHandler)
-        )
-    ]
-    assert len(handlers) == 2
-    for handler in handlers:
-        assert any(
-            isinstance(log_filter, module._PyblishLevelFilter)
-            for log_filter in handler.filters
-        )
-    shown = "Plugin debug" in stderr_stream.getvalue()
-    assert shown is (log_level == "DEBUG")
+    assert "Plugin debug" in stderr_stream.getvalue()
+    assert "Plugin info" in stderr_stream.getvalue()
+    expected = ["Plugin info"]
+    if log_level == "DEBUG":
+        expected.insert(0, "Plugin debug")
+    assert _log_file_events(log_root) == expected
 
 
 def test_explicit_logger_level_is_respected(
@@ -950,11 +968,12 @@ def test_host_handler_replaces_console_handler(
 
 
 def test_publish_report_captures_debug_with_info_level(
-    log_module, monkeypatch, restore_logger_levels
+    log_module, monkeypatch, log_root, restore_logger_levels
 ):
     pytest.importorskip("pyblish.plugin")
     from ayon_core.pipeline.publish.logic import MessageHandler, PublishLogic
 
+    _enable_log_file(monkeypatch, log_root)
     log_module()
     stderr_stream = _capture_stderr(monkeypatch)
     plugin_log = restore_logger_levels("pyblish.TestReportDebugPlugin")
@@ -970,4 +989,5 @@ def test_publish_report_captures_debug_with_info_level(
         messages = [record.getMessage() for record in handler.get_records()]
 
     assert messages == ["Plugin debug"]
-    assert "Plugin debug" not in stderr_stream.getvalue()
+    assert "Plugin debug" in stderr_stream.getvalue()
+    assert "Plugin debug" not in _log_file_events(log_root)

@@ -659,9 +659,12 @@ class _PyblishLevelFilter(logging.Filter):
 
     Pyblish sets DEBUG level on logger of every plugin when the plugin
     class is created, see 'pyblish.plugin.append_logger'. Without this
-    filter all debug records of publish plugins would be handled.
-    Levels of other loggers are respected, e.g. DEBUG level set on
-    a single logger to debug it.
+    filter all debug records of publish plugins would be sent to log file
+    and Vector. Levels of other loggers are respected, e.g. DEBUG level
+    set on a single logger to debug it.
+
+    Used only by log file and Vector handlers. Console shows all plugin
+    records, including DEBUG, e.g. in output of farm publish jobs.
     """
 
     def __init__(self, level: int):
@@ -897,7 +900,7 @@ class Logger:
 
         Level of the root logger is not changed, it belongs to the host
         application. Records of pyblish loggers are filtered by AYON log
-        level, see '_PyblishLevelFilter'.
+        level on log file and Vector handlers, see '_PyblishLevelFilter'.
 
         Safe to call multiple times, and safe even if another package (e.g.
         'ayon_common' in ayon-launcher) configures logging first - only the
@@ -926,7 +929,6 @@ class Logger:
         root_logger = logging.getLogger()
         if _console_handler_enabled():
             handler = _StderrHandler(color_formatter=color_formatter)
-            handler.addFilter(pyblish_filter)
             handler.setFormatter(console_formatter)
             root_logger.addHandler(handler)
 
