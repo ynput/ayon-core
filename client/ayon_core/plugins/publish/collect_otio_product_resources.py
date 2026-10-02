@@ -12,9 +12,7 @@ import clique
 import pyblish.api
 
 from ayon_core.pipeline import publish
-from ayon_core.pipeline.publish import (
-    get_publish_template_name_for_instance,
-)
+from ayon_core.pipeline.publish import get_publish_template_object
 
 
 class CollectOTIOProductResources(
@@ -58,13 +56,9 @@ class CollectOTIOProductResources(
         if not instance.data.get("versionData"):
             instance.data["versionData"] = {}
 
-        template_name = get_publish_template_name_for_instance(
-            instance, logger=self.log
+        publish_path_template = (
+            get_publish_template_object(instance)["path"].template
         )
-        anatomy = instance.context.data["anatomy"]
-        publish_path_template = anatomy.get_template_item(
-            "publish", template_name, "path"
-        ).template
         template = os.path.normpath(publish_path_template)
         self.log.debug(
             ">> template: {}".format(template))

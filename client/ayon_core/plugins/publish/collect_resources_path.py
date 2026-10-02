@@ -15,7 +15,7 @@ import pyblish.api
 
 from ayon_core.pipeline.publish import (
     PublishError,
-    get_publish_template_name_for_instance,
+    get_publish_template_object,
 )
 
 
@@ -31,20 +31,13 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
     families = ["*"]
 
     def process(self, instance):
-        anatomy = instance.context.data["anatomy"]
-
         template_data = copy.deepcopy(instance.data["anatomyData"])
 
         # This is for cases of Deprecated anatomy without `folder`
         # TODO remove when all clients have solved this issue
         template_data.update({"frame": "FRAME_TEMP", "representation": "TEMP"})
 
-        template_name = get_publish_template_name_for_instance(
-            instance, logger=self.log
-        )
-
-        publish_template = anatomy.get_template_item(
-            "publish", template_name, "directory")
+        publish_template = get_publish_template_object(instance)["directory"]
 
         if "{originalDirname}" in publish_template:
             original_directory = instance.data.get("originalDirname")

@@ -999,11 +999,7 @@ def replace_with_published_scene_path(
     template_data["ext"] = rep.get("ext")
     template_data["comment"] = None
 
-    anatomy = instance.context.data["anatomy"]
-    template_name = get_publish_template_name_for_instance(
-        workfile_instance, logger=log
-    )
-    template = anatomy.get_template_item("publish", template_name, "path")
+    template = get_publish_template_object(workfile_instance)["path"]
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
@@ -1169,9 +1165,6 @@ def get_instance_expected_output_path(
     if version is None:
         version = instance.data["version"]
 
-    context = instance.context
-    anatomy = context.data["anatomy"]
-
     template_data = copy.deepcopy(instance.data["anatomyData"])
     template_data.update({
         "ext": ext,
@@ -1180,13 +1173,9 @@ def get_instance_expected_output_path(
         "version": version
     })
 
-    # Get instance publish template name
-    template_name = get_publish_template_name_for_instance(instance)
-
-    path_template_obj: AnatomyStringTemplate = anatomy.get_template_item(
-        "publish",
-        template_name
-    )["path"]
+    path_template_obj: AnatomyStringTemplate = (
+        get_publish_template_object(instance)["path"]
+    )
 
     # Define {originalBasename} template key which can be used in publish
     # template to use to original filename.
