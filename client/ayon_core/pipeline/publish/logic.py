@@ -1044,10 +1044,24 @@ class PublishLogic:
         for logger in loggers:
             logger.addHandler(self._log_handler)
 
+        # Records of not propagating plugin logger are kept out of
+        #   the console, but still go to the log file and Vector.
+        structured_handlers = []
+        if not plugin_logger.propagate:
+            structured_handlers = [
+                handler
+                for handler in Logger.get_structured_handlers()
+                if handler not in plugin_logger.handlers
+            ]
+        for handler in structured_handlers:
+            plugin_logger.addHandler(handler)
+
         try:
             yield self._log_handler
 
         finally:
+            for handler in structured_handlers:
+                plugin_logger.removeHandler(handler)
             for logger in loggers:
                 logger.removeHandler(self._log_handler)
             plugin_logger.propagate = orig_propagate

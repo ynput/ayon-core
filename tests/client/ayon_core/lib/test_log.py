@@ -991,3 +991,50 @@ def test_publish_report_captures_debug_with_info_level(
     assert messages == ["Plugin debug"]
     assert "Plugin debug" in stderr_stream.getvalue()
     assert "Plugin debug" not in _log_file_events(log_root)
+
+
+def test_structured_handlers(log_module, monkeypatch, log_root):
+    module = log_module()
+    assert module.Logger.get_structured_handlers() == []
+
+    _enable_log_file(monkeypatch, log_root)
+    module = log_module()
+
+    handlers = module.Logger.get_structured_handlers()
+    assert [type(handler) for handler in handlers] == [
+        TimedRotatingFileHandler
+    ]
+
+
+def test_publisher_plugin_logs_go_to_log_file(
+    log_module, monkeypatch, log_root, restore_logger_levels
+):
+    """Publisher does not show plugin logs in console by default.
+
+    Records still go to the publish report, log file and Vector.
+    """
+    pytest.importorskip("pyblish.plugin")
+    from ayon_core.pipeline.publish.logic import MessageHandler, PublishLogic
+
+    _enable_log_file(monkeypatch, log_root)
+    log_module()
+    stderr_stream = _capture_stderr(monkeypatch)
+    plugin_log = restore_logger_levels("pyblish.TestPublisherFilePlugin")
+    plugin_log.setLevel(logging.DEBUG)
+    orig_handlers = list(plugin_log.handlers)
+    plugin = types.SimpleNamespace(log=plugin_log)
+    publish_logic = types.SimpleNamespace(
+        _log_handler=MessageHandler(),
+        _log_to_console=False,
+    )
+
+    with PublishLogic._log_manager(publish_logic, plugin) as handler:
+        plugin_log.debug("Plugin debug")
+        plugin_log.info("Plugin info")
+        messages = [record.getMessage() for record in handler.get_records()]
+
+    assert messages == ["Plugin debug", "Plugin info"]
+    assert _log_file_events(log_root) == ["Plugin info"]
+    assert "Plugin" not in stderr_stream.getvalue()
+    assert plugin_log.handlers == orig_handlers
+    assert plugin_log.propagate is True

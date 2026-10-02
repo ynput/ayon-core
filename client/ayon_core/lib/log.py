@@ -268,6 +268,11 @@ VECTOR_WARN_INTERVAL = 30.0
 # Logger for problems of Vector delivery. Its records are not sent to
 # Vector, see '_DroppingQueueHandler'.
 _VECTOR_LOGGER_NAME = "ayon.vector_log"
+# Attribute marking handlers writing structured records (log file, Vector),
+#   see 'Logger.get_structured_handlers'. Other packages configuring
+#   logging (e.g. 'ayon_common' in ayon-launcher) should set it on their
+#   handlers too.
+STRUCTURED_HANDLER_ATTR = "ayon_structured_handler"
 
 
 class _RateLimitedLogger:
@@ -822,6 +827,28 @@ class Logger:
             logger.setLevel(cls.log_level)
 
     @classmethod
+    def get_structured_handlers(cls) -> list[logging.Handler]:
+        """Handlers of root logger writing structured records.
+
+        Log file and Vector handlers, without console handlers. Can be
+        attached to a logger which does not propagate its records to
+        the root logger, to keep its records out of the console but still
+        in the log file and Vector.
+
+        Returns:
+            list[logging.Handler]: Handlers marked by
+                'STRUCTURED_HANDLER_ATTR'.
+
+        """
+        if not cls.initialized:
+            cls.initialize()
+        return [
+            handler
+            for handler in logging.getLogger().handlers
+            if getattr(handler, STRUCTURED_HANDLER_ATTR, False)
+        ]
+
+    @classmethod
     def get_process_data(cls):
         """Data about current process which should be same for all records.
 
@@ -953,6 +980,7 @@ class Logger:
             )
             file_handler.addFilter(pyblish_filter)
             file_handler.setFormatter(json_formatter)
+            setattr(file_handler, STRUCTURED_HANDLER_ATTR, True)
             root_logger.addHandler(file_handler)
 
         if VECTOR_LOG_URL:
@@ -966,6 +994,7 @@ class Logger:
             queue_handler = _DroppingQueueHandler(log_queue)
             queue_handler.addFilter(pyblish_filter)
             queue_handler.setFormatter(json_formatter)
+            setattr(queue_handler, STRUCTURED_HANDLER_ATTR, True)
             vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
             vector_sender.start()
             # The sender thread is a daemon thread, it would be killed on
