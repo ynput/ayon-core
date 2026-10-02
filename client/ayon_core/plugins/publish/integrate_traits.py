@@ -213,7 +213,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
         instance.data["versionEntity"] = version_entity
 
-        template: Any = get_publish_template_object(instance)
+        template: Any = get_publish_template_object(
+            instance, logger=self.log
+        )
 
         transfers = get_transfers_from_representations(
             instance, template, representations)

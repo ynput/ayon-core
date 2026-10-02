@@ -1547,6 +1547,8 @@ def get_publish_template_object(
     instance: pyblish.api.Instance,
     category_name: str = "publish",
     template_name: str | None = None,
+    *,
+    logger: logging.Logger | None = None,
 ) -> "AnatomyTemplateItem":
     """Return anatomy template object to use for integration.
 
@@ -1559,6 +1561,8 @@ def get_publish_template_object(
         template_name (str | None): Template name to use.
             If not provided, it will get the template name from
             the provided instance.
+        logger (logging.Logger | None): Custom logger used to find
+            the template name. Defaults to logger of this module.
 
     Returns:
         AnatomyTemplateItem: Anatomy template object
@@ -1567,7 +1571,7 @@ def get_publish_template_object(
     # Anatomy data is pre-filled by Collectors
     if not template_name:
         template_name = get_publish_template_name_for_instance(
-            instance, logger=log
+            instance, logger=logger or log
         )
     anatomy: Anatomy = instance.context.data["anatomy"]
     return anatomy.get_template_item(

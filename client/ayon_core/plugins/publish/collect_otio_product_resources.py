@@ -56,9 +56,9 @@ class CollectOTIOProductResources(
         if not instance.data.get("versionData"):
             instance.data["versionData"] = {}
 
-        publish_path_template = (
-            get_publish_template_object(instance)["path"].template
-        )
+        publish_path_template = get_publish_template_object(
+            instance, logger=self.log
+        )["path"].template
         template = os.path.normpath(publish_path_template)
         self.log.debug(
             ">> template: {}".format(template))

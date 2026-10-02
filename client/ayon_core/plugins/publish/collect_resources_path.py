@@ -37,7 +37,9 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
         # TODO remove when all clients have solved this issue
         template_data.update({"frame": "FRAME_TEMP", "representation": "TEMP"})
 
-        publish_template = get_publish_template_object(instance)["directory"]
+        publish_template = get_publish_template_object(
+            instance, logger=self.log
+        )["directory"]
 
         if "{originalDirname}" in publish_template:
             original_directory = instance.data.get("originalDirname")
