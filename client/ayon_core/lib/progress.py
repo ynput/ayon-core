@@ -197,6 +197,8 @@ class ProgressReporter:
             message: Failure reason; ignored when empty.
         """
         with self._lock:
+            if self._state.finished or self._state.failed:
+                return
             self._state = self._with_overall(
                 replace(
                     self._state,
