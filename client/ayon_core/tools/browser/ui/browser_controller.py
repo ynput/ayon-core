@@ -73,6 +73,16 @@ log = Logger.get_logger(__name__)
 # 50 000 products before a warning is logged.
 _MAX_GROUP_PAGES: int = 50
 
+# Columns queried for the grid, whose cards show the thumbnail, status and
+# product type (along with names that are always queried). The product
+# type's icon and color resolve through its base type.
+_GRID_COLUMN_KEYS: frozenset[str] = frozenset({
+    "thumb",
+    "status",
+    "productType",
+    "productBaseType",
+})
+
 
 def _collect_product_base_types(
     definitions: list[dict[str, Any]],
@@ -243,6 +253,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._folder_id_scope: set[str] | None = None
         self._task_id_scope: set[str] | None = None
         self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
+        self._display_type: str = BROWSER_VIEW_DEFAULTS.display_type
+        # Columns visible in the table, queried while it is displayed.
+        self._table_column_keys: set[str] = set()
         self._requested_column_keys: set[str] | None = None
         # Project info by project name, '(fetch time, data)'
         self._project_info_cache: dict[str, tuple[float, dict]] = {}
@@ -285,11 +298,47 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
 
     def set_requested_columns(self, column_keys: set[str]) -> bool:
-        """Set visible query columns and return whether they changed."""
-        normalized = set(column_keys)
-        if self._requested_column_keys == normalized:
+        """Set visible table columns and return whether the query changed.
+
+        The columns are queried only while the table is displayed, the
+        grid queries just what its cards show.
+        """
+        self._table_column_keys = set(column_keys)
+        return self._update_requested_columns()
+
+    @property
+    def display_type(self) -> str:
+        """Return the displayed view, ``"table"`` or ``"grid"``."""
+        return self._display_type
+
+    def set_display_type(self, display_type: str) -> bool:
+        """Set the displayed view.
+
+        Args:
+            display_type: ``"table"`` or ``"grid"``.
+
+        Returns:
+            Whether the loaded rows are outdated and must be fetched
+            again, because the queried fields changed.
+        """
+        if display_type == self._display_type:
             return False
-        self._requested_column_keys = normalized
+        self._display_type = display_type
+        return self._update_requested_columns()
+
+    def _update_requested_columns(self) -> bool:
+        """Update the query columns for the displayed view.
+
+        Returns:
+            Whether the query columns changed.
+        """
+        if self._display_type == "grid":
+            column_keys = set(_GRID_COLUMN_KEYS)
+        else:
+            column_keys = set(self._table_column_keys)
+        if self._requested_column_keys == column_keys:
+            return False
+        self._requested_column_keys = column_keys
         self._reset_pagination()
         return True
 
