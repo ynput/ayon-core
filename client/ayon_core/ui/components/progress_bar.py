@@ -197,8 +197,10 @@ class AYProgressBar(StyleMixin, QWidget):
             value: Current number of completed steps.
             total: Optional total to set before applying *value*.
         """
-        if total is not None:
-            self.set_total(total)
+        if total is not None and total != self._total:
+            self._total = total
+            self._completed = False
+            self._update_animation()
         if self._total is None:
             self._current = value
         else:
