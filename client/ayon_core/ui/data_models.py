@@ -192,6 +192,24 @@ class User:
 
 
 @dataclass
+class EntityMention:
+    """Entity (version or task) that can be mentioned in a comment.
+
+    A mention is stored in the comment markdown as
+    ``[label](entity_type:id)``.
+    """
+
+    entity_type: str  # "version" or "task"
+    id: str
+    label: str
+    context: str = ""  # e.g. product name of a version, folder of a task
+    # Material symbol and color of the product type or task type
+    icon: str = ""
+    color: str = ""
+    suffix: str = ""  # e.g. how long ago a version was created
+
+
+@dataclass
 class Team:
     name: str
     members: List[str]
@@ -247,6 +265,9 @@ class VersionData:
     attrib: dict[str, str]
     thumbnail_id: str = ""
     thumbnail_local_path: str = ""
+    # entities which can be mentioned in a comment on this version
+    mention_versions: list[EntityMention] = field(default_factory=list)
+    mention_tasks: list[EntityMention] = field(default_factory=list)
 
     @staticmethod
     def not_set():

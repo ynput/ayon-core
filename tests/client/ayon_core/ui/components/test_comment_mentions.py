@@ -1,0 +1,537 @@
+"""Tests for mentioning users, versions and tasks in comments."""
+
+from __future__ import annotations
+
+import pytest
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QColor, QImage, QPainter
+from qtpy.QtWidgets import QStyleOptionViewItem
+
+from ayon_core.ui.components.comment import AYComment, AYCommentField
+from ayon_core.ui.components.comment_completion import (
+    mentions_to_display,
+    mentions_to_storage,
+)
+from ayon_core.ui.components.text_box import AYTextBox, AYTextEditor
+from ayon_core.ui.data_models import CommentModel, EntityMention, User
+
+USERS = [
+    User("bigroy", "RN", "Roy Nieterau", ""),
+    User("admin", "AA", "Ayon admin", ""),
+]
+VERSIONS = [
+    EntityMention("version", "v3id", "v003", "renderMain"),
+    EntityMention("version", "v2id", "v002", "renderMain"),
+    EntityMention("version", "w1id", "v001", "workfileCompositing"),
+]
+TASKS = [
+    EntityMention("task", "t1id", "compositing", "sh010"),
+    EntityMention("task", "t2id", "lighting", "sh010"),
+]
+
+STORED = (
+    "Hey [Roy Nieterau](user:bigroy) see [v003](version:v3id)"
+    " for [compositing](task:t1id)"
+)
+DISPLAYED = (
+    "Hey [@Roy Nieterau](user:bigroy) see [@@v003](version:v3id)"
+    " for [@@@compositing](task:t1id)"
+)
+
+
+@pytest.fixture
+def editor(qtbot) -> AYTextEditor:
+    widget = AYTextEditor(num_lines=4, user_list=USERS)
+    widget.set_mention_entities(VERSIONS, TASKS)
+    qtbot.addWidget(widget)
+    widget.show()
+    qtbot.waitExposed(widget)
+    return widget
+
+
+def _completions(editor: AYTextEditor) -> list[str]:
+    completer = editor._mentions._completer
+    if not editor._mentions.popup_visible():
+        return []
+    model = completer.completionModel()
+    return [model.index(row, 0).data() for row in range(model.rowCount())]
+
+
+def _markdown(editor: AYTextEditor | AYCommentField) -> str:
+    """Markdown of the editor on a single line."""
+    # Qt marks the text as code when the application font set by a previous
+    # test happens to be monospace.
+    return " ".join(editor.as_markdown().replace("`", "").split())
+
+
+def test_mentions_to_display():
+    assert mentions_to_display(STORED) == DISPLAYED
+    # Regular links are untouched
+    md = "[site](https://ynput.io) [mail](mailto:a@b.c)"
+    assert mentions_to_display(md) == md
+
+
+def test_mentions_to_storage():
+    assert mentions_to_storage(DISPLAYED, USERS) == STORED
+    assert mentions_to_storage(STORED, USERS) == STORED
+    # Label wrapped over two lines by Qt's markdown writer
+    assert (
+        mentions_to_storage("[@Roy\nNieterau](user:bigroy)", USERS)
+        == "[Roy Nieterau](user:bigroy)"
+    )
+    # User mention typed without picking it from the completer
+    assert (
+        mentions_to_storage("Hi @Roy Nieterau!", USERS)
+        == "Hi [Roy Nieterau](user:bigroy)!"
+    )
+
+
+@pytest.mark.parametrize(
+    "typed, expected",
+    [
+        ("@", ["Roy Nieterau", "Ayon admin"]),
+        ("@adm", ["Ayon admin"]),
+        ("@@", [
+            "renderMain v003",
+            "renderMain v002",
+            "workfileCompositing v001",
+        ]),
+        ("@@v002", ["renderMain v002"]),
+        ("@@workfile", ["workfileCompositing v001"]),
+        ("@@@", ["sh010 compositing", "sh010 lighting"]),
+        ("@@@light", ["sh010 lighting"]),
+        ("see (@@@comp", ["sh010 compositing"]),
+        # No completions
+        ("@@@@", []),
+        ("mail@adm", []),
+        ("@nobody", []),
+        ("@@ ", []),
+    ],
+)
+def test_completions_per_trigger(qtbot, editor, typed, expected):
+    qtbot.keyClicks(editor, typed)
+    assert _completions(editor) == expected
+
+
+@pytest.mark.parametrize(
+    "typed, text, markdown",
+    [
+        ("@roy", "@Roy Nieterau ", "[Roy Nieterau](user:bigroy)"),
+        ("@@v002", "@@v002 ", "[v002](version:v2id)"),
+        ("@@@light", "@@@lighting ", "[lighting](task:t2id)"),
+    ],
+    ids=["user", "version", "task"],
+)
+def test_pick_mention(qtbot, editor, typed, text, markdown):
+    qtbot.keyClicks(editor, f"Check {typed}")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+
+    assert not editor._mentions.popup_visible()
+    assert editor.toPlainText() == f"Check {text}"
+    assert _markdown(editor) == f"Check {markdown}"
+
+    # Text typed after the mention is not part of the link
+    qtbot.keyClicks(editor, "please")
+    assert _markdown(editor) == f"Check {markdown} please"
+
+
+def test_pick_mention_with_arrow_keys(qtbot, editor):
+    qtbot.keyClicks(editor, "@@")
+    popup = editor._mentions._completer.popup()
+    qtbot.keyClick(popup, Qt.Key.Key_Down)
+    qtbot.keyClick(popup, Qt.Key.Key_Return)
+    assert _markdown(editor) == "[v002](version:v2id)"
+
+
+def test_no_entities_to_mention(qtbot, editor):
+    editor.set_mention_entities([], [])
+    qtbot.keyClicks(editor, "@@")
+    assert _completions(editor) == ["No versions to mention"]
+
+    # The placeholder can't be picked
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert "version:" not in editor.as_markdown()
+
+
+def test_mention_in_checklist(qtbot, editor):
+    editor.set_format("fmt_checklist")
+    qtbot.keyClicks(editor, "review @@v003")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "ask @adm")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+
+    markdown = editor.as_markdown().replace("`", "")
+    assert [line for line in markdown.splitlines() if line] == [
+        "- [ ] review [v003](version:v3id)",
+        "- [ ] ask [Ayon admin](user:admin)",
+    ]
+
+
+def test_ending_checklist_removes_its_checkbox(qtbot, editor):
+    editor.set_format("fmt_checklist")
+    qtbot.keyClicks(editor, "one")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    # Enter on the empty checkbox line ends the list
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "done")
+
+    assert len(editor._checkbox_handler.checkboxes) == 1
+    assert "- [ ] one" in editor.as_markdown()
+
+
+@pytest.mark.parametrize(
+    "stored",
+    [STORED, f"- [ ] {STORED}\n- [x] done"],
+    ids=["plain", "checklist"],
+)
+def test_comment_field_round_trip(qtbot, stored):
+    field = AYCommentField(text=stored, read_only=True, user_list=USERS)
+    qtbot.addWidget(field)
+
+    assert "@Roy Nieterau see @@v003 for @@@compositing" in field.toPlainText()
+    assert _markdown(field) == " ".join(stored.split())
+
+
+@pytest.mark.parametrize("key", [Qt.Key.Key_Home, Qt.Key.Key_End])
+def test_typing_next_to_loaded_mention(qtbot, editor, key):
+    editor.set_markdown("[Roy Nieterau](user:bigroy)")
+    qtbot.keyClick(editor, key)
+    qtbot.keyClicks(editor, " hi ")
+
+    text = "hi [Roy Nieterau](user:bigroy)"
+    if key == Qt.Key.Key_End:
+        text = "[Roy Nieterau](user:bigroy) hi"
+    assert _markdown(editor) == text
+
+
+@pytest.fixture
+def text_box(qtbot) -> AYTextBox:
+    widget = AYTextBox(num_lines=4, user_list=USERS)
+    widget.set_mention_entities(VERSIONS, TASKS)
+    qtbot.addWidget(widget)
+    widget.show()
+    qtbot.waitExposed(widget)
+    return widget
+
+
+def test_text_box_mention_buttons(qtbot, text_box):
+    editor = text_box.edit_field
+
+    qtbot.keyClicks(editor, "see")
+    text_box._add_mention_to_editor("@@")
+    assert editor.toPlainText() == "see @@"
+    assert len(_completions(editor)) == len(VERSIONS)
+
+    # Another button switches the type of the mention being typed
+    qtbot.keyClicks(editor, "v00")
+    text_box._add_mention_to_editor("@@@")
+    assert editor.toPlainText() == "see @@@"
+    assert _completions(editor) == ["sh010 compositing", "sh010 lighting"]
+
+    text_box._add_mention_to_editor("@")
+    assert editor.toPlainText() == "see @"
+    assert _completions(editor) == ["Roy Nieterau", "Ayon admin"]
+
+
+def test_text_box_submits_stored_mentions(qtbot, text_box):
+    editor = text_box.edit_field
+    for typed in ("Hey @roy", "see @@v003", "for @@@comp"):
+        qtbot.keyClicks(editor, typed)
+        qtbot.keyClick(editor, Qt.Key.Key_Return)
+
+    with qtbot.waitSignal(text_box.signals.comment_submitted) as submitted:
+        qtbot.keyClick(
+            editor, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier
+        )
+
+    markdown, _category, attachments = submitted.args
+    assert " ".join(markdown.replace("`", "").split()) == STORED
+    assert attachments == []
+    assert editor.toPlainText() == ""
+
+
+def test_ctrl_enter_picks_mention_instead_of_submitting(qtbot, text_box):
+    editor = text_box.edit_field
+    qtbot.keyClicks(editor, "@@v002")
+    with qtbot.assertNotEmitted(text_box.signals.comment_submitted):
+        qtbot.keyClick(
+            editor, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier
+        )
+    assert _markdown(editor) == "[v002](version:v2id)"
+
+
+def test_tab_picks_mention(qtbot, editor):
+    qtbot.keyClicks(editor, "@@@light")
+    qtbot.keyClick(editor, Qt.Key.Key_Tab)
+    assert _markdown(editor) == "[lighting](task:t2id)"
+
+
+def test_escape_closes_popup(qtbot, editor):
+    qtbot.keyClicks(editor, "@@")
+    assert _completions(editor)
+    qtbot.keyClick(editor._mentions._completer.popup(), Qt.Key.Key_Escape)
+
+    assert not editor._mentions.popup_visible()
+    # Enter is a regular new line again
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert editor.toPlainText() == "@@\n"
+    assert "version:" not in editor.as_markdown()
+
+
+def test_backspace_deletes_mention_as_a_whole(qtbot, editor):
+    qtbot.keyClicks(editor, "Check @@v002")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "now")
+    assert editor.toPlainText() == "Check @@v002 now"
+
+    for _ in "now ":
+        qtbot.keyClick(editor, Qt.Key.Key_Backspace)
+    assert editor.toPlainText() == "Check @@v002"
+
+    qtbot.keyClick(editor, Qt.Key.Key_Backspace)
+    assert editor.toPlainText() == "Check "
+    # Text typed in place of the mention is not a link
+    qtbot.keyClicks(editor, "this")
+    assert _markdown(editor) == "Check this"
+
+
+@pytest.mark.parametrize(
+    "key, moves, expected",
+    [
+        # Text cursor in front of the mention
+        (Qt.Key.Key_Delete, 4, "see for [compositing](task:t1id)"),
+        # Text cursor in the middle of the mention
+        (Qt.Key.Key_Delete, 6, "see for [compositing](task:t1id)"),
+        (Qt.Key.Key_Backspace, 6, "see for [compositing](task:t1id)"),
+        # Text outside of a mention is deleted per character
+        (Qt.Key.Key_Delete, 0, "ee [v003](version:v3id) for"
+                               " [compositing](task:t1id)"),
+        (Qt.Key.Key_Backspace, 3, "se [v003](version:v3id) for"
+                                  " [compositing](task:t1id)"),
+    ],
+    ids=[
+        "delete_in_front",
+        "delete_inside",
+        "backspace_inside",
+        "delete_text",
+        "backspace_text",
+    ],
+)
+def test_delete_loaded_mention(qtbot, editor, key, moves, expected):
+    editor.set_markdown(
+        "see [v003](version:v3id) for [compositing](task:t1id)"
+    )
+    qtbot.keyClick(editor, Qt.Key.Key_Home)
+    for _ in range(moves):
+        qtbot.keyClick(editor, Qt.Key.Key_Right)
+
+    qtbot.keyClick(editor, key)
+    assert _markdown(editor) == expected
+
+
+def test_delete_selection_with_mention(qtbot, editor):
+    editor.set_markdown("see [v003](version:v3id) now")
+    editor.selectAll()
+    qtbot.keyClick(editor, Qt.Key.Key_Backspace)
+    assert editor.toPlainText() == ""
+
+
+def test_mention_not_deleted_in_read_only_field(qtbot):
+    field = AYCommentField(text=STORED, read_only=True, user_list=USERS)
+    qtbot.addWidget(field)
+    text = field.toPlainText()
+    qtbot.keyClick(field, Qt.Key.Key_Backspace)
+    qtbot.keyClick(field, Qt.Key.Key_Delete)
+    assert field.toPlainText() == text
+
+
+def test_undo_restores_deleted_mention(qtbot, editor):
+    editor.set_markdown("see [v003](version:v3id)")
+    qtbot.keyClick(editor, Qt.Key.Key_End)
+    qtbot.keyClick(editor, Qt.Key.Key_Backspace)
+    assert editor.toPlainText() == "see "
+
+    editor.undo()
+    assert _markdown(editor) == "see [v003](version:v3id)"
+
+
+def test_mentions_keep_text_style(qtbot, editor):
+    qtbot.keyClick(editor, Qt.Key.Key_B, Qt.KeyboardModifier.ControlModifier)
+    qtbot.keyClicks(editor, "ask @adm")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClick(editor, Qt.Key.Key_B, Qt.KeyboardModifier.ControlModifier)
+    qtbot.keyClicks(editor, "and ")
+    qtbot.keyClick(editor, Qt.Key.Key_I, Qt.KeyboardModifier.ControlModifier)
+    qtbot.keyClicks(editor, "wait")
+
+    markdown = _markdown(editor)
+    assert "[Ayon admin](user:admin)" in markdown
+    assert markdown.startswith("**ask")
+    assert markdown.endswith("and *wait*")
+
+
+def test_no_mentions_in_code(qtbot, editor):
+    editor.set_markdown("```\n@@v003\n```\n")
+    assert "version:" not in editor.as_markdown()
+    assert "@@v003" in editor.as_markdown()
+
+
+def test_unknown_mention_types_are_regular_links(qtbot, editor):
+    stored = "[shot](folder:f1id) and [site](https://ynput.io)"
+    editor.set_markdown(stored)
+    assert editor.toPlainText() == "shot and site"
+    assert _markdown(editor) == stored
+
+
+def test_same_label_mentions_keep_their_own_id(qtbot, editor):
+    editor.set_mention_entities(
+        [
+            EntityMention("version", "a1id", "v001", "renderMain"),
+            EntityMention("version", "b1id", "v001", "renderBeauty"),
+        ],
+        [],
+    )
+    for typed in ("@@renderBeauty", "@@renderMain"):
+        qtbot.keyClicks(editor, typed)
+        qtbot.keyClick(editor, Qt.Key.Key_Return)
+
+    assert _markdown(editor) == "[v001](version:b1id) [v001](version:a1id)"
+
+
+def test_edit_comment_keeps_mentions(qtbot):
+    data = CommentModel(comment=STORED)
+    comment = AYComment(data=data, user_list=USERS)
+    comment.set_mention_entities(VERSIONS, TASKS)
+    qtbot.addWidget(comment)
+    comment.show()
+    qtbot.waitExposed(comment)
+    field = comment.text_field
+
+    comment._edit_comment()
+    qtbot.keyClick(field, Qt.Key.Key_End, Qt.KeyboardModifier.ControlModifier)
+    qtbot.keyClicks(field, " and @@@light")
+    qtbot.keyClick(field, Qt.Key.Key_Return)
+
+    with qtbot.waitSignal(comment.comment_edited):
+        comment._save_edit()
+    assert " ".join(data.comment.replace("`", "").split()) == (
+        f"{STORED} and [lighting](task:t2id)"
+    )
+
+    # Cancelling an edit restores the stored comment
+    comment._edit_comment()
+    qtbot.keyClick(field, Qt.Key.Key_Backspace)
+    qtbot.keyClick(field, Qt.Key.Key_Backspace)
+    comment._cancel_edit()
+    assert _markdown(field) == f"{STORED} and [lighting](task:t2id)"
+
+
+def _paint_row(editor: AYTextEditor, row: int) -> QImage:
+    """Paint a row of the open popup the way its delegate does."""
+    popup = editor._mentions._completer.popup()
+    index = editor._mentions._completer.completionModel().index(row, 0)
+    image = QImage(400, 28, QImage.Format.Format_ARGB32)
+    image.fill(Qt.GlobalColor.transparent)
+    option = QStyleOptionViewItem()
+    option.rect = image.rect()
+    option.font = editor.font()
+    painter = QPainter(image)
+    painter.setFont(editor.font())
+    popup.itemDelegate().paint(painter, option, index)
+    painter.end()
+    return image
+
+
+def _count_pixels(image: QImage, color: str, x_range: range) -> int:
+    """Count the pixels close to a color in a range of columns."""
+    expected = QColor(color)
+    count = 0
+    for x in x_range:
+        for y in range(image.height()):
+            pixel = image.pixelColor(x, y)
+            if (
+                abs(pixel.red() - expected.red())
+                + abs(pixel.green() - expected.green())
+                + abs(pixel.blue() - expected.blue())
+            ) < 30:  # noqa: PLR2004
+                count += 1
+    return count
+
+
+ICON_COLUMNS = range(0, 28)
+SUFFIX_COLUMNS = range(300, 400)
+
+
+def test_entity_icons_in_type_color(qtbot, editor):
+    editor.set_mention_entities(
+        [
+            EntityMention(
+                "version", "v3id", "v003", "renderMain",
+                icon="photo_library", color="#ff0000", suffix="2 days ago",
+            ),
+            # No product type known: default icon in the text color
+            EntityMention("version", "v2id", "v002", "renderMain"),
+        ],
+        [
+            EntityMention(
+                "task", "t1id", "compositing", "sh010",
+                icon="directions_run", color="#00ff00",
+            ),
+            # Icon which the icon font does not know
+            EntityMention(
+                "task", "t2id", "lighting", "sh010",
+                icon="not_an_existing_icon", color="#0000ff",
+            ),
+        ],
+    )
+
+    qtbot.keyClicks(editor, "@@")
+    typed = _paint_row(editor, 0)
+    untyped = _paint_row(editor, 1)
+    assert _count_pixels(typed, "#ff0000", ICON_COLUMNS) > 10  # noqa: PLR2004
+    assert _count_pixels(untyped, "#ff0000", ICON_COLUMNS) == 0
+    # The default icon is painted instead of leaving a gap
+    background = untyped.pixelColor(399, 14)
+    assert any(
+        untyped.pixelColor(x, y) != background
+        for x in ICON_COLUMNS
+        for y in range(untyped.height())
+    )
+    # Only the version with a creation date has text on the right
+    assert any(
+        typed.pixelColor(x, y) != typed.pixelColor(399, 0)
+        for x in SUFFIX_COLUMNS
+        for y in range(typed.height())
+    )
+    assert all(
+        untyped.pixelColor(x, y) == background
+        for x in SUFFIX_COLUMNS
+        for y in range(untyped.height())
+    )
+
+    editor.clear()
+    qtbot.keyClicks(editor, "@@@")
+    assert _count_pixels(
+        _paint_row(editor, 0), "#00ff00", ICON_COLUMNS
+    ) > 10  # noqa: PLR2004
+    # Falls back to the task icon, still in the color of the task type
+    assert _count_pixels(
+        _paint_row(editor, 1), "#0000ff", ICON_COLUMNS
+    ) > 10  # noqa: PLR2004
+
+
+def test_icons_do_not_change_completion_or_markdown(qtbot, editor):
+    editor.set_mention_entities(
+        [
+            EntityMention(
+                "version", "v3id", "v003", "renderMain",
+                icon="photo_library", color="#ff0000", suffix="2 days ago",
+            ),
+        ],
+        [],
+    )
+    qtbot.keyClicks(editor, "@@render")
+    assert _completions(editor) == ["renderMain v003"]
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert _markdown(editor) == "[v003](version:v3id)"
