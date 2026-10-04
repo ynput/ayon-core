@@ -214,6 +214,7 @@ class BrowserWidgetController(QtCore.QObject):
     selection_changed = QtCore.Signal(list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
     my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
+    products_group_changed = QtCore.Signal()  # type: ignore
 
     def __init__(
         self,
@@ -281,6 +282,10 @@ class BrowserWidgetController(QtCore.QObject):
         loader_controller.register_event_callback(
             "controller.reset.finished",
             self._on_loader_controller_reset,
+        )
+        loader_controller.register_event_callback(
+            "products.group.changed",
+            self._on_products_group_changed,
         )
         column_services = BrowserColumnServices(loader_controller)
         self._column_manager = BrowserColumnManager(
@@ -1920,7 +1925,7 @@ class BrowserWidgetController(QtCore.QObject):
     ) -> None:
         """Change the product group of the given products.
 
-        Loaded rows are outdated afterwards and must be fetched again.
+        :attr:`products_group_changed` is emitted once it changed.
 
         Args:
             project_name: AYON project name.
@@ -1930,7 +1935,13 @@ class BrowserWidgetController(QtCore.QObject):
         self._loader_controller.change_products_group(
             project_name, product_ids, group_name
         )
+
+    def _on_products_group_changed(self, event: Any) -> None:
+        """Mark loaded rows outdated when a product group changed."""
+        if event["project_name"] != self._current_project:
+            return
         self._reset_pagination()
+        self.products_group_changed.emit()
 
     def _get_column_context(self) -> BrowserColumnContext:
         """Return an immutable state snapshot for column providers."""

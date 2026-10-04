@@ -70,6 +70,19 @@ class ProductGroupsInfo:
     selected: set[str]
     available: set[str]
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            selected=list(self.selected),
+            available=list(self.available),
+        )
+
+    @classmethod
+    def from_data(cls, data) -> ProductGroupsInfo:
+        return cls(
+            selected=set(data["selected"]),
+            available=set(data["available"]),
+        )
+
 
 @dataclass
 class ActionItem:
@@ -450,6 +463,13 @@ class AbstractBrowserController(ABC):
         self, project_name: str, product_ids: set[str], group_name: str
     ) -> None:
         """Change group name of passed products.
+
+        Triggers event "products.group.changed" with data:
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            }
 
         Args:
             project_name (str): Project name.

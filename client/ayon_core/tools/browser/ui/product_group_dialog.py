@@ -18,12 +18,10 @@ class ProductGroupDialog(QtWidgets.QDialog):
     """Dialog asking for a group name to set on products.
 
     Signals:
-        group_changed: Emitted after the group of the products changed.
         group_change_failed (str): Emitted with a message when the change
             could not be saved.
     """
 
-    group_changed = QtCore.Signal()
     group_change_failed = QtCore.Signal(str)
 
     def __init__(
@@ -99,6 +97,4 @@ class ProductGroupDialog(QtWidgets.QDialog):
             self.group_change_failed.emit(
                 f"Failed to change product group: {exc}"
             )
-        else:
-            self.group_changed.emit()
         self.close()

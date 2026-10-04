@@ -121,3 +121,28 @@ def test_change_products_group_ungroups_with_empty_name(
         ("demo", "product", "p1", {"attrib": {"productGroup": None}}),
         ("commit",),
     ]
+
+
+def test_change_products_group_emits_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from ayon_core.tools.browser.control import BrowserController
+
+    monkeypatch.setattr(
+        ProductsModel, "change_products_group", lambda *_args: None
+    )
+    controller = BrowserController()
+    events: list[dict[str, Any]] = []
+
+    def on_group_changed(event: Any) -> None:
+        events.append(dict(event.data))
+
+    controller.register_event_callback(
+        "products.group.changed", on_group_changed
+    )
+
+    controller.change_products_group("demo", {"p1"}, "A")
+
+    assert events == [
+        {"project_name": "demo", "product_ids": {"p1"}, "group_name": "A"}
+    ]

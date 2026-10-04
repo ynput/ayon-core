@@ -182,6 +182,14 @@ class BrowserController(AbstractBrowserController):
         self._products_model.change_products_group(
             project_name, product_ids, group_name
         )
+        self._emit_event(
+            "products.group.changed",
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            },
+        )
 
     def get_action_items(
         self,

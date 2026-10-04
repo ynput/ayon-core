@@ -80,7 +80,7 @@ class BrowserWidget(AYContainer):
 
         # Grouping products on pressing Ctrl + G
         self._group_dialog = ProductGroupDialog(self._controller, self)
-        self._group_dialog.group_changed.connect(
+        self._controller.products_group_changed.connect(
             self._on_product_group_changed
         )
         self._group_dialog.group_change_failed.connect(
