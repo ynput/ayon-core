@@ -251,6 +251,9 @@ class ReviewInspector(AYContainer):
 
     def refresh_selection(self) -> None:
         """Refresh the inspector after selected row data changes."""
+        # Force a reload even if the selection itself did not change
+        self._repre_request_key = ""
+        self._current_thumb_key = ""
         self._update()
 
     def _on_selection_changed(
@@ -371,6 +374,9 @@ class ReviewInspector(AYContainer):
             version_ids: Selected version ids.
         """
         request_key = f"{project_name}|{','.join(sorted(version_ids))}"
+        # Already loaded or loading, e.g. click on already selected version
+        if request_key == self._repre_request_key:
+            return
         self._repre_request_key = request_key
         multi_version = len(version_ids) > 1
         controller = self._controller
@@ -382,6 +388,9 @@ class ReviewInspector(AYContainer):
             # Selection changed in the meantime
             if inspector._repre_request_key != request_key:
                 return
+            if repre_items is None:
+                # Task failed, allow the same selection to retry
+                inspector._repre_request_key = ""
             inspector._representations.set_items(
                 repre_items or [],
                 multi_version=multi_version,
@@ -417,6 +426,9 @@ class ReviewInspector(AYContainer):
                 ``"<project_name>/<version_id>/<thumbnail_id>"``.
         """
         combined_key = ",".join(keys)
+        # Already shown or loading, e.g. click on already selected version
+        if combined_key == self._current_thumb_key:
+            return
         self._current_thumb_key = combined_key
 
         ic = ImageCache.get_instance()
@@ -447,6 +459,9 @@ class ReviewInspector(AYContainer):
                     return
                 if inspector._current_thumb_key != combined_key:
                     return
+                if not all(resolved.get(key) for key in keys):
+                    # Load failed, allow the same selection to retry
+                    inspector._current_thumb_key = ""
                 paths = ",".join(resolved.get(key, "") for key in keys)
                 inspector._thumbnail.set_thumbnail(paths)
 
