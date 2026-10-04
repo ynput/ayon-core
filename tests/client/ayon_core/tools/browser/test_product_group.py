@@ -32,9 +32,10 @@ def _patch_permissions(
 @pytest.mark.parametrize(
     "user_data, response, expected",
     [
-        # Admins and managers are never restricted
+        # Admins, managers and services are never restricted
         ({"isAdmin": True}, FakeResponse(None, 500), True),
         ({"isManager": True}, FakeResponse(None, 500), True),
+        ({"isService": True}, FakeResponse(None, 500), True),
         # Attribute writing is not restricted
         ({}, FakeResponse({"attrib_write": {"enabled": False}}), True),
         # Attribute writing is restricted to listed attributes

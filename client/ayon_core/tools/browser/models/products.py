@@ -210,7 +210,7 @@ class ProductsModel:
     def can_change_products_group(self, project_name: str) -> bool:
         """Whether current user may write the product group attribute.
 
-        Admins and managers always can. Other users can unless their
+        Admins, managers and services always can. Other users can unless their
         access groups restrict attribute writing in the project and
         'productGroup' is not among the writable attributes.
 
@@ -221,8 +221,12 @@ class ProductsModel:
             bool: Product group attribute can be changed by the user.
 
         """
+        # REST user has the role flags under 'data'
         user_data = ayon_api.get_user().get("data") or {}
-        if user_data.get("isAdmin") or user_data.get("isManager"):
+        if any(
+            user_data.get(key)
+            for key in ("isAdmin", "isManager", "isService")
+        ):
             return True
 
         response = ayon_api.get(f"/users/me/permissions/{project_name}")
