@@ -300,3 +300,14 @@ def test_exclude_roundtrips_through_view_payload():
     criterion = FilterCriterion("tags", "Tags", ["a"], exclude=True)
     assert FilterCriterion.from_def(criterion.to_def()) == criterion
     assert FilterCriterion.from_def({"key": "tags"}).exclude is False
+
+
+def test_exclude_hidden_for_single_select(qtbot, boolean_entry):
+    entry = FilterEntry("tags", "Tags", options=["a", "b"])
+    dropdown = _dropdown(qtbot, [boolean_entry, entry])
+
+    dropdown._on_attr_selected("hasReviewables", "Has Reviewables")
+    assert dropdown._exclude_checkbox.isHidden()
+
+    dropdown._on_attr_selected("tags", "Tags")
+    assert not dropdown._exclude_checkbox.isHidden()

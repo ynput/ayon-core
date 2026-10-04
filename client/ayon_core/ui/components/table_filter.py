@@ -667,7 +667,9 @@ class _FilterDropdown(AYDropdownPopup):
             criterion.attribute_label,
             criterion.values,
         )
-        self._exclude_checkbox.setChecked(criterion.exclude)
+        self._exclude_checkbox.setChecked(
+            criterion.exclude and not self._exclude_checkbox.isHidden()
+        )
         self._stack.setCurrentIndex(1)
         self._adjust_height()
         self.show_below(anchor)
@@ -1096,11 +1098,13 @@ class _FilterDropdown(AYDropdownPopup):
 
         # Bulk selection only makes sense for a list of regular values
         # that can be combined.
-        is_multiselect = bool(distinct) and not (
-            entry is not None and entry.single_select
-        )
+        single_select = entry is not None and entry.single_select
+        is_multiselect = bool(distinct) and not single_select
         for btn in self._multiselect_btns:
             btn.setVisible(is_multiselect)
+        # Excluding one of two mutually exclusive values, like Yes/No, is
+        # the same as picking the other one.
+        self._exclude_checkbox.setVisible(not single_select)
 
         # Only a text filter carries its value in the search box; a
         # multi-select shows its values in the list above and leaves the
