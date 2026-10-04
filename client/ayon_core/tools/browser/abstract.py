@@ -58,6 +58,20 @@ class RepreItem:
 
 
 @dataclass
+class ProductGroupsInfo:
+    """Product group names related to a selection of products.
+
+    Attributes:
+        selected (set[str]): Group names set on the selected products.
+        available (set[str]): Group names used by any product in the
+            folders of the selected products.
+    """
+
+    selected: set[str]
+    available: set[str]
+
+
+@dataclass
 class ActionItem:
     """Action item that can be triggered.
 
@@ -397,6 +411,50 @@ class AbstractBrowserController(ABC):
 
         Returns:
             dict[str, int]: Representation count by version id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        """Product group names related to passed products.
+
+        Args:
+            project_name (str): Project name.
+            product_ids (set[str]): Product ids.
+
+        Returns:
+            ProductGroupsInfo: Group names of the products and group names
+                available in their folders.
+
+        """
+        pass
+
+    @abstractmethod
+    def can_change_products_group(self, project_name: str) -> bool:
+        """Whether current user may write the product group attribute.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            bool: Product group attribute can be changed by the user.
+
+        """
+        pass
+
+    @abstractmethod
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        """Change group name of passed products.
+
+        Args:
+            project_name (str): Project name.
+            product_ids (set[str]): Product ids to change group name for.
+            group_name (str): Group name to set, empty string to ungroup.
 
         """
         pass
