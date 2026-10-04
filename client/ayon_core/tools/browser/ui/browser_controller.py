@@ -34,7 +34,6 @@ from qtpy import QtCore
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.abstract import (
     ActionItem,
-    DefaultAction,
     DefaultActionTrigger,
 )
 from ayon_core.tools.browser.columns import (
@@ -1869,13 +1868,13 @@ class BrowserWidgetController(QtCore.QObject):
             project_name, version_ids
         )
 
-    def get_default_action(
+    def trigger_default_action(
         self,
         project_name: str,
         version_id: str,
         trigger: DefaultActionTrigger,
-    ) -> DefaultAction | None:
-        """Return the action set in settings for a double click or space bar.
+    ) -> bool:
+        """Trigger the action set in settings for a double click or space bar.
 
         Args:
             project_name: AYON project name.
@@ -1884,9 +1883,9 @@ class BrowserWidgetController(QtCore.QObject):
             trigger: What the user did.
 
         Returns:
-            The default action, or None if no action is set for the trigger.
+            False if no action is set for the trigger.
         """
-        return self._loader_controller.get_default_action(
+        return self._loader_controller.trigger_default_action(
             project_name, version_id, trigger
         )
 

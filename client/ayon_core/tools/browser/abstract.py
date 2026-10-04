@@ -132,21 +132,6 @@ class ActionItem:
 DefaultActionTrigger = Literal["double_click", "spacebar"]
 
 
-@dataclass
-class DefaultAction:
-    """Action set in settings to run on a double click or space bar.
-
-    Attributes:
-        names (list[str]): Action names as filled in the settings,
-            in order of preference.
-        item (ActionItem | None): Action item of the first available
-            action, None if none of them is available for the version.
-
-    """
-    names: list[str]
-    item: ActionItem | None
-
-
 class AbstractBrowserController(ABC):
     """Base loader controller abstraction.
 
@@ -486,16 +471,30 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def get_default_action(
+    def trigger_default_action(
         self,
         project_name: str,
         version_id: str,
         trigger: DefaultActionTrigger,
-    ) -> DefaultAction | None:
-        """Default action of a version for a double click or space bar.
+    ) -> bool:
+        """Trigger the default action of a version.
 
         The action is defined by 'ayon+settings://core/tools/browser'
         profiles, matched by the host and the version's task and product.
+        The first available action of the matching profile is triggered
+        the same way as with 'trigger_action_item'.
+
+        Triggers event "default_action.triggered" with data:
+            {
+                "project_name": project_name,
+                "version_id": version_id,
+                "trigger": trigger,
+                "action_names": [<Action names from settings>],
+                "action_label": <Label of triggered action> | None,
+            }
+
+        The "action_label" is None if none of the actions is available
+        for the version, nothing is triggered in that case.
 
         Args:
             project_name (str): Project name.
@@ -503,7 +502,8 @@ class AbstractBrowserController(ABC):
             trigger (DefaultActionTrigger): What the user did.
 
         Returns:
-            DefaultAction | None: None if no action is set for the trigger.
+            bool: False if no action is set for the trigger, so the UI
+                should handle the trigger its own way.
 
         """
         pass

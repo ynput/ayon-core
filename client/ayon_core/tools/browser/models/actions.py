@@ -6,6 +6,7 @@ import inspect
 import collections
 import threading
 import uuid
+from dataclasses import dataclass
 from typing import Optional, Callable, Any
 
 import ayon_api
@@ -29,7 +30,6 @@ from ayon_core.pipeline.load import (
 )
 from ayon_core.tools.browser.abstract import (
     ActionItem,
-    DefaultAction,
     DefaultActionTrigger,
 )
 
@@ -50,6 +50,21 @@ def _format_traceback_if_needed(exc: Exception) -> Optional[str]:
     return "".join(
         traceback.format_exception(exc_type, exc_value, exc_traceback)
     )
+
+
+@dataclass
+class DefaultAction:
+    """Action set in settings to run on a double click or space bar.
+
+    Attributes:
+        names (list[str]): Action names as filled in the settings,
+            in order of preference.
+        item (Optional[ActionItem]): Action item of the first available
+            action, None if none of them is available for the version.
+
+    """
+    names: list[str]
+    item: Optional[ActionItem]
 
 
 def find_action_item_by_name(
@@ -322,6 +337,63 @@ class LoaderActionsModel:
             None if action_item is None else repr(action_item.full_label),
         )
         return DefaultAction(action_names, action_item)
+
+    def trigger_default_action(
+        self,
+        project_name: str,
+        version_id: str,
+        trigger: DefaultActionTrigger,
+        profiles: list[dict[str, Any]],
+        host_name: Optional[str],
+    ) -> bool:
+        """Trigger the action set for a double click or space bar.
+
+        Triggers event "default_action.triggered" so the UI can tell
+        the user what happened, the action itself may not show anything.
+
+        Args:
+            project_name (str): Project name.
+            version_id (str): Version id.
+            trigger (DefaultActionTrigger): What the user did.
+            profiles (list[dict[str, Any]]): Default action profiles
+                from settings.
+            host_name (Optional[str]): Name of the host the tool runs in.
+
+        Returns:
+            bool: False if no action is set for the trigger.
+
+        """
+        default_action = self.get_default_action(
+            project_name, version_id, trigger, profiles, host_name
+        )
+        if default_action is None:
+            return False
+
+        action_item = default_action.item
+        self._controller.emit_event(
+            "default_action.triggered",
+            {
+                "project_name": project_name,
+                "version_id": version_id,
+                "trigger": trigger,
+                "action_names": default_action.names,
+                "action_label": (
+                    None if action_item is None else action_item.full_label
+                ),
+            },
+            ACTIONS_MODEL_SENDER,
+        )
+        if action_item is not None:
+            self.trigger_action_item(
+                identifier=action_item.identifier,
+                project_name=project_name,
+                selected_ids={version_id},
+                selected_entity_type="version",
+                data=action_item.data,
+                options={},
+                form_values={},
+            )
+        return True
 
     def trigger_action_item(
         self,

@@ -19,6 +19,11 @@ from ayon_core.tools.utils.lib import center_window
 
 from .browser_widget import BrowserWidget
 
+DEFAULT_ACTION_TRIGGER_LABELS = {
+    "double_click": "Double click",
+    "spacebar": "Space bar",
+}
+
 
 class LoadErrorMessageBox(ErrorMessageBox):
     def __init__(self, messages, parent=None):
@@ -112,9 +117,6 @@ class BrowserWindow(AYContainer):
         self.browser_widget.default_view_message.connect(
             self._show_toast_message
         )
-        self.browser_widget.default_action_message.connect(
-            self._show_toast_message
-        )
         self.add_widget(self.browser_widget)
 
         show_timer = QtCore.QTimer()
@@ -129,6 +131,10 @@ class BrowserWindow(AYContainer):
         controller.register_event_callback(
             "loader.action.finished",
             self._on_loader_action_finished,
+        )
+        controller.register_event_callback(
+            "default_action.triggered",
+            self._on_default_action_triggered,
         )
 
         self._overlay_object = overlay_object
@@ -203,6 +209,21 @@ class BrowserWindow(AYContainer):
 
         box = LoadErrorMessageBox(error_info, self)
         box.show()
+
+    def _on_default_action_triggered(self, event):
+        """Tell the user what a double click or space bar triggered."""
+        trigger_label = DEFAULT_ACTION_TRIGGER_LABELS[event["trigger"]]
+        action_label = event["action_label"]
+        if action_label is not None:
+            self._show_toast_message(f"{trigger_label}: {action_label}")
+            return
+
+        names = ", ".join(f"'{name}'" for name in event["action_names"])
+        self._show_toast_message(
+            f"{trigger_label}: no action available for this version"
+            f" (tried {names})",
+            success=False,
+        )
 
     def _on_loader_action_finished(self, event):
         crashed = event["crashed"]

@@ -91,9 +91,24 @@ RENDER_PROFILE = {
 }
 
 
+class FakeController:
+    """Collect events emitted by the model."""
+
+    def __init__(self) -> None:
+        self.events: list[tuple[str, dict[str, Any]]] = []
+
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
+        self.events.append((topic, data or {}))
+
+
 @pytest.fixture
 def model(monkeypatch: pytest.MonkeyPatch) -> LoaderActionsModel:
-    model = LoaderActionsModel(controller=None)
+    model = LoaderActionsModel(FakeController())
     contexts = {
         "v1": {
             "product": {"productBaseType": "render", "productType": "x"},
@@ -216,3 +231,57 @@ def test_unknown_version_has_no_default_action(
     assert model.get_default_action(
         "demo", "missing", "spacebar", [DEFAULT_PROFILE], None
     ) is None
+
+
+def test_trigger_default_action_emits_event_and_triggers(
+    model: LoaderActionsModel, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    triggered: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        model, "trigger_action_item", lambda **kwargs: triggered.append(kwargs)
+    )
+    events = model._controller.events
+
+    # No action set for the trigger, the UI handles it on its own
+    assert not model.trigger_default_action(
+        "demo", "v1", "double_click", [DEFAULT_PROFILE], None
+    )
+    assert not events
+    assert not triggered
+
+    assert model.trigger_default_action(
+        "demo", "v1", "spacebar", [DEFAULT_PROFILE], None
+    )
+    assert events == [(
+        "default_action.triggered",
+        {
+            "project_name": "demo",
+            "version_id": "v1",
+            "trigger": "spacebar",
+            "action_names": ["Open file"],
+            "action_label": "Open file (exr)",
+        },
+    )]
+    assert len(triggered) == 1
+    assert triggered[0]["identifier"] == "core.open-file"
+    assert triggered[0]["selected_ids"] == {"v1"}
+    assert triggered[0]["selected_entity_type"] == "version"
+
+
+def test_trigger_unavailable_default_action_only_emits_event(
+    model: LoaderActionsModel, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    triggered: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        model, "trigger_action_item", lambda **kwargs: triggered.append(kwargs)
+    )
+    profile = dict(DEFAULT_PROFILE, spacebar_actions=["Missing action"])
+
+    assert model.trigger_default_action(
+        "demo", "v1", "spacebar", [profile], None
+    )
+    topic, data = model._controller.events[-1]
+    assert topic == "default_action.triggered"
+    assert data["action_names"] == ["Missing action"]
+    assert data["action_label"] is None
+    assert not triggered

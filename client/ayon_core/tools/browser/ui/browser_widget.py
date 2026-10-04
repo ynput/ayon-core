@@ -22,18 +22,11 @@ from .browser_inspector import ReviewInspector
 
 log = Logger.get_logger(__name__)
 
-_DEFAULT_ACTION_TRIGGER_LABELS: dict[DefaultActionTrigger, str] = {
-    "double_click": "Double click",
-    "spacebar": "Space bar",
-}
-
 
 class BrowserWidget(AYContainer):
     """Top-level widget combining the slicer panel and version table."""
 
     default_view_message = QtCore.Signal(str, bool)
-    # Message about an action triggered by double click or space bar
-    default_action_message = QtCore.Signal(str, bool)
 
     # Max selected versions for which context menu data are prefetched
     prefetch_selection_limit = 50
@@ -277,42 +270,12 @@ class BrowserWidget(AYContainer):
             return False
 
         try:
-            default_action = self._controller.get_default_action(
+            return self._controller.trigger_default_action(
                 project_name, version_id, trigger
             )
         except Exception:
-            log.warning("Failed to get default action", exc_info=True)
+            log.warning("Failed to trigger default action", exc_info=True)
             return False
-
-        if default_action is None:
-            return False
-
-        trigger_label = _DEFAULT_ACTION_TRIGGER_LABELS[trigger]
-        action_item = default_action.item
-        if action_item is None:
-            names = ", ".join(f"'{name}'" for name in default_action.names)
-            self.default_action_message.emit(
-                f"{trigger_label}: no action available for this version"
-                f" (tried {names})",
-                False,
-            )
-            return True
-
-        # Tell the user what was triggered, the action itself may not
-        #   show anything
-        self.default_action_message.emit(
-            f"{trigger_label}: {action_item.full_label}", True
-        )
-        self._controller.trigger_action_item(
-            identifier=action_item.identifier,
-            project_name=project_name,
-            selected_ids={version_id},
-            selected_entity_type="version",
-            data=action_item.data,
-            options={},
-            form_values={},
-        )
-        return True
 
     def _on_view_selection_changed(self, *args: Any) -> None:
         """Prefetch context menu data for the new selection.

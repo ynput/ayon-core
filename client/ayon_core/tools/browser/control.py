@@ -20,7 +20,6 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractBrowserController,
     ActionItem,
-    DefaultAction,
     DefaultActionTrigger,
 )
 from .models import ProductsModel, LoaderActionsModel
@@ -187,12 +186,12 @@ class BrowserController(AbstractBrowserController):
             project_name, version_ids
         )
 
-    def get_default_action(
+    def trigger_default_action(
         self,
         project_name: str,
         version_id: str,
         trigger: DefaultActionTrigger,
-    ) -> DefaultAction | None:
+    ) -> bool:
         settings = self._settings_model.get_settings(project_name)
         # Project might be using project bundle with older settings
         profiles = (
@@ -207,11 +206,11 @@ class BrowserController(AbstractBrowserController):
                 " 'tools/browser' settings yet.",
                 project_name,
             )
-            return None
+            return False
         host_name = None
         if self._host is not None:
             host_name = self._host.name
-        return self._loader_actions_model.get_default_action(
+        return self._loader_actions_model.trigger_default_action(
             project_name, version_id, trigger, profiles, host_name
         )
 
