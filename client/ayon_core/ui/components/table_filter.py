@@ -579,7 +579,8 @@ class _FilterDropdown(AYDropdownPopup):
         )
         layout.addWidget(self._value_content_container, stretch=1)
 
-        # Footer: multi-select helpers on the left, Confirm on the right
+        # Footer: multi-select helpers on the left, Confirm on the right.
+        # The helpers are dimmed so they do not read as list entries.
         footer = AYContainer(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Low,
@@ -588,19 +589,19 @@ class _FilterDropdown(AYDropdownPopup):
         )
         self._select_all_btn = AYButton(
             "Select all",
-            variant=AYButton.Variants.Text,
+            variant=AYButton.Variants.Chip,
             tooltip="Select all listed values",
         )
         self._select_all_btn.clicked.connect(self._on_select_all)
         self._clear_btn = AYButton(
             "Clear",
-            variant=AYButton.Variants.Text,
+            variant=AYButton.Variants.Chip,
             tooltip="Deselect all values",
         )
         self._clear_btn.clicked.connect(self._on_clear_selection)
         self._toggle_btn = AYButton(
             "Toggle",
-            variant=AYButton.Variants.Text,
+            variant=AYButton.Variants.Chip,
             tooltip="Invert the selection of listed values",
         )
         self._toggle_btn.clicked.connect(self._on_toggle_selection)
