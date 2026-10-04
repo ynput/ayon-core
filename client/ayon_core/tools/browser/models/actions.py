@@ -10,7 +10,7 @@ from typing import Optional, Callable, Any
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem, Logger
+from ayon_core.lib import NestedCacheItem, Logger, filter_profiles
 from ayon_core.pipeline.actions import (
     LoaderActionsContext,
     LoaderActionSelection,
@@ -27,7 +27,11 @@ from ayon_core.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.abstract import (
+    ActionItem,
+    DefaultAction,
+    DefaultActionTrigger,
+)
 
 ACTIONS_MODEL_SENDER = "actions.model"
 LOADER_PLUGIN_ID = "__loader_plugin__"
@@ -46,6 +50,49 @@ def _format_traceback_if_needed(exc: Exception) -> Optional[str]:
     return "".join(
         traceback.format_exception(exc_type, exc_value, exc_traceback)
     )
+
+
+def find_action_item_by_name(
+    action_items: list[ActionItem], name: str
+) -> Optional[ActionItem]:
+    """Find the action item an admin refers to by a name in settings.
+
+    The name is compared case insensitively with the label, the group
+    label and the full label (e.g. 'Open file (exr)') of the action,
+    the loader action identifier and the loader plugin name. When more
+    actions match, e.g. all representations of a group, the first one
+    in the context menu order is used.
+
+    Args:
+        action_items (list[ActionItem]): Available action items.
+        name (str): Action name from settings.
+
+    Returns:
+        Optional[ActionItem]: Matching action item.
+
+    """
+    name = name.strip().lower()
+    if not name:
+        return None
+
+    for action_item in sorted(
+        action_items,
+        key=lambda item: (
+            item.order, item.group_label or item.label, item.label
+        ),
+    ):
+        names = {
+            action_item.label,
+            action_item.group_label,
+            action_item.full_label,
+        }
+        if action_item.identifier != LOADER_PLUGIN_ID:
+            names.add(action_item.identifier)
+        elif action_item.data:
+            names.add(action_item.data.get("loader"))
+        if name in {value.lower() for value in names if value}:
+            return action_item
+    return None
 
 
 class LoaderActionsModel:
@@ -182,6 +229,99 @@ class LoaderActionsModel:
             repre_context_by_id,
         ))
         return action_items
+
+    def get_default_action(
+        self,
+        project_name: str,
+        version_id: str,
+        trigger: DefaultActionTrigger,
+        profiles: list[dict[str, Any]],
+        host_name: Optional[str],
+    ) -> Optional[DefaultAction]:
+        """Find the action to run on a double click or space bar.
+
+        Args:
+            project_name (str): Project name.
+            version_id (str): Version id.
+            trigger (DefaultActionTrigger): What the user did.
+            profiles (list[dict[str, Any]]): Default action profiles
+                from settings.
+            host_name (Optional[str]): Name of the host the tool runs in.
+
+        Returns:
+            Optional[DefaultAction]: None if no action is set for
+                the trigger.
+
+        """
+        with self._lock:
+            version_contexts, _ = self._contexts_for_versions(
+                project_name, {version_id}
+            )
+            context = version_contexts.get(version_id)
+            if context is None:
+                self._log.debug(
+                    "Default action (%s): version '%s' was not found.",
+                    trigger, version_id,
+                )
+                return None
+
+            task_name = task_type = None
+            task_id = context["version"].get("taskId")
+            if task_id:
+                for task_entity in self._get_tasks(project_name, {task_id}):
+                    task_name = task_entity["name"]
+                    task_type = task_entity["taskType"]
+
+            product_entity = context["product"]
+            filter_data = {
+                "host_names": host_name,
+                "task_types": task_type,
+                "task_names": task_name,
+                "product_base_types": (
+                    product_entity.get("productBaseType")
+                    or product_entity["productType"]
+                ),
+            }
+            profile = filter_profiles(
+                profiles, filter_data, logger=self._log
+            )
+            if not profile:
+                self._log.debug(
+                    "Default action (%s): no profile matches %s.",
+                    trigger, filter_data,
+                )
+                return None
+
+            action_names = [
+                name.strip()
+                for name in profile.get(f"{trigger}_actions") or []
+                if name.strip()
+            ]
+            if not action_names:
+                self._log.debug(
+                    "Default action (%s): matching profile has no"
+                    " actions set for %s.",
+                    trigger, filter_data,
+                )
+                return None
+
+            action_items = self._get_action_items(
+                project_name, {version_id}, "version"
+            )
+        # Names are in order of preference, use the first available
+        action_item = None
+        for action_name in action_names:
+            action_item = find_action_item_by_name(action_items, action_name)
+            if action_item is not None:
+                break
+        self._log.debug(
+            "Default action (%s): preferred %s, available %s, using %s.",
+            trigger,
+            action_names,
+            sorted({item.full_label for item in action_items}),
+            None if action_item is None else repr(action_item.full_label),
+        )
+        return DefaultAction(action_names, action_item)
 
     def trigger_action_item(
         self,
@@ -659,6 +799,18 @@ class LoaderActionsModel:
             self._folders_cache,
             ayon_api.get_folders,
             "folder_ids",
+        )
+
+    def _get_tasks(
+        self, project_name: str, task_ids: set[str]
+    ) -> list[dict[str, Any]]:
+        """Get tasks by ids."""
+        return self._get_entities(
+            project_name,
+            task_ids,
+            self._tasks_cache,
+            ayon_api.get_tasks,
+            "task_ids",
         )
 
     def _get_products(

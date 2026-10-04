@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import typing
-from typing import Iterable, Any, Callable
+from typing import Iterable, Any, Callable, Literal
 
 from ayon_core.lib.icon_definitions import (
     IconBase,
@@ -85,6 +85,13 @@ class ActionItem:
     data: dict[str, Any] | None
     options: list[AbstractAttrDef] | None
 
+    @property
+    def full_label(self) -> str:
+        """Label including the group, e.g. 'Open file (exr)'."""
+        if self.group_label:
+            return f"{self.group_label} ({self.label})"
+        return self.label
+
     def _options_to_data(self):
         options = self.options
         if not options:
@@ -120,6 +127,24 @@ class ActionItem:
             options = deserialize_attr_defs(options)
         data["options"] = options
         return cls(**data)
+
+
+DefaultActionTrigger = Literal["double_click", "spacebar"]
+
+
+@dataclass
+class DefaultAction:
+    """Action set in settings to run on a double click or space bar.
+
+    Attributes:
+        names (list[str]): Action names as filled in the settings,
+            in order of preference.
+        item (ActionItem | None): Action item of the first available
+            action, None if none of them is available for the version.
+
+    """
+    names: list[str]
+    item: ActionItem | None
 
 
 class AbstractBrowserController(ABC):
@@ -456,6 +481,29 @@ class AbstractBrowserController(ABC):
         Args:
             project_name (str): Project name.
             version_ids (set[str]): Selected version ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_default_action(
+        self,
+        project_name: str,
+        version_id: str,
+        trigger: DefaultActionTrigger,
+    ) -> DefaultAction | None:
+        """Default action of a version for a double click or space bar.
+
+        The action is defined by 'ayon+settings://core/tools/browser'
+        profiles, matched by the host and the version's task and product.
+
+        Args:
+            project_name (str): Project name.
+            version_id (str): Version id.
+            trigger (DefaultActionTrigger): What the user did.
+
+        Returns:
+            DefaultAction | None: None if no action is set for the trigger.
 
         """
         pass

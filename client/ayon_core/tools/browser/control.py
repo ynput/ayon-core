@@ -17,7 +17,12 @@ from ayon_core.tools.common_models import (
     UsersModel,
 )
 
-from .abstract import AbstractBrowserController, ActionItem
+from .abstract import (
+    AbstractBrowserController,
+    ActionItem,
+    DefaultAction,
+    DefaultActionTrigger,
+)
 from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
@@ -180,6 +185,34 @@ class BrowserController(AbstractBrowserController):
     ) -> None:
         self._loader_actions_model.prefetch_versions_context(
             project_name, version_ids
+        )
+
+    def get_default_action(
+        self,
+        project_name: str,
+        version_id: str,
+        trigger: DefaultActionTrigger,
+    ) -> DefaultAction | None:
+        settings = self._settings_model.get_settings(project_name)
+        # Project might be using project bundle with older settings
+        profiles = (
+            settings["core"]["tools"]
+            .get("browser", {})
+            .get("default_action_profiles", [])
+        )
+        if not profiles:
+            self.log.debug(
+                "No Browser default action profiles in settings of"
+                " project '%s'. The server addon may not have the"
+                " 'tools/browser' settings yet.",
+                project_name,
+            )
+            return None
+        host_name = None
+        if self._host is not None:
+            host_name = self._host.name
+        return self._loader_actions_model.get_default_action(
+            project_name, version_id, trigger, profiles, host_name
         )
 
     def trigger_action_item(

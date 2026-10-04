@@ -112,6 +112,9 @@ class BrowserWindow(AYContainer):
         self.browser_widget.default_view_message.connect(
             self._show_toast_message
         )
+        self.browser_widget.default_action_message.connect(
+            self._show_toast_message
+        )
         self.add_widget(self.browser_widget)
 
         show_timer = QtCore.QTimer()
