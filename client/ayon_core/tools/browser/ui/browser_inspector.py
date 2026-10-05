@@ -50,6 +50,10 @@ class ReviewInspector(AYContainer):
         # Key of the latest representations request, older results are
         #   ignored
         self._repre_request_key: str = ""
+        # Requests of the same key can overlap after a forced refresh, the
+        #   ids tell them apart
+        self._repre_request_id: int = 0
+        self._thumb_request_id: int = 0
         self._repre_context_id: str = f"inspector_repres_{id(self)}"
         # Use a dict as an ordered set to track the currently selected indices
         self._current_selection: dict[QtCore.QModelIndex, None] = {}
@@ -378,6 +382,8 @@ class ReviewInspector(AYContainer):
         if request_key == self._repre_request_key:
             return
         self._repre_request_key = request_key
+        self._repre_request_id += 1
+        request_id = self._repre_request_id
         multi_version = len(version_ids) > 1
         controller = self._controller
         inspector = self
@@ -385,8 +391,11 @@ class ReviewInspector(AYContainer):
         def _on_loaded(repre_items: list[RepreItem] | None) -> None:
             if not shiboken.isValid(inspector):
                 return
-            # Selection changed in the meantime
-            if inspector._repre_request_key != request_key:
+            # Selection changed or was refreshed in the meantime
+            if (
+                inspector._repre_request_key != request_key
+                or inspector._repre_request_id != request_id
+            ):
                 return
             if repre_items is None:
                 # Task failed, allow the same selection to retry
@@ -430,6 +439,8 @@ class ReviewInspector(AYContainer):
         if combined_key == self._current_thumb_key:
             return
         self._current_thumb_key = combined_key
+        self._thumb_request_id += 1
+        request_id = self._thumb_request_id
 
         ic = ImageCache.get_instance()
         resolved: dict[str, str] = {}
@@ -457,7 +468,10 @@ class ReviewInspector(AYContainer):
                 pending["count"] -= 1
                 if pending["count"] > 0:
                     return
-                if inspector._current_thumb_key != combined_key:
+                if (
+                    inspector._current_thumb_key != combined_key
+                    or inspector._thumb_request_id != request_id
+                ):
                     return
                 if not all(resolved.get(key) for key in keys):
                     # Load failed, allow the same selection to retry

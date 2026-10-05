@@ -62,6 +62,8 @@ def _make_inspector() -> SimpleNamespace:
             get_representation_items=lambda *_args: []
         ),
         _repre_request_key="",
+        _repre_request_id=0,
+        _thumb_request_id=0,
         _repre_context_id="inspector_repres_test",
         _current_thumb_key="",
         _representations=SimpleNamespace(
@@ -104,6 +106,27 @@ def test_representations_retry_after_failed_load(
     assert len(task_queue.tasks) == 2
 
 
+def test_representations_refresh_ignores_older_request(
+    task_queue: FakeTaskQueue,
+) -> None:
+    inspector = _make_inspector()
+
+    ReviewInspector._load_representations(inspector, "demo", ["v1"])
+    # Forced refresh while the first request is still running
+    inspector._repre_request_key = ""
+    ReviewInspector._load_representations(inspector, "demo", ["v1"])
+    assert len(task_queue.tasks) == 2
+
+    # Failure of the older request must not discard the newer result
+    task_queue.tasks[0].callback(None)
+    assert inspector.shown["repres"] == []
+    task_queue.tasks[1].callback(["repre"])
+    assert inspector.shown["repres"] == [["repre"]]
+
+    ReviewInspector._load_representations(inspector, "demo", ["v1"])
+    assert len(task_queue.tasks) == 2
+
+
 def test_thumbnail_not_reloaded_for_same_selection(
     task_queue: FakeTaskQueue,
     image_cache: FakeImageCache,
@@ -130,5 +153,28 @@ def test_thumbnail_retry_after_failed_load(
 
     ReviewInspector._load_thumbnail(inspector, keys)
     task_queue.tasks[0].callback("")
+    ReviewInspector._load_thumbnail(inspector, keys)
+    assert len(task_queue.tasks) == 2
+
+
+def test_thumbnail_refresh_ignores_older_request(
+    task_queue: FakeTaskQueue,
+    image_cache: FakeImageCache,
+) -> None:
+    inspector = _make_inspector()
+    keys = ["demo/v1/t1"]
+
+    ReviewInspector._load_thumbnail(inspector, keys)
+    # Forced refresh while the first request is still running
+    inspector._current_thumb_key = ""
+    ReviewInspector._load_thumbnail(inspector, keys)
+    assert len(task_queue.tasks) == 2
+
+    # Failure of the older request must not discard the newer result
+    task_queue.tasks[0].callback("")
+    assert inspector.shown["thumbnails"] == []
+    task_queue.tasks[1].callback("/tmp/t1.jpg")
+    assert inspector.shown["thumbnails"] == ["/tmp/t1.jpg"]
+
     ReviewInspector._load_thumbnail(inspector, keys)
     assert len(task_queue.tasks) == 2
