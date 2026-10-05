@@ -968,3 +968,22 @@ def test_text_box_and_comment_request_entities(qtbot, text_box):
     assert _completions(comment.text_field) == [
         "sh010 compositing", "sh010 lighting",
     ]
+
+
+@pytest.mark.parametrize(
+    "stored",
+    [
+        "[Roy Nieterau](user:bigroy)",
+        "[site](https://ynput.io)",
+        "**bold**",
+        "`code`",
+    ],
+    ids=["mention", "link", "bold", "code"],
+)
+def test_clear_resets_style_to_type_in(qtbot, editor, stored):
+    editor.set_markdown(stored)
+    qtbot.keyClick(editor, Qt.Key.Key_End)
+    editor.clear()
+
+    qtbot.keyClicks(editor, "next comment")
+    assert editor.as_markdown().strip() == "next comment"

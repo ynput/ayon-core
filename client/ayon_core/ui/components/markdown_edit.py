@@ -141,6 +141,17 @@ class AYMarkdownEdit(AYTextEdit):
             md = self.document().toMarkdown(MD_DIALECT)
         return mentions_to_storage(md)
 
+    def clear(self) -> None:
+        """Remove the content and the style to type in.
+
+        The text edit keeps the style of the last character as the one to
+        continue typing in, also when all text is removed. Without the
+        reset a next comment would start as the link, bold text or code
+        the previous one ended with.
+        """
+        super().clear()
+        self.setCurrentCharFormat(QTextCharFormat())
+
     # CHECKBOXES -------------------------------------------------------------
 
     def _setup_checkbox_handler(self) -> CheckboxHandler:
