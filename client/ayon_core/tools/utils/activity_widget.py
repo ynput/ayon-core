@@ -29,6 +29,8 @@ class ActivityWidget(AYActivityStream):
         *args: Forwarded to ``AYActivityStream``.
         activities_model: Model used to fetch the feed, created if not
             passed.
+        avatar_cache: Source of user avatars, created if not passed. Pass
+            the cache of the tool to share it with its other views.
         **kwargs: Forwarded to ``AYActivityStream``.
     """
 
@@ -36,13 +38,16 @@ class ActivityWidget(AYActivityStream):
         self,
         *args,
         activities_model: ActivitiesModel | None = None,
+        avatar_cache: UserAvatarCache | None = None,
         **kwargs,
     ) -> None:
         kwargs.setdefault("thumbnail_loader", self._load_thumbnail)
-        super().__init__(*args, **kwargs)
-        # Created after 'super().__init__' as it is parented to the widget
-        self._avatar_cache = UserAvatarCache(self)
-        self._avatar_cache.avatar_updated.connect(self._refresh_avatars)
+        super().__init__(*args, avatar_cache=avatar_cache, **kwargs)
+        if avatar_cache is None:
+            # Created after 'super().__init__' as it is parented to
+            #   the widget
+            self._avatar_cache = UserAvatarCache(self)
+            self._avatar_cache.avatar_updated.connect(self._refresh_avatars)
         self._activities_model = activities_model or ActivitiesModel()
         self._context_id = f"activity_widget_{id(self)}"
         self._project_name = ""

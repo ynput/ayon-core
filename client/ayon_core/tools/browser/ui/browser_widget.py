@@ -70,7 +70,9 @@ class BrowserWidget(AYContainer):
         self._prefetch_context_id = f"browser_prefetch_{id(self)}"
         for view in (self._table.table, self._table.card_view):
             view.selection_changed.connect(self._on_view_selection_changed)
-        self._inspector = ReviewInspector(self._controller)
+        self._inspector = ReviewInspector(
+            self._controller, avatar_cache=self._table.avatar_cache
+        )
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._table.default_view_message.connect(
             self.default_view_message

@@ -11,6 +11,7 @@ from ayon_core.ui.components.layouts import AYHBoxLayout
 from ayon_core.ui.components.tab_bar import AYTabBar
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.user_avatars import UserAvatarCache
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
@@ -36,6 +37,7 @@ class ReviewInspector(AYContainer):
         self,
         controller: BrowserWidgetController,
         *args,
+        avatar_cache: UserAvatarCache | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -50,6 +52,8 @@ class ReviewInspector(AYContainer):
         self.setMinimumWidth(300)
 
         self._controller = controller
+        # Avatars shared with other views of the tool, e.g. the table
+        self._avatar_cache = avatar_cache
         self._view: QtWidgets.QAbstractItemView | None = None
         self._current_thumb_key: str = ""
         # Key of the latest representations request, older results are
@@ -118,7 +122,7 @@ class ReviewInspector(AYContainer):
             layout_spacing=10,
         )
         details_page._layout.setAlignment(QtCore.Qt.AlignTop)
-        self._activity = ActivityWidget()
+        self._activity = ActivityWidget(avatar_cache=self._avatar_cache)
         self._pages = QtWidgets.QStackedWidget()
         self._pages.addWidget(details_page)
         self._pages.addWidget(self._activity)

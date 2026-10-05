@@ -607,6 +607,11 @@ class BrowserTable(AYContainer):
     # ------------------------------------------------------------------
 
     @property
+    def avatar_cache(self) -> UserAvatarCache:
+        """Cache of user avatars, to share with other views of the tool."""
+        return self._avatar_cache
+
+    @property
     def table(self) -> AYTableView:
         return self._table
 

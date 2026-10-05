@@ -174,3 +174,20 @@ def test_project_data_is_cached_and_nothing_fetched_without_entities(
     model.get_activity_feed("demo", ["b"])
     assert len(fake_server["activities"]) == 2
     assert (fake_server["users"], fake_server["project"]) == (1, 1)
+
+
+def test_activity_widget_shares_a_passed_avatar_cache(qtbot):
+    from ayon_core.tools.utils.activity_widget import ActivityWidget
+    from ayon_core.ui.components.user_avatars import UserAvatarCache
+
+    shared_cache = UserAvatarCache()
+    shared = ActivityWidget(avatar_cache=shared_cache)
+    qtbot.addWidget(shared)
+    assert shared._avatar_cache is shared_cache
+    assert not shared.findChildren(UserAvatarCache)
+
+    # One is created for a widget that is used on its own
+    alone = ActivityWidget()
+    qtbot.addWidget(alone)
+    assert isinstance(alone._avatar_cache, UserAvatarCache)
+    assert alone._avatar_cache is not shared_cache
