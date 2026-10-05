@@ -45,6 +45,7 @@ log = logging.getLogger("SceneInventory")
 class SceneInventoryView(QtWidgets.QTreeView):
     data_changed = QtCore.Signal()
     hierarchy_view_changed = QtCore.Signal(bool)
+    selection_changed = QtCore.Signal()
 
     def __init__(self, controller, parent):
         super().__init__(parent=parent)
@@ -85,6 +86,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self.setColumnHidden(model.remote_site_col, not sync_enabled)
 
         self.customContextMenuRequested.connect(self._show_right_mouse_menu)
+        self.selectionModel().selectionChanged.connect(
+            self._on_selection_change
+        )
 
         self._model = model
         self._proxy_model = proxy_model
@@ -134,6 +138,23 @@ class SceneInventoryView(QtWidgets.QTreeView):
         return self._get_item_ids_from_indexes(
             self.get_selected_indexes()
         )
+
+    def get_selection_item_ids(self):
+        """Ids of container items in selected rows.
+
+        Unlike 'get_selected_item_ids' the current index is not added, so
+        nothing is returned when the selection is cleared.
+
+        Returns:
+            set[str]: Container item ids.
+
+        """
+        return self._get_item_ids_from_indexes(
+            self.selectionModel().selectedRows()
+        )
+
+    def _on_selection_change(self, *_args):
+        self.selection_changed.emit()
 
     def get_selected_container_indexes(self):
         return self._get_container_indexes(
