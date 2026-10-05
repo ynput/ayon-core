@@ -796,3 +796,24 @@ def test_narrow_popup_does_not_paint_label_over_suffix(qtbot, editor):
                 assert long_row.pixelColor(x, y) == suffix_row.pixelColor(
                     x, y
                 ), f"label painted over the suffix at width {width}"
+
+
+def test_entities_with_missing_values(qtbot, editor):
+    editor.set_mention_entities(
+        [
+            EntityMention("version", "v3id", "v003", None),
+            EntityMention("version", "v2id", None, "renderMain"),
+            EntityMention(
+                "version", "v1id", "v001", None,
+                icon=None, color=None, suffix=None,
+            ),
+        ],
+        [],
+    )
+    qtbot.keyClicks(editor, "@@")
+    assert _completions(editor) == ["v003", "renderMain", "v001"]
+    for row in range(3):
+        _paint_row(editor, row)
+
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert _markdown(editor) == "[v003](version:v3id)"

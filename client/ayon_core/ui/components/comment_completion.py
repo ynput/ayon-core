@@ -223,7 +223,9 @@ class MentionCompleterDelegate(QStyledItemDelegate):
             text_rect,
             Qt.AlignmentFlag.AlignVCenter,
             painter.fontMetrics().elidedText(
-                item.label, Qt.TextElideMode.ElideRight, text_rect.width()
+                item.label or "",
+                Qt.TextElideMode.ElideRight,
+                text_rect.width(),
             ),
         )
         painter.restore()
@@ -502,7 +504,8 @@ class MentionCompleter(QObject):
             if isinstance(item, User):
                 text = item.full_name
             else:
-                text = f"{item.context} {item.label}".strip()
+                # Both may be missing in data coming from a server
+                text = f"{item.context or ''} {item.label or ''}".strip()
             row = QStandardItem(text)
             row.setData(item, Qt.ItemDataRole.UserRole)
             model.appendRow(row)
