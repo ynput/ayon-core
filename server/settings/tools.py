@@ -315,7 +315,7 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
 
 
 class LoaderActionsModel(BaseSettingsModel):
-    copy_file_action: bool = SettingsField(
+    CopyFileAction: bool = SettingsField(
         True,
         title="Copy file action",
         description=(
@@ -323,17 +323,17 @@ class LoaderActionsModel(BaseSettingsModel):
             "in the loader."
         ),
     )
-    open_file_action: bool = SettingsField(
+    OpenFileAction: bool = SettingsField(
         True,
         title="Open file action",
         description="Show the action for opening a published file.",
     )
-    delete_old_versions: bool = SettingsField(
+    DeleteOldVersions: bool = SettingsField(
         True,
         title="Delete old versions",
         description="Show the action for deleting old versions.",
     )
-    create_hero_version: bool = SettingsField(
+    CreateHeroVersion: bool = SettingsField(
         True,
         title="Create hero version",
         description="Show the action for creating a hero version.",
@@ -712,10 +712,10 @@ DEFAULT_TOOLS_VALUES = {
     "loader": {
         "use_legacy_loader": False,
         "actions": {
-            "copy_file_action": True,
-            "open_file_action": True,
-            "delete_old_versions": True,
-            "create_hero_version": True
+            "CopyFileAction": True,
+            "OpenFileAction": True,
+            "DeleteOldVersions": True,
+            "CreateHeroVersion": True
         },
         "product_type_filter_profiles": []
     },

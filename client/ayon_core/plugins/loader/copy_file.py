@@ -13,10 +13,9 @@ from ayon_core.pipeline.actions import (
 )
 
 
-class CopyFileActionPlugin(CoreLoaderActionPlugin):
+class CopyFileAction(CoreLoaderActionPlugin):
     """Copy published file path to clipboard"""
     identifier = "core.copy-action"
-    settings_key = "copy_file_action"
 
     def get_action_items(
         self, selection: LoaderActionSelection

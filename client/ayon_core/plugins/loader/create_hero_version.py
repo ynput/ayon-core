@@ -63,7 +63,6 @@ class CreateHeroVersion(CoreLoaderActionPlugin):
     """Create hero version from selected context."""
 
     is_multiple_contexts_compatible = False
-    settings_key = "create_hero_version"
     ignored_representation_names: list[str] = []
     db_representation_context_keys = [
         "project",

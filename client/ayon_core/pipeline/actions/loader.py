@@ -64,7 +64,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 import typing
-from typing import Optional, Any, Callable, ClassVar
+from typing import Optional, Any, Callable
 from dataclasses import dataclass
 
 import ayon_api
@@ -576,8 +576,6 @@ class LoaderActionPlugin(ABC):
 class CoreLoaderActionPlugin(LoaderActionPlugin):
     """Base class for configurable core loader actions."""
 
-    settings_key: ClassVar[str]
-
     def apply_settings(self, studio_settings: dict[str, Any]) -> None:
         """Apply settings controlling whether the action is available."""
         loader_settings = (
@@ -587,7 +585,7 @@ class CoreLoaderActionPlugin(LoaderActionPlugin):
             .get("loader", {})
         )
         actions_settings = loader_settings.get("actions", {})
-        self.enabled = actions_settings.get(self.settings_key, True)
+        self.enabled = actions_settings.get(self.__class__.__name__, True)
 
     @property
     def log(self) -> logging.Logger:

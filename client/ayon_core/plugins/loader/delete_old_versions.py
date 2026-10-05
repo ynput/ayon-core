@@ -32,7 +32,6 @@ class DeleteOldVersions(CoreLoaderActionPlugin):
     """Deletes specific number of old version"""
 
     is_multiple_contexts_compatible = True
-    settings_key = "delete_old_versions"
     sequence_splitter = "__sequence_splitter__"
 
     requires_confirmation = True
