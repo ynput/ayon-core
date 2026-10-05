@@ -21,6 +21,7 @@ from ayon_core.tools.browser.ui.browser_controller import (
 from ayon_core.tools.utils import get_qt_icon
 
 from ._browser_cell_delegates import format_relative_time
+from ._browser_filmstrip import FilmstripOverlay
 from ._browser_thumbnails import _thumbnail_loader
 
 
@@ -98,6 +99,14 @@ class ReviewInspector(AYContainer):
             variant=AYEntityThumbnail.Variants.Entity_Card,
             size=(280, 160),
         )
+        # Scrub through the video reviewable while hovering the thumbnail
+        self._filmstrip = FilmstripOverlay(
+            self._thumbnail,
+            inset=1,
+            background=self._thumbnail._bg_color,
+        )
+        # Click for a full-size preview
+        self._thumbnail.clicked.connect(self._on_thumbnail_clicked)
         thumb_wrapper = AYHBoxLayout(margin=0, spacing=0)
         thumb_wrapper.setAlignment(QtCore.Qt.AlignCenter)
         thumb_wrapper.addWidget(self._thumbnail)
@@ -351,6 +360,11 @@ class ReviewInspector(AYContainer):
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
             version_ids.append(vid)
 
+        if single and version_ids:
+            self._filmstrip.set_source(project_name, "version", version_ids[0])
+        else:
+            self._filmstrip.set_source()
+
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses
             self._load_thumbnail(thumb_keys)
@@ -491,6 +505,10 @@ class ReviewInspector(AYContainer):
                     cancellable=True,
                 )
             )
+
+    def _on_thumbnail_clicked(self) -> None:
+        """Show the full-size filmstrip preview of the inspected version."""
+        self._filmstrip.show_popup()
 
     def _on_close(self) -> None:
         """Hide the inspector."""
