@@ -568,7 +568,7 @@ class ExtractOTIOReview(
         # add copying if extensions are matching
         if (
             input_extension
-            and self.output_ext.lower() == input_extension.lower().strip(".")
+            and self.output_ext == input_extension.lower().strip(".")
         ):
             command.extend(["-c", "copy"])
         else:
