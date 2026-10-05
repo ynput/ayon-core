@@ -196,3 +196,44 @@ def test_shared_rows_work_without_stream_data(qtbot) -> None:
     assert "Approved" in labels
     assert not {"In progress", "modelMain v003"} & labels
     assert "modelMain v003" in compact.toolTip()
+
+
+def test_stream_shows_avatars_from_cache(qtbot) -> None:
+    from qtpy import QtCore, QtGui
+
+    class FakeAvatarCache(QtCore.QObject):
+        avatar_updated = QtCore.Signal(str)
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.color = QtGui.QColor("red")
+            self.requested: list[str] = []
+
+        def pixmap(self, user_name: str, full_name: str, size: int):
+            self.requested.append(user_name)
+            pixmap = QtGui.QPixmap(size, size)
+            pixmap.fill(self.color)
+            return pixmap
+
+    def avatar_color(widget: QtWidgets.QWidget) -> str:
+        return widget.user_icon.pixmap().toImage().pixelColor(1, 1).name()
+
+    cache = FakeAvatarCache()
+    stream = AYActivityStream(avatar_cache=cache)
+    qtbot.addWidget(stream)
+    stream.set_activities(_activities())
+
+    # Comments, status changes and publishes all get the cached avatar
+    assert cache.requested == ["libor", "libor", "roy"]
+    assert {avatar_color(widget) for _, widget in stream._widgets} == {
+        "#ff0000"
+    }
+
+    # Only avatars of the user whose download finished are replaced
+    cache.color = QtGui.QColor("blue")
+    cache.avatar_updated.emit("roy")
+    assert [avatar_color(widget) for _, widget in stream._widgets] == [
+        "#ff0000",
+        "#ff0000",
+        "#0000ff",
+    ]
