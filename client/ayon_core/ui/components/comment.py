@@ -22,6 +22,7 @@ from qtpy.QtGui import (
     QFontMetrics,
     QPainter,
     QPaintEvent,
+    QPalette,
     QPixmap,
     QResizeEvent,
     QTextCharFormat,
@@ -38,6 +39,7 @@ from ..data_models import (
     relative_date,
 )
 from ..image_cache import ImageCache, make_activity_cache_key
+from ..style_types import get_ayon_style
 from ..utils import color_blend
 from ..variants import QTextEditVariants
 from .buttons import AYButton
@@ -284,7 +286,18 @@ class AYStatusChange(AYActivityRow):
                 data.old_status, status_definitions, icon_only=compact
             )
         )
-        self.detail.add_widget(AYLabel("\u2192", dim=True))
+        # An icon of the size of the status icons, so the arrow is on
+        #   their center line. A text arrow sits on the text baseline.
+        arrow_color = get_ayon_style().model.base_palette.color(
+            QPalette.ColorGroup.Active, QPalette.ColorRole.PlaceholderText
+        )
+        self.detail.add_widget(
+            AYLabel(
+                icon="arrow_forward",
+                icon_color=arrow_color.name(),
+                icon_size=14,
+            )
+        )
         new_status = _create_status_label(data.new_status, status_definitions)
         if compact or not subject:
             self.detail.add_widget(new_status, stretch=1)
