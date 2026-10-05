@@ -419,6 +419,7 @@ class AYProgressView(AYContainer):
         self._bar.progress_changed.connect(self._on_progress_changed)
         self._bar.progress_changed.connect(self.progress_changed.emit)
         self._bar.completed.connect(self._on_bar_completed)
+        self._on_progress_changed()
 
         self._reporter: ProgressReporter | None = None
         self._reporter_completed = False
