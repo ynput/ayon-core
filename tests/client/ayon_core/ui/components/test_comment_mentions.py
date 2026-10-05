@@ -72,18 +72,42 @@ def test_mentions_to_display():
 
 
 def test_mentions_to_storage():
-    assert mentions_to_storage(DISPLAYED, USERS) == STORED
-    assert mentions_to_storage(STORED, USERS) == STORED
+    assert mentions_to_storage(DISPLAYED) == STORED
+    assert mentions_to_storage(STORED) == STORED
     # Label wrapped over two lines by Qt's markdown writer
     assert (
-        mentions_to_storage("[@Roy\nNieterau](user:bigroy)", USERS)
+        mentions_to_storage("[@Roy\nNieterau](user:bigroy)")
         == "[Roy Nieterau](user:bigroy)"
     )
-    # User mention typed without picking it from the completer
-    assert (
-        mentions_to_storage("Hi @Roy Nieterau!", USERS)
-        == "Hi [Roy Nieterau](user:bigroy)!"
-    )
+
+
+@pytest.mark.parametrize(
+    "md",
+    [
+        # Name of a user typed without picking it from the completer
+        "Hi @Roy Nieterau!",
+        "mail roy@Ayon admin.com or bob@admin.com",
+        "@@v003 and @@@compositing",
+        "```\n@Roy Nieterau\n```",
+        "`@Ayon admin`",
+    ],
+    ids=["name", "mail", "entities", "code_block", "inline_code"],
+)
+def test_typed_text_is_not_a_mention(md):
+    assert mentions_to_storage(md) == md
+    assert mentions_to_display(md) == md
+
+
+def test_typed_name_is_stored_as_text(qtbot, editor):
+    qtbot.keyClicks(editor, "Hi @Roy Nieterau")
+    # Close the popup without picking the user
+    qtbot.keyClick(editor._mentions._completer.popup(), Qt.Key.Key_Escape)
+    qtbot.keyClicks(editor, " and bob@admin.com")
+
+    assert _markdown(editor) == "Hi @Roy Nieterau and bob@admin.com"
+    # Only picked mentions are highlighted as mention
+    editor._mentions._highlighter.rehighlight()
+    assert _format_ranges(editor) == []
 
 
 @pytest.mark.parametrize(
@@ -392,7 +416,7 @@ def test_no_mentions_in_code(qtbot, editor):
 def test_mention_links_in_code_are_not_converted(stored):
     assert mentions_to_display(stored) == stored
     displayed = stored.replace("[", "[@@")
-    assert mentions_to_storage(displayed, USERS) == displayed
+    assert mentions_to_storage(displayed) == displayed
 
 
 def test_mentions_next_to_code_are_converted():
@@ -406,7 +430,7 @@ def test_mentions_next_to_code_are_converted():
         "\n```\n[v003](version:v3id)\n```\n[@Roy Nieterau](user:bigroy)"
     )
     assert mentions_to_display(stored) == displayed
-    assert mentions_to_storage(displayed, USERS) == stored
+    assert mentions_to_storage(displayed) == stored
 
 
 def test_code_of_loaded_comment_is_displayed_as_is(qtbot):

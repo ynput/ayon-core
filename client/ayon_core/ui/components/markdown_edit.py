@@ -120,7 +120,7 @@ class AYMarkdownEdit(AYTextEdit):
             md = self._checkbox_handler.to_markdown()
         else:
             md = self.document().toMarkdown(MD_DIALECT)
-        return mentions_to_storage(md, self._user_list)
+        return mentions_to_storage(md)
 
     # CHECKBOXES -------------------------------------------------------------
 

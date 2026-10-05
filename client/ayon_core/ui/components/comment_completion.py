@@ -119,15 +119,15 @@ def mentions_to_display(md: str) -> str:
     return _sub_outside_code(MENTION_LINK_PATTERN, repl, md)
 
 
-def mentions_to_storage(md: str, user_list: list[User]) -> str:
+def mentions_to_storage(md: str) -> str:
     """Convert displayed mentions back to stored mention links.
 
-    Reverts :func:`mentions_to_display` and turns plain ``@Full Name``
-    mentions typed without the completer into user links.
+    Reverts :func:`mentions_to_display`. Only mentions picked from the
+    completer are mentions: text like ``@Full Name`` typed without picking
+    the user stays text, the same as in the web frontend.
 
     Args:
         md: Markdown text of the displayed document.
-        user_list: Available users for mention lookup.
 
     Returns:
         Markdown text to store on the server.
@@ -137,36 +137,7 @@ def mentions_to_storage(md: str, user_list: list[User]) -> str:
         label = " ".join(match["label"].split())
         return f"[{label}]({match['ref']})"
 
-    md = _sub_outside_code(MENTION_LINK_PATTERN, repl, md)
-    return strip_user_mention_display(md, user_list)
-
-
-def strip_user_mention_display(md: str, user_list: list[User]) -> str:
-    """Convert display @mentions back to storage links.
-
-    Existing links like [label](user:id) are preserved unchanged.
-    Plain @mentions are replaced with [name](user:name) if the user exists.
-
-    Args:
-        md: Markdown text.
-        user_list: Available users for mention lookup.
-
-    Returns:
-        Markdown text with @mentions replaced by links e.g. [name](user:name).
-    """
-    if "@" not in md:
-        return md
-
-    for user in sorted(
-        user_list,
-        key=lambda u: len(u.full_name),
-        reverse=True
-    ):
-        mention = f"@{user.full_name}"
-        if mention not in md:
-            continue
-        md = md.replace(mention, f"[{user.full_name}](user:{user.name})")
-    return md
+    return _sub_outside_code(MENTION_LINK_PATTERN, repl, md)
 
 
 class MentionCompleterDelegate(QStyledItemDelegate):
@@ -350,7 +321,7 @@ class MentionCompleter(QObject):
         popup.setItemDelegate(MentionCompleterDelegate(popup))
         popup.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
 
-        self._highlighter = MentionHighlighter(text_edit.document(), [])
+        self._highlighter = MentionHighlighter(text_edit.document())
         self.set_users(users or [])
 
         self._completer.activated[QModelIndex].connect(self._insert_mention)
@@ -363,7 +334,6 @@ class MentionCompleter(QObject):
         """Set the users which can be mentioned with ``@``."""
         self._items["@"] = users
         self._trigger = ""
-        self._highlighter.update_user_list(users)
 
     def set_entities(
         self,
@@ -641,7 +611,7 @@ class MentionCompleter(QObject):
 
 
 class MentionHighlighter(QSyntaxHighlighter):
-    """Syntax highlighter for @mentions, raw URLs, and code spans.
+    """Syntax highlighter for mentions, raw URLs, and code spans.
 
     Operates on block-local plain text so positions are always correct
     regardless of any rich-text formatting already present in the document
@@ -660,41 +630,26 @@ class MentionHighlighter(QSyntaxHighlighter):
       style, detected by backtick regex.
     - Links to ``user:name``, ``version:id`` or ``task:id`` — mentions
       inserted by :class:`MentionCompleter` or loaded from markdown.
-    - ``@@@word`` — task mention being typed
-    - ``@@word``  — version mention being typed
-    - ``@word``   — user mention being typed (only the first word if the
-      full name is not in the known user list; both words when it is)
     - ``https?://…`` — raw URL
+
+    Text like ``@name`` which is not a link is not a mention and is not
+    highlighted as one.
 
     Args:
         document: The QTextDocument to attach to.
-        user_list: Live list of :class:`~..data_models.User` objects used to
-            decide whether a two-word mention should be highlighted in full.
     """
 
-    _P_ENTITY = re.compile(r"@@@?\w+")
-    _P_USER = re.compile(r"@(?!@)\w+( \w+)?")
     _P_RAW_LINK = re.compile(r"https?://\S+")
     # Inline code: single backtick pair on the same line.
     _P_CODE_INLINE = re.compile(r"`[^`\n]+`")
 
-    def __init__(self, document, user_list: list) -> None:
+    def __init__(self, document) -> None:
         super().__init__(document)
-        self._user_list = user_list
         pal = get_ayon_style().model.base_palette
         self._mention_fmt = QTextCharFormat()
         self._mention_fmt.setForeground(pal.link())
         self._code_fmt = None
         self._plain_fmt = self._get_plain_char_format()
-
-    def update_user_list(self, user_list: list) -> None:
-        """Replace the user list and trigger a full rehighlight.
-
-        Args:
-            user_list: Updated list of User objects.
-        """
-        self._user_list = user_list
-        self.rehighlight()
 
     def highlightBlock(self, text: str) -> None:
         """Apply code, mention, and URL highlighting to a single block.
@@ -766,30 +721,13 @@ class MentionHighlighter(QSyntaxHighlighter):
             self.setFormat(0, _utf16_length(text), code_fmt)
             return
 
-        # ── Mentions and URLs (applied before inline code) ───────────────
+        # ── Raw URLs (applied before inline code) ────────────────────────
         self.setFormat(0, _utf16_length(text), self._plain_fmt)
 
-        # Version (@@), task (@@@) mentions and raw URLs
-        for pattern in (self._P_ENTITY, self._P_RAW_LINK):
-            for m in pattern.finditer(text):
-                self._set_text_format(
-                    text, m.start(), m.end(), self._mention_fmt
-                )
+        for m in self._P_RAW_LINK.finditer(text):
+            self._set_text_format(text, m.start(), m.end(), self._mention_fmt)
 
-        # User mentions (@) — highlight only the first word unless the full
-        # two-word name is in the known user list.
-        users = {u.full_name for u in self._user_list}
-        for m in self._P_USER.finditer(text):
-            full_match = m.group(0)
-            if full_match[1:] in users:
-                length = len(full_match)
-            else:
-                length = len(full_match.split()[0])
-            self._set_text_format(
-                text, m.start(), m.start() + length, self._mention_fmt
-            )
-
-        # ── Inline code (overrides mention formatting) ───────────────────
+        # ── Inline code (overrides URL formatting) ───────────────────────
 
         # Raw backtick syntax `code` — detected in plain text for live
         # editing where backtick characters are still present:
