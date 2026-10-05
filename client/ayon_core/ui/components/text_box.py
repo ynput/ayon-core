@@ -498,6 +498,8 @@ class AYTextBoxSignals(QObject):
 
 class AYTextBox(AYContainer):
     signals = AYTextBoxSignals()
+    # The popup to mention a version or task opened
+    mention_entities_requested = Signal()
     Variants = QFrameVariants
     style_icons = {
         "stl_h1": "format_h1",
@@ -626,6 +628,9 @@ class AYTextBox(AYContainer):
             )
 
         self.edit_field.submitted.connect(self._on_comment_clicked)
+        self.edit_field.mention_entities_requested.connect(
+            self.mention_entities_requested
+        )
 
         return self.edit_field
 
@@ -838,8 +843,16 @@ class AYTextBox(AYContainer):
         versions: list[EntityMention] | None = None,
         tasks: list[EntityMention] | None = None,
     ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention."""
+        """Set the versions (``@@``) and tasks (``@@@``) to mention.
+
+        Either up front or in response to
+        :attr:`mention_entities_requested`.
+        """
         self.edit_field.set_mention_entities(versions, tasks)
+
+    def clear_mention_entities(self) -> None:
+        """Forget the versions and tasks, they show as loading until set."""
+        self.edit_field.clear_mention_entities()
 
     def _build(self, num_lines):
         self.add_layout(self._build_upper_bar())

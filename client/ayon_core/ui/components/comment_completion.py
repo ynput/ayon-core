@@ -4,7 +4,14 @@ import re
 import logging
 
 from qtmaterialsymbols import get_icon, get_icon_name_char
-from qtpy.QtCore import QEvent, QModelIndex, QObject, QSize, Qt
+from qtpy.QtCore import (
+    QEvent,
+    QModelIndex,
+    QObject,
+    QSize,
+    Qt,
+    Signal,
+)
 from qtpy.QtGui import (
     QColor,
     QFont,
@@ -296,10 +303,19 @@ class MentionCompleter(QObject):
     :func:`mentions_to_display` and :func:`mentions_to_storage` to convert
     from and to the markdown stored on the server.
 
+    The versions and tasks don't have to be known up front:
+    :attr:`entities_requested` is emitted each time the popup opens for
+    them, to answer with :meth:`set_entities` whenever they are available.
+
+    Signals:
+        entities_requested: The popup opened to mention a version or task.
+
     Args:
         text_edit: The QTextEdit to complete mentions in.
         users: Users which can be mentioned.
     """
+
+    entities_requested = Signal()
 
     def __init__(
         self, text_edit: QTextEdit, users: list[User] | None = None
@@ -309,6 +325,10 @@ class MentionCompleter(QObject):
         self._items: dict[str, list] = {"@": [], "@@": [], "@@@": []}
         # Trigger the completer model is currently populated for
         self._trigger = ""
+        # Whether the versions and tasks are waited for
+        self._entities_loading = False
+        # Whether the entities were requested for the open popup
+        self._entities_requested = False
 
         self._completer = QCompleter(self)
         self._completer.setCompletionMode(
@@ -342,10 +362,30 @@ class MentionCompleter(QObject):
         versions: list[EntityMention] | None = None,
         tasks: list[EntityMention] | None = None,
     ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention."""
+        """Set the versions (``@@``) and tasks (``@@@``) to mention.
+
+        An open popup is updated, so this can be called at any time after
+        :attr:`entities_requested`.
+        """
         self._items["@@"] = versions or []
         self._items["@@@"] = tasks or []
+        self._entities_loading = False
         self._trigger = ""
+        self._update_popup()
+
+    def clear_entities(self) -> None:
+        """Forget the versions and tasks, e.g. of another version.
+
+        The popup shows them as loading until :meth:`set_entities` is
+        called, which is asked for with :attr:`entities_requested` the next
+        time the popup opens.
+        """
+        self._items["@@"] = []
+        self._items["@@@"] = []
+        self._entities_loading = True
+        self._entities_requested = False
+        self._trigger = ""
+        self._update_popup()
 
     def popup_visible(self) -> bool:
         """Whether the popup to pick a mention is open."""
@@ -510,7 +550,10 @@ class MentionCompleter(QObject):
             row.setData(item, Qt.ItemDataRole.UserRole)
             model.appendRow(row)
         if not model.rowCount():
-            row = QStandardItem(f"No {_MENTION_NOUNS[trigger]} to mention")
+            text = f"No {_MENTION_NOUNS[trigger]} to mention"
+            if trigger != "@" and self._entities_loading:
+                text = f"Loading {_MENTION_NOUNS[trigger]}..."
+            row = QStandardItem(text)
             row.setFlags(Qt.ItemFlag.NoItemFlags)
             model.appendRow(row)
         self._completer.setModel(model)
@@ -522,10 +565,16 @@ class MentionCompleter(QObject):
         if not self._text_edit.isReadOnly():
             found = self._find_trigger()
         if found is None:
+            self._entities_requested = False
             popup.hide()
             return
 
         _, trigger, prefix = found
+        if trigger != "@" and not self._entities_requested:
+            # Once each time the popup opens for versions or tasks, typing
+            # "@@@" passes "@@" and one answer has both of them.
+            self._entities_requested = True
+            self.entities_requested.emit()
         self._populate(trigger)
         self._completer.setCompletionPrefix(prefix)
         row_count = self._completer.completionCount()

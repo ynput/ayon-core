@@ -38,10 +38,14 @@ class AYMarkdownEdit(AYTextEdit):
 
     Signals:
         checklist_changed: Emitted when a checkbox state changes.
+        mention_entities_requested: Emitted when the popup to mention a
+            version or task opens. Answer with
+            :meth:`set_mention_entities`, right away or later.
     """
 
     Variants = QTextEditVariants
     checklist_changed = Signal()
+    mention_entities_requested = Signal()
 
     # Text inserted in front of a new checkbox
     _checkbox_indent = ""
@@ -66,6 +70,9 @@ class AYMarkdownEdit(AYTextEdit):
         self.setAutoFormatting(QTextEdit.AutoFormattingFlag.AutoAll)
 
         self._mentions = MentionCompleter(self, self._user_list)
+        self._mentions.entities_requested.connect(
+            self.mention_entities_requested
+        )
         self.document().contentsChanged.connect(self._on_contents_changed)
 
     def _on_contents_changed(self) -> None:
@@ -83,8 +90,20 @@ class AYMarkdownEdit(AYTextEdit):
         versions: list[EntityMention] | None = None,
         tasks: list[EntityMention] | None = None,
     ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention."""
+        """Set the versions (``@@``) and tasks (``@@@``) to mention.
+
+        Either up front or, to only get them when they are needed, in
+        response to :attr:`mention_entities_requested`.
+        """
         self._mentions.set_entities(versions, tasks)
+
+    def clear_mention_entities(self) -> None:
+        """Forget the versions and tasks to mention.
+
+        Call it when they are of another context than the one commented
+        on now. They show as loading until :meth:`set_mention_entities`.
+        """
+        self._mentions.clear_entities()
 
     def insert_mention_trigger(self, trigger: str) -> None:
         """Type ``@``, ``@@`` or ``@@@`` at the text cursor to mention."""

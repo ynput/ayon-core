@@ -265,9 +265,6 @@ class VersionData:
     attrib: dict[str, str]
     thumbnail_id: str = ""
     thumbnail_local_path: str = ""
-    # entities which can be mentioned in a comment on this version
-    mention_versions: list[EntityMention] = field(default_factory=list)
-    mention_tasks: list[EntityMention] = field(default_factory=list)
 
     @staticmethod
     def not_set():

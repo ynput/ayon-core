@@ -575,6 +575,8 @@ class AYComment(AYContainer):
 
     comment_deleted = Signal(object)
     comment_edited = Signal(object)
+    # The popup to mention a version or task opened
+    mention_entities_requested = Signal()
 
     def __init__(
         self,
@@ -607,6 +609,9 @@ class AYComment(AYContainer):
             self.update_comment()
 
         self.text_field.checklist_changed.connect(self._on_checklist_changed)
+        self.text_field.mention_entities_requested.connect(
+            self.mention_entities_requested
+        )
 
     def update_comment(self, data: CommentModel | None = None):
         prev_data = self._data
@@ -624,8 +629,16 @@ class AYComment(AYContainer):
         versions: list[EntityMention] | None = None,
         tasks: list[EntityMention] | None = None,
     ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention."""
+        """Set the versions (``@@``) and tasks (``@@@``) to mention.
+
+        Either up front or in response to
+        :attr:`mention_entities_requested`.
+        """
         self.text_field.set_mention_entities(versions, tasks)
+
+    def clear_mention_entities(self) -> None:
+        """Forget the versions and tasks, they show as loading until set."""
+        self.text_field.clear_mention_entities()
 
     def _build_top_bar(self):
         self.user_icon = AYUserImage(

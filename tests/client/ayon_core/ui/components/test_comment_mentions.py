@@ -817,3 +817,154 @@ def test_entities_with_missing_values(qtbot, editor):
 
     qtbot.keyClick(editor, Qt.Key.Key_Return)
     assert _markdown(editor) == "[v003](version:v3id)"
+
+
+def _count_requests(widget) -> list[int]:
+    """Count how often the entities to mention are requested."""
+    requests = []
+    widget.mention_entities_requested.connect(lambda: requests.append(1))
+    return requests
+
+
+def test_entities_requested_when_popup_opens(qtbot, editor):
+    requests = _count_requests(editor)
+
+    # Users are known up front
+    qtbot.keyClicks(editor, "@ro")
+    assert not requests
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+
+    # Once for the popup, not for every key typed in it
+    qtbot.keyClicks(editor, "@@")
+    assert len(requests) == 1
+    qtbot.keyClicks(editor, "v00")
+    assert len(requests) == 1
+    # Also not when moving the text cursor in the mention
+    qtbot.keyClick(editor, Qt.Key.Key_Left)
+    qtbot.keyClick(editor, Qt.Key.Key_Right)
+    assert len(requests) == 1
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+
+    # Again the next time it opens, they may have changed
+    qtbot.keyClicks(editor, "@@")
+    assert len(requests) == 2  # noqa: PLR2004
+    # One answer has both the versions and tasks
+    editor.insert_mention_trigger("@@@")
+    assert len(_completions(editor)) == len(TASKS)
+    assert len(requests) == 2  # noqa: PLR2004
+
+
+def test_entities_requested_once_when_typing_task_trigger(qtbot, editor):
+    requests = _count_requests(editor)
+    # Typing "@@@" passes "@" and "@@"
+    qtbot.keyClicks(editor, "@@@comp")
+    assert len(requests) == 1
+
+
+def test_entities_not_requested_without_popup(qtbot, editor):
+    requests = _count_requests(editor)
+
+    qtbot.keyClicks(editor, "mail@@host ")
+    editor.insertPlainText("@@@@ ")
+    editor.set_markdown("see [v003](version:v3id) `@@code`")
+    editor.setReadOnly(True)
+    editor.set_markdown("@@")
+    assert not requests
+
+
+def test_entities_loading_until_set(qtbot, editor):
+    editor.clear_mention_entities()
+
+    qtbot.keyClicks(editor, "@@")
+    assert _completions(editor) == ["Loading versions..."]
+    # The placeholder can't be picked
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert "version:" not in editor.as_markdown()
+
+    editor.clear()
+    qtbot.keyClicks(editor, "@@@")
+    assert _completions(editor) == ["Loading tasks..."]
+    # Users don't wait for the entities
+    editor.clear()
+    qtbot.keyClicks(editor, "@")
+    assert _completions(editor) == ["Roy Nieterau", "Ayon admin"]
+
+
+def test_open_popup_updates_when_entities_arrive(qtbot, editor):
+    editor.clear_mention_entities()
+    qtbot.keyClicks(editor, "see @@v00")
+    assert not _completions(editor)
+
+    # The answer to the request comes in while typing
+    editor.set_mention_entities(VERSIONS, TASKS)
+    assert _completions(editor) == [
+        "renderMain v003",
+        "renderMain v002",
+        "workfileCompositing v001",
+    ]
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert _markdown(editor) == "see [v003](version:v3id)"
+
+    # Without any they are no longer loading
+    editor.clear_mention_entities()
+    qtbot.keyClicks(editor, "@@")
+    editor.set_mention_entities([], [])
+    assert _completions(editor) == ["No versions to mention"]
+
+
+def test_entities_set_while_handling_request(qtbot, editor):
+    # A cache answers right away, from within the signal
+    editor.clear_mention_entities()
+    editor.mention_entities_requested.connect(
+        lambda: editor.set_mention_entities(VERSIONS, TASKS)
+    )
+    qtbot.keyClicks(editor, "@@v002")
+    assert _completions(editor) == ["renderMain v002"]
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert _markdown(editor) == "[v002](version:v2id)"
+
+
+def test_known_entities_stay_while_refreshing(qtbot, editor):
+    # Entities of an earlier request are shown while new ones are fetched
+    requests = _count_requests(editor)
+    qtbot.keyClicks(editor, "@@")
+    assert len(requests) == 1
+    assert len(_completions(editor)) == len(VERSIONS)
+
+    newer = [EntityMention("version", "v4id", "v004", "renderMain")]
+    editor.set_mention_entities(newer + VERSIONS, TASKS)
+    assert _completions(editor)[0] == "renderMain v004"
+
+
+def test_setting_entities_does_not_open_popup(qtbot, editor):
+    qtbot.keyClicks(editor, "no mention here")
+    editor.set_mention_entities(VERSIONS, TASKS)
+    editor.clear_mention_entities()
+    assert not editor._mentions.popup_visible()
+
+
+def test_text_box_and_comment_request_entities(qtbot, text_box):
+    requests = _count_requests(text_box)
+    qtbot.keyClicks(text_box.edit_field, "@@")
+    assert len(requests) == 1
+    text_box.clear_mention_entities()
+    assert _completions(text_box.edit_field) == ["Loading versions..."]
+
+    comment = AYComment(data=CommentModel(comment="hi"), user_list=USERS)
+    qtbot.addWidget(comment)
+    comment.show()
+    qtbot.waitExposed(comment)
+    requests = _count_requests(comment)
+    comment.clear_mention_entities()
+    comment._edit_comment()
+    qtbot.keyClick(
+        comment.text_field, Qt.Key.Key_End, Qt.KeyboardModifier.ControlModifier
+    )
+    qtbot.keyClicks(comment.text_field, " @@@")
+    assert len(requests) == 1
+    assert _completions(comment.text_field) == ["Loading tasks..."]
+
+    comment.set_mention_entities(VERSIONS, TASKS)
+    assert _completions(comment.text_field) == [
+        "sh010 compositing", "sh010 lighting",
+    ]
