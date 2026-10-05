@@ -96,3 +96,52 @@ def test_terminal_state_set_from_callback_is_delivered():
     reporter.step()
 
     assert seen == [(1, False), (1, True)]
+
+
+def _late_mutations(reporter) -> None:
+    """Drive every mutating entry point once."""
+    reporter.step()
+    reporter.set_progress(0)
+    reporter.set_total(5)
+    reporter.set_phase("upload", weight=2.0)
+    reporter.set_phases([("extra", 1.0)])
+
+
+def test_mutations_after_finish_are_ignored():
+    """A finished run cannot be altered by a late update."""
+    reporter = ProgressReporter(total=2, min_interval=0.0)
+    seen = []
+    reporter.add_listener(seen.append, emit_immediately=False)
+    reporter.step()
+    reporter.finish()
+    published = list(seen)
+
+    _late_mutations(reporter)
+
+    assert seen == published
+    state = reporter.snapshot()
+    assert state.completed == 2
+    assert state.total == 2
+    assert state.phase == ""
+    assert state.finished is True
+    assert state.failed is False
+
+
+def test_mutations_after_failure_are_ignored():
+    """A failed run cannot be altered by a late update."""
+    reporter = ProgressReporter(total=2, min_interval=0.0)
+    seen = []
+    reporter.add_listener(seen.append, emit_immediately=False)
+    reporter.step()
+    reporter.fail("Upload failed")
+    published = list(seen)
+
+    _late_mutations(reporter)
+
+    assert seen == published
+    state = reporter.snapshot()
+    assert state.completed == 1
+    assert state.total == 2
+    assert state.phase == ""
+    assert state.failed is True
+    assert state.finished is False

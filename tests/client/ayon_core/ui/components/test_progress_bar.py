@@ -134,9 +134,9 @@ def test_view_queues_each_worker_snapshot(qtbot, monkeypatch):
     gui_thread = threading.get_ident()
     original_apply = AYProgressView._apply
 
-    def record_apply(self, state):
+    def record_apply(self, binding, state):
         seen.append((state, threading.get_ident()))
-        original_apply(self, state)
+        original_apply(self, binding, state)
 
     monkeypatch.setattr(AYProgressView, "_apply", record_apply)
     view = AYProgressView()
@@ -215,3 +215,49 @@ def test_dialog_closes_when_indeterminate_reporter_finishes(qtbot):
     qtbot.waitUntil(lambda: not dialog.isVisible())
     assert dialog.result() == dialog.DialogCode.Accepted
     assert canceled == []
+
+
+def test_view_ignores_snapshots_queued_before_unbind(qtbot):
+    """The view must not change from pings queued before unbind()."""
+    reporter = ProgressReporter(total=4, min_interval=0.0)
+    view = AYProgressView()
+    qtbot.addWidget(view)
+    view.bind(reporter)
+    reporter.fail("stale failure")  # queued, not applied yet
+    view.unbind()
+
+    # A ping from a fresh binding drains the queue in order.
+    other = ProgressReporter(total=4, min_interval=0.0)
+    view.bind(other)
+    other.set_progress(1)
+    qtbot.waitUntil(lambda: view.progress_bar.current == 1)
+
+    assert view._caption is None
+    assert view.progress_bar._state is ProgressBarState.Normal
+
+
+def test_view_ignores_queued_terminal_state_across_rebind(qtbot):
+    """A rebind drops the previous reporter's queued terminal state.
+
+    Otherwise it would take the completion latch and the new reporter's
+    finish would go unnoticed.
+    """
+    first = ProgressReporter(total=1, min_interval=0.0)
+    second = ProgressReporter(total=1, min_interval=0.0)
+    view = AYProgressView()
+    qtbot.addWidget(view)
+    completed = []
+    view.completed.connect(lambda: completed.append(True))
+
+    view.bind(first)
+    first.finish()  # its terminal ping is still queued
+    view.bind(second)  # rebind before the event loop runs
+    second.set_progress(1)  # drains the queue in order
+    qtbot.waitUntil(lambda: view.progress_bar.current == 1)
+
+    assert completed == []
+    assert view.progress_bar._state is not ProgressBarState.Success
+
+    second.finish()
+    qtbot.waitUntil(lambda: bool(completed))
+    assert completed == [True]

@@ -9,7 +9,9 @@ after a newer one.
 Updates are coalesced to at most one notification per ``min_interval``
 seconds.  Because coalescing drops intermediate states, ``finish()``,
 ``fail()``, and :meth:`ProgressReporter.flush` bypass it so terminal
-state is never lost.
+state is never lost.  Once the run *is* terminal, every mutating method
+becomes a no-op, so a late update from a worker cannot alter the final
+snapshot or notify listeners again.
 """
 
 from __future__ import annotations
@@ -97,6 +99,8 @@ class ProgressReporter:
                 weighted ``1.0``).
         """
         with self._lock:
+            if self._state.finished or self._state.failed:
+                return
             for name, weight in self._iter_phases(phases):
                 self._phases.setdefault(name, max(0.0, float(weight)))
                 self._phase_progress.setdefault(name, 0.0)
@@ -112,6 +116,8 @@ class ProgressReporter:
                 first time the phase is announced.
         """
         with self._lock:
+            if self._state.finished or self._state.failed:
+                return
             if phase not in self._phases:
                 self._phases[phase] = max(0.0, float(weight))
             self._phase_progress.setdefault(phase, 0.0)
@@ -140,6 +146,8 @@ class ProgressReporter:
             amount: Number of steps to add.
         """
         with self._lock:
+            if self._state.finished or self._state.failed:
+                return
             completed = self._state.completed + amount
             total = self._state.total
             if total is not None:
@@ -156,6 +164,8 @@ class ProgressReporter:
             completed: Number of completed steps.
         """
         with self._lock:
+            if self._state.finished or self._state.failed:
+                return
             self._state = self._with_overall(
                 replace(self._state, completed=completed)
             )
@@ -242,10 +252,11 @@ class ProgressReporter:
         """Publish the current state immediately, bypassing coalescing."""
         self._publish(force=True)
 
-    # --- internals
     def _mutate(self, **changes: object) -> None:
         """Replace state fields and publish the result."""
         with self._lock:
+            if self._state.finished or self._state.failed:
+                return
             self._state = self._with_overall(
                 replace(self._state, **changes)
             )
@@ -257,6 +268,11 @@ class ProgressReporter:
         Capture and delivery are serialised by ``_publish_lock``, so a
         thread that read an older snapshot can never deliver it after a
         newer one.  ``_lock`` is still released before any callback runs.
+
+        Terminal states go out like any other: ``finish()`` and ``fail()``
+        set the state before flushing, and a listener that attaches after
+        the run ended still needs the final snapshot.  Freezing a terminal
+        run is the job of the mutating methods, not of this one.
 
         Args:
             force: Publish even when still inside the coalescing window.

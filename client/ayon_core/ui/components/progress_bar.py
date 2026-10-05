@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from functools import partial
 from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QRectF, QSize, Qt, QTimer, Signal
@@ -25,6 +26,8 @@ from .layouts import AYVBoxLayout
 from .style_mixin import StyleMixin
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...lib.progress import ProgressReporter, ProgressState
 
 
@@ -370,7 +373,7 @@ class AYProgressView(AYContainer):
     """
 
     progress_changed = Signal(int, int)
-    progress_ping = Signal(object)
+    progress_ping = Signal(int, object)
     completed = Signal()
 
     def __init__(
@@ -423,6 +426,11 @@ class AYProgressView(AYContainer):
 
         self._reporter: ProgressReporter | None = None
         self._reporter_completed = False
+        # Generation of the active binding.  Pings carry the generation
+        # they were emitted for, so ones that are already queued when the
+        # view is unbound or rebound are discarded instead of applied.
+        self._binding = 0
+        self._listener: Callable[[ProgressState], None] | None = None
         # Reporter callbacks can arrive on a worker thread; hop to the Qt
         # thread before touching any widget.
         self.progress_ping.connect(
@@ -436,22 +444,37 @@ class AYProgressView(AYContainer):
             reporter: The progress source to follow.
         """
         self.unbind()
+        self._binding += 1
         self._reporter = reporter
         self._reporter_completed = False
-        reporter.add_listener(self._on_state)
+        self._listener = partial(self._on_state, self._binding)
+        reporter.add_listener(self._listener)
 
     def unbind(self) -> None:
-        """Stop following the bound reporter, if any."""
+        """Stop following the bound reporter, if any.
+
+        Snapshots *reporter* already queued are dropped rather than
+        applied: the binding generation changes, so ``_apply`` ignores
+        anything that was pinged for the previous binding.
+        """
+        self._binding += 1
         if self._reporter is not None:
-            self._reporter.remove_listener(self._on_state)
+            self._reporter.remove_listener(self._listener)
             self._reporter = None
 
-    def _on_state(self, state: ProgressState) -> None:
+    def _on_state(self, binding: int, state: ProgressState) -> None:
         """Queue a reporter snapshot for the Qt thread."""
-        self.progress_ping.emit(state)
+        self.progress_ping.emit(binding, state)
 
-    def _apply(self, state: ProgressState) -> None:
-        """Mirror a reporter snapshot onto the bar."""
+    def _apply(self, binding: int, state: ProgressState) -> None:
+        """Mirror a reporter snapshot onto the bar.
+
+        Snapshots queued by a reporter that is no longer bound are
+        discarded, so a stale terminal state cannot overwrite a newer
+        binding or take its completion latch.
+        """
+        if binding != self._binding:
+            return
         if state.total != self._bar.total:
             self._bar.set_total(state.total)
         self._bar.set_progress(state.completed)
