@@ -56,6 +56,19 @@ _MENTION_HREF_PATTERN = re.compile(rf"(?:{_MENTION_TYPES}):.")
 _MENTION_TRIGGER_PATTERN = re.compile(
     r"(?:^|(?<=[\s(\[{\"'￼]))(?P<trigger>@{1,3})(?P<prefix>[^\s@]*)$"
 )
+# Fenced code blocks and inline code spans of markdown, mentions are not
+# converted in code.
+_MD_CODE_PATTERN = re.compile(
+    r"(```.*?(?:```|\Z)|~~~.*?(?:~~~|\Z)|`[^`\n]+`)", re.DOTALL
+)
+
+
+def _sub_outside_code(pattern: re.Pattern, repl, md: str) -> str:
+    """Replace the matches of a pattern which are not in markdown code."""
+    # The pattern has a single group, so every second part is code
+    parts = _MD_CODE_PATTERN.split(md)
+    parts[::2] = [pattern.sub(repl, part) for part in parts[::2]]
+    return "".join(parts)
 
 
 def _utf16_length(text: str) -> int:
@@ -91,7 +104,7 @@ def mentions_to_display(md: str) -> str:
 
     ``[Joe](user:admin)`` becomes ``[@Joe](user:admin)`` and
     ``[v003](version:id)`` becomes ``[@@v003](version:id)`` so mentions
-    are displayed the way they are typed.
+    are displayed the way they are typed. Code is left as it is.
 
     Args:
         md: Markdown text as stored on the server.
@@ -103,7 +116,7 @@ def mentions_to_display(md: str) -> str:
         trigger = MENTION_TRIGGERS[match["type"]]
         return f"[{trigger}{match['label']}]({match['ref']})"
 
-    return MENTION_LINK_PATTERN.sub(repl, md)
+    return _sub_outside_code(MENTION_LINK_PATTERN, repl, md)
 
 
 def mentions_to_storage(md: str, user_list: list[User]) -> str:
@@ -124,7 +137,7 @@ def mentions_to_storage(md: str, user_list: list[User]) -> str:
         label = " ".join(match["label"].split())
         return f"[{label}]({match['ref']})"
 
-    md = MENTION_LINK_PATTERN.sub(repl, md)
+    md = _sub_outside_code(MENTION_LINK_PATTERN, repl, md)
     return strip_user_mention_display(md, user_list)
 
 
@@ -473,13 +486,40 @@ class MentionCompleter(QObject):
             search text typed after it. None if no mention is being typed.
         """
         cursor = self._text_edit.textCursor()
-        match = _MENTION_TRIGGER_PATTERN.search(_text_before_cursor(cursor))
-        if not match:
+        text_before = _text_before_cursor(cursor)
+        match = _MENTION_TRIGGER_PATTERN.search(text_before)
+        if not match or self._in_code(cursor, text_before):
             return None
         # The mention being typed ends at the text cursor
         typed = match["trigger"] + match["prefix"]
         start = cursor.position() - _utf16_length(typed)
         return start, match["trigger"], match["prefix"]
+
+    @staticmethod
+    def _in_code(cursor: QTextCursor, text_before: str) -> bool:
+        """Whether the text cursor is in a code block or inline code.
+
+        Mentions are not completed in code, there an ``@`` is just text.
+
+        Args:
+            cursor: The text cursor.
+            text_before: Text of the block in front of the text cursor.
+        """
+        block = cursor.block()
+        # Code block of loaded markdown
+        if block.blockFormat().nonBreakableLines():
+            return True
+        # Code block being typed, the highlighter marks the blocks of an
+        # open fence with state 1.
+        if block.previous().userState() == 1 or block.text().startswith(
+            "```"
+        ):
+            return True
+        # Inline code of loaded markdown or of the code style button
+        if cursor.charFormat().fontFixedPitch():
+            return True
+        # Inline code being typed
+        return text_before.count("`") % 2 == 1
 
     def _populate(self, trigger: str) -> None:
         """Fill the completer with the items of a trigger."""

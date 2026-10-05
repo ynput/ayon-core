@@ -377,6 +377,117 @@ def test_no_mentions_in_code(qtbot, editor):
     assert "@@v003" in editor.as_markdown()
 
 
+@pytest.mark.parametrize(
+    "stored",
+    [
+        "```\n[v003](version:v3id)\n```",
+        "~~~\n[v003](version:v3id)\n~~~",
+        "`[Joe](user:admin)`",
+        "see `[v003](version:v3id)` and ```[lighting](task:t2id)```",
+        # Fence which is not closed
+        "```\n[v003](version:v3id)",
+    ],
+    ids=["fence", "tilde_fence", "inline", "inline_and_fence", "open_fence"],
+)
+def test_mention_links_in_code_are_not_converted(stored):
+    assert mentions_to_display(stored) == stored
+    displayed = stored.replace("[", "[@@")
+    assert mentions_to_storage(displayed, USERS) == displayed
+
+
+def test_mentions_next_to_code_are_converted():
+    stored = (
+        "[v003](version:v3id) `[v002](version:v2id)` [lighting](task:t2id)"
+        "\n```\n[v003](version:v3id)\n```\n[Roy Nieterau](user:bigroy)"
+    )
+    displayed = (
+        "[@@v003](version:v3id) `[v002](version:v2id)`"
+        " [@@@lighting](task:t2id)"
+        "\n```\n[v003](version:v3id)\n```\n[@Roy Nieterau](user:bigroy)"
+    )
+    assert mentions_to_display(stored) == displayed
+    assert mentions_to_storage(displayed, USERS) == stored
+
+
+def test_code_of_loaded_comment_is_displayed_as_is(qtbot):
+    stored = "```\n[v003](version:v3id)\n```\n"
+    field = AYCommentField(text=stored, read_only=True, user_list=USERS)
+    qtbot.addWidget(field)
+
+    assert "[v003](version:v3id)" in field.toPlainText()
+    assert "@@" not in field.toPlainText()
+    assert "[v003](version:v3id)" in field.as_markdown()
+
+
+def _move_into_first_block(editor: AYTextEditor) -> None:
+    cursor = editor.textCursor()
+    cursor.setPosition(editor.document().firstBlock().length() - 1)
+    editor.setTextCursor(cursor)
+
+
+def test_no_popup_in_loaded_code_block(qtbot, editor):
+    editor.set_markdown("```\ncode\n```\n")
+    _move_into_first_block(editor)
+
+    qtbot.keyClicks(editor, " @@v002")
+    assert not editor._mentions.popup_visible()
+    # Enter is a new line in the code
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert "version:" not in editor.as_markdown()
+    assert "@@v002" in editor.as_markdown()
+
+
+def test_no_popup_in_typed_code_block(qtbot, editor):
+    qtbot.keyClicks(editor, "```")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "@@v002")
+    assert not editor._mentions.popup_visible()
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "@roy")
+    assert not editor._mentions.popup_visible()
+
+    # After the closing fence mentions are completed again
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "```")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "@@v002")
+    assert _completions(editor) == ["renderMain v002"]
+
+
+def test_no_popup_in_inline_code(qtbot, editor):
+    # Inline code being typed
+    qtbot.keyClicks(editor, "run `tool @@v0")
+    assert not editor._mentions.popup_visible()
+    qtbot.keyClicks(editor, "` then @@v002")
+    assert _completions(editor) == ["renderMain v002"]
+
+    # Inline code of loaded markdown
+    editor.set_markdown("`code`")
+    _move_into_first_block(editor)
+    qtbot.keyClicks(editor, " @@")
+    assert not editor._mentions.popup_visible()
+
+
+def test_no_popup_in_code_style(qtbot, editor):
+    # Code style of the toolbar
+    editor.set_style("stl_code")
+    qtbot.keyClicks(editor, "@@")
+    assert not editor._mentions.popup_visible()
+    editor.set_style("stl_code")
+    qtbot.keyClicks(editor, " @@")
+    assert len(_completions(editor)) == len(VERSIONS)
+
+
+def test_mention_button_in_code_types_the_trigger(qtbot, text_box):
+    editor = text_box.edit_field
+    editor.set_markdown("```\ncode\n```\n")
+    _move_into_first_block(editor)
+
+    text_box._add_mention_to_editor("@@")
+    assert not editor._mentions.popup_visible()
+    assert "code @@" in editor.toPlainText()
+
+
 def test_unknown_mention_types_are_regular_links(qtbot, editor):
     stored = "[shot](folder:f1id) and [site](https://ynput.io)"
     editor.set_markdown(stored)
