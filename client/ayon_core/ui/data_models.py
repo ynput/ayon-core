@@ -33,6 +33,36 @@ def short_date(date_str: str) -> str:
         return date_str
 
 
+def relative_date(date_str: str) -> str:
+    """Format a date as the time passed since, e.g. ``"13 hours"``.
+
+    Args:
+        date_str: Date in ISO format.
+
+    Returns:
+        Time passed in its largest unit, or the input if it can not be
+        parsed.
+    """
+    try:
+        date = datetime.fromisoformat(date_str).astimezone()
+    except (TypeError, ValueError):
+        return date_str
+    seconds = (datetime.now().astimezone() - date).total_seconds()
+    if seconds < 60:
+        return "just now"
+    for unit, size in (
+        ("year", 365 * 86400),
+        ("month", 30 * 86400),
+        ("day", 86400),
+        ("hour", 3600),
+        ("minute", 60),
+    ):
+        count = int(seconds // size)
+        if count:
+            return f"{count} {unit}{'s' if count > 1 else ''}"
+    return date_str
+
+
 @dataclass
 class StatusUiModel:
     text: str = ""

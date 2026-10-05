@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
-from ayon_core.ui.components.activity_stream import (
-    AYActivityStream,
-    _relative_date,
-)
+from ayon_core.ui.components.activity_stream import AYActivityStream
+from ayon_core.ui.components.comment import AYPublish, AYStatusChange
 from ayon_core.ui.data_models import (
     ActivityCategory,
     CommentModel,
     StatusChangeModel,
     VersionPublishModel,
+    relative_date,
 )
 
 STATUSES = [
@@ -129,11 +128,61 @@ def test_relative_date_uses_the_largest_unit() -> None:
     now = datetime.now(timezone.utc)
 
     def ago(**kwargs) -> str:
-        return _relative_date((now - timedelta(**kwargs)).isoformat())
+        return relative_date((now - timedelta(**kwargs)).isoformat())
 
     assert ago(seconds=5) == "just now"
     assert ago(minutes=1, seconds=5) == "1 minute"
     assert ago(hours=13, minutes=5) == "13 hours"
     assert ago(days=7, hours=1) == "7 days"
     assert ago(days=5 * 30 + 3) == "5 months"
-    assert _relative_date("not a date") == "not a date"
+    assert relative_date("not a date") == "not a date"
+
+
+def test_shared_rows_work_without_stream_data(qtbot) -> None:
+    """Rows are also created on their own, e.g. by the review desktop."""
+    parent = QtWidgets.QWidget()
+    qtbot.addWidget(parent)
+
+    publish = AYPublish(
+        parent, data=VersionPublishModel(product="modelMain", version="v003")
+    )
+    # No status and thumbnail in the data, so only product and version
+    assert publish.thumbnail is None
+    assert publish.parent() is parent
+
+    status_change = AYStatusChange(
+        parent,
+        data=StatusChangeModel(
+            product="modelMain",
+            version="v003",
+            old_status="In progress",
+            new_status="Approved",
+        ),
+    )
+    labels = {
+        getattr(label, "_text", "") or label.text()
+        for label in status_change.findChildren(QtWidgets.QLabel)
+    }
+    # Both statuses are named and the version is shown when not compact
+    assert {"In progress", "Approved", "modelMain v003"} <= labels
+
+    compact = AYStatusChange(
+        parent,
+        data=StatusChangeModel(
+            product="modelMain",
+            version="v003",
+            old_status="In progress",
+            new_status="Approved",
+        ),
+        status_definitions=[
+            {"text": "In progress", "icon": "play_arrow", "color": "#fff"}
+        ],
+        compact=True,
+    )
+    labels = {
+        getattr(label, "_text", "") or label.text()
+        for label in compact.findChildren(QtWidgets.QLabel)
+    }
+    assert "Approved" in labels
+    assert not {"In progress", "modelMain v003"} & labels
+    assert "modelMain v003" in compact.toolTip()
