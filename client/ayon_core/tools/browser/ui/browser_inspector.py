@@ -8,6 +8,7 @@ from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.layouts import AYHBoxLayout
+from ayon_core.ui.components.tab_bar import AYTabBar
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
@@ -19,6 +20,7 @@ from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
 from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils.activity_widget import ActivityWidget
 
 from ._browser_cell_delegates import format_relative_time
 from ._browser_thumbnails import _thumbnail_loader
@@ -26,6 +28,9 @@ from ._browser_thumbnails import _thumbnail_loader
 
 class ReviewInspector(AYContainer):
     """A placeholder widget for the review inspector panel."""
+
+    # Activity of a larger selection is too mixed to be useful
+    activity_selection_limit = 20
 
     def __init__(
         self,
@@ -103,8 +108,25 @@ class ReviewInspector(AYContainer):
         thumb_wrapper.addWidget(self._thumbnail)
         self.add_layout(thumb_wrapper)
 
+        # Details and activity share the space below the thumbnail, so
+        #   the activity does not make the inspector any wider.
+        self._tabs = AYTabBar(["Details", "Activity"])
+        self.add_widget(self._tabs)
+        details_page = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_spacing=10,
+        )
+        details_page._layout.setAlignment(QtCore.Qt.AlignTop)
+        self._activity = ActivityWidget()
+        self._pages = QtWidgets.QStackedWidget()
+        self._pages.addWidget(details_page)
+        self._pages.addWidget(self._activity)
+        self._tabs.current_changed.connect(self._pages.setCurrentIndex)
+        self.add_widget(self._pages, stretch=1)
+
         # Version info
-        self.add_widget(
+        details_page.add_widget(
             AYLabel(
                 "Version Info",
                 variant=AYLabel.Variants.Default,
@@ -117,7 +139,7 @@ class ReviewInspector(AYContainer):
             layout_spacing=(10, 8),
         )
         self.info_lyt.set_label_alignment(QtCore.Qt.AlignRight)
-        self.add_widget(self.info_lyt)
+        details_page.add_widget(self.info_lyt)
         # product name
         self._product_value = AYLabel("-")
         self.info_lyt.add_row(
@@ -164,7 +186,7 @@ class ReviewInspector(AYContainer):
         )
 
         # representations
-        self.add_widget(
+        details_page.add_widget(
             AYLabel(
                 "Representations",
                 variant=AYLabel.Variants.Default,
@@ -172,7 +194,7 @@ class ReviewInspector(AYContainer):
             )
         )
         self._representations = Representations(self._controller)
-        self.add_widget(self._representations)
+        details_page.add_widget(self._representations)
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
         """Set the view for the inspector."""
@@ -357,6 +379,17 @@ class ReviewInspector(AYContainer):
         else:
             self._current_thumb_key = ""
             self._thumbnail.set_thumbnail("")
+
+        if len(version_ids) > self.activity_selection_limit:
+            self._activity.set_context(
+                None, [], f"{n_sel} versions selected"
+            )
+        else:
+            self._activity.set_context(
+                project_name,
+                version_ids,
+                "Select a version to see its activity",
+            )
 
         # Fetch and display representations for all selected versions.
         if self._controller and project_name and version_ids:
