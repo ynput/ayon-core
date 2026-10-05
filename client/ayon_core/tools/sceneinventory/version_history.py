@@ -410,7 +410,10 @@ class VersionHistoryWidget(QtWidgets.QWidget):
         ):
             versions_view.setColumnWidth(col, width)
 
-        activity_widget = ActivityWidget(activities_model=activities_model)
+        # Avatars are shared with the author column of the version list
+        activity_widget = ActivityWidget(
+            activities_model=activities_model, avatar_cache=avatar_cache
+        )
         activity_widget.setMinimumWidth(200)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
