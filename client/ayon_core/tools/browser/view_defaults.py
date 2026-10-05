@@ -23,6 +23,7 @@ class BrowserViewDefaults:
     group_by_key: str
     group_sort_desc: bool
     show_empty_groups: bool
+    ungroup_empty_values: bool
     card_width: int
     display_type: str
     featured_version_order: tuple[str, ...]
@@ -69,6 +70,7 @@ class BrowserViewDefaults:
                 ),
                 "latestPerFolder": self.latest_per_folder,
                 "includeChildren": self.include_children,
+                "ungroupEmptyValues": self.ungroup_empty_values,
                 "myTasksFilter": False,
             },
         )
@@ -95,6 +97,7 @@ BROWSER_VIEW_DEFAULTS = BrowserViewDefaults(
     group_by_key="none",
     group_sort_desc=False,
     show_empty_groups=False,
+    ungroup_empty_values=True,
     card_width=200,
     display_type="table",
     featured_version_order=("latestDone", "latest", "hero"),

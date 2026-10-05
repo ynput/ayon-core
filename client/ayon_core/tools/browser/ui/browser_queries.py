@@ -120,9 +120,22 @@ query GetVersionGroupCounts(
         valueNotFilledCount
         distribution
       }
-    }
+__PRODUCT_SELECTION__    }
   }
 }
+"""
+
+# Selecting any product field makes the server join the product columns
+# (e.g. ``_product_attrib``) into the data the statistics are computed
+# from. Statistics queries return no edges, so nothing is fetched.
+_GROUP_COUNTS_PRODUCT_SELECTION = """\
+      edges {
+        node {
+          product {
+            id
+          }
+        }
+      }
 """
 
 
@@ -153,9 +166,19 @@ def _resolve_representation_filter(query: str) -> str:
     )
 
 
-def get_version_group_counts_query() -> str:
-    """Build the version group counts query."""
-    return _resolve_representation_filter(GET_VERSION_GROUP_COUNTS_QUERY)
+def get_version_group_counts_query(include_product: bool = False) -> str:
+    """Build the version group counts query.
+
+    Args:
+        include_product: Make product columns available to the
+            statistics, required to count versions by a product field
+            such as ``_product_attrib.<name>``.
+    """
+    query = GET_VERSION_GROUP_COUNTS_QUERY.replace(
+        "__PRODUCT_SELECTION__",
+        _GROUP_COUNTS_PRODUCT_SELECTION if include_product else "",
+    )
+    return _resolve_representation_filter(query)
 
 
 def get_versions_query(column_keys: set[str] | None = None) -> str:
@@ -180,9 +203,11 @@ def get_versions_query(column_keys: set[str] | None = None) -> str:
         version_fields.append("tags")
     if "featuredVersionType" in keys:
         version_fields.append("featuredVersionType")
-    if "productType" in keys:
+    # The Product/Version column paints the product type's icon and
+    # color, which resolve through the product base type.
+    if keys.intersection({"productType", "product/version"}):
         product_fields.append("productType")
-    if "productBaseType" in keys:
+    if keys.intersection({"productBaseType", "product/version"}):
         product_fields.append("productBaseType")
     if "productStatus" in keys:
         product_fields.append("status")

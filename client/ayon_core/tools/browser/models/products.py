@@ -1,6 +1,7 @@
 """Products model for loader tools."""
 from __future__ import annotations
 
+import threading
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -56,6 +57,7 @@ class ProductsModel:
         self._repre_items_cache = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime
         )
+        self._refresh_lock = threading.Lock()
 
     def reset(self) -> None:
         """Reset model with all cached data."""
@@ -171,18 +173,21 @@ class ProductsModel:
         if not project_name or not version_ids:
             return
 
-        try:
-            repre_items_by_version_id = self._get_repre_items_by_version_ids(
-                project_name, version_ids
-            )
+        repre_items_cache = self._repre_items_cache[project_name]
+        with self._refresh_lock:
+            try:
+                repre_items_by_version_id = (
+                    self._get_repre_items_by_version_ids(
+                        project_name, version_ids
+                    )
+                )
+                for version_id, repre_items in (
+                    repre_items_by_version_id.items()
+                ):
+                    repre_items_cache[version_id].update_data(repre_items)
 
-            repre_items_cache = self._repre_items_cache[project_name]
-            for version_id, repre_items in repre_items_by_version_id.items():
-                version_cache = repre_items_cache[version_id]
-                version_cache.update_data(repre_items)
-
-        except Exception:
-            pass
+            except Exception:
+                pass
 
     def _fill_versions_mapping(
         self, project_name: str, version_ids: set[str]
