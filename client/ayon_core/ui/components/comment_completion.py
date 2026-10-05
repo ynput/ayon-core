@@ -342,6 +342,8 @@ class MentionCompleter(QObject):
 
         self._completer.activated[QModelIndex].connect(self._insert_mention)
         text_edit.textChanged.connect(self._update_popup)
+        # Close the popup when the text cursor leaves the mention
+        text_edit.cursorPositionChanged.connect(self._update_popup)
         text_edit.installEventFilter(self)
 
     def set_users(self, users: list[User]) -> None:
@@ -402,6 +404,10 @@ class MentionCompleter(QObject):
 
         index = self._completer.popup().currentIndex()
         if not index.isValid():
+            return False
+        if self._find_trigger() is None:
+            # Nothing to complete, don't swallow the key
+            self._completer.popup().hide()
             return False
         self._insert_mention(index)
         return True

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor, QImage, QPainter
+from qtpy.QtGui import QColor, QImage, QPainter, QTextCursor
 from qtpy.QtWidgets import QStyleOptionViewItem
 
 from ayon_core.ui.components.comment import AYComment, AYCommentField
@@ -587,3 +587,50 @@ def test_highlight_after_emoji(qtbot, editor):
     editor._mentions._highlighter.rehighlight()
 
     assert _format_ranges(editor) == ["https://ynput.io", "@@v002"]
+
+
+def test_popup_closes_when_text_cursor_leaves_mention(qtbot, editor):
+    qtbot.keyClicks(editor, "hello @@")
+    assert _completions(editor)
+
+    qtbot.keyClick(editor, Qt.Key.Key_Home)
+    assert not editor._mentions.popup_visible()
+    # Enter is a regular new line instead of being swallowed
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert editor.toPlainText() == "\nhello @@"
+    assert "version:" not in editor.as_markdown()
+
+    # Back at the mention the popup opens again
+    qtbot.keyClick(editor, Qt.Key.Key_End)
+    assert len(_completions(editor)) == len(VERSIONS)
+
+
+def test_popup_closes_when_clicking_elsewhere(qtbot, editor):
+    qtbot.keyClicks(editor, "hello @@")
+    assert _completions(editor)
+
+    start = editor.cursorRect(QTextCursor(editor.document())).center()
+    qtbot.mouseClick(editor.viewport(), Qt.MouseButton.LeftButton, pos=start)
+    assert not editor._mentions.popup_visible()
+
+
+def test_popup_follows_text_cursor_in_mention(qtbot, editor):
+    qtbot.keyClicks(editor, "@@v002")
+    assert _completions(editor) == ["renderMain v002"]
+
+    # Text cursor behind "@@v00", which matches all versions
+    qtbot.keyClick(editor, Qt.Key.Key_Left)
+    assert len(_completions(editor)) == len(VERSIONS)
+
+
+def test_enter_not_swallowed_by_stale_popup(qtbot, editor):
+    qtbot.keyClicks(editor, "hello @@")
+    # A popup left open while nothing is being completed
+    editor.blockSignals(True)
+    qtbot.keyClick(editor, Qt.Key.Key_Home)
+    editor.blockSignals(False)
+    assert editor._mentions.popup_visible()
+
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert not editor._mentions.popup_visible()
+    assert editor.toPlainText() == "\nhello @@"
