@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import typing
 from typing import Iterable, Any, Callable
 
@@ -67,8 +67,8 @@ class ProductGroupsInfo:
             folders of the selected products.
     """
 
-    selected: set[str]
-    available: set[str]
+    selected: set[str] = field(default_factory=set)
+    available: set[str] = field(default_factory=set)
 
     def to_data(self) -> dict[str, Any]:
         return dict(
