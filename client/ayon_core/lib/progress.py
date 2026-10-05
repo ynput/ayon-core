@@ -82,22 +82,6 @@ class ProgressReporter:
         self._state = ProgressState(label=label, total=total)
 
     # --- describing the run
-    def set_label(self, label: str) -> None:
-        """Set the overall task label.
-
-        Args:
-            label: New label.
-        """
-        self._mutate(label=label)
-
-    def set_message(self, message: str) -> None:
-        """Set the message describing the current step.
-
-        Args:
-            message: New message.
-        """
-        self._mutate(message=message)
-
     def set_phases(
         self,
         phases: Iterable[str | tuple[str, float]] | Mapping[str, float],
@@ -117,7 +101,7 @@ class ProgressReporter:
                 self._phases.setdefault(name, max(0.0, float(weight)))
                 self._phase_progress.setdefault(name, 0.0)
             self._state = self._with_overall(self._state)
-        self._publish()
+        self.flush()
 
     def set_phase(self, phase: str, weight: float = 1.0) -> None:
         """Switch to *phase*, resetting the phase counters.
@@ -134,7 +118,7 @@ class ProgressReporter:
             self._state = self._with_overall(
                 replace(self._state, phase=phase, completed=0, total=None)
             )
-        self._publish()
+        self.flush()
 
     def set_total(self, total: int | None) -> None:
         """Set the total number of steps for the current phase.
@@ -194,7 +178,7 @@ class ProgressReporter:
             self._state = self._with_overall(
                 replace(state, finished=True)
             )
-        self._publish(force=True)
+        self.flush()
 
     def fail(self, message: str = "") -> None:
         """Mark the run as failed.
@@ -212,7 +196,7 @@ class ProgressReporter:
                     message=message or self._state.message,
                 )
             )
-        self._publish(force=True)
+        self.flush()
 
     # --- observation
     def add_listener(

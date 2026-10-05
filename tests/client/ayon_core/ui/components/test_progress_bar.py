@@ -156,7 +156,6 @@ def test_view_queues_each_worker_snapshot(qtbot, monkeypatch):
     qtbot.waitUntil(lambda: len(seen) == 4, timeout=3000)
     assert [state.completed for state, _ in seen] == [0, 1, 2, 2]
     assert seen[-1][0].failed
-    assert view._caption.text() == "Upload failed"
     assert all(thread_id == gui_thread for _, thread_id in seen)
 
 

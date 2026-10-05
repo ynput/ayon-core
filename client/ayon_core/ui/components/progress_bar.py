@@ -419,7 +419,6 @@ class AYProgressView(AYContainer):
         self._bar.progress_changed.connect(self._on_progress_changed)
         self._bar.progress_changed.connect(self.progress_changed.emit)
         self._bar.completed.connect(self._on_bar_completed)
-        self._sync_value()
 
         self._reporter: ProgressReporter | None = None
         self._reporter_completed = False
@@ -465,6 +464,8 @@ class AYProgressView(AYContainer):
             if not self._reporter_completed:
                 self._reporter_completed = True
                 self.completed.emit()
+        else:
+            self.set_state(ProgressBarState.Normal)
 
     # --- private
     def _on_bar_completed(self) -> None:
@@ -472,11 +473,7 @@ class AYProgressView(AYContainer):
         if self._reporter is None:
             self.completed.emit()
 
-    def _on_progress_changed(self, current: int, total: int) -> None:
-        """Refresh the percentage readout when progress changes."""
-        self._sync_value()
-
-    def _sync_value(self) -> None:
+    def _on_progress_changed(self) -> None:
         """Update the percentage label to match the current progress."""
         if not self._show_value or self._bar.is_indeterminate:
             self._value_label.setText("")
@@ -504,12 +501,6 @@ class AYProgressView(AYContainer):
             return
         self._caption.setText(text)
 
-    def set_show_value(self, visible: bool) -> None:
-        """Show or hide the percentage readout."""
-        self._show_value = bool(visible)
-        self._value_label.setVisible(self._show_value)
-        self._sync_value()
-
     def set_total(self, total: int | None) -> None:
         """Set the total number of steps (``None`` for indeterminate)."""
         self._bar.set_total(total)
@@ -530,6 +521,7 @@ class AYProgressView(AYContainer):
         """Reset the bar and clear the percentage readout."""
         self._reporter_completed = False
         self._bar.reset()
+        self._value_label.setText("")
 
 
 class AYProgressDialog(QDialog):

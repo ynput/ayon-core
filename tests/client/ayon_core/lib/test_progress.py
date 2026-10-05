@@ -76,3 +76,23 @@ def test_thread_safety():
     for t in threads:
         t.join()
     assert reporter.snapshot().completed == 400
+
+
+def test_terminal_state_set_from_callback_is_delivered():
+    """A callback that ends the run must still receive the final state.
+
+    The re-entrant ``finish()`` cannot deliver anything itself, so the
+    trailing pass of the running delivery has to send it.
+    """
+    reporter = ProgressReporter(total=1)
+    seen = []
+
+    def listener(state):
+        seen.append((state.completed, state.finished))
+        if state.completed == state.total and not state.finished:
+            reporter.finish()
+
+    reporter.add_listener(listener, emit_immediately=False)
+    reporter.step()
+
+    assert seen == [(1, False), (1, True)]
