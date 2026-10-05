@@ -147,3 +147,31 @@ def test_change_products_group_emits_event(
     assert events == [
         {"project_name": "demo", "product_ids": {"p1"}, "group_name": "A"}
     ]
+
+
+def test_can_change_products_group_is_cached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    def get(url: str, **_kwargs: Any) -> FakeResponse:
+        calls.append(url)
+        return FakeResponse({"attrib_write": {"enabled": False}})
+
+    monkeypatch.setattr(
+        products_module.ayon_api, "get_user", lambda: {"data": {}}
+    )
+    monkeypatch.setattr(products_module.ayon_api, "get", get)
+    model = ProductsModel()
+
+    assert model.can_change_products_group("demo") is True
+    assert model.can_change_products_group("demo") is True
+    assert len(calls) == 1
+
+    # Each project has its own permissions
+    model.can_change_products_group("other")
+    assert len(calls) == 2
+
+    model.reset()
+    model.can_change_products_group("demo")
+    assert len(calls) == 3

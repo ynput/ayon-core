@@ -48,6 +48,8 @@ class ProductsModel:
     """
 
     lifetime = 60  # In seconds (minute by default)
+    # Permissions of a user rarely change
+    permissions_lifetime = 300  # In seconds
 
     def __init__(self):
         self._project_cache: dict[str, ProjectCache] = defaultdict(
@@ -58,6 +60,9 @@ class ProductsModel:
         self._repre_items_cache = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime
         )
+        self._can_change_group_cache = NestedCacheItem(
+            levels=1, lifetime=self.permissions_lifetime
+        )
         self._refresh_lock = threading.Lock()
 
     def reset(self) -> None:
@@ -66,6 +71,7 @@ class ProductsModel:
         self._project_cache.clear()
 
         self._repre_items_cache.reset()
+        self._can_change_group_cache.reset()
 
     def get_versions_repre_count(
         self, project_name: str, version_ids: set[str]
@@ -214,6 +220,8 @@ class ProductsModel:
         access groups restrict attribute writing in the project and
         'productGroup' is not among the writable attributes.
 
+        The result is cached per project.
+
         Args:
             project_name (str): Project name.
 
@@ -221,6 +229,14 @@ class ProductsModel:
             bool: Product group attribute can be changed by the user.
 
         """
+        cache = self._can_change_group_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(self._query_can_change_products_group(
+                project_name
+            ))
+        return cache.get_data()
+
+    def _query_can_change_products_group(self, project_name: str) -> bool:
         # REST user has the role flags under 'data'
         user_data = ayon_api.get_user().get("data") or {}
         if any(
