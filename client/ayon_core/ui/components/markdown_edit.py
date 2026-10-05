@@ -152,6 +152,31 @@ class AYMarkdownEdit(AYTextEdit):
         super().clear()
         self.setCurrentCharFormat(QTextCharFormat())
 
+    def insertFromMimeData(self, source) -> None:
+        """Paste without the underline of rich text.
+
+        Rich text from the clipboard has its links underlined, also when
+        copied from a comment. Markdown has no underline, it is written as
+        emphasis: text typed after a pasted link continued its underline
+        and ended up in the comment with ``_`` around it.
+        """
+        no_underline = QTextCharFormat()
+        no_underline.setFontUnderline(False)
+
+        cursor = self.textCursor()
+        start = cursor.selectionStart()
+        cursor.beginEditBlock()
+        try:
+            super().insertFromMimeData(source)
+            cursor = self.textCursor()
+            end = cursor.position()
+            cursor.setPosition(start)
+            cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+            cursor.mergeCharFormat(no_underline)
+        finally:
+            cursor.endEditBlock()
+        self.mergeCurrentCharFormat(no_underline)
+
     # CHECKBOXES -------------------------------------------------------------
 
     def _setup_checkbox_handler(self) -> CheckboxHandler:

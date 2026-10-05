@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from qtpy.QtCore import Qt
+from qtpy.QtCore import QMimeData, Qt
 from qtpy.QtGui import QColor, QImage, QPainter, QTextCursor
 from qtpy.QtWidgets import QStyleOptionViewItem
 
@@ -970,6 +970,68 @@ def test_text_box_and_comment_request_entities(qtbot, text_box):
     ]
 
 
+def _underlined(editor: AYTextEditor) -> list[str]:
+    """Texts of the first block which are underlined."""
+    texts = []
+    it = editor.document().firstBlock().begin()
+    while not it.atEnd():
+        fragment = it.fragment()
+        it += 1
+        if fragment.charFormat().fontUnderline():
+            texts.append(fragment.text())
+    return texts
+
+
+def _paste_comment(qtbot, editor: AYTextEditor, stored: str) -> None:
+    """Copy all of a displayed comment and paste it in the editor."""
+    field = AYCommentField(text=stored, read_only=True, user_list=USERS)
+    qtbot.addWidget(field)
+    field.selectAll()
+    editor.insertFromMimeData(field.createMimeDataFromSelection())
+
+
+def test_pasted_comment_is_not_underlined(qtbot, editor):
+    stored = f"[site](https://ynput.io) {STORED}"
+    _paste_comment(qtbot, editor, stored)
+
+    assert _underlined(editor) == []
+    assert not editor.currentCharFormat().fontUnderline()
+    # The links are kept
+    assert _markdown(editor) == stored
+
+    # Text and mentions typed after the pasted link
+    qtbot.keyClicks(editor, " and @@v002")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    qtbot.keyClicks(editor, "@@@light")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert _underlined(editor) == []
+    assert "_" not in editor.as_markdown()
+    assert _markdown(editor).endswith(
+        "and [v002](version:v2id) [lighting](task:t2id)"
+    )
+
+
+def test_paste_over_selection_and_undo(qtbot, editor):
+    qtbot.keyClicks(editor, "replace me")
+    editor.selectAll()
+    _paste_comment(qtbot, editor, "see [v003](version:v3id)")
+    assert editor.toPlainText() == "see @@v003"
+    assert _underlined(editor) == []
+
+    # Pasting is a single step to undo
+    editor.undo()
+    assert editor.toPlainText() == "replace me"
+
+
+def test_paste_plain_text(qtbot, editor):
+    mime = QMimeData()
+    mime.setText("plain @@v003 text")
+    qtbot.keyClicks(editor, "some ")
+    editor.insertFromMimeData(mime)
+    assert editor.toPlainText() == "some plain @@v003 text"
+    assert _markdown(editor) == "some plain @@v003 text"
+
+
 @pytest.mark.parametrize(
     "stored",
     [
@@ -987,3 +1049,29 @@ def test_clear_resets_style_to_type_in(qtbot, editor, stored):
 
     qtbot.keyClicks(editor, "next comment")
     assert editor.as_markdown().strip() == "next comment"
+
+
+def test_mentions_after_submitting_pasted_comment(qtbot, text_box):
+    # The reported case: mentions picked after submitting a comment which
+    # was pasted were underlined with their spaces as one link, and stored
+    # with "_" between them.
+    editor = text_box.edit_field
+    _paste_comment(qtbot, editor, STORED)
+    qtbot.keyClicks(editor, " [Roy Nieterau](user:bigroy)")
+    with qtbot.waitSignal(text_box.signals.comment_submitted):
+        qtbot.keyClick(
+            editor, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier
+        )
+
+    for typed in ("@adm", "@@v002", "@@@light"):
+        qtbot.keyClicks(editor, typed)
+        qtbot.keyClick(editor, Qt.Key.Key_Return)
+    assert _underlined(editor) == []
+
+    with qtbot.waitSignal(text_box.signals.comment_submitted) as submitted:
+        qtbot.keyClick(
+            editor, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier
+        )
+    assert " ".join(submitted.args[0].replace("`", "").split()) == (
+        "[Ayon admin](user:admin) [v002](version:v2id) [lighting](task:t2id)"
+    )
