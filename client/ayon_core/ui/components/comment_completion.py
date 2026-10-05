@@ -58,6 +58,29 @@ _MENTION_TRIGGER_PATTERN = re.compile(
 )
 
 
+def _utf16_length(text: str) -> int:
+    """Length of a text the way Qt counts it.
+
+    Qt positions count UTF-16 code units, while Python counts code points.
+    They differ for characters outside of the Basic Multilingual Plane, like
+    most emoji, which take two UTF-16 code units.
+    """
+    if text.isascii():
+        return len(text)
+    return len(text.encode("utf-16-le")) // 2
+
+
+def _text_before_cursor(cursor: QTextCursor) -> str:
+    """Text of the block in front of a text cursor."""
+    cursor = QTextCursor(cursor)
+    cursor.setPosition(cursor.position())
+    cursor.movePosition(
+        QTextCursor.MoveOperation.StartOfBlock,
+        QTextCursor.MoveMode.KeepAnchor,
+    )
+    return cursor.selectedText()
+
+
 def is_mention_href(href: str) -> bool:
     """Whether a link target refers to a mentioned user or entity."""
     return bool(_MENTION_HREF_PATTERN.match(href))
@@ -353,13 +376,10 @@ class MentionCompleter(QObject):
         cursor = self._text_edit.textCursor()
         found = self._find_trigger()
         if found is not None:
-            cursor.setPosition(
-                cursor.block().position() + found[0],
-                QTextCursor.MoveMode.KeepAnchor,
-            )
+            cursor.setPosition(found[0], QTextCursor.MoveMode.KeepAnchor)
         else:
             # A mention is only completed at the start of a word
-            text_before = cursor.block().text()[:cursor.positionInBlock()]
+            text_before = _text_before_cursor(cursor)
             if text_before and not text_before[-1].isspace():
                 trigger = f" {trigger}"
         cursor.insertText(trigger)
@@ -443,15 +463,17 @@ class MentionCompleter(QObject):
         """Find the mention being typed in front of the text cursor.
 
         Returns:
-            Position of the trigger in the block, the trigger and the search
-            text typed after it. None if no mention is being typed.
+            Position of the trigger in the document, the trigger and the
+            search text typed after it. None if no mention is being typed.
         """
         cursor = self._text_edit.textCursor()
-        text = cursor.block().text()[:cursor.positionInBlock()]
-        match = _MENTION_TRIGGER_PATTERN.search(text)
+        match = _MENTION_TRIGGER_PATTERN.search(_text_before_cursor(cursor))
         if not match:
             return None
-        return match.start("trigger"), match["trigger"], match["prefix"]
+        # The mention being typed ends at the text cursor
+        typed = match["trigger"] + match["prefix"]
+        start = cursor.position() - _utf16_length(typed)
+        return start, match["trigger"], match["prefix"]
 
     def _populate(self, trigger: str) -> None:
         """Fill the completer with the items of a trigger."""
@@ -550,7 +572,7 @@ class MentionCompleter(QObject):
 
         cursor = self._text_edit.textCursor()
         end = cursor.position()
-        start = end - cursor.positionInBlock() + found[0]
+        start = found[0]
 
         # Keep the surrounding style, the text typed after the mention
         # should not be part of the link.
@@ -668,7 +690,7 @@ class MentionHighlighter(QSyntaxHighlighter):
         # ── Edit mode: raw fence markers ─────────────────────────────────
         if in_fence:
             # The entire line belongs to the open fenced block.
-            self.setFormat(0, len(text), code_fmt)
+            self.setFormat(0, _utf16_length(text), code_fmt)
             # A line starting with ``` closes the fence.
             if text.startswith("```"):
                 self.setCurrentBlockState(0)
@@ -677,7 +699,7 @@ class MentionHighlighter(QSyntaxHighlighter):
             return
 
         if text.startswith("```"):
-            self.setFormat(0, len(text), code_fmt)
+            self.setFormat(0, _utf16_length(text), code_fmt)
             rest = text[3:]
             # Closing ``` on the same line → single-line block, no state.
             if "```" in rest:
@@ -695,17 +717,17 @@ class MentionHighlighter(QSyntaxHighlighter):
         # Style the whole line and skip mention/URL patterns — they don't
         # belong inside code.
         if block.blockFormat().nonBreakableLines():
-            self.setFormat(0, len(text), code_fmt)
+            self.setFormat(0, _utf16_length(text), code_fmt)
             return
 
         # ── Mentions and URLs (applied before inline code) ───────────────
-        self.setFormat(0, len(text), self._plain_fmt)
+        self.setFormat(0, _utf16_length(text), self._plain_fmt)
 
         # Version (@@), task (@@@) mentions and raw URLs
         for pattern in (self._P_ENTITY, self._P_RAW_LINK):
             for m in pattern.finditer(text):
-                self.setFormat(
-                    m.start(), m.end() - m.start(), self._mention_fmt
+                self._set_text_format(
+                    text, m.start(), m.end(), self._mention_fmt
                 )
 
         # User mentions (@) — highlight only the first word unless the full
@@ -717,14 +739,16 @@ class MentionHighlighter(QSyntaxHighlighter):
                 length = len(full_match)
             else:
                 length = len(full_match.split()[0])
-            self.setFormat(m.start(), length, self._mention_fmt)
+            self._set_text_format(
+                text, m.start(), m.start() + length, self._mention_fmt
+            )
 
         # ── Inline code (overrides mention formatting) ───────────────────
 
         # Raw backtick syntax `code` — detected in plain text for live
         # editing where backtick characters are still present:
         for m in self._P_CODE_INLINE.finditer(text):
-            self.setFormat(m.start(), m.end() - m.start(), code_fmt)
+            self._set_text_format(text, m.start(), m.end(), code_fmt)
 
         # ── Rich text fragments ──────────────────────────────────────────
         # Qt-rendered inline code spans — after setMarkdown() the backticks
@@ -746,6 +770,20 @@ class MentionHighlighter(QSyntaxHighlighter):
             self.setFormat(
                 fragment.position() - block.position(), fragment.length(), fmt
             )
+
+    def _set_text_format(
+        self, text: str, start: int, end: int, fmt: QTextCharFormat
+    ) -> None:
+        """Format a range of the block given as indexes of its text.
+
+        ``setFormat()`` counts UTF-16 code units like Qt does, which are
+        not the indexes of a Python string once the text has characters
+        like emoji in it.
+        """
+        if not text.isascii():
+            end = _utf16_length(text[:end])
+            start = _utf16_length(text[:start])
+        self.setFormat(start, end - start, fmt)
 
     def _get_code_char_format(self) -> QTextCharFormat:
         """Return a QTextCharFormat for inline code spans."""

@@ -535,3 +535,55 @@ def test_icons_do_not_change_completion_or_markdown(qtbot, editor):
     assert _completions(editor) == ["renderMain v003"]
     qtbot.keyClick(editor, Qt.Key.Key_Return)
     assert _markdown(editor) == "[v003](version:v3id)"
+
+
+@pytest.mark.parametrize(
+    "before",
+    ["\U0001F600 see ", "\U0001F600\U0001F600 see ", "see \U0001F600 "],
+    ids=["one_emoji", "two_emoji", "emoji_in_front"],
+)
+def test_pick_mention_after_emoji(qtbot, editor, before):
+    # Emoji take two positions in the document but are one character
+    # of a Python string.
+    editor.insertPlainText(before)
+    qtbot.keyClicks(editor, "@@v002")
+    assert _completions(editor) == ["renderMain v002"]
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+
+    assert editor.toPlainText() == f"{before}@@v002 "
+    assert _markdown(editor) == f"{before}[v002](version:v2id)"
+
+
+def test_mention_button_after_emoji(qtbot, text_box):
+    editor = text_box.edit_field
+    editor.insertPlainText("\U0001F600\U0001F600 see ")
+    qtbot.keyClicks(editor, "@@v0")
+    text_box._add_mention_to_editor("@@@")
+    assert editor.toPlainText() == "\U0001F600\U0001F600 see @@@"
+
+    editor.clear()
+    editor.insertPlainText("see\U0001F600")
+    text_box._add_mention_to_editor("@")
+    assert editor.toPlainText() == "see\U0001F600 @"
+
+
+def _format_ranges(editor: AYTextEditor) -> list[str]:
+    """Texts of the first block the highlighter colors as link."""
+    block = editor.document().firstBlock()
+    link = editor._mentions._highlighter._mention_fmt.foreground().color()
+    # Qt counts UTF-16 code units
+    encoded = block.text().encode("utf-16-le")
+    return [
+        encoded[2 * r.start:2 * (r.start + r.length)].decode("utf-16-le")
+        for r in block.layout().formats()
+        if r.format.foreground().color() == link
+    ]
+
+
+def test_highlight_after_emoji(qtbot, editor):
+    editor.insertPlainText("\U0001F600 https://ynput.io and ")
+    qtbot.keyClicks(editor, "@@v002")
+    qtbot.keyClick(editor, Qt.Key.Key_Return)
+    editor._mentions._highlighter.rehighlight()
+
+    assert _format_ranges(editor) == ["https://ynput.io", "@@v002"]
