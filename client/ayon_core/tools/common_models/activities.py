@@ -224,7 +224,7 @@ class ActivitiesModel:
             model.status = version.get("status") or ""
             thumbnail_id = version.get("thumbnailId")
             if thumbnail_id:
-                model.thumbnail_src = (
+                model.thumbnail_key = (
                     f"{project_name}/{version_id}/{thumbnail_id}"
                 )
 

@@ -116,7 +116,7 @@ def test_feed_is_deduplicated_and_newest_first(fake_server):
     # Current status and thumbnail come from the published version
     assert fake_server["versions"]["version_ids"] == {"version_id"}
     assert publish.status == "Approved"
-    assert publish.thumbnail_src == "demo/version_id/t1"
+    assert publish.thumbnail_key == "demo/version_id/t1"
     assert feed.statuses == [
         {
             "text": "Approved",
