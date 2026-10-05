@@ -36,6 +36,16 @@ def short_date(date_str: str) -> str:
 def relative_date(date_str: str) -> str:
     """Format a date as the time passed since, e.g. ``"13 hours"``.
 
+    This is the wording of the activity feed in the web frontend: only
+    the largest unit, also for dates that are months or years old. It is
+    meant for feeds where the exact date is one hover away, see
+    :func:`short_date`.
+
+    It is not a replacement of
+    :func:`ayon_core.tools.utils.delegates.pretty_date`, which the tools
+    use for table columns: that one is relative only for the last day and
+    shows the full date after it, because there the date itself matters.
+
     Args:
         date_str: Date in ISO format.
 
@@ -110,6 +120,17 @@ class StatusChangeModel:
 
 @dataclass(unsafe_hash=True)
 class VersionPublishModel:
+    """Publish of a version.
+
+    Attributes:
+        status: Current status of the published version, not the status
+            it had when it was published. Not shown when empty.
+        thumbnail_key: Key of the version thumbnail in the
+            :class:`~ayon_core.ui.image_cache.ImageCache`. The thumbnail
+            is shown if the key is cached, otherwise the widget asks its
+            thumbnail loader for it. Not shown when empty.
+    """
+
     activity_id: str = ""
     user_full_name: str = ""
     user_name: str = ""
@@ -117,10 +138,8 @@ class VersionPublishModel:
     version: str = ""
     product: str = ""
     date: str = ""
-    # Current status of the published version
     status: str = field(default="", hash=False)
-    # Image cache key or path of the version thumbnail
-    thumbnail_src: str = field(default="", hash=False)
+    thumbnail_key: str = field(default="", hash=False)
     short_date: str = field(init=False, hash=False)
     type: ActivityCategory = field(
         init=False, default=ActivityCategory.VERSION_PUBLISH, hash=False

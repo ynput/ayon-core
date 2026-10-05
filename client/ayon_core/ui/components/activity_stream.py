@@ -61,7 +61,7 @@ class AYActivityStream(AYContainer):
         user_list: Project users, used to render user mentions.
         thumbnail_loader: Non-blocking loader of thumbnails of published
             versions, called as ``(key, on_loaded)`` with the
-            ``thumbnail_src`` of a publish that is not a cached image.
+            ``thumbnail_key`` of a publish that is not in the image cache.
         **kwargs: Forwarded to ``AYContainer``.
     """
 

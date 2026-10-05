@@ -69,7 +69,8 @@ logger = logging.getLogger(__name__)
 
 # ACTIVITY ROWS --------------------------------------------------------------
 
-# Non-blocking '(key, on_loaded)' loader, see 'AYEntityThumbnail'
+# Non-blocking loader of an image that is not in the 'ImageCache' yet,
+#   called as '(key, on_loaded)', see 'AYEntityThumbnail'
 ThumbnailLoader = Optional[Callable[[str, Callable[[str], None]], None]]
 
 _NOT_AVAILABLE = {"", "n/a", "Not available"}
@@ -315,8 +316,8 @@ class AYPublish(AYActivityRow):
         status_definitions: Project statuses, see
             :func:`_create_status_label`.
         thumbnail_loader: Non-blocking loader called as
-            ``(key, on_loaded)`` with the ``thumbnail_src`` of the publish
-            when it is not a cached image.
+            ``(key, on_loaded)`` with the ``thumbnail_key`` of the publish
+            when the key is not in the image cache yet.
         **kwargs: Forwarded to ``AYActivityRow``.
     """
 
@@ -376,9 +377,9 @@ class AYPublish(AYActivityRow):
         text.add_widget(version_line)
         self.detail.add_widget(text, stretch=1)
 
-        if data.thumbnail_src:
+        if data.thumbnail_key:
             self.thumbnail = AYEntityThumbnail(
-                src=data.thumbnail_src,
+                src=data.thumbnail_key,
                 async_file_cacher=thumbnail_loader,
                 size=(64, 36),
                 fill_area=True,

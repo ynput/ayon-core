@@ -92,21 +92,31 @@ def test_publish_card_shows_version_status_and_thumbnail(
             product="modelMain",
             version="v003",
             status="Approved",
-            thumbnail_src=thumbnail_src,
+            thumbnail_key=thumbnail_key,
             date="2026-10-01T10:00:00+00:00",
         )
-        for activity_id, thumbnail_src in (
-            ("a", str(image_path)),
+        for activity_id, thumbnail_key in (
+            ("a", "test_activity_stream/version/thumbnail"),
             ("b", ""),
         )
     )
-    stream = AYActivityStream(status_definitions=STATUSES)
+    requested_keys = []
+
+    def thumbnail_loader(key: str, on_loaded) -> None:
+        requested_keys.append(key)
+        on_loaded(str(image_path))
+
+    stream = AYActivityStream(
+        status_definitions=STATUSES, thumbnail_loader=thumbnail_loader
+    )
     qtbot.addWidget(stream)
     stream.set_activities([with_thumbnail, without_thumbnail])
 
     rows = [widget for _, widget in stream._widgets]
     assert rows[0].thumbnail is not None
     assert rows[1].thumbnail is None
+    # The key is not in the image cache, so it is asked from the loader
+    assert requested_keys == ["test_activity_stream/version/thumbnail"]
     # Labels with an icon or elide keep their text in '_text'
     labels = {
         getattr(label, "_text", "") or label.text()
