@@ -53,3 +53,35 @@ def test_failed_task_delivers_callback_when_logging_raises(
     queue._drain_callback_queue()
 
     assert results == [None]
+
+
+def test_successful_task_delivers_single_callback_when_logging_raises(
+    qtbot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failing completion log does not turn a success into a failure.
+
+    The result was already delivered, so a second ``None`` callback would
+    make the requesting model believe the fetch failed.
+    """
+
+    def raising_log(*_args: Any, **_kwargs: Any) -> None:
+        raise SystemError("<built-in function write> returned a result")
+
+    def raising_completion_log(msg: str, *_args: Any, **_kwargs: Any) -> None:
+        if msg.startswith("Task completed successfully"):
+            raising_log()
+
+    monkeypatch.setattr(task_queue.log, "debug", raising_completion_log)
+    monkeypatch.setattr(task_queue.log, "exception", raising_log)
+
+    results: list[Any] = []
+    queue = AsyncTaskQueue()
+    task = AsyncTask(
+        name="successful", function=lambda: "value", callback=results.append
+    )
+
+    with pytest.raises(SystemError):
+        queue._run_task_in_pool(task)
+    queue._drain_callback_queue()
+
+    assert results == ["value"]
