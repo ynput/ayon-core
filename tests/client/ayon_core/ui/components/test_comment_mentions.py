@@ -562,11 +562,11 @@ def test_edit_comment_keeps_mentions(qtbot):
     assert _markdown(field) == f"{STORED} and [lighting](task:t2id)"
 
 
-def _paint_row(editor: AYTextEditor, row: int) -> QImage:
+def _paint_row(editor: AYTextEditor, row: int, width: int = 400) -> QImage:
     """Paint a row of the open popup the way its delegate does."""
     popup = editor._mentions._completer.popup()
     index = editor._mentions._completer.completionModel().index(row, 0)
-    image = QImage(400, 28, QImage.Format.Format_ARGB32)
+    image = QImage(width, 28, QImage.Format.Format_ARGB32)
     image.fill(Qt.GlobalColor.transparent)
     option = QStyleOptionViewItem()
     option.rect = image.rect()
@@ -769,3 +769,30 @@ def test_enter_not_swallowed_by_stale_popup(qtbot, editor):
     qtbot.keyClick(editor, Qt.Key.Key_Return)
     assert not editor._mentions.popup_visible()
     assert editor.toPlainText() == "\nhello @@"
+
+
+def test_narrow_popup_does_not_paint_label_over_suffix(qtbot, editor):
+    suffix = "22 minutes ago"
+    editor.set_mention_entities(
+        [
+            EntityMention(
+                "version", "v3id", "v003",
+                "aVeryLongProductNameWhichDoesNotFitInTheRow" * 3,
+                suffix=suffix,
+            ),
+            EntityMention("version", "v2id", "", "", suffix=suffix),
+        ],
+        [],
+    )
+    qtbot.keyClicks(editor, "@@")
+
+    # The row with only an icon and suffix shows what the suffix paints
+    for width in (400, 160, 90, 40):
+        long_row = _paint_row(editor, 0, width)
+        suffix_row = _paint_row(editor, 1, width)
+        suffix_width = editor.fontMetrics().horizontalAdvance(suffix)
+        for x in range(max(28, width - suffix_width), width):
+            for y in range(long_row.height()):
+                assert long_row.pixelColor(x, y) == suffix_row.pixelColor(
+                    x, y
+                ), f"label painted over the suffix at width {width}"
