@@ -87,6 +87,10 @@ class VersionPublishModel:
     version: str = ""
     product: str = ""
     date: str = ""
+    # Current status of the published version
+    status: str = field(default="", hash=False)
+    # Image cache key or path of the version thumbnail
+    thumbnail_src: str = field(default="", hash=False)
     short_date: str = field(init=False, hash=False)
     type: ActivityCategory = field(
         init=False, default=ActivityCategory.VERSION_PUBLISH, hash=False
