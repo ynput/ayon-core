@@ -5,7 +5,7 @@
 
 [project]
 name = "ayon-core"
-version = "1.9.13+dev"
+version = "1.9.14+dev"
 description = "AYON core provides the base building blocks for all other AYON addons and integrations and is responsible for discovery and initialization of other addons."
 authors = [
     {name = "Ynput s.r.o.", email = "info@ynput.io"}
@@ -33,7 +33,8 @@ dependencies = [
     "numpy >=2.4.3",
     "qtpy >=2.4.3",
     "pyside6 >=6.8.3",
-    "Pillow ==9.5.0"
+    "Pillow ==9.5.0",
+    "qtawesome ==0.7.3"
 ]
 
 [project.optional-dependencies]
