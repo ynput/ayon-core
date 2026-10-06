@@ -10,3 +10,4 @@ class BrowserSlicerCategory(Enum):
 
     HIERARCHY = "Hierarchy"
     REVIEWS = "Reviews"
+    LISTS = "Lists"

@@ -11,7 +11,7 @@ import re
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from typing import Any
 
@@ -117,6 +117,57 @@ _QUERY_CONDITION_KEYS = (
     "folder_conditions",
     "representation_conditions",
 )
+
+
+#: Slicer categories whose tree holds entity lists instead of folders.
+_ENTITY_LIST_CATEGORIES = frozenset({
+    BrowserSlicerCategory.REVIEWS.value,
+    BrowserSlicerCategory.LISTS.value,
+})
+
+#: Slicer categories that can narrow the versions by folders, for which
+#: including the versions of their child folders applies.
+FOLDER_SLICER_CATEGORIES = frozenset({
+    BrowserSlicerCategory.HIERARCHY.value,
+    BrowserSlicerCategory.LISTS.value,
+})
+
+#: Icon of an entity list by the entity type it holds, matching the
+#: AYON frontend.
+_ENTITY_LIST_TYPE_ICONS = {
+    "folder": "folder",
+    "task": "check_circle",
+    "product": "inventory_2",
+    "version": "layers",
+    "representation": "view_in_ar",
+    "workfile": "home_repair_service",
+}
+_REVIEW_SESSION_ICON = "subscriptions"
+_ENTITY_LIST_FALLBACK_ICON = "list_alt"
+_ENTITY_LIST_FOLDER_ICON = "snippet_folder"
+_ENTITY_LIST_FOLDER_ID_PREFIX = "folder-"
+
+
+@dataclass
+class _ListEntityIds:
+    """Entities of the entity lists selected in the slicer.
+
+    Lists of different entity types narrow the versions together, each
+    by its own entity type.
+    """
+
+    folder_ids: list[str] = field(default_factory=list)
+    task_ids: list[str] = field(default_factory=list)
+    product_ids: list[str] = field(default_factory=list)
+    version_ids: list[str] = field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return bool(
+            self.folder_ids
+            or self.task_ids
+            or self.product_ids
+            or self.version_ids
+        )
 
 
 @dataclass
@@ -272,8 +323,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._appearance_defaults: dict[str, dict[str, Any]] = {}
         self._boolean_attr_defaults: dict[str, dict[str, bool]] = {}
         self._user_full_names: dict[str, str] = {}
-        self._review_sessions_cache: list[dict[str, Any]] = []
-        self._review_sessions_loaded: bool = False
+        self._entity_lists_cache: list[dict[str, Any]] = []
+        self._entity_list_folders_cache: list[dict[str, Any]] = []
+        self._entity_lists_loaded: bool = False
         # Cursor of every page that can be fetched next, keyed by
         # ``_page_key()`` + page number.
         self._page_cursors: dict[tuple[Any, ...], str] = {}
@@ -287,7 +339,7 @@ class BrowserWidgetController(QtCore.QObject):
         )
         self._selected_folder_ids: list[str] = []
         self._selected_task_ids: list[str] = []
-        self._review_session_version_ids: list[str] | None = None
+        self._list_entity_ids: _ListEntityIds | None = None
         self._version_attributes: dict[str, Any] = {}
         self._attributes_by_scope: dict[
             str, dict[str, dict[str, Any]]
@@ -356,7 +408,11 @@ class BrowserWidgetController(QtCore.QObject):
         return self._include_folder_children
 
     def set_include_folder_children(self, enabled: bool) -> None:
-        """Set descendant-folder querying for the hierarchy slicer."""
+        """Set descendant-folder querying for the selected folders.
+
+        Applies to the folders of the Hierarchy slicer and to those of
+        the folder lists of the Lists slicer.
+        """
         enabled = bool(enabled)
         if self._include_folder_children == enabled:
             return
@@ -608,8 +664,9 @@ class BrowserWidgetController(QtCore.QObject):
         if self._current_project == project_name:
             return
         self._current_project = project_name
-        self._review_sessions_cache = []
-        self._review_sessions_loaded = False
+        self._entity_lists_cache = []
+        self._entity_list_folders_cache = []
+        self._entity_lists_loaded = False
         self._reset_pagination()
         self._selected_folder_ids = []
         self._selected_task_ids = []
@@ -624,10 +681,10 @@ class BrowserWidgetController(QtCore.QObject):
             self._request_project_info(project_name)
         else:
             self._apply_project_info(project_info_data)
-        # Only the Reviews category reads the list, so a project switch
-        # while Hierarchy is showing leaves it for later.
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
-            self._ensure_review_session_list()
+        # Only the Reviews and Lists categories read the lists, so a
+        # project switch while Hierarchy is showing leaves it for later.
+        if self._is_entity_list_category():
+            self._ensure_entity_lists()
         self.project_changed.emit(project_name)
         if project_info_data is not None:
             self.project_info_changed.emit()
@@ -636,29 +693,30 @@ class BrowserWidgetController(QtCore.QObject):
         """Set the active slicer category.
 
         Resets per-category state so switching back and forth between
-        ``Hierarchy`` and ``Reviews`` never leaves stale group-by or
-        tree-mode flags behind.  Reviews are always a flat version list,
-        while Hierarchy restores the group-by / tree-mode combination
-        derived from the current ``group_by_key``.
+        ``Hierarchy`` and ``Reviews`` or ``Lists`` never leaves stale
+        group-by or tree-mode flags behind.  Reviews and Lists are always
+        a flat version list, while Hierarchy restores the group-by /
+        tree-mode combination derived from the current ``group_by_key``.
 
         Args:
-            category: Category name, e.g. ``"Hierarchy"`` or ``"Reviews"``.
+            category: Category name, e.g. ``"Hierarchy"``, ``"Reviews"``
+                or ``"Lists"``.
         """
         if self._current_category == category:
             return
         self._current_category = category
         self._selected_folder_ids = []
         self._selected_task_ids = []
-        self._review_session_version_ids = None
+        self._list_entity_ids = None
 
-        if category == BrowserSlicerCategory.REVIEWS.value:
-            # Entering Reviews is the first point the session list is
-            # actually needed, and this runs on the main thread - which
-            # :meth:`_ensure_review_session_list` requires.
-            self._ensure_review_session_list()
-            # Reviews are always flat — drop any grouping/tree state that
-            # was active in the Hierarchy view so the table fetch path
-            # takes the plain flat-version branch.
+        if self._is_entity_list_category():
+            # Entering Reviews or Lists is the first point the entity
+            # lists are actually needed, and this runs on the main
+            # thread - which :meth:`_ensure_entity_lists` requires.
+            self._ensure_entity_lists()
+            # Reviews and Lists are always flat — drop any grouping/tree
+            # state that was active in the Hierarchy view so the table
+            # fetch path takes the plain flat-version branch.
             self._group_by_key = GROUP_BY_NONE_KEY
             self._tree_mode = False
         else:
@@ -743,25 +801,18 @@ class BrowserWidgetController(QtCore.QObject):
                 the selection is cleared.
         """
         previous_folder_ids = self._selected_folder_ids
-        previous_review_version_ids = self._review_session_version_ids
+        previous_list_entity_ids = self._list_entity_ids
         self._selected_folder_ids = list(ids)
-        self._review_session_version_ids = None  # always clear first
+        self._list_entity_ids = None  # always clear first
 
-        if (
-            self._current_category == BrowserSlicerCategory.REVIEWS.value
-            and ids
-        ):
-            ids_set: set[str] = set()
-            for sid in ids:
-                ids_set.update(self._get_review_session_version_ids(sid))
-            self._review_session_version_ids = (
-                list(ids_set) if ids_set else None
+        if self._is_entity_list_category() and ids:
+            self._list_entity_ids = (
+                self._get_entity_list_entity_ids(ids) or None
             )
 
         if (
             self._selected_folder_ids == previous_folder_ids
-            and self._review_session_version_ids
-            == previous_review_version_ids
+            and self._list_entity_ids == previous_list_entity_ids
         ):
             return
 
@@ -1410,21 +1461,6 @@ class BrowserWidgetController(QtCore.QObject):
                 conditions.extend(json.loads(value).get("conditions", []))
         return json.dumps({"conditions": conditions}) if conditions else ""
 
-    def fetch_reviews(self) -> dict[str | None, list[TreeNode]]:
-        """Return the whole slicer tree in one shot for the active category.
-
-        Used as :class:`BulkTreeModel`'s ``fetch_all`` callback: runs on
-        a background thread via the shared task queue. Dispatches to
-        :meth:`_fetch_reviews` (a single bulk hierarchy query) for
-        the flat review-session list for Reviews.
-
-        Returns:
-            Mapping of parent entity ID (``None`` for root) to its
-            children as :class:`TreeNode` instances, covering the
-            whole tree for the active category.
-        """
-        return {None: self._fetch_reviews(None)}
-
     def _version_query_kwargs(
         self,
         query_filters: dict[str, Any],
@@ -1854,14 +1890,23 @@ class BrowserWidgetController(QtCore.QObject):
 
         # Flat mode.
         folder_ids: list[str] | None = None
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
-            version_ids = self._review_session_version_ids  # None = no filter
-            if not version_ids:
-                # No review session selected yet — show nothing
+        product_ids: list[str] | None = None
+        version_ids: list[str] | None = None
+        query_kwargs = self._version_query_kwargs(query_filters)
+        if self._is_entity_list_category():
+            list_entity_ids = self._list_entity_ids
+            if not list_entity_ids:
+                # No list selected yet, or only empty ones — show nothing
                 return []
+            folder_ids = list_entity_ids.folder_ids or None
+            product_ids = list_entity_ids.product_ids or None
+            version_ids = list_entity_ids.version_ids or None
+            query_kwargs["task_filter"] = self._merge_query_filters(
+                query_kwargs["task_filter"],
+                self._task_ids_filter(list_entity_ids.task_ids),
+            )
         else:
             folder_ids = self._selected_folder_ids or None
-            version_ids = None
 
         if cursor is None:
             return []
@@ -1875,8 +1920,9 @@ class BrowserWidgetController(QtCore.QObject):
             descending=descending,
             version_ids=version_ids,
             folder_ids=folder_ids,
+            product_ids=product_ids,
             include_folder_children=self._include_folder_children,
-            **self._version_query_kwargs(query_filters),
+            **query_kwargs,
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
@@ -2581,14 +2627,16 @@ class BrowserWidgetController(QtCore.QObject):
         query_filters = self._get_query_filters()
         version_ids = query_filters["version_ids"]
         folder_ids: list[str] | None = self._selected_folder_ids or None
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
-            if not self._review_session_version_ids:
+        if self._is_entity_list_category():
+            list_entity_ids = self._list_entity_ids
+            if not list_entity_ids:
                 return _GroupCounts({}, 0)
-            review_ids = set(self._review_session_version_ids or ())
-            if version_ids:
-                review_ids.intersection_update(version_ids)
-            version_ids = list(review_ids)
-            folder_ids = None
+            if list_entity_ids.version_ids:
+                list_version_ids = set(list_entity_ids.version_ids)
+                if version_ids:
+                    list_version_ids.intersection_update(version_ids)
+                version_ids = list(list_version_ids)
+            folder_ids = list_entity_ids.folder_ids or None
 
         con = ayon_api.get_server_api_connection()
         if not con:
@@ -3268,89 +3316,251 @@ class BrowserWidgetController(QtCore.QObject):
             return "", empty_filter
         return empty_filter, ""
 
-    def _fetch_reviews(self, parent_id: str | None) -> list[TreeNode]:
-        """Return tree nodes for review sessions.
+    def _is_entity_list_category(self) -> bool:
+        """Return whether the slicer tree currently holds entity lists."""
+        return self._current_category in _ENTITY_LIST_CATEGORIES
 
-        Read-only: builds :class:`TreeNode` objects from the pre-populated
-        :attr:`_review_sessions_cache`.  The cache is populated exclusively
-        from the main thread by :meth:`_ensure_review_session_list`, which
-        runs when the Reviews category is entered - always before this
-        method can be reached.  Pool worker threads that call it therefore
-        only perform read access on an already-complete list, eliminating
-        any generator re-entrancy race.
+    @staticmethod
+    def _task_ids_filter(task_ids: list[str]) -> str:
+        """Return a task filter keeping only the given tasks."""
+        if not task_ids:
+            return ""
+        return json.dumps({
+            "conditions": [
+                {"key": "id", "operator": "in", "value": task_ids}
+            ]
+        })
 
-        Args:
-            parent_id: Parent entity ID. Only root (``None``) returns
-                review session nodes; children are always empty.
+    def fetch_entity_lists(self) -> dict[str | None, list[TreeNode]]:
+        """Return the whole entity list tree of the active category.
+
+        Used as :class:`BulkTreeModel`'s ``fetch_all`` callback: runs on
+        a background thread via the shared task queue. The Lists
+        category holds every entity list, Reviews only the review
+        sessions - they are otherwise the same tree.
+
+        Read-only: builds :class:`TreeNode` objects from the caches
+        filled by :meth:`_ensure_entity_lists`, which runs on the main
+        thread when either category is entered - always before this
+        method can be reached. Worker threads therefore only read
+        already-complete lists.
+
+        Mirrors the Lists slicer of the AYON frontend: lists are nested
+        in their entity list folders, folders that hold no list at any
+        depth are left out, folders keep the server's order and come
+        before the lists, which are sorted newest first with the
+        archived ones last.
+
+        Folder nodes use a prefixed id and carry the ids of all lists
+        below them as ``listIds``, selecting a folder selects those.
 
         Returns:
-            List of :class:`TreeNode` instances.
+            Mapping of parent node id (``None`` for root) to its
+            children.
         """
-        self.log.debug("Fetching review children for %s", parent_id)
-        if parent_id is not None:
-            return []
-        return [
-            TreeNode(
-                id=r.get("id", "no id"),
-                label=r.get("label", "no label"),
-                has_children=False,
-                icon="subscriptions",
-                data=r,
-            )
-            for r in self._review_sessions_cache
-            if r.get("entityListType") == "review-session"
-        ]
+        folders_by_id = {
+            folder["id"]: folder
+            for folder in self._entity_list_folders_cache
+        }
 
-    def _ensure_review_session_list(self) -> None:
-        """Fetch review sessions once per project, on first use.
+        def folder_node_id(folder_id: str) -> str:
+            return f"{_ENTITY_LIST_FOLDER_ID_PREFIX}{folder_id}"
+
+        def parent_node_id(folder_id: str | None) -> str | None:
+            if folder_id and folder_id in folders_by_id:
+                return folder_node_id(folder_id)
+            return None
+
+        lists_by_parent: dict[str | None, list[dict[str, Any]]] = {}
+        list_ids_by_folder: dict[str, list[str]] = {}
+        reviews_only = (
+            self._current_category == BrowserSlicerCategory.REVIEWS.value
+        )
+        for entity_list in self._entity_lists_cache:
+            if (
+                reviews_only
+                and entity_list.get("entityListType") != "review-session"
+            ):
+                continue
+            folder_id = entity_list.get("entityListFolderId")
+            lists_by_parent.setdefault(
+                parent_node_id(folder_id), []
+            ).append(entity_list)
+            # Register the list on its folder and all folders above it
+            seen: set[str] = set()
+            while folder_id in folders_by_id and folder_id not in seen:
+                seen.add(folder_id)
+                list_ids_by_folder.setdefault(folder_id, []).append(
+                    entity_list["id"]
+                )
+                folder_id = folders_by_id[folder_id].get("parentId")
+
+        output: dict[str | None, list[TreeNode]] = {}
+        for folder in self._entity_list_folders_cache:
+            list_ids = list_ids_by_folder.get(folder["id"])
+            if not list_ids:
+                continue
+            data = folder.get("data") or {}
+            node = TreeNode(
+                id=folder_node_id(folder["id"]),
+                label=folder.get("label") or "no label",
+                has_children=True,
+                icon=data.get("icon") or _ENTITY_LIST_FOLDER_ICON,
+                icon_fill=True,
+                data={"listIds": list_ids},
+            )
+            if data.get("color"):
+                node.icon_color = data["color"]
+            output.setdefault(
+                parent_node_id(folder.get("parentId")), []
+            ).append(node)
+
+        for parent_id, entity_lists in lists_by_parent.items():
+            entity_lists.sort(
+                key=lambda item: (
+                    bool(item.get("active", True)),
+                    str(item.get("createdAt") or ""),
+                ),
+                reverse=True,
+            )
+            output.setdefault(parent_id, []).extend(
+                TreeNode(
+                    id=entity_list["id"],
+                    label=entity_list.get("label") or "no label",
+                    has_children=False,
+                    icon=self._get_entity_list_icon(entity_list),
+                    data=entity_list,
+                )
+                for entity_list in entity_lists
+            )
+        output.setdefault(None, [])
+        return output
+
+    @staticmethod
+    def _get_entity_list_icon(entity_list: dict[str, Any]) -> str:
+        """Return the icon for an entity list by its type."""
+        if entity_list.get("entityListType") == "review-session":
+            return _REVIEW_SESSION_ICON
+        return _ENTITY_LIST_TYPE_ICONS.get(
+            entity_list.get("entityType") or "",
+            _ENTITY_LIST_FALLBACK_ICON,
+        )
+
+    def _ensure_entity_lists(self) -> None:
+        """Fetch entity lists and their folders once per project.
 
         Materialises the generator returned by
         :func:`ayon_api.get_entity_lists` into a plain Python list so that
         the result can be read safely by pool worker threads without the
         generator re-entrancy issue.  Must only be called from the main
         thread - :meth:`set_category` and :meth:`set_project` are the two
-        entry points into the Reviews category, and both qualify.
+        entry points into the Reviews and Lists categories, and both
+        qualify.
         """
-        if self._review_sessions_loaded:
+        if self._entity_lists_loaded:
             return
         project = self._current_project
-        self._review_sessions_cache = list(
-            ayon_api.get_entity_lists(project_name=project)
+        con = ayon_api.get_server_api_connection()
+        fields = set(con.get_default_fields_for_type("entityList"))
+        fields.add("active")
+        try:
+            entity_lists = list(
+                ayon_api.get_entity_lists(
+                    project_name=project,
+                    fields=fields | {"entityListFolderId"},
+                )
+            )
+        except Exception:  # noqa: BLE001
+            # Servers without entity list folders reject the field.
+            self.log.debug(
+                "Failed to fetch entity lists with their folder,"
+                " fetching them without.",
+                exc_info=True,
+            )
+            entity_lists = list(
+                ayon_api.get_entity_lists(
+                    project_name=project, fields=fields
+                )
+            )
+        self._entity_lists_cache = entity_lists
+        self._entity_list_folders_cache = (
+            self._get_entity_list_folders(project)
         )
-        self._review_sessions_loaded = True
+        self._entity_lists_loaded = True
         self.log.debug(
-            "Review sessions cached for project %s (%d items)",
+            "Entity lists cached for project %s (%d lists, %d folders)",
             project,
-            len(self._review_sessions_cache),
+            len(self._entity_lists_cache),
+            len(self._entity_list_folders_cache),
         )
 
-    def _get_review_session_version_ids(self, session_id: str) -> list[str]:
-        """Return version IDs contained in the given review session.
-
-        Args:
-            session_id: Entity list ID of the review session.
+    def _get_entity_list_folders(
+        self, project_name: str
+    ) -> list[dict[str, Any]]:
+        """Return the entity list folders of a project in server order.
 
         Returns:
-            List of version IDs.
+            Folders with ``id``, ``label``, ``parentId`` and ``data``
+            (``icon`` and ``color``). Empty when the server does not
+            support entity list folders.
         """
+        try:
+            response = ayon_api.get(
+                f"projects/{project_name}/entityListFolders"
+            )
+            response.raise_for_status()
+            return list(response.data.get("folders") or [])
+        except Exception:  # noqa: BLE001
+            self.log.debug(
+                "Failed to fetch entity list folders of project %s",
+                project_name,
+                exc_info=True,
+            )
+            return []
+
+    def _get_entity_list_entity_ids(
+        self, list_ids: list[str]
+    ) -> _ListEntityIds:
+        """Return the entities contained in the given entity lists.
+
+        Args:
+            list_ids: Entity list ids, e.g. of review sessions.
+
+        Returns:
+            Ids of the listed entities by entity type.
+        """
+        output = _ListEntityIds()
         con = ayon_api.get_server_api_connection()
         if not con:
-            return []
-        versions_gen = ayon_api.get_entity_lists(
-            project_name=self._current_project,
-            list_ids=[session_id],
-            fields={"items"},
-        )
-        try:
-            entity_list = next(versions_gen)
-        except StopIteration:
-            return []
-        items = entity_list.get("items", [])
-        return [
-            item["entityId"]
-            for item in items
-            if item.get("entityType") == "version"
-        ]
+            return output
+        ids_by_entity_type: dict[str, set[str]] = {
+            "folder": set(),
+            "task": set(),
+            "product": set(),
+            "version": set(),
+        }
+        # Items of lists with a different entity type can't be fetched
+        #   in one call
+        for list_id in list_ids:
+            entity_list = next(
+                ayon_api.get_entity_lists(
+                    project_name=self._current_project,
+                    list_ids=[list_id],
+                    fields={"items"},
+                ),
+                None,
+            )
+            if entity_list is None:
+                continue
+            for item in entity_list.get("items", []):
+                entity_ids = ids_by_entity_type.get(item.get("entityType"))
+                if entity_ids is not None:
+                    entity_ids.add(item["entityId"])
+        output.folder_ids = sorted(ids_by_entity_type["folder"])
+        output.task_ids = sorted(ids_by_entity_type["task"])
+        output.product_ids = sorted(ids_by_entity_type["product"])
+        output.version_ids = sorted(ids_by_entity_type["version"])
+        return output
 
     #: Seconds for which fetched project info is reused
     _PROJECT_INFO_LIFETIME = 60

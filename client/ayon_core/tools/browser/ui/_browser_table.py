@@ -34,6 +34,7 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.tools.browser.ui.browser_controller import (
+    FOLDER_SLICER_CATEGORIES,
     BrowserWidgetController,
 )
 from ayon_core.tools.browser.ui.browser_group_by import (
@@ -316,7 +317,7 @@ class BrowserTable(AYContainer):
             self._controller.include_folder_children,
             disabled=(
                 self._controller.current_category
-                != BrowserSlicerCategory.HIERARCHY.value
+                not in FOLDER_SLICER_CATEGORIES
             ),
         )
         self._customize.set_latest_per_folder(
@@ -855,7 +856,7 @@ class BrowserTable(AYContainer):
         )
         self._customize.set_include_children(
             self._controller.include_folder_children,
-            disabled=category != BrowserSlicerCategory.HIERARCHY.value,
+            disabled=category not in FOLDER_SLICER_CATEGORIES,
         )
         self._view_selector.set_view_type(BROWSER_VIEW_TYPE)
         self._update_empty_state()
@@ -904,7 +905,7 @@ class BrowserTable(AYContainer):
         self.display_type_changed.emit(active)
 
     def _on_include_children_changed(self, enabled: bool) -> None:
-        """Update descendant-folder querying for the hierarchy slicer."""
+        """Update descendant-folder querying for the slicer's folders."""
         self._controller.set_include_folder_children(enabled)
         self._model.reset_data()
         self._update_empty_state()
@@ -1133,7 +1134,7 @@ class BrowserTable(AYContainer):
                 include_children,
                 disabled=(
                     self._controller.current_category
-                    != BrowserSlicerCategory.HIERARCHY.value
+                    not in FOLDER_SLICER_CATEGORIES
                 ),
             )
             self._controller.set_include_folder_children(include_children)
