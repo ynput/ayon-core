@@ -261,3 +261,139 @@ def test_view_ignores_queued_terminal_state_across_rebind(qtbot):
     second.finish()
     qtbot.waitUntil(lambda: bool(completed))
     assert completed == [True]
+
+
+def test_set_values_applies_total_and_progress_together(qtbot):
+    """A new total and value must land as one change.
+
+    Regression: applying a smaller total first clamped the old value and
+    emitted a spurious ``completed`` before the real value arrived.
+    """
+    bar = AYProgressBar(total=10)
+    changed, done = [], []
+    bar.progress_changed.connect(lambda c, t: changed.append((c, t)))
+    bar.completed.connect(lambda: done.append(True))
+
+    bar.set_progress(5)
+    changed.clear()
+    bar.set_values(0, 3)
+
+    assert bar.total == 3
+    assert bar.current == 0
+    assert not done, "a smaller total must not emit a spurious completed"
+    assert changed == [(0, 3)], "one emission per set_values call"
+
+
+def test_size_hint_grows_for_overlay_text(qapp):
+    """Overlay text must not be clipped by the thin style height."""
+    bar = AYProgressBar(total=4)
+    plain = bar.sizeHint().height()
+
+    bar.set_text("Uploading 2 of 4")
+    assert bar.sizeHint().height() > plain
+
+    bar.set_text_visible(False)
+    assert bar.sizeHint().height() == plain
+
+
+def test_view_follows_overall_progress(qtbot):
+    """A declared phase plan drives the bar through ``overall``."""
+    reporter = ProgressReporter(min_interval=0.0)
+    reporter.set_phases({"export": 0.6, "upload": 0.3, "finalize": 0.1})
+    reporter.set_phase("export")
+    reporter.set_total(10)
+    reporter.set_progress(5)
+
+    view = AYProgressView()
+    qtbot.addWidget(view)
+    view.bind(reporter)
+    qtbot.waitUntil(lambda: view.progress_bar.current == 300)
+    assert view.progress_bar.total == 1000
+    assert view.value_label.text() == "30%"
+
+    # Switching phase keeps the bar determinate at the overall value
+    # instead of dropping back to an empty indeterminate bar.
+    reporter.set_phase("upload")
+    qtbot.waitUntil(lambda: view.value_label.text() == "30%")
+    assert view.progress_bar.is_indeterminate is False
+
+    reporter.set_total(4)
+    reporter.set_progress(2)
+    qtbot.waitUntil(lambda: view.progress_bar.current == 450)
+    assert view.value_label.text() == "45%"
+
+    reporter.finish()
+    qtbot.waitUntil(lambda: view.progress_bar.current == 1000)
+    assert view.progress_bar._state is ProgressBarState.Success
+
+
+def test_view_resets_previous_run_when_rebound(qtbot):
+    """A rebound view must not show the previous run's state."""
+    first = ProgressReporter(total=4, min_interval=0.0)
+    view = AYProgressView()
+    qtbot.addWidget(view)
+    view.bind(first)
+    first.set_progress(4)
+    first.fail("Upload failed")
+    qtbot.waitUntil(
+        lambda: view.progress_bar._state is ProgressBarState.Error
+    )
+    assert view._caption is not None
+    assert view._caption.text() == "Upload failed"
+
+    second = ProgressReporter(total=4, min_interval=0.0)
+    view.bind(second)
+
+    # Applied synchronously by bind(), before the queued snapshot.
+    assert view.progress_bar.current == 0
+    assert view.progress_bar.total is None
+    assert view.progress_bar._state is ProgressBarState.Normal
+    assert view._caption.text() == ""
+
+
+def test_dialog_cancel_button_emits_canceled(qtbot):
+    dialog = AYProgressDialog()
+    qtbot.addWidget(dialog)
+    canceled = []
+    dialog.canceled.connect(lambda: canceled.append(True))
+
+    dialog.cancel_button.click()
+
+    assert canceled == [True]
+    assert dialog.result() == dialog.DialogCode.Rejected
+
+
+def test_dialog_reject_emits_canceled(qtbot):
+    """``reject()`` is also the path Escape takes."""
+    dialog = AYProgressDialog()
+    qtbot.addWidget(dialog)
+    canceled = []
+    dialog.canceled.connect(lambda: canceled.append(True))
+
+    dialog.reject()
+
+    assert canceled == [True]
+
+
+def test_dialog_explicit_finish_does_not_cancel(qtbot):
+    dialog = AYProgressDialog()
+    qtbot.addWidget(dialog)
+    canceled = []
+    dialog.canceled.connect(lambda: canceled.append(True))
+
+    dialog.finish()
+
+    assert canceled == []
+    assert dialog.result() == dialog.DialogCode.Accepted
+    assert dialog.cancel_button.isEnabled() is False
+
+
+def test_dialog_without_cancel_button(qtbot):
+    dialog = AYProgressDialog(cancellable=False)
+    qtbot.addWidget(dialog)
+    canceled = []
+    dialog.canceled.connect(lambda: canceled.append(True))
+
+    assert dialog.cancel_button is None
+    dialog.finish()
+    assert canceled == []

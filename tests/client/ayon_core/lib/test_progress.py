@@ -147,3 +147,85 @@ def test_mutations_after_failure_are_ignored():
     assert state.phase == ""
     assert state.failed is True
     assert state.finished is False
+
+
+def test_coalescing_postpones_instead_of_dropping():
+    """An update inside the window must still be delivered afterwards.
+
+    Regression: the skipped publish used to be dropped, so a listener
+    stayed one update behind until the next mutation.
+    """
+    reporter = ProgressReporter(min_interval=0.05)
+    seen = []
+    delivered = threading.Event()
+
+    def listener(state):
+        seen.append(state.completed)
+        if state.completed == 4:
+            delivered.set()
+
+    reporter.add_listener(listener, emit_immediately=False)
+    reporter.set_total(4)
+    reporter.set_progress(1)
+    reporter.set_progress(2)
+    reporter.set_progress(3)
+    reporter.set_progress(4)
+
+    assert delivered.wait(2.0), "trailing update was dropped by coalescing"
+    assert seen[-1] == 4
+
+
+def test_coalesced_reentrant_publish_does_not_starve_listeners():
+    """A re-entrant publish must not cut the current delivery short.
+
+    Regression: the bail-out compared the snapshot with the live state,
+    which a coalesced re-entrant mutation also changes, so every listener
+    after the first received neither the current nor the newer snapshot.
+    """
+    reporter = ProgressReporter(min_interval=0.05)
+    first = []
+    second = []
+    delivered = threading.Event()
+
+    def listener_one(state):
+        first.append(state.completed)
+        if state.completed == 1:
+            # Mutates the state; the publish itself is coalesced away.
+            reporter.set_progress(2)
+
+    def listener_two(state):
+        second.append(state.completed)
+        if state.completed == 2:
+            delivered.set()
+
+    reporter.add_listener(listener_one, emit_immediately=False)
+    reporter.add_listener(listener_two, emit_immediately=False)
+    reporter.set_progress(1)
+
+    assert second == [1], "the second listener was starved"
+    assert delivered.wait(2.0)
+    assert second[-1] == 2
+
+
+def test_label_and_message_setters():
+    """The reporter exposes setters for ``label`` and ``message``."""
+    reporter = ProgressReporter(min_interval=0.0)
+    seen = []
+    reporter.add_listener(seen.append, emit_immediately=False)
+
+    reporter.set_label("Submitting comment")
+    reporter.set_message("Uploading 2 of 5")
+
+    assert seen[-1].label == "Submitting comment"
+    assert seen[-1].message == "Uploading 2 of 5"
+
+
+def test_finished_phase_plan_reports_full_overall():
+    """Finishing completes every declared phase, not just the current one."""
+    reporter = ProgressReporter(min_interval=0.0)
+    reporter.set_phases({"export": 0.6, "upload": 0.3, "finalize": 0.1})
+    reporter.set_phase("upload")
+
+    assert reporter.snapshot().overall == 0.0
+    reporter.finish()
+    assert reporter.snapshot().overall == 1.0
