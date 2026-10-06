@@ -487,6 +487,7 @@ class BaseWorkfileController(
         use_last_version: bool,
         version: int,
         comment: str | None,
+        custom_data: dict[str, Any] | None = None,
     ):
         return self._workfiles_model.fill_workarea_filepath(
             folder_id,
@@ -495,6 +496,7 @@ class BaseWorkfileController(
             use_last_version,
             version,
             comment,
+            custom_data,
         )
 
     def get_published_file_items(
@@ -614,6 +616,7 @@ class BaseWorkfileController(
         version,
         comment,
         description,
+        custom_data=None,
     ) -> None:
         self._workfiles_model.save_as_workfile(
             folder_id,
@@ -624,6 +627,7 @@ class BaseWorkfileController(
             version,
             comment,
             description,
+            custom_data,
         )
 
     def copy_workfile_representation(
@@ -638,6 +642,7 @@ class BaseWorkfileController(
         version,
         comment,
         description,
+        custom_data=None,
     ) -> None:
         self._workfiles_model.copy_workfile_representation(
             representation_id,
@@ -650,6 +655,7 @@ class BaseWorkfileController(
             version,
             comment,
             description,
+            custom_data,
         )
 
     def duplicate_workfile(
@@ -663,6 +669,7 @@ class BaseWorkfileController(
         version: int,
         comment: str | None,
         description: str | None,
+        custom_data: dict[str, Any] | None = None,
     ) -> None:
         self._workfiles_model.duplicate_workfile(
             folder_id,
@@ -674,6 +681,7 @@ class BaseWorkfileController(
             version,
             comment,
             description,
+            custom_data,
         )
 
     def get_my_tasks_entity_ids(

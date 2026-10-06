@@ -34,6 +34,8 @@ from ayon_core.pipeline.template_data import (
 from ayon_core.pipeline.workfile import (
     get_workdir_with_workdir_data,
     get_workfile_template_key,
+    get_workfile_custom_keys,
+    resolve_workfile_custom_data,
     save_workfile_info,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -136,6 +138,7 @@ class WorkfilesModel:
         version: int,
         comment: str | None,
         description: str | None,
+        custom_data: dict[str, Any] | None = None,
     ) -> None:
         self._emit_event("save_as.started")
 
@@ -156,6 +159,7 @@ class WorkfilesModel:
             project_settings=self._controller.project_settings,
             rootless_path=rootless_path,
             workfile_entities=self.get_workfile_entities(task_id),
+            custom_data=custom_data,
         )
         failed = False
         try:
@@ -193,6 +197,7 @@ class WorkfilesModel:
         version: int,
         comment: str | None,
         description: str | None,
+        custom_data: dict[str, Any] | None = None,
     ) -> None:
         self._emit_event("copy_representation.started")
 
@@ -216,6 +221,7 @@ class WorkfilesModel:
             src_representation_path=representation_filepath,
             workfile_entities=self.get_workfile_entities(task_id),
             src_anatomy=self._controller.project_anatomy,
+            custom_data=custom_data,
         )
         failed = False
         try:
@@ -256,6 +262,7 @@ class WorkfilesModel:
         version: int,
         comment: str | None,
         description: str | None,
+        custom_data: dict[str, Any] | None = None,
     ) -> None:
         self._emit_event("workfile_duplicate.started")
 
@@ -275,6 +282,7 @@ class WorkfilesModel:
             anatomy=self._controller.project_anatomy,
             rootless_path=rootless_path,
             workfile_entities=workfile_entities,
+            custom_data=custom_data,
         )
         failed = False
         try:
@@ -421,6 +429,7 @@ class WorkfilesModel:
                 "comment_hints": None,
                 "last_version": None,
                 "extensions": None,
+                "custom_keys": [],
             }
 
         anatomy = self._controller.project_anatomy
@@ -455,19 +464,48 @@ class WorkfilesModel:
         file_items = self.get_workarea_file_items(folder_id, task_id)
         comment_hints = set()
         comment = None
+        current_item = None
+        last_item = None
         for item in file_items:
             filepath = item.filepath
             filename = os.path.basename(filepath)
             if filename == current_filename:
                 comment = item.comment
+                current_item = item
 
             if item.comment:
                 comment_hints.add(item.comment)
+
+            if item.version is not None and (
+                last_item is None or last_item.version < item.version
+            ):
+                last_item = item
         comment_hints = list(comment_hints)
 
         last_version = self._get_last_workfile_version(
             file_items, task_entity
         )
+
+        # Custom keys of the template (e.g. '{revision:0>2}')
+        # - value is inherited from the current workfile, then from the last
+        #   workfile and then the default value is used
+        custom_keys = get_workfile_custom_keys(file_template_str, fill_data)
+        custom_data = resolve_workfile_custom_data(
+            custom_keys,
+            current_item.custom_data if current_item else None,
+            last_item.custom_data if last_item else None,
+        )
+        custom_key_items = [
+            {
+                "key": custom_key.key,
+                "label": custom_key.label,
+                "is_number": custom_key.is_number,
+                "optional": custom_key.optional,
+                "before_version": custom_key.before_version,
+                "value": custom_data.get(custom_key.key),
+            }
+            for custom_key in custom_keys
+        ]
 
         return {
             "template_key": template_key,
@@ -480,6 +518,7 @@ class WorkfilesModel:
             "comment_hints": comment_hints,
             "last_version": last_version,
             "extensions": extensions,
+            "custom_keys": custom_key_items,
         }
 
     def fill_workarea_filepath(
@@ -490,6 +529,7 @@ class WorkfilesModel:
         use_last_version: bool,
         version: int,
         comment: str,
+        custom_data: dict[str, Any] | None = None,
     ) -> WorkareaFilepathResult:
         """Fill workarea filepath based on context.
 
@@ -500,6 +540,8 @@ class WorkfilesModel:
             use_last_version (bool): Use last version.
             version (int): Version number.
             comment (str): Comment.
+            custom_data (dict[str, Any] | None): Values of custom keys
+                used in the file template.
 
         Returns:
             WorkareaFilepathResult: Workarea filepath result.
@@ -529,6 +571,12 @@ class WorkfilesModel:
 
         if comment:
             fill_data["comment"] = comment
+
+        # Empty values are skipped so the template is not solved if
+        #   a required custom key is not filled
+        for key, value in (custom_data or {}).items():
+            if value is not None and value != "":
+                fill_data[key] = value
 
         filename = file_template.format(fill_data)
         if not filename.solved:

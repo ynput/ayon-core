@@ -5,8 +5,8 @@ import copy
 import platform
 import warnings
 import typing
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
+from typing import Optional, Dict, Any, Union
+from dataclasses import dataclass, field
 
 import ayon_api
 
@@ -217,11 +217,165 @@ def get_workdir(
     )
 
 
+# Format specs that make sense only for integers, e.g. '0>3', '03' or 'd'
+_NUMBER_FORMAT_SPEC_REGEX = re.compile(
+    r"^(?:0[<>=^][0-9]+|0[0-9]+d?|[0-9]*d)$"
+)
+_BUILTIN_DYNAMIC_KEYS = frozenset({"version", "comment", "ext"})
+
+
+@dataclass
+class WorkfileCustomKey:
+    """Key of workfile file template that is filled by a user.
+
+    Any top-level key used in the file template that is not filled by
+    template data, and is not one of 'version', 'comment' or 'ext' is
+    considered as a custom key, e.g. '{revision:0>2}'.
+
+    Attributes:
+        key (str): Template key.
+        is_number (bool): Value is an integer. Based on the format
+            specification of the key in the template.
+        optional (bool): Key is used only inside optional template parts.
+        before_version (bool): Key is used in the template before 'version'.
+
+    """
+    key: str
+    is_number: bool
+    optional: bool
+    before_version: bool
+
+    @property
+    def label(self) -> str:
+        return self.key.replace("_", " ").capitalize()
+
+    @property
+    def default(self) -> Optional[int]:
+        """Value used when there is no workfile to inherit the value from.
+
+        Todos:
+            Make the default value configurable in settings.
+
+        """
+        if self.is_number:
+            return 1
+        return None
+
+    def convert_value(self, value: Any) -> Union[int, str, None]:
+        """Convert value to the type expected by the key."""
+        if value is None or value == "":
+            return None
+        if not self.is_number:
+            return str(value)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+
+def get_workfile_custom_keys(
+    file_template: Union[str, StringTemplate],
+    template_data: dict[str, Any],
+) -> list[WorkfileCustomKey]:
+    """Find custom keys in workfile file template.
+
+    Args:
+        file_template (Union[str, StringTemplate]): Workfile file template.
+        template_data (dict[str, Any]): Data used to fill the template.
+
+    Returns:
+        list[WorkfileCustomKey]: Custom keys in order of first appearance.
+
+    """
+    template = StringTemplate(str(file_template))
+    custom_keys_by_name: dict[str, WorkfileCustomKey] = {}
+    version_found = False
+    for part, optional in template.get_formatting_parts():
+        keys = part.keys()
+        if not keys:
+            continue
+        key = keys[0]
+        if key == "version":
+            version_found = True
+
+        # Sub-keys (e.g. '{my[key]}') are not supported as custom keys
+        if (
+            len(keys) > 1
+            or key in _BUILTIN_DYNAMIC_KEYS
+            or key in template_data
+        ):
+            continue
+
+        is_number = bool(_NUMBER_FORMAT_SPEC_REGEX.match(part.format_spec))
+        custom_key = custom_keys_by_name.get(key)
+        if custom_key is None:
+            custom_keys_by_name[key] = WorkfileCustomKey(
+                key=key,
+                is_number=is_number,
+                optional=optional,
+                before_version=not version_found,
+            )
+            continue
+        custom_key.is_number = custom_key.is_number or is_number
+        custom_key.optional = custom_key.optional and optional
+    return list(custom_keys_by_name.values())
+
+
+def resolve_workfile_custom_data(
+    custom_keys: list[WorkfileCustomKey],
+    *sources: Optional[dict[str, Any]],
+) -> dict[str, Any]:
+    """Resolve values of custom keys for a workfile that will be saved.
+
+    The first source that contains a valid value for the key is used.
+    The default value of the key is used if none of the sources has it.
+    Keys without a value are not added to the output.
+
+    Example of sources order used on save::
+
+        resolve_workfile_custom_data(
+            custom_keys,
+            explicit_values,
+            current_workfile.custom_data,
+            last_workfile.custom_data,
+        )
+
+    Args:
+        custom_keys (list[WorkfileCustomKey]): Custom keys of the template.
+        *sources (Optional[dict[str, Any]]): Sources of values sorted by
+            priority.
+
+    Returns:
+        dict[str, Any]: Value by custom key.
+
+    """
+    output = {}
+    for custom_key in custom_keys:
+        value = None
+        for source in sources:
+            if not source:
+                continue
+            value = custom_key.convert_value(source.get(custom_key.key))
+            if value is not None:
+                break
+        if value is None:
+            value = custom_key.default
+        if value is not None:
+            output[custom_key.key] = value
+    return output
+
+
+def _custom_key_template_regex(custom_key: WorkfileCustomKey) -> str:
+    """Regex to find usages of custom key in a template string."""
+    return "{" + re.escape(custom_key.key) + "(?:[:!][^}]*)?}"
+
+
 @dataclass
 class WorkfileParsedData:
     version: Optional[int] = None
     comment: Optional[str] = None
     ext: Optional[str] = None
+    custom_data: dict[str, Any] = field(default_factory=dict)
 
 
 class WorkfileDataParser:
@@ -239,6 +393,7 @@ class WorkfileDataParser:
     ):
         data = copy.deepcopy(data)
         file_template = str(file_template)
+        custom_keys = get_workfile_custom_keys(file_template, data)
         # Use placeholders that will never be in the filename
         ext_replacement = "CIextID"
         version_replacement = "CIversionID"
@@ -252,38 +407,86 @@ class WorkfileDataParser:
         ):
             file_template = re.sub(pattern, replacement, file_template)
 
+        # Custom keys are filled with placeholders too
+        # - format spec is removed as the placeholder is always a string
+        custom_replacements = []
+        for idx, custom_key in enumerate(custom_keys):
+            replacement = f"CIcustom{idx}ID"
+            data[custom_key.key] = replacement
+            file_template = re.sub(
+                _custom_key_template_regex(custom_key),
+                f"{{{custom_key.key}}}",
+                file_template,
+            )
+            value_regex = "[0-9]+" if custom_key.is_number else ".+?"
+            custom_replacements.append(
+                (replacement, f"custom{idx}", value_regex)
+            )
+
+        self._custom_keys = custom_keys
+
         file_template = StringTemplate(file_template)
-        # Prepare template that does contain 'comment'
-        comment_template = re.escape(str(file_template.format_strict(data)))
-        # Prepare template that does not contain 'comment'
-        # - comment is usually marked as optional and in that case the regex
-        #   to find the comment is different based on the filename
-        #   - if filename contains comment then 'comment_template' will match
-        #   - if filename does not contain comment then 'file_template' will
-        #     match
-        data.pop("comment")
-        file_template = re.escape(str(file_template.format_strict(data)))
-        for src, replacement in (
-            (ext_replacement, r"(?P<ext>\..*)"),
-            (version_replacement, r"(?P<version>[0-9]+)"),
-            (comment_replacement, r"(?P<comment>.+?)"),
-        ):
-            comment_template = comment_template.replace(src, replacement)
-            file_template = file_template.replace(src, replacement)
+        # Comment and custom keys can be marked as optional and in that
+        #   case the regex is different based on the filename.
+        # - templates are sorted from the most to the least specific
+        data_variants = [data]
+        optional_custom_keys = [
+            custom_key.key
+            for custom_key in custom_keys
+            if custom_key.optional
+        ]
+        if optional_custom_keys:
+            no_custom_data = dict(data)
+            for key in optional_custom_keys:
+                no_custom_data.pop(key)
+            data_variants.append(no_custom_data)
+
+        templates = []
+        for data_variant in data_variants:
+            # Prepare template that does contain 'comment'
+            templates.append(
+                re.escape(str(file_template.format_strict(data_variant)))
+            )
+            # Prepare template that does not contain 'comment'
+            data_variant = dict(data_variant)
+            data_variant.pop("comment")
+            templates.append(
+                re.escape(str(file_template.format_strict(data_variant)))
+            )
 
         kwargs = {}
         if platform.system().lower() == "windows":
             kwargs["flags"] = re.IGNORECASE
 
-        # Match from beginning to end of string to be safe
-        self._comment_template = re.compile(f"^{comment_template}$", **kwargs)
-        self._file_template = re.compile(f"^{file_template}$", **kwargs)
+        self._templates = []
+        for template in templates:
+            for src, replacement in (
+                (ext_replacement, r"(?P<ext>\..*)"),
+                (version_replacement, r"(?P<version>[0-9]+)"),
+                (comment_replacement, r"(?P<comment>.+?)"),
+            ):
+                template = template.replace(src, replacement)
+
+            for src, group_name, value_regex in custom_replacements:
+                # Key used multiple times must have the same value
+                template = template.replace(
+                    src, f"(?P<{group_name}>{value_regex})", 1
+                ).replace(src, f"(?P={group_name})")
+
+            # Match from beginning to end of string to be safe
+            self._templates.append(re.compile(f"^{template}$", **kwargs))
+
+    @property
+    def has_custom_keys(self) -> bool:
+        return bool(self._custom_keys)
 
     def parse_data(self, filename: str) -> WorkfileParsedData:
         """Parse the dynamic data from a filename."""
-        match = self._comment_template.match(filename)
-        if not match:
-            match = self._file_template.match(filename)
+        match = None
+        for template in self._templates:
+            match = template.match(filename)
+            if match:
+                break
 
         if not match:
             return WorkfileParsedData()
@@ -292,6 +495,13 @@ class WorkfileDataParser:
         version = kwargs.get("version")
         if version is not None:
             kwargs["version"] = int(version)
+
+        custom_data = {}
+        for idx, custom_key in enumerate(self._custom_keys):
+            value = custom_key.convert_value(kwargs.pop(f"custom{idx}", None))
+            if value is not None:
+                custom_data[custom_key.key] = value
+        kwargs["custom_data"] = custom_data
         return WorkfileParsedData(**kwargs)
 
 
@@ -385,6 +595,9 @@ def get_last_workfile_with_version_from_paths(
     # Escape extensions dot for regex
     ext_expression = "(?:" + "|".join(dotted_extensions) + ")"
 
+    file_template = str(file_template)
+    custom_keys = get_workfile_custom_keys(file_template, template_data)
+
     for pattern, replacement in (
         # Replace `.{ext}` with `{ext}` so we are sure dot is not at the end
         (r"\.?{ext}", ext_expression),
@@ -395,6 +608,14 @@ def get_last_workfile_with_version_from_paths(
         (r"{comment.*?}", r".+?"),
     ):
         file_template = re.sub(pattern, replacement, file_template)
+
+    # Custom keys can have any value
+    # - non-capturing groups are used as the first group is the version
+    for custom_key in custom_keys:
+        value_regex = "(?:[0-9]+)" if custom_key.is_number else "(?:.+?)"
+        file_template = re.sub(
+            _custom_key_template_regex(custom_key), value_regex, file_template
+        )
 
     file_template = StringTemplate.format_strict_template(
         file_template, template_data
@@ -604,6 +825,11 @@ def get_last_workfile(
             product_base_type="workfile",
         )
         data.pop("comment", None)
+        # Fill custom keys with default values for the first workfile
+        for key, value in resolve_workfile_custom_data(
+            get_workfile_custom_keys(file_template, data)
+        ).items():
+            data.setdefault(key, value)
         if data.get("ext") is None:
             data["ext"] = next(iter(extensions), "")
         data["ext"] = data["ext"].lstrip(".")
