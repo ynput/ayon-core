@@ -1106,6 +1106,9 @@ class CreateModel:
         folder_item = self._controller.get_folder_item(
             project_name, folder_id
         )
+        if folder_item is None:
+            return subtask_products
+
         context_instances = [
             instance
             for instance in self._create_context.instances
