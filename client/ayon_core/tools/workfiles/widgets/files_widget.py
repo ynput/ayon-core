@@ -362,9 +362,11 @@ class FilesWidget(AYContainer):
         if lines[-1].startswith("Copied from:"):
             lines.pop(-1)
             description = "\n".join(lines)
+        copied_from = f"Copied from: {repre_info['filepath']}"
         result["description"] = (
-            f"{description}"
-            f"\nCopied from: {repre_info['filepath']}"
+            f"{description}\n{copied_from}"
+            if description
+            else copied_from
         )
 
         self._controller.copy_workfile_representation(
