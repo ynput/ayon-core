@@ -119,6 +119,73 @@ def test_parse_optional_custom_data():
     assert parsed.custom_data == {}
 
 
+def test_parse_subset_of_optional_custom_keys():
+    template = (
+        "{folder[name]}_{task[name]}<_r{revision:0>2}><_s{step:0>2}>"
+        "_v{version:0>3}<_{comment}>.{ext}"
+    )
+    parser = WorkfileDataParser(template, TEMPLATE_DATA)
+
+    parsed = parser.parse_data("sh010_anim_s03_v001.ma")
+    assert parsed.version == 1
+    assert parsed.comment is None
+    assert parsed.custom_data == {"step": 3}
+
+    parsed = parser.parse_data("sh010_anim_r02_v001_blocking.ma")
+    assert parsed.version == 1
+    assert parsed.comment == "blocking"
+    assert parsed.custom_data == {"revision": 2}
+
+    parsed = parser.parse_data("sh010_anim_r02_s03_v001.ma")
+    assert parsed.custom_data == {"revision": 2, "step": 3}
+
+
+def test_parse_ambiguous_optional_text_key():
+    template = (
+        "{folder[name]}_{task[name]}_v{version:0>3}"
+        "<_{variant}><_{comment}>.{ext}"
+    )
+    parser = WorkfileDataParser(template, TEMPLATE_DATA)
+
+    # 'hero' can be variant or comment -> don't guess
+    parsed = parser.parse_data("sh010_anim_v003_hero.ma")
+    assert parsed.version == 3
+    assert parsed.ext == ".ma"
+    assert parsed.comment is None
+    assert parsed.custom_data == {}
+
+    # Can be split in more than one way -> don't guess
+    parsed = parser.parse_data("sh010_anim_v003_hero_wip_final.ma")
+    assert parsed.version == 3
+    assert parsed.comment is None
+    assert parsed.custom_data == {}
+
+    # Nothing optional is filled -> conclusive
+    parsed = parser.parse_data("sh010_anim_v003.ma")
+    assert parsed.version == 3
+    assert parsed.comment is None
+    assert parsed.custom_data == {}
+
+
+def test_parse_ambiguous_required_text_key():
+    template = (
+        "{folder[name]}_{task[name]}_{variant}_v{version:0>3}"
+        "<_{comment}>.{ext}"
+    )
+    parser = WorkfileDataParser(template, TEMPLATE_DATA)
+
+    parsed = parser.parse_data("sh010_anim_hero_v003_blocking.ma")
+    assert parsed.version == 3
+    assert parsed.comment == "blocking"
+    assert parsed.custom_data == {"variant": "hero"}
+
+    # Variant that looks like a version makes whole filename ambiguous
+    parsed = parser.parse_data("sh010_anim_a_v001_b_v002.ma")
+    assert parsed.version is None
+    assert parsed.comment is None
+    assert parsed.custom_data == {}
+
+
 def test_parse_without_custom_keys():
     template = "{folder[name]}_{task[name]}_v{version:0>3}<_{comment}>.{ext}"
     parser = WorkfileDataParser(template, TEMPLATE_DATA)

@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 import re
 import copy
+import itertools
 import platform
 import warnings
 import typing
@@ -15,6 +16,7 @@ from ayon_core.lib import (
     filter_profiles,
     Logger,
     StringTemplate,
+    TemplateUnsolved,
 )
 from ayon_core.pipeline import version_start, Anatomy
 from ayon_core.pipeline.template_data import get_template_data
@@ -222,6 +224,9 @@ _NUMBER_FORMAT_SPEC_REGEX = re.compile(
     r"^(?:0[<>=^][0-9]+|0[0-9]+d?|[0-9]*d)$"
 )
 _BUILTIN_DYNAMIC_KEYS = frozenset({"version", "comment", "ext"})
+# All combinations of optional keys are used to parse a filename, the amount
+#   of combinations is limited by this number of optional custom keys
+_MAX_PARSED_OPTIONAL_KEYS = 4
 
 
 @dataclass
@@ -381,6 +386,16 @@ class WorkfileParsedData:
 class WorkfileDataParser:
     """Parse dynamic data from existing filenames based on template.
 
+    Parsing of a filename is the best effort fallback for workfiles that
+    do not have the values stored in workfile entity, which is the source
+    of truth.
+
+    A filename can be ambiguous when the template has custom keys, e.g. it
+    is not possible to tell if 'hero' in 'sh010_v001_hero.ma' is a variant
+    or a comment for template '..._v{version}<_{variant}><_{comment}>.{ext}'.
+    The parser does not guess in that case, only values that are the same
+    for all possible ways to match the filename are returned.
+
     Args:
         file_template (str): Workfile file template.
         data (dict[str, Any]): Data to fill the template with.
@@ -418,9 +433,8 @@ class WorkfileDataParser:
                 f"{{{custom_key.key}}}",
                 file_template,
             )
-            value_regex = "[0-9]+" if custom_key.is_number else ".+?"
             custom_replacements.append(
-                (replacement, f"custom{idx}", value_regex)
+                (replacement, f"custom{idx}", custom_key.is_number)
             )
 
         self._custom_keys = custom_keys
@@ -428,53 +442,85 @@ class WorkfileDataParser:
         file_template = StringTemplate(file_template)
         # Comment and custom keys can be marked as optional and in that
         #   case the regex is different based on the filename.
-        # - templates are sorted from the most to the least specific
-        data_variants = [data]
-        optional_custom_keys = [
+        # - prepare template for combinations of optional keys, sorted
+        #   from the most to the least specific
+        optional_keys = [
             custom_key.key
             for custom_key in custom_keys
             if custom_key.optional
         ]
-        if optional_custom_keys:
-            no_custom_data = dict(data)
-            for key in optional_custom_keys:
-                no_custom_data.pop(key)
-            data_variants.append(no_custom_data)
+        if len(optional_keys) > _MAX_PARSED_OPTIONAL_KEYS:
+            removed_keys_combinations = [
+                (),
+                ("comment",),
+                tuple(optional_keys),
+                ("comment", *optional_keys),
+            ]
+        else:
+            all_optional_keys = ["comment", *optional_keys]
+            removed_keys_combinations = [
+                combination
+                for count in range(len(all_optional_keys) + 1)
+                for combination in itertools.combinations(
+                    all_optional_keys, count
+                )
+            ]
 
         templates = []
-        for data_variant in data_variants:
-            # Prepare template that does contain 'comment'
-            templates.append(
-                re.escape(str(file_template.format_strict(data_variant)))
-            )
-            # Prepare template that does not contain 'comment'
-            data_variant = dict(data_variant)
-            data_variant.pop("comment")
-            templates.append(
-                re.escape(str(file_template.format_strict(data_variant)))
-            )
+        for removed_keys in removed_keys_combinations:
+            data_variant = {
+                key: value
+                for key, value in data.items()
+                if key not in removed_keys
+            }
+            try:
+                template = re.escape(
+                    str(file_template.format_strict(data_variant))
+                )
+            except TemplateUnsolved:
+                # Template without custom keys always expected comment to
+                #   be optional
+                if not custom_keys or not removed_keys:
+                    raise
+                continue
+            if template not in templates:
+                templates.append(template)
 
         kwargs = {}
         if platform.system().lower() == "windows":
             kwargs["flags"] = re.IGNORECASE
 
-        self._templates = []
-        for template in templates:
+        # Text values are matched with lazy regex. Greedy regex is used too
+        #   if template has custom keys to find out if the filename can
+        #   be matched in more than one way.
+        text_regexes = [".+?"]
+        if custom_keys:
+            text_regexes.append(".+")
+
+        regexes = []
+        for template, text_regex in itertools.product(
+            templates, text_regexes
+        ):
             for src, replacement in (
                 (ext_replacement, r"(?P<ext>\..*)"),
                 (version_replacement, r"(?P<version>[0-9]+)"),
-                (comment_replacement, r"(?P<comment>.+?)"),
+                (comment_replacement, f"(?P<comment>{text_regex})"),
             ):
                 template = template.replace(src, replacement)
 
-            for src, group_name, value_regex in custom_replacements:
+            for src, group_name, is_number in custom_replacements:
+                value_regex = "[0-9]+" if is_number else text_regex
                 # Key used multiple times must have the same value
                 template = template.replace(
                     src, f"(?P<{group_name}>{value_regex})", 1
                 ).replace(src, f"(?P={group_name})")
 
             # Match from beginning to end of string to be safe
-            self._templates.append(re.compile(f"^{template}$", **kwargs))
+            regex = f"^{template}$"
+            if regex not in regexes:
+                regexes.append(regex)
+
+        self._templates = [re.compile(regex, **kwargs) for regex in regexes]
 
     @property
     def has_custom_keys(self) -> bool:
@@ -482,23 +528,37 @@ class WorkfileDataParser:
 
     def parse_data(self, filename: str) -> WorkfileParsedData:
         """Parse the dynamic data from a filename."""
-        match = None
+        matches = []
         for template in self._templates:
             match = template.match(filename)
-            if match:
+            if not match:
+                continue
+            matches.append(match.groupdict())
+            # Use first match if template does not have custom keys
+            if not self._custom_keys:
                 break
 
-        if not match:
+        if not matches:
             return WorkfileParsedData()
 
-        kwargs = match.groupdict()
+        # Use only values that are same in all matches
+        # - value missing in a match is considered as different value
+        kwargs = {}
+        group_names = {"version", "comment", "ext"}
+        group_names.update(
+            f"custom{idx}" for idx in range(len(self._custom_keys))
+        )
+        for group_name in group_names:
+            values = {match.get(group_name) for match in matches}
+            kwargs[group_name] = values.pop() if len(values) == 1 else None
+
         version = kwargs.get("version")
         if version is not None:
             kwargs["version"] = int(version)
 
         custom_data = {}
         for idx, custom_key in enumerate(self._custom_keys):
-            value = custom_key.convert_value(kwargs.pop(f"custom{idx}", None))
+            value = custom_key.convert_value(kwargs.pop(f"custom{idx}"))
             if value is not None:
                 custom_data[custom_key.key] = value
         kwargs["custom_data"] = custom_data
