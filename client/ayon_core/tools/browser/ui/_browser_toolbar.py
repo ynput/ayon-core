@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Literal, TypedDict
 
 from ayon_core.ui.components.buttons import (
@@ -16,14 +17,14 @@ from ayon_core.ui.components.container import (
     AYHBoxLayout,
     AYVBoxLayout,
 )
-from ayon_core.ui.components.dropdown import AYDropdownPopup
 from ayon_core.ui.components.filter import AYFilter, FilterItem
-from ayon_core.ui.components.filterable_list import FilterableList
 from ayon_core.ui.components.label import AYLabel
+from ayon_core.ui.components.line_edit import AYLineEdit
 from ayon_core.ui.components.order import AYOrder
 from ayon_core.ui.components.page_button import AYPageButton
 from ayon_core.ui.components.slider import AYSlider
 from ayon_core.ui.utils import QSignalBlocker
+from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
@@ -374,6 +375,7 @@ class Customize(AYButtonMenu):
     """Customize button that controls card size, empty groups, etc."""
 
     show_empty_groups_changed = QtCore.Signal(bool)  # type: ignore
+    ungroup_empty_values_changed = QtCore.Signal(bool)  # type: ignore
     card_size_changed = QtCore.Signal(int)  # type: ignore
     card_size_committed = QtCore.Signal(int)  # type: ignore
     row_height_changed = QtCore.Signal(int)  # type: ignore
@@ -395,6 +397,14 @@ class Customize(AYButtonMenu):
     _ROW_HEIGHT_MIN = 24
     _ROW_HEIGHT_MAX = 160
 
+    _CARD_SIZE_TOOLTIP = "Adjust card size in the cards view"
+    _ROW_HEIGHT_TOOLTIP = "Adjust row height in the table view"
+    _UNGROUP_EMPTY_VALUES_TOOLTIP = (
+        "When grouping, list versions that have nothing filled in for the"
+        " grouped field below the groups, instead of in a group of their"
+        " own."
+    )
+
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
@@ -402,11 +412,15 @@ class Customize(AYButtonMenu):
         initial_card_width: int,
         initial_row_height: int,
         initial_show_empty_groups: bool,
+        initial_ungroup_empty_values: bool,
+        initial_display_type: str,
         initial_featured_version_order: tuple[str, ...],
         initial_latest_per_folder: bool,
         initial_include_children: bool,
     ) -> None:
         self._show_empty_groups = bool(initial_show_empty_groups)
+        self._ungroup_empty_values = bool(initial_ungroup_empty_values)
+        self._display_type = initial_display_type
         self._latest_per_folder = bool(initial_latest_per_folder)
         self._include_children = bool(initial_include_children)
         self._featured_version_order = tuple(
@@ -471,6 +485,7 @@ class Customize(AYButtonMenu):
             maximum=self._CARD_WIDTH_MAX,
             step=10,
         )
+        self.card_size_slider.setToolTip(self._CARD_SIZE_TOOLTIP)
         layout.addWidget(self.card_size_slider, stretch=1)
         self.card_size_slider.value_changed.connect(self.card_size_changed)
         self.card_size_slider.value_committed.connect(
@@ -485,9 +500,7 @@ class Customize(AYButtonMenu):
             maximum=self._ROW_HEIGHT_MAX,
             step=2,
         )
-        self.row_height_slider.setToolTip(
-            "Adjust row height in the table view"
-        )
+        self.row_height_slider.setToolTip(self._ROW_HEIGHT_TOOLTIP)
         layout.addWidget(self.row_height_slider, stretch=1)
         self.row_height_slider.value_changed.connect(
             self.row_height_changed
@@ -508,6 +521,22 @@ class Customize(AYButtonMenu):
         )
         layout.addWidget(self.show_empty_grps_ui, stretch=0)
         self.show_empty_grps_ui.toggled.connect(self.show_empty_groups_changed)
+
+        self.ungroup_empty_values_ui = AYCheckBox(
+            "Leave blank values ungrouped",
+            checked=self._ungroup_empty_values,
+            variant=AYCheckBox.Variants.Menu,
+            parent=self,
+        )
+        self.ungroup_empty_values_ui.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        layout.addWidget(self.ungroup_empty_values_ui, stretch=0)
+        self.ungroup_empty_values_ui.toggled.connect(
+            self.ungroup_empty_values_changed
+        )
+        self._update_display_type_widgets()
 
         self.latest_per_folder_ui = AYCheckBox(
             "Latest per folder",
@@ -632,6 +661,55 @@ class Customize(AYButtonMenu):
             return
         with QSignalBlocker(self.show_empty_grps_ui):
             self.show_empty_grps_ui.setChecked(enabled)
+
+    def set_ungroup_empty_values(self, enabled: bool) -> None:
+        """Update checkbox state without re-emitting change signal."""
+        self._ungroup_empty_values = bool(enabled)
+        if not hasattr(self, "ungroup_empty_values_ui"):
+            return
+        with QSignalBlocker(self.ungroup_empty_values_ui):
+            self.ungroup_empty_values_ui.setChecked(
+                self._ungroup_empty_values
+            )
+
+    def set_display_type(self, display_type: str) -> None:
+        """Enable only the settings that apply to the displayed view.
+
+        Args:
+            display_type: ``"table"`` or ``"grid"``.
+        """
+        self._display_type = display_type
+        self._update_display_type_widgets()
+
+    def _update_display_type_widgets(self) -> None:
+        if not hasattr(self, "ungroup_empty_values_ui"):
+            return
+        is_table = self._display_type != "grid"
+        for widget, enabled, tooltip, disabled_tooltip in (
+            (
+                self.card_size_slider,
+                not is_table,
+                self._CARD_SIZE_TOOLTIP,
+                "Only applies to the cards view",
+            ),
+            (
+                self.row_height_slider,
+                is_table,
+                self._ROW_HEIGHT_TOOLTIP,
+                "Only applies to the table view",
+            ),
+            (
+                self.ungroup_empty_values_ui,
+                is_table,
+                self._UNGROUP_EMPTY_VALUES_TOOLTIP,
+                (
+                    "Only applies to the table view. The cards view"
+                    " always shows them in a group of their own."
+                ),
+            ),
+        ):
+            widget.setEnabled(enabled)
+            widget.setToolTip(tooltip if enabled else disabled_tooltip)
 
     def set_card_width(self, width: int) -> None:
         """Update slider value without re-emitting change signal."""
@@ -772,9 +850,16 @@ class DisplayType(AYContainer):
 
 
 class GroupByMenu(AYFilter):
-    """Drop-down filter that controls which field is used to group rows."""
+    """Filter-style box that controls which field is used to group rows.
+
+    The options are offered in a menu: the built-in ones at the top level
+    and the attributes in a submenu per entity. Typing in the search
+    field lists every matching option at the top level instead.
+    """
 
     group_by_changed = QtCore.Signal(str)  # type: ignore
+
+    _ICON_COLOR = "#dedede"
 
     def __init__(
         self,
@@ -793,89 +878,156 @@ class GroupByMenu(AYFilter):
             self._filters[default_key].selected = True
         elif "none" in self._filters:
             self._filters["none"].selected = True
-        # Options change on each project switch and creating their
-        #   widgets is slow, they are recreated when the dropdown opens
-        self._list_dirty = False
+
+        # The menu exists only while it is open.
+        self._menu: AYMenu | None = None
+        self._menu_hidden_at = 0.0
+        # Actions of the open menu: options listed at the top level, what
+        # is hidden while searching (submenus), and the search results.
+        self._top_actions: list[QtWidgets.QAction] = []
+        self._submenu_actions: list[QtWidgets.QAction] = []
+        self._result_actions: list[QtWidgets.QAction] = []
 
         super().__init__(parent=parent, label="Group By")
         self._sync_tags()
 
-    def _create_dropdown_popup(self) -> AYDropdownPopup | None:
-        self._dropdown = AYDropdownPopup(
-            parent=self,
-            variant=AYDropdownPopup.Variants.Low_Framed_Thin,
-            translucent_bg=True,
-        )
-        lyt = AYVBoxLayout(self._dropdown, margin=2, spacing=0)
-        self._filterable_list = FilterableList(
-            placeholder="Search",
-            parent=self._dropdown,
-        )
-        lyt.addWidget(self._filterable_list, stretch=10)
-
-        self._populate_list()
-        return self._dropdown
-
     def _on_toggle_dropdown(self) -> None:
-        if not self._dropdown_visible and self._list_dirty:
-            self._populate_list()
-        super()._on_toggle_dropdown()
-
-    def _populate_list(self) -> None:
-        self._list_dirty = False
-        self._filterable_list.clear_items()
-
-        kw = {
-            "variant": AYButton.Variants.Text,
-            "checkable": True,
-            "label_alignment": QtCore.Qt.AlignmentFlag.AlignLeft,
-            "fixed_width": False,
-        }
-
-        self._menu_grp = QtWidgets.QButtonGroup(self._dropdown)
-        self._menu_grp.setExclusive(True)
-        self._menu_grp.buttonClicked.connect(self._on_dropdown_closed)
-
-        for option in self._options_by_key.values():
-            wdgt_name = f"grp_by_{option.key.replace(':', '_')}"
-            w = AYButton(option.label, icon=option.icon, **kw)
-            w.setProperty("group_by_key", option.key)
-            setattr(self, wdgt_name, w)
-            if self._filters[option.key].selected:
-                w.setChecked(True)
-            self._filterable_list.add_item(
-                w,
-                match_fn=lambda text, n=option.label: (
-                    not text.lower().strip()
-                    or text.lower().strip() in n.lower()
-                ),
+        if self._menu is not None:
+            self._menu.close()
+            return
+        # The click that closes the menu can also land on the toggle
+        # button, which must not reopen it right away.
+        if time.monotonic() - self._menu_hidden_at < 0.2:
+            return
+        self._menu = self._create_menu()
+        self._dropdown_visible = True
+        self._toggle_btn.set_icon("keyboard_arrow_up")
+        self._menu.popup(
+            self._top_bar.mapToGlobal(
+                QtCore.QPoint(0, self._top_bar.height() + 2)
             )
-            self._menu_grp.addButton(w)
+        )
 
-        self._menu_grp.buttonClicked.connect(self._on_group_by_changed)
+    def _on_menu_hidden(self) -> None:
+        self._menu_hidden_at = time.monotonic()
+        if self._menu is not None:
+            self._menu.deleteLater()
+            self._menu = None
+        self._top_actions = []
+        self._submenu_actions = []
+        self._result_actions = []
+        self._on_popup_closed()
 
-    def _on_dropdown_closed(self) -> None:
-        """Close the dropdown and reset the search field."""
-        self._dropdown.close()
-        self._filterable_list.search_field().clear()
+    def _create_menu(self) -> AYMenu:
+        """Create the menu with the current options."""
+        # Not parented to this widget, like the columns menu: as transient
+        # parent it can keep the menu from getting hover updates on some
+        # Qt/Windows setups.
+        menu = AYMenu()
+        # Same background as the filter bar and the comboboxes next to it,
+        # with the option icons lined up with the search field's icon.
+        menu.setProperty("variant", "low")
+        menu.aboutToHide.connect(self._on_menu_hidden)
+        self._top_actions = []
+        self._submenu_actions = []
+        self._result_actions = []
+
+        search_field = AYLineEdit(
+            placeholder="Search",
+            variant=AYLineEdit.Variants.Search_Field,
+        )
+        search_field.textChanged.connect(self._on_search_changed)
+        search_field.returnPressed.connect(self._trigger_first_match)
+        search_action = QtWidgets.QWidgetAction(menu)
+        search_action.setDefaultWidget(search_field)
+        menu.addAction(search_action)
+        menu.aboutToShow.connect(search_field.setFocus)
+
+        grouped: dict[str, list[GroupByOption]] = {}
+        for option in self._options_by_key.values():
+            if option.menu_group is None:
+                self._top_actions.append(
+                    self._add_option_action(menu, option, option.label)
+                )
+            else:
+                grouped.setdefault(option.menu_group, []).append(option)
+
+        if grouped:
+            self._submenu_actions.append(menu.addSeparator())
+        for group, options in grouped.items():
+            submenu = AYMenu(group, menu)
+            submenu.setProperty("variant", "low")
+            self._submenu_actions.append(menu.addMenu(submenu))
+            for option in options:
+                self._add_option_action(submenu, option, option.label)
+
+        # Listed instead of the submenus while searching.
+        for group, options in grouped.items():
+            for option in options:
+                action = self._add_option_action(
+                    menu, option, f"{group} > {option.label}"
+                )
+                action.setVisible(False)
+                self._result_actions.append(action)
+        return menu
+
+    def _add_option_action(
+        self,
+        menu: AYMenu,
+        option: GroupByOption,
+        label: str,
+    ) -> QtWidgets.QAction:
+        action = menu.addAction(label)
+        if self._filters[option.key].selected:
+            # A menu row shows either its icon or a check mark.
+            action.setCheckable(True)
+            action.setChecked(True)
+            action.setProperty("check-style", "checkmark")
+        else:
+            # Outlined and dimmed, like the icons in the filter bar.
+            action.setIcon(
+                get_icon(option.icon, color=self._ICON_COLOR, fill=False)
+            )
+        action.setProperty("group_by_key", option.key)
+        action.triggered.connect(
+            lambda _checked=False, key=option.key: self._select(key)
+        )
+        return action
+
+    def _on_search_changed(self, text: str) -> None:
+        """Show the options matching the search text, without submenus."""
+        text = text.strip().lower()
+        for action in self._top_actions:
+            action.setVisible(text in action.text().lower())
+        for action in self._submenu_actions:
+            action.setVisible(not text)
+        for action in self._result_actions:
+            action.setVisible(bool(text) and text in action.text().lower())
+
+    def _trigger_first_match(self) -> None:
+        """Select the first option listed for the search text."""
+        for action in (*self._top_actions, *self._result_actions):
+            if action.isVisible():
+                # Closing schedules the menu for deletion, its actions
+                # stay valid until the event loop runs.
+                if self._menu is not None:
+                    self._menu.close()
+                action.trigger()
+                return
 
     def _sync_tags(self) -> None:
         self._sync_tags_from_items(list(self._filters.values()))
         if self._filters["none"].selected:
             self._remove_tag("none")
 
-    def _on_group_by_changed(self, button: AYButton) -> None:
-        grp_key = button.property("group_by_key")
-        if not isinstance(grp_key, str):
-            return
-        # Clicking the active group deselects it.
+    def _select(self, grp_key: str) -> None:
+        # Selecting the active group deselects it.
         if grp_key != "none" and grp_key in self.get_selected_keys():
             grp_key = "none"
         log.debug("Group By: %s", grp_key)
         for k, v in self._filters.items():
             v.selected = k == grp_key
         self._sync_tags()
-        self._sync_buttons()
         self.group_by_changed.emit(grp_key)
 
     def _handle_tag_removed(self, key: str) -> None:
@@ -884,21 +1036,7 @@ class GroupByMenu(AYFilter):
         Args:
             key: Key of the dismissed tag.
         """
-        for v in self._filters.values():
-            v.selected = False
-        self._filters["none"].selected = True
-        self._sync_tags()
-        self._sync_buttons()
-        self.group_by_changed.emit("none")
-
-    def _sync_buttons(self) -> None:
-        """Update the dropdown buttons' checked state from the filters."""
-        for button in self._menu_grp.buttons():
-            filter_item = self._filters.get(button.property("group_by_key"))
-            with QSignalBlocker(button):
-                button.setChecked(
-                    filter_item is not None and filter_item.selected
-                )
+        self._select("none")
 
     def set_options(
         self,
@@ -911,6 +1049,9 @@ class GroupByMenu(AYFilter):
             options: New list of :class:`GroupByOption` items.
             selected_key: Key of the option that should be selected.
         """
+        # An open menu lists the previous options.
+        if self._menu is not None:
+            self._menu.close()
         self._options_by_key = {option.key: option for option in options}
         self._filters = {
             option.key: FilterItem(
@@ -923,10 +1064,6 @@ class GroupByMenu(AYFilter):
         if selected_key not in self._filters and "none" in self._filters:
             self._filters["none"].selected = True
         self._sync_tags()
-        if self._dropdown_visible:
-            self._populate_list()
-        else:
-            self._list_dirty = True
 
     def get_selected_keys(self) -> list[str]:
         """Return the list of selected filter keys.

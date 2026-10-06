@@ -102,6 +102,7 @@ class QMenuVariants(Enum):
     Default = "default"
     Surface = "surface"
     Danger = "danger"
+    Low = "low"
 
 
 class QLabelVariants(Enum):
