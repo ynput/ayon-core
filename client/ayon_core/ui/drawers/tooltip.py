@@ -6,7 +6,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from qtpy.QtCore import QRect, Qt
-from qtpy.QtGui import QBrush, QPainter, QPen
+from qtpy.QtGui import QBrush, QColor, QPainter, QPen
 from qtpy.QtWidgets import (
     QFrame,
     QStyle,
@@ -97,7 +97,10 @@ class TooltipDrawer:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             style = self.model.get_style("QToolTip")
             style.set_context(w)
-            pen = QPen(style["border-color"])
+            # QColor(...) wrapping is required - PySide2's QPen/QBrush
+            # constructors don't implicitly convert a plain hex string
+            # like PySide6's do, and silently produce an invisible pen.
+            pen = QPen(QColor(style["border-color"]))
             pen.setWidth(style["border-width"])
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(pen)
@@ -114,7 +117,7 @@ class TooltipDrawer:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             style = self.model.get_style("QToolTip")
             style.set_context(w)
-            brush = QBrush(style["background-color"])
+            brush = QBrush(QColor(style["background-color"]))
             painter.setBrush(brush)
             painter.setPen(Qt.PenStyle.NoPen)
             radius = int(style["border-radius"])

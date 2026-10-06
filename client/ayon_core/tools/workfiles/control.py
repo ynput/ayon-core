@@ -37,6 +37,7 @@ if typing.TYPE_CHECKING:
         TaskItem,
         FolderTypeItem,
         TaskTypeItem,
+        StatusItem,
         UserItem,
     )
 
@@ -246,6 +247,13 @@ class BaseWorkfileController(
         self, project_name: str, sender: str | None = None
     ) -> list[TaskTypeItem]:
         return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
+    def get_project_status_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[StatusItem]:
+        return self._projects_model.get_project_status_items(
             project_name, sender
         )
 
