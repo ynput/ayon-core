@@ -32,7 +32,7 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.abstract import ActionItem, ProductGroupsInfo
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
     BrowserColumnManager,
@@ -245,6 +245,7 @@ class BrowserWidgetController(QtCore.QObject):
     selection_changed = QtCore.Signal(list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
     my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
+    products_group_changed = QtCore.Signal()  # type: ignore
 
     def __init__(
         self,
@@ -314,6 +315,10 @@ class BrowserWidgetController(QtCore.QObject):
         loader_controller.register_event_callback(
             "controller.reset.finished",
             self._on_loader_controller_reset,
+        )
+        loader_controller.register_event_callback(
+            "products.group.changed",
+            self._on_products_group_changed,
         )
         column_services = BrowserColumnServices(loader_controller)
         self._column_manager = BrowserColumnManager(
@@ -2034,6 +2039,56 @@ class BrowserWidgetController(QtCore.QObject):
         return self._loader_controller.get_representation_items(
             project_name, version_ids
         )
+
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        """Return product group names related to the given products.
+
+        Args:
+            project_name: AYON project name.
+            product_ids: Selected product ids.
+
+        Returns:
+            Group names of the products and group names available in
+            their folders.
+        """
+        return self._loader_controller.get_product_groups_info(
+            project_name, product_ids
+        )
+
+    def can_change_products_group(self, project_name: str) -> bool:
+        """Return whether the user may write the product group attribute.
+
+        Args:
+            project_name: AYON project name.
+        """
+        return self._loader_controller.can_change_products_group(
+            project_name
+        )
+
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        """Change the product group of the given products.
+
+        :attr:`products_group_changed` is emitted once it changed.
+
+        Args:
+            project_name: AYON project name.
+            product_ids: Product ids to change the group for.
+            group_name: Group name to set, empty string to ungroup.
+        """
+        self._loader_controller.change_products_group(
+            project_name, product_ids, group_name
+        )
+
+    def _on_products_group_changed(self, event: Any) -> None:
+        """Mark loaded rows outdated when a product group changed."""
+        if event["project_name"] != self._current_project:
+            return
+        self._reset_pagination()
+        self.products_group_changed.emit()
 
     def _get_column_context(self) -> BrowserColumnContext:
         """Return an immutable state snapshot for column providers."""
