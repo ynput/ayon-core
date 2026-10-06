@@ -373,10 +373,6 @@ class CreateWidget(QtWidgets.QWidget):
             "controller.reset.finished", self._on_controler_reset
         )
         controller.register_event_callback(
-            "create.context.pre.create.attrs.changed",
-            self._pre_create_attr_changed
-        )
-        controller.register_event_callback(
             "create.context.removed.instance",
             self._on_instances_removed
         )
