@@ -56,6 +56,7 @@ OverlayMessageWidget[type="info"]:hover {
 }
 
 OverlayMessageWidget QWidget {
+    color: #FFFFFF;
     background: transparent;
 }
 
