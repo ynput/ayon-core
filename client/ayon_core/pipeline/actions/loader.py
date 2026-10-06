@@ -572,6 +572,63 @@ class LoaderActionPlugin(ABC):
         """
         pass
 
+    @property
+    def log(self) -> logging.Logger:
+        if self._log is None:
+            self._log = Logger.get_logger(self.__class__.__name__)
+        return self._log
+
+    @property
+    def identifier(self) -> str:
+        """Identifier of the plugin.
+
+        Returns:
+            str: Plugin identifier.
+
+        """
+        return self.__class__.__name__
+
+    @property
+    def host_name(self) -> Optional[str]:
+        """Name of the current host."""
+        return self._context.get_host_name()
+
+    @abstractmethod
+    def get_action_items(
+        self, selection: LoaderActionSelection
+    ) -> list[LoaderActionItem]:
+        """Action items for the selection.
+
+        Args:
+            selection (LoaderActionSelection): Selection.
+
+        Returns:
+            list[LoaderActionItem]: Action items.
+
+        """
+        pass
+
+    @abstractmethod
+    def execute_action(
+        self,
+        selection: LoaderActionSelection,
+        data: Optional[DataType],
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
+        """Execute an action.
+
+        Args:
+            selection (LoaderActionSelection): Selection wrapper. Can be used
+                to get entities or get context of original selection.
+            data (Optional[DataType]): Additional action item data.
+            form_values (dict[str, Any]): Attribute values.
+
+        Returns:
+            Optional[LoaderActionResult]: Result of the action execution.
+
+        """
+        pass
+
 
 class CoreLoaderActionPlugin(LoaderActionPlugin):
     """Base class for configurable core loader actions."""
@@ -585,13 +642,23 @@ class CoreLoaderActionPlugin(LoaderActionPlugin):
             .get("loader", {})
         )
         actions_settings = loader_settings.get("actions", {})
-        self.enabled = actions_settings.get(self.__class__.__name__, True)
-
-    @property
-    def log(self) -> logging.Logger:
-        if self._log is None:
-            self._log = Logger.get_logger(self.__class__.__name__)
-        return self._log
+        setting_key = self.__class__.__name__
+        setting_found = setting_key in actions_settings
+        setting_value = actions_settings.get(setting_key, True)
+        self.enabled = setting_value
+        self.log.warning(
+            "Loader action settings: class=%s, key=%s, found=%s, "
+            "value=%r (%s), enabled=%r (%s), loader=%r, actions=%r",
+            self.__class__.__name__,
+            setting_key,
+            setting_found,
+            setting_value,
+            type(setting_value).__name__,
+            self.enabled,
+            type(self.enabled).__name__,
+            loader_settings,
+            actions_settings,
+        )
 
     @property
     def identifier(self) -> str:
