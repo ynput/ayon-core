@@ -67,9 +67,15 @@ def test_get_file_collections_assembles_single_file() -> None:
         ),
         pytest.param(
             ["1.exr"],
-            [[1]],
             [],
-            id="single-digit-frame",
+            ["1.exr"],
+            id="single-file-without-delimiter-is-not-a-frame",
+        ),
+        pytest.param(
+            ["frame1001.exr"],
+            [],
+            ["frame1001.exr"],
+            id="single-file-prefix-without-separator-is-not-a-frame",
         ),
         pytest.param(
             ["1.exr", "10.exr"],
@@ -99,13 +105,13 @@ def test_get_file_collections_specific_patterns(
     """Test for specific patterns.
 
     Data::
-        sh010.exr (should be disallowed)
+        sh010.exr (single file needs `.[frames]` or `_[frames]`)
         sh010.exr + sh011.exr (should be allowed)
         frame1001.exr + frame1002.exr
         frame_1001.exr + frame_1002.exr
         frame.1001.exr + frame.1002.exr
         1000.exr + 1002.exr (frames only)
-        1.exr (single frame; digit only)
+        1.exr (single file; no delimiter so not a frame)
         1.exr + 10.exr (no padding)
     """
     collections, remainders = get_file_collections(files)
