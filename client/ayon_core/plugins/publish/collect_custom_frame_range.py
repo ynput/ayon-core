@@ -179,8 +179,13 @@ class CollectCustomFrameRange(
         if "custom.frame.range" in families:
             return True
 
+        # Backwards compatibility for farm host/families logic
         if not IS_FARM_HOST:
             return False
 
         families.add(i_product_base_type)
-        return bool(families.intersection(FARM_HOST_NAMES))
+        legacy_farm_families = families.intersection(FARM_HOST_NAMES)
+        if legacy_farm_families:
+            cls.log.debug(f"Detected legacy farm families: {legacy_farm_families}")
+            return True
+        return False
