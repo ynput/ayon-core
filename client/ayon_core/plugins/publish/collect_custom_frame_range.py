@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 # For backwards compatibility with deadline's logic
 # - Combination of families and host names for which the plugin is compatible.
 # - To properly convert the hosts to use the "new way" they have to add
-#   "custom.frame.range" family to created instances.
+#   "supports.customFrameRange" family to created instances.
 # - We can remove host names from the 'FARM_HOST_NAMES' set once the host
 #   integrations are updated to add the family to instances and core has
 #   bumped compatibility version for the host.
@@ -56,8 +56,8 @@ class CollectCustomFrameRange(
     label = "Collect Custom Frame Range"
 
     # TODO uncomment when all host integrations do add
-    #   the 'custom.frame.range' family to instances
-    # families = ["custom.frame.range"]
+    #   the 'supports.customFrameRange' family to instances
+    # families = ["supports.customFrameRange"]
 
     def process(self, instance: pyblish.api.Instance) -> None:
         if not self._is_compatible_instance(instance):
@@ -176,7 +176,7 @@ class CollectCustomFrameRange(
         if i_families is not None:
             families = set(i_families)
 
-        if "custom.frame.range" in families:
+        if "supports.customFrameRange" in families:
             return True
 
         # Backwards compatibility for farm host/families logic
