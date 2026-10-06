@@ -642,23 +642,7 @@ class CoreLoaderActionPlugin(LoaderActionPlugin):
             .get("loader", {})
         )
         actions_settings = loader_settings.get("actions", {})
-        setting_key = self.__class__.__name__
-        setting_found = setting_key in actions_settings
-        setting_value = actions_settings.get(setting_key, True)
-        self.enabled = setting_value
-        self.log.warning(
-            "Loader action settings: class=%s, key=%s, found=%s, "
-            "value=%r (%s), enabled=%r (%s), loader=%r, actions=%r",
-            self.__class__.__name__,
-            setting_key,
-            setting_found,
-            setting_value,
-            type(setting_value).__name__,
-            self.enabled,
-            type(self.enabled).__name__,
-            loader_settings,
-            actions_settings,
-        )
+        self.enabled = actions_settings.get(self.__class__.__name__, True)
 
     @property
     def identifier(self) -> str:
