@@ -114,8 +114,11 @@ class UserCompleterDelegate(QStyledItemDelegate):
         try:
             icon_pixmap = self._user_pixmap[user.name]
         except KeyError:
+            # The downloaded avatar, the same image comments show. The
+            #   url of the avatar can not be loaded as an image.
             user_image = AYUserImage(
-                src=user.avatar_url,
+                src=user.avatar_local_path or "",
+                name=user.name,
                 full_name=user.full_name,
                 size=self.icon_size,
                 outline=False,

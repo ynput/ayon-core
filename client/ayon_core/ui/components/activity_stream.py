@@ -28,6 +28,7 @@ from .comment import (
 from .container import AYContainer
 from .label import AYLabel
 from .scroll_area import AYScrollArea
+from .user_avatars import UserAvatarCache
 
 ActivityModel = Union[CommentModel, VersionPublishModel, StatusChangeModel]
 
@@ -62,8 +63,12 @@ class AYActivityStream(AYContainer):
         thumbnail_loader: Non-blocking loader of thumbnails of published
             versions, called as ``(key, on_loaded)`` with the
             ``thumbnail_key`` of a publish that is not in the image cache.
+        avatar_cache: Source of user avatars downloaded from the server,
+            users are shown with their initials without it.
         **kwargs: Forwarded to ``AYContainer``.
     """
+
+    avatar_size = 20
 
     def __init__(
         self,
@@ -71,6 +76,7 @@ class AYActivityStream(AYContainer):
         status_definitions: list[dict[str, Any]] | None = None,
         user_list: list[User] | None = None,
         thumbnail_loader: ThumbnailLoader = None,
+        avatar_cache: UserAvatarCache | None = None,
         **kwargs,
     ) -> None:
         kwargs.setdefault("variant", AYContainer.Variants.Low)
@@ -83,6 +89,9 @@ class AYActivityStream(AYContainer):
         self._status_definitions = status_definitions or []
         self._user_list = user_list or []
         self._thumbnail_loader = thumbnail_loader
+        self._avatar_cache = avatar_cache
+        if avatar_cache is not None:
+            avatar_cache.avatar_updated.connect(self._refresh_avatars)
         self._activities: list[ActivityModel] = []
         self._widgets: list[tuple[ActivityModel, QtWidgets.QWidget]] = []
         self._category = ActivityCategory.ALL
@@ -196,6 +205,7 @@ class AYActivityStream(AYContainer):
                 continue
             self._items.add_widget(widget)
             self._widgets.append((activity, widget))
+        self._refresh_avatars()
         # Keep items at their own height when the feed is shorter than
         #   the panel, instead of stretching them to fill it.
         self._items.addStretch(1)
@@ -247,6 +257,26 @@ class AYActivityStream(AYContainer):
         widget.top_line.setVisible(bool(activity.category))
         widget.images_container.setVisible(bool(activity.files))
         return widget
+
+    def _refresh_avatars(self, user_name: str | None = None) -> None:
+        """Show avatars from the avatar cache instead of initials.
+
+        Args:
+            user_name: Refresh only avatars of this user, all if not set.
+        """
+        if self._avatar_cache is None:
+            return
+        for activity, widget in self._widgets:
+            if user_name and activity.user_name != user_name:
+                continue
+            # Initials are returned until the avatar is downloaded
+            pixmap = self._avatar_cache.pixmap(
+                activity.user_name,
+                activity.user_full_name,
+                self.avatar_size,
+            )
+            if pixmap is not None:
+                widget.user_icon.setPixmap(pixmap)
 
     def _on_filter_clicked(self, index: int) -> None:
         self._category = _FILTERS[index][2]
