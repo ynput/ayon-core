@@ -180,8 +180,8 @@ class ProgressReporter:
         with self._lock:
             if self._state.finished or self._state.failed:
                 return
-            if self._state.phase:
-                self._phase_progress[self._state.phase] = 1.0
+            for name in self._phase_progress:
+                self._phase_progress[name] = 1.0
             state = self._state
             if state.total:
                 state = replace(state, completed=state.total)
