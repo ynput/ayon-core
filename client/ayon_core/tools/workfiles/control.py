@@ -11,6 +11,10 @@ from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.context_tools import get_global_context
+from ayon_core.pipeline.workfile.task_usage import (
+    get_task_usage_settings,
+    get_other_users_task_usage_items,
+)
 from ayon_core.tools.common_models import (
     SettingsModel,
     HierarchyExpectedSelection,
@@ -30,6 +34,7 @@ if typing.TYPE_CHECKING:
     import logging
 
     from ayon_core.host import WorkfileInfo
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
 
     from ayon_core.tools.common_models.settings import TaskSortMode
     from ayon_core.tools.common_models import (
@@ -596,6 +601,28 @@ class BaseWorkfileController(
         )
 
     # Controller actions
+    def get_task_usage_items(self, task_id: str) -> list[TaskUsageItem]:
+        project_name = self.get_current_project_name()
+        try:
+            task_entity = self.get_task_entity(project_name, task_id)
+            settings = get_task_usage_settings(
+                project_name,
+                self.get_host_name(),
+                task_entity["taskType"],
+                task_entity["name"],
+                project_settings=self.project_settings,
+            )
+            if not settings.enabled:
+                return []
+            return get_other_users_task_usage_items(
+                project_name, task_id, settings.stale_timeout_hours
+            )
+        except Exception:
+            self._log.warning(
+                "Failed to receive task in-use information.", exc_info=True
+            )
+        return []
+
     def open_workfile(
         self, folder_id: str, task_id: str, filepath: str
     ) -> None:

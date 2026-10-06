@@ -10,6 +10,8 @@ from ayon_core.ui.components import (
     AYButton
 )
 
+from ayon_core.tools.workfiles.lock_dialog import TaskInUseDialog
+
 from .save_as_dialog import SaveAsDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
@@ -215,7 +217,26 @@ class FilesWidget(AYContainer):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def _open_workfile(self, folder_id, task_name, filepath):
+    def _confirm_task_in_use(self, task_id):
+        """Notify user that the task is in use by other users.
+
+        Returns:
+            bool: True if task is not in use or user wants to continue.
+        """
+        items = self._controller.get_task_usage_items(task_id)
+        if not items:
+            return True
+        dialog = TaskInUseDialog(
+            items,
+            user_items_by_name=self._controller.get_user_items_by_name(),
+            parent=self,
+        )
+        return dialog.exec_() == QtWidgets.QDialog.Accepted
+
+    def _open_workfile(self, folder_id, task_id, filepath):
+        if not self._confirm_task_in_use(task_id):
+            return
+
         if self._controller.has_unsaved_changes():
             result = self._save_changes_prompt()
             if result is None:
@@ -223,7 +244,7 @@ class FilesWidget(AYContainer):
 
             if result:
                 self._controller.save_current_workfile()
-        self._controller.open_workfile(folder_id, task_name, filepath)
+        self._controller.open_workfile(folder_id, task_id, filepath)
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()
@@ -300,6 +321,8 @@ class FilesWidget(AYContainer):
         result = self._exec_save_as_dialog()
         if result is None:
             return
+        if not self._confirm_task_in_use(result["task_id"]):
+            return
         self._controller.save_as_workfile(
             result["folder_id"],
             result["task_id"],
@@ -355,6 +378,8 @@ class FilesWidget(AYContainer):
             extension=extension,
         )
         if result is None:
+            return
+        if not self._confirm_task_in_use(result["task_id"]):
             return
 
         self._controller.copy_workfile_representation(

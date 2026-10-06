@@ -12,6 +12,7 @@ if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
     from ayon_core.host import WorkfileInfo
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
     from ayon_core.tools.common_models import (
         UserItem,
         FolderTypeItem,
@@ -851,6 +852,22 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Triggers 'controller.reset.started' event at the beginning and
         'controller.reset.finished' at the end.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_usage_items(self, task_id: str) -> list[TaskUsageItem]:
+        """Sessions of other users that are working on a task.
+
+        Returns empty list if task in-use notification is not enabled for
+        the task or if current process is already registered on the task.
+
+        Args:
+            task_id (str): Task id.
+
+        Returns:
+            list[TaskUsageItem]: Sessions of other users working on the task.
 
         """
         pass

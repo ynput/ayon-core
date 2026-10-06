@@ -197,6 +197,36 @@ class WorkfilesLockProfile(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
 
 
+class TaskInUseProfile(BaseSettingsModel):
+    _layout = "expanded"
+    # TODO this should use hosts enum
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    enabled: bool = SettingsField(True, title="Enabled")
+    stale_timeout_hours: float = SettingsField(
+        8.0,
+        title="Stale timeout (hours)",
+        description=(
+            "Session of a user that did not update for this amount of hours"
+            " is ignored. A session is updated when a workfile is opened"
+            " or saved. Sessions can become stale when an application"
+            " crashes."
+        ),
+        gt=0,
+    )
+
+
 class AYONMenuModel(BaseSettingsModel):
     _layout = "expanded"
     version_up_current_workfile: bool = SettingsField(
@@ -240,6 +270,16 @@ class WorkfilesToolModel(BaseSettingsModel):
     workfile_lock_profiles: list[WorkfilesLockProfile] = SettingsField(
         default_factory=list,
         title="Workfile lock profiles"
+    )
+    task_in_use_profiles: list[TaskInUseProfile] = SettingsField(
+        default_factory=list,
+        title="Task in-use notification profiles",
+        description=(
+            "Mark a task as in use by a user while the user is working on"
+            " it in an application. Other users are notified when they try"
+            " to open a workfile of the task and can decide if they"
+            " want to continue."
+        ),
     )
 
 
@@ -677,7 +717,8 @@ DEFAULT_TOOLS_VALUES = {
             }
         ],
         "extra_folders": [],
-        "workfile_lock_profiles": []
+        "workfile_lock_profiles": [],
+        "task_in_use_profiles": []
     },
     "loader": {
         "use_legacy_loader": False,
