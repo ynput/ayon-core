@@ -588,7 +588,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
         controller: AbstractProjectController,
         parent: QtWidgets.QWidget,
         handle_expected_selection: bool = False,
-        variant: AYComboBox.Variants = AYComboBox.Variants.Default,
+        variant: AYComboBox.Variants = AYComboBox.Variants.Low,
     ):
         super().__init__(parent)
 
