@@ -672,6 +672,13 @@ class AYProgressDialog(QDialog):
         self.canceled.emit()
         self.reject()
 
+    def reject(self) -> None:
+        # Escape calls reject() directly, without a closeEvent.
+        if not self._finished:
+            self._finished = True
+            self.canceled.emit()
+        super().reject()
+
     def closeEvent(self, event: QCloseEvent) -> None:
         if not self._finished:
             self._finished = True
