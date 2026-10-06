@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from copy import deepcopy
 from dataclasses import dataclass
 import logging
 import re
@@ -1087,7 +1086,7 @@ class CreateModel:
     def get_subtask_products(
         self, folder_id: str, task_name: str
     ) -> list[SubtaskProduct]:
-        # Subtask featureas are available only with planner addon
+        # Subtask features are available only with planner addon
         if not self._is_planner_available():
             return []
 
@@ -1189,7 +1188,7 @@ class CreateModel:
                 project_name, folder_id, task_name
             )
             self._subtask_products_cache[cache_key] = output
-        return deepcopy(output)
+        return copy.deepcopy(output)
 
     def _query_subtask_products(
         self, project_name: str, folder_id: str, task_name: str
