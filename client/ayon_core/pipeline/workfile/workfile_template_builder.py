@@ -667,7 +667,7 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
 
-        if not preset.profile:
+        if not preset:
             raise TemplateProfileNotFound(
                 "No matching profile found for current context."
             )
@@ -737,7 +737,7 @@ class AbstractTemplateBuilder(ABC):
             # set for current context, which would indicate it's just disabled.
             # In that case, do nothing
 
-            if not preset.profile:
+            if not preset:
                 raise TemplateProfileNotFound(
                     "No matching profile found for current context."
                 )
@@ -810,6 +810,12 @@ class AbstractTemplateBuilder(ABC):
     def open_template(self):
         """Open template file with registered host."""
         template_preset = self.get_template_preset()
+
+        if not template_preset:
+            raise TemplateProfileNotFound(
+                "No matching profile found for current context."
+            )
+
         if not template_preset.has_valid_path():
             raise TemplateLoadFailed(
                 f"Template path '{template_preset.path}' does not exist."
@@ -1056,6 +1062,9 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
 
+        if not preset:
+            return
+
         if not preset.execute_on_app_launch:
             return
 
@@ -1084,6 +1093,9 @@ class AbstractTemplateBuilder(ABC):
         if preset is None:
             preset = self.get_template_preset()
 
+        if not preset:
+            return
+
         if not preset.execute_on_new_file:
             return
 
@@ -1110,6 +1122,10 @@ class AbstractTemplateBuilder(ABC):
         """
         if preset is None:
             preset = self.get_template_preset()
+
+        if not preset:
+            return
+
         if not preset.has_valid_path():
             return
 
@@ -1120,7 +1136,7 @@ class AbstractTemplateBuilder(ABC):
                 self.log.info("Saving first workfile: %s", workfile_path)
                 save_next_version()
 
-    def get_template_preset(self) -> TemplatePreset:
+    def get_template_preset(self) -> TemplatePreset | None:
         """Unified way how template preset is received using settings.
 
         Method is dependent on '_get_build_profiles' which should return filter
@@ -1174,7 +1190,7 @@ class AbstractTemplateBuilder(ABC):
             logger=self.log
         )
         if not profile:
-            return TemplatePreset()
+            return None
 
         path = profile["path"]
         # resolve path from ayon entity url
