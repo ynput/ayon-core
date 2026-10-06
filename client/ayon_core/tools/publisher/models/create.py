@@ -1210,9 +1210,9 @@ class CreateModel:
         ):
             subtask_products.append(
                 SubtaskProduct(
-                    product["name"],
-                    product["productType"],
-                    product["productBaseType"],
+                    product_name=product["name"],
+                    product_base_type=product["productBaseType"],
+                    product_type=product["productType"],
                 )
             )
         return subtask_products
