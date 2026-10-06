@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ayon_core.ui.components.container import AYContainer
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
@@ -25,6 +26,9 @@ class BrowserWidget(AYContainer):
     """Top-level widget combining the slicer panel and version table."""
 
     default_view_message = QtCore.Signal(str, bool)
+
+    # Max selected versions for which context menu data are prefetched
+    prefetch_selection_limit = 50
 
     def __init__(
         self,
@@ -62,6 +66,9 @@ class BrowserWidget(AYContainer):
         self._table.card_view.customContextMenuRequested.connect(
             self._on_context_menu
         )
+        self._prefetch_context_id = f"browser_prefetch_{id(self)}"
+        for view in (self._table.table, self._table.card_view):
+            view.selection_changed.connect(self._on_view_selection_changed)
         self._inspector = ReviewInspector(self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._table.default_view_message.connect(
@@ -116,6 +123,10 @@ class BrowserWidget(AYContainer):
         self._table.clear_expansion_state()
         self._table.reset_data()
         self._slicer.set_task_names([])
+        # Discover action plugins before the first context menu, deferred
+        #   to not block the project change. Plugins may use host APIs so
+        #   it must run in the main thread.
+        QtCore.QTimer.singleShot(0, self._warm_up_action_items)
 
     def _on_task_names_changed(self, names: list[str]) -> None:
         """Apply task-list selection to the table's Task criterion."""
@@ -161,6 +172,60 @@ class BrowserWidget(AYContainer):
         self._table.set_auto_expand(auto_expand)
         self._table.reset_data()
 
+    def _get_selected_version_ids(self) -> set[str]:
+        """Return version IDs of the rows selected in the active view."""
+        selection_model = self._table.active_view.selectionModel()
+        version_ids: set[str] = set()
+        for proxy_idx in selection_model.selectedIndexes():
+            if proxy_idx.column() != 0:
+                continue
+            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            if row_dict.get("entityType", "") == "Folder":
+                continue
+            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
+            if version_id and not version_id.startswith("grp:"):
+                version_ids.add(version_id)
+        return version_ids
+
+    def _on_view_selection_changed(self, *args: Any) -> None:
+        """Prefetch context menu data for the new selection.
+
+        A right-click selects the row on mouse press but the context menu
+        is requested on release, so the data is usually ready in time.
+        """
+        project_name = self._controller.current_project
+        version_ids = self._get_selected_version_ids()
+        task_queue = get_task_queue()
+        # Only the latest selection is relevant
+        task_queue.clear_context_tasks(self._prefetch_context_id)
+        # Don't query large selections that may never get a context menu
+        if (
+            not project_name
+            or not version_ids
+            or len(version_ids) > self.prefetch_selection_limit
+        ):
+            return
+
+        controller = self._controller
+        task_queue.enqueue(
+            AsyncTask(
+                name="browser_prefetch_action_contexts",
+                function=lambda: (
+                    controller.prefetch_version_action_contexts(
+                        project_name, version_ids
+                    )
+                ),
+                callback=lambda _result: None,
+                priority=1,
+                context_id=self._prefetch_context_id,
+            )
+        )
+
+    def _warm_up_action_items(self) -> None:
+        project_name = self._controller.current_project
+        if project_name:
+            self._controller.warm_up_action_items(project_name)
+
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         """Show a contextual actions menu for the selected rows.
 
@@ -172,18 +237,7 @@ class BrowserWidget(AYContainer):
             pos: Cursor position in viewport coordinates.
         """
         project_name = self._controller.current_project
-        selection_model = self._table.active_view.selectionModel()
-
-        version_ids: set[str] = set()
-        for proxy_idx in selection_model.selectedIndexes():
-            if proxy_idx.column() != 0:
-                continue
-            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-            if row_dict.get("entityType", "") == "Folder":
-                continue
-            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
-            if version_id and not version_id.startswith("grp:"):
-                version_ids.add(version_id)
+        version_ids = self._get_selected_version_ids()
 
         global_point = self._table.active_view.viewport().mapToGlobal(pos)
 

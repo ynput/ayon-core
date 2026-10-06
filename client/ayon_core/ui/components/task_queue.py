@@ -375,34 +375,15 @@ class AsyncTaskQueue(QThread):
                 "Failed to emit task_started for %s.", task.name, exc_info=True
             )
 
+        # Only the task function itself is guarded: an error raised while
+        # delivering or logging a successful result must not be reported
+        # as a task failure, which would deliver a second callback.
         try:
             result = task.function()
-
-            # Double-check cancellation after execution.
-            if task.is_cancelled():
-                log.debug(
-                    "Task %s completed but was cancelled, discarding result",
-                    task.name,
-                )
-                return
-
-            if task.callback:
-                self._invoke_callback_safely(task.callback, result, task.name)
-
-            try:
-                self.task_completed.emit(task.name, result)
-            except Exception:
-                log.debug(
-                    "Failed to emit task_completed for %s.",
-                    task.name,
-                    exc_info=True,
-                )
-
-            log.debug("Task completed successfully: %s", task.name)
-
         except Exception as e:
-            log.exception("Task %s failed: %s", task.name, e)
-
+            # Deliver the failure before logging it. Logging may itself
+            # raise (e.g. a host stream that is unusable from a worker
+            # thread) and the caller must still learn the task ended.
             if task.callback:
                 self._invoke_callback_safely(task.callback, None, task.name)
 
@@ -414,6 +395,31 @@ class AsyncTaskQueue(QThread):
                     task.name,
                     exc_info=True,
                 )
+
+            log.exception("Task %s failed: %s", task.name, e)
+            return
+
+        # Double-check cancellation after execution.
+        if task.is_cancelled():
+            log.debug(
+                "Task %s completed but was cancelled, discarding result",
+                task.name,
+            )
+            return
+
+        if task.callback:
+            self._invoke_callback_safely(task.callback, result, task.name)
+
+        try:
+            self.task_completed.emit(task.name, result)
+        except Exception:
+            log.debug(
+                "Failed to emit task_completed for %s.",
+                task.name,
+                exc_info=True,
+            )
+
+        log.debug("Task completed successfully: %s", task.name)
 
     def _invoke_callback_safely(
         self, callback: Callable, result: Any, task_name: str
