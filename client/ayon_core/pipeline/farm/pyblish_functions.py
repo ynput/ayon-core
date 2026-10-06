@@ -22,7 +22,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
-from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import PublishError
 from ayon_core.pipeline.publish.input_versions import serialize_input_versions
 
 if typing.TYPE_CHECKING:
@@ -347,6 +347,9 @@ def create_skeleton_instance(
     if data.get("renderlayer"):
         instance_skeleton_data["renderlayer"] = data["renderlayer"]
 
+    if data.get("status"):
+        instance_skeleton_data["status"] = data["status"]
+
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
     if instance_version != 1:
@@ -356,6 +359,15 @@ def create_skeleton_instance(
     for item in families_transfer:
         if item in instance.data.get("families", []):
             instance_skeleton_data["families"] += [item]
+
+    slate_representation_ext = instance.data.get(
+        "slateRepresentationExt")
+    if (
+        "slate" in families_transfer
+        and slate_representation_ext
+    ):
+        instance_skeleton_data["slateRepresentationExt"] = \
+            slate_representation_ext
 
     # transfer specific properties from original instance based on
     # mapping dictionary `instance_transfer`
@@ -425,6 +437,7 @@ def prepare_representations(
 
     """
     representations = []
+    slate_representation_ext = skeleton_data.get("slateRepresentationExt", [])
     host_name = os.environ.get("AYON_HOST_NAME", "")
     collections, remainders = clique.assemble(exp_files)
 
@@ -500,6 +513,9 @@ def prepare_representations(
         # poor man exclusion
         if ext in skip_integration_repre_list:
             rep["tags"].append("delete")
+
+        if ext == slate_representation_ext:
+            rep["tags"].append("slate-frame")
 
         if skeleton_data.get("multipartExr", False):
             rep["tags"].append("multipartExr")
@@ -685,9 +701,10 @@ def create_instances_for_aov(
         len(instance.data.get("attachTo", [])) > 0
         and len(instance.data.get("expectedFiles")[0].keys()) != 1
     ):
-        raise KnownPublishError(
-            "attaching multiple AOVs or renderable cameras to "
-            "product is not supported yet.")
+        raise PublishError(
+            "Attaching multiple AOVs or renderable cameras to"
+            " product is not supported yet."
+        )
 
     additional_data = {
         "renderProducts": instance.data["renderProducts"],

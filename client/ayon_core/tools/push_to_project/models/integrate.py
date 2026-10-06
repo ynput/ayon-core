@@ -1110,11 +1110,11 @@ class ProjectPushItemProcess:
     ) -> dict[str, Any]:
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
-        found_task_type = False
+        found_task_type = None
         src_task_type = task_info["taskType"]
         for task_type in self._project_entity["taskTypes"]:
             if task_type["name"].lower() == src_task_type.lower():
-                found_task_type = True
+                found_task_type = task_type["name"]
                 break
 
         if not found_task_type:
@@ -1129,7 +1129,7 @@ class ProjectPushItemProcess:
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
-            task_type=src_task_type,
+            task_type=found_task_type,
             attrib=task_info["attrib"],
         )
         self._task_info = task_info.data

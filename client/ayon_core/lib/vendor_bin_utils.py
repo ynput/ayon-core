@@ -1,3 +1,4 @@
+import functools
 import os
 import logging
 import platform
@@ -463,6 +464,48 @@ def get_ffmpeg_tool_args(tool_name, *extra_args):
     raise ToolNotFoundError(
         "FFmpeg '{}' tool not found.".format(tool_name)
     )
+
+
+@functools.lru_cache
+def get_ffmpeg_supported_options(mode: str = "long") -> set[str]:
+    """Get all the options supported by the current FFmpeg version.
+
+    Args:
+        mode: Which version of the help message to parse
+            Can be "long", "full" or "" (for short)
+            Default is "long"
+
+    Returns:
+        set[str]: All the options supported by the current FFmpeg version.
+
+    """
+    result = subprocess.run(
+        get_ffmpeg_tool_args("ffmpeg", "-h", mode),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+
+    options: set[str] = set()
+    for line in result.stdout.splitlines():
+        option = line.lstrip()
+        if not option.startswith("-"):
+            continue
+        option = option.split(" ", maxsplit=1)[0]  # remove description
+        option = option.split("[", maxsplit=1)[0]  # remove stream_specifier
+        option = option.lstrip("-")
+        if not option:
+            continue
+
+        options.add(option)
+
+    return options
+
+
+def is_ffmpeg_option_supported(option: str) -> bool:
+    """True if the current version of ffmpeg supports the given option."""
+    return option in get_ffmpeg_supported_options()
 
 
 def is_oiio_supported():

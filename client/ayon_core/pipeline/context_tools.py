@@ -29,7 +29,6 @@ from . import (
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
-    deregister_loader_plugin_path,
     deregister_inventory_action_path
 )
 
@@ -48,7 +47,6 @@ PLUGINS_DIR = os.path.join(AYON_CORE_ROOT, "plugins")
 
 # Global plugin paths
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
-LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 
@@ -185,7 +183,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
     log.info("Registering global plug-ins..")
     pyblish.api.register_plugin_path(PUBLISH_PATH)
     pyblish.api.register_discovery_filter(filter_pyblish_plugins)
-    register_loader_plugin_path(LOAD_PATH)
     register_inventory_action_path(INVENTORY_PATH)
 
     if host_name is None:
@@ -231,7 +228,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
         ) or []
         for path in project_plugins:
             try:
-                path = str(path.format(**os.environ))
+                path = str(path.format_map(os.environ))
             except KeyError:
                 pass
 
@@ -256,13 +253,12 @@ def uninstall_host():
     log.info("Deregistering global plug-ins..")
     pyblish.api.deregister_plugin_path(PUBLISH_PATH)
     pyblish.api.deregister_discovery_filter(filter_pyblish_plugins)
-    deregister_loader_plugin_path(LOAD_PATH)
     deregister_inventory_action_path(INVENTORY_PATH)
     log.info("Global plug-ins unregistered")
 
     deregister_host()
 
-    log.info("Successfully uninstalled Avalon!")
+    log.info("Successfully uninstalled AYON!")
 
 
 def is_installed():

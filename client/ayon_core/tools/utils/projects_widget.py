@@ -11,8 +11,13 @@ from ayon_core.tools.common_models import (
     ProjectItem,
     PROJECTS_MODEL_SENDER,
 )
+from ayon_core.ui.components import AYComboBox, AYTreeView
+from ayon_core.ui.style import (
+    TreeViewItemDelegate,
+    get_ayon_style,
+    ComboBoxItemDelegate,
+)
 
-from .views import ListView
 from .lib import RefreshThread, get_qt_icon
 
 if typing.TYPE_CHECKING:
@@ -32,7 +37,14 @@ PROJECT_IS_ACTIVE_ROLE = QtCore.Qt.UserRole + 2
 PROJECT_IS_LIBRARY_ROLE = QtCore.Qt.UserRole + 3
 PROJECT_IS_CURRENT_ROLE = QtCore.Qt.UserRole + 4
 PROJECT_IS_PINNED_ROLE = QtCore.Qt.UserRole + 5
-LIBRARY_PROJECT_SEPARATOR_ROLE = QtCore.Qt.UserRole + 6
+PROJECT_ITEM_TYPE = QtCore.Qt.UserRole + 6
+
+
+class ProjectItemType:
+    ProjectItem = 0
+    EmptyItem = 1
+    SelectItem = 2
+    PinSeparator = 3
 
 
 class AbstractProjectController(ABC):
@@ -65,21 +77,22 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
 
     def __init__(self, controller: AbstractProjectController):
         super().__init__()
+
+        self.setColumnCount(1)
+
         self._controller = controller
 
         self._project_items = {}
-        self._has_libraries = False
 
         self._empty_item = None
         self._empty_item_added = False
 
+        self._pin_sep_item = None
+        self._pin_sep_item_added = False
+
         self._select_item = None
         self._select_item_added = False
         self._select_item_visible = None
-
-        self._libraries_sep_item = None
-        self._libraries_sep_item_added = False
-        self._libraries_sep_item_visible = False
 
         self._current_context_project = None
 
@@ -120,11 +133,6 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
 
         if self._selected_project is None:
             self._add_select_item()
-
-    def set_libraries_separator_visible(self, visible):
-        if self._libraries_sep_item_visible is visible:
-            return
-        self._libraries_sep_item_visible = visible
 
     def set_selected_project(self, project_name):
         if not self._select_item_visible:
@@ -175,38 +183,40 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
         if self._empty_item is None:
             item = QtGui.QStandardItem("< No projects >")
             item.setFlags(QtCore.Qt.NoItemFlags)
+            item.setData(
+                ProjectItemType.EmptyItem,
+                PROJECT_ITEM_TYPE
+            )
             self._empty_item = item
         return self._empty_item
 
-    def _get_library_sep_item(self):
-        if self._libraries_sep_item is not None:
-            return self._libraries_sep_item
+    def _get_pin_sep_item(self):
+        if self._pin_sep_item is not None:
+            return self._pin_sep_item
 
         item = QtGui.QStandardItem()
-        item.setData("Libraries", QtCore.Qt.DisplayRole)
-        item.setData(True, LIBRARY_PROJECT_SEPARATOR_ROLE)
+        item.setSizeHint(QtCore.QSize(60, 8))
+        item.setData(
+            ProjectItemType.PinSeparator,
+            PROJECT_ITEM_TYPE
+        )
         item.setFlags(QtCore.Qt.NoItemFlags)
-        self._libraries_sep_item = item
+        self._pin_sep_item = item
         return item
 
-    def _add_library_sep_item(self):
-        if (
-            not self._libraries_sep_item_visible
-            or self._libraries_sep_item_added
-        ):
+    def _add_pin_sep_item(self):
+        if self._pin_sep_item_added:
             return
-        self._libraries_sep_item_added = True
-        item = self._get_library_sep_item()
+        self._pin_sep_item_added = True
+        item = self._get_pin_sep_item()
         root_item = self.invisibleRootItem()
         root_item.appendRow(item)
 
-    def _remove_library_sep_item(self):
-        if (
-            not self._libraries_sep_item_added
-        ):
+    def _remove_pin_sep_item(self):
+        if not self._pin_sep_item_added:
             return
-        self._libraries_sep_item_added = False
-        item = self._get_library_sep_item()
+        self._pin_sep_item_added = False
+        item = self._get_pin_sep_item()
         root_item = self.invisibleRootItem()
         root_item.takeRow(item.row())
 
@@ -230,6 +240,10 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
         if self._select_item is None:
             item = QtGui.QStandardItem("< Select project >")
             item.setEditable(False)
+            item.setData(
+                ProjectItemType.SelectItem,
+                PROJECT_ITEM_TYPE
+            )
             self._select_item = item
         return self._select_item
 
@@ -284,15 +298,17 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
             item = self._project_items.pop(project_name)
             root_item.takeRow(item.row())
 
-        has_library_project = False
         new_items = []
+        pinned_values = set()
         for project_item in project_items:
             project_name = project_item.name
             item = self._project_items.get(project_name)
-            if project_item.is_library:
-                has_library_project = True
             if item is None:
                 item = QtGui.QStandardItem()
+                item.setData(
+                    ProjectItemType.ProjectItem,
+                    PROJECT_ITEM_TYPE
+                )
                 item.setEditable(False)
                 new_items.append(item)
             icon = get_qt_icon(project_item.icon)
@@ -304,11 +320,10 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
             item.setData(project_item.is_pinned, PROJECT_IS_PINNED_ROLE)
             is_current = project_name == self._current_context_project
             item.setData(is_current, PROJECT_IS_CURRENT_ROLE)
+            pinned_values.add(project_item.is_pinned)
             self._project_items[project_name] = item
 
         self._set_current_context_project(self._current_context_project)
-
-        self._has_libraries = has_library_project
 
         if new_items:
             root_item.appendRows(new_items)
@@ -316,15 +331,14 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
         if self.has_content():
             # Make sure "No projects" item is removed
             self._remove_empty_item()
-            if has_library_project:
-                self._add_library_sep_item()
+            if len(pinned_values) == 2:
+                self._add_pin_sep_item()
             else:
-                self._remove_library_sep_item()
+                self._remove_pin_sep_item()
         else:
             # Keep only "No projects" item
             self._add_empty_item()
             self._remove_select_item()
-            self._remove_library_sep_item()
 
 
 class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
@@ -333,55 +347,34 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self._filter_inactive = True
         self._filter_standard = False
         self._filter_library = False
-        self._sort_by_type = True
         # Disable case sensitivity
         self.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-    def _type_sort(self, l_index, r_index):
-        if not self._sort_by_type:
-            return None
-
-        l_is_library = l_index.data(PROJECT_IS_LIBRARY_ROLE)
-        r_is_library = r_index.data(PROJECT_IS_LIBRARY_ROLE)
-        # Both hare project items
-        if l_is_library is not None and r_is_library is not None:
-            if l_is_library is r_is_library:
-                return None
-            if l_is_library:
-                return False
-            return True
-
-        if l_index.data(LIBRARY_PROJECT_SEPARATOR_ROLE):
-            if r_is_library is None:
-                return False
-            return r_is_library
-
-        if r_index.data(LIBRARY_PROJECT_SEPARATOR_ROLE):
-            if l_is_library is None:
-                return True
-            return l_is_library
-        return None
-
     def lessThan(self, left_index, right_index):
         # Current project always on top
-        # - make sure this is always first, before any other sorting
-        #   e.g. type sort would move the item lower
         if left_index.data(PROJECT_IS_CURRENT_ROLE):
             return True
         if right_index.data(PROJECT_IS_CURRENT_ROLE):
             return False
 
-        # Library separator should be before library projects
-        l_is_library = left_index.data(PROJECT_IS_LIBRARY_ROLE)
-        r_is_library = right_index.data(PROJECT_IS_LIBRARY_ROLE)
-        l_is_sep = left_index.data(LIBRARY_PROJECT_SEPARATOR_ROLE)
-        r_is_sep = right_index.data(LIBRARY_PROJECT_SEPARATOR_ROLE)
-        if l_is_sep:
-            return bool(r_is_library)
+        left_item_type = left_index.data(PROJECT_ITEM_TYPE)
+        right_item_type = right_index.data(PROJECT_ITEM_TYPE)
+        left_is_pinned = left_index.data(PROJECT_IS_PINNED_ROLE)
+        right_is_pinned = right_index.data(PROJECT_IS_PINNED_ROLE)
+        if left_item_type != right_item_type:
+            if left_item_type == ProjectItemType.SelectItem:
+                return True
 
-        if r_is_sep:
-            return not l_is_library
+            if right_item_type == ProjectItemType.SelectItem:
+                return False
+
+            if left_item_type == ProjectItemType.PinSeparator:
+                return not right_is_pinned
+
+            if right_item_type == ProjectItemType.PinSeparator:
+                return left_is_pinned
+            return right_item_type == ProjectItemType.ProjectItem
 
         # Non project items should be on top
         l_project_name = left_index.data(PROJECT_NAME_ROLE)
@@ -391,32 +384,17 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         if r_project_name is None:
             return False
 
-        left_is_active = left_index.data(PROJECT_IS_ACTIVE_ROLE)
-        right_is_active = right_index.data(PROJECT_IS_ACTIVE_ROLE)
-        if right_is_active != left_is_active:
-            return left_is_active
-
-        l_is_pinned = left_index.data(PROJECT_IS_PINNED_ROLE)
-        r_is_pinned = right_index.data(PROJECT_IS_PINNED_ROLE)
-        if l_is_pinned is True and not r_is_pinned:
-            return True
-
-        if r_is_pinned is True and not l_is_pinned:
-            return False
-
         # Move inactive projects to the end
         left_is_active = left_index.data(PROJECT_IS_ACTIVE_ROLE)
         right_is_active = right_index.data(PROJECT_IS_ACTIVE_ROLE)
         if right_is_active != left_is_active:
             return left_is_active
 
-        # Move library projects after standard projects
-        if (
-            l_is_library is not None
-            and r_is_library is not None
-            and l_is_library != r_is_library
-        ):
-            return r_is_library
+        left_is_pinned = left_index.data(PROJECT_IS_PINNED_ROLE)
+        right_is_pinned = right_index.data(PROJECT_IS_PINNED_ROLE)
+        if left_is_pinned != right_is_pinned:
+            return left_is_pinned
+
         return super().lessThan(left_index, right_index)
 
     def filterAcceptsRow(self, source_row, source_parent):
@@ -457,10 +435,10 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
             and index.data(PROJECT_IS_LIBRARY_ROLE)
         ):
             return False
-        return True
+        return self._custom_index_filter(index)
 
     def _custom_index_filter(self, index):
-        return bool(index.data(PROJECT_IS_ACTIVE_ROLE))
+        return True
 
     def is_active_filter_enabled(self):
         return self._filter_inactive
@@ -483,141 +461,122 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self._filter_standard = enabled
         self.invalidateFilter()
 
-    def set_sort_by_type(self, enabled):
-        if self._sort_by_type is enabled:
-            return
-        self._sort_by_type = enabled
-        self.invalidate()
 
+class _ProjectsPinMixin:
+    """Mixin class that provides pin icon painting functionality."""
 
-class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._pin_icon = None
 
-    def paint(self, painter, option, index):
+    def _paint_pin_icon(self, painter, option, index):
+        """Paint pin icon for pinned projects."""
         is_pinned = index.data(PROJECT_IS_PINNED_ROLE)
         if not is_pinned:
-            super().paint(painter, option, index)
             return
+
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+
+        pin_icon = self._get_pin_icon()
+        icon_size = option.decorationSize
+        # Position pin icon on the right side of the row, vertically centered
+        pin_rect = QtCore.QRect(
+            option.rect.right() - icon_size.width() - 6,
+            option.rect.center().y() - icon_size.height() // 2,
+            icon_size.width(),
+            icon_size.height(),
+        )
+        mode = (
+            QtGui.QIcon.Mode.Normal
+            if option.state & QtWidgets.QStyle.StateFlag.State_Enabled
+            else QtGui.QIcon.Mode.Disabled
+        )
+        pin_icon.paint(
+            painter,
+            pin_rect,
+            QtCore.Qt.AlignmentFlag.AlignCenter,
+            mode,
+        )
+        painter.restore()
+
+    def _paint_separator(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        bg_color: QtGui.QColor | None,
+    ) -> None:
         opt = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
-        widget = option.widget
-        if widget is None:
-            style = QtWidgets.QApplication.style()
-        else:
-            style = widget.style()
-        # CE_ItemViewItem
-        proxy = style.proxy()
-        painter.save()
-        painter.setClipRect(option.rect)
-        decor_rect = proxy.subElementRect(
-            QtWidgets.QStyle.SE_ItemViewItemDecoration, opt, widget
+
+        # NOTE: Background is drawn because AYMenu view background has
+        #   different color from items color.
+        # If that will change we can reduce this to just draw the line.
+        if bg_color is None:
+            bg_color = opt.palette.color(
+                QtGui.QPalette.ColorGroup.Active,
+                QtGui.QPalette.ColorRole.Window,
+            )
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(bg_color)
+        painter.drawRect(option.rect)
+
+        pen = QtGui.QPen()
+        color = opt.palette.color(
+            QtGui.QPalette.Disabled, QtGui.QPalette.Text
         )
-        text_rect = proxy.subElementRect(
-            QtWidgets.QStyle.SE_ItemViewItemText, opt, widget
-        )
-        proxy.drawPrimitive(
-            QtWidgets.QStyle.PE_PanelItemViewItem, opt, painter, widget
-        )
-        mode = QtGui.QIcon.Normal
-        if not opt.state & QtWidgets.QStyle.State_Enabled:
-            mode = QtGui.QIcon.Disabled
-        elif opt.state & QtWidgets.QStyle.State_Selected:
-            mode = QtGui.QIcon.Selected
-        state = QtGui.QIcon.Off
-        if opt.state & QtWidgets.QStyle.State_Open:
-            state = QtGui.QIcon.On
+        color.setAlphaF(0.25)
+        pen.setColor(color)
+        pen.setWidth(1)
+        painter.setPen(pen)
 
-        # Draw project icon
-        opt.icon.paint(
-            painter, decor_rect, opt.decorationAlignment, mode, state
-        )
-
-        # Draw pin icon
-        if index.data(PROJECT_IS_PINNED_ROLE):
-            pin_icon = self._get_pin_icon()
-            pin_rect = QtCore.QRect(decor_rect)
-            diff = option.rect.width() - pin_rect.width()
-            pin_rect.moveLeft(diff)
-            pin_icon.paint(
-                painter, pin_rect, opt.decorationAlignment, mode, state
-            )
-
-        # Draw text
-        if opt.text:
-            if not opt.state & QtWidgets.QStyle.State_Enabled:
-                cg = QtGui.QPalette.Disabled
-            elif not (opt.state & QtWidgets.QStyle.State_Active):
-                cg = QtGui.QPalette.Inactive
-            else:
-                cg = QtGui.QPalette.Normal
-
-            if opt.state & QtWidgets.QStyle.State_Selected:
-                painter.setPen(
-                    opt.palette.color(cg, QtGui.QPalette.HighlightedText)
-                )
-            else:
-                painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
-
-            if opt.state & QtWidgets.QStyle.State_Editing:
-                painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
-                painter.drawRect(text_rect.adjusted(0, 0, -1, -1))
-
-            margin = proxy.pixelMetric(
-                QtWidgets.QStyle.PM_FocusFrameHMargin, None, widget
-            ) + 1
-            text_rect.adjust(margin, 0, -margin, 0)
-            # NOTE skipping some steps e.g. word wrapping and elided
-            #   text (adding '...' when too long).
-            painter.drawText(
-                text_rect,
-                opt.displayAlignment,
-                opt.text
-            )
-
-        # Draw focus rect
-        if opt.state & QtWidgets.QStyle.State_HasFocus:
-            focus_opt = QtWidgets.QStyleOptionFocusRect()
-            focus_opt.state = option.state
-            focus_opt.direction = option.direction
-            focus_opt.rect = option.rect
-            focus_opt.fontMetrics = option.fontMetrics
-            focus_opt.palette = option.palette
-
-            focus_opt.rect = style.subElementRect(
-                QtWidgets.QCommonStyle.SE_ItemViewItemFocusRect,
-                option,
-                option.widget
-            )
-            focus_opt.state |= (
-                QtWidgets.QStyle.State_KeyboardFocusChange
-                | QtWidgets.QStyle.State_Item
-            )
-            focus_opt.backgroundColor = option.palette.color(
-                (
-                    QtGui.QPalette.Normal
-                    if option.state & QtWidgets.QStyle.State_Enabled
-                    else QtGui.QPalette.Disabled
-                ),
-                (
-                    QtGui.QPalette.Highlight
-                    if option.state & QtWidgets.QStyle.State_Selected
-                    else QtGui.QPalette.Window
-                )
-            )
-            style.drawPrimitive(
-                QtWidgets.QCommonStyle.PE_FrameFocusRect,
-                focus_opt,
-                painter,
-                option.widget
-            )
-        painter.restore()
+        bottom = option.rect.bottom() - 3
+        l_point = QtCore.QPoint(option.rect.left() + 5, bottom)
+        r_point = QtCore.QPoint(option.rect.right() - 5, bottom)
+        painter.drawLine(l_point, r_point)
 
     def _get_pin_icon(self):
         if self._pin_icon is None:
             self._pin_icon = get_qt_icon(MaterialSymbolsIcon("keep"))
         return self._pin_icon
+
+
+class ProjectsTreeDelegate(_ProjectsPinMixin, TreeViewItemDelegate):
+    """Tree view delegate with pin icon support."""
+
+    def paint(self, painter, option, index):
+        """Paint tree item with pin icon for pinned projects."""
+        item_type = index.data(PROJECT_ITEM_TYPE)
+        if item_type == ProjectItemType.PinSeparator:
+            self._paint_separator(
+                painter, option, index, QtCore.Qt.transparent
+            )
+            return
+        super().paint(painter, option, index)
+        self._paint_pin_icon(painter, option, index)
+
+
+class ProjectsComboBoxDelegate(_ProjectsPinMixin, ComboBoxItemDelegate):
+    """Combobox delegate with pin icon support."""
+
+    def paint(self, painter, option, index):
+        """Paint combobox item with pin icon for pinned projects."""
+        item_type = index.data(PROJECT_ITEM_TYPE)
+        if item_type == ProjectItemType.PinSeparator:
+            cb = self.parent()
+            # Menu background from the AYON style JSON
+            menu_bg = None
+            if self._style_model:
+                cb_style = self._style_model.get_style("QComboBox")
+                cb_style.set_context(cb)
+                menu_bg = QtGui.QColor(
+                    cb_style.get("menu-background-color", "#1c2026")
+                )
+            self._paint_separator(painter, option, index, menu_bg)
+            return
+        super().paint(painter, option, index)
+        self._paint_pin_icon(painter, option, index)
 
 
 class ProjectsCombobox(QtWidgets.QWidget):
@@ -629,15 +588,23 @@ class ProjectsCombobox(QtWidgets.QWidget):
         controller: AbstractProjectController,
         parent: QtWidgets.QWidget,
         handle_expected_selection: bool = False,
+        variant: AYComboBox.Variants = AYComboBox.Variants.Default,
     ):
         super().__init__(parent)
 
-        projects_combobox = QtWidgets.QComboBox(self)
-        combobox_delegate = ProjectsDelegate(projects_combobox)
-        projects_combobox.setItemDelegate(combobox_delegate)
+        projects_combobox = AYComboBox(self, variant=variant)
         projects_model = ProjectsQtModel(controller)
         projects_proxy_model = ProjectSortFilterProxy()
         projects_proxy_model.setSourceModel(projects_model)
+
+        # Set custom delegate for combobox items
+        ayon_style = get_ayon_style()
+        combobox_delegate = ProjectsComboBoxDelegate(
+            parent=projects_combobox.view(),
+            style_model=ayon_style.model
+        )
+        projects_combobox.setItemDelegate(combobox_delegate)
+
         projects_combobox.setModel(projects_proxy_model)
 
         main_layout = QtWidgets.QHBoxLayout(self)
@@ -671,9 +638,9 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._expected_selection = None
 
         self._projects_combobox = projects_combobox
+        self._combobox_delegate = combobox_delegate
         self._projects_model = projects_model
         self._projects_proxy_model = projects_proxy_model
-        self._combobox_delegate = combobox_delegate
 
     def refresh(self):
         self._projects_model.refresh()
@@ -735,9 +702,6 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._select_item_visible = visible
         self._projects_model.set_select_item_visible(visible)
         self._update_select_item_visiblity()
-
-    def set_libraries_separator_visible(self, visible):
-        self._projects_model.set_libraries_separator_visible(visible)
 
     def is_active_filter_enabled(self):
         return self._projects_proxy_model.is_active_filter_enabled()
@@ -841,19 +805,21 @@ class ProjectsWidget(QtWidgets.QWidget):
     ):
         super().__init__(parent=parent)
 
-        projects_view = ListView(parent=self)
-        projects_view.setResizeMode(QtWidgets.QListView.Adjust)
-        projects_view.setVerticalScrollMode(
-            QtWidgets.QAbstractItemView.ScrollPerPixel
+        projects_view = AYTreeView(self)
+        projects_view.setIndentation(0)
+        projects_view.setHeaderHidden(True)
+        projects_view.setSelectionMode(
+            AYTreeView.SelectionMode.SingleSelection
         )
-        projects_view.setAlternatingRowColors(False)
-        projects_view.setWrapping(False)
-        projects_view.setWordWrap(False)
-        projects_view.setSpacing(0)
-        projects_delegate = ProjectsDelegate(projects_view)
+
+        # Set custom delegate for tree view items
+        ayon_style = get_ayon_style()
+        projects_delegate = ProjectsTreeDelegate(
+            parent=projects_view,
+            style_model=ayon_style.model,
+            variant=projects_view._variant_str
+        )
         projects_view.setItemDelegate(projects_delegate)
-        projects_view.activate_flick_charm()
-        projects_view.set_deselectable(True)
 
         projects_model = ProjectsQtModel(controller)
         projects_proxy_model = ProjectSortFilterProxy()
@@ -864,7 +830,7 @@ class ProjectsWidget(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(projects_view, 1)
 
-        projects_view.selectionModel().selectionChanged.connect(
+        projects_view.selection_changed.connect(
             self._on_selection_change
         )
         projects_view.double_clicked.connect(self.double_clicked)
@@ -917,9 +883,9 @@ class ProjectsWidget(QtWidgets.QWidget):
         proxy_index = self._projects_proxy_model.mapFromSource(index)
         if proxy_index.isValid():
             selection_model = self._projects_view.selectionModel()
-            selection_model.select(
+            selection_model.setCurrentIndex(
                 proxy_index,
-                QtCore.QItemSelectionModel.ClearAndSelect
+                QtCore.QItemSelectionModel.SelectCurrent
             )
 
     def _on_model_refresh(self):

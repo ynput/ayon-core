@@ -53,6 +53,8 @@ class ProductInfoWidget(QtWidgets.QWidget):
 
         # Convert button widget (with layout to handle stretch)
         convert_widget = QtWidgets.QWidget(creator_widget)
+        convert_widget.setVisible(False)
+
         convert_label = QtWidgets.QLabel(creator_widget)
         # Set the label text with 'setText' to apply html
         convert_label.setText(
