@@ -1117,8 +1117,6 @@ class CreateModel:
                 and instance["task"] == task_name
             )
         ]
-        if not context_instances:
-            return subtask_products
 
         for subtask_product in subtask_products:
             pn = subtask_product.product_name
