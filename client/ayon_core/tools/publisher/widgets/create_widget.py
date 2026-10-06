@@ -577,7 +577,12 @@ class CreateWidget(QtWidgets.QWidget):
         if not subtask_products:
             root_item.removeRows(0, root_item.rowCount())
             self._subtask_products_widget.setVisible(False)
-            self._current_subtask_product = None
+            if self._current_subtask_product is not None:
+                # Reset state that depends on selected subtask product
+                #   (creators filter, variant input and product name)
+                self._on_subtask_product_change(
+                    QtCore.QModelIndex(), QtCore.QModelIndex()
+                )
             return
 
         icon_created = get_qt_icon(
