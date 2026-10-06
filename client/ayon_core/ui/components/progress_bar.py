@@ -184,6 +184,8 @@ class AYProgressBar(StyleMixin, QWidget):
         Args:
             total: Number of steps, or ``None`` for indeterminate.
         """
+        if total == self._total:
+            return
         self._total = total
         self._completed = False
         if total is not None and self._current > max(total, 0):
