@@ -809,7 +809,7 @@ class AbstractTemplateBuilder(ABC):
 
     def open_template(
         self,
-        preset: TemplatePreset | None,
+        preset: TemplatePreset | None=None,
     ):
         """Open template file with registered host."""
         if preset is None:
