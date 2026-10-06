@@ -32,7 +32,7 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.abstract import ActionItem, ProductGroupsInfo
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
     BrowserColumnManager,
@@ -86,6 +86,37 @@ _GRID_COLUMN_KEYS: frozenset[str] = frozenset({
     "productType",
     "productBaseType",
 })
+
+# Server filter operators and their negation, used to exclude values.
+# 'like' and 're' have no negated counterpart on the server.
+_NEGATED_OPERATORS: dict[str, str] = {
+    "eq": "ne",
+    "ne": "eq",
+    "lt": "gte",
+    "gte": "lt",
+    "gt": "lte",
+    "lte": "gt",
+    "isnull": "notnull",
+    "notnull": "isnull",
+    "in": "notin",
+    "notin": "in",
+    "includes": "excludes",
+    "excludes": "includes",
+    "includesany": "excludesany",
+    "excludesany": "includesany",
+    "includesall": "excludesall",
+    "excludesall": "includesall",
+}
+# Operators that never match a null value in SQL, so their negation must
+# explicitly accept nulls as well.
+_NULL_UNAWARE_OPERATORS = {"eq", "ne", "lt", "gte", "gt", "lte", "in", "notin"}
+_QUERY_CONDITION_KEYS = (
+    "version_conditions",
+    "product_conditions",
+    "task_conditions",
+    "folder_conditions",
+    "representation_conditions",
+)
 
 
 @dataclass
@@ -224,6 +255,7 @@ class BrowserWidgetController(QtCore.QObject):
     selection_changed = QtCore.Signal(list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
     my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
+    products_group_changed = QtCore.Signal()  # type: ignore
 
     def __init__(
         self,
@@ -277,7 +309,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._my_tasks_filter_enabled: bool = False
         self._folder_id_scope: set[str] | None = None
         self._task_id_scope: set[str] | None = None
-        self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
+        self._query_filter_criteria: list[
+            tuple[str, list[str], bool, bool]
+        ] = []
         self._display_type: str = BROWSER_VIEW_DEFAULTS.display_type
         # Columns visible in the table, queried while it is displayed.
         self._table_column_keys: set[str] = set()
@@ -293,6 +327,10 @@ class BrowserWidgetController(QtCore.QObject):
         loader_controller.register_event_callback(
             "controller.reset.finished",
             self._on_loader_controller_reset,
+        )
+        loader_controller.register_event_callback(
+            "products.group.changed",
+            self._on_products_group_changed,
         )
         column_services = BrowserColumnServices(loader_controller)
         self._column_manager = BrowserColumnManager(
@@ -786,6 +824,7 @@ class BrowserWidgetController(QtCore.QObject):
                 key_aliases.get(str(item.key), str(item.key)),
                 [str(value) for value in item.values],
                 bool(item.use_substring),
+                bool(getattr(item, "exclude", False)),
             )
             for item in criteria
             if item.values
@@ -793,6 +832,124 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
 
     def _get_query_filters(self) -> dict[str, Any]:
+        included = [
+            criterion
+            for criterion in self._query_filter_criteria
+            if not criterion[3]
+        ]
+        parts = self._build_query_filter_parts(included)
+        for criterion in self._query_filter_criteria:
+            if criterion[3]:
+                self._add_excluded_query_filter_parts(parts, criterion)
+
+        def encode(conditions: list[dict[str, Any]]) -> str:
+            if not conditions:
+                return ""
+            return json.dumps({"conditions": conditions})
+
+        return {
+            "version_filter": encode(parts["version_conditions"]),
+            "product_filter": encode(parts["product_conditions"]),
+            "task_filter": encode(parts["task_conditions"]),
+            "folder_filter": encode(parts["folder_conditions"]),
+            "representation_filter": encode(
+                parts["representation_conditions"]
+            ),
+            "featured_only": parts["featured_only"] or None,
+            "search": parts["search"],
+            "version_ids": parts["version_ids"],
+            "has_reviewables": parts["has_reviewables"],
+        }
+
+    def _add_excluded_query_filter_parts(
+        self,
+        parts: dict[str, Any],
+        criterion: tuple[str, list[str], bool, bool],
+    ) -> None:
+        """Add the server-side negation of an excluding criterion.
+
+        The criterion is built like an including one and then negated.
+        What cannot be negated on the server - a 'like' text match, a
+        featured version or the product/version search - is left out of
+        the query, so the rows come back unfiltered by it and the table's
+        own filter excludes them locally instead.
+        """
+        excluded = self._build_query_filter_parts([criterion])
+        if excluded["has_reviewables"] is not None:
+            parts["has_reviewables"] = not excluded["has_reviewables"]
+
+        condition_keys = [
+            key for key in _QUERY_CONDITION_KEYS if excluded[key]
+        ]
+        # Conditions on different entities can't be negated as a whole.
+        if len(condition_keys) != 1:
+            return
+        key = condition_keys[0]
+        negated = self._negate_condition(
+            {"operator": "and", "conditions": excluded[key]}
+        )
+        if negated is not None:
+            parts[key].append(negated)
+
+    @classmethod
+    def _negate_condition(
+        cls,
+        condition: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Return a server filter condition matching the inverse.
+
+        The server has no 'not' operator, so groups are negated using
+        De Morgan's laws and each condition by its opposite operator.
+
+        Args:
+            condition: A condition or a group of conditions.
+
+        Returns:
+            The negated condition, or ``None`` when it contains an
+            operator without an opposite, e.g. 'like'.
+        """
+        operator = condition.get("operator", "and")
+        if "conditions" in condition:
+            negated_conditions = []
+            for child in condition["conditions"]:
+                negated_child = cls._negate_condition(child)
+                if negated_child is None:
+                    return None
+                negated_conditions.append(negated_child)
+            if len(negated_conditions) == 1:
+                return negated_conditions[0]
+            return {
+                "operator": "or" if operator == "and" else "and",
+                "conditions": negated_conditions,
+            }
+
+        negated_operator = _NEGATED_OPERATORS.get(operator)
+        if negated_operator is None:
+            return None
+        negated = {**condition, "operator": negated_operator}
+        key = condition["key"]
+        if (
+            key.startswith("attrib.")
+            and operator in _NULL_UNAWARE_OPERATORS
+        ):
+            # An unset attribute is null, which the original condition
+            # never matched - so the negation has to.
+            return {
+                "operator": "or",
+                "conditions": [
+                    negated, {"key": key, "operator": "isnull"}
+                ],
+            }
+        return negated
+
+    def _build_query_filter_parts(
+        self,
+        criteria: list[tuple[str, list[str], bool, bool]],
+    ) -> dict[str, Any]:
+        """Build server query conditions matching the criteria's values.
+
+        The exclude flag of each criterion is ignored here.
+        """
         version_conditions: list[dict[str, Any]] = []
         product_conditions: list[dict[str, Any]] = []
         task_conditions: list[dict[str, Any]] = []
@@ -806,7 +963,7 @@ class BrowserWidgetController(QtCore.QObject):
         extension_filter_keys = self._column_manager.get_filter_keys(
             self._get_column_context()
         )
-        for key, values, use_substring in self._query_filter_criteria:
+        for key, values, use_substring, _exclude in criteria:
             if key in extension_filter_keys:
                 continue
             # "No/Has value" may be picked next to regular values; the
@@ -1051,18 +1208,13 @@ class BrowserWidgetController(QtCore.QObject):
             else:
                 version_conditions.append(condition)
 
-        def encode(conditions: list[dict[str, Any]]) -> str:
-            if not conditions:
-                return ""
-            return json.dumps({"conditions": conditions})
-
         return {
-            "version_filter": encode(version_conditions),
-            "product_filter": encode(product_conditions),
-            "task_filter": encode(task_conditions),
-            "folder_filter": encode(folder_conditions),
-            "representation_filter": encode(representation_conditions),
-            "featured_only": featured_only or None,
+            "version_conditions": version_conditions,
+            "product_conditions": product_conditions,
+            "task_conditions": task_conditions,
+            "folder_conditions": folder_conditions,
+            "representation_conditions": representation_conditions,
+            "featured_only": featured_only,
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
@@ -1917,6 +2069,56 @@ class BrowserWidgetController(QtCore.QObject):
             project_name, version_ids
         )
 
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        """Return product group names related to the given products.
+
+        Args:
+            project_name: AYON project name.
+            product_ids: Selected product ids.
+
+        Returns:
+            Group names of the products and group names available in
+            their folders.
+        """
+        return self._loader_controller.get_product_groups_info(
+            project_name, product_ids
+        )
+
+    def can_change_products_group(self, project_name: str) -> bool:
+        """Return whether the user may write the product group attribute.
+
+        Args:
+            project_name: AYON project name.
+        """
+        return self._loader_controller.can_change_products_group(
+            project_name
+        )
+
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        """Change the product group of the given products.
+
+        :attr:`products_group_changed` is emitted once it changed.
+
+        Args:
+            project_name: AYON project name.
+            product_ids: Product ids to change the group for.
+            group_name: Group name to set, empty string to ungroup.
+        """
+        self._loader_controller.change_products_group(
+            project_name, product_ids, group_name
+        )
+
+    def _on_products_group_changed(self, event: Any) -> None:
+        """Mark loaded rows outdated when a product group changed."""
+        if event["project_name"] != self._current_project:
+            return
+        self._reset_pagination()
+        self.products_group_changed.emit()
+
     def _get_column_context(self) -> BrowserColumnContext:
         """Return an immutable state snapshot for column providers."""
         filters = tuple(
@@ -1924,8 +2126,11 @@ class BrowserWidgetController(QtCore.QObject):
                 key=key,
                 values=tuple(values),
                 use_substring=use_substring,
+                exclude=exclude,
             )
-            for key, values, use_substring in self._query_filter_criteria
+            for key, values, use_substring, exclude in (
+                self._query_filter_criteria
+            )
         )
         return BrowserColumnContext(
             project_name=self._current_project or None,
@@ -3605,7 +3810,7 @@ class BrowserWidgetController(QtCore.QObject):
         )
         requested_keys.update(
             key
-            for key, _, _ in self._query_filter_criteria
+            for key, _, _, _ in self._query_filter_criteria
             if key.startswith("attr:")
         )
         resp = con.query_graphql(

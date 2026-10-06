@@ -695,6 +695,7 @@ class BrowserTable(AYContainer):
                 criterion.key,
                 tuple(sorted(criterion.values)),
                 criterion.use_substring,
+                criterion.exclude,
             )
             for criterion in criteria
             if criterion.key not in local_keys
