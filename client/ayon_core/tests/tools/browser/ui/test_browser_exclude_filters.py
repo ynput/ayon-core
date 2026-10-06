@@ -155,3 +155,44 @@ def test_excluded_substring_is_left_to_local_filter():
     ])
 
     assert controller._get_query_filters()["product_filter"] == ""
+
+
+def test_hero_filter_queries_hero_version_entities():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion("version", "Version", ["Hero"]),
+    ])
+
+    query_filters = controller._get_query_filters()
+
+    # 'featuredOnly' would return the regular version the hero points to
+    assert query_filters["featured_only"] is None
+    assert _conditions(query_filters["version_filter"]) == [
+        {"key": "version", "value": 0, "operator": "lt"}
+    ]
+
+
+def test_excluded_hero_filter_is_negated():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion("version", "Version", ["Hero"], exclude=True),
+    ])
+
+    query_filters = controller._get_query_filters()
+
+    assert query_filters["featured_only"] is None
+    assert _conditions(query_filters["version_filter"]) == [
+        {"key": "version", "value": 0, "operator": "gte"}
+    ]
+
+
+def test_hero_with_other_featured_types_uses_featured_only():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion("version", "Version", ["Hero", "Latest"]),
+    ])
+
+    query_filters = controller._get_query_filters()
+
+    assert query_filters["featured_only"] == ["hero", "latest"]
+    assert query_filters["version_filter"] == ""
