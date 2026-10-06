@@ -42,7 +42,9 @@ def test_finish_and_fail_are_terminal_once():
     reporter.add_listener(seen.append, emit_immediately=False)
     reporter.finish()
     reporter.finish()
+    reporter.fail("late")
     assert sum(s.finished for s in seen) == 1
+    assert not any(s.failed for s in seen)
 
 
 def test_listener_removed_during_notify_does_not_break():
