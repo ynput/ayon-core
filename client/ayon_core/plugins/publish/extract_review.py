@@ -2075,6 +2075,14 @@ class OverscanCrop:
     |-----------------|---------------|
     | "+100px +120px" | 2100px 1120px |
     | "-10% -200px"   | 1800px 800px  |
+    | "3072px 1728px" | 3072px 1728px |
+    | "3072 1728"     | 3072px 1728px |
+    | "+100 -200"     | 2100px 800px  |
+    | "50% 300"       | 1000px 300px  |
+
+    Only suffixes "px", "%", "%+" and "%-" are supported, where "%+" and "%-"
+    are valid only for relative values (with sign). Any other suffix,
+    e.g. "300p" or "10%+", or more than two values raise 'ValueError'.
     """
 
     # Optional sign, number and optional suffix "%", "%+" or "%-"
