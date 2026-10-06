@@ -72,22 +72,24 @@ def construct_ayon_entity_uri(
     Returns:
         str: AYON Entity URI to query entity path.
     """
-
-    if version not in {"latest", "hero"}:
-        if isinstance(version, str):
+    if isinstance(version, str):
+        if version not in {"latest", "latestDone", "hero"}:
+            # Allow digits as string, e.g. coming from settings
             try:
                 version = int(version)
             except ValueError:
-                pass
+                raise ValueError(
+                    "Version must either be integer, 'latest', 'latestDone'"
+                    f" or 'hero'. Got: '{version}'"
+                ) from None
+    elif not isinstance(version, int):
+        raise TypeError(
+            "Version must either be integer, 'latest', 'latestDone' or "
+            f"'hero'. Got: {version} ({type(version)})"
+        )
 
-        if isinstance(version, int) and version < 0:
-            version = "hero"
-
-        if not isinstance(version, int):
-            raise ValueError(
-                "Version must either be integer, 'latest' or 'hero'. "
-                "Got: {}".format(version)
-            )
+    if isinstance(version, int) and version < 0:
+        version = "hero"
 
     return (
         "ayon://{project}/{folder_path}?product={product}&version={version}"

@@ -3,6 +3,7 @@ import os
 import copy
 from typing import Optional, Any
 
+import ayon_api
 import pyblish.api
 
 from ayon_core.lib import filter_profiles
@@ -13,7 +14,6 @@ from ayon_core.pipeline.entity_uri import (
     parse_ayon_entity_uri,
 )
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
-import ayon_api
 
 try:
     # USD libraries may not be available in all DCCs
@@ -23,9 +23,10 @@ try:
         ReferenceContribution,
         VariantContribution,
         get_standard_default_prim_name,
-)
+    )
+    USD_IMPORTED = True
 except ImportError:
-    pass
+    USD_IMPORTED = False
 
 
 def resolve_entity_uri(entity_uri: str) -> Optional[str]:
@@ -36,7 +37,7 @@ def resolve_entity_uri(entity_uri: str) -> Optional[str]:
         uris=[entity_uri]
     )
     if response.status_code != 200:
-        raise RuntimeError(
+        raise publish.PublishError(
             f"Unable to resolve AYON entity URI filepath for "
             f"'{entity_uri}': {response.text}"
         )
@@ -46,7 +47,7 @@ def resolve_entity_uri(entity_uri: str) -> Optional[str]:
         return None
 
     if len(entities) > 1:
-        raise RuntimeError(
+        raise publish.PublishError(
             f"Unable to resolve AYON entity URI '{entity_uri}' to a "
             f"single filepath. Received data: {response.data}"
         )
@@ -71,13 +72,15 @@ def find_nearest_parent_folder_of_type(
     Returns:
         list[dict]: Nearest parent folder of each provided folder type.
     """
-    parents = source_folder_path.split("/")
+    parents = source_folder_path.strip("/").split("/")
 
-    # Parent paths
+    # Parent paths, excluding the source folder itself
     parent_folder_paths = set()
-    for i in range(len(parents)):
-        parent = "/".join(parents[: i + 1])
+    for i in range(1, len(parents)):
+        parent = "/" + "/".join(parents[:i])
         parent_folder_paths.add(parent)
+    if not parent_folder_paths:
+        return []
 
     # Get all parents, sorted by depth
     parent_folders = sorted(
@@ -134,6 +137,12 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         if not profile:
             return
 
+        if not USD_IMPORTED:
+            raise publish.PublishError(
+                "USD libraries are not available, unable to add USD"
+                " contributions."
+            )
+
         contributions: list[BaseContribution] = instance.data.setdefault(
             "usd_contributions", []
         )
@@ -182,7 +191,7 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         elif layer_type == "reference":
             reference_settings: dict = contribution_settings["reference"]
             prim_path = self._format_prim_path(
-                reference_settings["prim_path"],
+                reference_settings["target_prim_path"],
                 instance,
             )
             return ReferenceContribution(
@@ -193,13 +202,8 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
             )
         elif layer_type == "variant":
             variant_settings: dict = contribution_settings["variant"]
-            variant_is_default: bool = (
-                True
-                if variant_settings["variant_is_default"] == "yes"
-                else False
-            )
             prim_path = self._format_prim_path(
-                variant_settings["prim_path"],
+                variant_settings["target_prim_path"],
                 instance,
             )
             return VariantContribution(
@@ -209,7 +213,9 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
                 target_prim_path=prim_path,
                 variant_set_name=variant_settings["variant_set_name"],
                 variant_name=variant_settings["variant_name"],
-                variant_is_default=variant_is_default,
+                variant_default_policy=(
+                    variant_settings["variant_default_policy"]
+                ),
             )
 
         raise ValueError(f"Unknown layer type: {layer_type}")
@@ -226,7 +232,7 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
 
         if source_type == "search_product":
             return self._search_product(contribution_settings, instance)
-        
+
         raise ValueError(
             f"Unknown contribution source type: {source_type}"
         )
@@ -239,7 +245,7 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         """Allow formatting the prim path using some dynamic keys based on the
         instance data, e.g. default prim name based on folder"""
         template_data = copy.deepcopy(instance.data["anatomyData"])
-        template_data["default_prim_path"] = (
+        template_data["default_prim_name"] = (
             get_standard_default_prim_name(instance.data["folderPath"])
         )
         return prim_path.format_map(template_data)
@@ -253,7 +259,9 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         search_settings: dict = contribution_settings["search_product"]
         parent_folder_type: str = search_settings["folder_type"]
         product_name: str = search_settings["product_name"]
-        version_name: str = search_settings["version"]
+        version_name: str | int = search_settings["version"]
+        if version_name.isdigit():
+            version_name = int(version_name)
         representation_name: str = search_settings["representation_name"]
 
         # Find the nearest parent folder of a specific folder type, e.g.

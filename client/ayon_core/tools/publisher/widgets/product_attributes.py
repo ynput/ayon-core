@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import typing
 from typing import Dict, List, Any
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib.attribute_definitions import AbstractAttrDef, UnknownDef
+from ayon_core.lib import UILabelDef
+from ayon_core.lib.attribute_definitions import (
+    AbstractAttrDef,
+    UnknownDef,
+    ButtonDef,
+)
 from ayon_core.tools.attribute_defs import (
     create_widget_for_attr_def,
     AttributeDefinitionsLabel,
@@ -13,6 +20,8 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+
+from .utils import CreateButtonCallback, PublishButtonCallback
 
 if typing.TYPE_CHECKING:
     from typing import Union
@@ -141,6 +150,15 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         row = 0
         for attr_def, info_by_id in result:
+            if isinstance(attr_def, ButtonDef):
+                inner_callback = CreateButtonCallback(
+                    self._controller,
+                    attr_def.key,
+                    list(info_by_id),
+                )
+                attr_def = attr_def.clone()
+                attr_def.set_callback(inner_callback)
+
             widget = create_widget_for_attr_def(
                 attr_def, content_widget, handle_revert_to_default=False
             )
@@ -174,20 +192,25 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             if not attr_def.visible:
                 continue
 
-            expand_cols = 2
-            if attr_def.is_value_def and attr_def.is_label_horizontal:
-                expand_cols = 1
+            col_num = 0
+            if attr_def.is_label_horizontal and (
+                attr_def.is_value_def
+                or isinstance(attr_def, ButtonDef)
+            ):
+                col_num = 1
 
-            col_num = 2 - expand_cols
+            expand_cols = 2 - col_num
 
-            label = None
             is_overriden = False
-            if attr_def.is_value_def:
+            label = attr_def.label
+            if isinstance(attr_def, UILabelDef):
+                label = None
+
+            elif attr_def.is_value_def:
                 is_overriden = any(
                     item["value"] != item["default"]
                     for item in info_by_id.values()
                 )
-                label = attr_def.label or attr_def.key
 
             if label:
                 label_widget = AttributeDefinitionsLabel(
@@ -196,6 +219,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
+
                 if attr_def.is_label_horizontal:
                     label_widget.setAlignment(
                         QtCore.Qt.AlignRight
@@ -361,8 +385,32 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         content_layout.addStretch(1)
 
         row = 0
-        for plugin_name, attr_defs, plugin_values in result:
-            for attr_def in attr_defs:
+        for plugin_attr_defs in result:
+            for attr_def in plugin_attr_defs.attr_defs:
+                values = []
+                default_values = []
+                is_overriden = False
+                for (instance_id, value, default_value) in (
+                    plugin_attr_defs.values.get(attr_def.key, [])
+                ):
+                    values.append(value)
+                    if not is_overriden and value != default_value:
+                        is_overriden = True
+                    # 'set' cannot be used for default values because they can
+                    #    be unhashable types, e.g. 'list'.
+                    if default_value not in default_values:
+                        default_values.append(default_value)
+
+                if isinstance(attr_def, ButtonDef):
+                    inner_callback = PublishButtonCallback(
+                        self._controller,
+                        attr_def.key,
+                        plugin_attr_defs.plugin_name,
+                        list(plugin_attr_defs.instance_ids),
+                    )
+                    attr_def = attr_def.clone()
+                    attr_def.set_callback(inner_callback)
+
                 widget = create_widget_for_attr_def(
                     attr_def, content_widget, handle_revert_to_default=False
                 )
@@ -376,14 +424,19 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 label_widget = None
                 if visible_widget:
-                    expand_cols = 2
-                    if attr_def.is_value_def and attr_def.is_label_horizontal:
-                        expand_cols = 1
+                    col_num = 0
+                    if attr_def.is_label_horizontal and (
+                        attr_def.is_value_def
+                        or isinstance(attr_def, ButtonDef)
+                    ):
+                        col_num = 1
 
-                    col_num = 2 - expand_cols
-                    label = None
-                    if attr_def.is_value_def:
-                        label = attr_def.label or attr_def.key
+                    expand_cols = 2 - col_num
+
+                    label = attr_def.label
+                    if isinstance(attr_def, UILabelDef):
+                        label = None
+
                     if label:
                         label_widget = AttributeDefinitionsLabel(
                             attr_def.id, label, content_widget
@@ -417,28 +470,12 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     self._on_request_revert_to_default
                 )
 
-                instance_ids = []
-                values = []
-                default_values = []
-                is_overriden = False
-                for (instance_id, value, default_value) in (
-                    plugin_values.get(attr_def.key, [])
-                ):
-                    instance_ids.append(instance_id)
-                    values.append(value)
-                    if not is_overriden and value != default_value:
-                        is_overriden = True
-                    # 'set' cannot be used for default values because they can
-                    #    be unhashable types, e.g. 'list'.
-                    if default_value not in default_values:
-                        default_values.append(default_value)
-
                 multivalue = len(values) > 1
 
                 self._attr_def_info_by_id[attr_def.id] = _PublishAttrDefInfo(
                     attr_def,
-                    plugin_name,
-                    instance_ids,
+                    plugin_attr_defs.plugin_name,
+                    plugin_attr_defs.instance_ids,
                     default_values,
                     label_widget,
                 )

@@ -1,9 +1,19 @@
+from __future__ import annotations
+
 import copy
 import os
 import platform
 from collections import defaultdict
 from operator import attrgetter
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Union,
+    TYPE_CHECKING,
+)
 
 import pyblish.api
 try:
@@ -42,7 +52,7 @@ from ayon_core.pipeline.entity_uri import (
 )
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
-from ayon_core.pipeline import publish, KnownPublishError
+from ayon_core.pipeline import publish, PublishError
 
 if TYPE_CHECKING:
     import logging
@@ -55,6 +65,20 @@ if TYPE_CHECKING:
 # individual publishes instead of requiring to republish each contribution
 # all the time at the same time
 BUILD_INTO_LAST_VERSIONS = True
+
+USDContributionURI = Literal[
+    "filepath",
+    "ayon_entity_uri",
+    "ayon_entity_uri_latest",
+    "ayon_entity_uri_latest_approved",
+]
+
+
+CONTRIBUTION_VARIANT_DEFAULT_POLICY = {
+    "if_not_set": "Set as default if no current default",
+    "always": "Set as default",
+    "never": "Do not set"
+}
 
 
 def get_representation_path_in_publish_context(
@@ -123,57 +147,73 @@ def get_representation_path_in_publish_context(
 
 
 def get_instance_uri_path(
-        instance: pyblish.api.Instance,
-        resolve=True
+    instance: pyblish.api.Instance,
+    uri_mode: USDContributionURI = "filepath"
 ) -> str:
     """Return path for instance's usd representation"""
     context = instance.context
-    folder_path = instance.data["folderPath"]
-    product_name = instance.data["productName"]
-    project_name = context.data["projectName"]
-    version_name = instance.data["version"]
+    project_name: str = context.data["projectName"]
+    folder_path: str = instance.data["folderPath"]
+    product_name: str = instance.data["productName"]
+    version: int = instance.data["version"]
+    representation_name: str = "usd"
 
-    # Get the layer's published path
-    path = construct_ayon_entity_uri(
-        project_name=project_name,
-        folder_path=folder_path,
-        product=product_name,
-        version=version_name,
-        representation_name="usd"
-    )
-
-    # Resolve contribution path
-    # TODO: Remove this when Asset Resolver is used
-    if resolve:
-        query = parse_ayon_entity_uri(path)
-        names = {
-            "project_name": query["project"],
-            "folder_path": query["folderPath"],
-            "product_name": query["product"],
-            "version_name": query["version"],
-            "representation_name": query["representation"],
-        }
-
-        # We want to resolve the paths live from the publishing context
-        path = get_representation_path_in_publish_context(context, **names)
-        if path:
-            return path
-
-        # If for whatever reason we were unable to retrieve from the context
-        # then get the path from an existing database entry
-        path = get_representation_path_by_names(
-            anatomy=context.data["anatomy"],
-            **names
+    # Handle AYON entity URI modes
+    if uri_mode in {
+        "ayon_entity_uri",
+        "ayon_entity_uri_latest",
+        "ayon_entity_uri_latest_approved",
+    }:
+        uri_version: int | str = version
+        if uri_mode == "ayon_entity_uri_latest":
+            uri_version = "latest"
+        elif uri_mode == "ayon_entity_uri_latest_approved":
+            uri_version = "latestDone"
+        return construct_ayon_entity_uri(
+            project_name=project_name,
+            folder_path=folder_path,
+            product=product_name,
+            version=uri_version,
+            representation_name=representation_name
         )
-        if not path:
-            raise RuntimeError(f"Unable to resolve publish path for: {names}")
 
-        # Ensure `None` for now is also a string
-        path = str(path)
-        if platform.system().lower() == "windows":
-            path = path.replace("\\", "/")
+    # Resolve the layer's published path.
+    names = {
+        "project_name": project_name,
+        "folder_path": folder_path,
+        "product_name": product_name,
+        "version_name": version,
+        "representation_name": representation_name,
+    }
+
+    # We want to resolve the paths live from the publishing context.
+    path = get_representation_path_in_publish_context(context, **names)
+    if path:
+        return path
+
+    # If for whatever reason we were unable to retrieve from the context
+    # then get the path from an existing database entry.
+    path = get_representation_path_by_names(
+        anatomy=context.data["anatomy"],
+        **names
+    )
+    if not path:
+        raise RuntimeError(f"Unable to resolve publish path for: {names}")
+
+    # Ensure `None` for now is also a string.
+    path = str(path)
+    if platform.system().lower() == "windows":
+        path = path.replace("\\", "/")
 
     return path
+
+
+def _layer_contents(layer: Sdf.Layer | None) -> str | None:
+    """Return a stable serialized representation of an SDF layer."""
+    if layer is None:
+        return None
+    layer: Sdf.Layer
+    return layer.ExportToString()
 
 
 def get_last_publish(
@@ -333,9 +373,15 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "contribution_variant_set_name",
             "contribution_variant"
         ]:
-            attr_values[key] = attr_values[key].format(**data)
+            attr_values[key] = attr_values[key].format_map(data)
 
         # Define contribution
+        # The contribution into the department layer is identified by the
+        # product name so that republishing a product replaces its previous
+        # contribution, while multiple products can still contribute to the
+        # same department layer.
+        department_layer: str = attr_values["contribution_layer"]
+        contribution_id: str = instance.data["productName"]
         in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
             # Set target prim for variant contributions
@@ -343,41 +389,43 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 folder_path=instance.data["folderPath"]
             )
             target_prim_path = f"/{default_prim}"
+            variant_default_policy = attr_values[
+                "contribution_variant_default_policy"]
 
             contribution = VariantContribution(
                 source=instance,
-                layer_id=attr_values["contribution_layer"],
+                layer_id=contribution_id,
                 target_prim_path=target_prim_path,
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
-                variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
+                variant_default_policy=variant_default_policy,
                 order=in_layer_order
             )
         else:
             contribution = SublayerContribution(
                 source=instance,
-                layer_id=attr_values["contribution_layer"],
+                layer_id=contribution_id,
                 order=in_layer_order
             )
 
         asset_product = attr_values["contribution_target_product"]
-        layer_product = "{}_{}".format(asset_product, contribution.layer_id)
+        layer_product = f"{asset_product}_{department_layer}"
 
         scope: str = attr_values["contribution_target_product_init"]
         layer_order: int = (
-            self.contribution_layers[scope][attr_values["contribution_layer"]]
+            self.contribution_layers[scope][department_layer]
         )
         # Department layer contribution instance
         layer_instance = self.get_or_create_instance(
             product_name=layer_product,
-            variant=contribution.layer_id,
+            variant=department_layer,
             source_instance=instance,
             families=["usd", "usdLayer"],
         )
         layer_instance.data.setdefault("usd_contributions", []).append(
             contribution
         )
-        layer_instance.data["usd_layer_id"] = contribution.layer_id
+        layer_instance.data["usd_layer_id"] = department_layer
         layer_instance.data["usd_layer_order"] = layer_order
 
         layer_instance.data["productGroup"] = (
@@ -395,13 +443,13 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "usd_contributions", []
         )
         if not any(
-            existing_contribution.layer_id == contribution.layer_id
+            existing_contribution.layer_id == department_layer
             for existing_contribution in target_contributions
         ):
             target_contributions.append(
                 SublayerContribution(
                     source=layer_instance,
-                    layer_id=contribution.layer_id,
+                    layer_id=department_layer,
                     order=layer_order,
                 )
             )
@@ -428,7 +476,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             if instance is ignore_instance:
                 continue
             if all(
-                instance.data.get(key) == value for key, value in data.items()
+                instance.data.get(key) == value
+                for key, value in data.items()
             ):
                 return instance
         return None
@@ -549,26 +598,43 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "task_names": create_context.get_current_task_name()
         }
         profile = filter_profiles(cls.profiles, filtering_criteria)
+
         if not profile:
-            profile = {}
+            profile = {
+                "contribution_enabled": True,
+                "contribution_layer": None,
+                "contribution_target_product": "usdAsset",
+                "contribution_apply_as_variant": False,
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_default_policy":
+                    "if_not_set",
+            }
 
         # Define defaults
-        default_enabled: bool = profile.get("contribution_enabled", True)
-        default_contribution_layer = profile.get(
-            "contribution_layer", None)
-        default_apply_as_variant: bool = profile.get(
-            "contribution_apply_as_variant", False)
-        default_target_product: str = profile.get(
-            "contribution_target_product", "usdAsset")
+        default_target_product: str = profile["contribution_target_product"]
         default_init_as: str = (
             "asset"
-            if profile.get("contribution_target_product") == "usdAsset"
-            else "shot")
+            if default_target_product == "usdAsset"
+            else "shot"
+        )
         init_as_visible = True
 
         # Attributes logic
         publish_attributes = instance["publish_attributes"].get(
             cls.__name__, {})
+
+        # Convert legacy attribute value
+        if "contribution_variant_is_default" in publish_attributes:
+            contribution_variant_is_default = publish_attributes.pop(
+                "contribution_variant_is_default"
+            )
+
+            publish_attributes["contribution_variant_default_policy"] = (
+                "always"
+                if contribution_variant_is_default
+                else "if_not_set"
+            )
 
         visible = publish_attributes.get("contribution_enabled", True)
         variant_visible = visible and publish_attributes.get(
@@ -594,7 +660,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "In both cases the USD data itself is free to have "
                         "references and sublayers of its own."
                     ),
-                    default=default_enabled),
+                    default=profile["contribution_enabled"]),
             TextDef("contribution_target_product",
                     label="Target product",
                     tooltip=(
@@ -629,7 +695,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the list) will contribute as a stronger opinion."
                     ),
                     items=list(contribution_layers.keys()),
-                    default=default_contribution_layer,
+                    default=profile["contribution_layer"],
                     visible=visible),
             # TODO: We may want to make the visibility of this optional
             #  based on studio preference, to avoid complexity when not needed
@@ -654,28 +720,41 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "appended to as a sublayer to the department layer "
                         "instead."
                     ),
-                    default=default_apply_as_variant,
+                    default=profile["contribution_apply_as_variant"],
                     visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
-                    default="{layer}",
+                    default=profile["contribution_variant_set_name"],
                     visible=variant_visible),
             TextDef("contribution_variant",
                     label="Variant Name",
-                    default="{variant}",
+                    default=profile["contribution_variant"],
                     visible=variant_visible),
-            BoolDef("contribution_variant_is_default",
-                    label="Set as default variant selection",
-                    tooltip=(
-                        "Whether to set this instance's variant name as the "
-                        "default selected variant name for the variant set.\n"
-                        "It is always expected to be enabled for only one "
-                        "variant name in the variant set.\n"
-                        "The behavior is unpredictable if multiple instances "
-                        "for the same variant set have this enabled."
-                    ),
-                    default=False,
-                    visible=variant_visible),
+            EnumDef(
+                "contribution_variant_default_policy",
+                label="Set as default variant selection",
+                tooltip=(
+                    "Controls whether this contribution's variant name is "
+                    "authored as the selected default for the variant set.\n"
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['never']}' leaves "
+                    "the variant selection unchanged.\n"
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['if_not_set']}' "
+                    "sets it only when "
+                    "the variant set has no default selection yet.\n"
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}' always"
+                    " sets it as the default and may "
+                    "override a selection authored by another contribution.\n"
+                    f"When multiple contributions use "
+                    f"'{CONTRIBUTION_VARIANT_DEFAULT_POLICY['always']}', "
+                    "the final result depends on their contribution order."
+                ),
+                items=CONTRIBUTION_VARIANT_DEFAULT_POLICY,
+                default=profile.get(
+                    "contribution_variant_default_policy",
+                    "if_not_set",
+                ),
+                visible=variant_visible,
+            ),
             UISeparatorDef("usd_container_settings3"),
         ]
 
@@ -721,13 +800,13 @@ class ValidateUSDDependencies(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         if Sdf is None:
-            raise KnownPublishError("USD library 'Sdf' is not available.")
+            raise PublishError("USD library 'Sdf' is not available.")
 
 
 class USDContributionStackingMixin:
     # TODO: Move mix-in to pipeline or lib
     log: "logging.Logger"  # from pyblish plug-ins
-    use_ayon_entity_uri = False
+    use_ayon_entity_uri: USDContributionURI = "filepath"
 
     def get_instance_contributions(
         self,
@@ -768,19 +847,21 @@ class USDContributionStackingMixin:
             # selection, so it can house the variant selection and the
             # variants themselves
             prim_path = Sdf.Path(target_prim_path)
-            prim_spec = get_or_define_prim_spec(sdf_layer,
-                                                prim_path,
-                                                "Xform")
+            prim_spec = get_or_define_prim_spec(
+                sdf_layer, prim_path, "Xform"
+            )
 
             # Go into a variant prim path for variant contributions
             if isinstance(contribution, VariantContribution):
                 variant_set_name: str = contribution.variant_set_name
                 variant_name: str = contribution.variant_name
-                # TODO: Add support to not author variant selection at all
-                #  even if no selection was set yet.
+                policy = contribution.variant_default_policy
                 if (
-                        contribution.variant_is_default
-                        or variant_set_name not in prim_spec.variantSelections
+                    policy == "always"
+                    or (
+                        policy == "if_not_set"
+                        and variant_set_name not in prim_spec.variantSelections
+                    )
                 ):
                     prim_spec.variantSelections[variant_set_name] = variant_name  # noqa: E501
 
@@ -802,10 +883,9 @@ class USDContributionStackingMixin:
                 )
 
             # Add the contribution at the indicated order
-            self.add_reference_contribution(sdf_layer,
-                                            target_prim_path,
-                                            path,
-                                            contribution)
+            self.add_reference_contribution(
+                sdf_layer, target_prim_path, path, contribution
+            )
 
         # Handle sublayers
         elif isinstance(contribution, SublayerContribution):
@@ -840,11 +920,11 @@ class USDContributionStackingMixin:
 
             # Backward-compatible cleanup for older publishes that only
             # authored AYON URI metadata.
-            uri = (
-                ref.customData.get("AYON_uri")
-                # Backwards compatibility
-                or ref.customData.get("ayon_uri")
-            )
+            uri = ref.customData.get("AYON_uri")
+            for legacy_key in ("ayon_uri", "ayon_entity_uri"):
+                if uri and parse_ayon_entity_uri(uri):
+                    break
+                uri = ref.customData.get(legacy_key)
             source = contribution.source
             if uri and not isinstance(source, str):
                 if self.instance_match_ayon_uri(source, uri):
@@ -917,10 +997,11 @@ class USDContributionStackingMixin:
         source = contribution.source
         if isinstance(source, str):
             return source
-        elif isinstance(source, pyblish.api.Instance):
+
+        if isinstance(source, pyblish.api.Instance):
             return get_instance_uri_path(
                 source,
-                resolve=not self.use_ayon_entity_uri
+                uri_mode=self.use_ayon_entity_uri
             )
         raise TypeError(
             "Unsupported contribution source type: {}".format(type(source))
@@ -941,7 +1022,7 @@ class ExtractUSDLayerContribution(USDContributionStackingMixin,
 
     settings_category = "core"
 
-    use_ayon_entity_uri = False
+    use_ayon_entity_uri: USDContributionURI = "filepath"
     enforce_default_prim = False
 
     def process(self, instance):
@@ -953,6 +1034,7 @@ class ExtractUSDLayerContribution(USDContributionStackingMixin,
         path = get_last_publish(instance)
         if path and BUILD_INTO_LAST_VERSIONS:
             sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
+            original_contents = _layer_contents(sdf_layer)
 
             # If enabled in settings, ignore any default prim specified on
             # older publish versions and always publish with the AYON
@@ -965,11 +1047,24 @@ class ExtractUSDLayerContribution(USDContributionStackingMixin,
             default_prim = get_standard_default_prim_name(folder_path)
             sdf_layer = Sdf.Layer.CreateAnonymous()
             set_layer_defaults(sdf_layer, default_prim=default_prim)
+            original_contents = None
 
         self.add_contributions_to_layer(
             contributions=self.get_instance_contributions(instance),
             sdf_layer=sdf_layer,
         )
+
+        # Only publish if there are changes compared to last version,
+        # otherwise do not generate a new file.
+        if (
+            original_contents is not None
+            and original_contents == _layer_contents(sdf_layer)
+        ):
+            self.log.info(
+                "USD contribution layer is unchanged; skipping publish."
+            )
+            instance.data["publish"] = False
+            return
 
         # Save the file
         staging_dir = self.staging_dir(instance)
@@ -999,7 +1094,7 @@ class ExtractUSDAssetContribution(USDContributionStackingMixin,
 
     settings_category = "core"
 
-    use_ayon_entity_uri = False
+    use_ayon_entity_uri: USDContributionURI = "filepath"
 
     def process(self, instance):
 
@@ -1011,14 +1106,18 @@ class ExtractUSDAssetContribution(USDContributionStackingMixin,
         # Use existing asset and add to it, or initialize a new asset layer
         path = get_last_publish(instance)
         payload_layer = None
+        original_asset_contents = None
+        original_payload_contents = None
         if path and BUILD_INTO_LAST_VERSIONS:
             # If there's a payload file, put it in the payload instead
             folder = os.path.dirname(path)
             payload_path = os.path.join(folder, "payload.usd")
             if os.path.exists(payload_path):
                 payload_layer = Sdf.Layer.OpenAsAnonymous(payload_path)
+                original_payload_contents = _layer_contents(payload_layer)
 
             asset_layer = Sdf.Layer.OpenAsAnonymous(path)
+            original_asset_contents = _layer_contents(asset_layer)
         else:
             # If no existing publish of this product exists then we initialize
             # the layer as either a default asset or shot structure.
@@ -1063,6 +1162,17 @@ class ExtractUSDAssetContribution(USDContributionStackingMixin,
             contributions=self.get_instance_contributions(instance),
             sdf_layer=target_layer,
         )
+
+        if (
+            original_asset_contents is not None
+            and original_asset_contents == _layer_contents(asset_layer)
+            and original_payload_contents == _layer_contents(payload_layer)
+        ):
+            self.log.info(
+                "USD asset contribution is unchanged; skipping publish."
+            )
+            instance.data["publish"] = False
+            return
 
         # Save the file
         staging_dir = self.staging_dir(instance)

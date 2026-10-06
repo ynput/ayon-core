@@ -144,11 +144,14 @@ def get_workdir_with_workdir_data(
         anatomy = Anatomy(project_name)
 
     if not template_key:
+        host_name = workdir_data.get("host", {}).get("name")
+        if host_name is None:
+            host_name = workdir_data["app"]
         template_key = get_workfile_template_key(
             workdir_data["project"]["name"],
             workdir_data["task"]["type"],
-            workdir_data["app"],
-            project_settings
+            host_name,
+            project_settings,
         )
 
     template_obj = anatomy.get_template_item(
@@ -590,9 +593,12 @@ def get_last_workfile(
     )
     if filepath is None:
         data = copy.deepcopy(template_data)
+        host_name = data.get("host", {}).get("name")
+        if host_name is None:
+            host_name = data["app"]
         data["version"] = version_start.get_versioning_start(
             data["project"]["name"],
-            data["app"],
+            host_name,
             task_name=data["task"]["name"],
             task_type=data["task"]["type"],
             product_base_type="workfile",

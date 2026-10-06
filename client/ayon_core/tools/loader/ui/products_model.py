@@ -3,6 +3,10 @@ import collections
 import qtawesome
 from qtpy import QtGui, QtCore
 
+from ayon_core.lib.icon_definitions import (
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 
@@ -42,9 +46,9 @@ SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 32
 ACTIVE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 33
 REMOTE_SITE_NAME_ROLE = QtCore.Qt.UserRole + 34
 
-STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 33
-TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 34
-VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 35
+STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 35
+TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 36
+VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 37
 
 
 class ProductsModel(QtGui.QStandardItemModel):
@@ -308,11 +312,10 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         status_item = self._last_project_statuses.get(status_name)
         if status_item is not None:
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": status_item.icon,
-                "color": status_item.color,
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                status_item.icon,
+                color=status_item.color,
+            ))
 
         if icon is None:
             icon = QtGui.QIcon()
@@ -332,10 +335,10 @@ class ProductsModel(QtGui.QStandardItemModel):
 
     def _get_group_icon(self):
         if self._group_icon is None:
-            self._group_icon = qtawesome.icon(
+            self._group_icon = get_qt_icon(AwesomeFontIcon(
                 "fa.object-group",
                 color=get_default_entity_icon_color()
-            )
+            ))
         return self._group_icon
 
     def _get_group_model_item(self, group_name):

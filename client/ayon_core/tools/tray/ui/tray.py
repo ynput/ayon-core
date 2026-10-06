@@ -3,10 +3,11 @@ import sys
 import time
 import collections
 import atexit
+from packaging.version import parse
 import platform
 
 import ayon_api
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets, QT_VERSION
 from aiohttp.web import Response, json_response, Request
 
 from ayon_core import resources, style
@@ -34,7 +35,6 @@ from ayon_core.tools.tray.lib import (
     TrayIsRunningError,
 )
 from ayon_core.tools.launcher.ui import LauncherWindow
-from ayon_core.tools.loader.ui import LoaderWindow
 from ayon_core.tools.console_interpreter.ui import ConsoleInterpreterWindow
 from ayon_core.tools.publisher.publish_report_viewer import (
     PublishReportViewerWindow,
@@ -43,9 +43,8 @@ from ayon_core.tools.publisher.publish_report_viewer import (
 from .addons_manager import TrayAddonsManager
 from .host_console_listener import HostListener
 from .info_widget import InfoWidget
-from .dialogs import (
-    UpdateDialog,
-)
+from .dialogs import UpdateDialog
+from ._macos_fix import install_clickcount_fix
 
 
 class TrayManager:
@@ -595,7 +594,17 @@ class TrayManager:
 
     def _show_browser_window(self):
         if self._browser_window is None:
-            self._browser_window = LoaderWindow()
+            from ayon_core.tools.utils.host_tools import use_legacy_loader
+
+            if use_legacy_loader():
+                from ayon_core.tools.loader.ui import LoaderWindow
+
+                window_class = LoaderWindow
+            else:
+                from ayon_core.tools.browser.ui import BrowserWindow
+
+                window_class = BrowserWindow
+            self._browser_window = window_class()
             self._browser_window.setWindowTitle("AYON Browser")
             install_ayon_plugins()
 
@@ -782,7 +791,32 @@ class TrayStarter(QtCore.QObject):
         return splash
 
 
+def _fix_macos() -> None:
+    """Fix issue with click count on MacOS > 27 for PySide6.
+
+    See '_macos_fix.py' for more details.
+    """
+    if platform.system().lower() != "darwin":
+        return
+
+    # Issue was fixed in Qt 6.12
+    if parse(QT_VERSION) >= parse("6.12"):
+        return
+
+    try:
+        major = int(platform.mac_ver()[0].split(".", 1)[0])
+    except (IndexError, ValueError):
+        major = -1
+
+    if major < 27:
+        return
+
+    install_clickcount_fix()
+
+
 def main():
+    _fix_macos()
+
     app = get_ayon_qt_app()
 
     starter = TrayStarter(app)  # noqa F841

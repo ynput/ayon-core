@@ -71,6 +71,7 @@ import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import StrEnum, Logger, is_func_signature_supported
+from ayon_core.lib.icon_definitions import IconBase
 from ayon_core.host import AbstractHost
 from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_studio_settings, get_project_settings
@@ -504,7 +505,7 @@ class LoaderActionItem:
     label: str
     order: int = 0
     group_label: Optional[str] = None
-    icon: Optional[dict[str, Any]] = None
+    icon: IconBase | dict[str, Any] | None = None
     data: Optional[DataType] = None
     # Is filled automatically
     identifier: str = None
@@ -698,6 +699,14 @@ class LoaderActionsContext:
         if self._studio_settings is None:
             self._studio_settings = get_studio_settings()
         return copy.deepcopy(self._studio_settings)
+
+    def prepare_plugins(self) -> None:
+        """Discover and initialize plugins if not done yet.
+
+        Can be used to warm up the context before action items are needed.
+
+        """
+        self._get_plugins()
 
     def get_action_items(
         self, selection: LoaderActionSelection

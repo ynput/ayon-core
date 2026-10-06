@@ -2,7 +2,7 @@ from __future__ import annotations
 import dataclasses
 import os
 import logging
-from typing import Union, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 try:
     from pxr import UsdGeom, Sdf, Kind
@@ -750,4 +750,5 @@ class VariantContribution(ReferenceContribution):
     # Variant
     variant_set_name: str
     variant_name: str
-    variant_is_default: bool  # Whether to author variant selection opinion
+    # Whether to author the variant selection opinion
+    variant_default_policy: Literal["if_not_set", "always", "never"]

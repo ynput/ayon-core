@@ -6,6 +6,7 @@ import collections
 import ctypes
 from typing import Optional, Any, Callable
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.actions import (
     LoaderActionPlugin,
@@ -313,11 +314,10 @@ class OpenFileAction(LoaderActionPlugin):
                 group_label="Open file",
                 order=30,
                 data={"representation_ids": list(repre_ids)},
-                icon={
-                    "type": "material-symbols",
-                    "name": "file_open",
-                    "color": "#ffffff",
-                }
+                icon=MaterialSymbolsIcon(
+                    "file_open",
+                    color="#ffffff",
+                )
             )
             for repre_name, repre_ids in repre_ids_by_name.items()
         ]
