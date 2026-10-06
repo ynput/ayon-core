@@ -30,6 +30,7 @@ from qtpy.QtWidgets import (
 )
 
 from .buttons import AYButton
+from .check_box import AYCheckBox
 from .container import AYClickableRow, AYContainer
 from .dropdown import AYDropdownPopup
 from .frame import AYFrame, HoverReveal, RowHoverTracker
@@ -78,12 +79,15 @@ class FilterCriterion:
         values: List of accepted values (OR logic within criterion).
         use_substring: When True use case-insensitive substring matching;
             False uses exact match (used for enum columns).
+        exclude: When True the criterion matches rows that do *not*
+            match any of its values.
     """
 
     key: str
     attribute_label: str
     values: list[str] = field(default_factory=list)
     use_substring: bool = False
+    exclude: bool = False
 
     def to_def(self) -> dict[str, Any]:
         """Serialise this criterion to the View payload condition format.
@@ -97,6 +101,7 @@ class FilterCriterion:
             "label": self.attribute_label,
             "values": list(self.values),
             "useSubstring": self.use_substring,
+            "exclude": self.exclude,
         }
 
     @classmethod
@@ -117,6 +122,7 @@ class FilterCriterion:
             attribute_label=str(payload.get("label", payload.get("key", ""))),
             values=[str(v) for v in raw_values],
             use_substring=bool(payload.get("useSubstring", False)),
+            exclude=bool(payload.get("exclude", False)),
         )
 
 
@@ -130,7 +136,8 @@ def criterion_text(criterion: "FilterCriterion") -> str:
         criterion: The criterion to describe.
 
     Returns:
-        Text of the form ``"Label: value or other"``.
+        Text of the form ``"Label: value or other"``, or
+        ``"Label: not value or other"`` for an excluding criterion.
     """
     names = {NO_VALUE: "No value", HAS_VALUE: "Has value"}
     values_text = (
@@ -138,6 +145,8 @@ def criterion_text(criterion: "FilterCriterion") -> str:
         if criterion.values
         else "…"
     )
+    if criterion.exclude:
+        values_text = f"not {values_text}"
     return f"{criterion.attribute_label}: {values_text}"
 
 
@@ -150,7 +159,8 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
     """Proxy model that filters rows using a list of FilterCriterion.
 
     All criteria are combined with AND; values within a single criterion
-    are combined with OR.  When no criteria are set every row passes.
+    are combined with OR, and an excluding criterion passes the rows that
+    match none of its values.  When no criteria are set every row passes.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -306,7 +316,7 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
                     if cell_str == val_lower:
                         matched = True
                         break
-            if not matched:
+            if matched == criterion.exclude:
                 return False
 
         return True
@@ -384,12 +394,13 @@ class _FilterDropdown(AYDropdownPopup):
 
     Signals:
         criterion_ready: Emitted when the user clicks Apply.
-                         Passes (key, values, use_substring).
+                         Passes (key, values, use_substring, exclude).
         popup_closed: Inherited from ``AYDropdownPopup``. Emitted when
             the popup is dismissed.
     """
 
-    criterion_ready = Signal(str, list, bool)  # key, values, use_substring
+    # key, values, use_substring, exclude
+    criterion_ready = Signal(str, list, bool, bool)
 
     def __init__(
         self,
@@ -568,13 +579,52 @@ class _FilterDropdown(AYDropdownPopup):
         )
         layout.addWidget(self._value_content_container, stretch=1)
 
-        # Footer: Apply button
+        # Footer: multi-select helpers on the left, Confirm on the right.
+        # The helpers are dimmed so they do not read as list entries.
         footer = AYContainer(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Low,
             layout_margin=4,
-            layout_spacing=8,
+            layout_spacing=4,
         )
+        self._select_all_btn = AYButton(
+            "Select all",
+            variant=AYButton.Variants.Chip,
+            tooltip="Select all listed values",
+        )
+        self._select_all_btn.clicked.connect(self._on_select_all)
+        self._clear_btn = AYButton(
+            "Clear",
+            variant=AYButton.Variants.Chip,
+            tooltip="Deselect all values",
+        )
+        self._clear_btn.clicked.connect(self._on_clear_selection)
+        self._toggle_btn = AYButton(
+            "Toggle",
+            variant=AYButton.Variants.Chip,
+            tooltip="Invert the selection of listed values",
+        )
+        self._toggle_btn.clicked.connect(self._on_toggle_selection)
+        self._multiselect_btns = (
+            self._select_all_btn,
+            self._clear_btn,
+            self._toggle_btn,
+        )
+        for btn in self._multiselect_btns:
+            btn.installEventFilter(self)
+            footer.add_widget(btn)
+        footer.addStretch()
+
+        self._exclude_checkbox = AYCheckBox(
+            "Excludes",
+            variant=AYCheckBox.Variants.Button,
+        )
+        self._exclude_checkbox.setToolTip(
+            "Match rows that have none of the selected values"
+        )
+        self._exclude_checkbox.installEventFilter(self)
+        footer.add_widget(self._exclude_checkbox)
+
         self._apply_btn = AYButton(
             "Confirm",
             variant=AYButton.Variants.Filled,
@@ -617,6 +667,9 @@ class _FilterDropdown(AYDropdownPopup):
             criterion.key,
             criterion.attribute_label,
             criterion.values,
+        )
+        self._exclude_checkbox.setChecked(
+            criterion.exclude and not self._exclude_checkbox.isHidden()
         )
         self._stack.setCurrentIndex(1)
         self._adjust_height()
@@ -906,6 +959,7 @@ class _FilterDropdown(AYDropdownPopup):
         self._current_label = label
         self._value_buttons = {}
         self._preselected = False
+        self._exclude_checkbox.setChecked(False)
         self._attr_search.blockSignals(True)
         self._attr_search.clear()
         self._attr_search.setPlaceholderText("Search")
@@ -1043,6 +1097,16 @@ class _FilterDropdown(AYDropdownPopup):
         else:
             self._value_scroll = None
 
+        # Bulk selection only makes sense for a list of regular values
+        # that can be combined.
+        single_select = entry is not None and entry.single_select
+        is_multiselect = bool(distinct) and not single_select
+        for btn in self._multiselect_btns:
+            btn.setVisible(is_multiselect)
+        # Excluding one of two mutually exclusive values, like Yes/No, is
+        # the same as picking the other one.
+        self._exclude_checkbox.setVisible(not single_select)
+
         # Only a text filter carries its value in the search box; a
         # multi-select shows its values in the list above and leaves the
         # box free for searching.
@@ -1087,6 +1151,33 @@ class _FilterDropdown(AYDropdownPopup):
             ):
                 other_button.setChecked(False)
 
+    def _listed_value_buttons(self) -> list[AYButton]:
+        """Return buttons of regular values matching the value search.
+
+        The "No value"/"Has value" options are left out: selecting both
+        would match everything, so bulk actions leave them alone.
+        """
+        return [
+            button
+            for value, button in self._value_buttons.items()
+            if value not in EMPTY_VALUE_OPTIONS and not button.isHidden()
+        ]
+
+    def _on_select_all(self) -> None:
+        self._preselected = False
+        for button in self._listed_value_buttons():
+            button.setChecked(True)
+
+    def _on_clear_selection(self) -> None:
+        self._preselected = False
+        for button in self._value_buttons.values():
+            button.setChecked(False)
+
+    def _on_toggle_selection(self) -> None:
+        self._preselected = False
+        for button in self._listed_value_buttons():
+            button.setChecked(not button.isChecked())
+
     def _get_value_navigation_widgets(self) -> list[QWidget]:
         """Return controls in the value-page keyboard navigation order.
 
@@ -1104,6 +1195,8 @@ class _FilterDropdown(AYDropdownPopup):
         widgets.extend(self._value_buttons.values())
         if self._value_back_btn is not None:
             widgets.append(self._value_back_btn)
+        widgets.extend(self._multiselect_btns)
+        widgets.append(self._exclude_checkbox)
         widgets.append(self._apply_btn)
         return [
             widget for widget in widgets
@@ -1189,7 +1282,7 @@ class _FilterDropdown(AYDropdownPopup):
                                 # Only one value can be picked, so picking
                                 # it is the whole choice.
                                 self._on_apply()
-                elif isinstance(widget, AYButton):
+                elif isinstance(widget, (AYButton, AYCheckBox)):
                     widget.click()
                 return True
             return super().eventFilter(watched, event)
@@ -1250,7 +1343,10 @@ class _FilterDropdown(AYDropdownPopup):
         self._applying = True
         try:
             self.criterion_ready.emit(
-                self._current_key, values, use_substring
+                self._current_key,
+                values,
+                use_substring,
+                self._exclude_checkbox.isChecked(),
             )
             self.close()
         finally:
@@ -1291,6 +1387,7 @@ class _FilterDropdown(AYDropdownPopup):
                     self._current_key,
                     values,
                     use_substring,
+                    self._exclude_checkbox.isChecked(),
                 )
         super().closeEvent(event)
 
@@ -1422,8 +1519,8 @@ class _CriterionBadge(AYContainer):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         front_icon = AYLabel(
-            icon="check_small",
-            icon_size=16,
+            icon="do_not_disturb_on" if criterion.exclude else "check_small",
+            icon_size=12 if criterion.exclude else 16,
         )
         front_icon.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents
@@ -1913,7 +2010,11 @@ class AYTableFilter(AYContainer):
         return f"{entry.entity} {entry.label}"
 
     def _on_criterion_ready(
-        self, key: str, values: list[str], use_substring: bool
+        self,
+        key: str,
+        values: list[str],
+        use_substring: bool,
+        exclude: bool,
     ) -> None:
         criterion_label = self._get_criterion_label(key)
         if not values:
@@ -1923,6 +2024,7 @@ class AYTableFilter(AYContainer):
             # Update in-place
             self._editing_criterion.values = values
             self._editing_criterion.use_substring = use_substring
+            self._editing_criterion.exclude = exclude
             self._editing_criterion.attribute_label = criterion_label
         else:
             # Check if criterion for this key already exists
@@ -1930,6 +2032,7 @@ class AYTableFilter(AYContainer):
             if existing:
                 existing.values = values
                 existing.use_substring = use_substring
+                existing.exclude = exclude
                 existing.attribute_label = criterion_label
             else:
                 self._criteria.append(
@@ -1938,6 +2041,7 @@ class AYTableFilter(AYContainer):
                         attribute_label=criterion_label,
                         values=values,
                         use_substring=use_substring,
+                        exclude=exclude,
                     )
                 )
 
