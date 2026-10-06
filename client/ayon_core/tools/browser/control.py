@@ -17,7 +17,11 @@ from ayon_core.tools.common_models import (
     UsersModel,
 )
 
-from .abstract import AbstractBrowserController, ActionItem
+from .abstract import (
+    AbstractBrowserController,
+    ActionItem,
+    ProductGroupsInfo,
+)
 from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
@@ -160,6 +164,31 @@ class BrowserController(AbstractBrowserController):
     ):
         return self._products_model.get_versions_repre_count(
             project_name, version_ids
+        )
+
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        return self._products_model.get_product_groups_info(
+            project_name, product_ids
+        )
+
+    def can_change_products_group(self, project_name: str) -> bool:
+        return self._products_model.can_change_products_group(project_name)
+
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        self._products_model.change_products_group(
+            project_name, product_ids, group_name
+        )
+        self._emit_event(
+            "products.group.changed",
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            },
         )
 
     def get_action_items(
