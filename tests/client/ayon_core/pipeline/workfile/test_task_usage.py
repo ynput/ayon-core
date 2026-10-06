@@ -126,6 +126,54 @@ def test_filter_other_users_items():
     ) == []
 
 
+def test_user_full_names(monkeypatch):
+    items = [
+        _item("a", username="artist1"),
+        _item("b", username="artist2"),
+        _item("c", username="restricted"),
+    ]
+    monkeypatch.setattr(
+        task_usage.ayon_api,
+        "get_users",
+        lambda **kwargs: iter([
+            {"name": "artist1", "attrib": {"fullName": "Artist One"}},
+            {"name": "artist2", "attrib": {"fullName": None}},
+        ]),
+    )
+    assert task_usage.get_task_usage_user_full_names(items) == {
+        "artist1": "Artist One"
+    }
+
+    def _failing(**kwargs):
+        raise RuntimeError("Not allowed")
+
+    monkeypatch.setattr(task_usage.ayon_api, "get_users", _failing)
+    assert task_usage.get_task_usage_user_full_names(items) == {}
+
+
+def test_tracker_install_uses_acknowledged_env(monkeypatch):
+    acknowledged = set()
+    monkeypatch.setattr(task_usage, "_tracker", None)
+    monkeypatch.setattr(task_usage, "_acknowledged_session_ids", acknowledged)
+    monkeypatch.setattr(task_usage, "is_headless_mode_enabled", lambda: False)
+    monkeypatch.setattr(task_usage, "is_in_tests", lambda: False)
+    monkeypatch.delenv("AYON_REMOTE_PUBLISH", raising=False)
+    monkeypatch.setenv(task_usage.ACKNOWLEDGED_SESSIONS_ENV_KEY, "a,b,")
+    monkeypatch.setattr(task_usage, "register_event_callback", lambda *a: None)
+    monkeypatch.setattr(task_usage.atexit, "register", lambda *a: None)
+    monkeypatch.setattr(task_usage, "_connect_qt_quit", lambda: None)
+    monkeypatch.setattr(TaskUsageTracker, "sync", lambda self: None)
+
+    assert task_usage.install_task_usage_tracker(_MockHost()) is not None
+    assert acknowledged == {"a", "b"}
+
+
+def test_tracker_install_skipped_in_headless(monkeypatch):
+    monkeypatch.setattr(task_usage, "_tracker", None)
+    monkeypatch.setattr(task_usage, "is_headless_mode_enabled", lambda: True)
+    assert task_usage.install_task_usage_tracker(_MockHost()) is None
+
+
 def _settings(profiles: Optional[list[dict[str, Any]]]) -> dict[str, Any]:
     workfiles = {}
     if profiles is not None:

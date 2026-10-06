@@ -42,6 +42,10 @@ DEFAULT_STALE_TIMEOUT_HOURS = 8.0
 # Do not update the task more often if nothing but the time did change
 REFRESH_INTERVAL_SECONDS = 5 * 60
 
+# Environment variable with comma separated session ids the user did
+#   confirm before the application was launched
+ACKNOWLEDGED_SESSIONS_ENV_KEY = "AYON_TASK_IN_USE_ACKNOWLEDGED"
+
 # Sessions of other users the user of current process was notified about
 _acknowledged_session_ids: set[str] = set()
 
@@ -328,6 +332,40 @@ def acknowledge_task_usage_items(items: list[TaskUsageItem]) -> None:
     _acknowledged_session_ids.update(item.session_id for item in items)
 
 
+def get_task_usage_user_full_names(
+    items: list[TaskUsageItem]
+) -> dict[str, str]:
+    """Get full names of users from sessions.
+
+    Users without filled full name and users that are not accessible for
+    current user are not in the output.
+
+    Args:
+        items (list[TaskUsageItem]): Sessions of users.
+
+    Returns:
+        dict[str, str]: Full name by username.
+
+    """
+    usernames = {item.username for item in items}
+    if not usernames:
+        return {}
+    try:
+        users = list(ayon_api.get_users(
+            usernames=usernames, fields={"name", "attrib.fullName"}
+        ))
+    except Exception:
+        log.debug("Failed to receive users information.", exc_info=True)
+        return {}
+
+    output = {}
+    for user in users:
+        full_name = (user.get("attrib") or {}).get("fullName")
+        if full_name:
+            output[user["name"]] = full_name
+    return output
+
+
 def _get_session_id() -> str:
     # Avoid circular import
     from ayon_core.pipeline.context_tools import get_process_id
@@ -607,7 +645,9 @@ class TaskUsageTracker:
                 show_task_in_use_notice,
             )
 
-            show_task_in_use_notice(items)
+            show_task_in_use_notice(
+                items, get_task_usage_user_full_names(items)
+            )
         except Exception:
             log.debug(
                 "Failed to show task in-use notice.", exc_info=True
@@ -715,6 +755,15 @@ def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
         or os.environ.get("AYON_REMOTE_PUBLISH")
     ):
         return None
+
+    # Sessions confirmed by the user before the application was launched
+    _acknowledged_session_ids.update(
+        session_id
+        for session_id in os.environ.get(
+            ACKNOWLEDGED_SESSIONS_ENV_KEY, ""
+        ).split(",")
+        if session_id
+    )
 
     _tracker = tracker = TaskUsageTracker(host)
     for topic in (

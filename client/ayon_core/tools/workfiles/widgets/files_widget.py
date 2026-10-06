@@ -216,8 +216,12 @@ class FilesWidget(AYContainer):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def _confirm_task_in_use(self, task_id):
+    def _confirm_task_in_use(self, task_id, confirm_label="Open anyway"):
         """Notify user that the task is in use by other users.
+
+        Args:
+            task_id (str): Task id.
+            confirm_label (str): Label of the button to continue.
 
         Returns:
             bool: True if task is not in use or user wants to continue.
@@ -225,10 +229,18 @@ class FilesWidget(AYContainer):
         items = self._controller.get_task_usage_items(task_id)
         if not items:
             return True
+        full_names = {
+            username: user_item.full_name
+            for username, user_item in (
+                self._controller.get_user_items_by_name().items()
+            )
+            if user_item.full_name
+        }
         dialog = TaskInUseDialog(
             items,
-            user_items_by_name=self._controller.get_user_items_by_name(),
+            full_names,
             parent=self,
+            confirm_label=confirm_label,
         )
         if dialog.exec_() != QtWidgets.QDialog.Accepted:
             return False
@@ -323,7 +335,7 @@ class FilesWidget(AYContainer):
         result = self._exec_save_as_dialog()
         if result is None:
             return
-        if not self._confirm_task_in_use(result["task_id"]):
+        if not self._confirm_task_in_use(result["task_id"], "Save anyway"):
             return
         self._controller.save_as_workfile(
             result["folder_id"],
