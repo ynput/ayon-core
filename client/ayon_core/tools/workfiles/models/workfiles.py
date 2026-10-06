@@ -37,6 +37,7 @@ from ayon_core.pipeline.workfile import (
     save_workfile_info,
 )
 from ayon_core.pipeline.workfile.task_usage import (
+    acknowledge_task_usage_items,
     get_task_usage_settings,
     get_other_users_task_usage_items,
 )
@@ -118,7 +119,7 @@ class WorkfilesModel:
         Returns:
             list[TaskUsageItem]: Sessions of other users working on the
                 task. Empty list if the notification is not enabled for
-                the task or if current process is registered on the task.
+                the task. Sessions the user did confirm are skipped.
 
         """
         project_name = self._controller.get_current_project_name()
@@ -143,6 +144,9 @@ class WorkfilesModel:
                 "Failed to receive task in-use information.", exc_info=True
             )
         return []
+
+    def confirm_task_usage_items(self, items: list[TaskUsageItem]) -> None:
+        acknowledge_task_usage_items(items)
 
     def open_workfile(
         self, folder_id: str, task_id: str, filepath: str

@@ -230,7 +230,10 @@ class FilesWidget(AYContainer):
             user_items_by_name=self._controller.get_user_items_by_name(),
             parent=self,
         )
-        return dialog.exec_() == QtWidgets.QDialog.Accepted
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+            return False
+        self._controller.confirm_task_usage_items(items)
+        return True
 
     def _open_workfile(self, folder_id, task_id, filepath):
         if not self._confirm_task_in_use(task_id):

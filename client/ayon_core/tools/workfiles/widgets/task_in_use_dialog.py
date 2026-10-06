@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import typing
 
-from qtpy import QtWidgets, QtGui
+from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.style import load_stylesheet, get_app_icon_path
 from ayon_core.tools.utils.delegates import pretty_date
@@ -30,6 +30,8 @@ class TaskInUseDialog(QtWidgets.QDialog):
         user_items_by_name (Optional[dict[str, UserItem]]): User items used
             to show full names of the users.
         parent (Optional[QtWidgets.QWidget]): Parent widget.
+        notice_only (bool): Only inform the user, without the option to
+            cancel. Used when the task is already in use by the user.
 
     """
     def __init__(
@@ -37,6 +39,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         items: list[TaskUsageItem],
         user_items_by_name: dict[str, UserItem] | None = None,
         parent: QtWidgets.QWidget | None = None,
+        notice_only: bool = False,
     ):
         super().__init__(parent)
         self.setWindowTitle("Task is in use")
@@ -69,6 +72,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         question_label = AYLabel(
             "Do you want to work on the task anyway?", parent=self
         )
+        question_label.setVisible(not notice_only)
 
         btns_widget = QtWidgets.QWidget(self)
 
@@ -80,11 +84,19 @@ class TaskInUseDialog(QtWidgets.QDialog):
             "Open anyway", variant=AYButton.Variants.Danger,
             parent=btns_widget,
         )
+        if notice_only:
+            cancel_btn.setVisible(False)
+            confirm_btn.setVisible(False)
+        ok_btn = AYButton(
+            "OK", variant=AYButton.Variants.Surface, parent=btns_widget
+        )
+        ok_btn.setVisible(notice_only)
 
         btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=10)
         btns_layout.addStretch(1)
         btns_layout.addWidget(cancel_btn, 0)
         btns_layout.addWidget(confirm_btn, 0)
+        btns_layout.addWidget(ok_btn, 0)
 
         main_layout = AYVBoxLayout(self, margin=15, spacing=12)
         main_layout.addWidget(header_label, 0)
@@ -96,6 +108,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
 
         cancel_btn.clicked.connect(self.reject)
         confirm_btn.clicked.connect(self.accept)
+        ok_btn.clicked.connect(self.accept)
 
         self.setMinimumWidth(460)
 
@@ -141,3 +154,41 @@ class TaskInUseDialog(QtWidgets.QDialog):
             details.append(f"last activity {updated}")
 
         return title, ", ".join(details)
+
+
+# Keep reference to the shown notice
+_notice_dialog: TaskInUseDialog | None = None
+
+
+def show_task_in_use_notice(
+    items: list[TaskUsageItem], delay: int = 1000
+) -> None:
+    """Inform user that other users are working on the current task.
+
+    The dialog is not modal and is shown when the Qt event loop is free,
+    so it does not block startup of the application. Nothing happens if
+    Qt application is not available.
+
+    Args:
+        items (list[TaskUsageItem]): Sessions of other users working on
+            the task.
+        delay (int): Delay in milliseconds before the dialog is shown.
+
+    """
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return
+
+    def _show():
+        global _notice_dialog
+
+        if _notice_dialog is not None:
+            _notice_dialog.close()
+        dialog = TaskInUseDialog(items, notice_only=True)
+        dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
+        _notice_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+
+    QtCore.QTimer.singleShot(delay, _show)

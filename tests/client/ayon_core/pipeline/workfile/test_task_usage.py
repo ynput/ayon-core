@@ -115,12 +115,14 @@ def test_remove_session_item():
 def test_filter_other_users_items():
     mine = _item("mine-other-host", host_name="nuke")
     other = _item("other", username="artist2")
+    assert filter_other_users_items([mine, other], "artist1") == [other]
+    # Session of current process on the task does not hide other users
     assert filter_other_users_items(
-        [mine, other], "artist1", "session"
+        [_item("session"), other], "artist1"
     ) == [other]
-    # Current session is already registered on the task
+    # User was already notified about the session
     assert filter_other_users_items(
-        [_item("session"), other], "artist1", "session"
+        [mine, other], "artist1", {"other"}
     ) == []
 
 
@@ -188,6 +190,7 @@ def tracker_calls(monkeypatch):
     calls = []
     host = _MockHost()
     tracker = TaskUsageTracker(host)
+    other_user = _item("other-user", username="artist2")
 
     def _query_task_context(project_name, folder_path, task_name):
         if task_name == "disabled":
@@ -198,11 +201,20 @@ def tracker_calls(monkeypatch):
 
     def _claim_task(project_name, task_id, *, workfile, **kwargs):
         calls.append(("claim", task_id, workfile))
+        if task_id == "in-use":
+            return [other_user, _item("mine")]
+        return [_item("mine")]
+
+    def _notify(items):
+        calls.append(("notify", [item.session_id for item in items]))
 
     def _release_task(project_name, task_id, **kwargs):
         calls.append(("release", task_id))
 
     monkeypatch.setattr(tracker, "_query_task_context", _query_task_context)
+    monkeypatch.setattr(tracker, "_notify", _notify)
+    monkeypatch.setattr(task_usage, "get_ayon_username", lambda: "artist1")
+    monkeypatch.setattr(task_usage, "_acknowledged_session_ids", set())
     monkeypatch.setattr(task_usage, "claim_task", _claim_task)
     monkeypatch.setattr(task_usage, "release_task", _release_task)
     return host, tracker, calls
@@ -239,6 +251,34 @@ def test_tracker_claims_and_releases(tracker_calls):
     # Nothing is claimed
     tracker.release()
     assert len(calls) == 5
+
+
+def test_tracker_notifies_about_other_users(tracker_calls):
+    host, tracker, calls = tracker_calls
+
+    host.task_name = "in-use"
+    tracker.sync()
+    assert calls == [
+        ("claim", "in-use", "sh010_anim_v001.ma"),
+        ("notify", ["other-user"]),
+    ]
+
+    # User is notified only once about the same session
+    host.workfile = "/path/sh010_anim_v002.ma"
+    tracker.sync()
+    assert calls[2:] == [("claim", "in-use", "sh010_anim_v002.ma")]
+
+
+def test_tracker_skips_acknowledged_users(tracker_calls):
+    """Sessions confirmed in the Workfiles tool are not notified again."""
+    host, tracker, calls = tracker_calls
+
+    task_usage.acknowledge_task_usage_items(
+        [_item("other-user", username="artist2")]
+    )
+    host.task_name = "in-use"
+    tracker.sync()
+    assert calls == [("claim", "in-use", "sh010_anim_v001.ma")]
 
 
 def test_tracker_refreshes_after_interval(tracker_calls, monkeypatch):

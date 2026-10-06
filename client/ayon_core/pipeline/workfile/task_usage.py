@@ -42,6 +42,9 @@ DEFAULT_STALE_TIMEOUT_HOURS = 8.0
 # Do not update the task more often if nothing but the time did change
 REFRESH_INTERVAL_SECONDS = 5 * 60
 
+# Sessions of other users the user of current process was notified about
+_acknowledged_session_ids: set[str] = set()
+
 
 @dataclass
 class TaskUsageSettings:
@@ -282,26 +285,47 @@ def remove_session_item(
 
 
 def filter_other_users_items(
-    items: list[TaskUsageItem], username: str, session_id: str
+    items: list[TaskUsageItem],
+    username: str,
+    acknowledged_session_ids: Optional[set[str]] = None,
 ) -> list[TaskUsageItem]:
     """Sessions the user should be notified about.
 
-    Sessions of the user are never returned. Nothing is returned if the
-    passed session is already registered on the task, in that case the user
-    already did confirm that wants to work on the task.
+    Sessions of the user and sessions the user was already notified about
+    are not returned.
 
     Args:
         items (list[TaskUsageItem]): Active sessions of a task.
         username (str): Current username.
-        session_id (str): Current session id.
+        acknowledged_session_ids (Optional[set[str]]): Sessions the user
+            was already notified about.
 
     Returns:
         list[TaskUsageItem]: Sessions of other users.
 
     """
-    if any(item.session_id == session_id for item in items):
-        return []
-    return [item for item in items if item.username != username]
+    if acknowledged_session_ids is None:
+        acknowledged_session_ids = set()
+    return [
+        item
+        for item in items
+        if (
+            item.username != username
+            and item.session_id not in acknowledged_session_ids
+        )
+    ]
+
+
+def acknowledge_task_usage_items(items: list[TaskUsageItem]) -> None:
+    """Mark sessions as known to the user of current process.
+
+    The user is not notified about acknowledged sessions again.
+
+    Args:
+        items (list[TaskUsageItem]): Sessions the user was notified about.
+
+    """
+    _acknowledged_session_ids.update(item.session_id for item in items)
 
 
 def _get_session_id() -> str:
@@ -317,17 +341,21 @@ def _update_task_usage(
     stale_timeout_hours: float,
     new_item: Optional[TaskUsageItem] = None,
     remove_session_id: Optional[str] = None,
-) -> None:
+) -> list[TaskUsageItem]:
     """Update sessions on a task.
 
     Task data are fetched right before the update to lower the chance of
     overriding changes of somebody else. Stale sessions are removed.
+
+    Returns:
+        list[TaskUsageItem]: Active sessions of the task after the update.
+
     """
     task_entity = ayon_api.get_task_by_id(
         project_name, task_id, fields={"id", "data"}
     )
     if not task_entity:
-        return
+        return []
 
     task_data = task_entity.get("data") or {}
     current_value = task_data.get(TASK_USAGE_DATA_KEY)
@@ -341,12 +369,13 @@ def _update_task_usage(
 
     new_value = [item.to_data() for item in items]
     if new_value == (current_value or []):
-        return
+        return items
 
     # Whole data are sent with list value under single key, that way it
     #   does not matter if server does replace or merge the data.
     task_data[TASK_USAGE_DATA_KEY] = new_value
     ayon_api.update_task(project_name, task_id, data=task_data)
+    return items
 
 
 def get_task_usage_items(
@@ -384,7 +413,7 @@ def get_other_users_task_usage_items(
 ) -> list[TaskUsageItem]:
     """Get sessions of other users working on a task.
 
-    Returns empty list if current process is already registered on the task.
+    Sessions acknowledged with 'acknowledge_task_usage_items' are skipped.
 
     Args:
         project_name (str): Project name.
@@ -399,7 +428,7 @@ def get_other_users_task_usage_items(
     return filter_other_users_items(
         get_task_usage_items(project_name, task_id, stale_timeout_hours),
         get_ayon_username(),
-        _get_session_id(),
+        _acknowledged_session_ids,
     )
 
 
@@ -410,7 +439,7 @@ def claim_task(
     workfile: Optional[str] = None,
     host_name: Optional[str] = None,
     stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS,
-) -> None:
+) -> list[TaskUsageItem]:
     """Register current process as working on a task.
 
     Can be called repeatedly to update the workfile and time of the last
@@ -424,6 +453,10 @@ def claim_task(
         stale_timeout_hours (float): Sessions without an update for more
             than this amount of hours are removed from the task.
 
+    Returns:
+        list[TaskUsageItem]: Active sessions of the task, including the
+            session of current process.
+
     """
     now = _get_now().isoformat()
     item = TaskUsageItem(
@@ -436,7 +469,7 @@ def claim_task(
         opened_at=now,
         updated_at=now,
     )
-    _update_task_usage(
+    return _update_task_usage(
         project_name, task_id, stale_timeout_hours, new_item=item
     )
 
@@ -477,6 +510,10 @@ class TaskUsageTracker:
     The tracker follows current context of the host integration. The task is
     claimed when context changes or a workfile is opened or saved, and is
     released when context changes to a different task or the process ends.
+
+    When a task is claimed and other users are working on it, the user is
+    notified about them, unless the user did already confirm them, e.g. in
+    the Workfiles tool.
 
     Failures are only logged. The tracker must never break host callbacks.
 
@@ -536,7 +573,7 @@ class TaskUsageTracker:
         ):
             return
 
-        claim_task(
+        items = claim_task(
             context.project_name,
             context.task_id,
             workfile=workfile,
@@ -546,6 +583,35 @@ class TaskUsageTracker:
         self._claimed = context
         self._claimed_workfile = workfile
         self._last_update = now
+
+        other_items = filter_other_users_items(
+            items or [], get_ayon_username(), _acknowledged_session_ids
+        )
+        if other_items:
+            acknowledge_task_usage_items(other_items)
+            self._notify(other_items)
+
+    def _notify(self, items: list[TaskUsageItem]) -> None:
+        """Notify user that other users are working on the claimed task.
+
+        The task is already in use by current process at this point, e.g.
+        the application was launched with a workfile, so the user can only
+        be informed.
+        """
+        log.warning(
+            "Task is in use by other users: %s",
+            ", ".join(sorted({item.username for item in items})),
+        )
+        try:
+            from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
+                show_task_in_use_notice,
+            )
+
+            show_task_in_use_notice(items)
+        except Exception:
+            log.debug(
+                "Failed to show task in-use notice.", exc_info=True
+            )
 
     def _get_workfile_name(self) -> Optional[str]:
         get_current_workfile = getattr(
