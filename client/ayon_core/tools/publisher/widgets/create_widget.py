@@ -127,14 +127,14 @@ class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._subset_product: SubtaskProduct | None = None
+        self._subtask_product: SubtaskProduct | None = None
 
-    def set_subset_product_filter(
-        self, subset_product: SubtaskProduct | None
+    def set_subtask_product_filter(
+        self, subtask_product: SubtaskProduct | None
     ) -> None:
-        if subset_product is self._subset_product:
+        if subtask_product is self._subtask_product:
             return
-        self._subset_product = subset_product
+        self._subtask_product = subtask_product
         if self.rowCount() == 0:
             return
 
@@ -148,11 +148,11 @@ class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
         if not source_index.isValid():
             return flags
 
-        if self._subset_product is None:
+        if self._subtask_product is None:
             return flags
 
         product_base_type = source_index.data(PRODUCT_BASE_TYPE_ROLE)
-        if product_base_type != self._subset_product.product_base_type:
+        if product_base_type != self._subtask_product.product_base_type:
             return flags & ~QtCore.Qt.ItemIsEnabled
 
         return flags
@@ -373,10 +373,6 @@ class CreateWidget(QtWidgets.QWidget):
             "controller.reset.finished", self._on_controler_reset
         )
         controller.register_event_callback(
-            "create.context.pre.create.attrs.changed",
-            self._pre_create_attr_changed
-        )
-        controller.register_event_callback(
             "create.context.removed.instance",
             self._on_instances_removed
         )
@@ -452,6 +448,8 @@ class CreateWidget(QtWidgets.QWidget):
         self._context_widget.set_enabled(enabled)
         if check_prereq:
             self._invalidate_prereq()
+            # Subtask products are shown only if context can be changed
+            self._refresh_subtask_products()
 
     def _on_main_window_close(self) -> None:
         """Publisher window was closed."""
@@ -534,7 +532,11 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._prereq_available = prereq_available
         self._create_btn.setEnabled(prereq_available)
-        self._variant_widget.setEnabled(prereq_available)
+        # Variant is not editable if subtask product is selected, the product
+        #   name is defined by the subtask product
+        self._variant_widget.setEnabled(
+            prereq_available and self._current_subtask_product is None
+        )
 
         tooltip = ""
         if creator_btn_tooltips:
@@ -577,7 +579,12 @@ class CreateWidget(QtWidgets.QWidget):
         if not subtask_products:
             root_item.removeRows(0, root_item.rowCount())
             self._subtask_products_widget.setVisible(False)
-            self._current_subtask_product = None
+            if self._current_subtask_product is not None:
+                # Reset state that depends on selected subtask product
+                #   (creators filter, variant input and product name)
+                self._on_subtask_product_change(
+                    QtCore.QModelIndex(), QtCore.QModelIndex()
+                )
             return
 
         icon_created = get_qt_icon(
@@ -790,7 +797,7 @@ class CreateWidget(QtWidgets.QWidget):
             )
 
         self._current_subtask_product = item
-        self._creators_sort_model.set_subset_product_filter(item)
+        self._creators_sort_model.set_subtask_product_filter(item)
 
         if item is not None:
             self.product_name_input.setText(item.product_name)
@@ -882,7 +889,8 @@ class CreateWidget(QtWidgets.QWidget):
             self._create_btn.setEnabled(False)
             return
 
-        self._create_btn.setEnabled(True)
+        # Don't enable the button if pre-requirements are not met
+        self._create_btn.setEnabled(self._prereq_available)
 
         self._selected_creator_identifier = creator_item.identifier
         self._selected_product_type = product_type
