@@ -19,7 +19,7 @@ if typing.TYPE_CHECKING:
 
 AVATAR_SIZE = 36
 # Shorter difference of opened and last update time is not shown
-MIN_SAVED_DIFFERENCE = datetime.timedelta(minutes=1)
+MIN_SEEN_DIFFERENCE = datetime.timedelta(minutes=1)
 
 _avatar_cache = None
 
@@ -183,13 +183,14 @@ class _SessionWidget(QtWidgets.QWidget):
         if opened_at is not None:
             labels.append(f"Opened {get_time_ago_label(opened_at, now)}")
 
-        # Session is updated when a workfile is opened or saved
+        # Session reports itself when a workfile is opened or saved,
+        #   but not more often than once per refresh interval
         updated_at = item.get_updated_at()
         if updated_at is not None and (
             opened_at is None
-            or updated_at - opened_at >= MIN_SAVED_DIFFERENCE
+            or updated_at - opened_at >= MIN_SEEN_DIFFERENCE
         ):
-            labels.append(f"Last saved {get_time_ago_label(updated_at, now)}")
+            labels.append(f"Last seen {get_time_ago_label(updated_at, now)}")
         return labels
 
 
@@ -295,12 +296,12 @@ def show_task_in_use_notice(
     items: list[TaskUsageItem],
     full_names: dict[str, str] | None = None,
     delay: int = 1000,
-) -> None:
+) -> bool:
     """Inform user that other users are working on the current task.
 
     The dialog is not modal and is shown when the Qt event loop is free,
     so it does not block startup of the application. Nothing happens if
-    Qt application is not available.
+    Qt application with UI is not available.
 
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
@@ -309,10 +310,14 @@ def show_task_in_use_notice(
             username.
         delay (int): Delay in milliseconds before the dialog is shown.
 
+    Returns:
+        bool: The dialog will be shown.
+
     """
     app = QtWidgets.QApplication.instance()
-    if app is None:
-        return
+    # 'QCoreApplication' is returned in applications without UI
+    if not isinstance(app, QtWidgets.QApplication):
+        return False
 
     def _show():
         global _notice_dialog
@@ -327,3 +332,4 @@ def show_task_in_use_notice(
         dialog.activateWindow()
 
     QtCore.QTimer.singleShot(delay, _show)
+    return True

@@ -242,10 +242,11 @@ class FilesWidget(AYContainer):
             parent=self,
             confirm_label=confirm_label,
         )
-        if dialog.exec_() != QtWidgets.QDialog.Accepted:
-            return False
-        self._controller.confirm_task_usage_items(items)
-        return True
+        confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
+        dialog.deleteLater()
+        if confirmed:
+            self._controller.confirm_task_usage_items(items)
+        return confirmed
 
     def _open_workfile(self, folder_id, task_id, filepath):
         if not self._confirm_task_in_use(task_id):

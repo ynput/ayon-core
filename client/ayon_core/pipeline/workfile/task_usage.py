@@ -7,10 +7,15 @@ working on the task before they open a workfile of the task.
 The information is advisory. It never blocks anybody from working on the
 task and a task can be used by multiple sessions at the same time.
 
-The sessions are stored as a list under 'TASK_USAGE_DATA_KEY' key in the
-task data. Sessions that did not update for longer than the stale timeout
-are ignored and are removed with the next update of the task data, so
-sessions of crashed applications do not stay on the task forever.
+Each session is stored under its own key in the task data, the key is
+'TASK_USAGE_KEY_PREFIX' followed by the session id. AYON server merges
+top-level keys of entity data on update and removes keys with 'None' value,
+so a session can add, update and remove itself with a single request
+without reading the data first, and sessions can't override each other.
+
+Sessions that did not update for longer than the stale timeout are ignored
+and are removed when the task is claimed by a session, so sessions of
+crashed applications do not stay on the task forever.
 """
 from __future__ import annotations
 
@@ -37,10 +42,18 @@ from ayon_core.settings import get_project_settings
 
 log = logging.getLogger(__name__)
 
-TASK_USAGE_DATA_KEY = "inUse"
+TASK_USAGE_KEY_PREFIX = "inUse_"
 DEFAULT_STALE_TIMEOUT_HOURS = 8.0
-# Do not update the task more often if nothing but the time did change
-REFRESH_INTERVAL_SECONDS = 5 * 60
+# Do not update the task more often if nothing but the time did change.
+#   Each update of a task creates an event on the server.
+REFRESH_INTERVAL_SECONDS = 15 * 60
+
+# Environment variables with value "1" in farm jobs
+FARM_JOB_ENV_KEYS = (
+    "AYON_RENDER_JOB",
+    "AYON_PUBLISH_JOB",
+    "AYON_REMOTE_PUBLISH",
+)
 
 # Environment variable with comma separated session ids the user did
 #   confirm before the application was launched
@@ -90,6 +103,11 @@ class TaskUsageItem:
     opened_at: str
     updated_at: str
 
+    @property
+    def data_key(self) -> str:
+        """Key under which is the session stored in task data."""
+        return get_session_data_key(self.session_id)
+
     def to_data(self) -> dict[str, Any]:
         return asdict(self)
 
@@ -126,6 +144,11 @@ class TaskUsageItem:
         return _parse_time(self.updated_at)
 
 
+def get_session_data_key(session_id: str) -> str:
+    """Key under which is a session stored in task data."""
+    return f"{TASK_USAGE_KEY_PREFIX}{session_id}"
+
+
 def _get_now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
@@ -140,6 +163,42 @@ def _parse_time(value: Any) -> Optional[datetime.datetime]:
     if output.tzinfo is None:
         output = output.replace(tzinfo=datetime.timezone.utc)
     return output
+
+
+def _get_profiles(project_settings: dict[str, Any]) -> list[dict[str, Any]]:
+    return (
+        project_settings
+        ["core"]
+        ["tools"]
+        ["Workfiles"]
+        .get("task_in_use_profiles")
+    ) or []
+
+
+def is_task_usage_enabled_in_project(
+    project_name: str,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> bool:
+    """Task in-use tracking can be enabled for some context of a project.
+
+    Can be used to skip queries of entities needed to find out if the
+    tracking is enabled for specific context.
+
+    Args:
+        project_name (str): Project name.
+        project_settings (Optional[dict[str, Any]]): Prepared project
+            settings.
+
+    Returns:
+        bool: Project has at least one enabled profile.
+
+    """
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+    return any(
+        profile.get("enabled")
+        for profile in _get_profiles(project_settings)
+    )
 
 
 def get_task_usage_settings(
@@ -166,13 +225,7 @@ def get_task_usage_settings(
     if project_settings is None:
         project_settings = get_project_settings(project_name)
 
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        .get("task_in_use_profiles")
-    )
+    profiles = _get_profiles(project_settings)
     if not profiles:
         return TaskUsageSettings()
 
@@ -210,13 +263,13 @@ def parse_task_usage_items(
     """
     if not task_data:
         return []
-    value = task_data.get(TASK_USAGE_DATA_KEY)
-    if not isinstance(value, list):
-        return []
     items = []
-    for item_data in value:
+    for key, item_data in task_data.items():
+        if not key.startswith(TASK_USAGE_KEY_PREFIX):
+            continue
         item = TaskUsageItem.from_data(item_data)
-        if item is not None:
+        # Session must be stored under its own key
+        if item is not None and item.data_key == key:
             items.append(item)
     return items
 
@@ -247,45 +300,53 @@ def filter_active_items(
     ]
 
 
-def add_session_item(
-    items: list[TaskUsageItem], new_item: TaskUsageItem
-) -> list[TaskUsageItem]:
-    """Add or update a session in sessions of a task.
+def is_same_source(item: TaskUsageItem, other_item: TaskUsageItem) -> bool:
+    """Sessions are of the same user in the same host on the same machine.
 
-    Time when the session was opened is kept if the session is already in
-    the items. Other sessions of the same user in the same host on the same
-    machine are removed. They are considered leftovers of a crashed
-    application.
+    A session with the same source as a session that just started is
+    considered a leftover of a crashed application.
+    """
+    return (
+        item.username == other_item.username
+        and item.site_id == other_item.site_id
+        and item.host_name == other_item.host_name
+    )
+
+
+def get_task_usage_cleanup_keys(
+    task_data: Optional[dict[str, Any]],
+    new_item: TaskUsageItem,
+    stale_timeout_hours: float,
+    now: Optional[datetime.datetime] = None,
+) -> set[str]:
+    """Keys of task data to remove when a session claims the task.
+
+    Removed are stale and invalid sessions, and other sessions with the
+    same source as the new session.
 
     Args:
-        items (list[TaskUsageItem]): Sessions stored on a task.
-        new_item (TaskUsageItem): Session to add.
+        task_data (Optional[dict[str, Any]]): Value of task entity 'data'.
+        new_item (TaskUsageItem): Session that claims the task.
+        stale_timeout_hours (float): Maximum hours since the last update.
+        now (Optional[datetime.datetime]): Current time.
 
     Returns:
-        list[TaskUsageItem]: New list of sessions.
+        set[str]: Keys to remove from the task data.
 
     """
-    output = []
-    for item in items:
-        if item.session_id == new_item.session_id:
-            new_item = replace(new_item, opened_at=item.opened_at)
-            continue
-        if (
-            item.username == new_item.username
-            and item.site_id == new_item.site_id
-            and item.host_name == new_item.host_name
-        ):
-            continue
-        output.append(item)
-    output.append(new_item)
-    return output
-
-
-def remove_session_item(
-    items: list[TaskUsageItem], session_id: str
-) -> list[TaskUsageItem]:
-    """Remove a session from sessions of a task."""
-    return [item for item in items if item.session_id != session_id]
+    all_keys = {
+        key
+        for key in (task_data or {})
+        if key.startswith(TASK_USAGE_KEY_PREFIX)
+    }
+    keep_keys = {
+        item.data_key
+        for item in filter_active_items(
+            parse_task_usage_items(task_data), stale_timeout_hours, now
+        )
+        if not is_same_source(item, new_item)
+    }
+    return all_keys - keep_keys - {new_item.data_key}
 
 
 def filter_other_users_items(
@@ -373,49 +434,6 @@ def _get_session_id() -> str:
     return get_process_id()
 
 
-def _update_task_usage(
-    project_name: str,
-    task_id: str,
-    stale_timeout_hours: float,
-    new_item: Optional[TaskUsageItem] = None,
-    remove_session_id: Optional[str] = None,
-) -> list[TaskUsageItem]:
-    """Update sessions on a task.
-
-    Task data are fetched right before the update to lower the chance of
-    overriding changes of somebody else. Stale sessions are removed.
-
-    Returns:
-        list[TaskUsageItem]: Active sessions of the task after the update.
-
-    """
-    task_entity = ayon_api.get_task_by_id(
-        project_name, task_id, fields={"id", "data"}
-    )
-    if not task_entity:
-        return []
-
-    task_data = task_entity.get("data") or {}
-    current_value = task_data.get(TASK_USAGE_DATA_KEY)
-    items = filter_active_items(
-        parse_task_usage_items(task_data), stale_timeout_hours
-    )
-    if remove_session_id is not None:
-        items = remove_session_item(items, remove_session_id)
-    if new_item is not None:
-        items = add_session_item(items, new_item)
-
-    new_value = [item.to_data() for item in items]
-    if new_value == (current_value or []):
-        return items
-
-    # Whole data are sent with list value under single key, that way it
-    #   does not matter if server does replace or merge the data.
-    task_data[TASK_USAGE_DATA_KEY] = new_value
-    ayon_api.update_task(project_name, task_id, data=task_data)
-    return items
-
-
 def get_task_usage_items(
     project_name: str,
     task_id: str,
@@ -470,34 +488,22 @@ def get_other_users_task_usage_items(
     )
 
 
-def claim_task(
-    project_name: str,
-    task_id: str,
-    *,
+def create_session_item(
     workfile: Optional[str] = None,
     host_name: Optional[str] = None,
-    stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS,
-) -> list[TaskUsageItem]:
-    """Register current process as working on a task.
-
-    Can be called repeatedly to update the workfile and time of the last
-    activity.
+) -> TaskUsageItem:
+    """Create session item of current process.
 
     Args:
-        project_name (str): Project name.
-        task_id (str): Task id.
         workfile (Optional[str]): Filename of the opened workfile.
         host_name (Optional[str]): Name of host integration.
-        stale_timeout_hours (float): Sessions without an update for more
-            than this amount of hours are removed from the task.
 
     Returns:
-        list[TaskUsageItem]: Active sessions of the task, including the
-            session of current process.
+        TaskUsageItem: Session of current process.
 
     """
     now = _get_now().isoformat()
-    item = TaskUsageItem(
+    return TaskUsageItem(
         session_id=_get_session_id(),
         username=get_ayon_username(),
         machine=socket.gethostname(),
@@ -507,31 +513,95 @@ def claim_task(
         opened_at=now,
         updated_at=now,
     )
-    return _update_task_usage(
-        project_name, task_id, stale_timeout_hours, new_item=item
+
+
+def claim_task(
+    project_name: str,
+    task_id: str,
+    item: TaskUsageItem,
+    stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS,
+) -> list[TaskUsageItem]:
+    """Register a session as working on a task.
+
+    Should be used when a session starts to work on a task. Stale sessions
+    and leftovers of the same user are removed from the task. Use
+    'update_task_session' for further updates of the session.
+
+    Args:
+        project_name (str): Project name.
+        task_id (str): Task id.
+        item (TaskUsageItem): Session to register.
+        stale_timeout_hours (float): Sessions without an update for more
+            than this amount of hours are removed from the task.
+
+    Returns:
+        list[TaskUsageItem]: Other active sessions working on the task.
+
+    """
+    task_entity = ayon_api.get_task_by_id(
+        project_name, task_id, fields={"id", "data"}
+    )
+    if not task_entity:
+        return []
+
+    task_data = task_entity.get("data") or {}
+    cleanup_keys = get_task_usage_cleanup_keys(
+        task_data, item, stale_timeout_hours
+    )
+    update_data: dict[str, Any] = {key: None for key in cleanup_keys}
+    update_data[item.data_key] = item.to_data()
+    ayon_api.update_task(project_name, task_id, data=update_data)
+
+    return [
+        other_item
+        for other_item in filter_active_items(
+            parse_task_usage_items(task_data), stale_timeout_hours
+        )
+        if (
+            other_item.data_key not in cleanup_keys
+            and other_item.session_id != item.session_id
+        )
+    ]
+
+
+def update_task_session(
+    project_name: str, task_id: str, item: TaskUsageItem
+) -> None:
+    """Update a session on a task.
+
+    Only the key of the session is sent, the task data are not read.
+
+    Args:
+        project_name (str): Project name.
+        task_id (str): Task id.
+        item (TaskUsageItem): Session to update.
+
+    """
+    ayon_api.update_task(
+        project_name, task_id, data={item.data_key: item.to_data()}
     )
 
 
 def release_task(
     project_name: str,
     task_id: str,
-    *,
-    stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS,
+    session_id: Optional[str] = None,
 ) -> None:
-    """Unregister current process from a task.
+    """Unregister a session from a task.
 
     Args:
         project_name (str): Project name.
         task_id (str): Task id.
-        stale_timeout_hours (float): Sessions without an update for more
-            than this amount of hours are removed from the task.
+        session_id (Optional[str]): Session id. Session of current process
+            is used if not passed.
 
     """
-    _update_task_usage(
+    if session_id is None:
+        session_id = _get_session_id()
+    ayon_api.update_task(
         project_name,
         task_id,
-        stale_timeout_hours,
-        remove_session_id=_get_session_id(),
+        data={get_session_data_key(session_id): None},
     )
 
 
@@ -562,34 +632,41 @@ class TaskUsageTracker:
     def __init__(self, host):
         self._host = host
         self._claimed: Optional[_TaskContext] = None
-        self._claimed_workfile: Optional[str] = None
+        self._item: Optional[TaskUsageItem] = None
         self._last_update: float = 0.0
+        self._retry_after: float = 0.0
         self._context_cache: dict[tuple, Optional[_TaskContext]] = {}
 
     def sync(self) -> None:
-        """Synchronize the task registration with current host context."""
+        """Synchronize the task registration with current host context.
+
+        Is not processed for some time after a failure, e.g. when server is
+        not available or the user can't update tasks, to not slow down
+        every save of a workfile.
+        """
+        if time.monotonic() < self._retry_after:
+            return
         try:
             self._sync()
         except Exception:
+            self._retry_after = time.monotonic() + REFRESH_INTERVAL_SECONDS
             log.warning("Failed to update task in-use data.", exc_info=True)
 
     def release(self) -> None:
         """Unregister from the claimed task."""
         claimed, self._claimed = self._claimed, None
-        if claimed is None:
+        item, self._item = self._item, None
+        if claimed is None or item is None:
             return
         try:
             release_task(
-                claimed.project_name,
-                claimed.task_id,
-                stale_timeout_hours=claimed.settings.stale_timeout_hours,
+                claimed.project_name, claimed.task_id, item.session_id
             )
         except Exception:
             log.warning("Failed to release task in-use data.", exc_info=True)
 
     def _sync(self) -> None:
         context = self._get_task_context()
-        workfile = self._get_workfile_name()
 
         claimed = self._claimed
         if claimed is not None and (
@@ -603,38 +680,59 @@ class TaskUsageTracker:
         if context is None:
             return
 
+        workfile = self._get_workfile_name()
         now = time.monotonic()
-        if (
-            claimed is not None
-            and workfile == self._claimed_workfile
-            and now - self._last_update < REFRESH_INTERVAL_SECONDS
+        if claimed is None:
+            self._claim(context, workfile)
+
+        elif (
+            workfile != self._item.workfile
+            or now - self._last_update >= REFRESH_INTERVAL_SECONDS
         ):
+            item = replace(
+                self._item,
+                workfile=workfile,
+                updated_at=_get_now().isoformat(),
+            )
+            update_task_session(context.project_name, context.task_id, item)
+            self._item = item
+
+        else:
             return
 
-        items = claim_task(
-            context.project_name,
-            context.task_id,
-            workfile=workfile,
-            host_name=getattr(self._host, "name", None),
-            stale_timeout_hours=context.settings.stale_timeout_hours,
-        )
-        self._claimed = context
-        self._claimed_workfile = workfile
         self._last_update = now
 
-        other_items = filter_other_users_items(
-            items or [], get_ayon_username(), _acknowledged_session_ids
+    def _claim(self, context: _TaskContext, workfile: Optional[str]) -> None:
+        item = create_session_item(
+            workfile, getattr(self._host, "name", None)
         )
-        if other_items:
-            acknowledge_task_usage_items(other_items)
-            self._notify(other_items)
+        other_items = claim_task(
+            context.project_name,
+            context.task_id,
+            item,
+            context.settings.stale_timeout_hours,
+        )
+        self._claimed = context
+        self._item = item
 
-    def _notify(self, items: list[TaskUsageItem]) -> None:
+        other_items = filter_other_users_items(
+            other_items, item.username, _acknowledged_session_ids
+        )
+        # Sessions stay unconfirmed if the user could not be notified, the
+        #   user is asked about them when opens a workfile of the task
+        if other_items and self._notify(other_items):
+            acknowledge_task_usage_items(other_items)
+
+    def _notify(self, items: list[TaskUsageItem]) -> bool:
         """Notify user that other users are working on the claimed task.
 
         The task is already in use by current process at this point, e.g.
         the application was launched with a workfile, so the user can only
         be informed.
+
+        Returns:
+            bool: The notice will be shown to the user.
+
         """
         log.warning(
             "Task is in use by other users: %s",
@@ -645,13 +743,14 @@ class TaskUsageTracker:
                 show_task_in_use_notice,
             )
 
-            show_task_in_use_notice(
+            return show_task_in_use_notice(
                 items, get_task_usage_user_full_names(items)
             )
         except Exception:
             log.debug(
                 "Failed to show task in-use notice.", exc_info=True
             )
+        return False
 
     def _get_workfile_name(self) -> Optional[str]:
         get_current_workfile = getattr(
@@ -683,6 +782,10 @@ class TaskUsageTracker:
     def _query_task_context(
         self, project_name: str, folder_path: str, task_name: str
     ) -> Optional[_TaskContext]:
+        # Avoid queries of entities if the tracking is not used in project
+        if not is_task_usage_enabled_in_project(project_name):
+            return None
+
         folder_entity = ayon_api.get_folder_by_path(
             project_name, folder_path, fields={"id"}
         )
@@ -735,7 +838,8 @@ def _connect_qt_quit() -> None:
 def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     """Start tracking of task in-use for the host integration.
 
-    Tracking is skipped in headless mode and in automated tests.
+    Tracking is skipped in headless mode, in farm jobs and in automated
+    tests.
 
     Args:
         host (AbstractHost): Installed host integration.
@@ -752,7 +856,7 @@ def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     if (
         is_headless_mode_enabled()
         or is_in_tests()
-        or os.environ.get("AYON_REMOTE_PUBLISH")
+        or any(os.environ.get(key) == "1" for key in FARM_JOB_ENV_KEYS)
     ):
         return None
 
