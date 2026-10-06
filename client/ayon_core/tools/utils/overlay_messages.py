@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -24,7 +23,7 @@ class CloseButton(QtWidgets.QFrame):
     clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(CloseButton, self).__init__(parent)
+        super().__init__(parent)
         colors = get_objected_colors("overlay-messages")
         self._color = colors["close-btn"].get_qcolor()
         self._hover_color = colors["close-btn-hover"].get_qcolor()
@@ -45,7 +44,7 @@ class CloseButton(QtWidgets.QFrame):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(CloseButton, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -53,7 +52,7 @@ class CloseButton(QtWidgets.QFrame):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(CloseButton, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         rect = self.rect()
@@ -116,7 +115,7 @@ class OverlayMessageWidget(QtWidgets.QFrame):
     def __init__(
         self, message_id, message, parent, message_type=None, timeout=None
     ):
-        super(OverlayMessageWidget, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("OverlayMessageWidget")
 
         if message_type:
@@ -178,13 +177,13 @@ class OverlayMessageWidget(QtWidgets.QFrame):
 
     def showEvent(self, event):
         """Start timeout on show."""
-        super(OverlayMessageWidget, self).showEvent(event)
+        super().showEvent(event)
         self._progress_anim.stop()
         self._start_progress()
 
     def paintEvent(self, event):
         """Paint progress bar at the bottom of the message."""
-        super(OverlayMessageWidget, self).paintEvent(event)
+        super().paintEvent(event)
         progress = self._progress_anim.currentValue()
         if not progress:
             return
@@ -208,7 +207,7 @@ class OverlayMessageWidget(QtWidgets.QFrame):
         painter.fillRect(bar_rect, self._type_color)
         painter.end()
 
-    def _update_message_type(self, message_type: Optional[str]) -> None:
+    def _update_message_type(self, message_type: str | None) -> None:
         """Change icon and color of progress bar by message type."""
         if message_type not in _ICON_NAMES_BY_TYPE:
             message_type = "success"
@@ -248,13 +247,13 @@ class OverlayMessageWidget(QtWidgets.QFrame):
 
     def enterEvent(self, event):
         """Pause timeout on hover."""
-        super(OverlayMessageWidget, self).enterEvent(event)
+        super().enterEvent(event)
         if self._progress_anim.state() == QtCore.QAbstractAnimation.Running:
             self._progress_anim.pause()
 
     def leaveEvent(self, event):
         """Continue with timeout on hover leave."""
-        super(OverlayMessageWidget, self).leaveEvent(event)
+        super().leaveEvent(event)
         if self._progress_anim.state() == QtCore.QAbstractAnimation.Paused:
             self._progress_anim.resume()
 
@@ -267,7 +266,7 @@ class MessageOverlayObject(QtCore.QObject):
     """
 
     def __init__(self, widget, default_timeout=None):
-        super(MessageOverlayObject, self).__init__()
+        super().__init__()
 
         widget.installEventFilter(self)
 
@@ -438,4 +437,4 @@ class MessageOverlayObject(QtCore.QObject):
         if source is self._widget and event.type() == QtCore.QEvent.Resize:
             self._recalculate_timer.start()
 
-        return super(MessageOverlayObject, self).eventFilter(source, event)
+        return super().eventFilter(source, event)
