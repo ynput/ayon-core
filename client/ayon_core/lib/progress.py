@@ -150,7 +150,7 @@ class ProgressReporter:
                 return
             completed = self._state.completed + amount
             total = self._state.total
-            if total is not None:
+            if total:
                 completed = min(completed, total)
             self._state = self._with_overall(
                 replace(self._state, completed=completed)
