@@ -1044,14 +1044,33 @@ class BrowserWidgetController(QtCore.QObject):
                     "Hero": "hero",
                 }
                 version_values = []
+                featured_values = []
                 for value in values:
                     featured_value = mapping.get(value)
                     if featured_value is not None:
-                        featured_only.append(featured_value)
+                        featured_values.append(featured_value)
                     elif key == "version":
                         version_values.append(value)
+                # 'featuredOnly' resolves "hero" to the regular version the
+                # hero version was made from. Hero versions themselves are
+                # the ones with a negative version number, so filter by
+                # that to list the actual hero version entities.
+                # NOTE: Combined with other featured types the server picks
+                #   one version per product by priority, which can only be
+                #   expressed using 'featuredOnly'.
+                hero_only = featured_values == ["hero"]
+                if hero_only:
+                    featured_values = []
+                featured_only.extend(featured_values)
+                conditions = []
+                if hero_only:
+                    conditions.append({
+                        "key": "version",
+                        "value": 0,
+                        "operator": "lt",
+                    })
                 if version_values:
-                    version_conditions.append({
+                    conditions.append({
                         "key": "version",
                         "value": (
                             version_values[0]
@@ -1062,6 +1081,13 @@ class BrowserWidgetController(QtCore.QObject):
                             "like" if use_substring else "in"
                         ),
                     })
+                if len(conditions) > 1:
+                    version_conditions.append({
+                        "operator": "or",
+                        "conditions": conditions,
+                    })
+                else:
+                    version_conditions.extend(conditions)
                 continue
             if key == "hasReviewables":
                 selected = {value.lower() for value in values}
