@@ -4,8 +4,10 @@ from __future__ import annotations
 import typing
 
 import pyblish.api
+import semver
 
 from ayon_core.lib import EnumDef, TextDef
+from ayon_core.addon import get_bundle_information
 from ayon_core.pipeline import KnownPublishError, get_current_host_name
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
@@ -44,6 +46,36 @@ FARM_HOST_NAMES = {
     "unreal",
 }
 IS_FARM_HOST = get_current_host_name() in FARM_HOST_NAMES
+
+
+def _support_farm_host_names() -> bool:
+    """Get farm host names from the bundle information.
+
+    NOTE:
+        Eventually we'll remove the farm host names completely and rely on
+            the "supports.customFrameRange" family to determine attributes.
+
+    Returns:
+        bool: Whether farm host names are supported.
+
+    """
+    deadline_version = None
+    bundle_info = get_bundle_information()
+    for addon in bundle_info.addons:
+        if addon.name == "deadline":
+            deadline_version = addon.version
+            break
+
+    # Deadline is not available -> no reason to show farm attributes
+    if deadline_version is None:
+        return False
+
+    version = semver.VersionInfo.parse(deadline_version)
+    # Deadline 1.9.14 version is last version that does show custom frames
+    return version > (1, 9, 14)
+
+
+SUPPORT_FARM_HOST_NAMES = _support_farm_host_names()
 
 
 class CollectCustomFrameRange(
@@ -180,6 +212,9 @@ class CollectCustomFrameRange(
             return True
 
         # Backwards compatibility for farm host/families logic
+        if not SUPPORT_FARM_HOST_NAMES:
+            return False
+
         if not IS_FARM_HOST:
             return False
 
