@@ -303,6 +303,7 @@ class ProductGroupsStub:
             "version_filter": "",
             "task_filter": "",
             "folder_filter": "",
+            "featured_types": None,
             "search": None,
         }
 
