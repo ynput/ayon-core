@@ -34,6 +34,7 @@ from .abstract import (
 )
 
 if typing.TYPE_CHECKING:
+    from ayon_core.lib import AbstractAttrDef
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 
@@ -190,6 +191,11 @@ class PublisherController(
     def get_creator_items(self):
         """Creators that can be shown in create dialog."""
         return self._create_model.get_creator_items()
+
+    def get_pre_create_attribute_defs(
+        self, identifier: str
+    ) -> list[AbstractAttrDef]:
+        return self._create_model.get_pre_create_attribute_defs(identifier)
 
     def get_creator_item_by_id(self, identifier):
         return self._create_model.get_creator_item_by_id(identifier)

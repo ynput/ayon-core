@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import collections
+from collections import deque, defaultdict
+from dataclasses import dataclass, field
 from functools import partial
 import sys
+import typing
 from typing import Callable, Any, Optional
 import traceback
 
@@ -19,12 +21,26 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
 )
+from ayon_core.ui.components import (
+    AYButton,
+    AYLineEdit,
+    AYTreeView
+)
+
+from ayon_core.ui.style_types import get_ayon_style
+from ayon_core.ui.variants import QTreeViewVariants
+from ayon_core.ui.components.time_sliced_job import TimeSlicedJob
+from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .models import RecursiveSortFilterProxyModel
-from .views import TreeView
 from .lib import get_qt_icon
-from .widgets import PlaceholderLineEdit
-from .nice_checkbox import NiceCheckbox
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import (
+        StatusItem,
+        FolderItem,
+        FolderTypeItem,
+    )
 
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
@@ -32,7 +48,67 @@ FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1
 FOLDER_NAME_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_PATH_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_TYPE_ROLE = QtCore.Qt.UserRole + 4
-FOLDER_PATH_FILTER_ROLE = QtCore.Qt.UserRole + 5
+FOLDER_PATH_FILTER_ROLE = QtCore.Qt.UserRole + 6
+FOLDER_STATUS_ROLE = QtCore.Qt.UserRole + 7
+FOLDER_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 8
+
+
+@dataclass(frozen=True)
+class FetchData:
+    project_name: str
+    folder_items_by_id: dict[str, FolderItem]
+    folder_type_items: list[FolderTypeItem]
+    status_items: list[StatusItem]
+
+
+@dataclass(frozen=True)
+class FillFolderItem:
+    __slots__ = (
+        "item",
+        "parent_id",
+        "name",
+        "path",
+        "label",
+        "folder_type",
+        "status",
+        "path_filter",
+    )
+    item: QtGui.QStandardItem
+    parent_id: str | None
+    name: str
+    path: str
+    label: str
+    folder_type: str
+    status: str
+    path_filter: str
+
+    @classmethod
+    def from_folder_item(
+        cls,
+        item: QtGui.QStandardItem,
+        folder_item: FolderItem,
+        label_path: str,
+    ) -> FillFolderItem:
+        return cls(
+            item=item,
+            parent_id=folder_item.parent_id,
+            name=folder_item.name,
+            path=folder_item.path,
+            label=folder_item.label,
+            folder_type=folder_item.folder_type,
+            status=folder_item.status,
+            path_filter=f"{folder_item.path} {label_path}".casefold(),
+        )
+
+
+@dataclass
+class _FillData:
+    project_name: str | None = None
+    folder_types_by_name: dict[str, FolderTypeItem] = field(
+        default_factory=dict
+    )
+    statuses_by_name: dict[str, StatusItem] = field(default_factory=dict)
+    items_by_id: dict[str, FillFolderItem] = field(default_factory=dict)
 
 
 class RefreshTask(QtCore.QObject, QtCore.QRunnable):
@@ -90,31 +166,35 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-
+        The model contains both **Folders** and **Status** columns.
+        Visibility of the status column is controlled by the view.
     """
     _default_folder_icon = None
     refreshed = QtCore.Signal()
+    # Used by 'AYTreeView' to show loading placeholder
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller):
         super().__init__()
-
         refresh_threadpool = QtCore.QThreadPool()
         refresh_threadpool.setMaxThreadCount(2)
 
-        self.setColumnCount(1)
+        self.setColumnCount(2)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
+        self.setHeaderData(1, QtCore.Qt.Horizontal, "")
 
         self._controller = controller
-        self._items_by_id = {}
-        self._parent_id_by_id = {}
+        self._fill_data = _FillData()
 
         self._refresh_threadpool = refresh_threadpool
         self._refresh_tasks = {}
         self._current_refresh_task = None
         self._last_project_name = None
+        self._current_refresh_thread = None
 
         self._has_content = False
         self._is_refreshing = False
+        self._build_job: TimeSlicedJob | None = None
 
     @property
     def is_refreshing(self):
@@ -124,6 +204,20 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             bool: True if model is refreshing.
         """
         return self._is_refreshing
+
+    def is_loading(self) -> bool:
+        """Model is loading data.
+
+        Returns:
+            bool: True if model is loading data.
+        """
+        return self._is_refreshing
+
+    def _set_refreshing(self, refreshing: bool) -> None:
+        if self._is_refreshing == refreshing:
+            return
+        self._is_refreshing = refreshing
+        self.loading_changed.emit(refreshing)
 
     @property
     def has_content(self):
@@ -144,17 +238,17 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         self.set_project_name(self._last_project_name)
 
-    def get_index_by_id(self, item_id):
+    def get_index_by_id(self, item_id: str) -> QtCore.QModelIndex:
         """Get index by folder id.
 
         Returns:
-            QtCore.QModelIndex: Index of the folder. Can be invalid if folder
+            QModelIndex: Index of the folder. Can be invalid if folder
                 is not available.
         """
-        item = self._items_by_id.get(item_id)
-        if item is None:
+        fill_item = self._fill_data.items_by_id.get(item_id)
+        if fill_item is None:
             return QtCore.QModelIndex()
-        return self.indexFromItem(item)
+        return self.indexFromItem(fill_item.item)
 
     def get_item_id_by_path(self, folder_path):
         """Get folder id by path.
@@ -166,21 +260,21 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             Union[str, None]: Folder id or None if folder is not available.
 
         """
-        for folder_id, item in self._items_by_id.items():
-            if item.data(FOLDER_PATH_ROLE) == folder_path:
+        for folder_id, item in self._fill_data.items_by_id.items():
+            if item.path == folder_path:
                 return folder_id
         return None
 
-    def get_project_name(self):
+    def get_project_name(self) -> str | None:
         """Project name which model currently use.
 
         Returns:
-            Union[str, None]: Currently used project name.
-        """
+            str | None: Currently used project name.
 
+        """
         return self._last_project_name
 
-    def set_project_name(self, project_name):
+    def set_project_name(self, project_name: str | None) -> None:
         """Refresh folders items.
 
         Refresh start thread because it can cause that controller can
@@ -189,11 +283,13 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         if not project_name:
             self._last_project_name = project_name
-            self._fill_items({}, [])
+            self._fill_items(
+                project_name, {}, [], []
+            )
             self._current_refresh_task = None
             return
 
-        self._is_refreshing = True
+        self._set_refreshing(True)
 
         if self._last_project_name != project_name:
             self._clear_items()
@@ -204,9 +300,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self._current_refresh_task = refresh_task
             return
 
+        # Returned when the fetch fails - the model is cleared.
+        empty_result = FetchData(
+            project_name=project_name,
+            folder_items_by_id={},
+            folder_type_items=[],
+            status_items=[],
+        )
         refresh_task = RefreshTask(
             project_name,
-            ({}, []),
+            empty_result,
             self._thread_getter,
             project_name,
         )
@@ -232,14 +335,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             )
         return cls._default_folder_icon
 
-    def _clear_items(self):
-        self._items_by_id = {}
-        self._parent_id_by_id = {}
+    def _clear_items(self) -> None:
+        self._cancel_build()
+        self._fill_data = _FillData()
         self._has_content = False
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-    def _thread_getter(self, project_name):
+    def _thread_getter(
+        self, project_name: str
+    ) -> FetchData:
         folder_items = self._controller.get_folder_items(
             project_name, FOLDERS_MODEL_SENDER_NAME
         )
@@ -248,7 +353,18 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             folder_type_items = self._controller.get_folder_type_items(
                 project_name, FOLDERS_MODEL_SENDER_NAME
             )
-        return folder_items, folder_type_items
+
+        status_items = []
+        if hasattr(self._controller, "get_project_status_items"):
+            status_items = self._controller.get_project_status_items(
+                project_name, sender=FOLDERS_MODEL_SENDER_NAME
+            )
+        return FetchData(
+            project_name=project_name,
+            folder_items_by_id=folder_items,
+            folder_type_items=folder_type_items,
+            status_items=status_items,
+        )
 
     def _on_refresh_task(self, refresh_task_id: str, success: bool):
         """Callback when refresh thread is finished.
@@ -274,87 +390,346 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             return
 
         # TODO visualize that refresh failed
-        # if not success:
-        #     pass
+        # A failed refresh keeps the task's default, empty result.
+        result: FetchData = refresh_task.get_result()
 
-        folder_items, folder_type_items = refresh_task.get_result()
-
-        self._fill_items(folder_items, folder_type_items)
+        self._fill_items(
+            result.project_name,
+            result.folder_items_by_id,
+            result.folder_type_items,
+            result.status_items,
+        )
         self._current_refresh_task = None
 
     def _get_folder_item_icon(
         self,
-        folder_item,
-        folder_type_item_by_name,
-        folder_type_icon_cache
-    ):
-        icon = folder_type_icon_cache.get(folder_item.folder_type)
-        if icon is not None:
-            return icon
-
-        folder_type_item = folder_type_item_by_name.get(
-            folder_item.folder_type
-        )
-        icon = None
-        if folder_type_item is not None:
-            icon = get_qt_icon(MaterialSymbolsIcon(
-                folder_type_item.icon,
-                color=get_default_entity_icon_color(),
-            ))
-
+        folder_type: str,
+        folder_type_icons_by_name: dict[str, QtGui.QIcon | None],
+    ) -> QtGui.QIcon:
+        icon = folder_type_icons_by_name.get(folder_type)
         if icon is None:
-            icon = self._get_default_folder_icon()
-        folder_type_icon_cache[folder_item.folder_type] = icon
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                "folder", get_default_entity_icon_color(),
+            ))
+            folder_type_icons_by_name[folder_type] = icon
         return icon
 
     def _fill_item_data(
         self,
-        item,
-        folder_item,
-        folder_type_item_by_name,
-        folder_type_icon_cache,
-        folder_label_path
-    ):
+        item: QtGui.QStandardItem,
+        folder_item: FolderItem,
+        folder_type_icons_by_name: dict[str, QtGui.QIcon | None],
+        status_icon_by_name: dict[str, QtGui.QIcon | None],
+        folder_label_path: str,
+    ) -> None:
         """
 
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
+            folder_type_icons_by_name: Cache for folder type icons.
+            status_icon_by_name: Mapping of status name to QIcon.
 
         """
         icon = self._get_folder_item_icon(
-            folder_item,
-            folder_type_item_by_name,
-            folder_type_icon_cache
+            folder_item.folder_type,
+            folder_type_icons_by_name,
         )
         item.setData(folder_item.entity_id, FOLDER_ID_ROLE)
         item.setData(folder_item.name, FOLDER_NAME_ROLE)
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
+        item.setData(icon, QtCore.Qt.DecorationRole)
+        item.setData(folder_item.status, FOLDER_STATUS_ROLE)
+        status_icon = status_icon_by_name.get(folder_item.status)
+        item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
         folder_path_filter = f"{folder_item.path} {folder_label_path}"
         item.setData(folder_path_filter.casefold(), FOLDER_PATH_FILTER_ROLE)
-        item.setData(icon, QtCore.Qt.DecorationRole)
 
-    def _fill_items(self, folder_items_by_id, folder_type_items):
+    def _update_item_data(
+        self,
+        statuses_changed: bool,
+        folder_types_changed: bool,
+        old_fill_item: FillFolderItem,
+        new_fill_item: FillFolderItem,
+        folder_type_icons_by_name: dict[str, QtGui.QIcon | None],
+        status_icon_by_name: dict[str, QtGui.QIcon | None],
+    ) -> None:
+        """
+
+        Args:
+            statuses_changed (bool): Whether the statuses have changed.
+            folder_types_changed (bool): Whether the folder types have changed.
+            old_fill_item (FillFolderItem): Old fill folder item.
+            new_fill_item (FillFolderItem): New fill folder item.
+            folder_type_icons_by_name: Cache for folder type icons.
+            status_icon_by_name: Mapping of status name to QIcon.
+
+        """
+        item = old_fill_item.item
+        update_icon = folder_types_changed
+        if new_fill_item.folder_type != old_fill_item.folder_type:
+            update_icon = True
+            item.setData(new_fill_item.folder_type, FOLDER_TYPE_ROLE)
+
+        if update_icon:
+            icon = self._get_folder_item_icon(
+                new_fill_item.folder_type,
+                folder_type_icons_by_name,
+            )
+            item.setData(icon, QtCore.Qt.DecorationRole)
+
+        update_status_icon = statuses_changed
+        if new_fill_item.status != old_fill_item.status:
+            update_status_icon = True
+            item.setData(new_fill_item.status, FOLDER_STATUS_ROLE)
+
+        if update_status_icon:
+            status_icon = status_icon_by_name.get(new_fill_item.status)
+            item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
+
+        for new_value, old_value, role in (
+            (new_fill_item.name, old_fill_item.name, FOLDER_NAME_ROLE),
+            (new_fill_item.path, old_fill_item.path, FOLDER_PATH_ROLE),
+            (
+                new_fill_item.label,
+                old_fill_item.label,
+                QtCore.Qt.DisplayRole
+            ),
+            (
+                new_fill_item.path_filter,
+                old_fill_item.path_filter,
+                FOLDER_PATH_FILTER_ROLE
+            ),
+        ):
+            if new_value != old_value:
+                item.setData(new_value, role)
+
+    def data(
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        role: int = QtCore.Qt.DisplayRole,
+    ) -> Any:
+        if not index.isValid():
+            return None
+
+        if index.column() != 0:
+            return self._get_index_data(index, role)
+
+        return super().data(index, role)
+
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.NoItemFlags
+        if index.column() != 0:
+            return self._get_index_flags(index)
+        return super().flags(index)
+
+    def _get_index_flags(self, index):
+        index = index.sibling(index.row(), 0)
+        return super().flags(index)
+
+    def _get_index_data(self, index, role):
+        """Get data for index with column 1 or higher.
+
+        Allow classes inheriting from this class to change the 'data' method
+            behavior. Without this they can't use 'super' call.
+
+        """
+        index = index.sibling(index.row(), 0)
+        if role == QtCore.Qt.DecorationRole:
+            role = FOLDER_STATUS_ICON_ROLE
+        elif role == QtCore.Qt.ToolTipRole:
+            role = FOLDER_STATUS_ROLE
+        elif role < QtCore.Qt.UserRole:
+            return None
+        return super().data(index, role)
+
+    def _fill_items(
+        self,
+        project_name: str,
+        folder_items_by_id: dict[str, FolderItem],
+        folder_type_items: list[FolderTypeItem],
+        status_items: list[StatusItem],
+    ) -> None:
+        """Fill model with folder items and end refreshing state.
+
+        Creating items for a big project takes a while, when the model is
+        empty the items are created in time slices so the UI stays
+        responsive and are added to the model at once when done.
+        """
+        self._cancel_build()
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
-            self._is_refreshing = False
+            self._set_refreshing(False)
             self.refreshed.emit()
             return
 
-        folder_type_item_by_name = {
+        self._has_content = True
+        fill_data = _FillData(project_name)
+        fill_data.folder_types_by_name = {
             folder_type.name: folder_type
             for folder_type in folder_type_items
         }
-        folder_type_icon_cache = {}
-        self._has_content = True
 
-        folder_ids = set(folder_items_by_id)
-        ids_to_remove = set(self._items_by_id) - folder_ids
+        folder_type_icons_by_name = {}
+        for folder_type_item in folder_type_items:
+            icon_name = color = None
+            if folder_type_item is not None:
+                icon_name = folder_type_item.icon
+                color = folder_type_item.color
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                icon_name or "folder",
+                color=color or get_default_entity_icon_color(),
+            ))
+            folder_type_icons_by_name[folder_type_item.name] = icon
 
-        folder_items_by_parent = collections.defaultdict(dict)
+        # Build a local status-icon lookup for this fill operation
+        fill_data.statuses_by_name = {
+            status.name: status
+            for status in status_items
+        }
+        status_icon_by_name = {}
+        for status in status_items:
+            icon = None
+            if status.icon:
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(status.icon, color=status.color)
+                )
+            status_icon_by_name[status.name] = icon
+
+        # Update items if we already have some, otherwise fill from scratch
+        # - Update is slower as it has to compare existing items with new
+        #   ones, but it preserves expanded and selected state in the view.
+        if not self._fill_data.items_by_id:
+            top_items = []
+            build_job = TimeSlicedJob(
+                self._build_from_scratch(
+                    top_items,
+                    fill_data,
+                    folder_items_by_id,
+                    folder_type_icons_by_name,
+                    status_icon_by_name,
+                ),
+                parent=self,
+            )
+            build_job.finished.connect(
+                lambda success: self._on_build_finished(
+                    success, fill_data, top_items
+                )
+            )
+            self._build_job = build_job
+            build_job.start()
+            return
+
+        old_fill_data, self._fill_data = self._fill_data, fill_data
+        self._fill_update(
+            fill_data,
+            old_fill_data,
+            folder_items_by_id,
+            folder_type_icons_by_name,
+            status_icon_by_name,
+        )
+
+        self._set_refreshing(False)
+        self.refreshed.emit()
+
+    def _cancel_build(self) -> None:
+        build_job, self._build_job = self._build_job, None
+        if build_job is not None:
+            build_job.cancel()
+            build_job.deleteLater()
+
+    def _on_build_finished(
+        self,
+        success: bool,
+        fill_data: _FillData,
+        top_items: list[QtGui.QStandardItem],
+    ) -> None:
+        self._build_job.deleteLater()
+        self._build_job = None
+        # Do not show partially created hierarchy
+        if not success:
+            self._clear_items()
+            self._set_refreshing(False)
+            self.refreshed.emit()
+            return
+        self._fill_data = fill_data
+        # Children are already parented, only top level rows are inserted
+        #   so proxy model and view process one insert
+        if top_items:
+            self.invisibleRootItem().appendRows(top_items)
+        self._set_refreshing(False)
+        self.refreshed.emit()
+
+    def _build_from_scratch(
+        self,
+        top_items: list[QtGui.QStandardItem],
+        fill_data: _FillData,
+        folder_items_by_id: dict[str, FolderItem],
+        folder_type_icons_by_name: dict[str, QtGui.QIcon | None],
+        status_icon_by_name: dict[str, QtGui.QIcon | None],
+    ) -> typing.Generator[None, None, None]:
+        """Create items detached from the model.
+
+        Generator for 'TimeSlicedJob', yields after each created item.
+        Top level items are added to 'top_items'.
+        """
+        folder_items_by_parent = defaultdict(list)
+        for folder_item in folder_items_by_id.values():
+            folder_items_by_parent[folder_item.parent_id].append(folder_item)
+        yield
+
+        hierarchy_queue = deque()
+        hierarchy_queue.append((None, None, ""))
+
+        while hierarchy_queue:
+            item = hierarchy_queue.popleft()
+            parent_item, parent_id, parent_path = item
+            folder_items = folder_items_by_parent[parent_id]
+
+            new_items = []
+            for folder_item in folder_items:
+                item_id = folder_item.entity_id
+                item = QtGui.QStandardItem()
+                item.setEditable(False)
+                item.setColumnCount(self.columnCount())
+
+                folder_label_path = f"{parent_path}/{folder_item.label}"
+                self._fill_item_data(
+                    item,
+                    folder_item,
+                    folder_type_icons_by_name,
+                    status_icon_by_name,
+                    folder_label_path,
+                )
+                new_items.append(item)
+                fill_item = FillFolderItem.from_folder_item(
+                    item, folder_item, folder_label_path
+                )
+                fill_data.items_by_id[item_id] = fill_item
+
+                hierarchy_queue.append((item, item_id, folder_label_path))
+                yield
+
+            if not new_items:
+                continue
+            if parent_item is None:
+                top_items.extend(new_items)
+            else:
+                parent_item.appendRows(new_items)
+
+    def _fill_update(
+        self,
+        fill_data: _FillData,
+        old_fill_data: _FillData,
+        folder_items_by_id: dict[str, FolderItem],
+        folder_type_icons_by_name: dict[str, QtGui.QIcon | None],
+        status_icon_by_name: dict[str, QtGui.QIcon | None],
+    ) -> None:
+        folder_items_by_parent = defaultdict(dict)
         for folder_item in folder_items_by_id.values():
             (
                 folder_items_by_parent
@@ -362,61 +737,77 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 [folder_item.entity_id]
             ) = folder_item
 
-        hierarchy_queue = collections.deque()
+        # Take items that are not in new folders or have different parent
+        removed_items = []
+        remove_queue = deque()
+        remove_queue.append((self.invisibleRootItem(), None))
+        while remove_queue:
+            parent_item, parent_id = remove_queue.popleft()
+            folder_items = folder_items_by_parent[parent_id]
+            for row_idx in reversed(range(parent_item.rowCount())):
+                child_item = parent_item.child(row_idx)
+                child_id = child_item.data(FOLDER_ID_ROLE)
+                if child_id not in folder_items:
+                    removed_items.append(parent_item.takeRow(row_idx))
+                remove_queue.append((child_item, child_id))
+
+        # Check if statuses or folder types changed to propagate icon changes
+        statuses_changed = (
+            fill_data.statuses_by_name != old_fill_data.statuses_by_name
+        )
+        folder_types_changed = fill_data.folder_types_by_name != (
+            old_fill_data.folder_types_by_name
+        )
+        hierarchy_queue = deque()
         hierarchy_queue.append((self.invisibleRootItem(), None, ""))
 
         # Keep pointers to removed items until the refresh finishes
         #   - some children of the items could be moved and reused elsewhere
-        removed_items = []
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
             parent_item, parent_id, parent_path = item
             folder_items = folder_items_by_parent[parent_id]
-
-            items_by_id = {}
-            folder_ids_to_add = set(folder_items)
-            for row_idx in reversed(range(parent_item.rowCount())):
-                child_item = parent_item.child(row_idx)
-                child_id = child_item.data(FOLDER_ID_ROLE)
-                if child_id in ids_to_remove:
-                    removed_items.append(parent_item.takeRow(row_idx))
-                else:
-                    items_by_id[child_id] = child_item
-
             new_items = []
-            for item_id in folder_ids_to_add:
-                folder_item = folder_items[item_id]
-                item = items_by_id.get(item_id)
-                if item is None:
-                    is_new = True
+            for item_id, folder_item in folder_items.items():
+                folder_label_path = f"{parent_path}/{folder_item.label}"
+                fill_item = old_fill_data.items_by_id.get(item_id)
+                if fill_item is None:
                     item = QtGui.QStandardItem()
                     item.setEditable(False)
-                else:
-                    is_new = self._parent_id_by_id[item_id] != parent_id
-                folder_label_path = f"{parent_path}/{folder_item.label}"
-                self._fill_item_data(
-                    item,
-                    folder_item,
-                    folder_type_item_by_name,
-                    folder_type_icon_cache,
-                    folder_label_path
-                )
-                if is_new:
+                    item.setColumnCount(self.columnCount())
+                    new_fill_item = FillFolderItem.from_folder_item(
+                        item, folder_item, folder_label_path
+                    )
+                    self._fill_item_data(
+                        item,
+                        folder_item,
+                        folder_type_icons_by_name,
+                        status_icon_by_name,
+                        folder_label_path,
+                    )
                     new_items.append(item)
-                self._items_by_id[item_id] = item
-                self._parent_id_by_id[item_id] = parent_id
+                else:
+                    item = fill_item.item
+                    new_fill_item = FillFolderItem.from_folder_item(
+                        item, folder_item, folder_label_path
+                    )
+                    if fill_item.parent_id != parent_id:
+                        new_items.append(item)
+                    self._update_item_data(
+                        statuses_changed,
+                        folder_types_changed,
+                        fill_item,
+                        new_fill_item,
+                        folder_type_icons_by_name,
+                        status_icon_by_name,
+                    )
+
+                fill_data.items_by_id[item_id] = new_fill_item
 
                 hierarchy_queue.append((item, item_id, folder_label_path))
 
             if new_items:
                 parent_item.appendRows(new_items)
-
-        for item_id in ids_to_remove:
-            self._items_by_id.pop(item_id)
-            self._parent_id_by_id.pop(item_id)
-
-        self._is_refreshing = False
-        self.refreshed.emit()
 
 
 class FoldersProxyModel(RecursiveSortFilterProxyModel):
@@ -497,11 +888,16 @@ class FoldersWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller, parent, handle_expected_selection=False):
+    def __init__(
+        self,
+        controller,
+        parent,
+        handle_expected_selection=False,
+    ):
         super().__init__(parent)
 
-        folders_view = TreeView(self)
-        folders_view.setHeaderHidden(True)
+        folders_view = AYTreeView(self)
+        folders_view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         folders_model = FoldersQtModel(controller)
         folders_proxy_model = FoldersProxyModel()
@@ -510,6 +906,25 @@ class FoldersWidget(QtWidgets.QWidget):
 
         folders_view.setModel(folders_proxy_model)
 
+        header = folders_view.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
+        header.resizeSection(1, 30)
+        folders_view.setColumnHidden(1, True)
+        folders_view.setItemDelegateForColumn(
+            1,
+            CenteredIconDelegate(
+                parent=folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
+
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(folders_view, 1)
@@ -517,10 +932,6 @@ class FoldersWidget(QtWidgets.QWidget):
         controller.register_event_callback(
             "selection.project.changed",
             self._on_project_selection_change,
-        )
-        controller.register_event_callback(
-            "folders.refresh.finished",
-            self._on_folders_refresh_finished
         )
         controller.register_event_callback(
             "controller.refresh.finished",
@@ -586,6 +997,9 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def set_header_visible(self, visible: bool):
         self._folders_view.setHeaderHidden(not visible)
+
+    def set_status_column_visible(self, visible: bool):
+        self._folders_view.setColumnHidden(1, not visible)
 
     def refresh(self):
         """Refresh folders model.
@@ -681,7 +1095,9 @@ class FoldersWidget(QtWidgets.QWidget):
 
         selection_model = self._folders_view.selectionModel()
         selection_model.setCurrentIndex(
-            proxy_index, QtCore.QItemSelectionModel.SelectCurrent
+            proxy_index,
+            QtCore.QItemSelectionModel.ClearAndSelect
+            | QtCore.QItemSelectionModel.Rows
         )
         return True
 
@@ -704,6 +1120,15 @@ class FoldersWidget(QtWidgets.QWidget):
             return False
         return self.set_selected_folder(folder_id)
 
+    def set_loading_delay(self, delay: int) -> None:
+        """Delay before loading placeholder shows in folders view.
+
+        Args:
+            delay (int): Delay in milliseconds.
+
+        """
+        self._folders_view.set_loading_delay(delay)
+
     def set_deselectable(self, enabled):
         """Set deselectable mode.
 
@@ -724,10 +1149,6 @@ class FoldersWidget(QtWidgets.QWidget):
         project_name = event["project_name"]
         self.set_project_name(project_name)
 
-    def _on_folders_refresh_finished(self, event):
-        if event["sender"] != FOLDERS_MODEL_SENDER_NAME:
-            self.set_project_name(event["project_name"])
-
     def _on_controller_refresh(self):
         self._update_expected_selection()
 
@@ -742,7 +1163,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def _get_selected_item_value(self, role):
         selection_model = self._folders_view.selectionModel()
-        for index in selection_model.selectedIndexes():
+        for index in selection_model.selectedRows():
             item_id = index.data(role)
             if item_id is not None:
                 return item_id
@@ -904,29 +1325,30 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
-
-        folders_filter_input = PlaceholderLineEdit(self)
-        folders_filter_input.setPlaceholderText("Folder name filter...")
-
-        my_tasks_tooltip = (
-            "Filter folders and task to only those you are assigned to."
+        # TODO: fix the focus/unfoucs text color when click out of window
+        # text changing to black which looking odd fix this at all AYLineEdit
+        folders_filter_input = AYLineEdit(
+            placeholder="Folder name filter...",
+            variant=AYLineEdit.Variants.Search_Field,
+            parent=self,
         )
-        my_tasks_label = QtWidgets.QLabel("My tasks", self)
-        my_tasks_label.setToolTip(my_tasks_tooltip)
 
-        my_tasks_checkbox = NiceCheckbox(self)
+        my_tasks_checkbox = AYButton(
+            icon="assignment_ind",
+            checkable=True,
+            tooltip="Only show folders that have a task assigned to you.",
+            parent=parent,
+        )
         my_tasks_checkbox.setChecked(False)
-        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
         layout.addWidget(folders_filter_input, 1)
-        layout.addWidget(my_tasks_label, 0)
         layout.addWidget(my_tasks_checkbox, 0)
 
         folders_filter_input.textChanged.connect(self.text_changed)
-        my_tasks_checkbox.stateChanged.connect(self._on_my_tasks_change)
+        my_tasks_checkbox.toggled.connect(self.my_tasks_changed)
 
         self._folders_filter_input = folders_filter_input
         self._my_tasks_checkbox = my_tasks_checkbox
@@ -943,5 +1365,5 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
     def set_my_tasks_checked(self, checked: bool) -> None:
         self._my_tasks_checkbox.setChecked(checked)
 
-    def _on_my_tasks_change(self, _state: int) -> None:
-        self.my_tasks_changed.emit(self._my_tasks_checkbox.isChecked())
+    def _on_my_tasks_change(self, state: bool) -> None:
+        self.my_tasks_changed.emit(state)
