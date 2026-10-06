@@ -1087,7 +1087,7 @@ class CreateModel:
     def get_subtask_products(
         self, folder_id: str, task_name: str
     ) -> list[SubtaskProduct]:
-        # Subtask featureas are available only with planner addon
+        # Subtask features are available only with planner addon
         if not self._is_planner_available():
             return []
 
@@ -1120,18 +1120,20 @@ class CreateModel:
         if not context_instances:
             return subtask_products
 
-        for subset_product in subtask_products:
-            pt = subset_product.product_type
-            pbt = subset_product.product_base_type
+        for subtask_product in subtask_products:
+            pn = subtask_product.product_name
+            pt = subtask_product.product_type
+            pbt = subtask_product.product_base_type
             matching_instance = next((
                 instance
                 for instance in context_instances
                 if (
-                    instance.product_type == pt
+                    instance.product_name == pn
+                    and instance.product_type == pt
                     and instance.product_base_type == pbt
                 )
             ), None)
-            subset_product.created = matching_instance is not None
+            subtask_product.created = matching_instance is not None
 
         return subtask_products
 
