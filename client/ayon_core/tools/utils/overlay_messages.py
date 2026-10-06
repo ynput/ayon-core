@@ -25,9 +25,13 @@ class CloseButton(QtWidgets.QFrame):
 
     def __init__(self, parent):
         super(CloseButton, self).__init__(parent)
-        close_btn_color = get_objected_colors("overlay-messages", "close-btn")
-        self._color = close_btn_color.get_qcolor()
+        colors = get_objected_colors("overlay-messages")
+        self._color = colors["close-btn"].get_qcolor()
+        self._hover_color = colors["close-btn-hover"].get_qcolor()
+        self._hover_bg_color = colors["close-btn-bg-hover"].get_qcolor()
         self._mouse_pressed = False
+        # Trigger repaint on mouse enter and leave
+        self.setAttribute(QtCore.Qt.WA_Hover, True)
         policy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Fixed,
             QtWidgets.QSizePolicy.Fixed
@@ -55,9 +59,19 @@ class CloseButton(QtWidgets.QFrame):
         rect = self.rect()
         painter = QtGui.QPainter(self)
         painter.setClipRect(event.rect())
+        color = self._color
+        if self.underMouse():
+            color = self._hover_color
+            radius = rect.height() * 0.2
+            painter.setRenderHint(QtGui.QPainter.Antialiasing)
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(self._hover_bg_color)
+            painter.drawRoundedRect(rect, radius, radius)
+            painter.setRenderHint(QtGui.QPainter.Antialiasing, False)
+
         pen = QtGui.QPen()
         pen.setWidth(2)
-        pen.setColor(self._color)
+        pen.setColor(color)
         pen.setStyle(QtCore.Qt.SolidLine)
         pen.setCapStyle(QtCore.Qt.RoundCap)
         painter.setPen(pen)

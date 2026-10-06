@@ -69,6 +69,8 @@
             "bg": "#121212",
             "font": "#F4F5F5",
             "close-btn": "#D3D8DE",
+            "close-btn-hover": "#FFFFFF",
+            "close-btn-bg-hover": "#373D48",
             "success": "#23BB35",
             "error": "#E64D3E",
             "info": "rgb(81, 146, 181)"
