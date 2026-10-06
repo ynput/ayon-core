@@ -7,8 +7,10 @@ Delivery is serialised, so a listener never observes an older snapshot
 after a newer one.
 
 Updates are coalesced to at most one notification per ``min_interval``
-seconds.  Because coalescing drops intermediate states, ``finish()``,
-``fail()``, and :meth:`ProgressReporter.flush` bypass it so terminal
+seconds.  Coalescing only *postpones* a snapshot: state skipped inside the
+window is delivered by a trailing flush once it elapses, so a listener is
+never left behind on the last update.  ``finish()``, ``fail()``, and
+:meth:`ProgressReporter.flush` bypass the window entirely so terminal
 state is never lost.  Once the run *is* terminal, every mutating method
 becomes a no-op, so a late update from a worker cannot alter the final
 snapshot or notify listeners again.
@@ -81,9 +83,34 @@ class ProgressReporter:
         # snapshot can never deliver it after a newer one.  Reentrant
         # because a listener is allowed to call back into the reporter.
         self._publish_lock = threading.RLock()
+        # Bumped for every delivered snapshot.  A callback that publishes
+        # re-entrantly moves it on, which is what stops the older snapshot
+        # from being delivered afterwards.  A publish from another thread
+        # cannot bump it while ``_publish_lock`` is held.
+        self._generation = 0
+        self._published_state: ProgressState | None = None
+        # Trailing flush scheduled when a publish falls inside the
+        # coalescing window, so the postponed snapshot is not lost.
+        self._trailing_timer: threading.Timer | None = None
         self._state = ProgressState(label=label, total=total)
 
     # --- describing the run
+    def set_label(self, label: str) -> None:
+        """Set the overall task label.
+
+        Args:
+            label: New label.
+        """
+        self._mutate(label=label)
+
+    def set_message(self, message: str) -> None:
+        """Set the message describing the current step.
+
+        Args:
+            message: New message.
+        """
+        self._mutate(message=message)
+
     def set_phases(
         self,
         phases: Iterable[str | tuple[str, float]] | Mapping[str, float],
@@ -109,6 +136,8 @@ class ProgressReporter:
 
     def set_phase(self, phase: str, weight: float = 1.0) -> None:
         """Switch to *phase*, resetting the phase counters.
+
+        The phase being left keeps whatever progress it had.
 
         Args:
             phase: Phase name, e.g. ``"UPLOAD"``.
@@ -176,7 +205,10 @@ class ProgressReporter:
         self._publish()
 
     def finish(self) -> None:
-        """Mark the run as finished and complete the current phase.
+        """Mark the run as finished and complete every declared phase.
+
+        A finished run is complete as a whole, so ``overall`` is ``1.0``
+        even when a phase was left before reaching its total.
 
         Idempotent: once the run has finished or failed, further calls
         are ignored so listeners are not notified a second time.
@@ -231,8 +263,9 @@ class ProgressReporter:
             with self._lock:
                 self._listeners.append(callback)
                 state = self._state if emit_immediately else None
+                generation = self._generation
             if state is not None:
-                self._notify([callback], state)
+                self._notify([callback], state, generation)
 
     def remove_listener(
         self, callback: Callable[[ProgressState], None]
@@ -273,6 +306,9 @@ class ProgressReporter:
         thread that read an older snapshot can never deliver it after a
         newer one.  ``_lock`` is still released before any callback runs.
 
+        A publish inside the coalescing window schedules a trailing flush
+        instead of dropping the state, so the last update always arrives.
+
         Terminal states go out like any other: ``finish()`` and ``fail()``
         set the state before flushing, and a listener that attaches after
         the run ended still needs the final snapshot.  Freezing a terminal
@@ -286,26 +322,73 @@ class ProgressReporter:
                 now = time.monotonic()
                 elapsed = now - self._last_update
                 if not force and elapsed < self._min_interval:
+                    self._schedule_trailing_locked(now)
                     return
                 self._last_update = now
+                self._generation += 1
+                generation = self._generation
+                self._cancel_trailing_locked()
                 state = self._state
+                self._published_state = state
                 listeners = list(self._listeners)
-            self._notify(listeners, state)
+            self._notify(listeners, state, generation)
+
+    def _schedule_trailing_locked(self, now: float) -> None:
+        """Schedule one trailing publish for the postponed snapshot.
+
+        Must be called with ``_lock`` held.  Only one trailing publish is
+        ever pending, however many updates are coalesced into it.
+
+        Args:
+            now: Current monotonic time.
+        """
+        if self._trailing_timer is not None:
+            return
+        delay = max(0.0, self._min_interval - (now - self._last_update))
+        timer = threading.Timer(delay, self._flush_trailing)
+        timer.daemon = True
+        self._trailing_timer = timer
+        timer.start()
+
+    def _cancel_trailing_locked(self) -> None:
+        """Drop a scheduled trailing publish, if any.
+
+        Must be called with ``_lock`` held.
+        """
+        if self._trailing_timer is not None:
+            self._trailing_timer.cancel()
+            self._trailing_timer = None
+
+    def _flush_trailing(self) -> None:
+        """Deliver the snapshot that coalescing postponed.
+
+        Runs on the timer thread.  Nothing is delivered when a later
+        publish already sent the current snapshot.
+        """
+        with self._lock:
+            self._trailing_timer = None
+            if self._state is self._published_state:
+                return
+        self._publish(force=True)
 
     def _notify(
         self,
         listeners: list[Callable[[ProgressState], None]],
         state: ProgressState,
+        generation: int,
     ) -> None:
         """Invoke *listeners*, isolating failures.
 
         Must be called with ``_publish_lock`` held, never with ``_lock``
         held, so callbacks cannot deadlock or arrive out of order.  Stops
-        early once a listener has moved the state on, so a re-entrant
-        publish cannot be followed by this older snapshot.
+        once a *re-entrant* publish from inside a callback has replaced
+        this snapshot, so the older one is not delivered after the newer
+        one.  A publish from another thread cannot get past
+        ``_publish_lock`` while we are delivering, so it never cuts the
+        delivery short for the remaining listeners.
         """
         for callback in listeners:
-            if state is not self._state:
+            if generation != self._generation:
                 return
             try:
                 callback(state)

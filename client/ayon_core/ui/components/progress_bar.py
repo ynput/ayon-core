@@ -200,7 +200,8 @@ class AYProgressBar(StyleMixin, QWidget):
 
         Args:
             value: Current number of completed steps.
-            total: Optional total to set before applying *value*.
+            total: Optional total to set before applying *value*.  Unlike
+                :meth:`set_values`, ``None`` keeps the current total.
         """
         if total is not None and total != self._total:
             self._total = total
@@ -210,6 +211,31 @@ class AYProgressBar(StyleMixin, QWidget):
             self._current = value
         else:
             self._current = max(0, min(value, self._total))
+        self.update()
+        self.progress_changed.emit(self._current, self._total or 0)
+        self._emit_completed_if_done()
+
+    def set_values(self, value: int, total: int | None) -> None:
+        """Apply *value* and *total* together as a single change.
+
+        Always applies *total* (``None`` switches back to indeterminate)
+        and emits ``progress_changed`` once, after both are in place.
+        Applying them separately can emit a spurious ``completed`` when a
+        new, smaller total clamps the old value before the real value
+        arrives.
+
+        Args:
+            value: Current number of completed steps.
+            total: Number of steps, or ``None`` for indeterminate.
+        """
+        if total != self._total:
+            self._total = total
+            self._completed = False
+        if total is None:
+            self._current = max(0, value)
+        else:
+            self._current = max(0, min(value, total))
+        self._update_animation()
         self.update()
         self.progress_changed.emit(self._current, self._total or 0)
         self._emit_completed_if_done()
@@ -235,6 +261,7 @@ class AYProgressBar(StyleMixin, QWidget):
         self._completed = False
         self._phase = 0.0
         self._update_animation()
+        self.updateGeometry()
         self.update()
         self.progress_changed.emit(self._current, 0)
 
@@ -253,6 +280,8 @@ class AYProgressBar(StyleMixin, QWidget):
         if text == self._text:
             return
         self._text = text
+        # The bar grows to fit the overlay text, so the layout must follow.
+        self.updateGeometry()
         self.update()
 
     def set_text_visible(self, visible: bool) -> None:
@@ -261,6 +290,7 @@ class AYProgressBar(StyleMixin, QWidget):
         if visible == self._text_visible:
             return
         self._text_visible = visible
+        self.updateGeometry()
         self.update()
 
     def percentage(self) -> float:
@@ -335,9 +365,25 @@ class AYProgressBar(StyleMixin, QWidget):
             self._draw_text(painter, style)
         painter.end()
 
+    def _text_height(self) -> int:
+        """Return the height that keeps overlay text unclipped.
+
+        Returns:
+            The font height plus the configured vertical text margins.
+        """
+        margin = int(self._base_style().get("text-margin", 6))
+        return self.fontMetrics().height() + margin * 2
+
     def sizeHint(self) -> QSize:
-        """Return the preferred size derived from the style height."""
+        """Return the preferred size derived from the style height.
+
+        A bar that draws overlay text grows to the text height, since the
+        style height (6 px, 4 px for the inline variant) is thinner than
+        the font and would clip the text.
+        """
         height = int(self._base_style().get("height", 6))
+        if self._text_visible and self._text:
+            height = max(height, self._text_height())
         return QSize(200, height)
 
     def minimumSizeHint(self) -> QSize:
@@ -361,6 +407,11 @@ class AYProgressView(AYContainer):
         Caption text
         [=================--------]   45%
 
+    A reporter that declares a phase plan is shown as one continuous bar
+    driven by ``ProgressState.overall``, so switching phase does not reset
+    the bar to zero.  Without a phase plan the current phase's own
+    ``completed`` / ``total`` is shown.
+
     Args:
         parent: Parent widget.
         label: Optional caption shown above the bar.
@@ -377,6 +428,9 @@ class AYProgressView(AYContainer):
     progress_changed = Signal(int, int)
     progress_ping = Signal(int, object)
     completed = Signal()
+
+    #: Denominator used to express ``ProgressState.overall`` on the bar.
+    _OVERALL_SCALE = 1000
 
     def __init__(
         self,
@@ -397,6 +451,7 @@ class AYProgressView(AYContainer):
             variant=variant.value,
         )
         self._show_value = bool(show_value)
+        self._initial_label = str(label or "")
 
         self._caption: AYLabel | None = None
         if label:
@@ -442,10 +497,15 @@ class AYProgressView(AYContainer):
     def bind(self, reporter: ProgressReporter) -> None:
         """Drive this view from *reporter*.
 
+        The view is reset first so a reused view cannot briefly show the
+        previous run's value, colour, or caption before the first
+        snapshot of the new binding arrives.
+
         Args:
             reporter: The progress source to follow.
         """
         self.unbind()
+        self.reset()
         self._binding += 1
         self._reporter = reporter
         self._reporter_completed = False
@@ -477,9 +537,13 @@ class AYProgressView(AYContainer):
         """
         if binding != self._binding:
             return
-        if state.total != self._bar.total:
-            self._bar.set_total(state.total)
-        self._bar.set_progress(state.completed)
+        if state.overall is None:
+            self._bar.set_values(state.completed, state.total)
+        else:
+            overall = max(0.0, min(state.overall, 1.0))
+            self._bar.set_values(
+                round(overall * self._OVERALL_SCALE), self._OVERALL_SCALE
+            )
         caption = state.message or state.phase or state.label
         if caption:
             self.set_label(caption)
@@ -533,7 +597,10 @@ class AYProgressView(AYContainer):
 
     def set_progress(self, value: int, total: int | None = None) -> None:
         """Set the current progress value."""
-        self._bar.set_progress(value, total)
+        if total is None:
+            self._bar.set_progress(value)
+        else:
+            self._bar.set_values(value, total)
 
     def set_state(self, state: ProgressBarState) -> None:
         """Set the semantic state that colours the chunk."""
@@ -544,8 +611,13 @@ class AYProgressView(AYContainer):
         self._bar.set_text(text)
 
     def reset(self) -> None:
-        """Reset the bar and clear the percentage readout."""
+        """Reset the bar, the caption, and the percentage readout.
+
+        The caption falls back to the label the view was created with.
+        """
         self._reporter_completed = False
+        if self._caption is not None:
+            self._caption.setText(self._initial_label)
         self._bar.reset()
         self._value_label.setText("")
 
