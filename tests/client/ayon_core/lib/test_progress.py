@@ -83,8 +83,8 @@ def test_thread_safety():
 def test_terminal_state_set_from_callback_is_delivered():
     """A callback that ends the run must still receive the final state.
 
-    The re-entrant ``finish()`` cannot deliver anything itself, so the
-    trailing pass of the running delivery has to send it.
+    The re-entrant ``finish()`` delivers the terminal state itself, and
+    the outer delivery then stops instead of re-sending the older one.
     """
     reporter = ProgressReporter(total=1)
     seen = []
