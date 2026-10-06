@@ -127,14 +127,14 @@ class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._subset_product: SubtaskProduct | None = None
+        self._subtask_product: SubtaskProduct | None = None
 
-    def set_subset_product_filter(
-        self, subset_product: SubtaskProduct | None
+    def set_subtask_product_filter(
+        self, subtask_product: SubtaskProduct | None
     ) -> None:
-        if subset_product is self._subset_product:
+        if subtask_product is self._subtask_product:
             return
-        self._subset_product = subset_product
+        self._subtask_product = subtask_product
         if self.rowCount() == 0:
             return
 
@@ -148,11 +148,11 @@ class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
         if not source_index.isValid():
             return flags
 
-        if self._subset_product is None:
+        if self._subtask_product is None:
             return flags
 
         product_base_type = source_index.data(PRODUCT_BASE_TYPE_ROLE)
-        if product_base_type != self._subset_product.product_base_type:
+        if product_base_type != self._subtask_product.product_base_type:
             return flags & ~QtCore.Qt.ItemIsEnabled
 
         return flags
@@ -797,7 +797,7 @@ class CreateWidget(QtWidgets.QWidget):
             )
 
         self._current_subtask_product = item
-        self._creators_sort_model.set_subset_product_filter(item)
+        self._creators_sort_model.set_subtask_product_filter(item)
 
         if item is not None:
             self.product_name_input.setText(item.product_name)

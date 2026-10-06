@@ -1117,10 +1117,10 @@ class CreateModel:
             )
         ]
 
-        for subset_product in subtask_products:
-            pn = subset_product.product_name
-            pt = subset_product.product_type
-            pbt = subset_product.product_base_type
+        for subtask_product in subtask_products:
+            pn = subtask_product.product_name
+            pt = subtask_product.product_type
+            pbt = subtask_product.product_base_type
             matching_instance = next((
                 instance
                 for instance in context_instances
@@ -1130,7 +1130,7 @@ class CreateModel:
                     and instance.product_base_type == pbt
                 )
             ), None)
-            subset_product.created = matching_instance is not None
+            subtask_product.created = matching_instance is not None
 
         return subtask_products
 
