@@ -448,6 +448,8 @@ class CreateWidget(QtWidgets.QWidget):
         self._context_widget.set_enabled(enabled)
         if check_prereq:
             self._invalidate_prereq()
+            # Subtask products are shown only if context can be changed
+            self._refresh_subtask_products()
 
     def _on_main_window_close(self) -> None:
         """Publisher window was closed."""
