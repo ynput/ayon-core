@@ -530,7 +530,11 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._prereq_available = prereq_available
         self._create_btn.setEnabled(prereq_available)
-        self._variant_widget.setEnabled(prereq_available)
+        # Variant is not editable if subtask product is selected, the product
+        #   name is defined by the subtask product
+        self._variant_widget.setEnabled(
+            prereq_available and self._current_subtask_product is None
+        )
 
         tooltip = ""
         if creator_btn_tooltips:
@@ -878,7 +882,8 @@ class CreateWidget(QtWidgets.QWidget):
             self._create_btn.setEnabled(False)
             return
 
-        self._create_btn.setEnabled(True)
+        # Don't enable the button if pre-requirements are not met
+        self._create_btn.setEnabled(self._prereq_available)
 
         self._selected_creator_identifier = creator_item.identifier
         self._selected_product_type = product_type
