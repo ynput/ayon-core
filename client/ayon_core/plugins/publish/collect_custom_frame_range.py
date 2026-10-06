@@ -186,6 +186,8 @@ class CollectCustomFrameRange(
         families.add(i_product_base_type)
         legacy_farm_families = families.intersection(FARM_HOST_NAMES)
         if legacy_farm_families:
-            cls.log.debug(f"Detected legacy farm families: {legacy_farm_families}")
+            cls.log.debug(
+                f"Detected legacy farm families: {legacy_farm_families}"
+            )
             return True
         return False
