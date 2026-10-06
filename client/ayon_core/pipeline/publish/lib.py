@@ -1443,16 +1443,17 @@ def get_file_collections(
         patterns=[pattern]
     )
 
+    # Return if collection was found or there is only a single file
+    if collections or len(files) == 1:
+        return collections, remainders
+
     # If custom pattern yields no collections,
     # retry default clique parsing.
-    if not collections and len(files) > 1:
-        collections, remainders = clique.assemble(
-            files,
-            minimum_items=minimum_items,
-            assume_padded_when_ambiguous=True
-        )
-
-    return collections, remainders
+    return clique.assemble(
+        files,
+        minimum_items=minimum_items,
+        assume_padded_when_ambiguous=True
+    )
 
 
 def fill_sequence_gaps_with_previous_version(
