@@ -170,7 +170,7 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
         # Skip if not exists and the source must exist
         if (
                 contribution_settings["only_if_existing"]
-                and not self._source_exists(source)
+                and not self._source_exists(source, instance)
         ):
             self.log.info(
                 f"Contribution source does not exist,"
@@ -303,11 +303,31 @@ class CollectUSDAssetContributions(pyblish.api.InstancePlugin,
             anatomy=instance.context.data["anatomy"],
         )
 
-    def _source_exists(self, source: str) -> bool:
+    def _source_exists(
+        self,
+        source: str,
+        instance: pyblish.api.Instance,
+    ) -> bool:
+        """Return whether the contribution source resolves to a file.
+
+        The source is authored as-is into the USD layer. As such, a relative
+        path will resolve relative to the published USD layer and hence it is
+        anchored to the publish directory of the instance.
+        """
         # TODO: Allow actual USD Resolve() call to resolve source path as well,
         #  which may be helpful when dealing with custom USD resolver.
         if parse_ayon_entity_uri(source):
             source = resolve_entity_uri(source)
             if not source:
                 return False
+        elif not os.path.isabs(source):
+            publish_dir: Optional[str] = instance.data.get("publishDir")
+            if not publish_dir:
+                self.log.warning(
+                    "Unable to check existence of relative contribution"
+                    f" source '{source}' because the instance has no publish"
+                    " directory."
+                )
+                return False
+            source = os.path.normpath(os.path.join(publish_dir, source))
         return os.path.isfile(source)
