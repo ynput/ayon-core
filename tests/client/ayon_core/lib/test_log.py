@@ -662,8 +662,95 @@ def test_task_queue_runs_task_in_requester_context(log_module):
     assert results[0]["span_id"] == span.span_id
 
 
-def test_host_context_change_binds_flat_keys(log_module):
-    log_module()
+def test_process_context_in_records_of_all_threads(
+    log_module, foreign_handler
+):
+    """Unlike context variables, process context is in all threads."""
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.process_context")
+    module.set_process_context(host_name="test", project="project")
+    module.bind_contextvars(bound="main")
+
+    thread = threading.Thread(target=lambda: log.info("In thread"))
+    thread.start()
+    thread.join()
+    module.set_process_context(project=None)
+    log.info("Without project")
+
+    in_thread, without_project = _event_dicts(
+        foreign_handler, module, "ayon_core.tests.process_context"
+    )
+    assert in_thread["host_name"] == "test"
+    assert in_thread["project"] == "project"
+    assert "bound" not in in_thread
+    assert without_project["host_name"] == "test"
+    assert "project" not in without_project
+    assert module.get_process_context() == {"host_name": "test"}
+
+
+def test_process_context_not_in_console(log_module, monkeypatch):
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.process_console")
+    stream = _capture_stderr(monkeypatch)
+    module.set_process_context(project="process_project")
+
+    log.info("Implicit")
+    log.info("Explicit", project="other_project")
+
+    output = stream.getvalue()
+    assert "process_project" not in output
+    assert "other_project" in output
+
+
+@pytest.fixture
+def log_context(log_module, monkeypatch):
+    """Log context of installed host, see 'install_host'."""
+    context_tools = pytest.importorskip("ayon_core.pipeline.context_tools")
+    module = log_module()
+    monkeypatch.setenv("AYON_FOLDER_PATH", "/a")
+    monkeypatch.setenv("AYON_TASK_NAME", "one")
+    context_tools._set_log_context("test", "project")
+    yield module
+    module.set_process_context(
+        host_name=None, project=None, folder=None, task=None
+    )
+
+
+def test_install_sets_log_context(log_context):
+    assert log_context.get_process_context() == {
+        "host_name": "test",
+        "project": "project",
+        "folder": "/a",
+        "task": "one",
+    }
+
+
+def test_task_changed_updates_log_context(log_context):
+    from ayon_core.lib import emit_event, register_event_callback
+
+    contexts = []
+
+    def _on_task_changed():
+        contexts.append(log_context.get_process_context())
+
+    # Registered after log context callback, with default order
+    callback = register_event_callback("taskChanged", _on_task_changed)
+    try:
+        emit_event("taskChanged", {
+            "project_name": "project",
+            "folder_path": "/b",
+            "task_name": None,
+        })
+    finally:
+        callback.deregister()
+
+    expected = {"host_name": "test", "project": "project", "folder": "/b"}
+    assert log_context.get_process_context() == expected
+    # Other callbacks already log with the new context
+    assert contexts == [expected]
+
+
+def test_host_context_change_updates_log_context(log_context):
     from ayon_core.host.host import HostBase
 
     class _Host(HostBase):
@@ -687,9 +774,6 @@ def test_host_context_change_binds_flat_keys(log_module):
                 "task_name": data.task_entity["name"],
             }
 
-        def _emit_context_change_event(self, *args):
-            return {}
-
     host = _Host()
     host.set_current_context(
         {"path": "/b"},
@@ -698,11 +782,9 @@ def test_host_context_change_binds_flat_keys(log_module):
         anatomy=object(),
     )
 
-    context = structlog.contextvars.get_contextvars()
-    assert context["project"] == "project"
+    context = log_context.get_process_context()
     assert context["folder"] == "/b"
     assert context["task"] == "two"
-    assert "ayon_context" not in context
 
 
 @pytest.fixture

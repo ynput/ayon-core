@@ -150,6 +150,55 @@ def unbind_contextvars(*keys: str) -> None:
         structlog.contextvars.unbind_contextvars(*keys)
 
 
+# Fields added to every record of the process, see 'set_process_context'.
+#   Replaced on change, never mutated, so it can be read without the lock.
+_process_context: dict[str, Any] = {}
+_process_context_lock = threading.Lock()
+
+
+def set_process_context(**values: Any) -> None:
+    """Set fields added to every log record of the process.
+
+    Meant for values same for the whole process, e.g. host name and
+    current project, folder and task. Unlike values bound by
+    'bind_contextvars', which are available only in the current thread
+    or task, these are in records of all threads, e.g. of 'QThread'
+    workers.
+
+    Fields are shown in log file and Vector, not in console output.
+
+    Args:
+        **values (Any): Fields to set. Value 'None' removes the field.
+
+    """
+    global _process_context
+
+    with _process_context_lock:
+        context = dict(_process_context)
+        for key, value in values.items():
+            if value is None:
+                context.pop(key, None)
+            else:
+                context[key] = value
+        _process_context = context
+
+
+def get_process_context() -> dict[str, Any]:
+    """Fields added to every log record of the process.
+
+    Returns:
+        dict[str, Any]: Copy of the fields, see 'set_process_context'.
+
+    """
+    return dict(_process_context)
+
+
+def _add_process_context(logger, method_name, event_dict):
+    for key, value in _process_context.items():
+        event_dict.setdefault(key, value)
+    return event_dict
+
+
 def _get_level_names_mapping() -> dict[str, int]:
     """Level name to level mapping, including custom levels.
 
@@ -1044,10 +1093,16 @@ class Logger:
                 "parent_span_id",
             ):
                 event_dict.pop(key, None)
+            # Same for each record of the process, values passed
+            #   explicitly to the record are kept
+            for key, value in _process_context.items():
+                if event_dict.get(key) == value:
+                    event_dict.pop(key)
             return event_dict
 
         shared_processors: list[Callable] = [
             structlog.contextvars.merge_contextvars,
+            _add_process_context,
             structlog.processors.add_log_level,
             structlog.stdlib.add_logger_name,
             structlog.processors.TimeStamper(fmt="iso"),

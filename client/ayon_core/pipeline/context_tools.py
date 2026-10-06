@@ -17,8 +17,9 @@ from ayon_core.host import AbstractHost
 from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
+    register_event_callback,
 )
-from ayon_core.lib.log import bind_contextvars
+from ayon_core.lib.log import set_process_context
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -35,6 +36,8 @@ from . import (
 
 _is_installed = False
 _process_id = None
+# Callback updating log context on context change, see '_set_log_context'
+_log_context_callback = None
 _registered_root = {"_": {}}
 _registered_host = {"_": None}
 # Keep modules manager (and it's modules) in memory
@@ -126,6 +129,13 @@ def install_host(host: AbstractHost) -> None:
     #     raise ValueError(
     #         "AYON_PROJECT_NAME is missing in environment variables."
     #     )
+    # Host not inheriting from 'AbstractHost' may not have 'name'
+    host_name = (
+        getattr(host, "name", None)
+        or os.environ.get("AYON_HOST_NAME")
+    )
+    # Logs of host and addons installation already have the context
+    _set_log_context(host_name, project_name)
 
     log.info("Activating {}..".format(project_name))
 
@@ -157,16 +167,49 @@ def install_host(host: AbstractHost) -> None:
         print("Registering pyblish target: automated")
         pyblish.api.register_target("automated")
 
-    host_name = os.environ.get("AYON_HOST_NAME") or getattr(
-        host, "name", None
-    )
-    bind_contextvars(host_name=host_name, project=project_name)
-
     # Give option to handle host installation
     for addon in addons_manager.get_enabled_addons():
         addon.on_host_install(host, host_name, project_name)
 
     install_ayon_plugins(project_name, host_name)
+
+
+def _update_log_context(event) -> None:
+    """Set context of 'taskChanged' event to log records."""
+    set_process_context(
+        project=event.get("project_name"),
+        folder=event.get("folder_path"),
+        task=event.get("task_name"),
+    )
+
+
+def _set_log_context(
+    host_name: Optional[str], project_name: Optional[str]
+) -> None:
+    """Add host and its current context to all log records of the process.
+
+    Context is updated on each 'taskChanged' event, emitted by hosts
+    on context change.
+
+    Args:
+        host_name (Optional[str]): Name of the host.
+        project_name (Optional[str]): Current project name.
+
+    """
+    global _log_context_callback
+
+    set_process_context(
+        host_name=host_name,
+        project=project_name,
+        folder=os.getenv("AYON_FOLDER_PATH"),
+        task=os.getenv("AYON_TASK_NAME"),
+    )
+    if _log_context_callback is None:
+        _log_context_callback = register_event_callback(
+            "taskChanged", _update_log_context
+        )
+        # Before other callbacks, their logs have the new context
+        _log_context_callback.order = 0
 
 
 def install_ayon_plugins(project_name=None, host_name=None):
@@ -260,6 +303,7 @@ def uninstall_host():
     log.info("Global plug-ins unregistered")
 
     deregister_host()
+    set_process_context(host_name=None, project=None, folder=None, task=None)
 
     log.info("Successfully uninstalled AYON!")
 

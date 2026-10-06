@@ -8,12 +8,7 @@ from dataclasses import dataclass
 
 import ayon_api
 
-from ayon_core.lib import emit_event
-from ayon_core.lib.log import (
-    Logger,
-    bind_contextvars,
-    clear_contextvars,
-)
+from ayon_core.lib import Logger, emit_event
 
 from .constants import ContextChangeReason
 from .abstract import AbstractHost, ApplicationInformation
@@ -97,11 +92,8 @@ class HostBase(AbstractHost):
             to implement 'install' method which is triggered after global
             'install'.
         """
-        clear_contextvars()
-        bind_contextvars(
-            host=self.__class__.__name__,
-            host_name=getattr(self, "name", self.__class__.__name__),
-        )
+
+        pass
 
     def get_app_information(self) -> ApplicationInformation:
         """Running application information.
@@ -237,12 +229,7 @@ class HostBase(AbstractHost):
         self._before_context_change(context_change_data)
         self._set_current_context(context_change_data)
         self._after_context_change(context_change_data)
-        # Same 'project' key as bound by 'install_host'
-        bind_contextvars(
-            project=project_name,
-            folder=folder_path,
-            task=task_name,
-        )
+
         return self._emit_context_change_event(
             project_name,
             folder_path,
