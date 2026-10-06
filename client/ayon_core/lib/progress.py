@@ -166,6 +166,10 @@ class ProgressReporter:
         with self._lock:
             if self._state.finished or self._state.failed:
                 return
+            total = self._state.total
+            completed = max(0, completed)
+            if total:
+                completed = min(completed, total)
             self._state = self._with_overall(
                 replace(self._state, completed=completed)
             )
