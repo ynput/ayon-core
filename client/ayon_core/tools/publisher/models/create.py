@@ -1116,13 +1116,15 @@ class CreateModel:
         ]
 
         for subset_product in subtask_products:
+            pn = subset_product.product_name
             pt = subset_product.product_type
             pbt = subset_product.product_base_type
             matching_instance = next((
                 instance
                 for instance in context_instances
                 if (
-                    instance.product_type == pt
+                    instance.product_name == pn
+                    and instance.product_type == pt
                     and instance.product_base_type == pbt
                 )
             ), None)
