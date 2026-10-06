@@ -193,17 +193,13 @@ class BrowserController(AbstractBrowserController):
         trigger: DefaultActionTrigger,
     ) -> bool:
         settings = self._settings_model.get_settings(project_name)
-        # Project might be using project bundle with older settings
         profiles = (
-            settings["core"]["tools"]
-            .get("browser", {})
-            .get("default_action_profiles", [])
+            settings["core"]["tools"]["browser"]["default_action_profiles"]
         )
         if not profiles:
             self.log.debug(
                 "No Browser default action profiles in settings of"
-                " project '%s'. The server addon may not have the"
-                " 'tools/browser' settings yet.",
+                " project '%s'.",
                 project_name,
             )
             return False

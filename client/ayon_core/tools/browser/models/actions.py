@@ -59,17 +59,17 @@ class DefaultAction:
     Attributes:
         names (list[str]): Action names as filled in the settings,
             in order of preference.
-        item (Optional[ActionItem]): Action item of the first available
+        item (ActionItem | None): Action item of the first available
             action, None if none of them is available for the version.
 
     """
     names: list[str]
-    item: Optional[ActionItem]
+    item: ActionItem | None
 
 
 def find_action_item_by_name(
     action_items: list[ActionItem], name: str
-) -> Optional[ActionItem]:
+) -> ActionItem | None:
     """Find the action item an admin refers to by a name in settings.
 
     The name is compared case insensitively with the label, the group
@@ -83,7 +83,7 @@ def find_action_item_by_name(
         name (str): Action name from settings.
 
     Returns:
-        Optional[ActionItem]: Matching action item.
+        ActionItem | None: Matching action item.
 
     """
     name = name.strip().lower()
@@ -251,8 +251,8 @@ class LoaderActionsModel:
         version_id: str,
         trigger: DefaultActionTrigger,
         profiles: list[dict[str, Any]],
-        host_name: Optional[str],
-    ) -> Optional[DefaultAction]:
+        host_name: str | None,
+    ) -> DefaultAction | None:
         """Find the action to run on a double click or space bar.
 
         Args:
@@ -261,10 +261,10 @@ class LoaderActionsModel:
             trigger (DefaultActionTrigger): What the user did.
             profiles (list[dict[str, Any]]): Default action profiles
                 from settings.
-            host_name (Optional[str]): Name of the host the tool runs in.
+            host_name (str | None): Name of the host the tool runs in.
 
         Returns:
-            Optional[DefaultAction]: None if no action is set for
+            DefaultAction | None: None if no action is set for
                 the trigger.
 
         """
@@ -309,7 +309,7 @@ class LoaderActionsModel:
 
             action_names = [
                 name.strip()
-                for name in profile.get(f"{trigger}_actions") or []
+                for name in profile[f"{trigger}_actions"]
                 if name.strip()
             ]
             if not action_names:
@@ -344,7 +344,7 @@ class LoaderActionsModel:
         version_id: str,
         trigger: DefaultActionTrigger,
         profiles: list[dict[str, Any]],
-        host_name: Optional[str],
+        host_name: str | None,
     ) -> bool:
         """Trigger the action set for a double click or space bar.
 
@@ -357,7 +357,7 @@ class LoaderActionsModel:
             trigger (DefaultActionTrigger): What the user did.
             profiles (list[dict[str, Any]]): Default action profiles
                 from settings.
-            host_name (Optional[str]): Name of the host the tool runs in.
+            host_name (str | None): Name of the host the tool runs in.
 
         Returns:
             bool: False if no action is set for the trigger.

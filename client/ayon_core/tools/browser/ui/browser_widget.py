@@ -205,13 +205,13 @@ class BrowserWidget(AYContainer):
         """Run the default action when space bar is pressed in a view."""
         event_type = event.type()
         if (
-            event_type in (
+            obj is self._table.active_view
+            and event_type in (
                 QtCore.QEvent.Type.ShortcutOverride,
                 QtCore.QEvent.Type.KeyPress,
             )
             and event.key() == QtCore.Qt.Key.Key_Space
             and event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier
-            and obj is self._table.active_view
         ):
             version_id = self._get_focused_version_id(obj)
             if event_type == QtCore.QEvent.Type.ShortcutOverride:
