@@ -875,8 +875,8 @@ class BrowserTable(AYContainer):
     def _on_display_type_changed(self, display_type: str) -> None:
         log.debug("Display type changed: %s", display_type)
         self._customize.set_display_type(display_type)
-        # The views group versions without a value differently, so the
-        # loaded rows may need a refetch.
+        # The views query different fields and group versions without a
+        # value differently, so the loaded rows may need a refetch.
         if self._controller.set_display_type(display_type):
             self._model.set_fetch_enabled(self._controller.has_selection)
             self._reset_expansion_state()
