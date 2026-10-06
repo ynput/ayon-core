@@ -555,6 +555,8 @@ class CreateModel:
         self._create_context.reset_plugins()
         # Reset creator items
         self._creator_items = None
+        # Links of tasks might have changed on server
+        self._subtask_products_cache = {}
 
         self._reset_instances()
 
