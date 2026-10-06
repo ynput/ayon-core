@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from copy import deepcopy
 from dataclasses import dataclass
 import logging
 import re
@@ -1179,13 +1178,34 @@ class CreateModel:
             task_name (str): Task name.
 
         """
+        # Cache only the queried data. Callers get their own copy, so they
+        #   can change the items (e.g. 'created' state) without affecting
+        #   what is cached.
         cache_key = (folder_id, task_name)
         output = self._subtask_products_cache.get(cache_key)
-        if output is not None:
-            return deepcopy(output)
+        if output is None:
+            output = self._query_subtask_products(
+                project_name, folder_id, task_name
+            )
+            self._subtask_products_cache[cache_key] = output
+        return copy.deepcopy(output)
 
+    def _query_subtask_products(
+        self, project_name: str, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        """Query subtask products from server.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder entity id.
+            task_name (str): Task name.
+
+        Returns:
+            list[SubtaskProduct]: Subtask products. The 'created' state
+                is not filled.
+
+        """
         subtask_products = []
-        self._subtask_products_cache[cache_key] = subtask_products
         task_item = self._controller.get_task_item_by_name(
             project_name, folder_id, task_name
         )
@@ -1215,9 +1235,9 @@ class CreateModel:
         ):
             subtask_products.append(
                 SubtaskProduct(
-                    product["name"],
-                    product["productType"],
-                    product["productBaseType"],
+                    product_name=product["name"],
+                    product_base_type=product["productBaseType"],
+                    product_type=product["productType"],
                 )
             )
         return subtask_products
