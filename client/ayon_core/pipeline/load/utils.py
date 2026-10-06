@@ -1166,6 +1166,13 @@ def filter_containers(containers, project_name):
                 fields={"id", "versionId"}
             ))
         except GraphQlQueryFailed as exc:
+            # Only errors on the project itself are handled, any other
+            #   failure of the query is still raised
+            if not any(
+                error.get("path") == ["project"]
+                for error in exc.errors
+            ):
+                raise
             log.warning(
                 "Failed to query representations of project"
                 f" '{l_project_name}'. Treating its containers as not"
