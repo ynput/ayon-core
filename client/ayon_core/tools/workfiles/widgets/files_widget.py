@@ -10,9 +10,8 @@ from ayon_core.ui.components import (
     AYButton
 )
 
-from ayon_core.tools.workfiles.lock_dialog import TaskInUseDialog
-
 from .save_as_dialog import SaveAsDialog
+from .task_in_use_dialog import TaskInUseDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
 
