@@ -54,7 +54,7 @@ def _make_action_items() -> list[ActionItem]:
         # Group label uses the first item in the context menu order
         ("Open file", "exr"),
         ("open FILE ", "exr"),
-        ("Open file (h264)", "h264"),
+        ("Open file / h264", "h264"),
         ("core.open-file", "exr"),
         ("Copy file path", "Copy file path"),
         ("Load image (exr)", "Load image (exr)"),
@@ -158,7 +158,7 @@ def test_default_profile_spacebar_opens_file(
     assert action is not None
     assert action.names == ["Open file"]
     assert action.item is not None
-    assert action.item.full_label == "Open file (exr)"
+    assert action.item.full_label == "Open file / exr"
 
     # Double click is not set in the default profile
     assert model.get_default_action(
@@ -192,10 +192,10 @@ def test_more_specific_profile_is_used(model: LoaderActionsModel) -> None:
 @pytest.mark.parametrize(
     "names, expected_label",
     [
-        (["Open file (exr)", "Open file", "Copy file path"], "exr"),
-        (["Open file (mov)", "Open file", "Copy file path"], "exr"),
-        (["Open file (mov)", "Copy file path", "Open file"], "Copy file path"),
-        (["Open file (mov)", " "], None),
+        (["Open file / exr", "Open file", "Copy file path"], "exr"),
+        (["Open file / mov", "Open file", "Copy file path"], "exr"),
+        (["Open file / mov", "Copy file path", "Open file"], "Copy file path"),
+        (["Open file / mov", " "], None),
     ],
 )
 def test_actions_order_of_preference(
@@ -259,7 +259,7 @@ def test_trigger_default_action_emits_event_and_triggers(
             "version_id": "v1",
             "trigger": "spacebar",
             "action_names": ["Open file"],
-            "action_label": "Open file (exr)",
+            "action_label": "Open file / exr",
         },
     )]
     assert len(triggered) == 1

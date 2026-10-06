@@ -114,9 +114,9 @@ class ActionItem:
 
     @property
     def full_label(self) -> str:
-        """Label including the group, e.g. 'Open file (exr)'."""
+        """Label including the group, e.g. 'Open file / exr'."""
         if self.group_label:
-            return f"{self.group_label} ({self.label})"
+            return f"{self.group_label} / {self.label}"
         return self.label
 
     def _options_to_data(self):

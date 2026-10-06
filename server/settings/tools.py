@@ -353,7 +353,7 @@ class BrowserDefaultActionProfile(BaseSettingsModel):
             "Actions to run when a version is double clicked, in order of"
             " preference. The first action available for the version is"
             " used. Use the label of the action as shown in the context"
-            " menu, e.g. 'Open file' or 'Open file (exr)' to target"
+            " menu, e.g. 'Open file' or 'Open file / exr' to target"
             " a single entry of a submenu. A loader plugin name or action"
             " identifier works too. Leave empty to do nothing."
         ),

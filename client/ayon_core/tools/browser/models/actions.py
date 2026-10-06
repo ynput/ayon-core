@@ -73,7 +73,7 @@ def find_action_item_by_name(
     """Find the action item an admin refers to by a name in settings.
 
     The name is compared case insensitively with the label, the group
-    label and the full label (e.g. 'Open file (exr)') of the action,
+    label and the full label (e.g. 'Open file / exr') of the action,
     the loader action identifier and the loader plugin name. When more
     actions match, e.g. all representations of a group, the first one
     in the context menu order is used.
