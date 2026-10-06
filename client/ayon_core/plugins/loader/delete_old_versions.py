@@ -21,11 +21,11 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     ActionForm,
-    CoreLoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
 )
+from ayon_core.pipeline.actions.loader import CoreLoaderActionPlugin
 
 
 class DeleteOldVersions(CoreLoaderActionPlugin):

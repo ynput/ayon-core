@@ -20,11 +20,11 @@ from ayon_core.pipeline.publish import get_publish_template_name
 from ayon_core.pipeline.template_data import get_template_data
 
 from ayon_core.pipeline.actions import (
-    CoreLoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
 )
+from ayon_core.pipeline.actions.loader import CoreLoaderActionPlugin
 
 
 class HeroCreationError(Exception):
