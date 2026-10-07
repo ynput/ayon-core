@@ -10,6 +10,7 @@ import pytest
 
 from ayon_core.ui.components.views.data_models import (
     DEFAULT_ACCESS_LEVEL,
+    DEFAULT_ROW_HEIGHT,
     ColumnState,
     FilterDef,
     GroupingDef,
@@ -105,7 +106,7 @@ def test_view_settings_from_empty_payload() -> None:
     assert vs.columns == []
     assert vs.sort_by is None
     assert vs.sort_desc is False
-    assert vs.row_height == 32
+    assert vs.row_height == DEFAULT_ROW_HEIGHT
     assert vs.grouping.is_empty()
     assert vs.filter.is_empty()
     assert vs.extra == {}

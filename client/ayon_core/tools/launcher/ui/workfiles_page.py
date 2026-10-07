@@ -12,13 +12,14 @@ from ayon_core.lib.icon_definitions import (
     UrlIcon,
     TransparentIcon,
 )
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
 from ayon_core.tools.utils.delegates import (
     pretty_timestamp,
     file_size_to_string,
 )
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.ui.style_types import get_ayon_style
 
@@ -31,7 +32,13 @@ FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
+    """Workfiles of selected task.
+
+    Workfiles are fetched in the shared task queue so the UI stays
+    responsive, 'AYTreeView' shows loading placeholder meanwhile.
+    """
     refreshed = QtCore.Signal()
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller: AbstractLauncherFrontEnd) -> None:
         super().__init__()
@@ -67,17 +74,98 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._host_items_by_name = {}
         self._items_by_host_name = collections.defaultdict(list)
 
-    def refresh(self) -> None:
+        self._is_loading = False
+        self._refresh_id = 0
+        self._context_id = f"launcher_workfiles_model_{id(self)}"
+
+    def is_loading(self) -> bool:
+        """Workfiles are being fetched.
+
+        Returns:
+            bool: True if workfiles are being fetched.
+        """
+        return self._is_loading
+
+    def refresh(self, clear: bool = False) -> None:
+        """Refresh workfiles of current selection.
+
+        Args:
+            clear (bool): Remove current items right away. Used when
+                selection changed so workfiles of previous selection
+                are not shown while new ones are loading.
+        """
+        self._refresh_id += 1
+        refresh_id = self._refresh_id
+        project_name = self._selected_project_name
+        task_id = self._selected_task_id
+        if not project_name or not task_id:
+            self._fill([])
+            self._set_loading(False)
+            return
+
+        if clear:
+            self._clear()
+        self._set_loading(True)
+        task_queue = get_task_queue()
+        # Drop pending fetches of previous selection
+        task_queue.clear_context_tasks(self._context_id)
+        task_queue.enqueue(AsyncTask(
+            name="fetch_launcher_workfiles",
+            function=lambda: self._fetch_workfile_items(
+                project_name, task_id
+            ),
+            callback=lambda result: self._on_workfiles_fetched(
+                refresh_id, result
+            ),
+            priority=2,
+            context_id=self._context_id,
+            cancellable=True,
+        ))
+
+    def _fetch_workfile_items(
+        self, project_name: str, task_id: str
+    ) -> list:
+        """Called in a worker thread, must not touch the model."""
+        workfile_items = self._controller.get_workfile_items(
+            project_name, task_id
+        )
+        # Download url icons here so filling the model does not wait
+        prefetch_qt_icons([
+            self._get_icon_def(icon_url)
+            for icon_url in {item.icon for item in workfile_items}
+        ])
+        return workfile_items
+
+    def _set_loading(self, loading: bool) -> None:
+        if self._is_loading == loading:
+            return
+        self._is_loading = loading
+        self.loading_changed.emit(loading)
+
+    def _on_workfiles_fetched(
+        self, refresh_id: int, workfile_items: Optional[list]
+    ) -> None:
+        # Selection changed meanwhile, newer refresh is running
+        if refresh_id != self._refresh_id:
+            return
+        # 'None' means fetching failed
+        self._fill(workfile_items or [])
+        self._set_loading(False)
+
+    def _clear(self) -> None:
+        root_item = self.invisibleRootItem()
+        root_item.removeRows(0, root_item.rowCount())
+        self._host_items_by_name = {}
+        self._items_by_host_name = collections.defaultdict(list)
+
+    def _fill(self, workfile_items: list) -> None:
         self._group_host_names = set(
             self._controller.get_grouped_host_names()
         )
 
+        self._clear()
         root_item = self.invisibleRootItem()
-        root_item.removeRows(0, root_item.rowCount())
 
-        workfile_items = self._controller.get_workfile_items(
-            self._selected_project_name, self._selected_task_id
-        )
         items_by_host_name = collections.defaultdict(list)
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
@@ -208,19 +296,19 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
         self._selected_task_id = None
-        self.refresh()
+        self.refresh(clear=True)
 
     def _on_selection_folder_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = None
-        self.refresh()
+        self.refresh(clear=True)
 
     def _on_selection_task_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
-        self.refresh()
+        self.refresh(clear=True)
 
     def _get_transparent_icon(self) -> QtGui.QIcon:
         if self._transparent_icon is None:
@@ -229,6 +317,15 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             )
         return self._transparent_icon
 
+    @staticmethod
+    def _get_icon_def(icon_url: Optional[str]):
+        if icon_url is None:
+            return None
+        base_url = ayon_api.get_base_url()
+        if icon_url.startswith(base_url):
+            return AYONUrlIcon(icon_url[len(base_url) + 1:])
+        return UrlIcon(icon_url)
+
     def _get_icon(self, icon_url: Optional[str]) -> QtGui.QIcon:
         if icon_url is None:
             return self._get_transparent_icon()
@@ -236,14 +333,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         if icon is not None:
             return icon
 
-        base_url = ayon_api.get_base_url()
-        if icon_url.startswith(base_url):
-            url = icon_url[len(base_url) + 1:]
-            icon_def = AYONUrlIcon(url)
-        else:
-            icon_def = UrlIcon(icon_url)
-
-        icon = get_qt_icon(icon_def)
+        icon = get_qt_icon(self._get_icon_def(icon_url))
         if icon is None:
             icon = self._get_transparent_icon()
         self._cached_icons[icon_url] = icon

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import typing
 from typing import Iterable, Any, Callable
 
@@ -18,6 +18,7 @@ from ayon_core.lib.attribute_definitions import (
 from ayon_core.tools.common_models import TaskItem, ProjectItem
 
 if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import FolderTypeItem, StatusItem
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 
@@ -54,6 +55,33 @@ class RepreItem:
             data["representation_icon"]
         )
         return cls(**data)
+
+
+@dataclass
+class ProductGroupsInfo:
+    """Product group names related to a selection of products.
+
+    Attributes:
+        selected (set[str]): Group names set on the selected products.
+        available (set[str]): Group names used by any product in the
+            folders of the selected products.
+    """
+
+    selected: set[str] = field(default_factory=set)
+    available: set[str] = field(default_factory=set)
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            selected=list(self.selected),
+            available=list(self.available),
+        )
+
+    @classmethod
+    def from_data(cls, data) -> ProductGroupsInfo:
+        return cls(
+            selected=set(data["selected"]),
+            available=set(data["available"]),
+        )
 
 
 @dataclass
@@ -236,6 +264,47 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
+    def get_folder_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderTypeItem]:
+        """Folder type items for a project.
+
+        This function may trigger events with topics
+        'projects.folder_types.refresh.started' and
+        'projects.folder_types.refresh.finished' which will contain
+        'sender' value in data.
+
+        Args:
+            project_name (str): Project name.
+            sender (str | None): Who requested folder type items.
+
+        Returns:
+            list[FolderTypeItem]: Folder type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_project_status_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[StatusItem]:
+        """Status items for a project.
+
+        Triggers event topics "projects.statuses.refresh.started" and
+        "projects.statuses.refresh.finished" with 'sender' and
+        'project_name' in data.
+
+        Args:
+            project_name (str): Project name.
+            sender (str | None): Who requested status items.
+
+        Returns:
+            list[StatusItem]: Project status information.
+
+        """
+        pass
+
+    @abstractmethod
     def get_folder_items(
         self,
         project_name: str,
@@ -360,6 +429,57 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        """Product group names related to passed products.
+
+        Args:
+            project_name (str): Project name.
+            product_ids (set[str]): Product ids.
+
+        Returns:
+            ProductGroupsInfo: Group names of the products and group names
+                available in their folders.
+
+        """
+        pass
+
+    @abstractmethod
+    def can_change_products_group(self, project_name: str) -> bool:
+        """Whether current user may write the product group attribute.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            bool: Product group attribute can be changed by the user.
+
+        """
+        pass
+
+    @abstractmethod
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        """Change group name of passed products.
+
+        Triggers event "products.group.changed" with data:
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            }
+
+        Args:
+            project_name (str): Project name.
+            product_ids (set[str]): Product ids to change group name for.
+            group_name (str): Group name to set, empty string to ungroup.
+
+        """
+        pass
+
+    @abstractmethod
     def set_selected_project(self, project_name: str) -> None:
         """Set selected project.
 
@@ -385,6 +505,35 @@ class AbstractBrowserController(ABC):
 
         Returns:
             list[ActionItem]: List of action items.
+
+        """
+        pass
+
+    @abstractmethod
+    def warm_up_action_items(self, project_name: str) -> None:
+        """Discover action plugins for a project.
+
+        Makes the first context menu for the project open faster. Must be
+        called from the main thread as plugins may use host APIs.
+
+        Args:
+            project_name (str): Project name.
+
+        """
+        pass
+
+    @abstractmethod
+    def prefetch_version_action_contexts(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
+        """Cache data needed for version action items.
+
+        Makes the context menu for the selection open faster. Only queries
+        the server, so it is safe to call from a background thread.
+
+        Args:
+            project_name (str): Project name.
+            version_ids (set[str]): Selected version ids.
 
         """
         pass

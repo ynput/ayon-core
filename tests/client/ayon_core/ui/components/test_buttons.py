@@ -440,8 +440,9 @@ def test_aybuttonmenu_popup_close_on_button_press_does_not_reopen(
         staticmethod(lambda: inside_global),
     )
 
+    # Simulate Qt auto-closing the popup on a press over the button.
     with qtbot.waitSignal(btn.menu_closed, timeout=500):
-        btn._on_popup_closed()
+        btn._dropdown.close()
 
     btn.click()
 
@@ -451,4 +452,3 @@ def test_aybuttonmenu_popup_close_on_button_press_does_not_reopen(
     assert btn._dropdown.isVisible() is False, (
         "Dropdown must not reopen in the same close/release click cycle"
     )
-

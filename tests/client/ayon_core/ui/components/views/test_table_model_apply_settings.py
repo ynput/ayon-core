@@ -48,8 +48,11 @@ def _make_model() -> PaginatedTableModel:
     )
 
 
-def test_apply_settings_reorders_columns() -> None:
-    """apply_settings reorders the model's columns by ``name`` key."""
+def test_apply_settings_keeps_model_column_order() -> None:
+    """apply_settings does not reorder the model's logical columns.
+
+    Display order is applied by the view (see ``set_column_state``).
+    """
     model = _make_model()
     settings = ViewSettings(
         columns=[
@@ -59,7 +62,7 @@ def test_apply_settings_reorders_columns() -> None:
         ]
     )
     model.apply_settings(settings)
-    assert [c.key for c in model.columns] == ["version", "name", "status"]
+    assert [c.key for c in model.columns] == ["name", "status", "version"]
 
 
 def test_apply_settings_resizes_columns() -> None:
@@ -116,7 +119,7 @@ def test_apply_settings_unknown_columns_are_preserved_on_capture() -> None:
     )
     model.apply_settings(settings)
     # Unknown columns are not in the model itself.
-    assert [c.key for c in model.columns] == ["version", "name", "status"]
+    assert [c.key for c in model.columns] == ["name", "status", "version"]
     # But they come back in capture_settings, in the original order.
     captured = model.capture_settings()
     names = [c.name for c in captured.columns]
@@ -125,11 +128,11 @@ def test_apply_settings_unknown_columns_are_preserved_on_capture() -> None:
 
 
 def test_apply_settings_keeps_columns_missing_from_state() -> None:
-    """Catalog columns not mentioned in settings are appended at the end."""
+    """Catalog columns not mentioned in settings are kept in the model."""
     model = _make_model()
     settings = ViewSettings(columns=[ColumnState(name="version")])
     model.apply_settings(settings)
-    assert [c.key for c in model.columns] == ["version", "name", "status"]
+    assert [c.key for c in model.columns] == ["name", "status", "version"]
 
 
 def test_capture_settings_sort_roundtrip() -> None:

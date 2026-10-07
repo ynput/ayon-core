@@ -4,6 +4,7 @@ import sys
 import traceback
 import inspect
 import collections
+import threading
 import uuid
 from typing import Optional, Callable, Any
 
@@ -75,6 +76,8 @@ class LoaderActionsModel:
         self._repre_loaders = NestedCacheItem(
             levels=1, lifetime=self.loaders_cache_lifetime)
         self._loader_actions = LoaderActionsContext()
+        # Entities can be prefetched from a background thread
+        self._lock = threading.Lock()
 
         self._projects_cache = NestedCacheItem(levels=1, lifetime=60)
         self._folders_cache = NestedCacheItem(levels=2, lifetime=300)
@@ -100,7 +103,53 @@ class LoaderActionsModel:
         self._representations_cache.reset()
         self._repre_parents_cache.reset()
 
+    def warm_up(self, project_name: str) -> None:
+        """Discover loader and loader action plugins.
+
+        Plugin discovery is the slowest part of the first context menu
+        for a project.
+
+        Warning:
+            Must be called from the main thread, plugin discovery executes
+                host plugin modules which may use host APIs.
+
+        Args:
+            project_name (str): Project name.
+
+        """
+        with self._lock:
+            self._get_loaders(project_name)
+            self._loader_actions.prepare_plugins()
+
+    def prefetch_versions_context(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
+        """Cache entities needed for version action items.
+
+        Only queries the server, so it is safe to call from a background
+        thread.
+
+        Args:
+            project_name (str): Project name.
+            version_ids (set[str]): Version ids.
+
+        """
+        with self._lock:
+            self._contexts_for_versions(project_name, version_ids)
+
     def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        # Wait for a running prefetch instead of doing the same work twice
+        with self._lock:
+            return self._get_action_items(
+                project_name, entity_ids, entity_type
+            )
+
+    def _get_action_items(
         self,
         project_name: str,
         entity_ids: set[str],
@@ -441,6 +490,16 @@ class LoaderActionsModel:
         if not project_name and not version_ids:
             return version_context_by_id, repre_context_by_id
 
+        all_repre_ids = set()
+        for repre_ids in self._get_repre_ids_by_version_ids(
+            project_name, version_ids
+        ).values():
+            all_repre_ids |= repre_ids
+        # Fill caches of all entities with a single query, the queries
+        #   below only fetch what is still missing (e.g. versions
+        #   without representations)
+        self._cache_representations_hierarchy(project_name, all_repre_ids)
+
         version_entities = self._get_versions(
             project_name, version_ids
         )
@@ -477,12 +536,6 @@ class LoaderActionsModel:
                 "product": product_entity,
                 "version": version_entity,
             }
-
-        all_repre_ids = set()
-        for repre_ids in self._get_repre_ids_by_version_ids(
-            project_name, version_ids
-        ).values():
-            all_repre_ids |= repre_ids
 
         repre_entities = self._get_representations(
             project_name, all_repre_ids
@@ -529,6 +582,7 @@ class LoaderActionsModel:
         if not project_name and not repre_ids:
             return version_context_by_id, repre_context_by_id
 
+        self._cache_representations_hierarchy(project_name, repre_ids)
         repre_entities = self._get_representations(
             project_name, repre_ids
         )
@@ -660,24 +714,65 @@ class LoaderActionsModel:
                 missing_ids.add(version_id)
 
         if missing_ids:
-            repre_cache = self._representations_cache[project_name]
-            repres_by_parent_id = collections.defaultdict(list)
+            # Pre-fill so versions without representations are cached too
+            #   and don't trigger a server query on every context menu
+            repre_ids_by_version_id = {
+                version_id: set()
+                for version_id in missing_ids
+            }
+            # Only ids are needed, full entities are fetched with
+            #   their parents in '_cache_representations_hierarchy'
             for repre in ayon_api.get_representations(
-                project_name, version_ids=missing_ids
+                project_name,
+                version_ids=missing_ids,
+                fields={"id", "versionId"},
             ):
-                version_id = repre["versionId"]
-                repre_cache[repre["id"]].update_data(repre)
-                repres_by_parent_id[version_id].append(repre)
+                repre_ids_by_version_id[repre["versionId"]].add(repre["id"])
 
-            for version_id, repres in repres_by_parent_id.items():
-                repre_ids = {
-                    repre["id"]
-                    for repre in repres
-                }
-                output[version_id] = set(repre_ids)
-                project_cache[version_id].update_data(repre_ids)
+            for version_id, repre_ids in repre_ids_by_version_id.items():
+                output[version_id] = repre_ids
+                project_cache[version_id].update_data(set(repre_ids))
 
         return output
+
+    def _cache_representations_hierarchy(
+        self, project_name: str, repre_ids: set[str]
+    ) -> None:
+        """Cache representations with their parents using a single query.
+
+        Fetches representation, version, product and folder entities in one
+        request instead of one request per entity type.
+
+        Args:
+            project_name (str): Project name.
+            repre_ids (set[str]): Representation ids.
+
+        """
+        repre_cache = self._representations_cache[project_name]
+        missing_ids = {
+            repre_id
+            for repre_id in repre_ids
+            if not repre_cache[repre_id].is_valid
+        }
+        if not missing_ids:
+            return
+
+        hierarchy_by_repre_id = ayon_api.get_representations_hierarchy(
+            project_name,
+            missing_ids,
+            project_fields=set(),
+            task_fields=set(),
+        )
+        for hierarchy in hierarchy_by_repre_id.values():
+            if hierarchy.representation is None:
+                continue
+            for cache, entity in (
+                (repre_cache, hierarchy.representation),
+                (self._versions_cache[project_name], hierarchy.version),
+                (self._products_cache[project_name], hierarchy.product),
+                (self._folders_cache[project_name], hierarchy.folder),
+            ):
+                cache[entity["id"]].update_data(entity)
 
     def _get_entities(
         self,

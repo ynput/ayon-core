@@ -61,7 +61,7 @@ class HierarchyPage(QtWidgets.QWidget):
         projects_combobox = ProjectsCombobox(controller, header_widget)
 
         refresh_btn = AYButton(
-            icon="refresh",
+            icon="sync",
             variant=AYButton.Variants.Surface,
             parent=header_widget,
         )
@@ -136,6 +136,15 @@ class HierarchyPage(QtWidgets.QWidget):
 
         # Post init
         projects_combobox.set_listen_to_selection_change(self._is_visible)
+
+    def set_folders_loading_delay(self, delay: int) -> None:
+        """Delay before loading placeholder shows in folders.
+
+        Args:
+            delay (int): Delay in milliseconds.
+
+        """
+        self._folders_widget.set_loading_delay(delay)
 
     def set_page_visible(self, visible, project_name=None):
         if self._is_visible == visible:

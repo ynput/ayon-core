@@ -17,7 +17,11 @@ from ayon_core.tools.common_models import (
     UsersModel,
 )
 
-from .abstract import AbstractBrowserController, ActionItem
+from .abstract import (
+    AbstractBrowserController,
+    ActionItem,
+    ProductGroupsInfo,
+)
 from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
@@ -103,6 +107,16 @@ class BrowserController(AbstractBrowserController):
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_project_status_items(self, project_name, sender=None):
+        return self._projects_model.get_project_status_items(
+            project_name, sender
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
@@ -152,6 +166,31 @@ class BrowserController(AbstractBrowserController):
             project_name, version_ids
         )
 
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        return self._products_model.get_product_groups_info(
+            project_name, product_ids
+        )
+
+    def can_change_products_group(self, project_name: str) -> bool:
+        return self._products_model.can_change_products_group(project_name)
+
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        self._products_model.change_products_group(
+            project_name, product_ids, group_name
+        )
+        self._emit_event(
+            "products.group.changed",
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            },
+        )
+
     def get_action_items(
         self,
         project_name: str,
@@ -160,6 +199,16 @@ class BrowserController(AbstractBrowserController):
     ) -> list[ActionItem]:
         return self._loader_actions_model.get_action_items(
             project_name, entity_ids, entity_type
+        )
+
+    def warm_up_action_items(self, project_name: str) -> None:
+        self._loader_actions_model.warm_up(project_name)
+
+    def prefetch_version_action_contexts(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
+        self._loader_actions_model.prefetch_versions_context(
+            project_name, version_ids
         )
 
     def trigger_action_item(

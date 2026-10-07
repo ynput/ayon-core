@@ -51,7 +51,7 @@ class ServerViewManager(ViewManager):
     * ``GET    /api/views/{view_type}/working``
     * ``POST   /api/views/{view_type}``
     * ``PATCH  /api/views/{view_type}/{view_id}``
-    * ``POST   /api/addons/powerpack/{version}/views/{view_type}/{view_id}/share``
+    * ``POST   /api/addons/powerpack/{version}/views/{view_type}/{id}/share``
     * ``DELETE /api/views/{view_type}/{view_id}``
 
     Attributes:
@@ -135,10 +135,18 @@ class ServerViewManager(ViewManager):
             self.error.emit(f"Failed to fetch working view: {exc}")
             return None
 
-        return View.from_payload(resp.data)
+        # No working view yet (404) - the error body is not a view, parsing
+        #   it would give a view without id and view type which then fails
+        #   to save.
+        if resp.status_code != 200 or not resp.data:
+            return None
+        view = View.from_payload(resp.data)
+        if not view.view_type:
+            view.view_type = view_type
+        return view
 
     def get_default_project_view(self, view_type: str) -> View | None:
-        """Return project default view using the dedicated ``/base`` endpoint."""
+        """Return project default view."""
         if not self._project_name:
             return None
 
@@ -148,7 +156,9 @@ class ServerViewManager(ViewManager):
                 project_name=self._project_name,
             )
         except Exception as exc:  # noqa: BLE001
-            log.exception("Failed to fetch project default view for %s", view_type)
+            log.exception(
+                "Failed to fetch project default view for %s", view_type
+            )
             self.error.emit(f"Failed to fetch project default view: {exc}")
             return None
         if resp.status_code != 200:
@@ -158,11 +168,13 @@ class ServerViewManager(ViewManager):
         return view
 
     def get_default_studio_view(self, view_type: str) -> View | None:
-        """Return studio default view using the dedicated ``/base`` endpoint."""
+        """Return studio default view."""
         try:
             resp = ayon_api.get(f"views/{view_type}/base")
         except Exception as exc:  # noqa: BLE001
-            log.exception("Failed to fetch studio default view for %s", view_type)
+            log.exception(
+                "Failed to fetch studio default view for %s", view_type
+            )
             self.error.emit(f"Failed to fetch studio default view: {exc}")
             return None
         if resp.status_code != 200:
@@ -385,7 +397,9 @@ class ServerViewManager(ViewManager):
 
         # Update the id-map and per-type cache in-place.
         if saved.id:
-            self._id_to_view_attributes[saved.id] = (saved.view_type, saved.scope)
+            self._id_to_view_attributes[saved.id] = (
+                saved.view_type, saved.scope
+            )
         self._upsert_cache(saved)
 
         # Access grants are managed by the dedicated share endpoint.
@@ -563,7 +577,9 @@ class ServerViewManager(ViewManager):
         view_list.sort(key=lambda v: (v.position, v.label.lower()))
 
     @staticmethod
-    def _normalize_access_payload(raw_access: dict[str, Any]) -> dict[str, int]:
+    def _normalize_access_payload(
+        raw_access: dict[str, Any]
+    ) -> dict[str, int]:
         """Return a normalized ``access`` payload with integer values."""
         if not isinstance(raw_access, dict):
             return {}

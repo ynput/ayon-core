@@ -386,7 +386,8 @@
         },
         "QCheckBox": {
             "states": [
-                "checked"
+                "checked",
+                "disabled"
             ],
             "default-variant": "default",
             "variants": {
@@ -401,6 +402,9 @@
                     "checked": {
                         "indicator-color": "--md-sys-color-on-primary-dark",
                         "indicator-background-color": "--md-sys-color-primary-dark"
+                    },
+                    "disabled": {
+                        "opacity": 0.5
                     }
                 },
                 "secondary": {
@@ -836,6 +840,11 @@
                     "hover": {
                         "background-color": "--md-ref-palette-error25"
                     }
+                },
+                "low": {
+                    "background-color": "--md-sys-color-surface-container-low-dark",
+                    "item-padding": [6, 8],
+                    "item-spacing": 7
                 }
             }
         },

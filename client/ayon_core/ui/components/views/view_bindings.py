@@ -6,7 +6,7 @@ The bindings know how to *apply* a captured :class:`ViewSettings` to
 the concrete widget instances the consumer app has wired up, and how
 to *capture* the live widget state back into a :class:`ViewSettings`.
 
-All adapter components (table view, card view, filter proxy, slicer)
+All adapter components (table view, card view, filter proxy)
 are optional — when ``None`` the relevant slice of the settings is
 treated as a no-op on apply and an empty value on capture.
 
@@ -57,8 +57,6 @@ class ViewBindings:
             card-size mapping.
         filter_bar: Optional :class:`AYTableFilter` exposing
             :meth:`get_criteria` / :meth:`set_criteria`.
-        slicer: Optional :class:`AYSlicer` (opaque; round-tripped via
-            :attr:`ViewSettings.extra`).
         on_extra_apply: Optional callback ``(extra: dict) -> None``
             invoked at the end of :meth:`apply` with the un-claimed
             :attr:`ViewSettings.extra` dict.  Lets the consumer wire

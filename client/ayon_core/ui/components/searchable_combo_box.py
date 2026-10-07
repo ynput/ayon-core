@@ -283,7 +283,8 @@ class AYSearchableComboBox(StyleMixin, QWidget):
         """Return the list of all item rows.
 
         Returns:
-            List of (key, label, row_widget) tuples for custom widget manipulation.
+            List of (key, label, row_widget) tuples for custom widget
+                manipulation.
         """
         return self._dropdown.all_items
 

@@ -19,7 +19,7 @@ from . import Terminal
 from .env_tools import env_value_to_bool
 
 # force the logger to use the same format for all log levels.
-USE_STD_FMT = bool(os.environ.get("AYON_USE_STD_LOG_FORMAT", 0))
+USE_STD_FMT = env_value_to_bool("AYON_USE_STD_LOG_FORMAT", default=False)
 
 
 class LogStreamHandler(logging.StreamHandler):
@@ -60,12 +60,15 @@ class LogStreamHandler(logging.StreamHandler):
         except (KeyboardInterrupt, SystemExit):
             raise
 
-        except OSError:
-            self.handleError(record)
-
         except Exception:
-            print(repr(record))
-            self.handleError(record)
+            # Logging must never break the caller. Some hosts replace
+            # 'sys.stdout' and 'sys.stderr' with streams that raise when
+            # written to from a non-main thread, in which case reporting
+            # the error through 'handleError' fails as well.
+            try:
+                self.handleError(record)
+            except Exception:
+                pass
 
 
 class LogFormatter(logging.Formatter):
@@ -286,6 +289,7 @@ class Logger:
 _log_timing_enabled = env_value_to_bool("AYON_CORE_TIMERS")
 _timing_logger = Logger.get_logger("ayon-core-timers")
 _timing_logger.setLevel(logging.INFO)
+
 
 @contextmanager
 def log_timing(message: str) -> Generator[None, None, None]:
