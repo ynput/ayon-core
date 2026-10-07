@@ -20,7 +20,7 @@ from ayon_core.tools.utils import (
 from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
-from ayon_core.ui.components import AYLineEdit
+from ayon_core.ui.components import AYLineEdit, AYSpinBox
 
 from .constants import (
     ITEM_ID_ROLE,
@@ -461,6 +461,18 @@ class DetailsWidget(QtWidgets.QWidget):
             level_filter.addItem(label, value)
         level_filter.setMinimumWidth(150)
         level_filter.setToolTip("Filter logs by level")
+        surrounding_lines = AYSpinBox(
+            parent=header_widget,
+            name_id="PublishLogSurroundingLines",
+            minimum=0,
+            maximum=99,
+            value=0,
+        )
+        surrounding_lines.setPrefix("Context: ")
+        surrounding_lines.setFixedWidth(100)
+        surrounding_lines.setToolTip(
+            "Include this many log entries before and after each match"
+        )
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(5, 5, 5, 5)
@@ -468,6 +480,7 @@ class DetailsWidget(QtWidgets.QWidget):
         header_layout.addWidget(timestamp_label, 0)
         header_layout.addStretch(1)
         header_layout.addWidget(level_filter, 0)
+        header_layout.addWidget(surrounding_lines, 0)
         header_layout.addWidget(search_field, 0)
 
         output_widget = ZoomPlainText(self)
@@ -483,6 +496,9 @@ class DetailsWidget(QtWidgets.QWidget):
         timestamp_check.stateChanged.connect(self._on_timestamp_check)
         search_field.textChanged.connect(self._on_search_changed)
         level_filter.value_changed.connect(self._on_level_filter_changed)
+        surrounding_lines.valueChanged.connect(
+            self._on_surrounding_lines_changed
+        )
 
         self._is_active: bool = True
         self._need_refresh: bool = False
@@ -490,12 +506,14 @@ class DetailsWidget(QtWidgets.QWidget):
         self._timestamp_check = timestamp_check
         self._search_field = search_field
         self._level_filter_widget = level_filter
+        self._surrounding_lines = surrounding_lines
         self._output_widget: ZoomPlainText = output_widget
         self._report_item: PublishReport | None = None
         self._instance_filter: set[str] = set()
         self._plugin_filter: set[str] = set()
         self._level_filter: set[str] = set()
         self._search_text = ""
+        self._surrounding_line_count = 0
 
     def _on_timestamp_check(self):
         self._update_logs()
@@ -507,6 +525,11 @@ class DetailsWidget(QtWidgets.QWidget):
 
     def _on_level_filter_changed(self) -> None:
         self._level_filter = set(self._level_filter_widget.value())
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_surrounding_lines_changed(self, value: int) -> None:
+        self._surrounding_line_count = value
         self._need_refresh = True
         self._update_logs()
 
@@ -525,6 +548,8 @@ class DetailsWidget(QtWidgets.QWidget):
         self._instance_filter = set()
         self._level_filter_widget.set_value([])
         self._level_filter = set()
+        self._surrounding_lines.setValue(0)
+        self._surrounding_line_count = 0
         self._need_refresh = True
         self._update_logs()
 
@@ -552,14 +577,32 @@ class DetailsWidget(QtWidgets.QWidget):
                 plugin_ids_filter=self._plugin_filter or None,
                 instance_ids_filter=self._instance_filter or None,
             )
-            if (
-                (not self._level_filter or self._log_matches_level(log))
-                and (
-                    not self._search_text
-                    or self._log_matches_search(log)
-                )
-            )
+            if not self._level_filter or self._log_matches_level(log)
         ]
+
+        if self._search_text:
+            matching_indices = {
+                index
+                for index, log in enumerate(filtered_logs)
+                if self._log_matches_search(log)
+            }
+            if self._surrounding_line_count:
+                matching_indices = {
+                    context_index
+                    for index in matching_indices
+                    for context_index in range(
+                        max(0, index - self._surrounding_line_count),
+                        min(
+                            len(filtered_logs),
+                            index + self._surrounding_line_count + 1,
+                        ),
+                    )
+                }
+            filtered_logs = [
+                log
+                for index, log in enumerate(filtered_logs)
+                if index in matching_indices
+            ]
 
         show_timestamp = self._timestamp_check.isChecked()
         filler = _LogFiller(
