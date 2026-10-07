@@ -82,8 +82,8 @@ class ExplicitCleanUp(pyblish.api.ContextPlugin):
                 try:
                     shutil.rmtree(dirpath)
                     succeeded.add(dirpath)
-                except Exception:
-                    failed.append(dirpath)
+                except Exception as exc:
+                    failed.append((dirpath, exc))
 
         if succeeded:
             self.log.info(
