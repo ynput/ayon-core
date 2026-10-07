@@ -440,5 +440,5 @@ def main(*args, **kwargs):
             args=(sys.argv[1:]),
         )
     except Exception:  # noqa
-        logger.error("AYON crashed", exc_info=True)
+        logger.exception("AYON crashed")
         sys.exit(1)
