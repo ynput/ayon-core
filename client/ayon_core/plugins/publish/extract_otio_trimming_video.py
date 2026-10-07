@@ -7,7 +7,6 @@ Requires:
 from __future__ import annotations
 
 import os
-from copy import deepcopy
 import typing
 
 import pyblish.api
@@ -47,34 +46,27 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
 
         staging_dir = self.staging_dir(instance)
         otio_trim_range = instance.data["otioTrimmingRange"]
-        representations = instance.data["representations"]
         self.log.debug(f"otio_trim_range: {otio_trim_range}")
         self.log.debug(f"staging_dir: {staging_dir}")
 
         # get corresponding representation
-        for _repre in repres_to_trim:
+        for repre in repres_to_trim:
             input_file_path = os.path.normpath(os.path.join(
-                _repre["stagingDir"], _repre["files"]
+                repre["stagingDir"], repre["files"]
             ))
-            self.log.debug("input_file_path: {}".format(input_file_path))
+            self.log.debug(f"input_file_path: {input_file_path}")
 
             # trim via ffmpeg
             new_file = self._ffmpeg_trim_seqment(
                 staging_dir, input_file_path, otio_trim_range
             )
 
-            # prepare new representation data
-            repre_data = deepcopy(_repre)
             # remove tags as we dont need them
-            repre_data.pop("tags")
-            repre_data["stagingDir"] = staging_dir
-            repre_data["files"] = new_file
+            repre.pop("tags")
+            repre["stagingDir"] = staging_dir
+            repre["files"] = new_file
 
-            # romove `trim` tagged representation
-            representations.remove(_repre)
-            representations.append(repre_data)
-            self.log.debug(repre_data)
-
+            self.log.debug(f"Updated representation: {repre}")
 
     def _ffmpeg_trim_seqment(
         self,
