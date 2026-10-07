@@ -212,7 +212,7 @@ function Run-Tests {
     )
 
     $TestMarker = "not server and not optional"
-    if ($TestArguments -contains "--optional" -or $TestArguments -contains "-optional") {
+    if ($TestArguments -contains "--optional") {
         $TestMarker = "not server"
     }
 
