@@ -27,7 +27,6 @@ from ayon_core.ui.components import (
     AYLineEdit,
     AYTreeView
 )
-import ayon_api
 
 from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
@@ -167,89 +166,6 @@ class RefreshTask(QtCore.QObject, QtCore.QRunnable):
             self.finished.emit(self.id, success)
 
 
-class ImageLoader(QtCore.QThread):
-    image_loaded = QtCore.Signal(QtGui.QStandardItem, QtGui.QImage)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._image_queue = collections.deque()
-
-        # Turn this into a 'timed' cache to allow refresh after a certain time
-        self._cache = {}
-        self._thread = QtCore.QThread()
-
-    def load_image(self,
-                   item: QtGui.QStandardItem,
-                   project_name: str,
-                   entity_id: str):
-        # If image is in cache, do nothing
-        if (project_name, entity_id) in self._cache:
-            return
-
-        self._image_queue.append((item, project_name, entity_id))
-        if not self.isRunning():
-            self.start()
-
-    def get_image(self, project_name, entity_id):
-        return self._cache.get((project_name, entity_id), None)
-
-    def run(self):
-        # Process remaining queue
-        while self._image_queue:
-            item, project_name, entity_id = self._image_queue.popleft()
-
-            # Query thumbnail from server
-            # TODO: Get these from a cache instead of querying every time
-            response = ayon_api.raw_get(
-                f"projects/{project_name}/folders/{entity_id}/thumbnail")
-            image_bytes = response.content
-
-            # TODO: Skip if image is empty or not valid
-            #  this does not work
-            if not image_bytes:
-                continue
-
-            # Get image format
-            # https://doc.qt.io/qt-6/qimagereader.html#supportedImageFormats
-            image_type = response.headers['content-type']
-            if image_type == "image/jpeg":
-                image_format = "JPG"
-            elif image_type == "image/png":
-                image_format = "PNG"
-            else:
-                raise TypeError(f"Unsupported image type: {image_type}")
-
-            # Load the image from the bytes
-            image = QtGui.QImage()
-            image.loadFromData(image_bytes, image_format)
-
-            # Not a valid image.
-            if image.isNull() or (image.width() == 1 and image.height() == 1):
-                self._cache[(project_name, entity_id)] = None
-                continue
-
-            # Scale down and maintain aspect ratio of the image
-            # but crop and center it to 16:9
-            icon_width = 112
-            icon_height = 63
-            image = image.scaled(icon_width, icon_height,
-                                 QtCore.Qt.KeepAspectRatioByExpanding,
-                                 QtCore.Qt.SmoothTransformation)
-
-            # Create a 32x32 square and center the image
-            square_image = QtGui.QImage(
-                icon_width, icon_height, QtGui.QImage.Format_ARGB32)
-            square_image.fill(QtCore.Qt.transparent)
-            painter = QtGui.QPainter(square_image)
-            x = (icon_width - image.width()) // 2
-            y = (icon_height - image.height()) // 2
-            painter.drawImage(x, y, image)
-            painter.end()
-
-            self._cache[(project_name, entity_id)] = square_image
-            self.image_loaded.emit(item, square_image)
-
-
 class FoldersQtModel(QtGui.QStandardItemModel):
     """Folders model which cares about refresh of folders.
 
@@ -284,9 +200,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._has_content = False
         self._is_refreshing = False
         self._build_job: TimeSlicedJob | None = None
-
-        self._image_loader = ImageLoader()
-        self._image_loader.image_loaded.connect(self._on_image_loaded)
 
     @property
     def is_refreshing(self):

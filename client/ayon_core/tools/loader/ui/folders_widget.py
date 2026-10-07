@@ -125,8 +125,8 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
                 mode = QtGui.QIcon.Selected
 
             if isinstance(icon, QtGui.QPixmap):
-                option.decorationSize = icon.size() / icon.devicePixelRatio()
                 icon = QtGui.QIcon(icon)
+                option.decorationSize = icon.size() / icon.devicePixelRatio()
 
             elif isinstance(icon, QtGui.QColor):
                 pixmap = QtGui.QPixmap(option.decorationSize)
