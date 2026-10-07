@@ -253,6 +253,7 @@ function Write-Help {
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
     Write-Info -Text "  run                           ", "Run a uv command in the repository environment" -Color White, Cyan
+    Write-Info -Text "  run-tests                     ", "Run ayon-core tests without optional tests" -Color White, Cyan
     Write-Info -Text "  run-tests --optional          ", "Run ayon-core tests including optional tests" -Color White, Cyan
     Write-Info -Text "  update-tests-visuals          ", "Run ayon-core tests to update visual images" -Color White, Cyan
     Write-Host ""
