@@ -872,29 +872,9 @@ class Logger:
         # Records propagate to the stdlib root logger which holds
         #   the handlers, see '_configure_logger'.
         cls._root_logger = root_logger
-        cls._set_package_log_level("ayon_core")
 
         # Mark as initialized
         cls.initialized = True
-
-    @classmethod
-    def _set_package_log_level(cls, package_name: str) -> None:
-        """Apply AYON log level to module loggers of a package.
-
-        Modules commonly use 'logging.getLogger(__name__)'. Those loggers
-        are not under the 'AYON' logger and inherit level of the root
-        logger, which is owned by the host application. Used only for
-        'ayon_core', loggers of other packages are not changed.
-
-        Level explicitly set on the package logger is kept.
-
-        Args:
-            package_name (str): Top level package name.
-
-        """
-        logger = logging.getLogger(package_name)
-        if cls.log_level is not None and logger.level == logging.NOTSET:
-            logger.setLevel(cls.log_level)
 
     @classmethod
     def get_structured_handlers(cls) -> list[logging.Handler]:

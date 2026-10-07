@@ -995,35 +995,28 @@ def test_explicit_logger_level_is_respected(
     assert "Implicit debug" not in output
 
 
-def test_only_core_module_loggers_use_ayon_level(
+def test_module_loggers_keep_host_root_level(
     log_module, monkeypatch, restore_logger_levels
 ):
-    """Module loggers of addons keep level of the host root logger."""
-    log_module()
+    """Only loggers from 'Logger.get_logger' use AYON log level."""
+    module = log_module()
     stderr_stream = _capture_stderr(monkeypatch)
     # Host application owns the root logger level
     logging.getLogger().setLevel(logging.WARNING)
     restore_logger_levels("ayon_tests_addon")
 
-    logging.getLogger("ayon_core.tests.module").info("Core module")
+    module.Logger.get_logger("ayon_core.tests.module").info("Core module")
+    logging.getLogger("ayon_core.tests.plain").info("Plain core module")
     logging.getLogger("ayon_tests_addon.module").info("Addon module")
     logging.getLogger("thirdparty.module").info("Third party")
 
     output = stderr_stream.getvalue()
     assert "Core module" in output
+    assert "Plain core module" not in output
     assert "Addon module" not in output
     assert "Third party" not in output
+    assert logging.getLogger("ayon_core").level == logging.NOTSET
     assert logging.getLogger("ayon_tests_addon").level == logging.NOTSET
-
-
-def test_core_package_logger_keeps_explicit_level(log_module):
-    package_logger = logging.getLogger("ayon_core")
-    # Original level is restored by 'log_module' fixture
-    package_logger.setLevel(logging.ERROR)
-
-    log_module()
-
-    assert package_logger.level == logging.ERROR
 
 
 @pytest.mark.parametrize(
