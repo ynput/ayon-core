@@ -59,6 +59,9 @@ HEARTBEATS_PER_TTL = 3
 # Do not try to reach the server for some time after a failed request of
 #   the tracker, to not slow down every save of a workfile
 RETRY_INTERVAL_SECONDS = 5 * 60
+# Requests are sent from callbacks of the application too, do not wait
+#   for the server as long as for other requests
+REQUEST_TIMEOUT_SECONDS = 5.0
 
 # Environment variables with value "1" in farm jobs
 FARM_JOB_ENV_KEYS = (
@@ -426,7 +429,9 @@ def _get_endpoint(project_name: str, *subpaths: str) -> str:
     )
 
 
-def _request(method: str, endpoint: str, **kwargs: Any) -> Any:
+def _request(
+    method: str, endpoint: str, data: Optional[dict[str, Any]] = None
+) -> Any:
     """Call task in-use endpoint of the core addon.
 
     Raises:
@@ -440,7 +445,10 @@ def _request(method: str, endpoint: str, **kwargs: Any) -> Any:
             "Task in-use endpoints are not available on the server."
         )
 
-    response = getattr(ayon_api, method)(endpoint, **kwargs)
+    kwargs: dict[str, Any] = {"timeout": REQUEST_TIMEOUT_SECONDS}
+    if data is not None:
+        kwargs["json"] = data
+    response = getattr(ayon_api, f"raw_{method}")(endpoint, **kwargs)
     # The endpoints do not use status 404 for their own responses
     if response.status_code == 404:
         _endpoints_supported = False
@@ -516,7 +524,7 @@ def get_tasks_usage_items(
         data = _request(
             "post",
             _get_endpoint(project_name, "query"),
-            taskIds=list(output),
+            {"taskIds": list(output)},
         )
     except TaskUsageNotSupportedError:
         return output
@@ -612,9 +620,7 @@ def claim_task(
     data = _request(
         "put",
         _get_endpoint(project_name, task_id, item.session_id),
-        ttl=ttl,
-        heartbeat=heartbeat,
-        **item.to_server_data()
+        dict(item.to_server_data(), ttl=ttl, heartbeat=heartbeat),
     )
     return [
         other_item
@@ -686,8 +692,10 @@ class TaskUsageTracker:
     released when context changes to a different task or the process ends.
 
     Claimed task is kept alive on the server with heartbeats sent from
-    a background thread, see 'start_heartbeat'. The thread does not touch
-    the host integration.
+    a background thread, see 'start_heartbeat'. The thread sleeps between
+    heartbeats, does not touch the host integration and does not hold
+    the lock of the tracker while it waits for the server, so callbacks
+    of the application never wait for a heartbeat.
 
     When a task is claimed and other users are working on it, the user is
     notified about them, unless the user did already confirm them, e.g. in
@@ -763,6 +771,9 @@ class TaskUsageTracker:
 
         Can be called from any thread. Nothing is sent if the session was
         updated a moment ago.
+
+        The lock is not held during the request, so 'sync' and 'release'
+        do not wait for the server because of a heartbeat.
         """
         with self._lock:
             claimed = self._claimed
@@ -774,22 +785,53 @@ class TaskUsageTracker:
             interval = claimed.settings.heartbeat_interval
             if now - self._last_update < interval / 2:
                 return
-            try:
+
+        try:
+            update_task_session(
+                claimed.project_name,
+                claimed.task_id,
+                item,
+                claimed.settings.ttl_seconds,
+                heartbeat=True,
+            )
+        except TaskUsageNotSupportedError:
+            self._disable()
+            return
+        except Exception:
+            # Server may be temporarily not available
+            log.debug("Failed to send task in-use heartbeat.", exc_info=True)
+            return
+
+        with self._lock:
+            current = self._claimed
+            current_item = self._item
+            if current_item is item:
+                self._last_update = now
+                return
+
+        # The session did change during the request
+        try:
+            if (
+                current is None
+                or current_item is None
+                or current.project_name != claimed.project_name
+                or current.task_id != claimed.task_id
+            ):
+                # Task was released, the heartbeat could register it again
+                release_task(
+                    claimed.project_name, claimed.task_id, item.session_id
+                )
+            else:
+                # The heartbeat could override newer data of the session
                 update_task_session(
-                    claimed.project_name,
-                    claimed.task_id,
-                    item,
-                    claimed.settings.ttl_seconds,
+                    current.project_name,
+                    current.task_id,
+                    current_item,
+                    current.settings.ttl_seconds,
                     heartbeat=True,
                 )
-                self._last_update = now
-            except TaskUsageNotSupportedError:
-                self._disable()
-            except Exception:
-                # Server may be temporarily not available
-                log.debug(
-                    "Failed to send task in-use heartbeat.", exc_info=True
-                )
+        except Exception:
+            log.debug("Failed to fix task in-use session.", exc_info=True)
 
     def start_heartbeat(self) -> None:
         """Start a background thread sending heartbeats.
@@ -807,10 +849,23 @@ class TaskUsageTracker:
         )
         thread.start()
 
-    def stop_heartbeat(self) -> None:
-        """Stop the heartbeat thread, does not wait for the thread."""
-        self._heartbeat_thread = None
+    def stop_heartbeat(self, timeout: Optional[float] = None) -> None:
+        """Stop the heartbeat thread.
+
+        Args:
+            timeout (Optional[float]): Seconds to wait for the thread to
+                finish. Sleeping thread does finish immediately. Does not
+                wait if is not passed.
+
+        """
+        thread, self._heartbeat_thread = self._heartbeat_thread, None
         self._heartbeat_stop.set()
+        if (
+            timeout
+            and thread is not None
+            and thread is not threading.current_thread()
+        ):
+            thread.join(timeout)
 
     def _heartbeat_loop(self, stop_event: threading.Event) -> None:
         while not stop_event.wait(self._get_heartbeat_interval()):
@@ -826,9 +881,10 @@ class TaskUsageTracker:
         return claimed.settings.heartbeat_interval
 
     def _disable(self) -> None:
-        self._disabled = True
-        self._claimed = None
-        self._item = None
+        with self._lock:
+            self._disabled = True
+            self._claimed = None
+            self._item = None
         self.stop_heartbeat()
 
     def _sync(self) -> list[TaskUsageItem]:
@@ -1018,7 +1074,8 @@ _tracker: Optional[TaskUsageTracker] = None
 
 def _on_exit() -> None:
     if _tracker is not None:
-        _tracker.stop_heartbeat()
+        # Do not keep the thread running during exit of the application
+        _tracker.stop_heartbeat(timeout=1.0)
         _tracker.release()
 
 

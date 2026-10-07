@@ -329,9 +329,17 @@ def server(monkeypatch):
             ("addons", name, version) + subpaths
         ),
     )
+
+    def _raw_request(method):
+        def _request(endpoint, json=None, timeout=None):
+            # Callbacks of the application must not wait for long
+            assert timeout == task_usage.REQUEST_TIMEOUT_SECONDS
+            return getattr(mock_server, method)(endpoint, **(json or {}))
+        return _request
+
     for method in ("get", "post", "put", "delete"):
         monkeypatch.setattr(
-            task_usage.ayon_api, method, getattr(mock_server, method)
+            task_usage.ayon_api, f"raw_{method}", _raw_request(method)
         )
     return mock_server
 
@@ -701,6 +709,93 @@ def test_tracker_heartbeat_does_not_raise(
     assert not tracker.is_disabled
 
 
+def test_tracker_heartbeat_does_not_block(
+    tracker_calls, current_time, monkeypatch
+):
+    """Callbacks of the application do not wait for a heartbeat."""
+    host, tracker, calls, _ = tracker_calls
+    lock_was_free = []
+
+    def _update_task_session(*args, **kwargs):
+        def _try_lock():
+            acquired = tracker._lock.acquire(blocking=False)
+            if acquired:
+                tracker._lock.release()
+            lock_was_free.append(acquired)
+
+        # The lock is reentrant, must be checked from other thread
+        thread = threading.Thread(target=_try_lock)
+        thread.start()
+        thread.join(5)
+
+    tracker.sync()
+    monkeypatch.setattr(
+        task_usage, "update_task_session", _update_task_session
+    )
+    current_time[0] += TaskUsageSettings(True).heartbeat_interval
+    tracker.heartbeat()
+    assert lock_was_free == [True]
+
+
+def test_tracker_heartbeat_released_during_request(
+    tracker_calls, current_time, monkeypatch
+):
+    """Heartbeat does not keep registered a session that was released."""
+    host, tracker, calls, _ = tracker_calls
+
+    def _update_task_session(
+        project_name, task_id, item, ttl, heartbeat=False
+    ):
+        calls.append(("heartbeat", task_id, item.workfile))
+        # Context did change in main thread during the request
+        host.task_name = "disabled"
+        tracker.sync()
+
+    tracker.sync()
+    monkeypatch.setattr(
+        task_usage, "update_task_session", _update_task_session
+    )
+    current_time[0] += TaskUsageSettings(True).heartbeat_interval
+    tracker.heartbeat()
+    assert calls[1:] == [
+        ("heartbeat", "anim", "sh010_anim_v001.ma"),
+        ("release", "anim", "mine"),
+        # Session could be registered again by the heartbeat
+        ("release", "anim", "mine"),
+    ]
+
+
+def test_tracker_heartbeat_updated_during_request(
+    tracker_calls, current_time, monkeypatch
+):
+    """Heartbeat does not override newer data of the session."""
+    host, tracker, calls, _ = tracker_calls
+    update_task_session = task_usage.update_task_session
+    changed = []
+
+    def _update_task_session(
+        project_name, task_id, item, ttl, heartbeat=False
+    ):
+        update_task_session(project_name, task_id, item, ttl, heartbeat)
+        if not changed:
+            changed.append(1)
+            # Workfile was saved in main thread during the request
+            host.workfile = "/path/sh010_anim_v002.ma"
+            tracker.sync()
+
+    tracker.sync()
+    monkeypatch.setattr(
+        task_usage, "update_task_session", _update_task_session
+    )
+    current_time[0] += TaskUsageSettings(True).heartbeat_interval
+    tracker.heartbeat()
+    assert calls[1:] == [
+        ("heartbeat", "anim", "sh010_anim_v001.ma"),
+        ("update", "anim", "sh010_anim_v002.ma"),
+        ("heartbeat", "anim", "sh010_anim_v002.ma"),
+    ]
+
+
 def test_tracker_heartbeat_thread(tracker_calls, monkeypatch):
     host, tracker, calls, _ = tracker_calls
     processed = threading.Event()
@@ -723,6 +818,17 @@ def test_tracker_heartbeat_thread(tracker_calls, monkeypatch):
     thread.join(5)
     assert not thread.is_alive()
     assert tracker._heartbeat_thread is None
+
+
+def test_tracker_stop_heartbeat_waits_for_sleeping_thread(tracker_calls):
+    host, tracker, calls, _ = tracker_calls
+
+    tracker.start_heartbeat()
+    thread = tracker._heartbeat_thread
+    # Thread sleeps for the heartbeat interval, stop does wake it up
+    tracker.stop_heartbeat(timeout=5)
+    assert not thread.is_alive()
+    assert calls == []
 
 
 def test_tracker_does_not_raise(tracker_calls, current_time, monkeypatch):
@@ -797,7 +903,7 @@ def test_tracker_skips_queries_if_not_used_in_project(monkeypatch):
         task_usage, "get_project_settings", lambda *args: _settings([])
     )
     monkeypatch.setattr(task_usage.ayon_api, "get_folder_by_path", _failing)
-    monkeypatch.setattr(task_usage.ayon_api, "put", _failing)
+    monkeypatch.setattr(task_usage.ayon_api, "raw_put", _failing)
 
     tracker = TaskUsageTracker(_MockHost())
     assert tracker._sync() == []
