@@ -694,7 +694,13 @@ def test_window_history_is_hidden_by_default_and_keeps_width(
     app.processEvents()
     assert controller.history_calls == []
 
+    history_button = window._history_button
+    assert history_button.icon().cacheKey() == window._history_icon.cacheKey()
     window._history_button.setChecked(True)
+    assert (
+        history_button.icon().cacheKey()
+        == window._history_checked_icon.cacheKey()
+    )
     assert history_widget.isVisible()
     _wait_for(app, lambda: history_widget._versions_model.rowCount() > 0)
     assert window.size() == size
@@ -709,6 +715,8 @@ def test_window_history_is_hidden_by_default_and_keeps_width(
     assert history_widget._message_label.text() == NO_SELECTION_TEXT
 
     window._history_button.setChecked(False)
+    # The icon is not highlighted anymore, even with focus on the button
+    assert history_button.icon().cacheKey() == window._history_icon.cacheKey()
     assert not history_widget.isVisible()
     assert window.size() == size
     window.close()

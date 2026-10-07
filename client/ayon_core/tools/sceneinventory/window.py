@@ -2,7 +2,8 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.tools.utils import PlaceholderLineEdit, get_qt_icon
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
@@ -52,9 +53,15 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         refresh_button.setToolTip("Refresh")
         refresh_button.setIcon(refresh_icon)
 
-        # Checked state is hardly visible on the button itself
-        history_icon = qtawesome.icon(
-            "fa.history", color="white", color_on="#8fceff"
+        # Checked state is hardly visible on the button itself, so the
+        #   icon is swapped for a highlighted one. Icon states are not
+        #   used for that because a hovered or focused button would keep
+        #   the highlighted icon after it was unchecked.
+        history_icon = get_qt_icon(
+            MaterialSymbolsIcon("calendar_clock", color="white")
+        )
+        history_checked_icon = get_qt_icon(
+            MaterialSymbolsIcon("calendar_clock", color="#8fceff")
         )
         history_button = QtWidgets.QPushButton(self)
         history_button.setToolTip(
@@ -119,6 +126,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._view = view
         self._body_splitter = body_splitter
         self._history_button = history_button
+        self._history_icon = history_icon
+        self._history_checked_icon = history_checked_icon
         self._history_widget = history_widget
 
         self._first_show = True
@@ -182,6 +191,9 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         )
 
     def _on_history_toggle(self, enabled):
+        self._history_button.setIcon(
+            self._history_checked_icon if enabled else self._history_icon
+        )
         self._history_widget.setVisible(enabled)
         if enabled and self._history_first_show:
             # Split the height about evenly
