@@ -63,13 +63,18 @@ def log_module(monkeypatch):
         structlog.reset_defaults()
         structlog.contextvars.clear_contextvars()
 
-    def _load():
+    def _load(initialize=True):
         _reset_structlog()
         module = importlib.reload(ayon_core.lib.log)
-        module.Logger.initialize()
+        if initialize:
+            module.Logger.initialize()
         return module
 
     yield _load
+
+    vector_sender = ayon_core.lib.log._vector_sender
+    if vector_sender is not None:
+        vector_sender.stop(1.0)
 
     for handler in list(root.handlers):
         root.removeHandler(handler)
@@ -113,12 +118,12 @@ def foreign_handler():
     "env, expected",
     [
         ({}, logging.INFO),
-        ({"AYON_DEBUG": "1"}, logging.DEBUG),
         ({"AYON_LOG_LEVEL": "10"}, logging.DEBUG),
         ({"AYON_LOG_LEVEL": "warning"}, logging.WARNING),
-        ({"AYON_LOG_LEVEL": "bogus", "AYON_DEBUG": "1"}, logging.DEBUG),
+        ({"AYON_LOG_LEVEL": "bogus"}, logging.INFO),
         ({"AYON_LOG_LEVEL": "0"}, logging.INFO),
-        ({"AYON_DEBUG": "yes"}, logging.INFO),
+        # Does not affect log level, see '--debug' of AYON launcher
+        ({"AYON_DEBUG": "1"}, logging.INFO),
     ],
 )
 def test_log_level_from_env(log_module, monkeypatch, env, expected):
@@ -1132,3 +1137,221 @@ def test_publisher_plugin_logs_go_to_log_file(
     assert "Plugin" not in stderr_stream.getvalue()
     assert plugin_log.handlers == orig_handlers
     assert plugin_log.propagate is True
+
+
+# --- Threads ---
+# Logging from 'QThread' must not block Vector delivery and vice versa.
+def _run_in_qthread(qtbot, func):
+    """Run function in a 'QThread' and wait until it is finished.
+
+    Waiting with timeout also proves the function did not block.
+    """
+    from qtpy import QtCore
+
+    class _Thread(QtCore.QThread):
+        def run(self):
+            func()
+
+    thread = _Thread()
+    thread.start()
+    qtbot.waitUntil(thread.isFinished, timeout=5000)
+    thread.wait()
+    thread.deleteLater()
+
+
+def _wait_for(predicate, timeout=5.0):
+    deadline = time.monotonic() + timeout
+    while not predicate():
+        if time.monotonic() > deadline:
+            raise AssertionError("Condition not met in time")
+        time.sleep(0.01)
+
+
+def _stub_events(stub):
+    return [item["event"] for body in stub.bodies for item in body]
+
+
+def test_logger_first_created_in_qthread(log_module, monkeypatch, qtbot):
+    """Vector sender started from a 'QThread' outlives the thread."""
+    stub = _StubVector()
+    monkeypatch.setenv("AYON_VECTOR_LOG_URL", stub.url)
+    module = log_module(initialize=False)
+    try:
+        _run_in_qthread(
+            qtbot,
+            lambda: module.Logger.get_logger(
+                "ayon_core.tests.qthread"
+            ).info("From QThread"),
+        )
+        sender_thread = module._vector_sender._thread
+        assert sender_thread is not None and sender_thread.is_alive()
+
+        module.Logger.get_logger("ayon_core.tests.qthread").info("From main")
+        _wait_for(
+            lambda: {"From QThread", "From main"} <= set(_stub_events(stub))
+        )
+    finally:
+        stub.close()
+
+
+def test_concurrent_initialization_from_qthread(
+    log_module, monkeypatch, qtbot
+):
+    stub = _StubVector()
+    monkeypatch.setenv("AYON_VECTOR_LOG_URL", stub.url)
+    module = log_module(initialize=False)
+    barrier = threading.Barrier(2)
+    loggers = []
+
+    def _get_logger():
+        barrier.wait(5.0)
+        loggers.append(module.Logger.get_logger("ayon_core.tests.init"))
+
+    try:
+        from qtpy import QtCore
+
+        class _Thread(QtCore.QThread):
+            def run(self):
+                _get_logger()
+
+        thread = _Thread()
+        thread.start()
+        _get_logger()
+        qtbot.waitUntil(thread.isFinished, timeout=5000)
+        thread.wait()
+    finally:
+        stub.close()
+
+    assert len(loggers) == 2
+    handler_types = [type(handler) for handler in logging.getLogger().handlers]
+    assert handler_types.count(module._StderrHandler) == 1
+    assert handler_types.count(module._DroppingQueueHandler) == 1
+    senders = [
+        thread for thread in threading.enumerate()
+        if thread.name == "AYONVectorSender"
+    ]
+    assert senders == [module._vector_sender._thread]
+
+
+def test_full_vector_queue_does_not_block_qthread(log_module, qtbot):
+    module = log_module()
+    module._vector_warn_logger._interval = 0
+    warn_handler = _ListHandler()
+    warn_logger = logging.getLogger(module._VECTOR_LOGGER_NAME)
+    warn_logger.addHandler(warn_handler)
+    # Nobody reads the queue, e.g. Vector sender is stuck
+    handler = module._DroppingQueueHandler(queue.Queue(maxsize=2))
+    logger = logging.getLogger("ayon_core.tests.qthread_full")
+    logger.addHandler(handler)
+    logger.propagate = False
+    try:
+        _run_in_qthread(
+            qtbot,
+            lambda: [logger.warning("Record %s", idx) for idx in range(100)],
+        )
+    finally:
+        logger.removeHandler(handler)
+        warn_logger.removeHandler(warn_handler)
+
+    assert handler.queue.qsize() == 2
+    assert "Vector log queue is full" in warn_handler.messages[0]
+
+
+def test_records_of_qthreads_are_sent_once(log_module, qtbot):
+    module = log_module()
+    stub = _StubVector()
+    log_queue = queue.Queue()
+    sender = module.VectorHTTPSender(
+        stub.url, log_queue, batch_size=50, flush_interval=0.05
+    )
+    handler = module._DroppingQueueHandler(log_queue)
+    handler.setFormatter(
+        structlog.stdlib.ProcessorFormatter(
+            processors=[structlog.processors.JSONRenderer()],
+        )
+    )
+    logger = logging.getLogger("ayon_core.tests.qthread_many")
+    logger.addHandler(handler)
+    logger.propagate = False
+
+    from qtpy import QtCore
+
+    class _Thread(QtCore.QThread):
+        def __init__(self, thread_idx):
+            super().__init__()
+            self._thread_idx = thread_idx
+
+        def run(self):
+            for idx in range(50):
+                logger.warning("%s-%s", self._thread_idx, idx)
+
+    threads = [_Thread(thread_idx) for thread_idx in range(8)]
+    try:
+        sender.start()
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            qtbot.waitUntil(thread.isFinished, timeout=5000)
+            thread.wait()
+        sender.stop()
+    finally:
+        logger.removeHandler(handler)
+        stub.close()
+
+    events = _stub_events(stub)
+    expected = {
+        f"{thread_idx}-{idx}"
+        for thread_idx in range(8)
+        for idx in range(50)
+    }
+    assert len(events) == len(expected)
+    assert set(events) == expected
+
+
+def test_disable_vector_after_fork(log_module, monkeypatch):
+    """Fork handler is called in the child, here directly."""
+    stub = _StubVector()
+    monkeypatch.setenv("AYON_VECTOR_LOG_URL", stub.url)
+    module = log_module()
+    try:
+        vector_sender = module._vector_sender
+        (queue_handler,) = [
+            handler for handler in logging.getLogger().handlers
+            if isinstance(handler, module._DroppingQueueHandler)
+        ]
+
+        module._disable_vector_after_fork(queue_handler, vector_sender)
+
+        assert queue_handler not in logging.getLogger().handlers
+        assert module._vector_sender is None
+        # 'stop' at exit does not wait for the thread
+        start = time.monotonic()
+        vector_sender.stop()
+        assert time.monotonic() - start < 1.0
+    finally:
+        stub.close()
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="Requires 'os.fork'")
+def test_vector_disabled_in_forked_child(log_module, monkeypatch):
+    stub = _StubVector()
+    monkeypatch.setenv("AYON_VECTOR_LOG_URL", stub.url)
+    module = log_module()
+    try:
+        pid = os.fork()
+        if pid == 0:
+            # Child, leave without running pytest teardown
+            try:
+                has_queue_handler = any(
+                    isinstance(handler, module._DroppingQueueHandler)
+                    for handler in logging.getLogger().handlers
+                )
+                logging.getLogger("ayon_core.tests.fork").warning("Child")
+                os._exit(1 if has_queue_handler else 0)
+            except BaseException:
+                os._exit(2)
+        _, status = os.waitpid(pid, 0)
+    finally:
+        stub.close()
+
+    assert os.waitstatus_to_exitcode(status) == 0

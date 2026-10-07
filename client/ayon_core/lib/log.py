@@ -219,9 +219,8 @@ def _get_level_names_mapping() -> dict[str, int]:
 def get_log_level_from_env() -> int:
     """Resolve the AYON log level from environment variables.
 
-    'AYON_LOG_LEVEL' has precedence and accepts a numeric ('10') or
-    a named ('DEBUG') level. When it is not set, or is invalid,
-    'AYON_DEBUG' greater than 0 enables DEBUG. Defaults to INFO.
+    'AYON_LOG_LEVEL' accepts a numeric ('10') or a named ('DEBUG') level.
+    Defaults to INFO when it is not set or is invalid.
 
     Returns:
         int: Log level.
@@ -235,12 +234,6 @@ def get_log_level_from_env() -> int:
             level = _get_level_names_mapping().get(log_level.upper(), 0)
         if level > 0:
             return level
-
-    try:
-        if int(os.getenv("AYON_DEBUG", "0")) > 0:
-            return logging.DEBUG
-    except ValueError:
-        pass
     return logging.INFO
 
 
@@ -464,6 +457,14 @@ class VectorHTTPSender:
         self._thread = None
         self._session.close()
 
+    def reset_after_fork(self) -> None:
+        """Forget the sender thread in a child process created by fork.
+
+        Only the forking thread exists in the child, 'stop' would wait for
+        the sender thread and put to a queue nobody reads.
+        """
+        self._thread = None
+
     def _run(self) -> None:
         stop = False
         while not stop:
@@ -517,6 +518,26 @@ class VectorHTTPSender:
                 )
         else:
             self._consecutive_failures = 0
+
+
+# Sender of this process, see 'Logger._configure_logger'
+_vector_sender: VectorHTTPSender | None = None
+
+
+def _disable_vector_after_fork(
+    queue_handler: logging.Handler, vector_sender: VectorHTTPSender
+) -> None:
+    """Disable Vector delivery in a child process created by 'os.fork'.
+
+    The sender thread does not exist in the child, records would only
+    fill the queue. The queue lock is also copied in the state of the
+    fork, if the sender thread held it, logging would block forever.
+    """
+    global _vector_sender
+
+    logging.getLogger().removeHandler(queue_handler)
+    vector_sender.reset_after_fork()
+    _vector_sender = None
 
 
 def _is_running_from_sources() -> bool:
@@ -984,6 +1005,8 @@ class Logger:
         duplicate handlers.
 
         """
+        global _vector_sender
+
         if cls._logging_configured:
             return
         # 'structlog.is_configured()' is process-wide, so it also guards
@@ -1046,10 +1069,20 @@ class Logger:
             setattr(queue_handler, STRUCTURED_HANDLER_ATTR, True)
             vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
             vector_sender.start()
+            _vector_sender = vector_sender
             # The sender thread is a daemon thread, it would be killed on
             # interpreter exit with records still in the queue. Stopping it
             # at exit delivers the queued records first.
             atexit.register(vector_sender.stop)
+            # Available only on POSIX, Windows does not fork
+            if hasattr(os, "register_at_fork"):
+                os.register_at_fork(
+                    after_in_child=functools.partial(
+                        _disable_vector_after_fork,
+                        queue_handler,
+                        vector_sender,
+                    )
+                )
             root_logger.addHandler(queue_handler)
 
     @staticmethod
