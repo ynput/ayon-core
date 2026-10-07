@@ -56,6 +56,24 @@ def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):
     return t.strftime(strftime)
 
 
+def file_size_to_string(file_size):
+    if file_size is None:
+        return "N/A"
+    size = 0
+    size_ending_mapping = {
+        "KB": 1024 ** 1,
+        "MB": 1024 ** 2,
+        "GB": 1024 ** 3,
+    }
+    ending = "B"
+    for _ending, _size in size_ending_mapping.items():
+        if file_size < _size:
+            break
+        size = file_size / _size
+        ending = _ending
+    return "{:.2f} {}".format(size, ending)
+
+
 def pretty_timestamp(t, now=None):
     """Parse timestamp to user readable format
 
@@ -85,8 +103,7 @@ def pretty_timestamp(t, now=None):
     if isinstance(t, float):
         dt = datetime.fromtimestamp(t)
     else:
-        # Parse the time format as if it is `str` result from
-        # `pyblish.lib.time()` which usually is stored in Avalon database.
+        # Parse the time from datetime format
         try:
             t = time.strptime(t, "%Y%m%dT%H%M%SZ")
         except ValueError as e:

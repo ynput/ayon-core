@@ -31,7 +31,7 @@ from ayon_core.lib.transcoding import (
 )
 from ayon_core.pipeline import get_temp_dir
 from ayon_core.pipeline.publish import (
-    KnownPublishError,
+    PublishError,
     get_publish_instance_label,
 )
 from ayon_core.pipeline.publish.lib import (
@@ -489,8 +489,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     files,
                 )[0]
                 if len(collections) != 1:
-                    raise KnownPublishError(
-                        "Multiple collections {} found.".format(collections))
+                    raise PublishError(
+                        "Found multiple collections, expected one."
+                        f" {collections}"
+                    )
 
                 collection = collections[0]
 
@@ -545,9 +547,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     ]
                     frame_start = min(collection.indexes)
                     frame_end = max(collection.indexes)
-                    # modify range for burnins
-                    instance.data["frameStart"] = frame_start
-                    instance.data["frameEnd"] = frame_end
                     temp_data.frame_start = frame_start
                     temp_data.frame_end = frame_end
 
@@ -798,7 +797,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if not value:
                 continue
             try:
-                value = value.format(**fill_data)
+                value = value.format_map(fill_data)
             except Exception:
                 self.log.warning(
                     "Failed to format ffmpeg argument: {}".format(value),
@@ -1140,9 +1139,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 is done.
 
         Raises:
-            KnownPublishError: if more than one collection is obtained.
-        """
+            PublishError: if more than one collection is obtained.
 
+        """
         # Prepare which hole is filled with what frame
         #   - the frame is filled only with already existing frames
         prev_frame = next(iter(collection.indexes))
@@ -1161,8 +1160,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
             hole_fpath = os.path.join(staging_dir, col_format % hole_frame)
             src_fpath = os.path.join(staging_dir, col_format % src_frame)
             if not os.path.isfile(src_fpath):
-                raise KnownPublishError(
-                    "Missing previously detected file: {}".format(src_fpath))
+                raise PublishError(
+                    f"Missing previously detected file: {src_fpath}"
+                )
 
             copyfile(src_fpath, hole_fpath)
             added_files[hole_frame] = hole_fpath
@@ -1304,22 +1304,33 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            offset_seconds = 0
-            if offset_seconds > 0:
-                audio_in_args.append(
-                    "-ss {}".format(offset_seconds)
+            # 'offset' was set only by maya addon and it used frame offset
+            #     instead of seconds offset. To prevent issues the value is
+            #     ignored and logged as skipped.
+            if audio.get("offset"):
+                self.log.warning(
+                    "Ignored deprecated audio input attribute 'offset'. "
+                    "Use 'offset_in_seconds' instead."
                 )
 
+            offset_seconds = audio.get("offset_in_seconds", 0)
+            # Delay audio start to match its timeline position.
+            if offset_seconds > 0:
+                # "all=1" applies to every channel (mono, stereo, 5.1…).
+                delay_ms = int(round(offset_seconds * 1000))
+                audio_filters.append(
+                    "adelay={}:all=1".format(delay_ms)
+                )
+            # Crop audio file input.
             elif offset_seconds < 0:
                 audio_in_args.append(
-                    "-itsoffset {}".format(abs(offset_seconds))
+                    "-ss {}".format(abs(offset_seconds))
                 )
 
-            # Audio duration is offset from `-ss`
-            audio_duration = duration_seconds + offset_seconds
-
-            # Set audio duration
-            audio_in_args.append("-to {:0.10f}".format(audio_duration))
+            # Audio duration
+            audio_in_args.append(
+                "-to {:0.10f}".format(duration_seconds - offset_seconds)
+            )
 
             # Ignore video data from audio input
             audio_in_args.append("-vn")
@@ -1335,6 +1346,23 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if len(audio_inputs) > 1:
             audio_out_args.append("-filter_complex amerge")
             audio_out_args.append("-ac {}".format(len(audio_inputs)))
+
+        # Resample audio to ensure block duration from AAC
+        # encoder never exceeds one video frame duration.
+        # Pick the lowest video standard rate satisfying this constraint.
+        # For non-AAC codecs, this has no negative effect.
+
+        # TODO: Replace with once https://trac.ffmpeg.org/ticket/11668 is fixed
+        # audio_filters.append("apad")
+        # audio_out_args.append("-shortest")
+
+        standard_audio_rates = (48000, 96000, 192000)
+        min_audio_rate = 1024 * temp_data.fps  # 1 AAC block = 1024 samples
+        sample_rate = next(
+            (rate for rate in standard_audio_rates if rate > min_audio_rate),
+            standard_audio_rates[-1]
+        )
+        audio_out_args.append(f"-ar {sample_rate}")
 
         return audio_in_args, audio_filters, audio_out_args
 

@@ -24,7 +24,7 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.pipeline import (
-    KnownPublishError,
+    PublishError,
     publish,
 )
 
@@ -51,13 +51,15 @@ class ExtractOTIOReview(
 
     order = api.ExtractorOrder - 0.45
     label = "Extract OTIO review"
-    families = ["review"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["otio.clip.review"]
 
-    # plugin default attributes
-    to_width = 1280
-    to_height = 720
-    output_ext = ".png"
+    settings_category = "core"
+
+    # Configurable by Settings
+    representation_name = None
+    output_ext = "png"
+    default_width = 1280
+    default_height = 720
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -93,10 +95,14 @@ class ExtractOTIOReview(
         #       end frame since start could be lower then 1000
         self.padding = len(str(instance.data.get("frameEnd", 1001)))
         self.used_frames.append(self.workfile_start)
-        self.to_width = instance.data.get(
-            "resolutionWidth") or self.to_width
-        self.to_height = instance.data.get(
-            "resolutionHeight") or self.to_height
+        self.output_ext = self.output_ext.lower().lstrip(".")
+
+        self.to_width = instance.data.get("resolutionWidth")
+        self.to_height = instance.data.get("resolutionHeight")
+
+        if self.to_width is None or self.to_height is None:
+            self.to_width = self.default_width
+            self.to_height = self.default_height
 
         # skip instance if no reviewable data available
         if (
@@ -318,7 +324,7 @@ class ExtractOTIOReview(
 
         collection = clique.Collection(
             self.temp_file_head,
-            tail=self.output_ext,
+            tail=f".{self.output_ext}",
             padding=self.padding,
             indexes=set(self.used_frames)
         )
@@ -331,7 +337,7 @@ class ExtractOTIOReview(
             files = files[0]
         ext = collection.format("{tail}")
         representation_data.update({
-            "name": ext[1:],
+            "name": self.representation_name or ext[1:],
             "ext": ext[1:],
             "files": files,
             "frameStart": start,
@@ -466,9 +472,16 @@ class ExtractOTIOReview(
         command = get_ffmpeg_tool_args("ffmpeg")
 
         input_extension = None
+        # Number of frames the output should contain. Explicitly capping
+        # this on the output side protects against ffmpeg reading past
+        # the intended range, e.g. the image2 demuxer has no "end frame"
+        # option and will keep consuming consecutive numbered files on
+        # disk beyond what this segment actually needs.
+        frame_count = None
         if sequence is not None:
             input_dir, collection, sequence_fps = sequence
             in_frame_start = min(collection.indexes)
+            frame_count = len(collection.indexes)
 
             # converting image sequence to image sequence
             input_file = collection.format("{head}{padding}{tail}")
@@ -505,6 +518,7 @@ class ExtractOTIOReview(
             frame_start = otio_range.start_time.value
             input_fps = otio_range.start_time.rate
             frame_duration = otio_range.duration.value
+            frame_count = round(frame_duration)
             sec_start = frames_to_seconds(frame_start, input_fps)
             sec_duration = frames_to_seconds(
                 frame_duration, input_fps
@@ -533,12 +547,17 @@ class ExtractOTIOReview(
             ])
 
         else:
-            raise KnownPublishError("Sequence, video or gap is required.")
+            raise PublishError("Dev bug: Sequence, video or gap is required.")
 
         if video or sequence:
             command.extend([
                 "-vf", f"scale={self.to_width}:{self.to_height}:flags=lanczos",
                 "-compression_level", "5",
+            ])
+
+        if frame_count is not None:
+            command.extend([
+                "-frames:v", str(frame_count)
             ])
 
         # add output attributes
@@ -549,7 +568,7 @@ class ExtractOTIOReview(
         # add copying if extensions are matching
         if (
             input_extension
-            and self.output_ext == input_extension
+            and self.output_ext == input_extension.lower().strip(".")
         ):
             command.extend(["-c", "copy"])
         else:
@@ -612,8 +631,8 @@ class ExtractOTIOReview(
         """
         output_file = "{}{}{}".format(
             self.temp_file_head,
-            "%0{}d".format(self.padding),
-            self.output_ext
+            f"%0{self.padding}d",
+            f".{self.output_ext}"
         )
         # create path to destination
         output_path = os.path.join(self.staging_dir, output_file)

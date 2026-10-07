@@ -10,7 +10,7 @@ from ayon_core.lib import (
     get_oiio_tool_args,
     ToolNotFoundError,
 )
-from ayon_core.pipeline import KnownPublishError
+from ayon_core.pipeline import PublishError
 
 
 class ExtractScanlineExr(pyblish.api.InstancePlugin):
@@ -54,7 +54,7 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
                 oiio_tool_args = get_oiio_tool_args("oiiotool")
             except ToolNotFoundError:
                 self.log.error("OIIO tool not found.")
-                raise KnownPublishError("OIIO tool not found")
+                raise PublishError("OIIO tool not found")
 
             for file in input_files:
 

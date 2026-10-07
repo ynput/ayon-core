@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import typing
 from typing import Optional, Any
 
 from ayon_core.addon import AddonsManager
@@ -12,6 +13,9 @@ from ayon_core.tools.common_models import (
     TaskItem,
     TaskTypeItem,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 @dataclass
@@ -69,6 +73,7 @@ class WorkfileItem:
     icon: str | None
     version: int | None
     updated_at_time: float | None
+    file_size: int | None = None
 
 
 class AbstractLauncherCommon(ABC):
@@ -160,6 +165,18 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 
 
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
+
     @abstractmethod
     def get_grouped_host_names(self) -> list[str | None]:
         """Get list of host names that will group workfiles."""
@@ -272,6 +289,33 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Returns:
             list[TaskItem]: Minimum possible information needed
                 for visualisation of tasks.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, Optional[str]]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, Optional[str]]: Thumbnail path by entity id.
 
         """
         pass

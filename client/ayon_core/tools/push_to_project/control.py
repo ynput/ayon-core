@@ -11,6 +11,7 @@ from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
     HierarchyModel,
+    ThumbnailsModel,
     TaskTypeItem,
 )
 
@@ -29,6 +30,7 @@ class PushToContextController:
         self._settings_model = SettingsModel()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._integrate_model = IntegrateModel(self)
 
         self._selection_model = PushToProjectSelectionModel(self)
@@ -154,6 +156,9 @@ class PushToContextController:
     def get_project_settings(self, project_name):
         return self._settings_model.get_settings(project_name)
 
+    def get_task_sorting_mode(self, project_name):
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
@@ -170,6 +175,17 @@ class PushToContextController:
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._hierarchy_model.get_task_items(
             project_name, folder_id, sender
+        )
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     def get_user_values(self):
@@ -358,8 +374,8 @@ class PushToContextController:
             "task": task_name
         })
         try:
-            product_s = template_s.format(**fill_data)
-            product_e = template_e.format(**fill_data)
+            product_s = template_s.format_map(fill_data)
+            product_e = template_e.format_map(fill_data)
         except Exception as exc:
             print("Failed format", exc)
             return ""
