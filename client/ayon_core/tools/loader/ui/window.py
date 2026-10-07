@@ -134,6 +134,216 @@ class RefreshHandler:
         self._products_refreshed = True
 
 
+class ConnectionOverlay(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        duration = 1200
+
+        # Ball animation
+        ball_translate_anim = QtCore.QVariantAnimation()
+        ball_translate_anim.setKeyValueAt(0.0, 0.65)
+        ball_translate_anim.setKeyValueAt(0.25, 1.0)
+        ball_translate_anim.setKeyValueAt(0.5, 0.6)
+        ball_translate_anim.setKeyValueAt(0.75, 1.0)
+        ball_translate_anim.setKeyValueAt(1.0, 0.65)
+        ball_translate_anim.setDuration(duration)
+
+        # Legs animation
+        angle_anim = QtCore.QVariantAnimation()
+        angle_anim.setKeyValueAt(0.0, 0.0)
+        angle_anim.setKeyValueAt(0.4, 0.0)
+        angle_anim.setKeyValueAt(0.75, 1.0)
+        angle_anim.setKeyValueAt(1.0, 1.0)
+        angle_anim.setDuration(duration)
+
+        legs_scale_anim = QtCore.QVariantAnimation()
+        legs_scale_anim.setKeyValueAt(0.0, 0.9)
+        legs_scale_anim.setKeyValueAt(0.25, 1.0)
+        legs_scale_anim.setKeyValueAt(0.5, 0.7)
+        legs_scale_anim.setKeyValueAt(0.75, 1.0)
+        legs_scale_anim.setKeyValueAt(1.0, 0.9)
+        legs_scale_anim.setDuration(duration)
+
+        anim_group = QtCore.QParallelAnimationGroup()
+        anim_group.addAnimation(angle_anim)
+        anim_group.addAnimation(legs_scale_anim)
+        anim_group.addAnimation(ball_translate_anim)
+
+        repaint_timer = QtCore.QTimer()
+        repaint_timer.setInterval(16)
+
+        angle_anim.valueChanged.connect(self._on_angle_anim)
+        legs_scale_anim.valueChanged.connect(self._on_legs_scale_anim)
+        ball_translate_anim.valueChanged.connect(self._on_ball_translate_anim)
+        repaint_timer.timeout.connect(self.update)
+
+        anim_group.finished.connect(self._on_anim_group_finish)
+
+        self._ball_offset_ratio: float = ball_translate_anim.startValue()
+        self._angle: int = 0
+        self._legs_scale: float = 1.0
+        self._anim_group = anim_group
+        self._repaint_timer = repaint_timer
+
+        self._update_timers: bool = True
+        self._server_restarting: bool = False
+        self._auth_invalid: bool = False
+
+    def set_server_restarting(self, restarting: bool):
+        self._server_restarting = restarting
+        self._update_timers = True
+        self.update()
+
+    def set_invalid_authentication(self, invalid: bool):
+        self._auth_invalid = invalid
+        self._update_timers = True
+        self.update()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._update_timers = True
+
+    def hideEvent(self, event) -> None:
+        super().hideEvent(event)
+        self._anim_group.stop()
+        self._repaint_timer.stop()
+
+    def _on_angle_anim(self, value):
+        self._angle = int(value * 360)
+
+    def _on_legs_scale_anim(self, value):
+        self._legs_scale = value
+
+    def _on_ball_translate_anim(self, value):
+        self._ball_offset_ratio = value
+
+    def _on_anim_group_finish(self):
+        self._anim_group.start()
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        render_hints = (
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
+            render_hints |= QtGui.QPainter.HighQualityAntialiasing
+
+        painter.setRenderHints(render_hints)
+
+        rect = self.rect()
+
+        if self._update_timers:
+            self._update_timers = False
+            if self._auth_invalid:
+                self._anim_group.stop()
+                self._repaint_timer.stop()
+            else:
+                self._anim_group.start()
+                self._repaint_timer.start()
+
+        painter.fillRect(rect, QtGui.QColor(37, 42, 48, 212))
+
+        if self._auth_invalid:
+            text = (
+                "Authentication failed. Please log in again"
+                " and restart all applications."
+            )
+            text_rect = painter.boundingRect(
+                rect, QtCore.Qt.AlignCenter, text
+            )
+            painter.setPen(QtGui.QColor(255, 255, 255))
+            painter.drawText(text_rect, QtCore.Qt.AlignCenter, text)
+            return
+
+        size = 128
+
+        font = painter.font()
+        font.setPointSize(24)
+        font.setBold(True)
+
+        top_offset = 0
+        padding = 0
+        font_height = QtGui.QFontMetrics(font).height()
+        height = size + font_height
+        if rect.height() < height:
+            size = max(rect.height() - font_height, 0)
+        else:
+            top_offset = (rect.height() - height) * 0.5
+            padding = 0
+            diff = rect.height() - height
+            if padding > diff:
+                padding = diff
+
+        left_offset = (rect.width() - size) * 0.5
+        half_base_size = size * 0.5
+
+        ball_offset = size * 0.1
+        legs_content_size = size - ball_offset
+
+        legs_content_half = legs_content_size * 0.5
+        leg_rect_width = int(legs_content_half * 0.7)
+        leg_rect_height = int(legs_content_half * 0.2)
+        leg_center_offset = int(legs_content_half * 0.2)
+        leg_border_offset = legs_content_half - (
+            leg_rect_width + leg_center_offset
+        )
+
+        ball_size = ball_offset + leg_border_offset
+
+        top_to_center = half_base_size + (ball_size * 0.5)
+
+        ball_y_offset = (size * self._ball_offset_ratio) - ball_size
+
+        ball_rect = QtCore.QRectF(
+            -ball_size * 0.5,
+            ball_y_offset,
+            ball_size,
+            ball_size
+        )
+
+        leg_rect = QtCore.QRectF(
+            leg_center_offset, -leg_rect_height * 0.5,
+            leg_rect_width, leg_rect_height
+        )
+
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(154, 169, 183))
+
+        # Transformations must not affect the text drawn below
+        painter.save()
+        painter.translate(
+            left_offset + half_base_size,
+            top_offset + half_base_size
+        )
+        painter.scale(self._legs_scale, self._legs_scale)
+        painter.rotate(90 + self._angle)
+        painter.drawRect(leg_rect)
+        painter.rotate(120)
+        painter.drawRect(leg_rect)
+        painter.rotate(120)
+        painter.drawRect(leg_rect)
+        painter.rotate(210)
+        painter.scale(1.0, 1.0)
+        painter.drawEllipse(ball_rect)
+        painter.restore()
+
+        painter.setFont(font)
+        text = "Connection to AYON server lost.."
+        if self._server_restarting:
+            text = "AYON server is restarting.."
+
+        text_rect = QtCore.QRectF(
+            rect.x(),
+            top_offset + size + padding,
+            rect.width(),
+            font_height,
+        )
+        painter.setPen(QtGui.QColor(255, 255, 255))
+        painter.drawText(text_rect, QtCore.Qt.AlignCenter, text)
+
+
 class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
         super().__init__(parent)
@@ -169,6 +379,7 @@ class LoaderWindow(QtWidgets.QWidget):
             handle_expected_selection=True
         )
         projects_combobox.set_select_item_visible(True)
+        projects_combobox.set_libraries_separator_visible(True)
         projects_combobox.set_standard_filter_enabled(
             controller.is_standard_projects_filter_enabled()
         )
@@ -251,6 +462,15 @@ class LoaderWindow(QtWidgets.QWidget):
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.addWidget(main_splitter)
 
+        connection_overlay = ConnectionOverlay(self)
+        connection_overlay.setVisible(False)
+
+        # Server events are received in a background thread, the timer
+        #   processes them in main thread
+        server_events_timer = QtCore.QTimer(self)
+        server_events_timer.setInterval(200)
+        server_events_timer.timeout.connect(self._on_server_events_timer)
+
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
 
@@ -313,7 +533,25 @@ class LoaderWindow(QtWidgets.QWidget):
             "loader.action.finished",
             self._on_loader_action_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_connection_opened,
+        )
+        controller.register_event_callback(
+            "ayon.connection.closed",
+            self._on_connection_closed,
+        )
+        controller.register_event_callback(
+            "ayon.auth.failed",
+            self._on_auth_failed,
+        )
+        controller.register_event_callback(
+            "ayon.server.restart",
+            self._on_server_restart,
+        )
 
+        self._connection_overlay = connection_overlay
+        self._server_events_timer = server_events_timer
         self._overlay_object = overlay_object
 
         self._group_dialog = ProductGroupDialog(controller, self)
@@ -358,6 +596,10 @@ class LoaderWindow(QtWidgets.QWidget):
         self._reset_on_show = False
         self._controller.reset()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._connection_overlay.resize(self.size())
+
     def showEvent(self, event):
         super().showEvent(event)
 
@@ -365,9 +607,15 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_first_show()
 
         self._show_timer.start()
+        self._server_events_timer.start()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._server_events_timer.stop()
 
     def closeEvent(self, event):
         super().closeEvent(event)
+        self._server_events_timer.stop()
 
         self._reset_on_show = True
 
@@ -538,6 +786,8 @@ class LoaderWindow(QtWidgets.QWidget):
         if not self._refresh_handler.project_refreshed:
             self._projects_combobox.refresh()
         self._update_filters()
+        if self._controller.get_server_connection_state() is False:
+            self._on_connection_closed()
         # Update my tasks
         self._on_my_tasks_checkbox_state_changed(
             self._filters_widget.is_my_tasks_checked()
@@ -786,3 +1036,22 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_products_refresh(self):
         self._refresh_handler.set_products_refreshed()
+
+    def _on_server_events_timer(self):
+        self._controller.process_server_events()
+
+    def _on_connection_opened(self):
+        self._connection_overlay.setVisible(False)
+        self._connection_overlay.set_invalid_authentication(False)
+        self._connection_overlay.set_server_restarting(False)
+
+    def _on_connection_closed(self):
+        self._connection_overlay.setVisible(True)
+
+    def _on_auth_failed(self):
+        self._connection_overlay.setVisible(True)
+        self._connection_overlay.set_invalid_authentication(True)
+
+    def _on_server_restart(self):
+        self._connection_overlay.setVisible(True)
+        self._connection_overlay.set_server_restarting(True)

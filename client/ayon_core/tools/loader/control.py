@@ -24,6 +24,7 @@ from ayon_core.tools.common_models import (
     TagItem,
     ProductTypeIconMapping,
     UsersModel,
+    WSEventsModel,
 )
 
 from .abstract import (
@@ -121,6 +122,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def __init__(self, host: Optional[AbstractHost] = None) -> None:
         self._log = None
         self._host = host
+        self._ws_events_initialized: bool = False
 
         self._event_system = self._create_event_system()
 
@@ -141,6 +143,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._sitesync_model = SiteSyncModel(self)
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
+        self._ws_events_model = WSEventsModel()
 
     @property
     def log(self):
@@ -156,6 +159,23 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             return None
         return self._host.name
 
+    def _init_ws_events(self) -> None:
+        if not self._ws_events_initialized:
+            self._ws_events_initialized = True
+            self._ws_events_model.register_ayon_event_callback(
+                "connection.opened", self._on_ws_connection_opened
+            )
+            self._ws_events_model.register_ayon_event_callback(
+                "connection.closed", self._on_ws_connection_closed
+            )
+            self._ws_events_model.register_ayon_event_callback(
+                "auth.failed", self._on_ayon_auth_failed
+            )
+            self._ws_events_model.register_ayon_event_callback(
+                "server.restart_requested",
+                self._on_ayon_server_restart
+            )
+
     # Events system
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
@@ -169,6 +189,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def reset(self):
         self._emit_event("controller.reset.started")
+
+        self._init_ws_events()
 
         project_name = self.get_selected_project_name()
         folder_ids = self.get_selected_folder_ids()
@@ -572,6 +594,25 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 product_types=profile["filter_product_types"]
             )
         return output
+
+    def process_server_events(self) -> None:
+        self._init_ws_events()
+        self._ws_events_model.process_events()
+
+    def get_server_connection_state(self) -> Optional[bool]:
+        return self._ws_events_model.get_connection_state()
+
+    def _on_ws_connection_opened(self) -> None:
+        self.emit_event("ayon.connection.opened")
+
+    def _on_ws_connection_closed(self) -> None:
+        self.emit_event("ayon.connection.closed")
+
+    def _on_ayon_auth_failed(self) -> None:
+        self.emit_event("ayon.auth.failed")
+
+    def _on_ayon_server_restart(self) -> None:
+        self.emit_event("ayon.server.restart")
 
     def _create_event_system(self):
         return QueuedEventSystem()
