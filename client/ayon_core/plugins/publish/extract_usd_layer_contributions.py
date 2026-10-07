@@ -851,13 +851,14 @@ class ExtractUSDLayerContribution(publish.Extractor):
                     ]
                 )
 
-                # Remove any existing matching entry of same product
-                variant_prim_spec = sdf_layer.GetPrimAtPath(variant_prim_path)
-                if variant_prim_spec:
-                    self.remove_previous_reference_contribution(
-                        prim_spec=variant_prim_spec,
-                        instance=contribution.instance
-                    )
+                # Remove any existing matching entry of same product. This
+                # is done for the full layer so that no stale reference
+                # remains in another variant if the variant set name or
+                # variant name changed since the last publish.
+                self.remove_previous_reference_contributions(
+                    layer=sdf_layer,
+                    instance=contribution.instance
+                )
 
                 # Add the contribution at the indicated order
                 self.add_reference_contribution(sdf_layer,
@@ -920,6 +921,30 @@ class ExtractUSDLayerContribution(publish.Extractor):
             files=filename,
             staging_dir=staging_dir
         )
+
+    def remove_previous_reference_contributions(
+        self,
+        layer: "Sdf.Layer",
+        instance: pyblish.api.Instance
+    ):
+        """Remove existing contributions of the product in the full layer.
+
+        This includes any prims inside variants.
+        """
+        prim_paths = []
+
+        def _collect_prim_path(path: "Sdf.Path"):
+            if path.IsPrimPath() or path.IsPrimVariantSelectionPath():
+                prim_paths.append(path)
+
+        layer.Traverse(Sdf.Path.absoluteRootPath, _collect_prim_path)
+        for prim_path in prim_paths:
+            prim_spec = layer.GetPrimAtPath(prim_path)
+            if prim_spec:
+                self.remove_previous_reference_contribution(
+                    prim_spec=prim_spec,
+                    instance=instance
+                )
 
     def remove_previous_reference_contribution(self,
                                                prim_spec: "Sdf.PrimSpec",
