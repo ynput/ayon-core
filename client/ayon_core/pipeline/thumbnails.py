@@ -194,8 +194,8 @@ class ThumbnailsCache:
 
     def make_sure_project_dir_exists(self, project_name):
         project_dir = self.get_project_dir(project_name)
-        if not os.path.exists(project_dir):
-            os.makedirs(project_dir)
+        # The directory can be created by other thread at the same time
+        os.makedirs(project_dir, exist_ok=True)
         return project_dir
 
     def store_thumbnail(self, project_name, thumbnail_id, content, mime_type):
