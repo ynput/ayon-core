@@ -26,6 +26,7 @@ import os
 import socket
 import time
 from dataclasses import dataclass, asdict, fields, replace
+from functools import partial
 from typing import Any, Optional
 
 import ayon_api
@@ -378,6 +379,29 @@ def filter_other_users_items(
             item.username != username
             and item.session_id not in acknowledged_session_ids
         )
+    ]
+
+
+def get_same_workfile_items(
+    items: list[TaskUsageItem], workfile: Optional[str]
+) -> list[TaskUsageItem]:
+    """Sessions that have opened workfile with the same filename.
+
+    Args:
+        items (list[TaskUsageItem]): Sessions working on a task.
+        workfile (Optional[str]): Path or filename of a workfile.
+
+    Returns:
+        list[TaskUsageItem]: Sessions working in the same workfile.
+
+    """
+    if not workfile:
+        return []
+    filename = os.path.basename(workfile).lower()
+    return [
+        item
+        for item in items
+        if item.workfile and item.workfile.lower() == filename
     ]
 
 
@@ -743,14 +767,42 @@ class TaskUsageTracker:
                 show_task_in_use_notice,
             )
 
+            version_up_callback = None
+            workfile = self._item.workfile if self._item else None
+            if get_same_workfile_items(items, workfile):
+                version_up_callback = partial(self._version_up, workfile)
+
             return show_task_in_use_notice(
-                items, get_task_usage_user_full_names(items)
+                items,
+                get_task_usage_user_full_names(items),
+                version_up_callback=version_up_callback,
             )
         except Exception:
             log.debug(
                 "Failed to show task in-use notice.", exc_info=True
             )
         return False
+
+    def _version_up(self, workfile: str) -> None:
+        """Save current workfile as next version.
+
+        Nothing is saved if the workfile is not opened anymore.
+
+        Args:
+            workfile (str): Filename of workfile the user was notified
+                about.
+
+        """
+        if self._get_workfile_name() != workfile:
+            log.warning(
+                "Workfile '%s' is not opened anymore. Skipping version up.",
+                workfile,
+            )
+            return
+
+        from .utils import save_next_version
+
+        save_next_version()
 
     def _get_workfile_name(self) -> Optional[str]:
         get_current_workfile = getattr(
