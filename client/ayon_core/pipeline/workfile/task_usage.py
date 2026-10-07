@@ -13,8 +13,14 @@ the task, does not create events and the user does not need permissions to
 update the task. Timestamps of sessions are filled by the server.
 
 A session must report itself to the server (heartbeat) to stay alive.
-The heartbeat is sent from a background thread a few times per the time
-to live, so sessions of crashed applications expire on their own.
+The heartbeat is sent a few times per the time to live, so sessions of
+crashed applications expire on their own.
+
+Callbacks of the application do not wait for the server. Session of the
+application is handled by 'TaskUsageTracker' in a background thread, the
+main thread only passes current context to it. A notice about other users
+is passed to callbacks registered by a frontend, which shows it in its own
+thread, see 'register_task_in_use_notice_callback'.
 
 The endpoints are not available if the server runs older version of the
 core addon. In that case the tracking is disabled and nothing is reported.
@@ -28,9 +34,9 @@ import os
 import socket
 import threading
 import time
-from dataclasses import dataclass, asdict, fields, replace
+from dataclasses import dataclass, asdict, field, fields, replace
 from functools import partial
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 import ayon_api
 
@@ -56,12 +62,17 @@ MAX_TTL_SECONDS = 60 * 60
 # Session survives a few missed heartbeats, e.g. when the application is
 #   busy or the server is not available for a moment
 HEARTBEATS_PER_TTL = 3
-# Do not try to reach the server for some time after a failed request of
-#   the tracker, to not slow down every save of a workfile
-RETRY_INTERVAL_SECONDS = 5 * 60
-# Requests are sent from callbacks of the application too, do not wait
-#   for the server as long as for other requests
+# Do not wait for the server as long as for other requests, the requests
+#   are also sent before a workfile is opened and on application launch
 REQUEST_TIMEOUT_SECONDS = 5.0
+# Opened or saved workfile is reported as activity of the session, but not
+#   more often if the workfile did not change
+ACTIVITY_INTERVAL_SECONDS = 30.0
+# Scheduled context that was not processed for this time means that the
+#   background thread is not processed by the application
+STARVED_THREAD_SECONDS = 10.0
+# How long is exit of the application blocked to release the task
+EXIT_TIMEOUT_SECONDS = 3.0
 
 # Environment variables with value "1" in farm jobs
 FARM_JOB_ENV_KEYS = (
@@ -684,22 +695,96 @@ class _TaskContext:
     settings: TaskUsageSettings
 
 
+@dataclass(frozen=True)
+class _HostState:
+    """Context of the host integration captured in the main thread."""
+    project_name: Optional[str]
+    folder_path: Optional[str]
+    task_name: Optional[str]
+    workfile: Optional[str]
+
+
+@dataclass
+class TaskInUseNotice:
+    """Other users are working on the task claimed by current process.
+
+    The task is already in use by current process at this point, e.g. the
+    application was launched with a workfile, so the user can only be
+    informed.
+
+    Attributes:
+        items (list[TaskUsageItem]): Sessions of other users.
+        user_full_names (dict[str, str]): Full names of the users by
+            username.
+        workfile (Optional[str]): Filename of workfile opened in current
+            process when the task was claimed.
+        version_up_callback (Optional[Callable[[], None]]): Callback to
+            save current workfile as next version. Is filled if the same
+            workfile is opened by other user. Must be called from the main
+            thread of the application.
+
+    """
+    items: list[TaskUsageItem]
+    user_full_names: dict[str, str] = field(default_factory=dict)
+    workfile: Optional[str] = None
+    version_up_callback: Optional[Callable[[], None]] = None
+
+
+_notice_callbacks: list[Callable[[TaskInUseNotice], None]] = []
+
+
+def register_task_in_use_notice_callback(
+    callback: Callable[[TaskInUseNotice], None]
+) -> None:
+    """Register callback called when the claimed task is in use.
+
+    The callback is a way how a frontend can show the notice to the user.
+    The frontend should call 'acknowledge_task_usage_items' with sessions
+    it did show, so the user is not asked about them again.
+
+    Warning:
+        The callback is called from a background thread. It must not
+        block and must not touch the application or its UI directly. It
+        has to pass the notice to the thread where it can be shown on
+        its own, e.g. with a queued Qt signal.
+
+    Args:
+        callback (Callable[[TaskInUseNotice], None]): Callback to register.
+
+    """
+    if callback not in _notice_callbacks:
+        _notice_callbacks.append(callback)
+
+
+def deregister_task_in_use_notice_callback(
+    callback: Callable[[TaskInUseNotice], None]
+) -> None:
+    """Remove callback registered for notices about task in use."""
+    if callback in _notice_callbacks:
+        _notice_callbacks.remove(callback)
+
+
 class TaskUsageTracker:
     """Keep current process registered on the task of current context.
 
     The tracker follows current context of the host integration. The task is
     claimed when context changes or a workfile is opened or saved, and is
     released when context changes to a different task or the process ends.
+    Claimed task is kept alive on the server with heartbeats.
 
-    Claimed task is kept alive on the server with heartbeats sent from
-    a background thread, see 'start_heartbeat'. The thread sleeps between
-    heartbeats, does not touch the host integration and does not hold
-    the lock of the tracker while it waits for the server, so callbacks
-    of the application never wait for a heartbeat.
+    Callbacks of the application must not wait for the server, so the work
+    is split to 2 parts:
+        - 'sync' is called from the callbacks in the main thread. It only
+            reads current context from the host integration and schedules
+            it, without any request to the server.
+        - 'process' does all requests to the server. It is called from
+            a background thread, see 'start'. The thread sleeps most of
+            the time and never touches the host integration.
 
-    When a task is claimed and other users are working on it, the user is
-    notified about them, unless the user did already confirm them, e.g. in
-    the Workfiles tool.
+    When a task is claimed and other users are working on it, callbacks
+    registered with 'register_task_in_use_notice_callback' are called,
+    unless the user did already confirm the sessions, e.g. in the launcher
+    or in the Workfiles tool.
 
     Failures are only logged. The tracker must never break host callbacks.
     The tracker disables itself if the server does not support task in-use
@@ -711,16 +796,29 @@ class TaskUsageTracker:
     """
     def __init__(self, host):
         self._host = host
+        self._host_name: Optional[str] = getattr(host, "name", None)
+
+        # Context scheduled in main thread for the background thread
+        self._lock = threading.Lock()
+        self._scheduled: Optional[_HostState] = None
+        self._is_scheduled: bool = False
+        self._scheduled_at: float = 0.0
+
+        self._thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+        self._wake_event = threading.Event()
+
+        # Only one thread can talk to the server at a time
+        self._process_lock = threading.Lock()
+        # Attributes below are changed only during the processing
+        self._state: Optional[_HostState] = None
         self._claimed: Optional[_TaskContext] = None
         self._item: Optional[TaskUsageItem] = None
         self._last_update: float = 0.0
-        self._retry_after: float = 0.0
+        self._last_activity: float = 0.0
+        self._failed: bool = False
         self._disabled: bool = False
         self._context_cache: dict[tuple, Optional[_TaskContext]] = {}
-        # Claimed task is accessed from the heartbeat thread
-        self._lock = threading.RLock()
-        self._heartbeat_thread: Optional[threading.Thread] = None
-        self._heartbeat_stop = threading.Event()
 
     @property
     def is_disabled(self) -> bool:
@@ -728,174 +826,163 @@ class TaskUsageTracker:
         return self._disabled
 
     def sync(self) -> None:
-        """Synchronize the task registration with current host context.
+        """Schedule synchronization with current context of the host.
 
-        Is not processed for some time after a failure, e.g. when server is
-        not available, to not slow down every save of a workfile.
+        Should be called from the main thread of the application, e.g.
+        from callbacks of the host integration. Does not wait for the
+        server, the context is processed in the background thread.
         """
-        if self._disabled or time.monotonic() < self._retry_after:
+        if self._disabled:
             return
-        other_items = []
         try:
-            with self._lock:
-                other_items = self._sync()
-        except TaskUsageNotSupportedError:
-            self._disable()
+            state = self._get_host_state()
         except Exception:
-            self._retry_after = time.monotonic() + RETRY_INTERVAL_SECONDS
-            log.warning("Failed to update task in-use data.", exc_info=True)
-
-        # Sessions stay unconfirmed if the user could not be notified, the
-        #   user is asked about them when opens a workfile of the task
-        if other_items and self._notify(other_items):
-            acknowledge_task_usage_items(other_items)
+            log.warning(
+                "Failed to receive context for task in-use tracking.",
+                exc_info=True,
+            )
+            return
+        self._schedule(state)
 
     def release(self) -> None:
-        """Unregister from the claimed task."""
-        with self._lock:
-            claimed, self._claimed = self._claimed, None
-            item, self._item = self._item, None
-            if claimed is None or item is None:
-                return
-            try:
-                release_task(
-                    claimed.project_name, claimed.task_id, item.session_id
-                )
-            except Exception:
-                log.warning(
-                    "Failed to release task in-use data.", exc_info=True
-                )
+        """Schedule release of the claimed task.
 
-    def heartbeat(self) -> None:
-        """Keep the session on the claimed task alive.
-
-        Can be called from any thread. Nothing is sent if the session was
-        updated a moment ago.
-
-        The lock is not held during the request, so 'sync' and 'release'
-        do not wait for the server because of a heartbeat.
+        Does not wait for the server. The task is claimed again with next
+        'sync' call.
         """
-        with self._lock:
-            claimed = self._claimed
-            item = self._item
-            if self._disabled or claimed is None or item is None:
-                return
+        self._schedule(None)
 
-            now = time.monotonic()
-            interval = claimed.settings.heartbeat_interval
-            if now - self._last_update < interval / 2:
-                return
+    def process(self) -> None:
+        """Apply scheduled context on the server and keep session alive.
 
+        Does requests to the server, so it is called from the background
+        thread. Can be called from any thread, e.g. if the thread is not
+        used. Nothing happens if other thread is processing right now.
+        """
+        if not self._process_lock.acquire(blocking=False):
+            return
         try:
-            update_task_session(
-                claimed.project_name,
-                claimed.task_id,
-                item,
-                claimed.settings.ttl_seconds,
-                heartbeat=True,
-            )
+            self._process()
+            self._failed = False
         except TaskUsageNotSupportedError:
             self._disable()
-            return
         except Exception:
-            # Server may be temporarily not available
-            log.debug("Failed to send task in-use heartbeat.", exc_info=True)
-            return
+            # Server may be temporarily not available, is repeated later
+            log_method = log.debug if self._failed else log.warning
+            log_method("Failed to update task in-use data.", exc_info=True)
+            self._failed = True
+        finally:
+            self._process_lock.release()
 
-        with self._lock:
-            current = self._claimed
-            current_item = self._item
-            if current_item is item:
-                self._last_update = now
-                return
-
-        # The session did change during the request
-        try:
-            if (
-                current is None
-                or current_item is None
-                or current.project_name != claimed.project_name
-                or current.task_id != claimed.task_id
-            ):
-                # Task was released, the heartbeat could register it again
-                release_task(
-                    claimed.project_name, claimed.task_id, item.session_id
-                )
-            else:
-                # The heartbeat could override newer data of the session
-                update_task_session(
-                    current.project_name,
-                    current.task_id,
-                    current_item,
-                    current.settings.ttl_seconds,
-                    heartbeat=True,
-                )
-        except Exception:
-            log.debug("Failed to fix task in-use session.", exc_info=True)
-
-    def start_heartbeat(self) -> None:
-        """Start a background thread sending heartbeats.
+    def start(self) -> None:
+        """Start background thread that does the processing.
 
         The thread is a daemon, so it does not block exit of the process.
         """
-        if self._heartbeat_thread is not None or self._disabled:
+        if self._thread is not None or self._disabled:
             return
-        self._heartbeat_stop = stop_event = threading.Event()
-        self._heartbeat_thread = thread = threading.Thread(
-            target=self._heartbeat_loop,
+        self._stop_event = stop_event = threading.Event()
+        self._thread = thread = threading.Thread(
+            target=self._run,
             args=(stop_event,),
-            name="ayon-task-in-use-heartbeat",
+            name="ayon-task-in-use",
             daemon=True,
         )
         thread.start()
 
-    def stop_heartbeat(self, timeout: Optional[float] = None) -> None:
-        """Stop the heartbeat thread.
+    def stop(self, timeout: Optional[float] = None) -> None:
+        """Release the claimed task and stop the background thread.
+
+        The task is released by the thread. It is released in current
+        thread if the thread was not started.
 
         Args:
-            timeout (Optional[float]): Seconds to wait for the thread to
-                finish. Sleeping thread does finish immediately. Does not
-                wait if is not passed.
+            timeout (Optional[float]): Seconds to wait until the task is
+                released by the thread, e.g. on exit of the application.
+                Does not wait if is not passed.
 
         """
-        thread, self._heartbeat_thread = self._heartbeat_thread, None
-        self._heartbeat_stop.set()
-        if (
-            timeout
-            and thread is not None
-            and thread is not threading.current_thread()
-        ):
+        thread, self._thread = self._thread, None
+        with self._lock:
+            self._scheduled = None
+            self._is_scheduled = True
+            self._scheduled_at = time.monotonic()
+        self._stop_event.set()
+        self._wake_event.set()
+
+        if thread is None:
+            self.process()
+        elif timeout and thread is not threading.current_thread():
             thread.join(timeout)
 
-    def _heartbeat_loop(self, stop_event: threading.Event) -> None:
-        while not stop_event.wait(self._get_heartbeat_interval()):
-            try:
-                self.heartbeat()
-            except Exception:
-                log.debug("Task in-use heartbeat failed.", exc_info=True)
+    def _schedule(self, state: Optional[_HostState]) -> None:
+        now = time.monotonic()
+        with self._lock:
+            # Background threads are not processed in some applications
+            #   when Python code is not running in the main thread
+            is_starved = (
+                self._is_scheduled
+                and self._thread is not None
+                and now - self._scheduled_at >= STARVED_THREAD_SECONDS
+                and not self._process_lock.locked()
+            )
+            if not self._is_scheduled:
+                self._scheduled_at = now
+            self._scheduled = state
+            self._is_scheduled = True
+        self._wake_event.set()
 
-    def _get_heartbeat_interval(self) -> float:
+        if is_starved:
+            log.debug(
+                "Task in-use thread is not processed by the application."
+                " Processing in current thread."
+            )
+            self.process()
+
+    def _run(self, stop_event: threading.Event) -> None:
+        while True:
+            self._wake_event.wait(self._get_wait_seconds())
+            self._wake_event.clear()
+            # Scheduled release is processed before the thread stops
+            self.process()
+            if stop_event.is_set() or self._disabled:
+                break
+
+    def _get_wait_seconds(self) -> float:
+        """Seconds until the next heartbeat or next try after a failure."""
         claimed = self._claimed
         if claimed is None:
             return TaskUsageSettings().heartbeat_interval
-        return claimed.settings.heartbeat_interval
+        interval = claimed.settings.heartbeat_interval
+        if self._failed:
+            return interval
+        elapsed = time.monotonic() - self._last_update
+        return max(1.0, interval - elapsed)
 
     def _disable(self) -> None:
+        self._disabled = True
+        self._claimed = None
+        self._item = None
+        self._thread = None
+        self._stop_event.set()
+        self._wake_event.set()
+
+    def _process(self) -> None:
+        if self._disabled:
+            return
+
+        is_activity = False
         with self._lock:
-            self._disabled = True
-            self._claimed = None
-            self._item = None
-        self.stop_heartbeat()
+            if self._is_scheduled:
+                self._state = self._scheduled
+                self._scheduled = None
+                self._is_scheduled = False
+                is_activity = True
 
-    def _sync(self) -> list[TaskUsageItem]:
-        """Synchronize the registration.
-
-        Returns:
-            list[TaskUsageItem]: Sessions of other users the user should be
-                notified about.
-
-        """
-        context = self._get_task_context()
+        state = self._state
+        context = None
+        if state is not None:
+            context = self._get_task_context(state)
 
         claimed = self._claimed
         if claimed is not None and (
@@ -903,42 +990,59 @@ class TaskUsageTracker:
             or context.project_name != claimed.project_name
             or context.task_id != claimed.task_id
         ):
-            self.release()
+            self._release_claimed()
             claimed = None
 
         if context is None:
-            return []
+            return
 
-        workfile = self._get_workfile_name()
         now = time.monotonic()
         if claimed is None:
-            other_items = self._claim(context, workfile)
-            self._last_update = now
-            return other_items
+            self._claim(context, state.workfile)
+            return
 
-        # The time based refresh is a fallback for applications where
-        #   the heartbeat thread is not processed
-        if (
-            workfile != self._item.workfile
-            or now - self._last_update >= context.settings.heartbeat_interval
+        item = self._item
+        ttl = context.settings.ttl_seconds
+        if state.workfile != item.workfile or (
+            # Workfile was opened or saved, but do not report each save
+            is_activity
+            and now - self._last_activity >= ACTIVITY_INTERVAL_SECONDS
         ):
-            item = replace(self._item, workfile=workfile)
+            item = replace(item, workfile=state.workfile)
+            update_task_session(
+                context.project_name, context.task_id, item, ttl
+            )
+            self._item = item
+            self._last_update = self._last_activity = now
+
+        elif (
+            now - self._last_update
+            >= context.settings.heartbeat_interval - 1.0
+        ):
             update_task_session(
                 context.project_name,
                 context.task_id,
                 item,
-                context.settings.ttl_seconds,
+                ttl,
+                heartbeat=True,
             )
-            self._item = item
             self._last_update = now
-        return []
 
-    def _claim(
-        self, context: _TaskContext, workfile: Optional[str]
-    ) -> list[TaskUsageItem]:
-        item = create_session_item(
-            workfile, getattr(self._host, "name", None)
-        )
+    def _release_claimed(self) -> None:
+        claimed, self._claimed = self._claimed, None
+        item, self._item = self._item, None
+        if claimed is None or item is None:
+            return
+        try:
+            release_task(
+                claimed.project_name, claimed.task_id, item.session_id
+            )
+        except Exception:
+            # The session does expire on the server
+            log.warning("Failed to release task in-use data.", exc_info=True)
+
+    def _claim(self, context: _TaskContext, workfile: Optional[str]) -> None:
+        item = create_session_item(workfile, self._host_name)
         other_items = claim_task(
             context.project_name,
             context.task_id,
@@ -947,51 +1051,55 @@ class TaskUsageTracker:
         )
         self._claimed = context
         self._item = item
+        self._last_update = self._last_activity = time.monotonic()
 
-        return filter_other_users_items(
+        other_items = filter_other_users_items(
             other_items, item.username, _acknowledged_session_ids
         )
+        if other_items:
+            self._notify(other_items, workfile)
 
-    def _notify(self, items: list[TaskUsageItem]) -> bool:
+    def _notify(
+        self, items: list[TaskUsageItem], workfile: Optional[str]
+    ) -> None:
         """Notify user that other users are working on the claimed task.
 
-        The task is already in use by current process at this point, e.g.
-        the application was launched with a workfile, so the user can only
-        be informed.
-
-        Returns:
-            bool: The notice will be shown to the user.
-
+        Is called from the background thread, so the notice is only passed
+        to registered callbacks. Sessions stay unconfirmed until a frontend
+        does acknowledge them, the user is asked about them when opens
+        a workfile of the task otherwise.
         """
         log.warning(
             "Task is in use by other users: %s",
             ", ".join(sorted({item.username for item in items})),
         )
-        try:
-            from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
-                show_task_in_use_notice,
-            )
+        callbacks = list(_notice_callbacks)
+        if not callbacks:
+            return
 
-            version_up_callback = None
-            workfile = self._item.workfile if self._item else None
-            if get_same_workfile_items(items, workfile):
-                version_up_callback = partial(self._version_up, workfile)
+        version_up_callback = None
+        if get_same_workfile_items(items, workfile):
+            version_up_callback = partial(self._version_up, workfile)
 
-            return show_task_in_use_notice(
-                items,
-                get_task_usage_user_full_names(items),
-                version_up_callback=version_up_callback,
-            )
-        except Exception:
-            log.debug(
-                "Failed to show task in-use notice.", exc_info=True
-            )
-        return False
+        notice = TaskInUseNotice(
+            items,
+            get_task_usage_user_full_names(items),
+            workfile,
+            version_up_callback,
+        )
+        for callback in callbacks:
+            try:
+                callback(notice)
+            except Exception:
+                log.debug(
+                    "Failed to pass task in-use notice.", exc_info=True
+                )
 
     def _version_up(self, workfile: str) -> None:
         """Save current workfile as next version.
 
-        Nothing is saved if the workfile is not opened anymore.
+        Must be called from the main thread of the application. Nothing is
+        saved if the workfile is not opened anymore.
 
         Args:
             workfile (str): Filename of workfile the user was notified
@@ -1020,12 +1128,21 @@ class TaskUsageTracker:
             return None
         return os.path.basename(filepath)
 
-    def _get_task_context(self) -> Optional[_TaskContext]:
-        """Task of current host context with enabled in-use tracking."""
+    def _get_host_state(self) -> _HostState:
+        """Current context of the host, is called from the main thread."""
         context = self._host.get_current_context()
-        project_name = context.get("project_name")
-        folder_path = context.get("folder_path")
-        task_name = context.get("task_name")
+        return _HostState(
+            context.get("project_name"),
+            context.get("folder_path"),
+            context.get("task_name"),
+            self._get_workfile_name(),
+        )
+
+    def _get_task_context(self, state: _HostState) -> Optional[_TaskContext]:
+        """Task of host context with enabled in-use tracking."""
+        project_name = state.project_name
+        folder_path = state.folder_path
+        task_name = state.task_name
         if not project_name or not folder_path or not task_name:
             return None
 
@@ -1059,7 +1176,7 @@ class TaskUsageTracker:
 
         settings = get_task_usage_settings(
             project_name,
-            getattr(self._host, "name", None),
+            self._host_name,
             task_entity["taskType"],
             task_entity["name"],
         )
@@ -1074,9 +1191,8 @@ _tracker: Optional[TaskUsageTracker] = None
 
 def _on_exit() -> None:
     if _tracker is not None:
-        # Do not keep the thread running during exit of the application
-        _tracker.stop_heartbeat(timeout=1.0)
-        _tracker.release()
+        # The task is released by the thread, wait for it only a moment
+        _tracker.stop(timeout=EXIT_TIMEOUT_SECONDS)
 
 
 def _connect_qt_quit() -> None:
@@ -1094,11 +1210,32 @@ def _connect_qt_quit() -> None:
         log.debug("Failed to connect to Qt application quit.", exc_info=True)
 
 
+def _install_notice_frontend() -> None:
+    """Let a frontend show notices about task in use to the user.
+
+    The tracker does not know how to show a notice in the application, it
+    only calls registered callbacks. Nothing is registered if Qt is not
+    available. The user is then asked in the Workfiles tool or in the
+    launcher.
+    """
+    try:
+        from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
+            install_task_in_use_notifier,
+        )
+
+        install_task_in_use_notifier()
+    except Exception:
+        log.debug(
+            "Failed to install frontend of task in-use notice.",
+            exc_info=True,
+        )
+
+
 def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     """Start tracking of task in-use for the host integration.
 
-    Tracking is skipped in headless mode, in farm jobs and in automated
-    tests.
+    Should be called from the main thread of the application. Tracking is
+    skipped in headless mode, in farm jobs and in automated tests.
 
     Args:
         host (AbstractHost): Installed host integration.
@@ -1143,8 +1280,9 @@ def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     atexit.register(_on_exit)
     _connect_qt_quit()
 
+    _install_notice_frontend()
     tracker.sync()
-    tracker.start_heartbeat()
+    tracker.start()
     return tracker
 
 
@@ -1154,5 +1292,4 @@ def uninstall_task_usage_tracker() -> None:
 
     tracker, _tracker = _tracker, None
     if tracker is not None:
-        tracker.stop_heartbeat()
-        tracker.release()
+        tracker.stop(timeout=EXIT_TIMEOUT_SECONDS)

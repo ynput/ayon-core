@@ -498,18 +498,25 @@ def _mock_task_context(tracker, monkeypatch):
     monkeypatch.setattr(tracker, "_query_task_context", _query_task_context)
 
 
+def _sync(tracker: TaskUsageTracker) -> None:
+    """Schedule current context and process it as the thread would do."""
+    tracker.sync()
+    tracker.process()
+
+
 @pytest.fixture
 def tracker_calls(server, monkeypatch):
     """Tracker with mocked server calls.
 
     Task id is the same as task name, task 'disabled' does not have enabled
-    in-use tracking. Task 'in-use' is in use by other user.
+    in-use tracking. Task 'in-use' is in use by other user, who has opened
+    workfile 'sh010_anim_v001.ma'.
     """
     calls = []
     host = _MockHost()
     tracker = TaskUsageTracker(host)
     other_user = _item("other-user", username="artist2")
-    notice_shown = [True]
+    notices = []
 
     def _claim_task(project_name, task_id, item, ttl):
         calls.append(("claim", task_id, item.workfile))
@@ -526,18 +533,19 @@ def tracker_calls(server, monkeypatch):
     def _release_task(project_name, task_id, session_id):
         calls.append(("release", task_id, session_id))
 
-    def _notify(items):
-        calls.append(("notify", [item.session_id for item in items]))
-        return notice_shown[0]
-
     _mock_task_context(tracker, monkeypatch)
-    monkeypatch.setattr(tracker, "_notify", _notify)
+    monkeypatch.setattr(task_usage, "_notice_callbacks", [notices.append])
+    monkeypatch.setattr(
+        task_usage,
+        "get_task_usage_user_full_names",
+        lambda items: {"artist2": "Artist Two"},
+    )
     monkeypatch.setattr(task_usage, "claim_task", _claim_task)
     monkeypatch.setattr(
         task_usage, "update_task_session", _update_task_session
     )
     monkeypatch.setattr(task_usage, "release_task", _release_task)
-    return host, tracker, calls, notice_shown
+    return host, tracker, calls, notices
 
 
 @pytest.fixture
@@ -547,24 +555,44 @@ def current_time(monkeypatch):
     return value
 
 
-def test_tracker_claims_and_releases(tracker_calls):
+def test_tracker_sync_does_not_use_server(tracker_calls, monkeypatch):
+    """Callbacks of the application do not wait for the server."""
     host, tracker, calls, _ = tracker_calls
 
+    def _failing(*args, **kwargs):
+        raise AssertionError("Server must not be used in 'sync'")
+
+    monkeypatch.setattr(tracker, "_query_task_context", _failing)
+    monkeypatch.setattr(tracker, "process", _failing)
+    for name in ("raw_get", "raw_post", "raw_put", "raw_delete"):
+        monkeypatch.setattr(task_usage.ayon_api, name, _failing)
+
     tracker.sync()
+    host.workfile = "/path/sh010_anim_v002.ma"
+    tracker.sync()
+    tracker.release()
+    assert calls == []
+
+
+def test_tracker_claims_and_releases(tracker_calls, current_time):
+    host, tracker, calls, _ = tracker_calls
+
+    _sync(tracker)
     assert calls == [("claim", "anim", "sh010_anim_v001.ma")]
 
     # Nothing did change
-    tracker.sync()
+    _sync(tracker)
+    tracker.process()
     assert len(calls) == 1
 
     # Workfile did change, session is only updated
     host.workfile = "/path/sh010_anim_v002.ma"
-    tracker.sync()
+    _sync(tracker)
     assert calls[1:] == [("update", "anim", "sh010_anim_v002.ma")]
 
     # Task did change
     host.task_name = "layout"
-    tracker.sync()
+    _sync(tracker)
     assert calls[2:] == [
         ("release", "anim", "mine"),
         ("claim", "layout", "sh010_anim_v002.ma"),
@@ -572,12 +600,38 @@ def test_tracker_claims_and_releases(tracker_calls):
 
     # Task without enabled tracking
     host.task_name = "disabled"
-    tracker.sync()
+    _sync(tracker)
     assert calls[4:] == [("release", "layout", "mine")]
 
     # Nothing is claimed
     tracker.release()
+    tracker.process()
     assert len(calls) == 5
+
+
+def test_tracker_processes_only_last_context(tracker_calls):
+    """Only the last context is processed if the server is slow."""
+    host, tracker, calls, _ = tracker_calls
+
+    tracker.sync()
+    host.task_name = "layout"
+    tracker.sync()
+    host.workfile = "/path/sh010_layout_v001.ma"
+    tracker.sync()
+    tracker.process()
+    assert calls == [("claim", "layout", "sh010_layout_v001.ma")]
+
+
+def test_tracker_release_and_claim_again(tracker_calls):
+    host, tracker, calls, _ = tracker_calls
+
+    _sync(tracker)
+    tracker.release()
+    tracker.process()
+    assert calls[1:] == [("release", "anim", "mine")]
+
+    _sync(tracker)
+    assert calls[2:] == [("claim", "anim", "sh010_anim_v001.ma")]
 
 
 def test_tracker_uses_server_times(server, monkeypatch):
@@ -590,11 +644,11 @@ def test_tracker_uses_server_times(server, monkeypatch):
             "project", "task-id", TaskUsageSettings(True, 2.0)
         ),
     )
-    tracker.sync()
+    _sync(tracker)
 
     server.now = later = NOW + datetime.timedelta(hours=1)
     host.workfile = "/path/sh010_anim_v002.ma"
-    tracker.sync()
+    _sync(tracker)
 
     session = server.sessions["task-id"]["mine"]
     assert session["openedAt"] == NOW.isoformat()
@@ -605,57 +659,99 @@ def test_tracker_uses_server_times(server, monkeypatch):
         for method, _, kwargs in server.requests
     ] == [("put", 120, False), ("put", 120, False)]
 
-    tracker.release()
+    tracker.stop()
     assert server.sessions["task-id"] == {}
 
 
 def test_tracker_notifies_about_other_users(tracker_calls):
-    host, tracker, calls, _ = tracker_calls
+    host, tracker, calls, notices = tracker_calls
 
     host.task_name = "in-use"
-    tracker.sync()
-    assert calls == [
-        ("claim", "in-use", "sh010_anim_v001.ma"),
-        ("notify", ["other-user"]),
-    ]
-    assert task_usage._acknowledged_session_ids == {"other-user"}
-
-
-def test_tracker_keeps_sessions_unconfirmed_without_notice(tracker_calls):
-    """User is asked in the Workfiles tool if the notice was not shown."""
-    host, tracker, calls, notice_shown = tracker_calls
-
-    notice_shown[0] = False
-    host.task_name = "in-use"
-    tracker.sync()
-    assert calls[-1] == ("notify", ["other-user"])
+    host.workfile = "/path/sh010_anim_v002.ma"
+    _sync(tracker)
+    assert calls == [("claim", "in-use", "sh010_anim_v002.ma")]
+    (notice,) = notices
+    assert [item.session_id for item in notice.items] == ["other-user"]
+    assert notice.user_full_names == {"artist2": "Artist Two"}
+    assert notice.workfile == "sh010_anim_v002.ma"
+    # Other user has opened different workfile
+    assert notice.version_up_callback is None
+    # Sessions are acknowledged by the frontend that did show the notice
     assert task_usage._acknowledged_session_ids == set()
+
+
+def test_tracker_notice_offers_version_up(tracker_calls, monkeypatch):
+    """Version up is offered if other user has opened the same workfile."""
+    host, tracker, calls, notices = tracker_calls
+    version_ups = []
+    monkeypatch.setattr(tracker, "_version_up", version_ups.append)
+
+    host.task_name = "in-use"
+    _sync(tracker)
+    (notice,) = notices
+    notice.version_up_callback()
+    assert version_ups == ["sh010_anim_v001.ma"]
+
+
+def test_tracker_notice_without_frontend(tracker_calls, monkeypatch):
+    """User is asked in the Workfiles tool if nothing shows the notice."""
+    host, tracker, calls, notices = tracker_calls
+
+    def _failing(notice):
+        raise RuntimeError("Frontend is broken")
+
+    for callbacks in ([], [_failing]):
+        monkeypatch.setattr(task_usage, "_notice_callbacks", callbacks)
+        host.task_name = "in-use"
+        _sync(tracker)
+        assert calls[-1] == ("claim", "in-use", "sh010_anim_v001.ma")
+        assert task_usage._acknowledged_session_ids == set()
+        assert not tracker._failed
+        host.task_name = "disabled"
+        _sync(tracker)
+
+
+def test_notice_callbacks_registration(monkeypatch):
+    monkeypatch.setattr(task_usage, "_notice_callbacks", [])
+    notices = []
+
+    task_usage.register_task_in_use_notice_callback(notices.append)
+    task_usage.register_task_in_use_notice_callback(notices.append)
+    assert len(task_usage._notice_callbacks) == 1
+
+    task_usage.deregister_task_in_use_notice_callback(notices.append)
+    task_usage.deregister_task_in_use_notice_callback(notices.append)
+    assert task_usage._notice_callbacks == []
 
 
 def test_tracker_skips_acknowledged_users(tracker_calls):
     """Sessions confirmed before are not notified again."""
-    host, tracker, calls, _ = tracker_calls
+    host, tracker, calls, notices = tracker_calls
 
     task_usage.acknowledge_task_usage_items(
         [_item("other-user", username="artist2")]
     )
     host.task_name = "in-use"
-    tracker.sync()
+    _sync(tracker)
     assert calls == [("claim", "in-use", "sh010_anim_v001.ma")]
+    assert notices == []
 
 
-def test_tracker_refreshes_after_interval(tracker_calls, current_time):
-    """Session is refreshed on sync if heartbeats are not processed."""
+def test_tracker_reports_activity(tracker_calls, current_time):
+    """Saved workfile is activity, but each save is not reported."""
     host, tracker, calls, _ = tracker_calls
-    interval = TaskUsageSettings(True).heartbeat_interval
 
-    tracker.sync()
-    current_time[0] += interval - 1
-    tracker.sync()
+    _sync(tracker)
+    current_time[0] += task_usage.ACTIVITY_INTERVAL_SECONDS - 1
+    _sync(tracker)
     assert len(calls) == 1
 
     current_time[0] += 2
-    tracker.sync()
+    # Nothing happened in the application
+    tracker.process()
+    assert len(calls) == 1
+
+    _sync(tracker)
     assert calls[1:] == [("update", "anim", "sh010_anim_v001.ma")]
 
 
@@ -664,32 +760,30 @@ def test_tracker_heartbeat(tracker_calls, current_time):
     interval = TaskUsageSettings(True).heartbeat_interval
 
     # Nothing is claimed
-    tracker.heartbeat()
+    tracker.process()
     assert calls == []
+    assert tracker._get_wait_seconds() == interval
 
-    tracker.sync()
+    _sync(tracker)
     # Session was updated a moment ago
-    tracker.heartbeat()
+    current_time[0] += interval / 2
+    tracker.process()
     assert len(calls) == 1
+    assert tracker._get_wait_seconds() == interval / 2
 
-    current_time[0] += interval
-    tracker.heartbeat()
+    current_time[0] += interval / 2
+    tracker.process()
     assert calls[1:] == [("heartbeat", "anim", "sh010_anim_v001.ma")]
-
-    # Heartbeat does postpone the refresh on sync
-    current_time[0] += interval - 1
-    tracker.sync()
-    assert len(calls) == 2
+    assert tracker._get_wait_seconds() == interval
 
     tracker.release()
+    tracker.process()
     current_time[0] += interval
-    tracker.heartbeat()
+    tracker.process()
     assert calls[2:] == [("release", "anim", "mine")]
 
 
-def test_tracker_heartbeat_does_not_raise(
-    tracker_calls, current_time, monkeypatch
-):
+def test_tracker_does_not_raise(tracker_calls, current_time, monkeypatch):
     host, tracker, calls, _ = tracker_calls
     interval = TaskUsageSettings(True).heartbeat_interval
     failed_calls = []
@@ -698,162 +792,34 @@ def test_tracker_heartbeat_does_not_raise(
         failed_calls.append(1)
         raise RuntimeError("Server is not available")
 
+    # Failed host integration
+    get_current_context = host.get_current_context
+    host.get_current_context = _failing
     tracker.sync()
-    monkeypatch.setattr(task_usage, "update_task_session", _failing)
-    current_time[0] += interval
-    tracker.heartbeat()
-    # Heartbeat is repeated, the server may be available again
-    current_time[0] += interval
-    tracker.heartbeat()
-    assert len(failed_calls) == 2
+    host.get_current_context = get_current_context
+
+    claim_task = task_usage.claim_task
+    monkeypatch.setattr(task_usage, "claim_task", _failing)
+    _sync(tracker)
+    # Claim is repeated, the server may be available again
+    tracker.process()
+    assert len(failed_calls) == 3
     assert not tracker.is_disabled
 
+    monkeypatch.setattr(task_usage, "claim_task", claim_task)
+    tracker.process()
+    assert calls == [("claim", "anim", "sh010_anim_v001.ma")]
 
-def test_tracker_heartbeat_does_not_block(
-    tracker_calls, current_time, monkeypatch
-):
-    """Callbacks of the application do not wait for a heartbeat."""
-    host, tracker, calls, _ = tracker_calls
-    lock_was_free = []
+    # Failed heartbeat is not repeated immediately
+    monkeypatch.setattr(task_usage, "update_task_session", _failing)
+    current_time[0] += interval
+    tracker.process()
+    assert len(failed_calls) == 4
+    assert tracker._get_wait_seconds() == interval
 
-    def _update_task_session(*args, **kwargs):
-        def _try_lock():
-            acquired = tracker._lock.acquire(blocking=False)
-            if acquired:
-                tracker._lock.release()
-            lock_was_free.append(acquired)
-
-        # The lock is reentrant, must be checked from other thread
-        thread = threading.Thread(target=_try_lock)
-        thread.start()
-        thread.join(5)
-
-    tracker.sync()
-    monkeypatch.setattr(
-        task_usage, "update_task_session", _update_task_session
-    )
-    current_time[0] += TaskUsageSettings(True).heartbeat_interval
-    tracker.heartbeat()
-    assert lock_was_free == [True]
-
-
-def test_tracker_heartbeat_released_during_request(
-    tracker_calls, current_time, monkeypatch
-):
-    """Heartbeat does not keep registered a session that was released."""
-    host, tracker, calls, _ = tracker_calls
-
-    def _update_task_session(
-        project_name, task_id, item, ttl, heartbeat=False
-    ):
-        calls.append(("heartbeat", task_id, item.workfile))
-        # Context did change in main thread during the request
-        host.task_name = "disabled"
-        tracker.sync()
-
-    tracker.sync()
-    monkeypatch.setattr(
-        task_usage, "update_task_session", _update_task_session
-    )
-    current_time[0] += TaskUsageSettings(True).heartbeat_interval
-    tracker.heartbeat()
-    assert calls[1:] == [
-        ("heartbeat", "anim", "sh010_anim_v001.ma"),
-        ("release", "anim", "mine"),
-        # Session could be registered again by the heartbeat
-        ("release", "anim", "mine"),
-    ]
-
-
-def test_tracker_heartbeat_updated_during_request(
-    tracker_calls, current_time, monkeypatch
-):
-    """Heartbeat does not override newer data of the session."""
-    host, tracker, calls, _ = tracker_calls
-    update_task_session = task_usage.update_task_session
-    changed = []
-
-    def _update_task_session(
-        project_name, task_id, item, ttl, heartbeat=False
-    ):
-        update_task_session(project_name, task_id, item, ttl, heartbeat)
-        if not changed:
-            changed.append(1)
-            # Workfile was saved in main thread during the request
-            host.workfile = "/path/sh010_anim_v002.ma"
-            tracker.sync()
-
-    tracker.sync()
-    monkeypatch.setattr(
-        task_usage, "update_task_session", _update_task_session
-    )
-    current_time[0] += TaskUsageSettings(True).heartbeat_interval
-    tracker.heartbeat()
-    assert calls[1:] == [
-        ("heartbeat", "anim", "sh010_anim_v001.ma"),
-        ("update", "anim", "sh010_anim_v002.ma"),
-        ("heartbeat", "anim", "sh010_anim_v002.ma"),
-    ]
-
-
-def test_tracker_heartbeat_thread(tracker_calls, monkeypatch):
-    host, tracker, calls, _ = tracker_calls
-    processed = threading.Event()
-
-    def _heartbeat():
-        processed.set()
-        tracker.stop_heartbeat()
-
-    monkeypatch.setattr(tracker, "_get_heartbeat_interval", lambda: 0.01)
-    monkeypatch.setattr(tracker, "heartbeat", _heartbeat)
-
-    tracker.start_heartbeat()
-    thread = tracker._heartbeat_thread
-    assert thread is not None and thread.daemon
-    # Thread is started only once
-    tracker.start_heartbeat()
-    assert tracker._heartbeat_thread is thread
-
-    assert processed.wait(5)
-    thread.join(5)
-    assert not thread.is_alive()
-    assert tracker._heartbeat_thread is None
-
-
-def test_tracker_stop_heartbeat_waits_for_sleeping_thread(tracker_calls):
-    host, tracker, calls, _ = tracker_calls
-
-    tracker.start_heartbeat()
-    thread = tracker._heartbeat_thread
-    # Thread sleeps for the heartbeat interval, stop does wake it up
-    tracker.stop_heartbeat(timeout=5)
-    assert not thread.is_alive()
-    assert calls == []
-
-
-def test_tracker_does_not_raise(tracker_calls, current_time, monkeypatch):
-    host, tracker, calls, _ = tracker_calls
-    failed_calls = []
-
-    def _failing(*args, **kwargs):
-        failed_calls.append(1)
-        raise RuntimeError("Server is not available")
-
-    monkeypatch.setattr(task_usage, "claim_task", _failing)
-    tracker.sync()
-    # Failed update is not repeated with each sync
-    tracker.sync()
-    assert len(failed_calls) == 1
-
-    current_time[0] += task_usage.RETRY_INTERVAL_SECONDS + 1
-    tracker.sync()
-    assert len(failed_calls) == 2
-
-    current_time[0] += task_usage.RETRY_INTERVAL_SECONDS + 1
-    monkeypatch.setattr(task_usage, "claim_task", lambda *a, **k: [])
     monkeypatch.setattr(task_usage, "release_task", _failing)
-    tracker.sync()
-    tracker.release()
+    tracker.stop()
+    assert len(failed_calls) == 5
 
 
 def test_tracker_is_disabled_without_endpoints(
@@ -865,17 +831,17 @@ def test_tracker_is_disabled_without_endpoints(
     tracker = TaskUsageTracker(host)
     _mock_task_context(tracker, monkeypatch)
 
-    tracker.sync()
+    _sync(tracker)
     assert tracker.is_disabled
     assert len(server.requests) == 1
 
-    current_time[0] += task_usage.RETRY_INTERVAL_SECONDS + 1
+    current_time[0] += TaskUsageSettings(True).heartbeat_interval
     host.workfile = "/path/sh010_anim_v002.ma"
-    tracker.sync()
-    tracker.heartbeat()
+    _sync(tracker)
     tracker.release()
-    tracker.start_heartbeat()
-    assert tracker._heartbeat_thread is None
+    tracker.start()
+    assert tracker._thread is None
+    tracker.stop()
     assert len(server.requests) == 1
 
 
@@ -886,13 +852,118 @@ def test_tracker_is_disabled_by_heartbeat(
     tracker = TaskUsageTracker(host)
     _mock_task_context(tracker, monkeypatch)
 
-    tracker.sync()
+    _sync(tracker)
     assert not tracker.is_disabled
 
     server.status_code = 404
     current_time[0] += TaskUsageSettings(True).heartbeat_interval
-    tracker.heartbeat()
+    tracker.process()
     assert tracker.is_disabled
+
+
+def test_tracker_thread(tracker_calls, monkeypatch):
+    """Scheduled context is processed and released by the thread."""
+    host, tracker, calls, _ = tracker_calls
+    main_thread = threading.current_thread()
+    threads = []
+    claimed = threading.Event()
+    claim_task = task_usage.claim_task
+
+    def _claim_task(*args):
+        threads.append(threading.current_thread())
+        output = claim_task(*args)
+        claimed.set()
+        return output
+
+    def _release_task(*args):
+        threads.append(threading.current_thread())
+        calls.append(("release", args[1], args[2]))
+
+    monkeypatch.setattr(task_usage, "claim_task", _claim_task)
+    monkeypatch.setattr(task_usage, "release_task", _release_task)
+
+    tracker.start()
+    thread = tracker._thread
+    assert thread is not None and thread.daemon
+    # Thread is started only once
+    tracker.start()
+    assert tracker._thread is thread
+
+    tracker.sync()
+    assert claimed.wait(5)
+
+    tracker.stop(timeout=5)
+    assert not thread.is_alive()
+    assert tracker._thread is None
+    assert calls == [
+        ("claim", "anim", "sh010_anim_v001.ma"),
+        ("release", "anim", "mine"),
+    ]
+    assert threads == [thread, thread]
+    assert main_thread not in threads
+
+
+def test_tracker_stop_does_not_wait_for_server(tracker_calls, monkeypatch):
+    """Exit of the application is not blocked by slow server."""
+    host, tracker, calls, _ = tracker_calls
+    release_started = threading.Event()
+    finish_release = threading.Event()
+
+    def _release_task(*args):
+        release_started.set()
+        finish_release.wait(5)
+
+    monkeypatch.setattr(task_usage, "release_task", _release_task)
+    _sync(tracker)
+    tracker.start()
+    thread = tracker._thread
+    tracker.stop(timeout=0.05)
+    # Thread is still releasing the task
+    assert release_started.wait(5)
+    assert thread.is_alive()
+
+    # Nothing happens in current thread when exit is called again
+    tracker.stop(timeout=0.05)
+
+    finish_release.set()
+    thread.join(5)
+    assert not thread.is_alive()
+
+
+def test_tracker_stop_without_thread(tracker_calls):
+    host, tracker, calls, _ = tracker_calls
+
+    _sync(tracker)
+    tracker.stop()
+    assert calls[1:] == [("release", "anim", "mine")]
+    tracker.stop()
+    assert len(calls) == 2
+
+
+def test_tracker_processes_if_thread_is_starved(
+    tracker_calls, current_time, monkeypatch
+):
+    """Context is processed in 'sync' if the thread does not run."""
+    host, tracker, calls, _ = tracker_calls
+    # Thread that never runs
+    monkeypatch.setattr(tracker, "_thread", object())
+
+    tracker.sync()
+    current_time[0] += task_usage.STARVED_THREAD_SECONDS - 1
+    tracker.sync()
+    assert calls == []
+
+    current_time[0] += 2
+    tracker.sync()
+    assert calls == [("claim", "anim", "sh010_anim_v001.ma")]
+
+    # Thread is not starved if it is waiting for the server
+    host.workfile = "/path/sh010_anim_v002.ma"
+    tracker.sync()
+    current_time[0] += task_usage.STARVED_THREAD_SECONDS + 1
+    with tracker._process_lock:
+        tracker.sync()
+    assert len(calls) == 1
 
 
 def test_tracker_skips_queries_if_not_used_in_project(monkeypatch):
@@ -906,7 +977,8 @@ def test_tracker_skips_queries_if_not_used_in_project(monkeypatch):
     monkeypatch.setattr(task_usage.ayon_api, "raw_put", _failing)
 
     tracker = TaskUsageTracker(_MockHost())
-    assert tracker._sync() == []
+    tracker.sync()
+    tracker._process()
     assert tracker._claimed is None
 
 
@@ -921,9 +993,14 @@ def _prepare_install(monkeypatch):
     monkeypatch.setattr(task_usage, "register_event_callback", lambda *a: None)
     monkeypatch.setattr(task_usage.atexit, "register", lambda *a: None)
     monkeypatch.setattr(task_usage, "_connect_qt_quit", lambda: None)
-    monkeypatch.setattr(TaskUsageTracker, "sync", lambda self: None)
     monkeypatch.setattr(
-        TaskUsageTracker, "start_heartbeat", lambda self: started.append(1)
+        task_usage, "_install_notice_frontend", lambda: started.append("ui")
+    )
+    monkeypatch.setattr(
+        TaskUsageTracker, "sync", lambda self: started.append("sync")
+    )
+    monkeypatch.setattr(
+        TaskUsageTracker, "start", lambda self: started.append("start")
     )
     return started
 
@@ -934,7 +1011,24 @@ def test_tracker_install_uses_acknowledged_env(monkeypatch):
 
     assert task_usage.install_task_usage_tracker(_MockHost()) is not None
     assert task_usage._acknowledged_session_ids == {"a", "b"}
-    assert started == [1]
+    # Frontend is ready before the first notice can be created
+    assert started == ["ui", "sync", "start"]
+
+
+def test_tracker_uninstall(monkeypatch):
+    _prepare_install(monkeypatch)
+    stopped = []
+    monkeypatch.setattr(
+        TaskUsageTracker,
+        "stop",
+        lambda self, timeout=None: stopped.append(timeout),
+    )
+    task_usage.install_task_usage_tracker(_MockHost())
+    task_usage._on_exit()
+    task_usage.uninstall_task_usage_tracker()
+    task_usage.uninstall_task_usage_tracker()
+    task_usage._on_exit()
+    assert stopped == [task_usage.EXIT_TIMEOUT_SECONDS] * 2
 
 
 def test_tracker_install_skipped_in_headless(monkeypatch):
