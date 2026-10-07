@@ -44,7 +44,8 @@ class _ImagesLoading:
             return
         cls.warmed_up = True
         size = QtCore.QSize(1, 1)
-        _load_image("", size)
+        # Path that does not exist, empty path would log a warning
+        _load_image(":/ayon_core/thumbnail_warm_up", size)
         _scale_image(QtGui.QImage(2, 2, QtGui.QImage.Format_RGB32), size)
 
 
@@ -373,11 +374,17 @@ class EntityThumbnailsPainter(QtCore.QObject):
     # Space around the thumbnail
     margin = 4
     radius = 2
-    # Thumbnail is hidden if less width would be left for icon and label
-    min_label_width = 90
+    # Thumbnail is hidden only if there would not be enough space left for
+    #   an icon and few characters of a label. Should be low, items deep
+    #   in a hierarchy are narrow and their width changes, e.g. when
+    #   a scrollbar is shown.
+    min_label_width = 50
     # Thumbnails are requested when no new items were painted for this
-    #   time (in milliseconds), so nothing is requested while scrolling
+    #   time (in milliseconds), so less is requested while scrolling
     _request_delay = 100
+    # The longest time (in milliseconds) the request can be postponed, so
+    #   thumbnails keep loading during slow continuous scrolling
+    _max_request_delay = 400
     # Limit of items waiting for the request, the oldest are forgotten
     #   and requested again on their next paint
     _max_requested = 200
@@ -420,6 +427,7 @@ class EntityThumbnailsPainter(QtCore.QObject):
         self._fade_timer = fade_timer
         self._fade_curve = QtCore.QEasingCurve(QtCore.QEasingCurve.InOutQuad)
         self._requested: dict[str, QtCore.QPersistentModelIndex] = {}
+        self._first_request_time = 0.0
         self._fade_start_by_id: dict[str, float] = {}
         # Where fading thumbnails were painted, to repaint only them
         self._fade_rect_by_id: dict[str, QtCore.QRect] = {}
@@ -522,8 +530,16 @@ class EntityThumbnailsPainter(QtCore.QObject):
         if len(self._requested) >= self._max_requested:
             del self._requested[next(iter(self._requested))]
         self._requested[entity_id] = QtCore.QPersistentModelIndex(index)
-        # Restart the timer to wait until painting of new items settles
-        self._request_timer.start()
+        now = time.monotonic()
+        if not self._request_timer.isActive():
+            self._first_request_time = now
+            self._request_timer.start()
+        elif (
+            (now - self._first_request_time) * 1000
+            < self._max_request_delay
+        ):
+            # Restart the timer to wait until painting of new items settles
+            self._request_timer.start()
 
     def _get_thumbnail_rect(self, item_rect: QtCore.QRect) -> QtCore.QRect:
         size = QtCore.QSize(self._loader.get_thumbnail_size())

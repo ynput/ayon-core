@@ -291,3 +291,44 @@ def test_images_are_loaded_by_more_threads_at_once(
         loader.get_pixmap(entity_id) is not None
         for entity_id in paths
     )
+
+
+def test_thumbnail_fits_to_items_deep_in_hierarchy(qtbot, task_queue):
+    """Items of nested folders are narrow, e.g. 127px in the browser."""
+    view, thumbnails_painter = _create_view(qtbot, _Controller({}), 400)
+
+    def _fits(width):
+        rect = thumbnails_painter._get_thumbnail_rect(
+            QtCore.QRect(0, 0, width, 24)
+        )
+        return not rect.isEmpty()
+
+    assert _fits(127)
+    # Scrollbar takes some of the width when it is shown
+    assert _fits(127 - 12)
+    # Label is more important when there is not enough space for both
+    assert not _fits(60)
+
+
+def test_request_is_not_postponed_forever(qtbot, task_queue):
+    """Thumbnails keep loading when new items are painted all the time."""
+    controller = _Controller({})
+    view, thumbnails_painter = _create_view(qtbot, controller, 400)
+    loader = thumbnails_painter._loader
+    qtbot.waitUntil(
+        lambda: bool(loader._valid_ids) and not loader._loading_ids
+    )
+    calls_count = len(controller.calls)
+
+    # Scroll continuously, new items are painted more often than
+    #   is the delay of the request
+    scrollbar = view.verticalScrollBar()
+    max_delay = thumbnails_painter._max_request_delay
+    step_delay = thumbnails_painter._request_delay // 4
+    value = 0
+    for _ in range((max_delay * 3) // step_delay):
+        value += 2
+        scrollbar.setValue(value)
+        qtbot.wait(step_delay)
+
+    assert len(controller.calls) > calls_count
