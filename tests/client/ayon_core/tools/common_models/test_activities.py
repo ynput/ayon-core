@@ -1,8 +1,14 @@
-"""Tests for fetching entity activity feeds."""
+"""Tests for fetching activities of entities."""
 
 from __future__ import annotations
 
+import ast
+import inspect
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,11 +19,6 @@ from ayon_core.tools.common_models.activities import (
     ActivityAnnotationItem,
     ActivityFileItem,
     ActivityItem,
-)
-from ayon_core.ui.data_models import (
-    CommentModel,
-    StatusChangeModel,
-    VersionPublishModel,
 )
 
 ACTIVITIES = [
@@ -70,7 +71,7 @@ ACTIVITIES = [
 
 @pytest.fixture
 def fake_server(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    calls: dict[str, Any] = {"activities": [], "users": 0, "project": 0}
+    calls: dict[str, Any] = {"activities": [], "other": []}
 
     def get_activities(project_name: str, **kwargs: Any):
         # 'limit' argument fails in ayon_api
@@ -79,32 +80,19 @@ def fake_server(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         # The same activity is returned for each matching reference
         yield from ACTIVITIES + [ACTIVITIES[1]]
 
-    def get_users(project_name: str, **kwargs: Any):
-        calls["users"] += 1
-        yield {"name": "roy", "attrib": {"fullName": "Roy Nieterau"}}
-        yield {"name": "libor", "attrib": {"fullName": None}}
-
-    def get_project(project_name: str):
-        calls["project"] += 1
-        return {
-            "statuses": [
-                {
-                    "name": "Approved",
-                    "shortName": "APP",
-                    "icon": "task_alt",
-                    "color": "#00f0b4",
-                }
-            ]
-        }
-
     def get_versions(project_name: str, **kwargs: Any):
         calls["versions"] = kwargs
         yield {"id": "version_id", "status": "Approved", "thumbnailId": "t1"}
 
+    def unexpected_query(*args: Any, **kwargs: Any):
+        calls["other"].append((args, kwargs))
+        return []
+
     monkeypatch.setattr(activities.ayon_api, "get_activities", get_activities)
     monkeypatch.setattr(activities.ayon_api, "get_versions", get_versions)
-    monkeypatch.setattr(activities.ayon_api, "get_users", get_users)
-    monkeypatch.setattr(activities.ayon_api, "get_project", get_project)
+    # Users and statuses are not a concern of the activities
+    for name in ("get_users", "get_project", "get_rest_project"):
+        monkeypatch.setattr(activities.ayon_api, name, unexpected_query)
     return calls
 
 
@@ -152,8 +140,7 @@ def test_items_are_deduplicated_and_newest_first(fake_server):
     assert publish.version_id == "version_id"
     assert publish.version_status == "Approved"
     assert publish.thumbnail_id == "t1"
-    # Users and statuses are not a concern of the activities
-    assert (fake_server["users"], fake_server["project"]) == (0, 0)
+    assert fake_server["other"] == []
 
 
 def test_items_are_limited_and_handle_missing_author(
@@ -229,85 +216,54 @@ def test_items_survive_a_json_round_trip(fake_server):
     assert data == [item.to_data() for item in items]
 
 
-def test_feed_is_deduplicated_and_newest_first(fake_server):
-    feed = ActivitiesModel().get_activity_feed("demo", ["version_id"])
-
-    assert [activity.activity_id for activity in feed.activities] == [
-        "comment",
-        "status",
-        "publish",
-    ]
-    comment, status, publish = feed.activities
-    assert isinstance(comment, CommentModel)
-    assert comment.comment == "Looks good"
-    # Falls back to the username when the full name is not filled
-    assert comment.user_full_name == "libor"
-    assert isinstance(status, StatusChangeModel)
-    assert (status.old_status, status.new_status) == (
-        "In progress",
-        "Approved",
-    )
-    assert isinstance(publish, VersionPublishModel)
-    assert publish.user_full_name == "Roy Nieterau"
-    assert (publish.product, publish.version) == ("modelMain", "v003")
-    # Current status and thumbnail come from the published version
-    assert fake_server["versions"]["version_ids"] == {"version_id"}
-    assert publish.status == "Approved"
-    assert publish.thumbnail_key == "demo/version_id/t1"
-    assert feed.statuses == [
-        {
-            "text": "Approved",
-            "short_text": "APP",
-            "icon": "task_alt",
-            "color": "#00f0b4",
-        }
-    ]
+def _is_frontend_module(module_name: str) -> bool:
+    return module_name.split(".")[0] in {
+        "qtpy",
+        "PySide2",
+        "PySide6",
+    } or module_name.startswith("ayon_core.ui")
 
 
-def test_feed_is_limited_and_handles_missing_author(
-    fake_server, monkeypatch: pytest.MonkeyPatch
-):
-    def get_activities(project_name: str, **kwargs: Any):
-        for idx in range(10):
-            yield {
-                "activityId": str(idx),
-                "activityType": "comment",
-                "activityData": {},
-                "body": "",
-                "author": None,
-                "createdAt": f"2026-10-0{idx}T10:00:00+00:00",
-                "updatedAt": f"2026-10-0{idx}T10:00:00+00:00",
-            }
+def test_backend_does_not_use_frontend_modules():
+    imported = set()
+    for node in ast.walk(ast.parse(inspect.getsource(activities))):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            # Relative imports stay in the backend package
+            if not node.level:
+                imported.add(node.module)
+    assert "ayon_api" in imported
+    assert not [name for name in imported if _is_frontend_module(name)]
 
-    monkeypatch.setattr(activities.ayon_api, "get_activities", get_activities)
-    feed = ActivitiesModel().get_activity_feed("demo", ["a"], limit=3)
-
-    assert len(feed.activities) == 3
-    assert feed.has_more
-    assert feed.activities[0].user_name == "n/a"
-
-
-def test_feed_queries_related_references(fake_server):
-    ActivitiesModel().get_activity_feed("demo", ["task_id"])
-
-    kwargs = fake_server["activities"][0]
-    assert kwargs["entity_ids"] == {"task_id"}
-    assert set(kwargs["reference_types"]) == {
-        "origin",
-        "mention",
-        "relation",
+    used = {
+        getattr(value, "__module__", None) or getattr(value, "__name__", "")
+        for value in vars(activities).values()
     }
+    assert not [name for name in used if _is_frontend_module(name)]
 
 
-def test_project_data_is_cached_and_nothing_fetched_without_entities(
-    fake_server,
-):
-    model = ActivitiesModel()
-
-    assert model.get_activity_feed("demo", []).activities == []
-    assert fake_server["activities"] == []
-
-    model.get_activity_feed("demo", ["a"])
-    model.get_activity_feed("demo", ["b"])
-    assert len(fake_server["activities"]) == 2
-    assert (fake_server["users"], fake_server["project"]) == (1, 1)
+def test_backend_can_be_imported_without_qt():
+    # Directory with the 'ayon_core' package
+    client_dir = str(Path(inspect.getfile(activities)).parents[3])
+    script = (
+        "import sys\n"
+        "from ayon_core.tools.common_models import activities\n"
+        "print([\n"
+        "    name for name in sys.modules\n"
+        "    if name.split('.')[0] in ('qtpy', 'PySide2', 'PySide6')\n"
+        "    or name.startswith('ayon_core.ui')\n"
+        "])\n"
+    )
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        [client_dir, env.get("PYTHONPATH", "")]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
+    )
+    assert result.stdout.strip() == "[]"
