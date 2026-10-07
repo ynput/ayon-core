@@ -26,6 +26,24 @@ log = Logger.get_logger(__name__)
 _FETCH_PRIORITY = 10
 
 
+def _is_svg(content: bytes, content_type: str) -> bool:
+    """Tell whether an avatar response is an SVG image.
+
+    Args:
+        content: Body of the response.
+        content_type: Content type of the response.
+
+    Returns:
+        True if the image is an SVG.
+    """
+    if "svg" in content_type.lower():
+        return True
+    head = bytes(content[:256]).lstrip().lower()
+    return head.startswith(b"<svg") or (
+        head.startswith(b"<?xml") and b"<svg" in head
+    )
+
+
 def _fetch_avatar_file(user_name: str) -> str:
     """Download a user avatar and return the cached file path.
 
@@ -44,6 +62,11 @@ def _fetch_avatar_file(user_name: str) -> str:
     if not content:
         return ""
     content_type = getattr(response, "content_type", "") or ""
+    if _is_svg(content, content_type):
+        # For a user without an avatar the server generates an SVG with
+        #   initials. Qt does not support how its text is centered and
+        #   draws it off center, so initials are rendered locally instead.
+        return ""
     ext = ".jpg" if "jpeg" in content_type else ".png"
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as handle:
         handle.write(content)
@@ -127,10 +150,17 @@ class UserAvatarCache(QtCore.QObject):
         def _work() -> str:
             cache = ImageCache.get_instance()
             try:
-                return cache.get(
+                file_path = cache.get(
                     f"user-avatar/{user_name}",
                     lambda: _fetch_avatar_file(user_name),
                 )
+                # Generated initials may be cached from before they
+                #   were skipped on download.
+                if file_path:
+                    with open(file_path, "rb") as stream:
+                        if _is_svg(stream.read(256), ""):
+                            return ""
+                return file_path
             except Exception:  # noqa: BLE001 - avatars are optional
                 log.debug(
                     "Could not fetch avatar for %r", user_name, exc_info=True
