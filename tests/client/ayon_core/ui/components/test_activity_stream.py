@@ -10,6 +10,7 @@ from ayon_core.ui.data_models import (
     ActivityCategory,
     CommentModel,
     StatusChangeModel,
+    User,
     VersionPublishModel,
     relative_date,
 )
@@ -237,3 +238,117 @@ def test_stream_shows_avatars_from_cache(qtbot) -> None:
         "#ff0000",
         "#0000ff",
     ]
+
+
+def _comments(count: int, first: int = 0) -> list[CommentModel]:
+    return [
+        CommentModel(
+            activity_id=f"comment{idx}",
+            user_name="libor",
+            user_full_name="Libor",
+            comment=f"Comment {idx}",
+            comment_date="2026-10-03T10:00:00+00:00",
+        )
+        for idx in range(first, first + count)
+    ]
+
+
+def test_refresh_reuses_rows_and_releases_removed_ones(qtbot) -> None:
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+
+    stream.set_activities(_comments(3))
+    rows = {
+        activity.activity_id: widget for activity, widget in stream._widgets
+    }
+    child_count = len(stream._items.findChildren(QtWidgets.QWidget))
+
+    # Refresh with one new activity on top and the oldest one gone
+    stream.set_activities(_comments(1, first=9) + _comments(2))
+    new_rows = {
+        activity.activity_id: widget for activity, widget in stream._widgets
+    }
+    assert list(new_rows) == ["comment9", "comment0", "comment1"]
+    assert new_rows["comment0"] is rows["comment0"]
+    assert new_rows["comment1"] is rows["comment1"]
+    layout = stream._items._layout
+    assert [layout.itemAt(idx).widget() for idx in range(3)] == list(
+        new_rows.values()
+    )
+    # The removed row is released right away, nothing piles up
+    assert rows["comment2"].parent() is None
+    assert (
+        len(stream._items.findChildren(QtWidgets.QWidget)) == child_count
+    )
+
+    # An activity that changed gets a new row
+    changed = _comments(2)
+    changed[1].comment = "Edited"
+    stream.set_activities(changed)
+    assert stream._widgets[0][1] is rows["comment0"]
+    assert stream._widgets[1][1] is not rows["comment1"]
+
+
+def test_refresh_keeps_the_scroll_position(qtbot) -> None:
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.resize(300, 200)
+    stream.show()
+    stream.set_activities(_comments(30))
+    scroll_bar = stream._scroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: scroll_bar.maximum() > 0)
+
+    scroll_bar.setValue(scroll_bar.maximum() // 2)
+    anchor, offset = stream._get_scroll_anchor()
+
+    # New activity on top: the reader stays at the row they look at
+    stream.set_activities(_comments(1, first=99) + _comments(30))
+    assert scroll_bar.value() > 0
+    assert anchor.geometry().top() - scroll_bar.value() == offset
+
+    # A different feed starts at the top
+    stream.set_activities(_comments(30, first=100))
+    assert scroll_bar.value() == 0
+
+
+def test_setters_update_displayed_rows(qtbot) -> None:
+    def label_icons(widget: QtWidgets.QWidget) -> set[str]:
+        return {
+            label._icon
+            for label in widget.findChildren(QtWidgets.QLabel)
+            if isinstance(getattr(label, "_icon", None), str) and label._icon
+        }
+
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.set_activities(_activities())
+    comment_row, status_row, publish_row = (
+        widget for _, widget in stream._widgets
+    )
+    assert "task_alt" not in label_icons(status_row)
+
+    # Statuses that arrive after the activities are rendered as well
+    stream.set_status_definitions(STATUSES)
+    new_comment_row, new_status_row, new_publish_row = (
+        widget for _, widget in stream._widgets
+    )
+    assert "task_alt" in label_icons(new_status_row)
+    assert "task_alt" in label_icons(new_publish_row)
+    assert new_comment_row is comment_row
+
+    # Setting the same statuses again does not create rows
+    stream.set_status_definitions(list(STATUSES))
+    assert stream._widgets[1][1] is new_status_row
+
+    stream.set_user_list(
+        [User(name="roy", short_name="roy", full_name="Roy", email="")]
+    )
+    assert stream._widgets[0][1] is not comment_row
+    assert stream._widgets[1][1] is new_status_row
+
+
+def test_relative_date_of_a_future_date_is_just_now() -> None:
+    from datetime import datetime, timedelta, timezone
+
+    future = datetime.now(timezone.utc) + timedelta(hours=2)
+    assert relative_date(future.isoformat()) == "just now"

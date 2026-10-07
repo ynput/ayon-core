@@ -65,6 +65,7 @@ class AYActivityStream(AYContainer):
             ``thumbnail_key`` of a publish that is not in the image cache.
         avatar_cache: Source of user avatars downloaded from the server,
             users are shown with their initials without it.
+        variant: Background variant of the feed.
         **kwargs: Forwarded to ``AYContainer``.
     """
 
@@ -77,12 +78,13 @@ class AYActivityStream(AYContainer):
         user_list: list[User] | None = None,
         thumbnail_loader: ThumbnailLoader = None,
         avatar_cache: UserAvatarCache | None = None,
+        variant: AYContainer.Variants = AYContainer.Variants.Low,
         **kwargs,
     ) -> None:
-        kwargs.setdefault("variant", AYContainer.Variants.Low)
         super().__init__(
             *args,
             layout=AYContainer.Layout.VBox,
+            variant=variant,
             layout_spacing=8,
             **kwargs,
         )
@@ -161,20 +163,32 @@ class AYActivityStream(AYContainer):
     def set_status_definitions(
         self, status_definitions: list[dict[str, Any]]
     ) -> None:
-        """Set statuses used to render following status changes.
+        """Set statuses used to render status changes and publishes.
+
+        Rows that are already displayed are updated.
 
         Args:
             status_definitions: Project statuses, see class docstring.
         """
-        self._status_definitions = status_definitions or []
+        status_definitions = status_definitions or []
+        if status_definitions == self._status_definitions:
+            return
+        self._status_definitions = status_definitions
+        self._recreate_rows((AYPublish, AYStatusChange))
 
     def set_user_list(self, user_list: list[User]) -> None:
-        """Set users used to render mentions in following comments.
+        """Set users used to render mentions in comments.
+
+        Rows that are already displayed are updated.
 
         Args:
             user_list: Project users.
         """
-        self._user_list = user_list or []
+        user_list = user_list or []
+        if user_list == self._user_list:
+            return
+        self._user_list = user_list
+        self._recreate_rows((AYComment,))
 
     def set_message(self, text: str) -> None:
         """Show a message instead of the feed, e.g. while loading.
@@ -191,26 +205,60 @@ class AYActivityStream(AYContainer):
     ) -> None:
         """Replace the displayed activities.
 
+        Rows of activities that are displayed already and did not change
+        are reused, matched by ``activity_id``, so a refresh of the same
+        feed only creates rows for what is new. The scroll position is
+        kept in that case, the feed scrolls back to the top only when
+        none of the previous activities is left.
+
         Args:
             activities: Activities in display order.
             empty_text: Message shown when there is nothing to display.
         """
         self._empty_text = empty_text
         self._activities = list(activities)
-        self._items.clear()
+
+        reusable = {
+            activity.activity_id: (activity, widget)
+            for activity, widget in self._widgets
+            if activity.activity_id
+        }
+        anchor = self._get_scroll_anchor()
+        previous_widgets = [widget for _, widget in self._widgets]
+        layout = self._items._layout
+        # Take everything out of the layout, reused rows are added back
+        #   at their new position.
+        while layout.count():
+            layout.takeAt(0)
+
         self._widgets = []
+        reused_widgets = set()
         for activity in self._activities:
-            widget = self._create_widget(activity)
-            if widget is None:
-                continue
+            previous_activity, widget = reusable.pop(
+                activity.activity_id, (None, None)
+            )
+            if widget is None or previous_activity != activity:
+                widget = self._create_widget(activity)
+                if widget is None:
+                    continue
+            else:
+                reused_widgets.add(widget)
             self._items.add_widget(widget)
             self._widgets.append((activity, widget))
+
+        for widget in previous_widgets:
+            if widget not in reused_widgets:
+                self._release_widget(widget)
+
         self._refresh_avatars()
         # Keep items at their own height when the feed is shorter than
         #   the panel, instead of stretching them to fill it.
         self._items.addStretch(1)
-        self._scroll.verticalScrollBar().setValue(0)
         self._refresh_visibility()
+        if anchor is not None and anchor[0] in reused_widgets:
+            self._restore_scroll_anchor(*anchor)
+        else:
+            self._scroll.verticalScrollBar().setValue(0)
 
     def activity_count(
         self, category: ActivityCategory = ActivityCategory.ALL
@@ -226,6 +274,58 @@ class AYActivityStream(AYContainer):
         return sum(
             1 for activity, _ in self._widgets if activity.type & category
         )
+
+    @staticmethod
+    def _release_widget(widget: QtWidgets.QWidget) -> None:
+        """Delete a row that is not displayed anymore."""
+        widget.setVisible(False)
+        widget.setParent(None)
+        widget.deleteLater()
+
+    def _recreate_rows(self, widget_types: tuple[type, ...]) -> None:
+        """Create rows of given types again, to render changed data."""
+        layout = self._items._layout
+        for idx, (activity, widget) in enumerate(self._widgets):
+            if not isinstance(widget, widget_types):
+                continue
+            new_widget = self._create_widget(activity)
+            layout.replaceWidget(widget, new_widget)
+            self._release_widget(widget)
+            self._widgets[idx] = (activity, new_widget)
+        self._refresh_avatars()
+        self._refresh_visibility()
+
+    def _get_scroll_anchor(self) -> tuple[QtWidgets.QWidget, int] | None:
+        """Get the first row in view and its offset to the top of the view.
+
+        Returns:
+            The row and its offset, None if the feed is at the top or
+            nothing is displayed.
+        """
+        scroll_value = self._scroll.verticalScrollBar().value()
+        if not scroll_value:
+            return None
+        for _, widget in self._widgets:
+            if not widget.isVisible():
+                continue
+            geometry = widget.geometry()
+            if geometry.bottom() >= scroll_value:
+                return widget, geometry.top() - scroll_value
+        return None
+
+    def _restore_scroll_anchor(
+        self, widget: QtWidgets.QWidget, offset: int
+    ) -> None:
+        """Scroll so a row is at the offset it had before a refresh.
+
+        Rows added above the reader would otherwise push the activity
+        they are looking at out of view.
+        """
+        # Positions of the rows are known after the layout is updated
+        self._items._layout.activate()
+        self._items.adjustSize()
+        scroll_bar = self._scroll.verticalScrollBar()
+        scroll_bar.setValue(widget.geometry().top() - offset)
 
     def _create_widget(
         self, activity: ActivityModel
@@ -255,7 +355,11 @@ class AYActivityStream(AYContainer):
         # Reserve no space for the category badge or attachments of
         #   comments that have none.
         widget.top_line.setVisible(bool(activity.category))
-        widget.images_container.setVisible(bool(activity.files))
+        # Attachments are shown only if their files are available locally,
+        #   the stream does not download them.
+        widget.images_container.setVisible(
+            any(file.local_path for file in activity.files)
+        )
         return widget
 
     def _refresh_avatars(self, user_name: str | None = None) -> None:
