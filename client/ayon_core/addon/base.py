@@ -289,9 +289,6 @@ def _load_ayon_addons(
             if not is_py_file and not is_dir:
                 continue
 
-            # Module loggers of the addon get AYON log level, also those
-            #   created on import
-            Logger.register_package_logger(basename)
             try:
                 mod = __import__(basename, fromlist=("",))
                 for attr_name in dir(mod):

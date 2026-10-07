@@ -878,27 +878,20 @@ class Logger:
         cls.initialized = True
 
     @classmethod
-    def register_package_logger(cls, package_name: str) -> None:
+    def _set_package_log_level(cls, package_name: str) -> None:
         """Apply AYON log level to module loggers of a package.
 
         Modules commonly use 'logging.getLogger(__name__)'. Those loggers
         are not under the 'AYON' logger and inherit level of the root
-        logger, which is owned by the host application. With AYON log
-        level set on the package logger their records are handled with
-        the same level as records of AYON loggers.
+        logger, which is owned by the host application. Used only for
+        'ayon_core', loggers of other packages are not changed.
 
         Level explicitly set on the package logger is kept.
 
         Args:
-            package_name (str): Top level package name, e.g. 'ayon_maya'.
+            package_name (str): Top level package name.
 
         """
-        if not cls.initialized:
-            cls.initialize()
-        cls._set_package_log_level(package_name)
-
-    @classmethod
-    def _set_package_log_level(cls, package_name: str) -> None:
         logger = logging.getLogger(package_name)
         if cls.log_level is not None and logger.level == logging.NOTSET:
             logger.setLevel(cls.log_level)
