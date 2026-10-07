@@ -4,9 +4,11 @@ Requires:
     instance -> representations
 
 """
+from __future__ import annotations
 
 import os
 from copy import deepcopy
+import typing
 
 import pyblish.api
 
@@ -17,6 +19,9 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.pipeline import publish
+
+if typing.TYPE_CHECKING:
+    from opentimelineio.opentime import TimeRange
 
 
 class ExtractOTIOTrimmingVideo(publish.Extractor):
