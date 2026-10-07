@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import sys
 import threading
-import types
+import time
 
 import pytest
 from qtpy import QtCore, QtGui, QtWidgets
-
-if "qargparse" not in sys.modules:
-    sys.modules["qargparse"] = types.ModuleType("qargparse")
 
 from ayon_core.tools.utils.entity_thumbnails import (
     EntityThumbnailsLoader,
@@ -27,10 +23,17 @@ class _Controller:
         self.path_by_entity_id = path_by_entity_id
         self.calls = []
         self.thread_ids = set()
+        # Simulate requests to server
+        self.delay = 0.0
+        self.blocker = None
 
     def get_thumbnail_paths(self, project_name, entity_type, entity_ids):
         self.thread_ids.add(threading.get_ident())
         self.calls.append((project_name, entity_type, set(entity_ids)))
+        if self.delay:
+            time.sleep(self.delay)
+        if self.blocker is not None:
+            self.blocker.wait(10)
         return {
             entity_id: self.path_by_entity_id.get(entity_id)
             for entity_id in entity_ids
@@ -175,32 +178,29 @@ def test_thumbnail_has_rounded_corners(qtbot, task_queue, thumbnail_path):
     assert center.red() == 255
 
 
-def test_old_pixmaps_are_removed_and_loaded_again(
-    qtbot, task_queue, tmp_path
+def test_result_of_load_started_before_refresh_is_ignored(
+    qtbot, task_queue, thumbnail_path
 ):
-    paths = {}
-    for idx in range(6):
-        image = QtGui.QImage(8, 8, QtGui.QImage.Format_ARGB32)
-        image.fill(QtGui.QColor("red"))
-        path = str(tmp_path / f"thumbnail_{idx}.png")
-        assert image.save(path)
-        paths[f"entity_{idx}"] = path
-
-    controller = _Controller(paths)
+    """Thumbnails are marked as outdated while their load is running."""
+    controller = _Controller({"a": thumbnail_path})
+    controller.blocker = threading.Event()
     loader = _create_loader(controller)
-    loader.max_pixmaps = 4
-    entity_ids = list(paths)
-    for entity_id in entity_ids:
-        with qtbot.waitSignal(loader.thumbnails_changed):
-            loader.load([entity_id], 1.0)
+    try:
+        loader.load(["a"], 1.0)
+        qtbot.waitUntil(lambda: len(controller.calls) == 1)
+        # The running load could receive data from before the refresh
+        loader.set_outdated()
+    finally:
+        controller.blocker.set()
 
-    assert len(loader._pixmap_by_path) <= loader.max_pixmaps
-    # The first loaded was removed and is loaded again on next request
-    assert loader.get_pixmap(entity_ids[0]) is None
-    assert loader.needs_load(entity_ids[0])
-    # The last loaded is still available
-    assert loader.get_pixmap(entity_ids[-1]) is not None
-    assert not loader.needs_load(entity_ids[-1])
+    qtbot.wait(200)
+    assert loader.get_pixmap("a") is None
+    assert loader.needs_load("a")
+
+    with qtbot.waitSignal(loader.thumbnails_changed):
+        loader.load(["a"], 1.0)
+    assert loader.get_pixmap("a") is not None
+    assert len(controller.calls) == 2
 
 
 class _ThumbnailsDelegate(QtWidgets.QStyledItemDelegate):
@@ -228,7 +228,10 @@ def _create_view(qtbot, controller, width):
     )
     view.setItemDelegate(_ThumbnailsDelegate(thumbnails_painter, view))
     thumbnails_painter.set_project_name("demo")
-    view.resize(width, 200)
+    # Width of items must not depend on platform and style
+    view.header().setStretchLastSection(False)
+    view.setColumnWidth(0, width)
+    view.resize(width + 50, 200)
     view.show()
     qtbot.waitExposed(view)
     return view, thumbnails_painter
@@ -253,7 +256,7 @@ def test_only_visible_items_are_requested(qtbot, task_queue):
 
 def test_thumbnails_are_not_requested_in_narrow_view(qtbot, task_queue):
     controller = _Controller({})
-    view, thumbnails_painter = _create_view(qtbot, controller, 100)
+    view, thumbnails_painter = _create_view(qtbot, controller, 70)
     qtbot.wait(thumbnails_painter._request_delay * 3)
 
     assert not thumbnails_painter._requested
@@ -278,6 +281,8 @@ def test_images_are_loaded_by_more_threads_at_once(
         paths[f"entity_{idx}"] = path
 
     controller = _Controller(paths)
+    # Make sure the tasks overlap, so they are processed by more threads
+    controller.delay = 0.05
     loader = EntityThumbnailsLoader(
         controller, "folder", THUMBNAIL_SIZE, radius=2
     )

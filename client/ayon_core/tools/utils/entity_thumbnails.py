@@ -10,7 +10,6 @@ in 'ayon_core.tools.common_models'), without it thumbnails are not shown.
 """
 from __future__ import annotations
 
-import itertools
 import threading
 import time
 import weakref
@@ -114,8 +113,7 @@ class EntityThumbnailsLoader(QtCore.QObject):
     """Load entity thumbnails in background threads.
 
     Thumbnails are loaded only on request using 'load', nothing is loaded
-    upfront. Loaded pixmaps are kept in memory until the project changes,
-    the oldest are removed when there is too many of them.
+    upfront. Loaded pixmaps are kept in memory until the project changes.
 
     Args:
         controller: Controller of a tool. Thumbnails are available only
@@ -126,8 +124,6 @@ class EntityThumbnailsLoader(QtCore.QObject):
         parent: Parent object.
     """
     thumbnails_changed = QtCore.Signal(list)
-    # Limit of pixmaps kept in memory, about 6MB on a standard screen
-    max_pixmaps = 2000
 
     def __init__(
         self,
@@ -143,7 +139,8 @@ class EntityThumbnailsLoader(QtCore.QObject):
         self._thumbnail_size = thumbnail_size
         self._radius = radius
         self._project_name: Optional[str] = None
-        # Used to cancel tasks and to ignore results of previous project
+        # Used to cancel tasks and to ignore their results when the project
+        #   changes or when loaded thumbnails are marked as outdated
         self._context_id = ""
         self._context_counter = 0
 
@@ -165,19 +162,21 @@ class EntityThumbnailsLoader(QtCore.QObject):
         if project_name == self._project_name:
             return
         self._project_name = project_name
-        self._clear_tasks()
         self._path_by_entity_id = {}
         self._pixmap_by_path = {}
-        self._valid_ids = set()
-        self._loading_ids = set()
+        self.set_outdated()
 
     def set_outdated(self) -> None:
         """Entities could change, validate thumbnails on next request.
 
         Already loaded thumbnails are still available, and are replaced
-        only if the entity received a different thumbnail.
+        only if the entity received a different thumbnail. Results of
+        loads that are still running are ignored, they could be received
+        before the entities changed.
         """
+        self._clear_tasks()
         self._valid_ids = set()
+        self._loading_ids = set()
 
     def needs_load(self, entity_id: str) -> bool:
         return (
@@ -267,7 +266,7 @@ class EntityThumbnailsLoader(QtCore.QObject):
             tuple[dict[str, Optional[str]], dict[str, QtGui.QImage]]
         ],
     ) -> None:
-        # Result of a previous project
+        # Result of a previous project or from before a refresh
         if context_id != self._context_id:
             return
 
@@ -292,7 +291,6 @@ class EntityThumbnailsLoader(QtCore.QObject):
                 changed_ids.append(entity_id)
             self._path_by_entity_id[entity_id] = path
 
-        self._remove_old_pixmaps()
         if changed_ids:
             self.thumbnails_changed.emit(changed_ids)
 
@@ -320,26 +318,6 @@ class EntityThumbnailsLoader(QtCore.QObject):
             painter.end()
         pixmap.setDevicePixelRatio(device_pixel_ratio)
         return pixmap
-
-    def _remove_old_pixmaps(self) -> None:
-        """Keep memory usage limited in projects with a lot of entities.
-
-        Entities of removed pixmaps are loaded again when they are needed.
-        """
-        overflow = len(self._pixmap_by_path) - self.max_pixmaps
-        # Running tasks expect that already loaded pixmaps stay available
-        if overflow <= 0 or self._loading_ids:
-            return
-        # Remove more of them, so it does not happen on each load
-        removed_paths = set(itertools.islice(
-            self._pixmap_by_path, overflow + (self.max_pixmaps // 4)
-        ))
-        for path in removed_paths:
-            del self._pixmap_by_path[path]
-        for entity_id, path in tuple(self._path_by_entity_id.items()):
-            if path in removed_paths:
-                del self._path_by_entity_id[entity_id]
-                self._valid_ids.discard(entity_id)
 
 
 class _LoadedCallback:
