@@ -50,8 +50,9 @@ def relative_date(date_str: str) -> str:
         date_str: Date in ISO format.
 
     Returns:
-        Time passed in its largest unit, or the input if it can not be
-        parsed.
+        Time passed in its largest unit, ``"just now"`` for the last
+        minute and for a date in the future (e.g. when the clock of the
+        server is ahead), or the input if it can not be parsed.
     """
     try:
         date = datetime.fromisoformat(date_str).astimezone()
@@ -60,17 +61,17 @@ def relative_date(date_str: str) -> str:
     seconds = (datetime.now().astimezone() - date).total_seconds()
     if seconds < 60:
         return "just now"
-    for unit, size in (
+    unit, count = "minute", int(seconds // 60)
+    for larger_unit, size in (
         ("year", 365 * 86400),
         ("month", 30 * 86400),
         ("day", 86400),
         ("hour", 3600),
-        ("minute", 60),
     ):
-        count = int(seconds // size)
-        if count:
-            return f"{count} {unit}{'s' if count > 1 else ''}"
-    return date_str
+        if seconds >= size:
+            unit, count = larger_unit, int(seconds // size)
+            break
+    return f"{count} {unit}{'s' if count > 1 else ''}"
 
 
 @dataclass
