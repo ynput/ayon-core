@@ -132,6 +132,18 @@ def test_log_level_from_env(log_module, monkeypatch, env, expected):
     assert level == expected
 
 
+@pytest.mark.parametrize("name", [None, ""])
+def test_get_logger_without_name(log_module, name):
+    """Root logger must not be reparented under its child 'AYON'."""
+    module = log_module()
+
+    with pytest.warns(UserWarning, match="without passed name"):
+        module.Logger.get_logger(name)
+
+    assert logging.getLogger().parent is None
+    assert logging.getLogger("__main__").parent is logging.getLogger("AYON")
+
+
 def test_positional_arguments_are_formatted(log_module, foreign_handler):
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.args")
@@ -855,7 +867,7 @@ def test_without_structlog_skips_file_and_vector(
     monkeypatch.setenv("AYON_VECTOR_LOG_URL", "http://127.0.0.1:1/")
     module = log_module_without_structlog()
     # Repeated configuration does not add handlers
-    module.Logger.configure_logger()
+    module.Logger._configure_logger()
 
     # Root also holds handlers of pytest log capture
     handler_types = [type(handler) for handler in logging.getLogger().handlers]

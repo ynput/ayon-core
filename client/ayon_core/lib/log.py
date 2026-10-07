@@ -64,9 +64,9 @@ def _render_for_stdlib(
     attached to the record for '_EventDictProcessorFormatter'.
 
     Args:
-            logger (logging.Logger): The standard library logger.
-            method_name (str): The logging method name (e.g., "info", "error").
-            event_dict (dict[str, Any]): The structlog event dictionary.
+        logger (logging.Logger): The standard library logger.
+        method_name (str): The logging method name (e.g., "info", "error").
+        event_dict (dict[str, Any]): The structlog event dictionary.
 
     Returns:
         tuple[tuple[str], dict[str, Any]]: A tuple containing
@@ -755,7 +755,9 @@ def _console_handler_enabled() -> bool:
 
 def _deprecated_getter(func):
     def _get_logger_deprecate(cls, name: str | None = None) -> Any:
-        if name is None:
+        # Empty name would return the root logger, it can't be reparented
+        #   under the 'AYON' logger, which is its child
+        if not name:
             warnings.warn(
                 "DEPRECATION: 'Logger.get_logger' without passed name is"
                 " deprecated and will be removed in future versions.",
@@ -769,7 +771,7 @@ def _deprecated_getter(func):
 class Logger:
     # Is static class initialized
     initialized = False
-    # Handlers were added to root logger, see 'configure_logger'
+    # Handlers were added to root logger, see '_configure_logger'
     _logging_configured = False
     _init_lock = threading.Lock()
     _root_logger = None
@@ -804,8 +806,6 @@ class Logger:
         if not cls.initialized:
             cls.initialize()
 
-        name = name or "__main__"
-
         logger = logging.getLogger(name)
         if logger is not cls._root_logger:
             logger.parent = cls._root_logger
@@ -836,13 +836,13 @@ class Logger:
         # Change initialization state to prevent runtime changes
         # if is executed during runtime
         cls.initialized = False
-        cls.configure_logger()
+        cls._configure_logger()
 
         cls.log_level = get_log_level_from_env()
         root_logger = logging.getLogger("AYON")
         root_logger.setLevel(cls.log_level)
         # Records propagate to the stdlib root logger which holds
-        #   the handlers, see 'configure_logger'.
+        #   the handlers, see '_configure_logger'.
         cls._root_logger = root_logger
         cls._set_package_log_level("ayon_core")
 
@@ -965,7 +965,7 @@ class Logger:
         return cls._process_name
 
     @classmethod
-    def configure_logger(cls) -> None:
+    def _configure_logger(cls) -> None:
         """Configure logging handlers and structlog.
 
         Adds handlers for console, log file and Vector HTTP to the root
