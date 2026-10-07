@@ -71,8 +71,8 @@ def _support_farm_host_names() -> bool:
         return False
 
     version = semver.VersionInfo.parse(deadline_version)
-    # Deadline 1.9.14 version is last version that does show custom frames
-    return version > (1, 9, 14)
+    # Deadline 0.7.4 version is last version that does show custom frames
+    return version > (0, 7, 4)
 
 
 SUPPORT_FARM_HOST_NAMES = _support_farm_host_names()
