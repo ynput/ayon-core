@@ -75,6 +75,35 @@ class ThumbnailsModel:
 
         return output
 
+    def get_thumbnail_path(
+        self,
+        project_name: str | None,
+        entity_type: ThumbnailEntityType,
+        entity_id: str,
+        thumbnail_id: str | None,
+    ) -> str | None:
+        """Get path to a thumbnail of an entity with known thumbnail id.
+
+        The entity is not queried to find its thumbnail id, which is what
+        'get_thumbnail_paths' does.
+
+        Args:
+            project_name (str | None): Project name.
+            entity_type (ThumbnailEntityType): Entity type.
+            entity_id (str): Entity id.
+            thumbnail_id (str | None): Thumbnail id of the entity.
+
+        Returns:
+            str | None: Path to the thumbnail, or None if it is not
+                available.
+
+        """
+        if not project_name or not entity_type or not entity_id:
+            return None
+        return self._get_thumbnail_path(
+            project_name, entity_type, entity_id, thumbnail_id
+        )
+
     def get_folder_thumbnail_ids(
         self, project_name: str, folder_ids: set[str]
     ) -> dict[str, str | None]:
