@@ -9,10 +9,24 @@ import pytest
 
 from ayon_core.ui.components import user_avatars
 
-SVG_AVATAR = (
-    b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-    b'<text x="50%" y="50%" dominant-baseline="middle"'
-    b' text-anchor="middle">KT</text></svg>'
+# What the server responds with for a user without an avatar
+SVG_AVATAR = b"""<svg width="100px" height="100px" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100%" height="100%" fill="#487957"/>
+      <text
+        x="50%"
+        y="50%"
+        dominant-baseline="central"
+        text-anchor="middle"
+        fill="white"
+        font-size="50px"
+        font-family="Arial"
+      >
+        KT
+      </text>
+    </svg>"""
+UPLOADED_SVG_AVATAR = (
+    b'<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">'
+    b'<circle cx="50" cy="50" r="40" fill="red"/></svg>'
 )
 
 
@@ -57,16 +71,23 @@ def test_uploaded_avatar_is_saved_to_a_file(monkeypatch, tmp_path):
     assert Path(path).read_bytes() == b"jpeg data"
 
 
+def test_uploaded_svg_avatar_is_kept(monkeypatch, tmp_path):
+    path = _fetch(
+        monkeypatch, tmp_path, UPLOADED_SVG_AVATAR, "image/svg+xml"
+    )
+
+    assert Path(path).read_bytes() == UPLOADED_SVG_AVATAR
+
+
 @pytest.mark.parametrize(
     "content, content_type",
     [
         (SVG_AVATAR, "image/svg+xml"),
         # Content type is not always filled
         (SVG_AVATAR, ""),
-        (b'<?xml version="1.0"?>\n' + SVG_AVATAR, "application/xml"),
         (b"", "image/png"),
     ],
-    ids=["svg", "svg_without_content_type", "xml_declaration", "empty"],
+    ids=["initials", "initials_without_content_type", "empty"],
 )
 def test_generated_initials_are_not_used_as_avatar(
     monkeypatch, tmp_path, content, content_type
