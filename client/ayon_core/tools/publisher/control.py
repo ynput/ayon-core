@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import tempfile
 import shutil
 import typing
@@ -21,6 +20,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     UsersModel,
 )
+from ayon_core.lib import Logger
 
 from .models import (
     PublishModel,
@@ -116,7 +116,7 @@ class PublisherController(
         """
 
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def get_window_subtitle(self) -> Optional[str]:

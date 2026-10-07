@@ -7,7 +7,6 @@ Supports collapsible grouping in tree mode.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -42,13 +41,15 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from ayon_core.lib import Logger
+
 from ..style_types import get_ayon_style
 from ..variants import AYCardViewVariants
 from .entity_card import AYEntityCard, card_height_for_width
 from .scroll_area import AYScrollBar
 from .table_model import PaginatedTableModel
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 @dataclass

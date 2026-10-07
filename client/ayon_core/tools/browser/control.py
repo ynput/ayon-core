@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import logging
 import typing
 from typing import Any
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem
+from ayon_core.lib import NestedCacheItem, Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import AbstractHost
@@ -58,7 +57,7 @@ class BrowserController(AbstractBrowserController):
     @property
     def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     # ---------------------------------

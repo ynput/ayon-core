@@ -14,7 +14,6 @@ user accepts.  The :class:`AYViewSelector` is responsible for invoking
 
 from __future__ import annotations
 
-import logging
 from enum import IntEnum
 
 from qtpy.QtCore import Qt
@@ -25,6 +24,8 @@ from qtpy.QtWidgets import (
     QWidget,
     QHBoxLayout,
 )
+
+from ayon_core.lib import Logger
 
 from ...style_types import get_ayon_style
 from ..buttons import AYButton
@@ -37,7 +38,7 @@ from ..line_edit import AYLineEdit
 from ..user_image import AYUserImage
 from .data_models import Scope, View, Visibility
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 # Access level constants
 ACCESS_LEVELS = {

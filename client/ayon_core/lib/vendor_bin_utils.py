@@ -1,10 +1,11 @@
 import functools
 import os
-import logging
 import platform
 import subprocess
 
-log = logging.getLogger("Vendor utils")
+from .log import Logger
+
+log = Logger.get_logger("Vendor utils")
 
 
 class ToolNotFoundError(Exception):

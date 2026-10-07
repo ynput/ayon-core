@@ -1,6 +1,7 @@
 import dataclasses
 import os
-import logging
+
+from ayon_core.lib import Logger
 
 try:
     from pxr import UsdGeom, Sdf, Kind
@@ -8,7 +9,7 @@ except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
     from mvpxr import UsdGeom, Sdf, Kind
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 @dataclasses.dataclass

@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import concurrent.futures
 import contextvars
-import logging
 import queue
 import threading
 import time
@@ -43,7 +42,9 @@ from qtpy.QtCore import (
 )
 from qtpy.QtWidgets import QApplication
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 # Number of parallel pool workers created by default.
 _DEFAULT_NUM_WORKERS: int = 4

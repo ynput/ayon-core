@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from functools import partial
 
@@ -29,6 +28,8 @@ from qtpy.QtWidgets import (
     QTextEdit,
 )
 
+from ayon_core.lib import Logger
+
 from ..data_models import CommentCategory, ProjectData, User
 from ..style_types import get_ayon_style
 from ..variants import QFrameVariants, QTextEditVariants
@@ -56,7 +57,7 @@ from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .text_edit import AYTextEdit
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
 

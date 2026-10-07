@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import logging
 import json
 
 from qtpy.QtGui import QColor
+
+from ayon_core.lib import Logger
 
 from .data_models import (
     CommentModel,
@@ -14,7 +15,7 @@ from .data_models import (
     FileModel,
 )
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class QSignalBlocker:

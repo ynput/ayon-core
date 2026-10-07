@@ -21,6 +21,7 @@ from .vendor_bin_utils import (
     get_oiio_tool_args,
     is_oiio_supported,
 )
+from .log import Logger
 
 # Max length of string that is supported by ffmpeg
 MAX_FFMPEG_STRING_LEN = 8196
@@ -238,7 +239,7 @@ def convert_value_by_type_name(value_type, value, logger=None):
     In some cases value types have custom python class.
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = Logger.get_logger(__name__)
 
     # Simple types
     if value_type == "string":
@@ -339,7 +340,7 @@ def parse_oiio_xml_output(xml_string, logger=None):
         xml_string = xml_string.replace(match, new_value)
 
     if logger is None:
-        logger = logging.getLogger("OIIO-xml-parse")
+        logger = Logger.get_logger("OIIO-xml-parse")
 
     tree = xml.etree.ElementTree.fromstring(xml_string)
     attribs = {}
@@ -747,7 +748,7 @@ def convert_input_paths_for_ffmpeg(
             Currently, only ".exr" extension is supported.
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = Logger.get_logger(__name__)
 
     first_input_path = input_paths[0]
     ext = os.path.splitext(first_input_path)[1].lower()
@@ -844,7 +845,7 @@ def get_ffprobe_data(path_to_file, logger=None):
         logger (logging.Logger): injected logger, if empty new is created
     """
     if not logger:
-        logger = logging.getLogger(__name__)
+        logger = Logger.get_logger(__name__)
     logger.debug(
         "Getting information about input \"{}\".".format(path_to_file)
     )
@@ -933,7 +934,7 @@ def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
         source_ffmpeg_cmd(str): Command that created input if available.
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = Logger.get_logger(__name__)
 
     video_stream = None
     no_audio_stream = None
@@ -1330,7 +1331,7 @@ def oiio_color_convert(
 
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = Logger.get_logger(__name__)
 
     # Get oiioinfo only from first image, otherwise file can't be found
     first_input_path = input_path

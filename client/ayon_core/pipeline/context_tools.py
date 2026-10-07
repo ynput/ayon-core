@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import platform
 import uuid
 import warnings
@@ -15,6 +14,7 @@ from pyblish.lib import MessageHandler
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import AbstractHost
 from ayon_core.lib import (
+    Logger,
     is_in_tests,
     initialize_ayon_connection,
     register_event_callback,
@@ -44,7 +44,7 @@ _registered_host = {"_": None}
 # - that gives option to register modules' callbacks
 _addons_manager = None
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 PLUGINS_DIR = os.path.join(AYON_CORE_ROOT, "plugins")
 
