@@ -31,6 +31,7 @@ class TreeNode:
         label: Display label shown in the view.
         has_children: Whether this node can have children.
         icon: Optional icon name or path.
+        selectable: Whether this node can be selected in the view.
         data: Arbitrary extra data associated with this node.
         filter_text: Casefolded text to match search queries against
             (e.g. a folder's path plus its label-based path). Falls
@@ -44,6 +45,7 @@ class TreeNode:
     icon: str = ""
     icon_color: str = "#f4f5f5"
     icon_fill: bool = False
+    selectable: bool = True
     data: dict = field(default_factory=dict)
     filter_text: str = ""
 
@@ -355,6 +357,17 @@ class LazyTreeModel(QAbstractItemModel):
             Always 1.
         """
         return 1
+
+    def flags(
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> Qt.ItemFlag:
+        flags = super().flags(index)
+        if index.isValid():
+            node: _InternalNode = index.internalPointer()  # type: ignore[assignment]
+            if node.tree_node and not node.tree_node.selectable:
+                flags &= ~Qt.ItemFlag.ItemIsSelectable
+        return flags
 
     def data(
         self,
@@ -674,6 +687,17 @@ class BulkTreeModel(QAbstractItemModel):
         self, parent: QModelIndex | QPersistentModelIndex = QModelIndex()
     ) -> int:
         return 1
+
+    def flags(
+        self,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> Qt.ItemFlag:
+        flags = super().flags(index)
+        if index.isValid():
+            node: _InternalNode = index.internalPointer()  # type: ignore[assignment]
+            if node.tree_node and not node.tree_node.selectable:
+                flags &= ~Qt.ItemFlag.ItemIsSelectable
+        return flags
 
     def data(
         self,
