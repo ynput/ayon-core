@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import ceil
+import re
 import typing
 
 import arrow
@@ -12,12 +13,14 @@ from ayon_core.tools.utils import (
     ElideLabel,
     SeparatorWidget,
     IconButton,
+    MultiSelectionComboBox,
     paint_image_with_color,
     get_qt_icon,
 )
 from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
+from ayon_core.ui.components import AYLineEdit
 
 from .constants import (
     ITEM_ID_ROLE,
@@ -334,10 +337,12 @@ class _LogFiller:
         output_widget: QtWidgets.QTextEdit,
         logs: list[ReportLog],
         show_timestamp: bool,
+        search_text: str = "",
     ) -> None:
         self.output_widget = output_widget
         self.show_timestamp = show_timestamp
         self.logs = logs
+        self.search_text = search_text
         self.first_line = True
         self.cursor = None
         # Do not use the widget's current char format, it is the format
@@ -363,7 +368,24 @@ class _LogFiller:
             self.cursor.insertText(
                 f"{timestamp}{log_level}: ", fmt
             )
-        self.cursor.insertText(message, self.default_fmt)
+        if not self.search_text:
+            self.cursor.insertText(message, self.default_fmt)
+            return
+
+        start = 0
+        for match in re.finditer(
+            re.escape(self.search_text), message, re.IGNORECASE
+        ):
+            self.cursor.insertText(
+                message[start:match.start()], self.default_fmt
+            )
+            highlight_fmt = QtGui.QTextCharFormat(self.default_fmt)
+            highlight_fmt.setBackground(QtGui.QColor(255, 213, 79))
+            highlight_fmt.setForeground(QtGui.QColor(0, 0, 0))
+            self.cursor.insertText(match.group(), highlight_fmt)
+            start = match.end()
+
+        self.cursor.insertText(message[start:], self.default_fmt)
 
     def fill(self) -> None:
         self.output_widget.clear()
@@ -418,12 +440,35 @@ class DetailsWidget(QtWidgets.QWidget):
         timestamp_check = NiceCheckbox(parent=header_widget)
         timestamp_check.setChecked(True)
         timestamp_label = QtWidgets.QLabel("Show timestamps", header_widget)
+        search_field = AYLineEdit(
+            parent=header_widget,
+            placeholder="Search logs...",
+            variant=AYLineEdit.Variants.Search_Field,
+            name_id="PublishLogSearch",
+        )
+        search_field.setToolTip("Filter the displayed logs")
+        search_field.setMinimumWidth(180)
+        level_filter = MultiSelectionComboBox(
+            parent=header_widget,
+            placeholder="Log levels (all)",
+        )
+        for label, value in (
+            ("Debug", "DEBUG"),
+            ("Info", "INFO"),
+            ("Warning", "WARNING"),
+            ("Error", "ERROR"),
+        ):
+            level_filter.addItem(label, value)
+        level_filter.setMinimumWidth(150)
+        level_filter.setToolTip("Filter logs by level")
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(5, 5, 5, 5)
         header_layout.addWidget(timestamp_check, 0)
         header_layout.addWidget(timestamp_label, 0)
         header_layout.addStretch(1)
+        header_layout.addWidget(level_filter, 0)
+        header_layout.addWidget(search_field, 0)
 
         output_widget = ZoomPlainText(self)
         output_widget.setObjectName("PublishLogConsole")
@@ -436,17 +481,33 @@ class DetailsWidget(QtWidgets.QWidget):
         layout.addWidget(output_widget, 1)
 
         timestamp_check.stateChanged.connect(self._on_timestamp_check)
+        search_field.textChanged.connect(self._on_search_changed)
+        level_filter.value_changed.connect(self._on_level_filter_changed)
 
         self._is_active: bool = True
         self._need_refresh: bool = False
 
         self._timestamp_check = timestamp_check
+        self._search_field = search_field
+        self._level_filter_widget = level_filter
         self._output_widget: ZoomPlainText = output_widget
         self._report_item: PublishReport | None = None
         self._instance_filter: set[str] = set()
         self._plugin_filter: set[str] = set()
+        self._level_filter: set[str] = set()
+        self._search_text = ""
 
     def _on_timestamp_check(self):
+        self._update_logs()
+
+    def _on_search_changed(self, text: str) -> None:
+        self._search_text = text.strip().casefold()
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_level_filter_changed(self) -> None:
+        self._level_filter = set(self._level_filter_widget.value())
+        self._need_refresh = True
         self._update_logs()
 
     def clear(self) -> None:
@@ -462,6 +523,8 @@ class DetailsWidget(QtWidgets.QWidget):
         self._report_item = report
         self._plugin_filter = set()
         self._instance_filter = set()
+        self._level_filter_widget.set_value([])
+        self._level_filter = set()
         self._need_refresh = True
         self._update_logs()
 
@@ -489,13 +552,45 @@ class DetailsWidget(QtWidgets.QWidget):
                 plugin_ids_filter=self._plugin_filter or None,
                 instance_ids_filter=self._instance_filter or None,
             )
+            if (
+                (not self._level_filter or self._log_matches_level(log))
+                and (
+                    not self._search_text
+                    or self._log_matches_search(log)
+                )
+            )
         ]
 
         show_timestamp = self._timestamp_check.isChecked()
         filler = _LogFiller(
-            self._output_widget, filtered_logs, show_timestamp
+            self._output_widget,
+            filtered_logs,
+            show_timestamp,
+            self._search_text,
         )
         filler.fill()
+
+    def _log_matches_search(self, log: ReportLog) -> bool:
+        if log.type == "record":
+            searchable_text = "\n".join(
+                text
+                for text in (log.message, log.exc_info)
+                if text
+            )
+        elif log.type == "error":
+            searchable_text = log.traceback or ""
+        else:
+            searchable_text = ""
+        return self._search_text in searchable_text.casefold()
+
+    def _log_matches_level(self, log: ReportLog) -> bool:
+        if log.type == "error":
+            level = "ERROR"
+        else:
+            level = (log.levelname or "").upper()
+            if level in {"CRITICAL", "TRACEBACK"}:
+                level = "ERROR"
+        return level in self._level_filter
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
