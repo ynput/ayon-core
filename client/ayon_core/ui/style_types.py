@@ -23,7 +23,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from qtpy.QtGui import QColor, QFont, QFontDatabase, QPalette
+from qtpy.QtGui import QColor, QFont, QPalette
 from qtpy.QtWidgets import QWidget
 
 from .drawers._utils import style_font
@@ -397,10 +397,19 @@ class StyleData:
             # Override palette variables with the current state's values and
             # remove all states. That way, we can directly use
             # "background-color" without checking the widget's state.
+            # A compound state ("selected-hover") that a variant doesn't
+            # define falls back to its first component ("selected") so
+            # callers don't have to duplicate a state's block just to
+            # cover every combination a widget can request.
+            fallback_state = (
+                state.split("-", 1)[0]
+                if isinstance(state, str) and "-" in state and state not in d
+                else None
+            )
             state_dict = {}
             for key, val in list(d.items()):
                 if isinstance(val, dict):
-                    if key == state:
+                    if key == state or key == fallback_state:
                         state_dict = {
                             kk: pal.get(vv, vv) for kk, vv in val.items()
                         }
@@ -492,39 +501,13 @@ class StyleData:
 
 class _LocalContext:
     ayon_style_instance: AYONStyle | None = None
-    font_ids: list[int] | None = None
 
 
 def _load_fonts() -> None:
     """Load and register fonts into Qt application."""
+    # Load fonts the same as the old ayon style.
     from ayon_core.style import _load_font
-
-    # Load fonts from old ayon stylesheets too (monospaced font).
     _load_font()
-
-    # Check if font ids are still loaded
-    if _LocalContext.font_ids is not None:
-        for font_id in tuple(_LocalContext.font_ids):
-            font_families = QFontDatabase.applicationFontFamilies(
-                font_id
-            )
-            # Reset font if font id is not available
-            if not font_families:
-                _LocalContext.font_ids = None
-                break
-
-    if _LocalContext.font_ids is None:
-        _LocalContext.font_ids = []
-        path = Path(__file__).parent / "resources" / "NunitoSans.ttf"
-
-        font_path = str(path)
-        font_id = QFontDatabase.addApplicationFont(font_path)
-        if font_id == -1:
-            log.error(f"Failed to load base font from {font_path}")
-        else:
-            _LocalContext.font_ids.append(font_id)
-            family = QFontDatabase.applicationFontFamilies(font_id)
-            log.debug(f"Loaded base font file {font_path} ('{family}')")
 
 
 def get_ayon_style() -> AYONStyle:

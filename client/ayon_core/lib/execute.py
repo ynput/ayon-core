@@ -116,9 +116,15 @@ def run_subprocess(*args, **kwargs):
         and isinstance(args[0], str)
     ):
         # Escape parentheses for bash
-        if os.getenv("SHELL") in ("/bin/bash", "/bin/sh"):
+        if platform.system().lower() != "windows":
             new_arg = (
                 args[0]
+                .replace("&", "\\&")
+                .replace(";", "\\;")
+                .replace("|", "\\|")
+                .replace("$", "\\$")
+                .replace(">", "\\>")
+                .replace("<", "\\<")
                 .replace("(", "\\(")
                 .replace(")", "\\)")
             )

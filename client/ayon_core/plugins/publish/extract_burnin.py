@@ -447,7 +447,7 @@ class ExtractBurnin(publish.Extractor):
             font_filepath = font_filepath.get(sys_name)
 
         if font_filepath and isinstance(font_filepath, str):
-            font_filepath = font_filepath.format(**os.environ)
+            font_filepath = font_filepath.format_map(os.environ)
             if not os.path.exists(font_filepath):
                 font_filepath = None
 
