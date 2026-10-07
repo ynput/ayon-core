@@ -128,3 +128,28 @@ def test_controller_without_thumbnails(qapp):
     assert not loader.is_available()
     loader.load({"a"}, 1.0)
     assert loader.needs_load("a")
+
+
+def test_changed_thumbnail_is_updated_after_refresh(
+    qtbot, task_queue, thumbnail_path, tmp_path
+):
+    controller = _Controller({"a": thumbnail_path, "b": None})
+    loader = _create_loader(controller)
+    with qtbot.waitSignal(loader.thumbnails_changed):
+        loader.load({"a", "b"}, 1.0)
+    old_pixmap = loader.get_pixmap("a")
+
+    # New thumbnails were set on the entities
+    image = QtGui.QImage(64, 64, QtGui.QImage.Format_ARGB32)
+    image.fill(QtGui.QColor("blue"))
+    new_path = str(tmp_path / "new_thumbnail.png")
+    assert image.save(new_path)
+    controller.path_by_entity_id = {"a": new_path, "b": thumbnail_path}
+
+    loader.set_outdated()
+    with qtbot.waitSignal(loader.thumbnails_changed) as blocker:
+        loader.load({"a", "b"}, 1.0)
+
+    assert sorted(blocker.args[0]) == ["a", "b"]
+    assert loader.get_pixmap("a").cacheKey() != old_pixmap.cacheKey()
+    assert loader.get_pixmap("b") is not None
