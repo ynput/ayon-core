@@ -196,7 +196,7 @@ class TestGetSource:
     ):
         settings = _contribution_settings(load_from="search_product")
         assert plugin._get_source(settings, instance) == (
-            "ayon://test//ep01/sq01/sq01a"
+            "ayon://test/ep01/sq01/sq01a"
             "?product=usdSequence&version=latest&representation=usd"
         )
 

@@ -69,6 +69,8 @@ def construct_ayon_entity_uri(
 ) -> str:
     """Construct AYON entity URI from its components
 
+    The folder path may be provided with or without leading slash.
+
     Returns:
         str: AYON Entity URI to query entity path.
     """
@@ -95,7 +97,7 @@ def construct_ayon_entity_uri(
         "ayon://{project}/{folder_path}?product={product}&version={version}"
         "&representation={representation}".format(
             project=project_name,
-            folder_path=folder_path,
+            folder_path=folder_path.strip("/"),
             product=product,
             version=version,
             representation=representation_name

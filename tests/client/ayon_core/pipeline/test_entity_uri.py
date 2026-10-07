@@ -72,6 +72,24 @@ class TestConstructAyonEntityUri:
             "representation": "usd",
         }
 
+    @pytest.mark.parametrize("folder_path", [
+        "/char/villain",
+        "char/villain",
+        "/char/villain/",
+    ])
+    def test_construct_single_slash_before_folder_path(self, folder_path):
+        uri = construct_ayon_entity_uri(
+            project_name="test",
+            folder_path=folder_path,
+            product="modelMain",
+            version=2,
+            representation_name="usd",
+        )
+        assert uri == (
+            "ayon://test/char/villain"
+            "?product=modelMain&version=2&representation=usd"
+        )
+
     @pytest.mark.parametrize("version", ["", "foo", "v002", "1.5"])
     def test_construct_invalid_value(self, version):
         with pytest.raises(ValueError):
