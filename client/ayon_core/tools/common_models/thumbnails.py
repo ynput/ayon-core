@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import os
 import threading
 import typing
 from typing import Callable
@@ -8,6 +9,7 @@ from typing import Callable
 import ayon_api
 
 from ayon_core.lib import Logger, NestedCacheItem
+from ayon_core.lib.cache import CacheItem
 from ayon_core.pipeline.thumbnails import (
     get_thumbnail_path,
     get_entity_thumbnail_path,
@@ -28,7 +30,10 @@ class ThumbnailsModel:
     log = Logger.get_logger("ThumbnailsModel")
 
     def __init__(self) -> None:
-        # Guards the caches, is not held when server is requested
+        # Guards the caches, is not held when server is requested. Cache
+        #   items received before a request are filled after the request,
+        #   if the model was reset in the meantime the items are not part
+        #   of the caches anymore and the outdated result is not cached.
         self._lock = threading.Lock()
         # Paths are cached only for a while. A failed download is tried
         #   again and a file removed from disk is downloaded again.
@@ -108,11 +113,6 @@ class ThumbnailsModel:
     ) -> dict[str, str | None]:
         return self._get_thumbnail_ids(project_name, "folder", folder_ids)
 
-    def get_task_thumbnail_ids(
-        self, project_name: str, task_ids: set[str]
-    ) -> dict[str, str | None]:
-        return self._get_thumbnail_ids(project_name, "task", task_ids)
-
     def get_version_thumbnail_ids(
         self, project_name: str, version_ids: set[str]
     ) -> dict[str, str | None]:
@@ -142,8 +142,6 @@ class ThumbnailsModel:
             project_name, entity_type, missing_ids
         )
         with self._lock:
-            # The cache could be reset in the meantime
-            cache = self._thumbnail_ids_cache[project_name][entity_type]
             for entity_id in missing_ids:
                 # Entities that were not found are cached too
                 thumbnail_id = queried_ids.get(entity_id)
@@ -184,19 +182,14 @@ class ThumbnailsModel:
     ) -> str | None:
         with self._lock:
             item = self._paths_cache[project_name][thumbnail_id]
-            if item.is_valid:
-                return item.get_data()
-
-        filepath = self._receive_path(
+        return self._get_cached_path(
+            item,
             get_thumbnail_path,
             project_name,
             entity_type,
             entity_id,
             thumbnail_id,
         )
-        with self._lock:
-            self._paths_cache[project_name][thumbnail_id] = filepath
-        return filepath
 
     def _get_fallback_path(
         self,
@@ -213,32 +206,45 @@ class ThumbnailsModel:
         with self._lock:
             cache = self._fallback_paths_cache[project_name][entity_type]
             item = cache[entity_id]
-            if item.is_valid:
-                return item.get_data()
-
-        filepath = self._receive_path(
-            get_entity_thumbnail_path, project_name, entity_type, entity_id
+        return self._get_cached_path(
+            item,
+            get_entity_thumbnail_path,
+            project_name,
+            entity_type,
+            entity_id,
         )
-        with self._lock:
-            # The cache could be reset in the meantime
-            cache = self._fallback_paths_cache[project_name][entity_type]
-            cache[entity_id] = filepath
-        return filepath
 
-    def _receive_path(
+    def _get_cached_path(
         self,
+        item: CacheItem,
         func: Callable[..., str | None],
         project_name: str,
         entity_type: ThumbnailEntityType,
         entity_id: str,
         *args,
     ) -> str | None:
-        """Receive thumbnail path, the others are not affected by a fail."""
+        """Get thumbnail path from cache item, or receive and cache it.
+
+        Thumbnails that failed to be received are cached too, so they are
+            not requested again and again. A fail does not affect other
+            thumbnails.
+        """
+        with self._lock:
+            is_valid = item.is_valid
+            filepath = item.get_data()
+        # The file could be removed from disk, e.g. by cleanup of
+        #   thumbnails cache in other process
+        if is_valid and (filepath is None or os.path.exists(filepath)):
+            return filepath
+
+        filepath = None
         try:
-            return func(project_name, entity_type, entity_id, *args)
+            filepath = func(project_name, entity_type, entity_id, *args)
         except Exception as exc:
             self.log.warning(
                 "Failed to receive thumbnail of %s '%s' in project '%s': %s",
                 entity_type, entity_id, project_name, exc,
             )
-        return None
+        with self._lock:
+            item.update_data(filepath)
+        return filepath
