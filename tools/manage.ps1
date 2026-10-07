@@ -207,9 +207,21 @@ function Run-From-Code {
 }
 
 function Run-Tests {
-    $RunArgs = @( "run", "pytest", "$($RepoRoot)/tests", "-m",  "not server")
+    param(
+        [string[]]$TestArguments
+    )
+
+    $TestMarker = "not server and not optional"
+    if ($TestArguments -contains "--optional") {
+        $TestMarker = "not server"
+    }
+
+    $RunArgs = @(
+        "run", "pytest", "$($RepoRoot)/tests", "-m",
+        $TestMarker
+    )
     & uv sync --extra test
-    & uv $RunArgs @arguments
+    & uv $RunArgs @TestArguments
 }
 
 function Update-Tests-Visuals {
@@ -241,7 +253,8 @@ function Write-Help {
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
     Write-Info -Text "  run                           ", "Run a uv command in the repository environment" -Color White, Cyan
-    Write-Info -Text "  run-tests                     ", "Run ayon-core tests" -Color White, Cyan
+    Write-Info -Text "  run-tests                     ", "Run ayon-core tests without optional tests" -Color White, Cyan
+    Write-Info -Text "  run-tests --optional          ", "Run ayon-core tests including optional tests" -Color White, Cyan
     Write-Info -Text "  update-tests-visuals          ", "Run ayon-core tests to update visual images" -Color White, Cyan
     Write-Host ""
 }
@@ -269,7 +282,7 @@ function Resolve-Function {
         Run-From-Code
     } elseif ($FunctionName -eq "runtests") {
         Set-Cwd
-        Run-Tests
+        Run-Tests -TestArguments $Arguments
     } elseif ($FunctionName -eq "updatetestsvisuals") {
         Set-Cwd
         Update-Tests-Visuals
