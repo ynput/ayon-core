@@ -13,6 +13,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     ProjectsModel,
     ProductTypeIconMapping,
+    ThumbnailsModel,
     UsersModel,
 )
 
@@ -45,6 +46,7 @@ class SceneInventoryController:
         self._version_history_model = VersionHistoryModel(self)
         self._activities_model = ActivitiesModel()
         self._users_model = UsersModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
         self._projects_model = ProjectsModel(self)
@@ -182,11 +184,11 @@ class SceneInventoryController:
             thumbnail_id (str): Id of the version thumbnail.
 
         Returns:
-            str: Path to the image, empty string if there is none.
+            Optional[str]: Path to the image, None if there is none.
 
         """
-        return self._version_history_model.get_thumbnail_path(
-            project_name, version_id, thumbnail_id
+        return self._thumbnails_model.get_thumbnail_path(
+            project_name, "version", version_id, thumbnail_id
         )
 
     # Activity methods
@@ -217,6 +219,19 @@ class SceneInventoryController:
 
         """
         return self._users_model.get_user_items(project_name)
+
+    def get_user_avatar_path(self, username):
+        """Path to the avatar image of a user.
+
+        Args:
+            username (str): Name of the user.
+
+        Returns:
+            Optional[str]: Path to the image, None if the user has no
+                avatar.
+
+        """
+        return self._users_model.get_user_avatar_path(username)
 
     # Site Sync methods
     def is_sitesync_enabled(self):

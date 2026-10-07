@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import tempfile
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Iterable
 
 import ayon_api
 
 from ayon_core.lib import Logger
-from ayon_core.ui.image_cache import ImageCache
 
 if TYPE_CHECKING:
     from ayon_core.tools.sceneinventory.control import (
@@ -217,58 +215,18 @@ class VersionHistoryModel:
             thumbnail_id=entity.get("thumbnailId") or "",
         )
 
-    def get_thumbnail_path(
-        self, project_name: str, version_id: str, thumbnail_id: str
-    ) -> str:
-        """Get path to a file with the thumbnail of a version.
-
-        The image is downloaded on the first request, the cache is shared
-        with the Browser tool. Can be called outside of the main thread.
-
-        Args:
-            project_name: Project name.
-            version_id: Version id.
-            thumbnail_id: Id of the version thumbnail.
-
-        Returns:
-            Path to the image, or an empty string if there is none.
-        """
-        if not project_name or not version_id or not thumbnail_id:
-            return ""
-
-        def _fetch() -> str:
-            content = ayon_api.get_version_thumbnail(
-                project_name, version_id, thumbnail_id
-            )
-            if not content.is_valid:
-                return ""
-            ext = ".png"
-            if content.content_type and "jpeg" in content.content_type:
-                ext = ".jpg"
-            with tempfile.NamedTemporaryFile(
-                suffix=ext, delete=False
-            ) as stream:
-                stream.write(content.content)
-                return stream.name
-
-        try:
-            return ImageCache.get_instance().get(
-                f"{project_name}/{version_id}/{thumbnail_id}", _fetch
-            )
-        except Exception:
-            self._log.debug("Failed to fetch thumbnail", exc_info=True)
-            return ""
-
     def _get_user_names(self, project_name: str) -> dict[str, str]:
         """Full names of project users by username."""
         user_names = self._user_names_by_project.get(project_name)
         if user_names is not None:
             return user_names
         try:
+            # The users model of the controller caches them for the
+            #   activity feed too
             user_names = {
-                user["name"]: (user.get("attrib") or {}).get("fullName") or ""
-                for user in ayon_api.get_users(
-                    project_name, fields={"name", "attrib.fullName"}
+                user_item.username: user_item.full_name or ""
+                for user_item in self._controller.get_user_items(
+                    project_name
                 )
             }
         except Exception:

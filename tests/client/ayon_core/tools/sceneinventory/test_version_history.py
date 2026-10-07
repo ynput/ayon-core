@@ -5,12 +5,12 @@ from __future__ import annotations
 import time
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Callable, Iterable
 
 import pytest
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.tools.common_models import UserItem
 from ayon_core.tools.common_models.projects import StatusItem
 from ayon_core.tools.sceneinventory.models import (
     VersionHistoryItem,
@@ -96,6 +96,8 @@ class FakeController:
     """
 
     def __init__(self) -> None:
+        self.server_calls = {"versions": 0, "users": 0}
+        self.users_error: Exception | None = None
         # What activity was asked for
         self.activity_calls: list[tuple[str, tuple[str, ...]]] = []
         self.container_items: list[ContainerItem] = []
@@ -262,8 +264,17 @@ class FakeController:
         self.activity_calls.append((project_name, tuple(entity_ids)))
         return []
 
-    def get_user_items(self, project_name: str) -> list:
-        return []
+    def get_user_items(self, project_name: str) -> list[UserItem]:
+        self.server_calls["users"] += 1
+        if self.users_error is not None:
+            raise self.users_error
+        return [
+            UserItem("roy", "Roy Nieterau", None, None, True),
+            UserItem("libor", None, None, None, True),
+        ]
+
+    def get_user_avatar_path(self, username: str) -> None:
+        return None
 
 
 @pytest.fixture
@@ -277,30 +288,24 @@ def no_avatars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         user_avatars, "_fetch_avatar_file", lambda user_name: ""
     )
+    monkeypatch.setattr(
+        "ayon_core.tools.common_models.users.get_user_avatar_path",
+        lambda username: None,
+    )
 
 
 @pytest.fixture
 def controller(monkeypatch: pytest.MonkeyPatch) -> FakeController:
     controller = FakeController()
-    server_calls = {"versions": 0, "users": 0}
 
     def get_versions(project_name: str, product_ids=None, **kwargs: Any):
-        server_calls["versions"] += 1
+        controller.server_calls["versions"] += 1
         for product_id in product_ids:
             yield from controller.version_entities[product_id]
-
-    def get_users(project_name: str, **kwargs: Any):
-        server_calls["users"] += 1
-        yield {"name": "roy", "attrib": {"fullName": "Roy Nieterau"}}
-        yield {"name": "libor", "attrib": {"fullName": None}}
 
     monkeypatch.setattr(
         version_history_model.ayon_api, "get_versions", get_versions
     )
-    monkeypatch.setattr(
-        version_history_model.ayon_api, "get_users", get_users
-    )
-    controller.server_calls = server_calls
     return controller
 
 
@@ -374,12 +379,7 @@ def test_items_and_users_are_cached_until_reset(controller):
 def test_username_is_used_when_users_can_not_be_fetched(
     controller, monkeypatch
 ):
-    def get_users(project_name: str, **kwargs: Any):
-        raise RuntimeError("Forbidden")
-
-    monkeypatch.setattr(
-        version_history_model.ayon_api, "get_users", get_users
-    )
+    controller.users_error = RuntimeError("Forbidden")
     items = VersionHistoryModel(controller).get_items(
         PROJECT_NAME, controller.product_id("modelMain")
     )
@@ -593,56 +593,6 @@ def test_widget_loads_thumbnails_of_versions(app, controller, tmp_path):
     widget.close()
 
 
-def test_model_downloads_thumbnail_to_image_cache(
-    controller, monkeypatch, tmp_path
-):
-    calls = []
-
-    class FakeContent:
-        content = b"image"
-        content_type = "image/jpeg"
-        is_valid = True
-
-    class FakeImageCache:
-        def get(self, key: str, file_closure: Callable[[], str]) -> str:
-            calls.append(key)
-            return file_closure()
-
-    def get_version_thumbnail(*args: str) -> FakeContent:
-        calls.append(args)
-        return FakeContent()
-
-    monkeypatch.setattr(
-        version_history_model.ImageCache,
-        "get_instance",
-        classmethod(lambda cls: FakeImageCache()),
-    )
-    monkeypatch.setattr(
-        version_history_model.ayon_api,
-        "get_version_thumbnail",
-        get_version_thumbnail,
-    )
-    monkeypatch.setattr(
-        version_history_model.tempfile, "tempdir", str(tmp_path)
-    )
-    model = VersionHistoryModel(controller)
-
-    assert model.get_thumbnail_path(PROJECT_NAME, "version", "") == ""
-    assert calls == []
-
-    path = Path(model.get_thumbnail_path(PROJECT_NAME, "version", "thumb"))
-    assert path.suffix == ".jpg"
-    assert path.read_bytes() == b"image"
-    # Key is shared with the thumbnails of the Browser
-    assert calls == [
-        f"{PROJECT_NAME}/version/thumb",
-        (PROJECT_NAME, "version", "thumb"),
-    ]
-
-    FakeContent.is_valid = False
-    assert model.get_thumbnail_path(PROJECT_NAME, "version", "thumb") == ""
-
-
 def test_widget_fetches_nothing_while_hidden(app, controller):
     widget = VersionHistoryWidget(controller)
 
@@ -732,5 +682,33 @@ def test_controller_provides_the_activity_of_versions(monkeypatch):
         ("activities", (PROJECT_NAME, ["version_id"], 50)),
         ("users", (PROJECT_NAME,)),
     ]
-    for name in ("get_project_status_items", "get_version_thumbnail_path"):
-        assert callable(getattr(controller, name))
+    assert callable(controller.get_project_status_items)
+
+
+def test_controller_uses_the_shared_thumbnail_and_avatar_caches(monkeypatch):
+    from ayon_core.tools.sceneinventory.control import (
+        SceneInventoryController,
+    )
+
+    calls = []
+
+    def get_thumbnail_path(*args: str):
+        calls.append(args)
+        return "/cache/thumbnail.png"
+
+    monkeypatch.setattr(
+        "ayon_core.tools.common_models.thumbnails.get_thumbnail_path",
+        get_thumbnail_path,
+    )
+    monkeypatch.setattr(
+        "ayon_core.tools.common_models.users.get_user_avatar_path",
+        lambda username: f"/avatars/{username}.png",
+    )
+    controller = SceneInventoryController(host=object())
+
+    assert (
+        controller.get_version_thumbnail_path(PROJECT_NAME, "v1", "t1")
+        == "/cache/thumbnail.png"
+    )
+    assert calls == [(PROJECT_NAME, "version", "v1", "t1")]
+    assert controller.get_user_avatar_path("roy") == "/avatars/roy.png"

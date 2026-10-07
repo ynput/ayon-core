@@ -387,7 +387,9 @@ class VersionHistoryWidget(QtWidgets.QWidget):
             STATUS_ICON_ROLE,
             versions_view,
         )
-        avatar_cache = UserAvatarCache(self)
+        avatar_cache = UserAvatarCache(
+            self, avatar_loader=controller.get_user_avatar_path
+        )
         user_delegate = _UserDelegate(avatar_cache, versions_view)
         for col, delegate in (
             (self.thumbnail_col, thumbnail_delegate),
@@ -727,7 +729,7 @@ class VersionHistoryWidget(QtWidgets.QWidget):
                 try:
                     return controller.get_version_thumbnail_path(
                         project_name, item.version_id, item.thumbnail_id
-                    )
+                    ) or ""
                 except Exception:
                     log.debug("Failed to fetch thumbnail", exc_info=True)
                     return ""
