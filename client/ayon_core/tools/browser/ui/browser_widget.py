@@ -6,7 +6,7 @@ from typing import Any
 
 from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
@@ -18,6 +18,7 @@ from ayon_core.tools.browser.control import BrowserController
 from ._browser_slicer import BrowserSlicer
 from ._browser_table import BrowserTable
 from .browser_inspector import ReviewInspector
+from .product_group_dialog import ProductGroupDialog
 
 log = Logger.get_logger(__name__)
 
@@ -76,6 +77,24 @@ class BrowserWidget(AYContainer):
         )
         self._inspector.set_view(self._table.active_view)
         self._build()
+
+        # Grouping products on pressing Ctrl + G
+        self._group_dialog = ProductGroupDialog(self._controller, self)
+        self._controller.products_group_changed.connect(
+            self._on_product_group_changed
+        )
+        self._group_dialog.group_change_failed.connect(
+            self._on_product_group_change_failed
+        )
+        group_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence("Ctrl+G"), self
+        )
+        group_shortcut.setContext(
+            QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
+        group_shortcut.setAutoRepeat(False)
+        group_shortcut.activated.connect(self._show_group_dialog)
+        self._group_shortcut = group_shortcut
 
         self._controller.project_changed.connect(self._on_project_changed)
         self._controller.selection_changed.connect(self._on_folder_selected)
@@ -186,6 +205,56 @@ class BrowserWidget(AYContainer):
             if version_id and not version_id.startswith("grp:"):
                 version_ids.add(version_id)
         return version_ids
+
+    def _get_selected_product_ids(self) -> set[str]:
+        """Return product IDs of the rows selected in the active view.
+
+        Covers version rows and the group headers of the Product
+        group-by, other group headers and folders have no product.
+        """
+        selection_model = self._table.active_view.selectionModel()
+        product_ids: set[str] = set()
+        for proxy_idx in selection_model.selectedIndexes():
+            if proxy_idx.column() != 0:
+                continue
+            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            product_id = (
+                row_dict.get("_product_id") or row_dict.get("productId")
+            )
+            if product_id:
+                product_ids.add(product_id)
+        return product_ids
+
+    def _show_group_dialog(self) -> None:
+        """Ask for a product group to set on the selected products."""
+        project_name = self._controller.current_project
+        product_ids = self._get_selected_product_ids()
+        if not project_name or not product_ids:
+            return
+
+        try:
+            if not self._controller.can_change_products_group(project_name):
+                self.default_view_message.emit(
+                    "You don't have permissions to set"
+                    " the product group attribute",
+                    False,
+                )
+                return
+            self._group_dialog.set_product_ids(project_name, product_ids)
+        except Exception:
+            log.warning("Failed to query product groups", exc_info=True)
+            self.default_view_message.emit(
+                "Failed to query product groups", False
+            )
+            return
+        self._group_dialog.show()
+
+    def _on_product_group_changed(self) -> None:
+        self._table.reset_data()
+
+    def _on_product_group_change_failed(self, message: str) -> None:
+        log.warning(message)
+        self.default_view_message.emit(message, False)
 
     def _on_view_selection_changed(self, *args: Any) -> None:
         """Prefetch context menu data for the new selection.

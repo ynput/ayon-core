@@ -807,14 +807,19 @@ class AbstractTemplateBuilder(ABC):
 
         self.clear_shared_populate_data()
 
-    def open_template(self):
+    def open_template(
+        self,
+        preset: TemplatePreset | None = None,
+    ):
         """Open template file with registered host."""
-        template_preset = self.get_template_preset()
-        if not template_preset.has_valid_path():
+        if preset is None:
+            preset = self.get_template_preset()
+
+        if not preset.has_valid_path():
             raise TemplateLoadFailed(
-                f"Template path '{template_preset.path}' does not exist."
+                f"Template path '{preset.path}' does not exist."
             )
-        self.host.open_workfile(template_preset.path)
+        self.host.open_workfile(preset.path)
 
     @abstractmethod
     def import_template(self, template_path):

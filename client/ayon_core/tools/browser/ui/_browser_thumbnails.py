@@ -42,8 +42,7 @@ def _browser_card_mapper(row_data: dict) -> dict:
             if status_data
             else None
         ),
-        "version": row_data.get("version", "")
-        + ("★" if row_data.get("heroVersionId") else ""),
+        "version": row_data.get("version", ""),
         "image_src": key,
         "placeholder_icon": row_data.get("productType__icon", "image"),
     }
