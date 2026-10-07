@@ -124,9 +124,16 @@ class ThumbnailsCache:
         for root, _, filenames in os.walk(thumbnails_dir):
             for filename in filenames:
                 path = os.path.join(root, filename)
-                modification_time = os.path.getmtime(path)
-                if current_time - modification_time > self._days_alive_secs:
-                    os.remove(path)
+                try:
+                    modification_time = os.path.getmtime(path)
+                    if (
+                        current_time - modification_time
+                        > self._days_alive_secs
+                    ):
+                        os.remove(path)
+                except OSError:
+                    # File is used or was removed by other process
+                    pass
 
     def _max_size_cleanup(self, thumbnails_dir):
         files_info = self.get_thumbnails_dir_file_info()
@@ -217,12 +224,20 @@ class ThumbnailsCache:
         # Write to a temp file first so other threads and processes never
         #   find a partially written thumbnail
         tmp_path = f"{thumbnail_path}.{uuid.uuid4().hex}.tmp"
-        with open(tmp_path, "wb") as stream:
-            stream.write(content)
-        os.replace(tmp_path, thumbnail_path)
-
-        current_time = time.time()
-        os.utime(thumbnail_path, (current_time, current_time))
+        try:
+            with open(tmp_path, "wb") as stream:
+                stream.write(content)
+            os.replace(tmp_path, thumbnail_path)
+            current_time = time.time()
+            os.utime(thumbnail_path, (current_time, current_time))
+        except OSError:
+            # The same thumbnail could be stored by other thread or process
+            #   in the meantime, and the file can be already in use
+            if not os.path.exists(thumbnail_path):
+                raise
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
         return thumbnail_path
 
@@ -267,20 +282,7 @@ def get_thumbnail_path(
     if filepath is not None:
         return filepath
 
-    # 'ayon_api' had a bug, public function
-    #   'get_thumbnail_by_id' did not return output of
-    #   'ServerAPI' method.
-    con = ayon_api.get_server_api_connection()
-    result = con.get_thumbnail(project_name, entity_type, entity_id)
-
-    if result is not None and result.is_valid:
-        return _CacheItems.thumbnails_cache.store_thumbnail(
-            project_name,
-            thumbnail_id,
-            result.content,
-            result.content_type
-        )
-    return None
+    return get_entity_thumbnail_path(project_name, entity_type, entity_id)
 
 
 def get_entity_thumbnail_path(
@@ -310,6 +312,9 @@ def get_entity_thumbnail_path(
             does not have a thumbnail for the entity.
 
     """
+    # 'ayon_api' had a bug, public function
+    #   'get_thumbnail_by_id' did not return output of
+    #   'ServerAPI' method.
     con = ayon_api.get_server_api_connection()
     result = con.get_thumbnail(project_name, entity_type, entity_id)
     if result is None or not result.is_valid:
