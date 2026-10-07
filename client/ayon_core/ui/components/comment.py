@@ -450,6 +450,7 @@ class AYCommentField(AYTextEdit):
         self._data = model
         self._bg_color = None
         self._checkbox_handler: CheckboxHandler | None = None
+        self._checkboxes_enabled: bool = True
         # Guard flag: when True, format_comment_on_change is a no-op.
         self._suppress_formatting: bool = False
 
@@ -734,6 +735,17 @@ class AYCommentField(AYTextEdit):
 
         super().keyPressEvent(event)
 
+    def set_checkboxes_enabled(self, enabled: bool) -> None:
+        """Allow or forbid to toggle checkboxes by clicking them.
+
+        Toggling changes the comment, so it should be forbidden where the
+        change can not be saved.
+
+        Args:
+            enabled: Checkboxes can be toggled.
+        """
+        self._checkboxes_enabled = enabled
+
     def _is_checkbox_at_cursor(
         self, click_pos: QPoint
     ) -> tuple[bool, int | None]:
@@ -748,7 +760,7 @@ class AYCommentField(AYTextEdit):
         Returns:
             Tuple of (is_checkbox, document_position_for_lookup).
         """
-        if not self._checkbox_handler:
+        if not self._checkbox_handler or not self._checkboxes_enabled:
             return False, None
 
         result = self._checkbox_handler.find_checkbox_at_click(

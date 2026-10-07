@@ -36,6 +36,7 @@ _FILTERS: tuple[tuple[str, str, ActivityCategory], ...] = (
     ("All", "", ActivityCategory.ALL),
     ("Comments", "chat", ActivityCategory.COMMENT),
     ("Publishes", "layers", ActivityCategory.VERSION_PUBLISH),
+    ("Checklists", "checklist", ActivityCategory.CHECKLIST),
     ("Status", "arrow_circle_right", ActivityCategory.STATUS_CHANGE),
 )
 
@@ -66,8 +67,24 @@ class AYActivityStream(AYContainer):
         avatar_cache: Source of user avatars downloaded from the server,
             users are shown with their initials without it.
         variant: Background variant of the feed.
+        editable: Comments can be edited and deleted and their checklists
+            toggled. The stream only reports it with
+            :attr:`comment_edited` and :attr:`comment_deleted`, the owner
+            saves the change and sets the updated activities. A stream
+            that is not editable is read-only.
+        compact: Fit narrow side panels: status changes show the previous
+            status as an icon only.
         **kwargs: Forwarded to ``AYContainer``.
+
+    Signals:
+        comment_edited (CommentModel): A comment of an editable stream was
+            edited, or one of its checkboxes toggled.
+        comment_deleted (CommentModel): Deletion of a comment of an
+            editable stream was confirmed by the user.
     """
+
+    comment_edited = QtCore.Signal(object)
+    comment_deleted = QtCore.Signal(object)
 
     avatar_size = 20
 
@@ -79,6 +96,8 @@ class AYActivityStream(AYContainer):
         thumbnail_loader: ThumbnailLoader = None,
         avatar_cache: UserAvatarCache | None = None,
         variant: AYContainer.Variants = AYContainer.Variants.Low,
+        editable: bool = False,
+        compact: bool = True,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -91,6 +110,8 @@ class AYActivityStream(AYContainer):
         self._status_definitions = status_definitions or []
         self._user_list = user_list or []
         self._thumbnail_loader = thumbnail_loader
+        self._editable = editable
+        self._compact = compact
         self._avatar_cache = avatar_cache
         if avatar_cache is not None:
             avatar_cache.avatar_updated.connect(self._refresh_avatars)
@@ -342,19 +363,27 @@ class AYActivityStream(AYContainer):
             return AYStatusChange(
                 data=activity,
                 status_definitions=self._status_definitions,
-                compact=True,
+                compact=self._compact,
             )
         return None
 
     def _create_comment(self, activity: CommentModel) -> AYComment:
         widget = AYComment(data=activity, user_list=self._user_list)
-        # Read-only for now, editing needs a write path to the server
-        for button in (widget.del_button, widget.edit_button):
-            button.setVisible(False)
+        if self._editable:
+            widget.comment_edited.connect(self.comment_edited)
+            widget.comment_deleted.connect(self.comment_deleted)
+        else:
+            for button in (widget.del_button, widget.edit_button):
+                button.setVisible(False)
+            # A toggled checkbox would look changed without being saved
+            widget.text_field.set_checkboxes_enabled(False)
         widget.reaction.setVisible(False)
         # Reserve no space for the category badge or attachments of
-        #   comments that have none.
-        widget.top_line.setVisible(bool(activity.category))
+        #   comments that have none. The edit buttons are in the same
+        #   line as the badge.
+        widget.top_line.setVisible(
+            bool(activity.category) or self._editable
+        )
         # Attachments are shown only if their files are available locally,
         #   the stream does not download them.
         widget.images_container.setVisible(

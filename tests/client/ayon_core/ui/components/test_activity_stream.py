@@ -352,3 +352,97 @@ def test_relative_date_of_a_future_date_is_just_now() -> None:
 
     future = datetime.now(timezone.utc) + timedelta(hours=2)
     assert relative_date(future.isoformat()) == "just now"
+
+
+def _checklist_comment() -> CommentModel:
+    return CommentModel(
+        activity_id="checklist",
+        user_name="libor",
+        user_full_name="Libor",
+        comment="To do\n\n- [ ] Fix the shoulder\n- [x] Check the cloth\n",
+        comment_date="2026-10-03T10:00:00+00:00",
+    )
+
+
+def _click_first_checkbox(qtbot, comment_row: QtWidgets.QWidget) -> bool:
+    """Click the first checkbox of a comment, if there is any to hit."""
+    from qtpy import QtCore
+
+    text_field = comment_row.text_field
+    handler = text_field._checkbox_handler
+    viewport = text_field.viewport()
+    for y in range(0, viewport.height(), 2):
+        for x in range(0, 60, 2):
+            point = QtCore.QPoint(x, y)
+            found = handler.find_checkbox_at_click(
+                point, text_field.contentOffset().toPoint()
+            )
+            if found is not None and found[0]:
+                qtbot.mouseClick(
+                    viewport, QtCore.Qt.MouseButton.LeftButton, pos=point
+                )
+                return True
+    return False
+
+
+def test_read_only_stream_does_not_change_comments(qtbot) -> None:
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.resize(320, 300)
+    stream.show()
+    comment = _checklist_comment()
+    stream.set_activities([comment])
+    row = stream._widgets[0][1]
+    qtbot.waitExposed(stream)
+    markdown = comment.comment
+
+    assert not row.edit_button.isVisible()
+    assert not row.del_button.isVisible()
+    # The checkbox is there, clicking it does not toggle it
+    assert _click_first_checkbox(qtbot, row)
+    assert comment.comment == markdown
+
+
+def test_editable_stream_reports_changes_of_comments(qtbot) -> None:
+    stream = AYActivityStream(editable=True, compact=False)
+    qtbot.addWidget(stream)
+    stream.resize(320, 300)
+    stream.show()
+    comment = _checklist_comment()
+    stream.set_activities(
+        [comment, _activities()[1]], empty_text="No activity"
+    )
+    row, status_row = (widget for _, widget in stream._widgets)
+    qtbot.waitExposed(stream)
+    edited, deleted = [], []
+    stream.comment_edited.connect(edited.append)
+    stream.comment_deleted.connect(deleted.append)
+
+    # Toggling a checkbox edits the comment
+    assert _click_first_checkbox(qtbot, row)
+    assert edited == [comment]
+    assert "[x] Fix the shoulder" in comment.comment
+
+    row.comment_deleted.emit(comment)
+    assert deleted == [comment]
+    # Not compact: the previous status is named
+    labels = {
+        getattr(label, "_text", "") or label.text()
+        for label in status_row.findChildren(QtWidgets.QLabel)
+    }
+    assert "In progress" in labels
+
+
+def test_stream_filters_checklists(qtbot) -> None:
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.show()
+    stream.set_activities([_checklist_comment()] + _activities())
+
+    assert stream.activity_count(ActivityCategory.CHECKLIST) == 1
+    stream._on_filter_clicked(3)
+    assert [
+        activity.activity_id
+        for activity, widget in stream._widgets
+        if widget.isVisible()
+    ] == ["checklist"]
