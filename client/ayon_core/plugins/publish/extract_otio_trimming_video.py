@@ -40,11 +40,11 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             )
             return
 
-        self.staging_dir = self.staging_dir(instance)
+        staging_dir = self.staging_dir(instance)
         otio_trim_range = instance.data["otioTrimmingRange"]
         representations = instance.data["representations"]
-        self.log.debug("otio_trim_range: {}".format(otio_trim_range))
-        self.log.debug("self.staging_dir: {}".format(self.staging_dir))
+        self.log.debug(f"otio_trim_range: {otio_trim_range}")
+        self.log.debug(f"staging_dir: {staging_dir}")
 
         # get corresponding representation
         for _repre in repres_to_trim:
@@ -55,13 +55,14 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
 
             # trim via ffmpeg
             new_file = self._ffmpeg_trim_seqment(
-                input_file_path, otio_trim_range)
+                staging_dir, input_file_path, otio_trim_range
+            )
 
             # prepare new representation data
             repre_data = deepcopy(_repre)
             # remove tags as we dont need them
             repre_data.pop("tags")
-            repre_data["stagingDir"] = self.staging_dir
+            repre_data["stagingDir"] = staging_dir
             repre_data["files"] = new_file
 
             # romove `trim` tagged representation
@@ -71,15 +72,25 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
 
         self.log.debug("representations: {}".format(representations))
 
-    def _ffmpeg_trim_seqment(self, input_file_path, otio_range):
+    def _ffmpeg_trim_seqment(
+        self,
+        staging_dir: str,
+        input_file_path: str,
+        otio_range: TimeRange,
+    ) -> str:
         """
         Trim seqment of video file.
 
         Using ffmpeg to trim video to desired length.
 
         Args:
-            input_file_path (str): path string
-            otio_range (opentime.TimeRange): range to trim to
+            staging_dir (str): Instance staging dir where to store
+                trimmed video.
+            input_file_path (str): Input path to trim.
+            otio_range (TimeRange): Range to trim to.
+
+        Returns:
+            str: Filename of the trimmed file.
 
         """
         # start command list
@@ -119,7 +130,7 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             command.extend(["-c", "copy"])
 
         # create and append path to destination
-        output_path = self._get_ffmpeg_output(input_file_path)
+        output_path = self._get_ffmpeg_output(staging_dir, input_file_path)
         command.append(output_path)
 
         # execute
@@ -131,12 +142,14 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
 
         return os.path.basename(output_path)
 
-    def _get_ffmpeg_output(self, file_path):
+    def _get_ffmpeg_output(self, staging_dir, file_path):
         """
         Returning ffmpeg output command arguments.
 
-        Arguments"
-            file_path (str): path string
+        Arguments:
+            staging_dir (str): Instance staging dir where to store
+                trimmed video.
+            file_path (str): Source file path to trim.
 
         Returns:
             str: output_path is path
@@ -147,4 +160,4 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
 
         output_file = f"{name}_trimmed{ext}"
         # create path to destination
-        return os.path.join(self.staging_dir, output_file)
+        return os.path.join(staging_dir, output_file)
