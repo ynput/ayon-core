@@ -1,7 +1,8 @@
 import unittest
 
 from ayon_core.lib.transcoding import (
-    get_review_info_by_layer_name
+    get_ffmpeg_codec_args,
+    get_review_info_by_layer_name,
 )
 
 
@@ -155,4 +156,49 @@ class GetReviewInfoByLayerName(unittest.TestCase):
                     "A": "specular.A",
                 },
             },
+        ])
+
+
+def _probe(codec_name):
+    return {"streams": [{
+        "codec_type": "video",
+        "codec_name": codec_name,
+        "pix_fmt": "yuv420p",
+        "bit_rate": "5000000",
+    }]}
+
+
+class GetFfmpegCodecArgs(unittest.TestCase):
+    """Test responses from `get_ffmpeg_codec_args`"""
+    def test_av1_defaults(self):
+        args = get_ffmpeg_codec_args(_probe("av1"))
+        self.assertEqual(args, [
+            "-codec:v", "libsvtav1",
+            "-preset", "8",
+            "-crf", "30",
+            "-pix_fmt", "yuv420p",
+            "-g", "1",
+        ])
+
+    def test_av1_source_args(self):
+        args = get_ffmpeg_codec_args(
+            _probe("av1"), "ffmpeg -i in.mov -crf 28 -preset 6 out.mp4"
+        )
+        self.assertEqual(args, [
+            "-codec:v", "libsvtav1",
+            "-crf", "28",
+            "-preset", "6",
+            "-pix_fmt", "yuv420p",
+            "-g", "1",
+        ])
+
+    def test_h264_unchanged(self):
+        args = get_ffmpeg_codec_args(
+            _probe("h264"), "ffmpeg -i in.mov -crf 18 -preset 6 out.mp4"
+        )
+        self.assertEqual(args, [
+            "-codec:v", "h264",
+            "-crf", "18",
+            "-pix_fmt", "yuv420p",
+            "-g", "1",
         ])

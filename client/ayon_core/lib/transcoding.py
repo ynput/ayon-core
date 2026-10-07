@@ -965,6 +965,10 @@ def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
     if codec_name == "h264":
         return _ffmpeg_h264_codec_args(video_stream, source_ffmpeg_cmd)
 
+    # Codec "av1"
+    if codec_name == "av1":
+        return _ffmpeg_av1_codec_args(video_stream, source_ffmpeg_cmd)
+
     # Coded DNxHD
     if codec_name == "dnxhd":
         return _ffmpeg_dnxhd_codec_args(video_stream, source_ffmpeg_cmd)
@@ -1090,6 +1094,42 @@ def _find_closest_dnxhd_bitrate(
 
     closest_mbps = min(valid_mbps, key=lambda v: abs(v - src_mbps))
     return str(int(closest_mbps * 1_000_000))
+
+
+def _ffmpeg_av1_codec_args(stream_data, source_ffmpeg_cmd):
+    # Explicit encoder, ffmpeg's default AV1 encoder (libaom-av1) is very slow
+    output = ["-codec:v", "libsvtav1"]
+
+    # Use arguments from source if are available source arguments
+    copied_args = set()
+    if source_ffmpeg_cmd:
+        copy_args = (
+            "-crf",
+            "-preset",
+            "-svtav1-params",
+            "-b:v", "-vb",
+            "-maxrate", "-maxrate:",
+            "-bufsize", "-bufsize:"
+        )
+        args = source_ffmpeg_cmd.split(" ")
+        for idx, arg in enumerate(args):
+            if arg in copy_args:
+                output.extend([arg, args[idx + 1]])
+                copied_args.add(arg)
+
+    if "-preset" not in copied_args:
+        output.extend(["-preset", "8"])
+
+    if not copied_args & {"-crf", "-b:v", "-vb"}:
+        output.extend(["-crf", "30"])
+
+    pix_fmt = stream_data.get("pix_fmt")
+    if pix_fmt:
+        output.extend(["-pix_fmt", pix_fmt])
+
+    # All-intra keeps frame-accurate seeking for web playback
+    output.extend(["-g", "1"])
+    return output
 
 
 def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
