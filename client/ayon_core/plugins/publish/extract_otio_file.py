@@ -24,7 +24,9 @@ class ExtractOTIOFile(publish.Extractor):
 
         # Mark instance for 'ExtractOTIOWorkfileOld'
         instance.data[self.HAS_RUN_KEY] = True
-        if not instance.context.data.get("otioTimeline"):
+
+        otio_timeline = instance.context.data.get("otioTimeline")
+        if not otio_timeline:
             return
         # create representation data
         if "representations" not in instance.data:
@@ -33,7 +35,6 @@ class ExtractOTIOFile(publish.Extractor):
         name = instance.data["name"]
         staging_dir = self.staging_dir(instance)
 
-        otio_timeline = instance.context.data["otioTimeline"]
         # create otio timeline representation
         otio_file_name = name + ".otio"
         otio_file_path = os.path.join(staging_dir, otio_file_name)
