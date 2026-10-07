@@ -28,9 +28,6 @@ class ExtractOTIOFile(publish.Extractor):
         otio_timeline = instance.context.data.get("otioTimeline")
         if not otio_timeline:
             return
-        # create representation data
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
 
         name = instance.data["name"]
         staging_dir = self.staging_dir(instance)
@@ -47,7 +44,8 @@ class ExtractOTIOFile(publish.Extractor):
             "stagingDir": staging_dir,
         }
 
-        instance.data["representations"].append(representation_otio)
+        instance_repres = instance.data.setdefault("representations", [])
+        instance_repres.append(representation_otio)
 
         self.log.info("Added OTIO file representation: {}".format(
             representation_otio))
