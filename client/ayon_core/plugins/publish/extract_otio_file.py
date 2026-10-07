@@ -47,8 +47,9 @@ class ExtractOTIOFile(publish.Extractor):
         instance_repres = instance.data.setdefault("representations", [])
         instance_repres.append(representation_otio)
 
-        self.log.info("Added OTIO file representation: {}".format(
-            representation_otio))
+        self.log.info(
+            f"Added OTIO file representation: {representation_otio}"
+        )
 
 
 class ExtractOTIOFileOld(ExtractOTIOFile):

@@ -116,11 +116,11 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         command.append(output_path)
 
         # execute
-        self.log.debug("Executing: {}".format(" ".join(command)))
+        self.log.debug(f"Executing: {' '.join(command)}")
         output = run_subprocess(
             command, logger=self.log
         )
-        self.log.debug("Output: {}".format(output))
+        self.log.debug(f"### Output\n{output}")
 
         return os.path.basename(output_path)
 
@@ -138,10 +138,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         basename = os.path.basename(file_path)
         name, ext = os.path.splitext(basename)
 
-        output_file = "{}_{}{}".format(
-            name,
-            "trimmed",
-            ext
-        )
+        output_file = f"{name}_trimmed{ext}"
         # create path to destination
         return os.path.join(self.staging_dir, output_file)
