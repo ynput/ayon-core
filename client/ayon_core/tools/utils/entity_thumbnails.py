@@ -292,6 +292,8 @@ class EntityThumbnailsPainter(QtCore.QObject):
     # Space around the thumbnail
     margin = 4
     radius = 2
+    # Thumbnail is hidden if less width would be left for icon and label
+    min_label_width = 90
     # Wait for more items to be painted, e.g. when scrolling
     _request_delay = 50
 
@@ -361,21 +363,27 @@ class EntityThumbnailsPainter(QtCore.QObject):
         self._loader.set_outdated()
         self._view.viewport().update()
 
-    def get_reserved_width(self, index: QtCore.QModelIndex) -> int:
+    def get_reserved_width(
+        self, item_rect: QtCore.QRect, index: QtCore.QModelIndex
+    ) -> int:
         """Width of the item that should be kept free for the thumbnail.
 
         Args:
-            index: Index of an item.
+            item_rect: Rectangle of the item.
+            index: Index of the item.
 
         Returns:
-            Width in pixels, 0 if the item does not have a thumbnail.
+            Width in pixels, 0 if the thumbnail is not painted.
         """
         if not self._enabled:
             return 0
         entity_id = index.data(self._entity_id_role)
         if not entity_id or self._loader.get_pixmap(entity_id) is None:
             return 0
-        return self._loader.get_thumbnail_size().width() + self.margin
+        rect = self._get_thumbnail_rect(item_rect)
+        if rect.isEmpty():
+            return 0
+        return rect.width() + self.margin
 
     def paint(
         self,
@@ -431,8 +439,8 @@ class EntityThumbnailsPainter(QtCore.QObject):
         rect = QtCore.QRect(QtCore.QPoint(0, 0), size)
         rect.moveCenter(item_rect.center())
         rect.moveRight(item_rect.right() - self.margin)
-        # Thumbnail does not fit to the item
-        if rect.left() < item_rect.left():
+        # Label is more important than the thumbnail in narrow items
+        if rect.left() - item_rect.left() < self.min_label_width:
             return QtCore.QRect()
         return rect
 
@@ -507,7 +515,9 @@ class EntityThumbnailDelegate(TreeViewItemDelegate):
         option: QtWidgets.QStyleOptionViewItem,
         index: QtCore.QModelIndex,
     ) -> int:
-        return self._thumbnails_painter.get_reserved_width(index)
+        return self._thumbnails_painter.get_reserved_width(
+            option.rect, index
+        )
 
     def paint(
         self,

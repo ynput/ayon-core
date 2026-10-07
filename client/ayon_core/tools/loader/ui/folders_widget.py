@@ -169,7 +169,9 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
         thumbnails_painter = self._thumbnails_painter
         if thumbnails_painter is not None:
             # Do not paint the text under the thumbnail
-            reserved_width = thumbnails_painter.get_reserved_width(index)
+            reserved_width = thumbnails_painter.get_reserved_width(
+                item_rect, index
+            )
             if reserved_width:
                 text_rect.setRight(
                     item_rect.right() - (reserved_width + 4)
