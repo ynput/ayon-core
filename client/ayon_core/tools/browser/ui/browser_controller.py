@@ -661,6 +661,7 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
         self._selected_folder_ids = []
         self._selected_task_ids = []
+        self._list_entity_ids = _ListEntityIds()
         # Keep the "My Tasks" filter sticky across a project switch,
         # just re-resolved against the new project.
         self._recompute_my_tasks_scope()
@@ -3501,14 +3502,25 @@ class BrowserWidgetController(QtCore.QObject):
         entity_ids: dict[str, set[str]] = collections.defaultdict(set)
         # Items of lists with a different entity type can't be fetched
         #   in one call
-        for list_id in list_ids:
-            for entity_list in ayon_api.get_entity_lists(
-                self._current_project,
-                list_ids=[list_id],
-                fields={"items"},
-            ):
-                for item in entity_list.get("items", []):
-                    entity_ids[item["entityType"]].add(item["entityId"])
+        try:
+            for list_id in list_ids:
+                for entity_list in ayon_api.get_entity_lists(
+                    self._current_project,
+                    list_ids=[list_id],
+                    fields={"items"},
+                ):
+                    for item in entity_list.get("items", []):
+                        entity_ids[item["entityType"]].add(
+                            item["entityId"]
+                        )
+        except Exception:  # noqa: BLE001
+            # Runs in the slicer's selection callback, where e.g. an
+            # unavailable server must not break the selection update.
+            self.log.warning(
+                "Failed to fetch the items of the selected entity lists",
+                exc_info=True,
+            )
+            return _ListEntityIds()
         return _ListEntityIds(
             folder_ids=sorted(entity_ids["folder"]),
             task_ids=sorted(entity_ids["task"]),
