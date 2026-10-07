@@ -112,7 +112,7 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             "-i", video_path,
         ])
 
-        ffprobe_data = get_ffprobe_data(input_file_path, self.log)
+        ffprobe_data = get_ffprobe_data(input_file_path, logger=self.log)
         video_codec_args = get_ffmpeg_codec_args(ffprobe_data)
 
         # Trim the video by re-encoding the relevant part of it to
