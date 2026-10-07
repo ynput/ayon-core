@@ -2,24 +2,24 @@
 """Base class for AYON addons."""
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import os
 import sys
 import time
 import inspect
 import logging
 import threading
-import collections
 import warnings
 from uuid import uuid4
-from abc import ABC, abstractmethod
 from urllib.parse import urlencode
 from types import ModuleType
 import typing
-from typing import Optional, Any, Union
+from typing import Any
 
 import ayon_api
 
-from ayon_core import AYON_CORE_ROOT
+from ayon_core import AYON_CORE_ROOT, __version__
 from ayon_core.lib import (
     Logger,
     is_dev_mode_enabled,
@@ -76,10 +76,10 @@ class ProcessContext:
     Args:
         addon_name (str): Addon name which triggered process.
         addon_version (str): Addon version which triggered process.
-        project_name (Optional[str]): Project name. Can be filled in case
+        project_name (str | None): Project name. Can be filled in case
             process is triggered for specific project. Some addons can have
             different behavior based on project. Value is NOT autofilled.
-        headless (Optional[bool]): Is process running in headless mode. Value
+        headless (bool | None): Is process running in headless mode. Value
             is filled with value based on state set in AYON launcher.
 
     """
@@ -87,15 +87,15 @@ class ProcessContext:
         self,
         addon_name: str,
         addon_version: str,
-        project_name: Optional[str] = None,
-        headless: Optional[bool] = None,
+        project_name: str | None = None,
+        headless: bool | None = None,
         **kwargs,
     ):
         if headless is None:
             headless = is_headless_mode_enabled()
         self.addon_name: str = addon_name
         self.addon_version: str = addon_version
-        self.project_name: Optional[str] = project_name
+        self.project_name: str | None = project_name
         self.headless: bool = headless
 
         if kwargs:
@@ -103,41 +103,8 @@ class ProcessContext:
             print(f"Unknown keys in ProcessContext: {unknown_keys}")
 
 
-class _LoadCache:
-    addons_lock = threading.Lock()
-    addons_loaded = False
-    addon_modules = []
-
-
-def load_addons(force: bool = False) -> None:
-    """Load AYON addons as python modules.
-
-    Modules does not load only classes (like in Interfaces) because there must
-    be ability to use inner code of addon and be able to import it from one
-    defined place.
-
-    With this it is possible to import addon's content from predefined module.
-
-    Args:
-        force (bool): Force to load addons even if are already loaded.
-            This won't update already loaded and used (cached) modules.
-    """
-
-    if _LoadCache.addons_loaded and not force:
-        return
-
-    if not _LoadCache.addons_lock.locked():
-        with _LoadCache.addons_lock:
-            _load_addons()
-            _LoadCache.addons_loaded = True
-    else:
-        # If lock is locked wait until is finished
-        while _LoadCache.addons_lock.locked():
-            time.sleep(0.1)
-
-
 def _get_ayon_bundle_data() -> tuple[
-    dict[str, Any], Optional[dict[str, Any]]
+    dict[str, Any], dict[str, Any] | None
 ]:
     studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
     project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
@@ -176,22 +143,33 @@ def _get_ayon_bundle_data() -> tuple[
     return studio_bundle, project_bundle
 
 
-def _get_ayon_addons_information(
-    studio_bundle: dict[str, Any],
-    project_bundle: Optional[dict[str, Any]],
-) -> dict[str, str]:
+@dataclass(frozen=True)
+class BundleAddon:
+    name: str
+    version: str
+
+
+@dataclass(frozen=True)
+class BundleInformation:
+    studio_bundle: dict[str, Any]
+    project_bundle: dict[str, Any] | None
+    addons: list[BundleAddon]
+
+
+def _load_bundle_information() -> BundleInformation:
     """Receive information about addons to use from server.
 
     Todos:
         Actually ask server for the information.
-        Allow project name as optional argument to be able to query information
-            about used addons for specific project.
+        Allow project name as optional argument to be able to query
+            information about used addons for specific project.
         Wrap versions into an object.
 
     Returns:
-        list[dict[str, Any]]: List of addon information to use.
+        BundleInformation: List of addon information to use.
 
     """
+    studio_bundle, project_bundle = _get_ayon_bundle_data()
     key_values = {
         "summary": "true",
         "bundle_name": studio_bundle["name"],
@@ -202,13 +180,22 @@ def _get_ayon_addons_information(
     query = urlencode(key_values)
 
     response = ayon_api.get(f"settings?{query}")
-    return {
-        addon["name"]: addon["version"]
+    addons = [
+        BundleAddon(name=addon["name"], version=addon["version"])
         for addon in response.data["addons"]
-    }
+    ]
+
+    _LoadCache.bundle_information = BundleInformation(
+        studio_bundle=studio_bundle,
+        project_bundle=project_bundle,
+        addons=addons,
+    )
+    return _LoadCache.bundle_information
 
 
-def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
+def _load_ayon_addons(
+    bundle_info: BundleInformation,
+) -> list[ModuleType]:
     """Load AYON addons based on information from server.
 
     This function should not trigger downloading of any addons but only use
@@ -216,17 +203,16 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
     development).
 
     Args:
-        log (logging.Logger): Logger object.
+        bundle_info (BundleInformation): Bundle information.
 
     Returns:
         list[ModuleType]: Loaded addon modules.
 
     """
-    all_addon_modules = []
-    studio_bundle, project_bundle = _get_ayon_bundle_data()
-    addons_info = _get_ayon_addons_information(studio_bundle, project_bundle)
-    if not addons_info:
-        return all_addon_modules
+    log = Logger.get_logger("AddonsLoader")
+    _LoadCache.addon_modules = []
+    if not bundle_info.addons:
+        return _LoadCache.addon_modules
 
     addons_dir = os.environ.get("AYON_ADDONS_DIR")
     if not addons_dir:
@@ -236,7 +222,7 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
     dev_addons_info = {}
     if dev_mode_enabled:
         # Get dev addons info only when dev mode is enabled
-        dev_addons_info = studio_bundle.get(
+        dev_addons_info = bundle_info.studio_bundle.get(
             "addonDevelopment", dev_addons_info
         )
 
@@ -245,7 +231,9 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
         log.warning(
             f"Addons directory does not exists. Path \"{addons_dir}\"")
 
-    for addon_name, addon_version in addons_info.items():
+    for addon in bundle_info.addons:
+        addon_name = addon.name
+        addon_version = addon.version
         # core addon does not have any addon object
         if addon_name == "core":
             continue
@@ -330,16 +318,53 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
                 f"Multiple modules ({joined_modules}) were found in"
                 f" addon '{addon_name}' in dir {addon_dir}."
             )
-        all_addon_modules.extend(addon_modules)
+        _LoadCache.addon_modules.extend(addon_modules)
 
-    return all_addon_modules
+    return _LoadCache.addon_modules
 
 
-def _load_addons():
-    log = Logger.get_logger("AddonsLoader")
+class _LoadCache:
+    lock = threading.Lock()
+    loaded = False
+    bundle_information = None
+    addon_modules = []
 
-    # Store modules to local cache
-    _LoadCache.addon_modules = _load_ayon_addons(log)
+
+def load_addons(force: bool = False) -> None:
+    """Load AYON addons as python modules.
+
+    Modules does not load only classes (like in Interfaces) because there must
+    be ability to use inner code of addon and be able to import it from one
+    defined place.
+
+    With this it is possible to import addon's content from predefined module.
+
+    Args:
+        force (bool): Force to load addons even if are already loaded.
+            This won't update already loaded and used (cached) modules.
+
+    """
+    _cache_data(force=force)
+
+
+def get_bundle_information() -> BundleInformation:
+    _cache_data()
+    return _LoadCache.bundle_information
+
+
+def _cache_data(force: bool = False) -> None:
+    if _LoadCache.loaded and not force:
+        return
+
+    if not _LoadCache.lock.locked():
+        with _LoadCache.lock:
+            _load_bundle_information()
+            _load_ayon_addons(_LoadCache.bundle_information)
+            _LoadCache.loaded = True
+    else:
+        # If lock is locked wait until is finished
+        while _LoadCache.lock.locked():
+            time.sleep(0.1)
 
 
 class AYONAddon(ABC):
@@ -520,33 +545,26 @@ class AYONAddon(ABC):
         pass
 
 
-class _AddonReportInfo:
-    def __init__(
-        self,
-        class_name: str,
-        name: str,
-        version: str,
-        report_value_by_label: dict[str, Optional[str]],
-    ) -> None:
-        self.class_name = class_name
-        self.name = name
-        self.version = version
-        self.report_value_by_label = report_value_by_label
+@dataclass
+class _ReportRow:
+    name: str
+    version: str
+    server_version: str | None
+    server_addon: bool = False
+    init_time: float = 0.0
+    connect_time: float = 0.0
+    tray_init_time: float = 0.0
+    tray_menu_time: float = 0.0
+    tray_start_time: float = 0.0
+    total_time: float = 0.0
 
-    @classmethod
-    def from_addon(
-        cls, addon: AYONAddon, report: dict[str, dict[str, int]]
-    ) -> "_AddonReportInfo":
-        class_name = addon.__class__.__name__
-        report_value_by_label = {
-            label: reported.get(class_name)
-            for label, reported in report.items()
-        }
-        return cls(
-            addon.__class__.__name__,
-            addon.name,
-            addon.version,
-            report_value_by_label
+    def sum_total(self) -> None:
+        self.total_time = (
+            self.init_time
+            + self.connect_time
+            + self.tray_init_time
+            + self.tray_menu_time
+            + self.tray_start_time
         )
 
 
@@ -554,18 +572,17 @@ class AddonsManager:
     """Manager of addons that helps to load and prepare them to work.
 
     Args:
-        settings (Optional[dict[str, Any]]): AYON studio settings.
-        initialize (Optional[bool]): Initialize addons on init.
+        settings (dict[str, Any] | None): AYON studio settings.
+        initialize (bool): Initialize addons on init.
             True by default.
 
     """
     # Helper attributes for report
-    _report_total_key = "Total"
     _log = None
 
     def __init__(
         self,
-        settings: Optional[dict[str, Any]] = None,
+        settings: dict[str, Any] | None = None,
         initialize: bool = True,
     ) -> None:
         self._settings = settings
@@ -573,8 +590,8 @@ class AddonsManager:
         self._addons: list[AYONAddon] = []
         self._addons_by_id: dict[str, AYONAddon] = {}
         self._addons_by_name: dict[str, AYONAddon] = {}
-        # For report of time consumption
-        self._report: dict[str, dict[str, int]] = {}
+        self._report_by_name: dict[str, _ReportRow] = {}
+        self._total_row: _ReportRow = _ReportRow("Total", "(0)", "(0)")
 
         if initialize:
             self.initialize_addons()
@@ -590,16 +607,16 @@ class AddonsManager:
         return self._log
 
     def get(
-        self, addon_name: str, default: Optional[Any] = None
-    ) -> Union[AYONAddon, Any]:
+        self, addon_name: str, default: Any | None = None
+    ) -> AYONAddon | Any:
         """Access addon by name.
 
         Args:
             addon_name (str): Name of addon which should be returned.
-            default (Any): Default output if addon is not available.
+            default (Any | None): Default output if addon is not available.
 
         Returns:
-            Union[AYONAddon, Any]: Addon found by name or `default`.
+            AYONAddon | Any: Addon found by name or `default`.
 
         """
         return self._addons_by_name.get(addon_name, default)
@@ -617,8 +634,8 @@ class AddonsManager:
         return dict(self._addons_by_name)
 
     def get_enabled_addon(
-        self, addon_name: str, default: Optional[Any] = None
-    ) -> Union[AYONAddon, Any]:
+        self, addon_name: str, default: Any | None = None
+    ) -> AYONAddon | Any:
         """Fast access to enabled addon.
 
         If addon is available but is not enabled default value is returned.
@@ -662,10 +679,8 @@ class AddonsManager:
         if settings is None:
             settings = get_studio_settings()
 
-        report = {}
         time_start = time.time()
         prev_start_time = time_start
-
         addon_classes = []
         for module in _LoadCache.addon_modules:
             # Go through globals in `ayon_core.modules`
@@ -701,17 +716,37 @@ class AddonsManager:
 
                 addon_classes.append(modules_item)
 
+        bundle_info = get_bundle_information()
+        server_version_by_name = {
+            addon.name: addon.version
+            for addon in bundle_info.addons
+        }
+        server_addons = set(server_version_by_name)
+        server_addons.discard("core")
+        self._report_by_name["core"] = _ReportRow(
+            name="core",
+            version=__version__,
+            server_version=server_version_by_name.get("core"),
+        )
         for addon_cls in addon_classes:
             name = addon_cls.__name__
             try:
                 addon = addon_cls(self, settings)
+                server_version = server_version_by_name.get(addon.name)
+                report_row = _ReportRow(
+                    name=addon.name,
+                    version=addon.version,
+                    server_version=server_version,
+                )
                 # Store initialized object
                 self._addons.append(addon)
                 self._addons_by_id[addon.id] = addon
                 self._addons_by_name[addon.name] = addon
+                self._report_by_name[addon.name] = report_row
+                server_addons.discard(addon.name)
 
                 now = time.time()
-                report[addon.__class__.__name__] = now - prev_start_time
+                report_row.init_time = now - prev_start_time
                 prev_start_time = now
 
             except Exception:
@@ -720,6 +755,17 @@ class AddonsManager:
                     exc_info=True
                 )
 
+        self._total_row.version = f"({len(self._report_by_name)})"
+        self._total_row.server_version = f"({len(server_version_by_name)})"
+
+        for addon_name in server_addons:
+            self._report_by_name[addon_name] = _ReportRow(
+                name=addon_name,
+                version="-",
+                server_version=server_version_by_name[addon_name],
+                server_addon=True,
+            )
+
         for addon_name in sorted(self._addons_by_name.keys()):
             addon = self._addons_by_name[addon_name]
             enabled_str = "X" if addon.enabled else " "
@@ -727,21 +773,19 @@ class AddonsManager:
                 f"[{enabled_str}] {addon.name} ({addon.version})"
             )
 
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Initialization"] = report
+        self._total_row.init_time = time.time() - time_start
 
     def connect_addons(self) -> None:
         """Trigger connection with other enabled addons.
 
         Addons should handle their interfaces in `connect_with_addons`.
         """
-        report = {}
         time_start = time.time()
         prev_start_time = time_start
         enabled_addons = self.get_enabled_addons()
         self.log.debug(f"Has {len(enabled_addons)} enabled addons.")
         for addon in enabled_addons:
+            report_row = self._report_by_name[addon.name]
             try:
                 addon.connect_with_addons(enabled_addons)
 
@@ -752,12 +796,10 @@ class AddonsManager:
                 )
 
             now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
+            report_row.connect_time = now - prev_start_time
             prev_start_time = now
 
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Connect modules"] = report
+        self._total_row.connect_time = time.time() - time_start
 
     def collect_global_environments(self) -> dict[str, str]:
         """Helper to collect global environment variabled from modules.
@@ -843,13 +885,12 @@ class AddonsManager:
             expected_keys = ", ".join([
                 f'"{key}"' for key in output.keys()
             ])
-            msg_template = "Addon: \"{}\" - got key {}"
             msg_items = []
             for addon_name, keys in unknown_keys_by_addon.items():
-                joined_keys = ", ".join([
-                    "\"{}\"".format(key) for key in keys
-                ])
-                msg_items.append(msg_template.format(addon_name, joined_keys))
+                joined_keys = ", ".join([f'"{key}"' for key in keys])
+                msg_items.append(
+                    f"Addon: \"{addon_name}\" - got key {joined_keys}"
+                )
             joined_items = " | ".join(msg_items)
             self.log.warning(
                 f"Expected keys from `get_plugin_paths` are {expected_keys}."
@@ -965,14 +1006,14 @@ class AddonsManager:
             host_name
         )
 
-    def get_host_addon(self, host_name: str) -> Optional[AYONAddon]:
+    def get_host_addon(self, host_name: str) -> IHostAddon | None:
         """Find host addon by host name.
 
         Args:
             host_name (str): Host name for which is found host addon.
 
         Returns:
-            Optional[AYONAddon]: Found host addon by name or `None`.
+            IHostAddon | None: Found host addon by name or `None`.
         """
 
         for addon in self.get_enabled_addons():
@@ -997,7 +1038,7 @@ class AddonsManager:
             if isinstance(addon, IHostAddon)
         }
 
-    def print_report(self) -> None:
+    def print_report(self, include_tray: bool = False) -> None:
         """Print out report of time spent on addons initialization parts.
 
         Reporting is not automated must be implemented for each initialization
@@ -1008,124 +1049,81 @@ class AddonsManager:
         the processed part and value is dictionary where key is addon's
         class name and value is time delta of it's processing.
 
-        It is good idea to add total time delta on processed part under key
-        which is defined in attribute `_report_total_key`. By default has value
-        `"Total"` but use the attribute please.
-
-        ```javascript
-        {
-            "Initialization": {
-                "FtrackAddon": 0.003,
-                ...
-                "Total": 1.003,
-            },
-            ...
-        }
-        ```
         """
-
-        if not self._report:
-            return
-
-        available_col_names = set()
-        for addon_names in self._report.values():
-            available_col_names |= set(addon_names.keys())
-
-        # Prepare ordered dictionary for columns
-        addons_info = [
-            _AddonReportInfo.from_addon(addon, self._report)
-            for addon in self.addons
-            if addon.__class__.__name__ in available_col_names
+        sorted_rows = [
+            report_row
+            for report_row in sorted(
+                self._report_by_name.values(),
+                key=lambda item: item.name
+            )
         ]
-        addons_info.sort(key=lambda x: x.name)
+        sorted_rows.append(self._total_row)
+        for report_row in sorted_rows:
+            report_row.sum_total()
 
-        addon_name_rows = [
-            addon_info.name
-            for addon_info in addons_info
+        # Add addon names to first column
+        names = [row.name for row in sorted_rows]
+        names.insert(0, "Addon name")
+        versions = [row.version or "N/A" for row in sorted_rows]
+        versions.insert(0, "Version")
+        server_versions = [
+            row.server_version or "N/A" for row in sorted_rows
         ]
-        addon_version_rows = [
-            addon_info.version
-            for addon_info in addons_info
-        ]
+        server_versions.insert(0, "Server v.")
 
-        # Add total key (as last addon)
-        addon_name_rows.append(self._report_total_key)
-        addon_version_rows.append(f"({len(addons_info)})")
+        # Prepare columns to calculate their widths
+        cols: list[list[str]] = [names, versions, server_versions]
+        for col_name, attr_name, is_tray_value in (
+            ("Initialize", "init_time", False),
+            ("Connect", "connect_time", False),
+            ("Tray init", "tray_init_time", True),
+            ("Tray menu", "tray_menu_time", True),
+            ("Startup", "tray_start_time", True),
+            ("Total", "total_time", False),
+        ):
+            if is_tray_value and not include_tray:
+                continue
 
-        cols = collections.OrderedDict()
-        # Add addon names to first columnt
-        cols["Addon name"] = addon_name_rows
-        cols["Version"] = addon_version_rows
+            values = [
+                f"{getattr(row, attr_name):.3f}"
+                for row in sorted_rows
+            ]
+            values.insert(0, col_name)
+            cols.append(values)
 
-        # Add columns from report
-        total_by_addon = {
-            row: 0
-            for row in addon_name_rows
-        }
-        for label in self._report.keys():
-            rows = []
-            col_total = 0
-            for addon_info in addons_info:
-                value = addon_info.report_value_by_label.get(label)
-                if value is None:
-                    rows.append("N/A")
-                    continue
-                rows.append("{:.3f}".format(value))
-                total_by_addon[addon_info.name] += value
-                col_total += value
-            total_by_addon[self._report_total_key] += col_total
-            rows.append("{:.3f}".format(col_total))
-            cols[label] = rows
-        # Add to also total column that should sum the row
-        cols[self._report_total_key] = [
-            "{:.3f}".format(total_by_addon[addon_name])
-            for addon_name in cols["Addon name"]
+        col_widths = [
+            max((len(value) for value in col_values))
+            for col_values in cols
         ]
 
-        # Prepare column widths and total row count
-        # - column width is by
-        col_widths = {}
-        total_rows = None
-        for key, values in cols.items():
-            if total_rows is None:
-                total_rows = 1 + len(values)
-            max_width = len(key)
-            for value in values:
-                value_length = len(value)
-                if value_length > max_width:
-                    max_width = value_length
-            col_widths[key] = max_width
+        # Convert columns to rows for print
+        rows = list(zip(*cols))
+        # Top row contains labels
+        top_row = rows.pop(0)
+        # Last row contains totals
+        total_row = rows.pop(-1)
 
-        rows = []
-        for _idx in range(total_rows):
-            rows.append([])
+        separator = "+".join([w * "-" for w in col_widths])
 
-        for key, values in cols.items():
-            width = col_widths[key]
-            idx = 0
-            rows[idx].append(key.ljust(width))
-            for value in values:
-                idx += 1
-                rows[idx].append(value.ljust(width))
+        lines = [separator]
+        lines.append("|".join(
+            value.ljust(col_width)
+            for col_width, value in zip(col_widths, top_row)
+        ))
+        lines.append(separator)
 
-        filler_parts = []
-        for width in col_widths.values():
-            filler_parts.append(width * "-")
-        filler = "+".join(filler_parts)
+        for row in rows:
+            lines.append("|".join(
+                value.ljust(col_width)
+                for col_width, value in zip(col_widths, row)
+            ))
 
-        formatted_rows = [filler]
-        last_row_idx = len(rows) - 1
-        for idx, row in enumerate(rows):
-            # Add filler before last row
-            if idx == last_row_idx:
-                formatted_rows.append(filler)
+        lines.append(separator)
+        lines.append("|".join(
+            value.ljust(col_width)
+            for col_width, value in zip(col_widths, total_row)
+        ))
+        lines.append("")
 
-            formatted_rows.append("|".join(row))
-
-            # Add filler after first row
-            if idx == 0:
-                formatted_rows.append(filler)
-
-        # Join rows with newline char and add new line at the end
-        output = "\n".join(formatted_rows) + "\n"
+        output = "\n".join(lines)
         print(output)

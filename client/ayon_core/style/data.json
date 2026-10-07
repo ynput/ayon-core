@@ -66,13 +66,14 @@
         "font-overridden": "#91CDFC",
 
         "overlay-messages": {
+            "bg": "#121212",
+            "font": "#F4F5F5",
             "close-btn": "#D3D8DE",
-            "bg-success": "#458056",
-            "bg-success-hover": "#55a066",
-            "bg-error": "#AD2E2E",
-            "bg-error-hover": "#C93636",
-            "bg-info": "rgb(63, 98, 121)",
-            "bg-info-hover": "rgb(81, 146, 181)"
+            "close-btn-hover": "#FFFFFF",
+            "close-btn-bg-hover": "#373D48",
+            "success": "#23BB35",
+            "error": "#E64D3E",
+            "info": "rgb(81, 146, 181)"
         },
         "tab-widget": {
             "bg": "#21252B",

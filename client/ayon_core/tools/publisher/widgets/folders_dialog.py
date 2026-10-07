@@ -1,56 +1,83 @@
+from __future__ import annotations
+
+import typing
+from typing import Any, Callable
+
 from qtpy import QtWidgets
 
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.utils import (
     FoldersWidget,
     FoldersFiltersWidget,
+    GoToCurrentButton,
 )
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import FolderItem, FolderTypeItem
 
 
 class FoldersDialogController:
     def __init__(self, controller: AbstractPublisherFrontend):
-        self._event_system = QueuedEventSystem()
+        self.event_system = QueuedEventSystem()
         self._controller: AbstractPublisherFrontend = controller
 
-    @property
-    def event_system(self):
-        return self._event_system
-
-    def emit_event(self, topic, data=None, source=None):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> None:
         """Use implemented event system to trigger event."""
 
         if data is None:
             data = {}
         self.event_system.emit(topic, data, source)
 
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(self, topic: str, callback: Callable) -> None:
         self.event_system.add_callback(topic, callback)
 
-    def get_folder_items(self, project_name, sender=None):
+    def get_folder_items(
+        self, project_name: str, sender: str | None = None
+    ) -> dict[str, FolderItem]:
         return self._controller.get_folder_items(project_name, sender)
 
-    def get_folder_type_items(self, project_name, sender=None):
+    def get_folder_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[FolderTypeItem]:
         return self._controller.get_folder_type_items(
             project_name, sender
         )
 
-    def set_selected_folder(self, folder_id):
+    def set_selected_folder(self, folder_id: str) -> None:
         pass
 
 
 class FoldersDialog(QtWidgets.QDialog):
     """Dialog to select folder for a context of instance."""
 
-    def __init__(self, controller, parent):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Select folder")
 
         filters_widget = FoldersFiltersWidget(self)
 
+        current_context_btn = GoToCurrentButton(self)
+        current_context_btn.setToolTip("Go to current context")
+        current_context_btn.setVisible(False)
+
+        header_layout = QtWidgets.QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(5)
+        header_layout.addWidget(filters_widget, 1)
+        header_layout.addWidget(current_context_btn, 0)
+
         folders_controller = FoldersDialogController(controller)
         folders_widget = FoldersWidget(folders_controller, self)
-        folders_widget.set_deselectable(True)
 
         ok_btn = QtWidgets.QPushButton("OK", self)
         cancel_btn = QtWidgets.QPushButton("Cancel", self)
@@ -62,7 +89,7 @@ class FoldersDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(5)
-        layout.addWidget(filters_widget, 0)
+        layout.addLayout(header_layout, 0)
         layout.addWidget(folders_widget, 1)
         layout.addLayout(btns_layout, 0)
 
@@ -73,26 +100,28 @@ class FoldersDialog(QtWidgets.QDialog):
         folders_widget.double_clicked.connect(self._on_ok_clicked)
         filters_widget.text_changed.connect(self._on_filter_change)
         filters_widget.my_tasks_changed.connect(self._on_my_tasks_change)
+        current_context_btn.clicked.connect(self._on_current_context_click)
         ok_btn.clicked.connect(self._on_ok_clicked)
         cancel_btn.clicked.connect(self._on_cancel_clicked)
 
         self._controller = controller
         self._filters_widget = filters_widget
+        self._current_context_btn = current_context_btn
         self._ok_btn = ok_btn
         self._cancel_btn = cancel_btn
 
         self._folders_widget = folders_widget
 
-        self._selected_folder_path = None
+        self._selected_folder_path: str | None = None
         # Soft refresh is enabled
         # - reset will happen at all cost if soft reset is enabled
         # - adds ability to call reset on multiple places without repeating
-        self._soft_reset_enabled = True
+        self._soft_reset_enabled: bool = True
 
-        self._first_show = True
+        self._first_show: bool = True
         self._default_height = 500
 
-        self._project_name = None
+        self._project_name: str | None = None
 
     def showEvent(self, event):
         """Refresh folders widget on show."""
@@ -103,7 +132,7 @@ class FoldersDialog(QtWidgets.QDialog):
         # Refresh on show
         self.reset(False)
 
-    def reset(self, force=True):
+    def reset(self, force: bool = True) -> None:
         """Reset widget."""
         if not force and not self._soft_reset_enabled:
             return
@@ -113,12 +142,14 @@ class FoldersDialog(QtWidgets.QDialog):
             self._soft_reset_enabled = False
 
         self._folders_widget.set_project_name(self._project_name)
+        self._on_my_tasks_change(self._filters_widget.is_my_tasks_checked())
+        self._update_current_context_btn()
 
-    def get_selected_folder_path(self):
+    def get_selected_folder_path(self) -> str | None:
         """Get selected folder path."""
         return self._selected_folder_path
 
-    def set_selected_folders(self, folder_paths: list[str]) -> None:
+    def set_selected_folders(self, folder_paths: set[str]) -> None:
         """Change preselected folder before showing the dialog.
 
         This also resets model and clean filter.
@@ -135,7 +166,7 @@ class FoldersDialog(QtWidgets.QDialog):
         if folder_id:
             self._folders_widget.set_selected_folder(folder_id)
 
-    def _on_first_show(self):
+    def _on_first_show(self) -> None:
         center = self.rect().center()
         size = self.size()
         size.setHeight(self._default_height)
@@ -146,22 +177,33 @@ class FoldersDialog(QtWidgets.QDialog):
         new_pos.setY(new_pos.y() - int(self.height() / 2))
         self.move(new_pos)
 
-    def _on_controller_reset(self):
+    def _on_controller_reset(self) -> None:
         # Change reset enabled so model is reset on show event
         self._soft_reset_enabled = True
 
-    def _on_filter_change(self, text):
+    def _on_filter_change(self, text: str) -> None:
         """Trigger change of filter of folders."""
         self._folders_widget.set_name_filter(text)
 
-    def _on_cancel_clicked(self):
+    def _on_cancel_clicked(self) -> None:
         self.done(0)
 
-    def _on_ok_clicked(self):
+    def _on_ok_clicked(self) -> None:
         self._selected_folder_path = (
             self._folders_widget.get_selected_folder_path()
         )
         self.done(1)
+
+    def _update_current_context_btn(self) -> None:
+        # Hide button if there is no current context folder
+        folder_path = self._controller.get_current_folder_path()
+        self._current_context_btn.setVisible(bool(folder_path))
+
+    def _on_current_context_click(self) -> None:
+        folder_path = self._controller.get_current_folder_path()
+        folder_id = self._controller.get_folder_id_from_path(folder_path)
+        if folder_id:
+            self._folders_widget.set_selected_folder(folder_id)
 
     def _on_my_tasks_change(self, enabled: bool) -> None:
         folder_ids = None

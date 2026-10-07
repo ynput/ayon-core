@@ -110,8 +110,12 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         product_name = in_data["productName"]
         # If instance data already contain families then use it
         instance_families = in_data.get("families") or []
-        # Add product type to families
-        instance_families.append(in_data["productType"])
+        # Add product base type to families
+        product_type = in_data["productType"]
+        product_base_type = in_data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_type
+        instance_families.append(product_base_type)
 
         instance = context.create_instance(product_name)
         instance.data.update({
@@ -121,8 +125,9 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
             "folderPath": in_data["folderPath"],
             "task": in_data["task"],
             "productName": product_name,
-            "productType": in_data["productType"],
-            "family": in_data["productType"],
+            "productBaseType": product_base_type,
+            "productType": product_type,
+            "family": product_base_type,
             "families": instance_families,
             "representations": [],
             "thumbnailSource": thumbnail_path

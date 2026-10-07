@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pyblish
 from ayon_core.lib import get_ffmpeg_tool_args, run_subprocess
+from ayon_core.lib.vendor_bin_utils import is_ffmpeg_option_supported
 
 
 def get_audio_instances(context):
@@ -22,8 +23,12 @@ def get_audio_instances(context):
     for instance in context:
         if not instance.data.get("parent_instance_id"):
             continue
+
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         if (
-            instance.data["productType"] == "audio"
+            product_base_type == "audio"
             or instance.data.get("reviewAudio")
         ):
             audio_instances.append(instance)
@@ -185,7 +190,11 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                 shot_audio_fpath = recycling_file.pop()
 
             # audio file needs to be published as representation
-            if audio_instance.data["productType"] == "audio":
+            a_product_base_type = audio_instance.data.get("productBaseType")
+            if not a_product_base_type:
+                a_product_base_type = audio_instance.data["productType"]
+
+            if a_product_base_type == "audio":
                 # create empty representation attr
                 if "representations" not in audio_instance.data:
                     audio_instance.data["representations"] = []
@@ -390,11 +399,12 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
 
         args = get_ffmpeg_tool_args("ffmpeg")
         args.extend(input_args)
-        args.extend([
-            "-filter_complex_script", filters_tmp_filepath,
-            "-map", "[a]"
-        ])
-        args.append(audio_temp_fpath)
+
+        if is_ffmpeg_option_supported("filter_complex_script"):
+            args.extend(["-filter_complex_script", filters_tmp_filepath])
+        else:
+            args.extend(["-/filter_complex", filters_tmp_filepath])
+        args.extend(["-map", "[a]", audio_temp_fpath])
 
         # run subprocess
         self.log.debug("Executing: {}".format(args))

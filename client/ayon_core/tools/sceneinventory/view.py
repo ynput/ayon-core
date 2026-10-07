@@ -526,7 +526,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             for action in custom_actions:
                 color = action.color or DEFAULT_COLOR
                 icon_def = action.icon
-                if not isinstance(action.icon, dict):
+                if isinstance(action.icon, str):
                     icon_def = {
                         "type": "awesome-font",
                         "name": icon_def,
@@ -1114,6 +1114,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
         try:
             for item_id, item_version in zip(item_ids, versions):
                 container = containers_by_id[item_id]
+                if container.get("version_locked"):
+                    continue
                 try:
                     update_container(container, item_version)
                 except Exception as exc:

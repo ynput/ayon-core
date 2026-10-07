@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import os
 import logging
 import sys
 import copy
+from typing import Iterable, Any
 
 import clique
 import pyblish.api
@@ -25,8 +28,15 @@ from ayon_core.lib.file_transaction import (
     DuplicateDestinationError
 )
 from ayon_core.pipeline.publish import (
-    KnownPublishError,
+    PublishError,
     get_publish_template_name,
+)
+from ayon_core.pipeline import is_product_base_type_supported
+from ayon_core.pipeline.anatomy import (
+    Anatomy,
+    AnatomyStringTemplate,
+    AnatomyTemplateResult,
+    AnatomyRoot,
 )
 
 log = logging.getLogger(__name__)
@@ -122,10 +132,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         "representation",
         "username",
         "output",
-        # OpenPype keys - should be removed
-        "asset",  # folder[name]
-        "subset",  # product[name]
-        "family",  # product[type]
     ]
 
     def process(self, instance):
@@ -144,10 +150,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Skip instance if there are not representations to integrate
         #   all representations should not be integrated
         if not filtered_repres:
-            self.log.warning((
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data["productType"]
+            self.log.info(
                 "Skipping, there are no representations"
-                " to integrate for instance {}"
-            ).format(instance.data["productType"]))
+                f" to integrate for instance {product_base_type}"
+            )
             return
 
         file_transactions = FileTransaction(log=self.log,
@@ -156,10 +165,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         try:
             self.register(instance, file_transactions, filtered_repres)
         except DuplicateDestinationError as exc:
-            # Raise DuplicateDestinationError as KnownPublishError
+            # Raise DuplicateDestinationError as PublishError
             # and rollback the transactions
             file_transactions.rollback()
-            raise KnownPublishError(exc).with_traceback(sys.exc_info()[2])
+            raise PublishError(str(exc)).with_traceback(sys.exc_info()[2])
 
         except Exception as exc:
             # clean destination
@@ -173,15 +182,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         file_transactions.finalize()
 
     def filter_representations(self, instance):
-        # Prepare repsentations that should be integrated
+        """Filter representations to be integrated."""
         repres = instance.data.get("representations")
-        # Raise error if instance don't have any representations
         if not repres:
-            raise KnownPublishError(
-                "Instance {} has no representations to integrate".format(
-                    instance.data["productType"]
-                )
-            )
+            return []
 
         # Validate type of stored representations
         if not isinstance(repres, (list, tuple)):
@@ -217,6 +221,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             )
 
         template_name = self.get_template_name(instance)
+        self.log.debug(f"Anatomy template name: {template_name}")
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item("publish", template_name)
+
+        # Prepare preferred root to use for representation files
+        path_template_obj: AnatomyStringTemplate = publish_template["path"]
+        result: AnatomyTemplateResult = path_template_obj.format(
+            {"root": anatomy.roots}
+        )
+        root_value = result.used_values.get("root")
+        prefered_root_name = None
+        if root_value:
+            prefered_root_name = next(iter(root_value.keys()))
 
         op_session = OperationsSession()
         product_entity = self.prepare_product(
@@ -244,7 +261,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # todo: reduce/simplify what is returned from this function
             prepared = self.prepare_representation(
                 repre,
-                template_name,
+                publish_template,
                 existing_repres_by_name,
                 version_entity,
                 instance_stagingdir,
@@ -297,7 +314,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # version instance instead of an individual representation) so
         # we can reuse those file infos per representation
         resource_file_infos = self.get_files_info(
-            resource_destinations, anatomy
+            resource_destinations, anatomy, prefered_root_name
         )
 
         # Finalize the representations now the published files are integrated
@@ -308,8 +325,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             repre_update_data = prepared["repre_update_data"]
             transfers = prepared["transfers"]
             destinations = [dst for src, dst in transfers]
+
             repre_files = self.get_files_info(
-                destinations, anatomy
+                destinations, anatomy, prefered_root_name
             )
             # Add the version resource file infos to each representation
             repre_files += resource_file_infos
@@ -367,6 +385,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         folder_entity = instance.data["folderEntity"]
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_type
+
         self.log.debug("Product: {}".format(product_name))
 
         # Get existing product if it exists
@@ -375,9 +397,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         )
 
         # Define product data
-        data = {
-            "families": get_instance_families(instance)
-        }
         attributes = {}
 
         product_group = instance.data.get("productGroup")
@@ -394,14 +413,33 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         product_id = None
         if existing_product_entity:
             product_id = existing_product_entity["id"]
-        product_entity = new_product_entity(
-            product_name,
-            product_type,
-            folder_entity["id"],
-            data=data,
-            attribs=attributes,
-            entity_id=product_id
-        )
+
+        new_product_entity_kwargs = {
+            "name": product_name,
+            "folder_id": folder_entity["id"],
+            "attribs": attributes,
+            "entity_id": product_id,
+            "product_base_type": product_base_type,
+            "product_type": product_type,
+        }
+
+        if not is_product_base_type_supported():
+            new_product_entity_kwargs.pop("product_base_type")
+            if (
+                product_base_type is not None
+                and product_base_type != product_type
+            ):
+                self.log.warning((
+                    "Product base type %s is not supported by the server, "
+                    "but it's defined - and it differs from product type %s. "
+                    "Using product base type as product type."
+                ), product_base_type, product_type)
+
+                new_product_entity_kwargs["product_type"] = (
+                    product_base_type
+                )
+
+        product_entity = new_product_entity(**new_product_entity_kwargs)
 
         if existing_product_entity is None:
             # Create a new product
@@ -460,6 +498,23 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         host_name = instance.context.data["hostName"]
         version_data["host_name"] = host_name
 
+        tags = instance.data.get("versionTags")
+        if tags is not None:
+            # Check if tags is an iterable.
+            if not isinstance(tags, (list, tuple, set)):
+                raise PublishError(
+                    "Tags must be an iterable."
+                    f" Instead got type {type(tags)}"
+                )
+            # Error if not all are string.
+            if not all(isinstance(tag, str) for tag in tags):
+                raise PublishError(
+                    "Version tags must be an iterable of strings. "
+                    f"Got: {type(tags)}"
+                )
+            # Force the type to be list for the new_version_entity call.
+            tags = list(tags)
+
         version_entity = new_version_entity(
             version_number,
             product_entity["id"],
@@ -468,6 +523,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             data=version_data,
             attribs=version_attributes,
             entity_id=version_id,
+            tags=tags,
         )
 
         if existing_version:
@@ -502,9 +558,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             is_sequence_representation (bool): Files are for sequence.
 
         Raises:
-            KnownPublishError: If validations don't pass.
-        """
+            PublishError: If validations don't pass.
 
+        """
         if not files:
             return
 
@@ -513,7 +569,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         for fname in files:
             if os.path.isabs(fname):
-                raise KnownPublishError(
+                raise PublishError(
                     f"Representation file names contains full paths: {fname}"
                 )
 
@@ -522,7 +578,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         src_collections, remainders = clique.assemble(files)
         if len(files) < 2 or len(src_collections) != 1 or remainders:
-            raise KnownPublishError((
+            raise PublishError((
                 "Files of representation does not contain proper"
                 " sequence files.\nCollected collections: {}"
                 "\nCollected remainders: {}"
@@ -534,7 +590,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     def prepare_representation(
         self,
         repre,
-        template_name,
+        publish_template,
         existing_repres_by_name,
         version_entity,
         instance_stagingdir,
@@ -542,16 +598,17 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     ):
         # pre-flight validations
         if repre["ext"].startswith("."):
-            raise KnownPublishError((
-                "Extension must not start with a dot '.': {}"
-            ).format(repre["ext"]))
+            raise PublishError(
+                f"Extension must not start with a dot '.': {repre['ext']}"
+            )
 
-        if repre.get("transfers"):
-            raise KnownPublishError((
+        repre_transfers = repre.get("transfers")
+        if repre_transfers:
+            raise PublishError(
                 "Representation is not allowed to have transfers"
                 "data before integration. They are computed in "
-                "the integrator. Got: {}"
-            ).format(repre["transfers"]))
+                f"the integrator. Got: {repre_transfers}"
+            )
 
         # create template data for Anatomy
         template_data = copy.deepcopy(instance.data["anatomyData"])
@@ -583,8 +640,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             stagingdir = instance_stagingdir
 
         if not stagingdir:
-            raise KnownPublishError(
-                "No staging directory set for representation: {}".format(repre)
+            raise PublishError(
+                f"No staging directory set for representation: {repre}."
             )
 
         # optionals
@@ -606,9 +663,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if value is not None:
                 template_data[anatomy_key] = value
 
-        self.log.debug("Anatomy template name: {}".format(template_name))
         anatomy = instance.context.data["anatomy"]
-        publish_template = anatomy.get_template_item("publish", template_name)
         path_template_obj = publish_template["path"]
         template = path_template_obj.template.replace("\\", "/")
 
@@ -624,10 +679,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 instance.data.get("originalDirname") or stagingdir)
             _rootless = self.get_rootless_path(anatomy, original_directory)
             if _rootless == original_directory:
-                raise KnownPublishError((
-                        "Destination path '{}' ".format(original_directory) +
-                        "must be in project dir"
-                ))
+                raise PublishError(
+                    f"Destination path '{original_directory}'"
+                    f" must be in project directory."
+                )
             relative_path_start = _rootless.rfind('}') + 2
             without_root = _rootless[relative_path_start:]
             template_data["originalDirname"] = without_root
@@ -689,15 +744,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
-            # Use last frame for minimum padding
-            #   - that should cover both 'udim' and 'frame' minimum padding
-            destination_padding = len(str(destination_indexes[-1]))
-            if not is_udim:
-                # Change padding for frames if template has defined higher
-                #   padding.
-                template_padding = anatomy.templates_obj.frame_padding
-                if template_padding > destination_padding:
-                    destination_padding = template_padding
+
+            if is_udim:
+                # UDIM should at be four digits
+                destination_padding: int = 4
+            else:
+                # Change padding for frames to match anatomy template
+                destination_padding: int = anatomy.templates_obj.frame_padding
 
                 # If the representation has `frameStart` set it renumbers the
                 # frame indices of the published collection. It will start from
@@ -758,10 +811,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             dst_collection = clique.assemble(dst_filepaths)[0][0]
             dst_collection.padding = destination_padding
             if len(src_collection.indexes) != len(dst_collection.indexes):
-                raise KnownPublishError((
+                raise PublishError(
                     "This is a bug. Source sequence frames length"
                     " does not match integration frames length"
-                ))
+                )
 
             # Multiple file transfers
             transfers = []
@@ -902,8 +955,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Include optional data if present in
         optionals = [
-            "frameStart", "frameEnd", "step",
-            "handleEnd", "handleStart", "sourceHashes"
+            "frameStart", "frameEnd",
+            "handleEnd", "handleStart",
+            "step",
+            "resolutionWidth", "resolutionHeight",
+            "pixelAspect",
+            "sourceHashes"
         ]
         for key in optionals:
             if key in instance.data:
@@ -926,17 +983,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Task can be optional in anatomy data
         host_name = context.data["hostName"]
         anatomy_data = instance.data["anatomyData"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
             project_name,
             host_name,
-            product_type,
+            product_base_type=product_base_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
-            logger=self.log
+            logger=self.log,
         )
 
     def get_rootless_path(self, anatomy, path):
@@ -966,38 +1025,66 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             ).format(path))
         return path
 
-    def get_files_info(self, filepaths, anatomy):
+    def get_files_info(
+        self,
+        filepaths: Iterable[str],
+        anatomy: Anatomy,
+        prefered_root_name: str | None,
+    ) -> list[dict[str, Any]]:
         """Prepare 'files' info portion for representations.
 
         Arguments:
             filepaths (Iterable[str]): List of transferred file paths.
             anatomy (Anatomy): Project anatomy.
+            prefered_root_name (str | None): If set, it will be tried as first
+                option for rootless path.
 
         Returns:
             list[dict[str, Any]]: Representation 'files' information.
 
         """
+        obj_root = None
+        if prefered_root_name:
+            obj_root = anatomy.roots[prefered_root_name]
         file_infos = []
         for filepath in filepaths:
-            file_info = self.prepare_file_info(filepath, anatomy)
+            file_info = self.prepare_file_info(
+                filepath, anatomy, obj_root
+            )
             file_infos.append(file_info)
         return file_infos
 
-    def prepare_file_info(self, path, anatomy):
+    def prepare_file_info(
+        self,
+        path: str,
+        anatomy: Anatomy,
+        root: AnatomyRoot | None,
+    ) -> dict[str, Any]:
         """ Prepare information for one file (asset or resource)
 
         Arguments:
             path (str): Destination url of published file.
             anatomy (Anatomy): Project anatomy part from instance.
+            root (AnatomyRoot | None): If set, it will be tried as first
+                option for rootless path.
 
         Returns:
             dict[str, Any]: Representation file info dictionary.
 
         """
+        rootless_path = None
+        if root is not None:
+            success, rootless_path = root.find_root_template_from_path(path)
+            if not success:
+                rootless_path = None
+
+        if rootless_path is None:
+            rootless_path = self.get_rootless_path(anatomy, path)
+
         return {
             "id": create_entity_id(),
             "name": os.path.basename(path),
-            "path": self.get_rootless_path(anatomy, path),
+            "path": rootless_path,
             "size": os.path.getsize(path),
             "hash": source_hash(path),
             "hash_type": "op3",
@@ -1013,14 +1100,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             file_path (str): Filepath.
 
         Raises:
-            KnownPublishError: When failed to find root for the path.
+            PublishError: When failed to find root for the path.
+
         """
         path = self.get_rootless_path(anatomy, file_path)
         if not path:
-            raise KnownPublishError((
-                "Destination path '{}' ".format(file_path) +
-                "must be in project dir"
-            ))
+            raise PublishError(
+                f"Destination path '{file_path}' must be in project dir"
+            )
 
     def _get_attributes_for_type(self, context, entity_type):
         return self._get_attributes_by_type(context)[entity_type]

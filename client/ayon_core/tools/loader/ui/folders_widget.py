@@ -1,22 +1,16 @@
 from typing import Optional
 
-import qtpy
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_objected_colors
-from ayon_core.tools.utils import DeselectableTreeView
-from ayon_core.tools.utils.folders_widget import FoldersProxyModel
-
 from ayon_core.tools.utils import (
+    DeselectableTreeView,
     FoldersQtModel,
-    FOLDERS_MODEL_SENDER_NAME,
 )
-from ayon_core.tools.utils.folders_widget import FOLDER_ID_ROLE
-
-if qtpy.API == "pyside":
-    from PySide.QtGui import QStyleOptionViewItemV4
-elif qtpy.API == "pyqt4":
-    from PyQt4.QtGui import QStyleOptionViewItemV4
+from ayon_core.tools.utils.folders_widget import (
+    FoldersProxyModel,
+    FOLDER_ID_ROLE,
+)
 
 UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 50
 
@@ -31,7 +25,7 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
     bar_height = 3
 
     def __init__(self, *args, **kwargs):
-        super(UnderlinesFolderDelegate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         colors = get_objected_colors("loader", "asset-view")
         self._selected_color = colors["selected"].get_qcolor()
         self._hover_color = colors["hover"].get_qcolor()
@@ -39,7 +33,7 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
     def sizeHint(self, option, index):
         """Add bar height to size hint."""
-        result = super(UnderlinesFolderDelegate, self).sizeHint(option, index)
+        result = super().sizeHint(option, index)
         height = result.height()
         result.setHeight(height + self.bar_height)
 
@@ -47,10 +41,6 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
     def paint(self, painter, option, index):
         """Replicate painting of an item and draw color bars if needed."""
-        # Qt4 compat
-        if qtpy.API in ("pyside", "pyqt4"):
-            option = QStyleOptionViewItemV4(option)
-
         painter.save()
 
         item_rect = QtCore.QRect(option.rect)
@@ -184,7 +174,7 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
 
 class LoaderFoldersModel(FoldersQtModel):
     def __init__(self, *args, **kwargs):
-        super(LoaderFoldersModel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._colored_items = set()
 
@@ -214,9 +204,9 @@ class LoaderFoldersModel(FoldersQtModel):
                 changes[folder_id].append(folder_color)
 
         for folder_id, color_value in changes.items():
-            item = self._items_by_id.get(folder_id)
-            if item is not None:
-                item.setData(color_value, UNDERLINE_COLORS_ROLE)
+            fill_item = self._fill_data.items_by_id.get(folder_id)
+            if fill_item is not None:
+                fill_item.item.setData(color_value, UNDERLINE_COLORS_ROLE)
 
         self._colored_items = all_folder_ids
 
@@ -252,7 +242,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(LoaderFoldersWidget, self).__init__(parent)
+        super().__init__(parent)
 
         folders_view = DeselectableTreeView(self)
         folders_view.setHeaderHidden(True)
@@ -269,6 +259,8 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         folders_view.setModel(folders_proxy_model)
         folders_view.setItemDelegate(folders_label_delegate)
 
+        folders_view.setColumnHidden(1, True)
+
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(folders_view, 1)
@@ -276,10 +268,6 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         controller.register_event_callback(
             "selection.project.changed",
             self._on_project_selection_change,
-        )
-        controller.register_event_callback(
-            "folders.refresh.finished",
-            self._on_folders_refresh_finished
         )
         controller.register_event_callback(
             "controller.refresh.finished",
@@ -346,10 +334,6 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
     def _clear(self):
         self._folders_model.clear()
 
-    def _on_folders_refresh_finished(self, event):
-        if event["sender"] != FOLDERS_MODEL_SENDER_NAME:
-            self._set_project_name(event["project_name"])
-
     def _on_controller_refresh(self):
         self._update_expected_selection()
 
@@ -362,7 +346,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
     def _get_selected_item_ids(self):
         selection_model = self._folders_view.selectionModel()
         item_ids = []
-        for index in selection_model.selectedIndexes():
+        for index in selection_model.selectedRows():
             item_id = index.data(FOLDER_ID_ROLE)
             if item_id is not None:
                 item_ids.append(item_id)

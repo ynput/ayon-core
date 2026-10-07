@@ -7,9 +7,11 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 import arrow
 import ayon_api
+from ayon_api.graphql_queries import project_graphql_query
 from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
+from ayon_core.lib.icon_definitions import AwesomeFontIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import ProductTypeIconMapping
 from ayon_core.tools.loader.abstract import (
@@ -31,13 +33,16 @@ PRODUCTS_MODEL_SENDER = "products.model"
 
 
 def version_item_from_entity(version):
-    version_attribs = version["attrib"]
+    version_attribs = version.get("attrib") or {}
+    version_data = version.get("data") or {}
     tags = version["tags"]
     frame_start = version_attribs.get("frameStart")
     frame_end = version_attribs.get("frameEnd")
     handle_start = version_attribs.get("handleStart")
     handle_end = version_attribs.get("handleEnd")
     step = version_attribs.get("step")
+    if step is None:
+        step = version_data.get("step")
     comment = version_attribs.get("comment")
     source = version_attribs.get("source")
 
@@ -130,14 +135,10 @@ def product_base_type_item_from_data(
         ProductBaseTypeDict: Product base type item.
 
     """
-    icon = {
-        "type": "awesome-font",
-        "name": "fa.folder",
-        "color": "#0091B2",
-    }
+    icon = AwesomeFontIcon("fa.folder", color="#0091B2")
     return ProductBaseTypeItem(
         name=product_base_type_data["name"],
-        icon=icon
+        icon=icon,
     )
 
 
@@ -202,7 +203,7 @@ class ProductsModel:
         cache = self._product_type_items_cache[project_name]
         if not cache.is_valid:
             icons_mapping = self._get_product_type_icons(project_name)
-            product_types = ayon_api.get_project_product_types(project_name)
+            product_types = self._get_project_product_types(project_name)
             cache.update_data([
                 ProductTypeItem(
                     product_type["name"],
@@ -445,7 +446,7 @@ class ProductsModel:
                 project_name,
                 "product",
                 product_item.product_id,
-                {"attrib": {"productGroup": group_name}}
+                {"attrib": {"productGroup": group_name or None}}
             )
             folder_ids.add(product_item.folder_id)
             product_item.group_name = group_name
@@ -461,6 +462,24 @@ class ProductsModel:
             },
             PRODUCTS_MODEL_SENDER
         )
+
+    def _get_project_product_types(self, project_name: str) -> list[dict]:
+        """This is a temporary solution for product types fetching.
+
+        There was a bug in ayon_api.get_project(...) which did not use GraphQl
+            but REST instead. That is fixed in ayon-python-api 1.2.6 that will
+            be as part of ayon launcher 1.4.3 release.
+
+        """
+        if not project_name:
+            return []
+        query = project_graphql_query({"productTypes.name"})
+        query.set_variable_value("projectName", project_name)
+        parsed_data = query.query(ayon_api.get_server_api_connection())
+        project = parsed_data["project"]
+        if project is None:
+            return []
+        return project["productTypes"]
 
     def _get_product_type_icons(
         self, project_name: Optional[str]
@@ -763,11 +782,10 @@ class ProductsModel:
         product_items_by_id = self._get_product_items_by_id(
             project_name, product_ids
         )
-        repre_icon = {
-            "type": "awesome-font",
-            "name": "fa.file-o",
-            "color": get_default_entity_icon_color(),
-        }
+        repre_icon = AwesomeFontIcon(
+            "fa.file-o",
+            color=get_default_entity_icon_color(),
+        )
         repre_items_by_version_id = collections.defaultdict(dict)
         for representation in representations:
             version_id = representation["versionId"]

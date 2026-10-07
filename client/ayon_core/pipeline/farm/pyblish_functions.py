@@ -1,21 +1,34 @@
 from __future__ import annotations
+
 import copy
 import os
+from pathlib import Path
+import platform
 import re
+import typing
+from typing import Any, Union, Optional
 import warnings
-from copy import deepcopy
 
 import attr
 import ayon_api
 import clique
+
 from ayon_core.lib import Logger
+from ayon_core.lib.file_transaction import copyfile
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
 )
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
-from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import PublishError
+from ayon_core.pipeline.publish.input_versions import serialize_input_versions
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
+
+log = Logger.get_logger(__name__)
 
 
 @attr.s
@@ -48,11 +61,47 @@ def remap_source(path, anatomy):
         anatomy.find_root_template_from_path(path)
     )
     if success:
-        source = rootless_path
-    else:
-        raise ValueError(
-            "Root from template path cannot be found: {}".format(path))
-    return source
+        return rootless_path
+    raise ValueError(
+        f"Root from template path cannot be found: {path}"
+    )
+
+
+def find_colorspace_template(
+    colorspace_path: str,
+    anatomy: Anatomy,
+) -> str | None:
+    """Find template for colorspace path.
+
+    Try to use builtin OCIO if path is relative to it. If not, try to
+        remap path using anatomy. If that fails, return None.
+
+    Args:
+        colorspace_path (str): Path to colorspace.
+        anatomy (Anatomy): Project anatomy object.
+
+    Returns:
+        str | None: Template to use for colorspace path.
+
+    """
+    builtin_path = os.getenv("BUILTIN_OCIO_ROOT")
+    if builtin_path:
+        builtin_path = Path(builtin_path).resolve().absolute()
+        path = Path(colorspace_path).resolve().absolute()
+        if path.is_relative_to(builtin_path):
+            relative = str(path.relative_to(builtin_path))
+            if platform.system().lower() == "windows":
+                relative = relative.replace("\\", "/")
+            return f"{{BUILTIN_OCIO_ROOT}}/{relative}"
+
+    output = None
+    try:
+        output = remap_source(colorspace_path, anatomy)
+        if platform.system().lower() == "windows":
+            output = output.replace("\\", "/")
+    except ValueError:
+        pass
+    return output
 
 
 def extend_frames(folder_path, product_name, start, end):
@@ -154,7 +203,6 @@ def get_transferable_representations(instance):
             try:
                 trans_rep["stagingDir"] = remap_source(staging_dir, anatomy)
             except ValueError:
-                log = Logger.get_logger("farm_publishing")
                 log.warning(
                     ("Could not find root path for remapping \"{}\". "
                      "This may cause issues on farm.").format(staging_dir))
@@ -164,7 +212,10 @@ def get_transferable_representations(instance):
 
 
 def create_skeleton_instance(
-        instance, families_transfer=None, instance_transfer=None):
+    instance,
+    families_transfer=None,
+    instance_transfer=None,
+):
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -186,6 +237,11 @@ def create_skeleton_instance(
 
     """
     # list of family names to transfer to new family if present
+    if families_transfer is None:
+        families_transfer = []
+
+    if instance_transfer is None:
+        instance_transfer = {}
 
     context = instance.context
     data = instance.data.copy()
@@ -210,21 +266,44 @@ def create_skeleton_instance(
         source = rootless_path
     else:
         # `rootless_path` is not set to `source` if none of roots match
-        log = Logger.get_logger("farm_publishing")
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    product_type = ("render"
-              if "prerender.farm" not in instance.data["families"]
-              else "prerender")
-    families = [product_type]
+    # This is a hack to keep the value of 'productType'.
+    # Because this function does not use product base type from source
+    #   instance and we don't know if product type of the instance was
+    #   customized or not, only way how to guess custom product type is
+    #   to check if is same as product base type.
+    i_product_base_type = instance.data.get("productBaseType")
+    i_product_type = instance.data.get("productType")
+    product_type = None
+    if (
+        i_product_base_type
+        and i_product_base_type != i_product_type
+    ):
+        product_type = i_product_type
+
+    # This is the old way of defining product base type
+    # - hard-coded product base type
+    product_base_type = "render"
+    if "prerender.farm" in instance.data["families"]:
+        product_base_type = "prerender"
+
+    if not product_type:
+        product_type = product_base_type
+
+    families = [product_base_type]
 
     # pass review to families if marked as review
     if data.get("review"):
         families.append("review")
 
     instance_skeleton_data = {
+        # TODO find out how to define product type
+        # - Right now product base type is hardcoded, from where should be
+        #   product type taken?
         "productType": product_type,
+        "productBaseType": product_base_type,
         "productName": data["productName"],
         "task": data["task"],
         "families": families,
@@ -246,15 +325,30 @@ def create_skeleton_instance(
         "multipartExr": data.get("multipartExr", False),
         "jobBatchName": data.get("jobBatchName", ""),
         "useSequenceForReview": data.get("useSequenceForReview", True),
-        # map inputVersions `ObjectId` -> `str` so json supports it
-        "inputVersions": list(map(str, data.get("inputVersions", []))),
+        "inputVersions": serialize_input_versions(data.get("inputVersions")),
         "colorspace": data.get("colorspace"),
         "hasExplicitFrames": data.get("hasExplicitFrames", False),
         "reuseLastVersion": data.get("reuseLastVersion", False),
     }
 
+    # Pass on the OCIO metadata of what the source display and view are
+    # so that the farm can correctly set up color management.
+    if "sceneDisplay" in data and "sceneView" in data:
+        instance_skeleton_data["sceneDisplay"] = data["sceneDisplay"]
+        instance_skeleton_data["sceneView"] = data["sceneView"]
+    elif "colorspaceDisplay" in data and "colorspaceView" in data:
+        # Backwards compatibility for sceneDisplay and sceneView
+        instance_skeleton_data["colorspaceDisplay"] = data["colorspaceDisplay"]
+        instance_skeleton_data["colorspaceView"] = data["colorspaceView"]
+    if "sourceDisplay" in data and "sourceView" in data:
+        instance_skeleton_data["sourceDisplay"] = data["sourceDisplay"]
+        instance_skeleton_data["sourceView"] = data["sourceView"]
+
     if data.get("renderlayer"):
         instance_skeleton_data["renderlayer"] = data["renderlayer"]
+
+    if data.get("status"):
+        instance_skeleton_data["status"] = data["status"]
 
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
@@ -265,6 +359,15 @@ def create_skeleton_instance(
     for item in families_transfer:
         if item in instance.data.get("families", []):
             instance_skeleton_data["families"] += [item]
+
+    slate_representation_ext = instance.data.get(
+        "slateRepresentationExt")
+    if (
+        "slate" in families_transfer
+        and slate_representation_ext
+    ):
+        instance_skeleton_data["slateRepresentationExt"] = \
+            slate_representation_ext
 
     # transfer specific properties from original instance based on
     # mapping dictionary `instance_transfer`
@@ -334,10 +437,9 @@ def prepare_representations(
 
     """
     representations = []
+    slate_representation_ext = skeleton_data.get("slateRepresentationExt", [])
     host_name = os.environ.get("AYON_HOST_NAME", "")
     collections, remainders = clique.assemble(exp_files)
-
-    log = Logger.get_logger("farm_publishing")
 
     if frames_to_render is not None:
         frames_to_render = convert_frames_str_to_list(frames_to_render)
@@ -411,6 +513,9 @@ def prepare_representations(
         # poor man exclusion
         if ext in skip_integration_repre_list:
             rep["tags"].append("delete")
+
+        if ext == slate_representation_ext:
+            rep["tags"].append("slate-frame")
 
         if skeleton_data.get("multipartExr", False):
             rep["tags"].append("multipartExr")
@@ -590,17 +695,16 @@ def create_instances_for_aov(
     # we cannot attach AOVs to other products as we consider every
     # AOV product of its own.
 
-    log = Logger.get_logger("farm_publishing")
-
     # if there are product to attach to and more than one AOV,
     # we cannot proceed.
     if (
         len(instance.data.get("attachTo", [])) > 0
         and len(instance.data.get("expectedFiles")[0].keys()) != 1
     ):
-        raise KnownPublishError(
-            "attaching multiple AOVs or renderable cameras to "
-            "product is not supported yet.")
+        raise PublishError(
+            "Attaching multiple AOVs or renderable cameras to"
+            " product is not supported yet."
+        )
 
     additional_data = {
         "renderProducts": instance.data["renderProducts"],
@@ -612,18 +716,14 @@ def create_instances_for_aov(
         additional_data.update({
             "colorspaceConfig": colorspace_config,
             # Display/View are optional
-            "display": instance.data.get("colorspaceDisplay"),
-            "view": instance.data.get("colorspaceView")
+            "display": instance.data.get("sourceDisplay"),
+            "view": instance.data.get("sourceView")
         })
 
         # Get templated path from absolute config path.
         anatomy = instance.context.data["anatomy"]
-        try:
-            additional_data["colorspaceTemplate"] = remap_source(
-                colorspace_config, anatomy)
-        except ValueError as e:
-            log.warning(e)
-            additional_data["colorspaceTemplate"] = colorspace_config
+        template = find_colorspace_template(colorspace_config, anatomy)
+        additional_data["colorspaceTemplate"] = template or colorspace_config
 
     # create instances for every AOV we found in expected files.
     # NOTE: this is done for every AOV and every render camera (if
@@ -640,11 +740,16 @@ def create_instances_for_aov(
 
 
 def _get_legacy_product_name_and_group(
-        product_type,
-        source_product_name,
-        task_name,
-        dynamic_data):
+    product_type,
+    source_product_name,
+    task_name,
+    dynamic_data
+):
     """Get product name with legacy logic.
+
+    NOTE: This function is imported and used in houdini. Change 'product_type'
+        to 'product_base_type' when it is not used there (and maybe remove the
+        function).
 
     This function holds legacy behaviour of creating product name
     that is deprecated. This wasn't using product name templates
@@ -656,7 +761,7 @@ def _get_legacy_product_name_and_group(
         since 0.4.4
 
     Args:
-        product_type (str): Product type.
+        product_type (str): Product base type.
         source_product_name (str): Source product name.
         task_name (str): Task name.
         dynamic_data (dict): Dynamic data (camera, aov, ...)
@@ -665,8 +770,15 @@ def _get_legacy_product_name_and_group(
         tuple: product name and group name
 
     """
-    warnings.warn("Using legacy product name for renders",
-                  DeprecationWarning)
+    log.warning(
+        "Using legacy product name logic for renders. The logic is coming"
+        " from OpenPype please change 'ayon+settings://core/tools/creator/"
+        "use_legacy_product_names_for_renders' and will be removed."
+    )
+    warnings.warn(
+        "Using legacy product name for renders",
+        DeprecationWarning
+    )
 
     # create product name `<product type><Task><Product name>`
     if not source_product_name.startswith(product_type):
@@ -699,13 +811,23 @@ def _get_legacy_product_name_and_group(
 
 
 def get_product_name_and_group_from_template(
-        project_name,
-        task_entity,
-        product_type,
-        variant,
-        host_name,
-        dynamic_data=None):
+    project_name: str,
+    task_entity: Union[dict[str, Any], None],
+    product_type: str,
+    variant: str,
+    host_name: str,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    *,
+    folder_entity: Union[dict[str, Any], None] = None,
+    product_base_type: str = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> tuple[str, str]:
     """Get product name and group name from template.
+
+    NOTE: This function is/was used only in ayon-houdini which uses/d kwargs
+        for all arguments. When houdini starts to use 'folder_entity' and
+        'product_base_type' this should change order of arguments.
 
     This will get product name and group name from template based on
     data provided. It is doing similar work as
@@ -719,39 +841,73 @@ def get_product_name_and_group_from_template(
         Maybe we should introduce templates for the groups themselves.
 
     Args:
-        task_entity (dict): Task entity.
         project_name (str): Project name.
+        task_entity (Union[dict[str, Any], None]): Task entity.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): Variant.
-        dynamic_data (dict): Dynamic data (aov, renderlayer, camera, ...).
+        dynamic_data (Optional[dict[str, Any]]): Dynamic data
+            (aov, renderlayer, camera, ...).
+        folder_entity (Union[dict[str, Any], None]): Folder entity.
+        product_base_type (str): Product base type.
+        project_entity (Optional[dict[str, Any]]): Project entity.
+        project_settings (Optional[dict[str, Any]]): Project settings.
 
     Returns:
         tuple: product name and group name.
 
     """
+    if not folder_entity and task_entity:
+        folder_entity = None
+        if task_entity:
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, task_entity["folderId"]
+            )
+
+    if not product_base_type:
+        log.warning(
+            f"DEPRECATION WARNING: Product base type not provided,"
+            f" using product type: {product_type}"
+        )
+        product_base_type = product_type
+
+    if not project_entity:
+        project_entity = ayon_api.get_project(project_name)
+
+    if not project_settings:
+        project_settings = get_project_settings(project_name)
+
     # remove 'aov' from data used to format group. See todo comment above
     # for possible solution.
-    _dynamic_data = deepcopy(dynamic_data) or {}
+    if dynamic_data is None:
+        dynamic_data = {}
+    _dynamic_data = copy.deepcopy(dynamic_data)
     _dynamic_data.pop("aov", None)
+
     resulting_group_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=_dynamic_data,
         variant=variant,
+        project_entity=project_entity,
+        project_settings=project_settings,
     )
 
     resulting_product_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["name"],
-        task_type=task_entity["taskType"],
+        folder_entity=folder_entity,
+        task_entity=task_entity,
         host_name=host_name,
+        product_base_type=product_base_type,
         product_type=product_type,
         dynamic_data=dynamic_data,
         variant=variant,
+        project_entity=project_entity,
+        project_settings=project_settings,
     )
     return resulting_product_name, resulting_group_name
 
@@ -788,12 +944,10 @@ def _create_instances_for_aov(
         ValueError:
 
     """
-
     anatomy = instance.context.data["anatomy"]
     source_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
     expected_files = instance.data["expectedFiles"]
-    log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
@@ -812,15 +966,20 @@ def _create_instances_for_aov(
             collections, _ = clique.assemble(collected_files)
             collected_files = _get_real_files_to_render(
                 collections[0], aov_frames_to_render)
+            if len(collected_files) == 1:
+                collected_files = collected_files[0]
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
             frame_end = int(skeleton.get("frameEndHandle"))
             aov_frames_to_render = list(range(frame_start, frame_end + 1))
 
-        dynamic_data = {
-            "aov": aov,
-            "renderlayer": instance.data.get("renderlayer"),
-        }
+        dynamic_data = {}
+        render_layer = instance.data.get("renderlayer")
+        if render_layer:
+            dynamic_data["renderlayer"] = render_layer
+
+        if aov:
+            dynamic_data["aov"] = aov
 
         # find if camera is used in the file path
         # TODO: this must be changed to be more robust. Any coincidence
@@ -837,38 +996,40 @@ def _create_instances_for_aov(
 
         project_settings = instance.context.data.get("project_settings")
 
-        try:
-            use_legacy_product_name = (
-                project_settings
-                ["core"]
-                ["tools"]
-                ["creator"]
-                ["use_legacy_product_names_for_renders"]
-            )
-        except KeyError:
-            warnings.warn(
-                ("use_legacy_for_renders not found in project settings. "
-                 "Using legacy product name for renders. Please update "
-                 "your ayon-core version."), DeprecationWarning)
-            use_legacy_product_name = True
+        use_legacy_product_name = (
+            project_settings
+            ["core"]
+            ["tools"]
+            ["creator"]
+            ["use_legacy_product_names_for_renders"]
+        )
 
+        product_base_type = skeleton.get("productBaseType")
+        product_type = skeleton["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         if use_legacy_product_name:
             product_name, group_name = _get_legacy_product_name_and_group(
-                product_type=skeleton["productType"],
-                source_product_name=source_product_name,
-                task_name=instance.data["task"],
-                dynamic_data=dynamic_data)
+                product_base_type,
+                source_product_name,
+                instance.data["task"],
+                dynamic_data,
+            )
 
         else:
             (
                 product_name, group_name
             ) = get_product_name_and_group_from_template(
-                task_entity=instance.data["taskEntity"],
                 project_name=instance.context.data["projectName"],
+                project_entity=instance.context.data["projectEntity"],
+                folder_entity=instance.data["folderEntity"],
+                task_entity=instance.data["taskEntity"],
                 host_name=instance.context.data["hostName"],
-                product_type=skeleton["productType"],
+                product_base_type=product_base_type,
+                product_type=product_type,
                 variant=instance.data.get("variant", source_product_name),
-                dynamic_data=dynamic_data
+                dynamic_data=dynamic_data,
+                project_settings=project_settings,
             )
 
         try:
@@ -878,15 +1039,17 @@ def _create_instances_for_aov(
 
         log.info("Creating data for: {}".format(product_name))
 
-        app = os.environ.get("AYON_HOST_NAME", "")
+        host_name = os.environ.get("AYON_HOST_NAME", "")
 
         render_file_name = os.path.basename(first_filepath)
 
         aov_patterns = aov_filter
 
-        preview = match_aov_pattern(app, aov_patterns, render_file_name)
+        preview = match_aov_pattern(
+            host_name, aov_patterns, render_file_name
+        )
 
-        new_instance = deepcopy(skeleton)
+        new_instance = copy.deepcopy(skeleton)
         new_instance["productName"] = product_name
         new_instance["productGroup"] = group_name
         new_instance["aov"] = aov
@@ -1119,20 +1282,23 @@ def create_skeleton_instance_cache(instance):
         source = rootless_path
     else:
         # `rootless_path` is not set to `source` if none of roots match
-        log = Logger.get_logger("farm_publishing")
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
     product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     # Make sure "render" is in the families to go through
     # validating expected and rendered files
     # during publishing job.
-    families = ["render", product_type]
+    families = ["render", product_base_type]
 
     instance_skeleton_data = {
         "productName": data["productName"],
         "productType": product_type,
-        "family": product_type,
+        "productBaseType": product_base_type,
+        "family": product_base_type,
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -1147,8 +1313,7 @@ def create_skeleton_instance_cache(instance):
         "extendFrames": data.get("extendFrames"),
         "overrideExistingFrame": data.get("overrideExistingFrame"),
         "jobBatchName": data.get("jobBatchName", ""),
-        # map inputVersions `ObjectId` -> `str` so json supports it
-        "inputVersions": list(map(str, data.get("inputVersions", []))),
+        "inputVersions": serialize_input_versions(data.get("inputVersions")),
     }
 
     # skip locking version if we are creating v01
@@ -1183,8 +1348,6 @@ def prepare_cache_representations(skeleton_data, exp_files, anatomy):
     """
     representations = []
     collections, _remainders = clique.assemble(exp_files)
-
-    log = Logger.get_logger("farm_publishing")
 
     # create representation for every collected sequence
     for collection in collections:
@@ -1241,8 +1404,10 @@ def create_instances_for_cache(instance, skeleton):
     anatomy = instance.context.data["anatomy"]
     product_name = skeleton["productName"]
     product_type = skeleton["productType"]
+    product_base_type = skeleton.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     exp_files = instance.data["expectedFiles"]
-    log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
@@ -1275,12 +1440,12 @@ def create_instances_for_cache(instance, skeleton):
         except ValueError as e:
             log.warning(e)
 
-        new_instance = deepcopy(skeleton)
+        new_instance = copy.deepcopy(skeleton)
 
-        new_instance["productName"] = product_name
         log.info("Creating data for: {}".format(product_name))
+        new_instance["productName"] = product_name
         new_instance["productType"] = product_type
-        new_instance["families"] = skeleton["families"]
+        new_instance["productBaseType"] = product_base_type
         # create representation
         if isinstance(col, (list, tuple)):
             files = [os.path.basename(f) for f in col]
@@ -1322,12 +1487,10 @@ def copy_extend_frames(instance, representation):
         representation (dict): presentation to operate on
 
     """
-    import speedcopy
 
     R_FRAME_NUMBER = re.compile(
         r".+\.(?P<frame>[0-9]+)\..+")
 
-    log = Logger.get_logger("farm_publishing")
     log.info("Preparing to copy ...")
     start = instance.data.get("frameStart")
     end = instance.data.get("frameEnd")
@@ -1391,7 +1554,7 @@ def copy_extend_frames(instance, representation):
 
     # copy files
     for source in resource_files:
-        speedcopy.copy(source[0], source[1])
+        copyfile(source[0], source[1])
         log.info("  > {}".format(source[1]))
 
     log.info("Finished copying %i files" % len(resource_files))
@@ -1419,6 +1582,9 @@ def attach_instances_to_product(attach_to, instances):
             new_inst["version"] = attach_instance.get("version")
             new_inst["productName"] = attach_instance.get("productName")
             new_inst["productType"] = attach_instance.get("productType")
+            new_inst["productBaseType"] = attach_instance.get(
+                "productBaseType"
+            )
             new_inst["family"] = attach_instance.get("family")
             new_inst["append"] = True
             # don't set productGroup if we are attaching
@@ -1432,8 +1598,6 @@ def create_metadata_path(instance, anatomy):
     # Ensure output dir exists
     output_dir = ins_data.get(
         "publishRenderMetadataFolder", ins_data["outputDir"])
-
-    log = Logger.get_logger("farm_publishing")
 
     try:
         if not os.path.isdir(output_dir):

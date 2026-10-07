@@ -97,6 +97,8 @@ class IconSubOption:
     def _get_value_id(self, value):
         if isinstance(value, QtGui.QColor):
             return value.name()
+        if isinstance(value, bool):
+            return "1" if value else "0"
         return str(value)
 
 
@@ -125,6 +127,7 @@ def _prepare_mapping(option_name):
 class IconOptions:
     mapping_color_keys = _prepare_mapping("color")
     mapping_name_keys = _prepare_mapping("icon_name")
+    mapping_fill_keys = _prepare_mapping("fill")
     data_keys = {
         "opacity",
         "offset",
@@ -138,6 +141,8 @@ class IconOptions:
         self,
         char_option: IconSubOption,
         color_option: IconSubOption,
+        *,
+        fill_option: Optional[IconSubOption] = None,
         opacity: Optional[float] = None,
         scale_factor: Optional[float] = None,
         offset: Optional[Position] = None,
@@ -150,9 +155,13 @@ class IconOptions:
         if scale_factor is None:
             scale_factor = 1.0
 
+        if fill_option is None:
+            fill_option = IconSubOption(False)
+
         self._identifier = None
         self.char_option = char_option
         self.color_option = color_option
+        self.fill_option = fill_option
         self.opacity = opacity
         self.scale_factor = scale_factor
         self.offset = offset
@@ -172,6 +181,9 @@ class IconOptions:
     def get_char_for_state(self, state, mode) -> str:
         return self.char_option.get_value_for_state(state, mode)
 
+    def get_fill_for_state(self, state, mode) -> float:
+        return self.fill_option.get_value_for_state(state, mode)
+
     @classmethod
     def from_data(cls, **kwargs):
         new_kwargs = {
@@ -189,9 +201,14 @@ class IconOptions:
             key: get_icon_name_char(value)
             for key, value in name_kwargs.items()
         }
+        fill_kwargs = cls._prepare_mapping_values(
+            cls.mapping_fill_keys, kwargs
+        )
 
         new_kwargs["color_option"] = IconSubOption(**color_kwargs)
         new_kwargs["char_option"] = IconSubOption(**char_kwargs)
+        if fill_kwargs:
+            new_kwargs["fill_option"] = IconSubOption(**fill_kwargs)
         return cls(**new_kwargs)
 
     @classmethod
@@ -211,6 +228,7 @@ class IconOptions:
             for value in (
                 self.char_option.identifier,
                 self.color_option.identifier,
+                self.fill_option.identifier,
                 self.opacity,
                 self.scale_factor,
                 self.offset,

@@ -1,26 +1,28 @@
 """Library functions for publishing."""
 from __future__ import annotations
+
+import functools
 import os
+import platform
+import re
 import sys
 import inspect
 import copy
 import warnings
 import hashlib
 import xml.etree.ElementTree
-from typing import TYPE_CHECKING, Optional, Union, List, Any
-import clique
-import speedcopy
+from typing import TYPE_CHECKING, Any, Generator
 import logging
-
-import pyblish.util
-import pyblish.plugin
-import pyblish.api
 
 from ayon_api import (
     get_server_api_connection,
     get_representations,
     get_last_version_by_product_name
 )
+import clique
+import pyblish.plugin
+import pyblish.api
+
 from ayon_core.lib import (
     import_filepath,
     Logger,
@@ -30,6 +32,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import get_staging_dir_info
 from ayon_core.pipeline.plugin_discover import DiscoverResult
+from ayon_core.lib.file_transaction import copyfile
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
@@ -37,7 +40,15 @@ from .constants import (
 
 if TYPE_CHECKING:
     from ayon_core.pipeline.traits import Representation
+    from ayon_core.pipeline import Anatomy
+    from ayon_core.pipeline.anatomy.templates import (
+        AnatomyStringTemplate,
+        TemplateItem as AnatomyTemplateItem,
+    )
+    from ayon_core.pipeline.create import CreateContext
 
+    from .report import PublishReport
+    from .typing import PluginType
 
 TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
@@ -45,8 +56,9 @@ log = logging.getLogger(__name__)
 
 
 def get_template_name_profiles(
-    project_name, project_settings=None, logger=None
-):
+    project_name: str,
+    project_settings: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Receive profiles for publish template keys.
 
     At least one of arguments must be passed.
@@ -54,13 +66,11 @@ def get_template_name_profiles(
     Args:
         project_name (str): Name of project where to look for templates.
         project_settings (Dict[str, Any]): Prepared project settings.
-        logger (Optional[logging.Logger]): Logger object to be used instead
-            of default logger.
 
     Returns:
-        List[Dict[str, Any]]: Publish template profiles.
-    """
+        list[dict[str, Any]]: Publish template profiles.
 
+    """
     if not project_name and not project_settings:
         raise ValueError((
             "Both project name and project settings are missing."
@@ -80,22 +90,21 @@ def get_template_name_profiles(
 
 
 def get_hero_template_name_profiles(
-    project_name, project_settings=None, logger=None
-):
+    project_name: str,
+    project_settings: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Receive profiles for hero publish template keys.
 
     At least one of arguments must be passed.
 
     Args:
         project_name (str): Name of project where to look for templates.
-        project_settings (Dict[str, Any]): Prepared project settings.
-        logger (Optional[logging.Logger]): Logger object to be used instead
-            of default logger.
+        project_settings (dict[str, Any] | None): Prepared project settings.
 
     Returns:
-        List[Dict[str, Any]]: Publish template profiles.
-    """
+        list[dict[str, Any]]: Publish template profiles.
 
+    """
     if not project_name and not project_settings:
         raise ValueError((
             "Both project name and project settings are missing."
@@ -114,16 +123,69 @@ def get_hero_template_name_profiles(
     )
 
 
+def _get_publish_template_name_wrap(func):
+    """Handle backwards compatibility of 'get_versioning_start'.
+
+    Replace 'product_type' with 'product_base_type'. The function did support
+        both in past so that case is handled too.
+
+    And some positional arguments are now required as kwargs.
+
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # 'product_type' was passed as positional argument and
+        #   'product_base_type' as kwarg
+        if "product_base_type" in kwargs and len(args) > 2:
+            args = list(args)
+            args[2] = kwargs.pop("product_base_type")
+
+        # 'product_type' in kwargs
+        if "product_type" in kwargs:
+            product_type = kwargs.pop("product_type")
+            # Set 'product_base_type' if was not passed in
+            if "product_base_type" not in kwargs:
+                kwargs["product_base_type"] = product_type
+            msg = (
+                "Found 'product_type' kwarg in 'get_publish_template_name',"
+                " use 'product_base_type' instead."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+
+        if len(args) > 5:
+            args = list(args)
+            msg = (
+                "Found positional arguments that should be passed as kwargs"
+                "  ('get_publish_template_name')."
+            )
+            log.warning(msg)
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+            for kwarg in (
+                "project_settings",
+                "hero",
+                "logger",
+            ):
+                if not args:
+                    break
+                kwargs[kwarg] = args.pop(5)
+
+        return func(*args, **kwargs)
+    return wrapper
+
+
+@_get_publish_template_name_wrap
 def get_publish_template_name(
-    project_name,
-    host_name,
-    product_type,
-    task_name,
-    task_type,
-    project_settings=None,
-    hero=False,
-    logger=None
-):
+    project_name: str,
+    host_name: str,
+    product_base_type: str,
+    task_name: str | None,
+    task_type: str | None,
+    *,
+    project_settings: dict[str, Any] | None = None,
+    hero: bool = False,
+    logger: logging.Logger | None = None,
+) -> str:
     """Get template name which should be used for passed context.
 
     Publish templates are filtered by host name, family, task name and
@@ -135,34 +197,35 @@ def get_publish_template_name(
     Args:
         project_name (str): Name of project where to look for settings.
         host_name (str): Name of host integration.
-        product_type (str): Product type for which should be found template.
+        product_base_type (str): Product base type for which should be
+            found template.
         task_name (str): Task name on which is instance working.
         task_type (str): Task type on which is instance working.
-        project_settings (Dict[str, Any]): Prepared project settings.
+        project_settings (dict[str, Any] | None): Prepared project settings.
         hero (bool): Template is for hero version publishing.
-        logger (logging.Logger): Custom logger used for 'filter_profiles'
-            function.
+        logger (logging.Logger | None): Custom logger used for
+            'filter_profiles' function.
 
     Returns:
         str: Template name which should be used for integration.
-    """
 
+    """
     template = None
     filter_criteria = {
-        "hosts": host_name,
-        "product_types": product_type,
+        "host_names": host_name,
+        "product_base_types": product_base_type,
         "task_names": task_name,
         "task_types": task_type,
     }
     if hero:
         default_template = DEFAULT_HERO_PUBLISH_TEMPLATE
         profiles = get_hero_template_name_profiles(
-            project_name, project_settings, logger
+            project_name, project_settings
         )
 
     else:
         profiles = get_template_name_profiles(
-            project_name, project_settings, logger
+            project_name, project_settings
         )
         default_template = DEFAULT_PUBLISH_TEMPLATE
 
@@ -179,7 +242,9 @@ class HelpContent:
         self.detail = detail
 
 
-def load_help_content_from_filepath(filepath):
+def load_help_content_from_filepath(
+    filepath: str
+) -> dict[str, dict[str, HelpContent]]:
     """Load help content from xml file.
     Xml file may contain errors and warnings.
     """
@@ -214,30 +279,97 @@ def load_help_content_from_filepath(filepath):
     return output
 
 
-def load_help_content_from_plugin(plugin):
+def load_help_content_from_plugin(
+    plugin: PluginType | pyblish.api.Plugin,
+    help_filename: str | None = None,
+) -> dict[str, dict[str, HelpContent]]:
     cls = plugin
     if not inspect.isclass(plugin):
         cls = plugin.__class__
+
     plugin_filepath = inspect.getfile(cls)
     plugin_dir = os.path.dirname(plugin_filepath)
-    basename = os.path.splitext(os.path.basename(plugin_filepath))[0]
-    filename = basename + ".xml"
-    filepath = os.path.join(plugin_dir, "help", filename)
+    if help_filename is None:
+        basename = os.path.splitext(os.path.basename(plugin_filepath))[0]
+        help_filename = basename + ".xml"
+    filepath = os.path.join(plugin_dir, "help", help_filename)
     return load_help_content_from_filepath(filepath)
 
 
+def filter_crashed_publish_paths(
+    project_name: str,
+    crashed_paths: set[str],
+    *,
+    project_settings: dict[str, Any] | None = None,
+) -> set[str]:
+    """Filter crashed paths happened during plugins discovery.
+
+    Check if plugins discovery has enabled strict mode and filter crashed
+        paths that happened during discover based on regexes from settings.
+
+    Publishing should not start if any paths are returned.
+
+    Args:
+        project_name (str): Project name in which context plugins discovery
+            happened.
+        crashed_paths (set[str]): Crashed paths from plugins discovery report.
+        project_settings (dict[str, Any] | None): Project settings.
+
+    Returns:
+        set[str]: Filtered crashed paths.
+
+    """
+    filtered_paths = set()
+    # Nothing crashed all good...
+    if not crashed_paths:
+        return filtered_paths
+
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+
+    discover_validation = (
+        project_settings["core"]["tools"]["publish"]["discover_validation"]
+    )
+    # Strict mode is not enabled.
+    if not discover_validation["enabled"]:
+        return filtered_paths
+
+    regexes = [
+        re.compile(value, re.IGNORECASE)
+        for value in discover_validation["ignore_paths"]
+        if value
+    ]
+    is_windows = platform.system().lower() == "windows"
+    # Fitler path with regexes from settings
+    for path in crashed_paths:
+        # Normalize paths to use forward slashes on windows
+        if is_windows:
+            path = path.replace("\\", "/")
+        is_invalid = True
+        for regex in regexes:
+            if regex.match(path):
+                is_invalid = False
+                break
+
+        if is_invalid:
+            filtered_paths.add(path)
+
+    return filtered_paths
+
+
 def publish_plugins_discover(
-        paths: Optional[list[str]] = None) -> DiscoverResult:
+    paths: list[str] | None = None,
+) -> DiscoverResult:
     """Find and return available pyblish plug-ins.
 
     Overridden function from `pyblish` module to be able to collect
         crashed files and reason of their crash.
 
     Arguments:
-        paths (list, optional): Paths to discover plug-ins from.
+        paths (list[str] | None): Paths to discover plug-ins from.
             If no paths are provided, all paths are searched.
-    """
 
+    """
     # The only difference with `pyblish.api.discover`
     result = DiscoverResult(pyblish.api.Plugin)
 
@@ -330,7 +462,12 @@ def publish_plugins_discover(
     return result
 
 
-def get_plugin_settings(plugin, project_settings, log, category=None):
+def get_plugin_settings(
+    plugin: PluginType,
+    project_settings: dict[str, Any],
+    log: logging.Logger,
+    category: str | None = None,
+) -> dict[str, Any]:
     """Get plugin settings based on host name and plugin name.
 
     Note:
@@ -338,16 +475,16 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
             into 'category'.
 
     Args:
-        plugin (pyblish.Plugin): Plugin where settings are applied.
+        plugin (PluginType): Plugin where settings are applied.
         project_settings (dict[str, Any]): Project settings.
         log (logging.Logger): Logger to log messages.
-        category (Optional[str]): Settings category key where to look
+        category (str | None): Settings category key where to look
             for plugin settings.
 
     Returns:
         dict[str, Any]: Plugin settings {'attribute': 'value'}.
-    """
 
+    """
     # Plugin can define settings category by class attribute
     # - it's impossible to set `settings_category` via settings because
     #     obviously settings are not applied before it.
@@ -423,7 +560,11 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     return {}
 
 
-def apply_plugin_settings_automatically(plugin, settings, logger=None):
+def apply_plugin_settings_automatically(
+    plugin: PluginType,
+    settings: dict[str, Any],
+    logger: logging.Logger | None = None,
+) -> None:
     """Automatically apply plugin settings to a plugin object.
 
     Note:
@@ -431,20 +572,21 @@ def apply_plugin_settings_automatically(plugin, settings, logger=None):
             'apply_settings' class method.
 
     Args:
-        plugin (type[pyblish.api.Plugin]): Class of a plugin.
+        plugin (PluginType): Class of a plugin.
         settings (dict[str, Any]): Plugin specific settings.
-        logger (Optional[logging.Logger]): Logger to log debug messages about
+        logger (logging.Logger | None): Logger to log debug messages about
             applied settings values.
-    """
 
+    """
     for option, value in settings.items():
         if logger:
-            logger.debug("Plugin %s - Attr: %s -> %s",
-                         plugin.__name__, option, value)
+            logger.debug(
+                "Plugin %s - Attr: %s -> %s", plugin.__name__, option, value
+            )
         setattr(plugin, option, value)
 
 
-def filter_pyblish_plugins(plugins):
+def filter_pyblish_plugins(plugins: list[PluginType]) -> None:
     """Pyblish plugin filter which applies AYON settings.
 
     Apply settings on discovered plugins. On plugin with implemented
@@ -453,10 +595,10 @@ def filter_pyblish_plugins(plugins):
     host name to look for
 
     Args:
-        plugins (List[pyblish.plugin.Plugin]): Discovered plugins on which
+        plugins (List[PluginType]): Discovered plugins on which
             are applied settings.
-    """
 
+    """
     log = Logger.get_logger("filter_pyblish_plugins")
 
     # TODO: Don't use host from 'pyblish.api' but from defined host by us.
@@ -504,19 +646,22 @@ def filter_pyblish_plugins(plugins):
             plugins.remove(plugin)
 
 
-def get_errored_instances_from_context(context, plugin=None):
+def get_errored_instances_from_context(
+    context: pyblish.api.Context,
+    plugin: PluginType | None = None,
+) -> list[pyblish.lib.Instance]:
     """Collect failed instances from pyblish context.
 
     Args:
         context (pyblish.api.Context): Publish context where we're looking
             for failed instances.
-        plugin (pyblish.api.Plugin): If provided then only consider errors
+        plugin (PluginType | None): If provided then only consider errors
             related to that plug-in.
 
     Returns:
-        List[pyblish.lib.Instance]: Instances which failed during processing.
-    """
+        list[pyblish.lib.Instance]: Instances which failed during processing.
 
+    """
     instances = list()
     for result in context.data["results"]:
         if result["instance"] is None:
@@ -532,7 +677,9 @@ def get_errored_instances_from_context(context, plugin=None):
     return instances
 
 
-def get_errored_plugins_from_context(context):
+def get_errored_plugins_from_context(
+    context: pyblish.api.Context
+) -> list[PluginType]:
     """Collect failed plugins from pyblish context.
 
     Args:
@@ -540,9 +687,9 @@ def get_errored_plugins_from_context(context):
             for failed plugins.
 
     Returns:
-        List[pyblish.api.Plugin]: Plugins which failed during processing.
-    """
+        list[PluginType]: Plugins which failed during processing.
 
+    """
     plugins = list()
     results = context.data.get("results", [])
     for result in results:
@@ -553,7 +700,10 @@ def get_errored_plugins_from_context(context):
     return plugins
 
 
-def filter_instances_for_context_plugin(plugin, context):
+def filter_instances_for_context_plugin(
+    plugin: PluginType,
+    context: pyblish.api.Context,
+) -> Generator[pyblish.lib.Instance, None, None]:
     """Filter instances on context by context plugin filters.
 
     This is for cases when context plugin need similar filtering like instance
@@ -561,13 +711,14 @@ def filter_instances_for_context_plugin(plugin, context):
     if there is at least one instance with a family.
 
     Args:
-        plugin (pyblish.api.Plugin): Plugin with filters.
+        plugin (PluginType): Plugin with filters.
         context (pyblish.api.Context): Pyblish context with instances.
 
     Returns:
-        Iterator[pyblish.lib.Instance]: Iteration of valid instances.
-    """
+        Generator[pyblish.lib.Instance, None, None]: Iteration of valid
+            instances.
 
+    """
     instances = []
     plugin_families = set()
     all_families = False
@@ -594,7 +745,10 @@ def filter_instances_for_context_plugin(plugin, context):
             yield instance
 
 
-def context_plugin_should_run(plugin, context):
+def context_plugin_should_run(
+    plugin: PluginType,
+    context: pyblish.api.Context,
+) -> bool:
     """Return whether the ContextPlugin should run on the given context.
 
     This is a helper function to work around a bug pyblish-base#250
@@ -616,7 +770,11 @@ def context_plugin_should_run(plugin, context):
     return False
 
 
-def get_publish_repre_path(instance, repre, only_published=False):
+def get_publish_repre_path(
+    instance: pyblish.api.Instance,
+    repre: dict[str, Any],
+    only_published: bool = False,
+) -> str | None:
     """Get representation path that can be used for integration.
 
     When 'only_published' is set to true the validation of path is not
@@ -625,7 +783,7 @@ def get_publish_repre_path(instance, repre, only_published=False):
     for reference where the file was published.
 
     Args:
-        instance (pyblish.Instance): Processed instance object. Used
+        instance (pyblish.api.Instance): Processed instance object. Used
             for source of staging dir if representation does not have
             filled it.
         repre (dict): Representation on instance which could be and
@@ -636,8 +794,8 @@ def get_publish_repre_path(instance, repre, only_published=False):
     Returns:
         str: Path to representation file.
         None: Path is not filled or does not exists.
-    """
 
+    """
     published_path = repre.get("published_path")
     if published_path:
         published_path = os.path.normpath(published_path)
@@ -668,48 +826,9 @@ def get_publish_repre_path(instance, repre, only_published=False):
     return None
 
 
-# deprecated: backward compatibility only (2024-09-12)
-# TODO: remove in the future
-def get_custom_staging_dir_info(
-    project_name,
-    host_name,
-    product_type,
-    task_name,
-    task_type,
-    product_name,
-    project_settings=None,
-    anatomy=None,
-    log=None,
-):
-    from ayon_core.pipeline.staging_dir import get_staging_dir_config
-    warnings.warn(
-        (
-            "Function 'get_custom_staging_dir_info' in"
-            " 'ayon_core.pipeline.publish' is deprecated. Please use"
-            " 'get_custom_staging_dir_info'"
-            " in 'ayon_core.pipeline.stagingdir'."
-        ),
-        DeprecationWarning,
-    )
-    tr_data = get_staging_dir_config(
-        project_name,
-        task_type,
-        task_name,
-        product_type,
-        product_name,
-        host_name,
-        project_settings=project_settings,
-        anatomy=anatomy,
-        log=log,
-    )
-
-    if not tr_data:
-        return None, None
-
-    return tr_data["template"], tr_data["persistence"]
-
-
-def get_instance_staging_dir(instance):
+def get_instance_staging_dir(
+    instance: pyblish.api.Instance
+) -> str:
     """Unified way how staging dir is stored and created on instances.
 
     First check if 'stagingDir' is already set in instance data.
@@ -736,13 +855,18 @@ def get_instance_staging_dir(instance):
         workfile_name, _ = os.path.splitext(workfile)
         template_data["workfile_name"] = workfile_name
 
+    product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     staging_dir_info = get_staging_dir_info(
         context.data["projectEntity"],
         instance.data.get("folderEntity"),
         instance.data.get("taskEntity"),
-        instance.data["productType"],
-        instance.data["productName"],
-        context.data["hostName"],
+        product_base_type=product_base_type,
+        product_type=product_type,
+        product_name=instance.data["productName"],
+        host_name=context.data["hostName"],
         anatomy=context.data["anatomy"],
         project_settings=context.data["project_settings"],
         template_data=template_data,
@@ -763,7 +887,9 @@ def get_instance_staging_dir(instance):
     return staging_dir_path
 
 
-def get_published_workfile_instance(context):
+def get_published_workfile_instance(
+    context: pyblish.api.Context
+) -> pyblish.api.Instance | None:
     """Find workfile instance in context"""
     for i in context:
         # test if there is instance of workfile waiting
@@ -781,7 +907,10 @@ def get_published_workfile_instance(context):
         return i
 
 
-def replace_with_published_scene_path(instance, replace_in_path=True):
+def replace_with_published_scene_path(
+    instance: pyblish.api.Instance,
+    replace_in_path: bool = True,
+) -> str | None:
     """Switch work scene path for published scene.
     If rendering/exporting from published scenes is enabled, this will
     replace paths from working scene to published scene.
@@ -791,13 +920,16 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
         replace_in_path (bool): if True, it will try to find
             old scene name in path of expected files and replace it
             with name of published scene.
+
     Returns:
         str: Published scene path.
-        None: if no published scene is found.
+        None: No published scene is found.
+
     Note:
         Published scene path is actually determined from project Anatomy
         as at the time this plugin is running scene can still not be
         published.
+
     """
     log = Logger.get_logger("published_workfile")
     workfile_instance = get_published_workfile_instance(instance.context)
@@ -812,15 +944,36 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
-    template = anatomy.get_template_item("publish", "default", "path")
+    project_name = anatomy.project_name
+    task_name = task_type = None
+    task_entity = instance.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+
+    project_settings = instance.context.data["project_settings"]
+    product_base_type = workfile_instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = workfile_instance.data["productType"]
+
+    template_name = get_publish_template_name(
+        project_name=project_name,
+        host_name=instance.context.data["hostName"],
+        product_base_type=product_base_type,
+        task_name=task_name,
+        task_type=task_type,
+        project_settings=project_settings,
+    )
+    template = anatomy.get_template_item("publish", template_name, "path")
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
     log.info("Using published scene for render {}".format(file_path))
 
     if not os.path.exists(file_path):
-        log.error("published scene does not exist!")
-        raise
+        raise FileNotFoundError(
+            f"Published scene does not exist: {file_path}"
+        )
 
     if not replace_in_path:
         return file_path
@@ -868,7 +1021,10 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     return file_path
 
 
-def add_repre_files_for_cleanup(instance, repre):
+def add_repre_files_for_cleanup(
+    instance: pyblish.api.Instance,
+    repre: dict[str, Any],
+) -> None:
     """ Explicitly mark repre files to be deleted.
 
     Should be used on intermediate files (eg. review, thumbnails) to be
@@ -896,7 +1052,7 @@ def add_repre_files_for_cleanup(instance, repre):
         instance.context.data["cleanupFullPaths"].append(expected_file)
 
 
-def get_publish_instance_label(instance):
+def get_publish_instance_label(instance: pyblish.api.Instance) -> str:
     """Try to get label from pyblish instance.
 
     First are used values in instance data under 'label' and 'name' keys. Then
@@ -919,7 +1075,9 @@ def get_publish_instance_label(instance):
     )
 
 
-def get_publish_instance_families(instance):
+def get_publish_instance_families(
+    instance: pyblish.api.Instance
+) -> list[str]:
     """Get all families of the instance.
 
     Look for families under 'productType' and 'families' keys in instance data.
@@ -927,7 +1085,7 @@ def get_publish_instance_families(instance):
     in random order.
 
     Args:
-        pyblish.api.Instance: Instance to get families from.
+        instance (pyblish.api.Instance): Instance to get families from.
 
     Returns:
         list[str]: List of families.
@@ -944,11 +1102,11 @@ def get_publish_instance_families(instance):
 
 
 def get_instance_expected_output_path(
-        instance: pyblish.api.Instance,
-        representation_name: str,
-        ext: Union[str, None],
-        version: Optional[str] = None
-):
+    instance: pyblish.api.Instance,
+    representation_name: str,
+    ext: str | None,
+    version: str | None = None,
+) -> str:
     """Return expected publish filepath for representation in instance
 
     This does not validate whether the instance has any representation by the
@@ -957,9 +1115,9 @@ def get_instance_expected_output_path(
     Arguments:
         instance (pyblish.api.Instance): Publish instance
         representation_name (str): Representation name
-        ext (Union[str, None]): Extension for the file.
+        ext (str | None): Extension for the file.
             When None, the `ext` will be set to the representation name.
-        version (Optional[int]): If provided, force it to format to this
+        version (int | None): If provided, force it to format to this
             particular version.
 
     Returns:
@@ -990,36 +1148,65 @@ def get_instance_expected_output_path(
         task_name = task_entity["name"]
         task_type = task_entity["taskType"]
 
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = instance.data["productType"]
+
     template_name = get_publish_template_name(
         project_name=instance.context.data["projectName"],
         host_name=instance.context.data["hostName"],
-        product_type=instance.data["productType"],
+        product_base_type=product_base_type,
         task_name=task_name,
         task_type=task_type,
         project_settings=instance.context.data["project_settings"],
     )
 
-    path_template_obj = anatomy.get_template_item(
+    path_template_obj: AnatomyStringTemplate = anatomy.get_template_item(
         "publish",
         template_name
     )["path"]
+
+    # Define {originalBasename} template key which can be used in publish
+    # template to use to original filename.
+    if "originalbasename" in path_template_obj.template.lower():
+        repre = next(
+            (
+                repre for repre in instance.data.get("representations", [])
+                if repre["name"] == representation_name
+            ),
+            None
+        )
+        if not repre:
+            raise ValueError(
+                "Unable to format 'originalBasename' for representation "
+                f"{representation_name} because representation is not found"
+                " on instance."
+            )
+
+        first_file = repre["files"]
+        if isinstance(first_file, list):
+            first_file = first_file[0]
+
+        basename = os.path.splitext(first_file)[0]
+        template_data["originalBasename"] = basename
+
     template_filled = path_template_obj.format_strict(template_data)
     return os.path.normpath(template_filled)
 
 
 def main_cli_publish(
     path: str,
-    targets: Optional[List[str]] = None,
-    addons_manager: Optional[AddonsManager] = None,
-):
+    targets: list[str] | None = None,
+    addons_manager: AddonsManager | None = None,
+) -> None:
     """Start headless publishing.
 
     Publish use json from passed path argument.
 
     Args:
         path (str): Path to JSON.
-        targets (Optional[List[str]]): List of pyblish targets.
-        addons_manager (Optional[AddonsManager]): Addons manager instance.
+        targets (list[str] | None): List of pyblish targets.
+        addons_manager (AddonsManager | None): Addons manager instance.
 
     Raises:
         RuntimeError: When there is no path to process or when executed with
@@ -1030,24 +1217,11 @@ def main_cli_publish(
         install_ayon_plugins,
         get_global_context,
     )
+    from ayon_core.pipeline.publish import PublishLogic
 
     # Register target and host
     if not isinstance(path, str):
         raise RuntimeError("Path to JSON must be a string.")
-
-    # Fix older jobs
-    for src_key, dst_key in (
-        ("AVALON_PROJECT", "AYON_PROJECT_NAME"),
-        ("AVALON_ASSET", "AYON_FOLDER_PATH"),
-        ("AVALON_TASK", "AYON_TASK_NAME"),
-        ("AVALON_WORKDIR", "AYON_WORKDIR"),
-        ("AVALON_APP_NAME", "AYON_APP_NAME"),
-        ("AVALON_APP", "AYON_HOST_NAME"),
-    ):
-        if src_key in os.environ and dst_key not in os.environ:
-            os.environ[dst_key] = os.environ[src_key]
-        # Remove old keys, so we're sure they're not used
-        os.environ.pop(src_key, None)
 
     log = Logger.get_logger("CLI-publish")
 
@@ -1064,14 +1238,16 @@ def main_cli_publish(
         except ValueError:
             pass
 
+    context = get_global_context()
+    project_settings = get_project_settings(context["project_name"])
+
     install_ayon_plugins()
 
     if addons_manager is None:
-        addons_manager = AddonsManager()
+        addons_manager = AddonsManager(project_settings)
 
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:
-        context = get_global_context()
         env = applications_addon.get_farm_publish_environment_variables(
             context["project_name"],
             context["folder_path"],
@@ -1081,37 +1257,102 @@ def main_cli_publish(
 
     pyblish.api.register_host("shell")
 
-    if targets:
-        for target in targets:
-            print(f"setting target: {target}")
-            pyblish.api.register_target(target)
-    else:
-        pyblish.api.register_target("farm")
+    if not targets:
+        targets = ["farm"]
 
     os.environ["AYON_PUBLISH_DATA"] = path
-    os.environ["HEADLESS_PUBLISH"] = 'true'  # to use in app lib
+    os.environ["HEADLESS_PUBLISH"] = "true"  # to use in app lib
 
     log.info("Running publish ...")
 
     discover_result = publish_plugins_discover()
-    publish_plugins = discover_result.plugins
     print(discover_result.get_report(only_errors=False))
 
-    # Error exit as soon as any error occurs.
-    error_format = ("Failed {plugin.__name__}: "
-                    "{error} -- {error.traceback}")
-
-    for result in pyblish.util.publish_iter(plugins=publish_plugins):
-        if result["error"]:
-            log.error(error_format.format(**result))
-            # uninstall()
+    logic = PublishLogic(reset=False)
+    logic.reset(
+        project_name=context["project_name"],
+        publish_discover_result=discover_result,
+        targets=targets,
+    )
+    if logic.has_failed():
+        report = logic.get_publish_report()
+        if report.blocking_crashed_paths:
+            joined_paths = "\n".join([
+                f"- {path}"
+                for path in report.blocking_crashed_paths
+            ])
+            log.error(
+                "Plugin discovery strict mode is enabled."
+                " Crashed plugin paths that prevent from publishing:"
+                f"\n{joined_paths}"
+            )
             sys.exit(1)
+
+        fail_reason = logic.get_fail_reason()
+        log.error(
+            "Failed before publishing started."
+            f" Probably because of unhandled reason '{fail_reason}'."
+        )
+        sys.exit(1)
+
+    logic.publish()
+    if logic.has_failed():
+        sys.exit(1)
 
     log.info("Publish finished.")
 
 
+def run_publish(
+    project_name: str | None = None,
+    *,
+    context: pyblish.api.Context | None = None,
+    plugins: list[PluginType] | None = None,
+    targets: list[str] | None = None,
+    create_context: CreateContext | None = None,
+    publish_discover_result: DiscoverResult | None = None,
+    project_settings: dict[str, Any] | None = None,
+) -> PublishReport:
+    """Start publishing.
+
+    Args:
+        project_name (str | None): Name of the project in which publishing
+            should run. 'get_current_project_name' is used when not provided.
+        context (pyblish.api.Context | None): Pyblish context.
+        plugins (list[PluginType] | None): List of pyblish plugins.
+        targets (list[str] | None): List of pyblish targets.
+        create_context (CreateContext | None): Prepared CreateContext object.
+        publish_discover_result (DiscoverResult | None): Result of
+            publish discovery.
+        project_settings (dict[str, Any] | None): Settings for the project.
+
+    """
+    from ayon_core.pipeline import get_current_project_name
+    from ayon_core.pipeline.publish import PublishLogic
+
+    if project_name is None:
+        project_name = get_current_project_name()
+
+    if project_name is None:
+        raise ValueError("Missing project name.")
+
+    logic = PublishLogic(reset=False)
+    logic.reset(
+        project_name,
+        context=context,
+        plugins=plugins,
+        targets=targets,
+        create_context=create_context,
+        publish_discover_result=publish_discover_result,
+        project_settings=project_settings,
+    )
+    logic.publish()
+
+    return logic.get_publish_report()
+
+
 def has_trait_representations(
-        instance: pyblish.api.Instance) -> bool:
+    instance: pyblish.api.Instance
+) -> bool:
     """Check if instance has trait representation.
 
     Args:
@@ -1126,8 +1367,8 @@ def has_trait_representations(
 
 
 def add_trait_representations(
-        instance: pyblish.api.Instance,
-        representations: list[Representation]
+    instance: pyblish.api.Instance,
+    representations: list[Representation],
 ) -> None:
     """Add trait representations to instance.
 
@@ -1143,8 +1384,8 @@ def add_trait_representations(
 
 
 def set_trait_representations(
-        instance: pyblish.api.Instance,
-        representations: list[Representation]
+    instance: pyblish.api.Instance,
+    representations: list[Representation]
 ) -> None:
     """Set trait representations to instance.
 
@@ -1159,7 +1400,8 @@ def set_trait_representations(
 
 
 def get_trait_representations(
-        instance: pyblish.api.Instance) -> list[Representation]:
+    instance: pyblish.api.Instance
+) -> list[Representation]:
     """Get trait representations from instance.
 
     Args:
@@ -1176,11 +1418,11 @@ def get_trait_representations(
 def fill_sequence_gaps_with_previous_version(
     collection: str,
     staging_dir: str,
-    instance: pyblish.plugin.Instance,
+    instance: pyblish.api.Instance,
     current_repre_name: str,
     start_frame: int,
     end_frame: int
-) -> tuple[Optional[dict[str, Any]], Optional[dict[int, str]]]:
+) -> tuple[dict[str, Any] | None, dict[int, str] | None]:
     """Tries to replace missing frames from ones from last version"""
     used_version_entity, repre_file_paths = _get_last_version_files(
         instance, current_repre_name
@@ -1217,16 +1459,16 @@ def fill_sequence_gaps_with_previous_version(
             f"Replacing missing '{hole_fpath}' with "
             f"'{previous_version_path}'"
         )
-        speedcopy.copyfile(previous_version_path, hole_fpath)
+        copyfile(previous_version_path, hole_fpath)
         added_files[frame] = hole_fpath
 
     return (used_version_entity, added_files)
 
 
 def _get_last_version_files(
-    instance: pyblish.plugin.Instance,
+    instance: pyblish.api.Instance,
     current_repre_name: str,
-) -> tuple[Optional[dict[str, Any]], Optional[list[str]]]:
+) -> tuple[dict[str, Any] | None, list[str] | None]:
     product_name = instance.data["productName"]
     project_name = instance.data["projectEntity"]["name"]
     folder_entity = instance.data["folderEntity"]
@@ -1258,3 +1500,242 @@ def _get_last_version_files(
     ]
 
     return (version_entity, repre_file_paths)
+
+
+def get_instance_template_name(instance: pyblish.api.Instance) -> str:
+    """Return anatomy template name to use for integration.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to process.
+
+    Returns:
+        str: Anatomy template name
+
+    """
+    # Anatomy data is pre-filled by Collectors
+    context = instance.context
+    project_name = context.data["projectName"]
+
+    # Task can be optional in anatomy data
+    host_name = context.data["hostName"]
+    anatomy_data = instance.data["anatomyData"]
+    product_type = instance.data["productType"]
+    product_base_type = instance.data.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
+    task_info = anatomy_data.get("task") or {}
+
+    return get_publish_template_name(
+        project_name,
+        host_name,
+        product_base_type=product_base_type,
+        task_name=task_info.get("name"),
+        task_type=task_info.get("type"),
+        project_settings=context.data["project_settings"],
+        logger=log,
+    )
+
+
+def get_instance_publish_template(instance: pyblish.api.Instance) -> str:
+    """Return anatomy template name to use for integration.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to process.
+
+    Returns:
+        str: Anatomy template name
+
+    """
+    # Anatomy data is pre-filled by Collectors
+    publish_template = get_publish_template_object(instance)
+    return publish_template["path"].template.replace("\\", "/")
+
+
+def get_publish_template_object(
+    instance: pyblish.api.Instance,
+    category_name: str = "publish",
+    template_name: str | None = None,
+) -> "AnatomyTemplateItem":
+    """Return anatomy template object to use for integration.
+
+    Note: What is the actual type of the object?
+
+    Args:
+        instance (pyblish.api.Instance): Instance to process.
+        category_name (str): Category name of the template to use.
+            Defaults to "publish".
+        template_name (str | None): Template name to use.
+            If not provided, it will get the template name from
+            the provided instance.
+
+    Returns:
+        AnatomyTemplateItem: Anatomy template object
+
+    """
+    # Anatomy data is pre-filled by Collectors
+    if not template_name:
+        template_name = get_instance_template_name(instance)
+    anatomy: Anatomy = instance.context.data["anatomy"]
+    return anatomy.get_template_item(
+        category_name=category_name,
+        template_name=template_name
+    )
+
+
+def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
+    """Get all families of the instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to get families from.
+
+    Returns:
+        list[str]: List of families.
+
+    """
+    family = instance.data.get("family")
+    families = []
+    if family:
+        families.append(family)
+
+    for _family in (instance.data.get("families") or []):
+        if _family not in families:
+            families.append(_family)
+
+    return families
+
+
+def get_version_data_from_instance(
+    instance: pyblish.api.Instance
+) -> dict:
+    """Get version data from the Instance.
+
+    Args:
+        instance (pyblish.api.Instance): the current instance
+            being published.
+
+    Returns:
+        dict: the required information for ``version["data"]``
+
+    """
+    context = instance.context
+
+    # create relative source path for DB
+    if "source" in instance.data:
+        source = instance.data["source"]
+    else:
+        source = context.data["currentFile"]
+        anatomy = instance.context.data["anatomy"]
+        source = get_rootless_path(anatomy, source)
+    log.debug("Source: %s", source)
+
+    version_data = {
+        "families": get_instance_families(instance),
+        "time": context.data["time"],
+        "author": context.data["user"],
+        "source": source,
+        "comment": instance.data["comment"],
+        "machine": context.data.get("machine"),
+        "fps": instance.data.get("fps", context.data.get("fps"))
+    }
+
+    intent_value = context.data.get("intent")
+    if intent_value and isinstance(intent_value, dict):
+        intent_value = intent_value.get("value")
+
+    if intent_value:
+        version_data["intent"] = intent_value
+
+    # Include optional data if present in
+    optionals = [
+        "frameStart", "frameEnd", "step",
+        "handleEnd", "handleStart", "sourceHashes"
+    ]
+    for key in optionals:
+        if key in instance.data:
+            version_data[key] = instance.data[key]
+
+    # Include instance.data[versionData] directly
+    version_data_instance = instance.data.get("versionData")
+    if version_data_instance:
+        version_data.update(version_data_instance)
+
+    return version_data
+
+
+def get_rootless_path(anatomy: "Anatomy", path: str) -> str:
+    r"""Get rootless variant of the path.
+
+    Returns, if possible, a path without an absolute portion from the root
+    (e.g. 'c:\' or '/opt/..'). This is basically a wrapper for the
+    meth:`Anatomy.find_root_template_from_path` method that displays
+    a warning if the root path is not found.
+
+     This information is platform-dependent and shouldn't be captured.
+     For example::
+
+         'c:/projects/MyProject1/Assets/publish...'
+         will be transformed to:
+         '{root}/MyProject1/Assets...'
+
+    Args:
+        anatomy (Anatomy): Project anatomy.
+        path (str): Absolute path.
+
+    Returns:
+        str: Path where root path is replaced by formatting string.
+
+    """
+    success, rootless_path = anatomy.find_root_template_from_path(path)
+    if success:
+        path = rootless_path
+    else:
+        log.warning((
+            'Could not find root path for remapping "%s".'
+            " This may cause issues on farm."
+        ), path)
+    return path
+
+
+class IntegrationTemplateItem:
+    """Represents single template item.
+
+    Template path, template data that was used in the template.
+
+    Attributes:
+        anatomy (Anatomy): Anatomy object.
+        template_data (dict[str, Any]): Template data.
+        template_object (AnatomyTemplateItem): Template object
+    """
+    anatomy: Anatomy
+    template_data: dict[str, Any]
+    template_object: "AnatomyTemplateItem"
+
+    def __init__(self,
+        anatomy: "Anatomy",
+        template_data: dict[str, Any],
+        template_object: "AnatomyTemplateItem",
+    ) -> None:
+        """Initialize TemplateItem.
+
+        Args:
+            anatomy (Anatomy): Anatomy object.
+            template_data (dict[str, Any]): Template data.
+            template_object (AnatomyTemplateItem): Template object.
+
+        """
+        self.anatomy = anatomy
+        self.template_data = template_data
+        self.template_object = template_object
+
+
+def get_default_reviewable_layers(project_settings: dict) -> list[str]:
+    """Get default reviewable layers from project settings.
+
+    Args:
+        project_settings (dict): Project settings.
+
+    Returns:
+        list[str]: List of default reviewable layers.
+
+    """
+    return project_settings["core"]["reviewable_layers"]["review_layers"]

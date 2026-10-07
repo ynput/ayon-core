@@ -117,7 +117,7 @@ class AttachReviewables(
                 continue
 
             # Do not allow attaching to other reviewable instances
-            if other_instance.data["productType"] in cls.families:
+            if other_instance.product_base_type in cls.families:
                 continue
 
             items.append(

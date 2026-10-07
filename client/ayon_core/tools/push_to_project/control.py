@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import threading
-from typing import Dict
 
 import ayon_api
 
-from ayon_core.settings import get_project_settings
 from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline.create import get_product_name_template
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import (
+    SettingsModel,
+    ProjectsModel,
+    HierarchyModel,
+    TaskTypeItem,
+)
 
 from .models import (
     PushToProjectSelectionModel,
@@ -21,6 +26,7 @@ class PushToContextController:
     def __init__(self, project_name=None, version_ids=None):
         self._event_system = self._create_event_system()
 
+        self._settings_model = SettingsModel()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._integrate_model = IntegrateModel(self)
@@ -145,8 +151,21 @@ class PushToContextController:
             self._src_label = self._prepare_source_label()
         return self._src_label
 
+    def get_project_settings(self, project_name):
+        return self._settings_model.get_settings(project_name)
+
+    def get_task_sorting_mode(self, project_name):
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
+
+    def get_task_type_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[TaskTypeItem]:
+        return self._projects_model.get_task_type_items(
+            project_name, sender=sender
+        )
 
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
@@ -163,7 +182,7 @@ class PushToContextController:
         """Checks if original product names must be used.
 
         Currently simple check if multiple versions, but if multiple products
-        with different product_type were used, it wouldn't be necessary.
+        with different product_base_type were used, it wouldn't be necessary.
         """
         return len(self._src_version_entities) > 1
 
@@ -190,17 +209,17 @@ class PushToContextController:
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
-    def get_process_items(self) -> Dict[str, ProjectPushItemProcess]:
+    def get_process_items(self) -> dict[str, ProjectPushItemProcess]:
         """Returns dict of all ProjectPushItemProcess items """
         return self._integrate_model.get_items()
 
     # Processing methods
     def submit(self, wait=True):
         if not self._submission_enabled:
-            return
+            return []
 
         if self._process_thread is not None:
-            return
+            return []
 
         item_ids = []
         for src_version_entity in self._src_version_entities:
@@ -223,7 +242,7 @@ class PushToContextController:
         if wait:
             self._submit_callback()
             self._process_item_ids = []
-            return item_id
+            return item_ids
 
         thread = threading.Thread(target=self._submit_callback)
         self._process_thread = thread
@@ -309,11 +328,14 @@ class PushToContextController:
             version_entity["productId"]
         )
 
-        project_settings = get_project_settings(project_name)
+        project_settings = self.get_project_settings(project_name)
+        product_base_type = product_entity.get("productBaseType")
         product_type = product_entity["productType"]
+        if not product_base_type:
+            product_base_type = product_type
         template = get_product_name_template(
             self._src_project_name,
-            product_type,
+            product_base_type,
             task_name,
             task_type,
             None,
@@ -331,15 +353,16 @@ class PushToContextController:
         template_s = template[:idx]
         template_e = template[idx + len(variant_placeholder):]
         fill_data = prepare_template_data({
-            "family": product_type,
+            "family": product_base_type,
             "product": {
                 "type": product_type,
+                "basetype": product_base_type,
             },
             "task": task_name
         })
         try:
-            product_s = template_s.format(**fill_data)
-            product_e = template_e.format(**fill_data)
+            product_s = template_s.format_map(fill_data)
+            product_e = template_e.format_map(fill_data)
         except Exception as exc:
             print("Failed format", exc)
             return ""

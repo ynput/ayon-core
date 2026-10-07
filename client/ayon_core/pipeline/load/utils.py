@@ -12,6 +12,7 @@ from functools import wraps
 from typing import Optional, Union, Any, overload
 
 import ayon_api
+from ayon_api.exceptions import GraphQlQueryFailed
 
 from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.lib import (
@@ -575,6 +576,7 @@ def switch_container(
     container,
     representation,
     loader_plugin=None,
+    project_name=None,
 ):
     """Switch a container to representation
 
@@ -607,7 +609,8 @@ def switch_container(
         )
 
     # Get the new representation to switch to
-    project_name = container.get("project_name")
+    if project_name is None:
+        project_name = container.get("project_name")
     if project_name is None:
         project_name = get_current_project_name()
 
@@ -948,7 +951,7 @@ def get_representation_by_names(
     version_name: Union[int, str],
     representation_name: str,
 ) -> Optional[dict]:
-    """Get representation entity for asset and subset.
+    """Get representation entity for folder and product.
 
     If version_name is "hero" then return the hero version
     If version_name is "latest" then return the latest version
@@ -966,7 +969,7 @@ def get_representation_by_names(
         return None
 
     if isinstance(product_name, dict) and "name" in product_name:
-        # Allow explicitly passing subset document
+        # Allow explicitly passing product entity document
         product_entity = product_name
     else:
         product_entity = ayon_api.get_product_by_name(
@@ -1007,7 +1010,7 @@ def is_compatible_loader(Loader, context):
 
 
 def loaders_from_repre_context(loaders, repre_context):
-    """Return compatible loaders for by representaiton's context."""
+    """Return compatible loaders for by representation's context."""
 
     return [
         loader
@@ -1111,22 +1114,15 @@ def filter_containers(containers, project_name):
     'invalid' are invalid containers (invalid content) and 'not_found' has
     some missing entity in database.
 
-    Todos:
-        Respect 'project_name' on containers if is available.
-
     Args:
         containers (Iterable[dict]): List of containers referenced into scene.
-        project_name (str): Name of project in which context shoud look for
-            versions.
+        project_name (str): Current project name.
 
     Returns:
         ContainersFilterResult: Named tuple with 'latest', 'outdated',
             'invalid' and 'not_found' containers.
 
     """
-    # Make sure containers is list that won't change
-    containers = list(containers)
-
     outdated_containers = []
     uptodate_containers = []
     not_found_containers = []
@@ -1137,99 +1133,129 @@ def filter_containers(containers, project_name):
         not_found_containers,
         invalid_containers
     )
-    # Query representation docs to get it's version ids
-    repre_ids = {
-        container["representation"]
-        for container in containers
-        if _is_valid_representation_id(container["representation"])
-    }
-    if not repre_ids:
-        if containers:
-            invalid_containers.extend(containers)
-        return output
 
-    repre_entities = ayon_api.get_representations(
-        project_name,
-        representation_ids=repre_ids,
-        fields={"id", "versionId"}
-    )
-    # Store representations by stringified representation id
-    repre_entities_by_id = {}
-    repre_entities_by_version_id = collections.defaultdict(list)
-    for repre_entity in repre_entities:
-        repre_id = repre_entity["id"]
-        version_id = repre_entity["versionId"]
-        repre_entities_by_id[repre_id] = repre_entity
-        repre_entities_by_version_id[version_id].append(repre_entity)
-
-    # Query version docs to get it's product ids
-    # - also query hero version to be able identify if representation
-    #   belongs to existing version
-    version_entities = ayon_api.get_versions(
-        project_name,
-        version_ids=repre_entities_by_version_id.keys(),
-        hero=True,
-        fields={"id", "productId", "version"}
-    )
-    versions_by_id = {}
-    versions_by_product_id = collections.defaultdict(list)
-    hero_version_ids = set()
-    for version_entity in version_entities:
-        version_id = version_entity["id"]
-        # Store versions by their ids
-        versions_by_id[version_id] = version_entity
-        # There's no need to query products for hero versions
-        #   - they are considered as latest?
-        if version_entity["version"] < 0:
-            hero_version_ids.add(version_id)
-            continue
-        product_id = version_entity["productId"]
-        versions_by_product_id[product_id].append(version_entity)
-
-    last_versions = ayon_api.get_last_versions(
-        project_name,
-        versions_by_product_id.keys(),
-        fields={"id"}
-    )
-    # Figure out which versions are outdated
-    outdated_version_ids = set()
-    for product_id, last_version_entity in last_versions.items():
-        for version_entity in versions_by_product_id[product_id]:
-            version_id = version_entity["id"]
-            if version_id in hero_version_ids:
-                continue
-            if version_id != last_version_entity["id"]:
-                outdated_version_ids.add(version_id)
-
-    # Based on all collected data figure out which containers are outdated
-    #   - log out if there are missing representation or version documents
+    # Iterate over containers and group them by project name
+    # - filter out containers with invalid representation id
+    # - because 'containers' variable is iterable, this is the only place
+    #   where it should be used.
+    containers_by_project_name = collections.defaultdict(list)
     for container in containers:
-        container_name = container["objectName"]
-        repre_id = container["representation"]
-        if not _is_valid_representation_id(repre_id):
+        if not _is_valid_representation_id(container.get("representation")):
             invalid_containers.append(container)
             continue
+        container_project = container.get("project_name")
+        if not container_project:
+            container_project = project_name
+        containers_by_project_name[container_project].append(container)
 
-        repre_entity = repre_entities_by_id.get(repre_id)
-        if not repre_entity:
-            log.debug(
-                f"Container '{container_name}' has an invalid representation."
-                " It is missing in the database."
+    # Fetch entities to be able to filter the containers
+    # - entities can be fetched per project only
+    for l_project_name, l_containers in containers_by_project_name.items():
+        repre_ids = {
+            container["representation"]
+            for container in l_containers
+        }
+        # NOTE The query fails if the project does not exist (e.g. it was
+        #   renamed or removed) or is not accessible for the user. In that
+        #   case all its containers are 'not found' - a failure must not
+        #   break the whole filtering (which is called e.g. on scene open).
+        # - the query result is consumed with 'list' because the error is
+        #   raised during iteration
+        try:
+            repre_entities = list(ayon_api.get_representations(
+                l_project_name,
+                representation_ids=repre_ids,
+                fields={"id", "versionId"}
+            ))
+        except GraphQlQueryFailed as exc:
+            # Only errors on the project itself are handled, any other
+            #   failure of the query is still raised
+            if not any(
+                error.get("path") == ["project"]
+                for error in exc.errors
+            ):
+                raise
+            log.warning(
+                "Failed to query representations of project"
+                f" '{l_project_name}'. Treating its containers as not"
+                f" found. {exc}"
             )
-            not_found_containers.append(container)
+            not_found_containers.extend(l_containers)
             continue
 
-        version_id = repre_entity["versionId"]
-        if version_id not in versions_by_id:
-            log.debug(
-                f"Representation on container '{container_name}' has an"
-                " invalid version. It is missing in the database."
-            )
-            not_found_containers.append(container)
+        version_ids = set()
+        repre_entities_by_id = {}
+        for repre_entity in repre_entities:
+            repre_id = repre_entity["id"]
+            version_id = repre_entity["versionId"]
+            version_ids.add(version_id)
+            repre_entities_by_id[repre_id] = repre_entity
 
-        elif version_id in outdated_version_ids:
-            outdated_containers.append(container)
-        else:
-            uptodate_containers.append(container)
+        # Query version docs to get it's product ids
+        # - also query hero version to be able identify if representation
+        #   belongs to existing version
+        version_entities = ayon_api.get_versions(
+            l_project_name,
+            version_ids=version_ids,
+            hero=True,
+            fields={"id", "productId", "version"}
+        )
+        versions_by_id = {}
+        versions_by_product_id = collections.defaultdict(list)
+        hero_version_ids = set()
+        for version_entity in version_entities:
+            version_id = version_entity["id"]
+            # Store versions by their ids
+            versions_by_id[version_id] = version_entity
+            # There's no need to query products for hero versions
+            #   - they are considered as latest?
+            if version_entity["version"] < 0:
+                hero_version_ids.add(version_id)
+                continue
+            product_id = version_entity["productId"]
+            versions_by_product_id[product_id].append(version_entity)
+
+        last_versions = ayon_api.get_last_versions(
+            l_project_name,
+            versions_by_product_id.keys(),
+            fields={"id"}
+        )
+
+        # Figure out which versions are outdated
+        outdated_version_ids = set()
+        for product_id, last_version_entity in last_versions.items():
+            for version_entity in versions_by_product_id[product_id]:
+                version_id = version_entity["id"]
+                if version_id in hero_version_ids:
+                    continue
+                if version_id != last_version_entity["id"]:
+                    outdated_version_ids.add(version_id)
+
+        # Based on all collected data figure out which containers are outdated
+        #   - log out if there are missing representation or version entities
+        for container in l_containers:
+            container_name = container["objectName"]
+            repre_id = container["representation"]
+            repre_entity = repre_entities_by_id.get(repre_id)
+            if not repre_entity:
+                log.debug(
+                    f"Container '{container_name}' has an invalid"
+                    " representation. It is missing in the database."
+                )
+                not_found_containers.append(container)
+                continue
+
+            version_id = repre_entity["versionId"]
+            if version_id not in versions_by_id:
+                log.debug(
+                    f"Representation on container '{container_name}' has an"
+                    " invalid version. It is missing in the database."
+                )
+                not_found_containers.append(container)
+
+            elif version_id in outdated_version_ids:
+                outdated_containers.append(container)
+            else:
+                uptodate_containers.append(container)
 
     return output

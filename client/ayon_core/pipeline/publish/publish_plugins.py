@@ -1,7 +1,10 @@
-import inspect
+from __future__ import annotations
+
 from abc import ABCMeta
+from dataclasses import dataclass
+import inspect
 import typing
-from typing import Optional
+from typing import Optional, Any, Callable
 
 import pyblish.api
 import pyblish.logic
@@ -82,22 +85,51 @@ class PublishValidationError(PublishError):
 
 
 class PublishXmlValidationError(PublishValidationError):
+    """Raise an error from a dedicated xml file.
+
+    Can be useful to have one xml file with different possible messages that
+        helps to avoid flood code with dedicated artist messages.
+
+    XML files should live relative to the plugin file location:
+        '{plugin dir}/help/some_plugin.xml'.
+
+    Args:
+        plugin (pyblish.api.Plugin): Plugin that raised an error. Is used
+            to get path to xml file.
+        message (str): Exception message, can be technical, is used for
+            console output.
+        key (Optional[str]): XML file can contain multiple error messages, key
+            is used to get one of them. By default is used 'main'.
+        formatting_data (Optional[dict[str, Any]): Error message can have
+            variables to fill.
+        help_filename (Optional[str]): Name of xml file with messages. By
+            default, is used filename where plugin lives with .xml extension.
+
+    """
     def __init__(
-        self, plugin, message, key=None, formatting_data=None
-    ):
+        self,
+        plugin: pyblish.api.Plugin,
+        message: str,
+        key: Optional[str] = None,
+        formatting_data: Optional[dict[str, Any]] = None,
+        help_filename: Optional[str] = None,
+    ) -> None:
         if key is None:
             key = "main"
 
         if not formatting_data:
             formatting_data = {}
-        result = load_help_content_from_plugin(plugin)
+        result = load_help_content_from_plugin(plugin, help_filename)
         content_obj = result["errors"][key]
-        description = content_obj.description.format(**formatting_data)
+        description = content_obj.description.format_map(formatting_data)
         detail = content_obj.detail
         if detail:
-            detail = detail.format(**formatting_data)
-        super(PublishXmlValidationError, self).__init__(
-            message, content_obj.title, description, detail
+            detail = detail.format_map(formatting_data)
+        super().__init__(
+            message,
+            content_obj.title,
+            description,
+            detail
         )
 
 
@@ -205,8 +237,8 @@ class AYONPyblishPluginMixin:
         if not cls.__instanceEnabled__:
             return False
 
-        families = [instance.product_type]
-        families.extend(instance.get("families", []))
+        families = [instance.product_base_type]
+        families.extend(instance.families)
         for _ in pyblish.logic.plugins_by_families([cls], families):
             return True
         return False
@@ -467,3 +499,117 @@ class ColormanagedPyblishPluginMixin(object):
             colorspace,
             log=self.log
         )
+
+
+@dataclass
+class _RefreshInfo:
+    keys: set[str]
+
+
+def refresh_instance_attributes(
+    keys: str | set[str] | list[str],
+) -> Callable:
+    """Helper for refreshing attribute definitions on key change.
+
+    This helper does handle only instance key changes and can update only
+        instance attribute definitions.
+
+    This might be very inefficient if there are many instances that do change
+        the keys frequently.
+
+    ```example
+    @refresh_instance_attributes("families")
+    class MyPlugin(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
+        families = ["my_family"]
+
+        @classmethod
+        def get_attribute_defs(cls):
+            return [TextDef("my_attr", label="My Attribute")]
+
+    ```
+    """
+    if isinstance(keys, list):
+        keys = set(keys)
+    elif isinstance(keys, str):
+        keys = {keys}
+    elif not isinstance(keys, set):
+        raise TypeError(
+            "Expected str, set[str] or list[str] for 'keys'."
+            f" Got {type(keys)}."
+        )
+
+    refresh_info = _RefreshInfo(keys=keys)
+
+    def inner_func(
+        plugin: type[AYONPyblishPluginMixin]
+    ) -> type[AYONPyblishPluginMixin]:
+        if not issubclass(plugin, AYONPyblishPluginMixin):
+            raise TypeError(
+                "Decorator 'refresh_attributes' can be used only on"
+                " subclasses of AYONPyblishPluginMixin."
+            )
+
+        # Store refresh info on the plugin class to avoid unnecessary
+        #   callbacks. Just use existing callback if already registered.
+        _plugin_info: _RefreshInfo | None = getattr(
+            plugin, "__refresh_instance_info__", None
+        )
+        if _plugin_info is not None:
+            _plugin_info.keys.update(refresh_info.keys)
+            return plugin
+
+        setattr(plugin, "__refresh_instance_info__", refresh_info)
+
+        plugin_name = plugin.__name__
+
+        orig_register_create_context_callbacks = (
+            plugin.register_create_context_callbacks
+        )
+
+        def on_values_changed(event):
+            create_context: CreateContext = event["create_context"]
+            for instance_change in event["changes"]:
+                instance: CreatedInstance | None = instance_change["instance"]
+                if instance is None:
+                    continue
+
+                value_changes = instance_change["changes"]
+                if not any(
+                    key in value_changes
+                    for key in refresh_info.keys
+                ):
+                    continue
+
+                attr_values = instance.publish_attributes.get(plugin_name)
+
+                instance_attr_defs = plugin.get_attr_defs_for_instance(
+                    create_context, instance
+                )
+                # Attribute values and attribute definitions are the same,
+                #   no need to update.
+                if not attr_values and not instance_attr_defs:
+                    continue
+
+                if (
+                    attr_values is not None
+                    and attr_values.attr_defs == instance_attr_defs
+                ):
+                    continue
+
+                # Update attribute definitions for the instance
+                instance.set_publish_plugin_attr_defs(
+                    plugin_name, instance_attr_defs
+                )
+
+        def _custom_register_create_context_callbacks(
+            cls, create_context
+        ):
+            orig_register_create_context_callbacks(create_context)
+            create_context.add_value_changed_callback(on_values_changed)
+
+        plugin.register_create_context_callbacks = classmethod(
+            _custom_register_create_context_callbacks
+        )
+        return plugin
+
+    return inner_func

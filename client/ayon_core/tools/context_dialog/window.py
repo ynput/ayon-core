@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import os
 import json
+import typing
 
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
@@ -7,6 +10,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core import style
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
 )
@@ -17,6 +21,9 @@ from ayon_core.tools.utils import (
     get_ayon_qt_app,
 )
 from ayon_core.tools.utils.lib import center_window
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 class SelectionModel(object):
@@ -158,6 +165,7 @@ class ContextDialogController:
     def __init__(self):
         self._event_system = None
 
+        self._settings_model = SettingsModel()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._selection_model = SelectionModel(self)
@@ -187,6 +195,7 @@ class ContextDialogController:
         self._initial_folder_found = True
         self._initial_tasks_found = True
 
+        self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
 
@@ -195,6 +204,7 @@ class ContextDialogController:
     def refresh(self):
         self._emit_event("controller.refresh.started")
 
+        self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
 
@@ -224,6 +234,12 @@ class ContextDialogController:
         self._emit_event("strict.changed", {"strict": enabled})
 
     # Data model functions
+    def get_project_settings(self, project_name: str | None) -> dict:
+        return self._settings_model.get_settings(project_name)
+
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 

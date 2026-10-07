@@ -41,6 +41,11 @@ class SceneInventoryController:
         self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
 
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
+
     def get_host(self) -> ILoadHost:
         return self._host
 
@@ -158,10 +163,14 @@ class SceneInventoryController:
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
-    def get_folder_label(self, folder_id):
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_folder_label(self, project_name, folder_id):
         if not folder_id:
             return None
-        project_name = self.get_current_project_name()
         folder_item = self._hierarchy_model.get_folder_item(
             project_name, folder_id)
         if folder_item is None:
