@@ -22,7 +22,6 @@ FOLDER_FIELDS = {
     "path",
     "folderType",
     "status",
-    "attrib.description",
 }
 
 
@@ -52,7 +51,6 @@ class FolderItem:
         folder_type (str): Type of folder.
         label (str): Folder label.
         status (str): Folder status name.
-        description (str): Folder description.
     """
     # TODO: Use `@dataclass(slots=True)` when we drop Python 3.9 support.
     __slots__ = (
@@ -63,7 +61,6 @@ class FolderItem:
         "folder_type",
         "label",
         "status",
-        "description",
     )
     entity_id: str
     parent_id: str | None
@@ -72,7 +69,6 @@ class FolderItem:
     folder_type: str
     label: str
     status: str
-    description: str
 
     def to_data(self) -> dict[str, str | None]:
         """Converts folder item to data.
@@ -89,7 +85,6 @@ class FolderItem:
             folder_type=self.folder_type,
             label=self.label,
             status=self.status,
-            description=self.description,
         )
 
     @classmethod
@@ -114,9 +109,6 @@ class FolderItem:
 
         """
         name = data["name"]
-        # Attributes are filled only if were requested and user may not
-        #   have access to all of them
-        attrib = data.get("attrib") or {}
         return cls(
             entity_id=data["id"],
             parent_id=data["parentId"],
@@ -125,13 +117,11 @@ class FolderItem:
             folder_type=data["folderType"],
             label=data["label"] or name,
             status=data["status"],
-            description=attrib.get("description") or "",
         )
 
     @classmethod
     def from_entity(cls, entity: dict[str, Any]) -> FolderItem:
         name = entity["name"]
-        attrib = entity.get("attrib") or {}
         return FolderItem(
             entity_id=entity["id"],
             parent_id=entity["parentId"],
@@ -139,8 +129,7 @@ class FolderItem:
             path=entity["path"],
             folder_type=entity["folderType"],
             label=entity["label"] or name,
-            status=entity["status"],
-            description=attrib.get("description") or "",
+            status=entity["status"]
         )
 
 
@@ -702,10 +691,7 @@ class HierarchyModel:
                 cond.notify_all()
 
     def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
-        # Attributes are included only to get folder description. They are
-        #   part of the server side cache used by the endpoint, so the
-        #   response is bigger but the query is not slower.
-        folders = ayon_api.get_rest_folders(project_name, include_attrib=True)
+        folders = ayon_api.get_rest_folders(project_name, include_attrib=False)
         return {
             folder["id"]: FolderItem.from_rest_data(folder)
             for folder in folders
