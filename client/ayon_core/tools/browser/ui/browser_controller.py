@@ -76,8 +76,11 @@ from ayon_core.tools.browser.ui.browser_types import (
 )
 
 if TYPE_CHECKING:
-    from ayon_core.tools.common_models import StatusItem, UserItem
-    from ayon_core.tools.common_models.activities import ActivityItem
+    from ayon_core.tools.common_models import (
+        ActivityItem,
+        StatusItem,
+        UserItem,
+    )
 
 log = Logger.get_logger(__name__)
 

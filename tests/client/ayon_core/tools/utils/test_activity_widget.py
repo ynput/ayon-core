@@ -12,11 +12,12 @@ import pytest
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
-from ayon_core.tools.common_models import StatusItem, UserItem
-from ayon_core.tools.common_models.activities import (
+from ayon_core.tools.common_models import (
     ActivityAnnotationItem,
     ActivityFileItem,
     ActivityItem,
+    StatusItem,
+    UserItem,
 )
 from ayon_core.tools.utils import activity_widget
 from ayon_core.tools.utils.activity_widget import (

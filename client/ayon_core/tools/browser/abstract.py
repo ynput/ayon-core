@@ -19,11 +19,11 @@ from ayon_core.tools.common_models import TaskItem, ProjectItem
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models import (
+        ActivityItem,
         FolderTypeItem,
         StatusItem,
         UserItem,
     )
-    from ayon_core.tools.common_models.activities import ActivityItem
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 

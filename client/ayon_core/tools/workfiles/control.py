@@ -18,8 +18,8 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     ThumbnailsModel,
     UsersModel,
+    ActivitiesModel,
 )
-from ayon_core.tools.common_models.activities import ActivitiesModel
 
 from .abstract import (
     AbstractWorkfilesBackend,
@@ -41,8 +41,8 @@ if typing.TYPE_CHECKING:
         TaskTypeItem,
         StatusItem,
         UserItem,
+        ActivityItem,
     )
-    from ayon_core.tools.common_models.activities import ActivityItem
 
     from .abstract import (
         PublishedWorkfileWrap,

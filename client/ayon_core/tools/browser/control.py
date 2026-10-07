@@ -15,8 +15,8 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    ActivitiesModel,
 )
-from ayon_core.tools.common_models.activities import ActivitiesModel
 
 from .abstract import (
     AbstractBrowserController,
@@ -26,8 +26,7 @@ from .abstract import (
 from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
-    from ayon_core.tools.common_models import UserItem
-    from ayon_core.tools.common_models.activities import ActivityItem
+    from ayon_core.tools.common_models import ActivityItem, UserItem
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 NOT_SET = object()

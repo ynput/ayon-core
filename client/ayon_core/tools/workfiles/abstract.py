@@ -20,8 +20,8 @@ if typing.TYPE_CHECKING:
         TaskSortMode,
         FolderItem,
         TaskItem,
+        ActivityItem,
     )
-    from ayon_core.tools.common_models.activities import ActivityItem
 
 
 @dataclass
