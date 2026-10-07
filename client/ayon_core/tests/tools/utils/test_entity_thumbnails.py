@@ -7,15 +7,19 @@ import threading
 import types
 
 import pytest
-from qtpy import QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 
 if "qargparse" not in sys.modules:
     sys.modules["qargparse"] = types.ModuleType("qargparse")
 
-from ayon_core.tools.utils.entity_thumbnails import EntityThumbnailsLoader
+from ayon_core.tools.utils.entity_thumbnails import (
+    EntityThumbnailsLoader,
+    EntityThumbnailsPainter,
+)
 from ayon_core.ui.components.task_queue import shutdown_task_queue
 
 THUMBNAIL_SIZE = QtCore.QSize(32, 18)
+ENTITY_ID_ROLE = QtCore.Qt.UserRole + 1
 
 
 class _Controller:
@@ -153,3 +157,137 @@ def test_changed_thumbnail_is_updated_after_refresh(
     assert sorted(blocker.args[0]) == ["a", "b"]
     assert loader.get_pixmap("a").cacheKey() != old_pixmap.cacheKey()
     assert loader.get_pixmap("b") is not None
+
+
+def test_thumbnail_has_rounded_corners(qtbot, task_queue, thumbnail_path):
+    controller = _Controller({"a": thumbnail_path})
+    loader = EntityThumbnailsLoader(
+        controller, "folder", THUMBNAIL_SIZE, radius=4
+    )
+    loader.set_project_name("demo")
+    with qtbot.waitSignal(loader.thumbnails_changed):
+        loader.load(["a"], 1.0)
+
+    image = loader.get_pixmap("a").toImage()
+    assert image.pixelColor(0, 0).alpha() == 0
+    center = image.pixelColor(image.width() // 2, image.height() // 2)
+    assert center.alpha() == 255
+    assert center.red() == 255
+
+
+def test_old_pixmaps_are_removed_and_loaded_again(
+    qtbot, task_queue, tmp_path
+):
+    paths = {}
+    for idx in range(6):
+        image = QtGui.QImage(8, 8, QtGui.QImage.Format_ARGB32)
+        image.fill(QtGui.QColor("red"))
+        path = str(tmp_path / f"thumbnail_{idx}.png")
+        assert image.save(path)
+        paths[f"entity_{idx}"] = path
+
+    controller = _Controller(paths)
+    loader = _create_loader(controller)
+    loader.max_pixmaps = 4
+    entity_ids = list(paths)
+    for entity_id in entity_ids:
+        with qtbot.waitSignal(loader.thumbnails_changed):
+            loader.load([entity_id], 1.0)
+
+    assert len(loader._pixmap_by_path) <= loader.max_pixmaps
+    # The first loaded was removed and is loaded again on next request
+    assert loader.get_pixmap(entity_ids[0]) is None
+    assert loader.needs_load(entity_ids[0])
+    # The last loaded is still available
+    assert loader.get_pixmap(entity_ids[-1]) is not None
+    assert not loader.needs_load(entity_ids[-1])
+
+
+class _ThumbnailsDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, thumbnails_painter, parent):
+        super().__init__(parent)
+        self._thumbnails_painter = thumbnails_painter
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        self._thumbnails_painter.paint(painter, option.rect, index)
+
+
+def _create_view(qtbot, controller, width):
+    model = QtGui.QStandardItemModel()
+    for idx in range(300):
+        item = QtGui.QStandardItem(f"Item {idx}")
+        item.setData(f"entity_{idx}", ENTITY_ID_ROLE)
+        model.appendRow(item)
+    view = QtWidgets.QTreeView()
+    qtbot.addWidget(view)
+    view.setModel(model)
+    view.setHeaderHidden(True)
+    thumbnails_painter = EntityThumbnailsPainter(
+        view, controller, "folder", ENTITY_ID_ROLE
+    )
+    view.setItemDelegate(_ThumbnailsDelegate(thumbnails_painter, view))
+    thumbnails_painter.set_project_name("demo")
+    view.resize(width, 200)
+    view.show()
+    qtbot.waitExposed(view)
+    return view, thumbnails_painter
+
+
+def test_only_visible_items_are_requested(qtbot, task_queue):
+    controller = _Controller({})
+    view, thumbnails_painter = _create_view(qtbot, controller, 400)
+    loader = thumbnails_painter._loader
+    qtbot.waitUntil(
+        lambda: bool(loader._valid_ids) and not loader._loading_ids
+    )
+
+    requested_ids = set()
+    for _project_name, _entity_type, entity_ids in controller.calls:
+        requested_ids |= entity_ids
+    assert "entity_0" in requested_ids
+    # Much less than all items, only those in the viewport
+    assert len(requested_ids) < 50
+    assert "entity_299" not in requested_ids
+
+
+def test_thumbnails_are_not_requested_in_narrow_view(qtbot, task_queue):
+    controller = _Controller({})
+    view, thumbnails_painter = _create_view(qtbot, controller, 100)
+    qtbot.wait(thumbnails_painter._request_delay * 3)
+
+    assert not thumbnails_painter._requested
+    assert not controller.calls
+
+
+def test_images_are_loaded_by_more_threads_at_once(
+    qtbot, task_queue, tmp_path
+):
+    """More background tasks load images at the same time.
+
+    The application could freeze with PySide6 when Qt functions were
+    called for the first time from more threads at the same moment. This
+    test does not finish if that happens.
+    """
+    paths = {}
+    for idx in range(64):
+        image = QtGui.QImage(64, 64, QtGui.QImage.Format_ARGB32)
+        image.fill(QtGui.QColor("green"))
+        path = str(tmp_path / f"concurrent_{idx}.png")
+        assert image.save(path)
+        paths[f"entity_{idx}"] = path
+
+    controller = _Controller(paths)
+    loader = EntityThumbnailsLoader(
+        controller, "folder", THUMBNAIL_SIZE, radius=2
+    )
+    loader.set_project_name("demo")
+    loader.load(list(paths), 1.0)
+    # Entities are split to more tasks processed by more threads
+    qtbot.waitUntil(lambda: not loader._loading_ids, timeout=30000)
+
+    assert len(controller.thread_ids) > 1
+    assert all(
+        loader.get_pixmap(entity_id) is not None
+        for entity_id in paths
+    )

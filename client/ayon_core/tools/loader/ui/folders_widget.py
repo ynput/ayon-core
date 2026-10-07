@@ -185,9 +185,7 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
         painter.restore()
 
         if thumbnails_painter is not None:
-            thumbnail_option = QtWidgets.QStyleOptionViewItem(option)
-            thumbnail_option.rect = item_rect
-            thumbnails_painter.paint(painter, thumbnail_option, index)
+            thumbnails_painter.paint(painter, item_rect, index)
 
 
 class LoaderFoldersModel(FoldersQtModel):

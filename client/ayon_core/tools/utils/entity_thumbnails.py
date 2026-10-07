@@ -10,9 +10,12 @@ in 'ayon_core.tools.common_models'), without it thumbnails are not shown.
 """
 from __future__ import annotations
 
+import itertools
+import threading
 import time
 import weakref
-from typing import Any, Optional
+from functools import partial
+from typing import Any, Iterable, Optional
 
 from qtpy import QtWidgets, QtGui, QtCore, shiboken
 
@@ -21,6 +24,52 @@ from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 
 # Entity ids requested from controller in one background task
 _CHUNK_SIZE = 8
+
+
+class _ImagesLoading:
+    """Qt is used from background threads to load the images.
+
+    With PySide6 the application can freeze when more threads call a Qt
+    function for the first time at the same moment. That is why functions
+    used in the threads are first called in the main thread ('warm_up'),
+    and why only one thread is loading images at a time.
+    """
+    lock = threading.Lock()
+    warmed_up = False
+
+    @classmethod
+    def warm_up(cls) -> None:
+        """Must be called from the main thread before the threads start."""
+        if cls.warmed_up:
+            return
+        cls.warmed_up = True
+        size = QtCore.QSize(1, 1)
+        _load_image("", size)
+        _scale_image(QtGui.QImage(2, 2, QtGui.QImage.Format_RGB32), size)
+
+
+def _scale_image(image: QtGui.QImage, size: QtCore.QSize) -> QtGui.QImage:
+    """Fill the whole area with the image and crop what overflows."""
+    image = image.scaled(
+        size,
+        QtCore.Qt.KeepAspectRatioByExpanding,
+        QtCore.Qt.SmoothTransformation,
+    )
+    return image.copy(
+        (image.width() - size.width()) // 2,
+        (image.height() - size.height()) // 2,
+        size.width(),
+        size.height(),
+    )
+
+
+def _load_image(path: str, size: QtCore.QSize) -> Optional[QtGui.QImage]:
+    """Load image scaled and cropped to a size."""
+    with _ImagesLoading.lock:
+        image = QtGui.QImage(path)
+        if image.isNull():
+            return None
+        return _scale_image(image, size)
 
 
 def _load_thumbnails(
@@ -54,21 +103,9 @@ def _load_thumbnails(
     for path in set(path_by_entity_id.values()):
         if not path or path in loaded_paths:
             continue
-        image = QtGui.QImage(path)
-        if image.isNull():
-            continue
-        # Fill the whole area and crop what overflows
-        image = image.scaled(
-            size,
-            QtCore.Qt.KeepAspectRatioByExpanding,
-            QtCore.Qt.SmoothTransformation,
-        )
-        images_by_path[path] = image.copy(
-            (image.width() - size.width()) // 2,
-            (image.height() - size.height()) // 2,
-            size.width(),
-            size.height(),
-        )
+        image = _load_image(path, size)
+        if image is not None:
+            images_by_path[path] = image
     return path_by_entity_id, images_by_path
 
 
@@ -76,28 +113,34 @@ class EntityThumbnailsLoader(QtCore.QObject):
     """Load entity thumbnails in background threads.
 
     Thumbnails are loaded only on request using 'load', nothing is loaded
-    upfront. Loaded pixmaps are kept in memory until the project changes.
+    upfront. Loaded pixmaps are kept in memory until the project changes,
+    the oldest are removed when there is too many of them.
 
     Args:
         controller: Controller of a tool. Thumbnails are available only
             if the controller has 'get_thumbnail_paths' method.
         entity_type: Entity type passed to the controller.
         thumbnail_size: Size of thumbnails in device independent pixels.
+        radius: Radius of rounded corners in device independent pixels.
         parent: Parent object.
     """
     thumbnails_changed = QtCore.Signal(list)
+    # Limit of pixmaps kept in memory, about 6MB on a standard screen
+    max_pixmaps = 2000
 
     def __init__(
         self,
         controller: Any,
         entity_type: str,
         thumbnail_size: QtCore.QSize,
+        radius: float = 0.0,
         parent: Optional[QtCore.QObject] = None,
     ) -> None:
         super().__init__(parent)
         self._controller = controller
         self._entity_type = entity_type
         self._thumbnail_size = thumbnail_size
+        self._radius = radius
         self._project_name: Optional[str] = None
         # Used to cancel tasks and to ignore results of previous project
         self._context_id = ""
@@ -153,24 +196,27 @@ class EntityThumbnailsLoader(QtCore.QObject):
             return None
         return self._pixmap_by_path.get(path)
 
-    def load(self, entity_ids: set[str], device_pixel_ratio: float) -> None:
+    def load(
+        self, entity_ids: Iterable[str], device_pixel_ratio: float
+    ) -> None:
         """Load thumbnails of entities in background threads.
 
         Signal 'thumbnails_changed' is emitted when thumbnails of entities
         become available or change.
 
         Args:
-            entity_ids: Entity ids to load thumbnails for.
+            entity_ids: Entity ids to load thumbnails for, thumbnails are
+                loaded in the passed order.
             device_pixel_ratio: Pixel ratio of the screen thumbnails are
                 painted on.
         """
         if not self._project_name or not self.is_available():
             return
-        entity_ids = {
+        entity_ids = [
             entity_id
             for entity_id in entity_ids
             if self.needs_load(entity_id)
-        }
+        ]
         if not entity_ids:
             return
 
@@ -179,18 +225,19 @@ class EntityThumbnailsLoader(QtCore.QObject):
             self._context_id = (
                 f"entity_thumbnails_{id(self)}_{self._context_counter}"
             )
-        self._loading_ids |= entity_ids
+        self._loading_ids.update(entity_ids)
 
+        _ImagesLoading.warm_up()
         size = self._thumbnail_size * device_pixel_ratio
         loaded_paths = set(self._pixmap_by_path)
         task_queue = get_task_queue()
-        remaining_ids = list(entity_ids)
-        while remaining_ids:
-            chunk_ids = set(remaining_ids[:_CHUNK_SIZE])
-            remaining_ids = remaining_ids[_CHUNK_SIZE:]
+        for idx in range(0, len(entity_ids), _CHUNK_SIZE):
+            chunk_ids = set(entity_ids[idx:idx + _CHUNK_SIZE])
             task_queue.enqueue(AsyncTask(
                 name=f"entity_thumbnails_{self._entity_type}",
-                function=_LoadCallable(
+                # The task must not keep the loader alive
+                function=partial(
+                    _load_thumbnails,
                     self._controller,
                     self._project_name,
                     self._entity_type,
@@ -231,9 +278,9 @@ class EntityThumbnailsLoader(QtCore.QObject):
 
         path_by_entity_id, images_by_path = result
         for path, image in images_by_path.items():
-            pixmap = QtGui.QPixmap.fromImage(image)
-            pixmap.setDevicePixelRatio(device_pixel_ratio)
-            self._pixmap_by_path[path] = pixmap
+            self._pixmap_by_path[path] = self._create_pixmap(
+                image, device_pixel_ratio
+            )
 
         changed_ids = []
         for entity_id in entity_ids:
@@ -244,20 +291,54 @@ class EntityThumbnailsLoader(QtCore.QObject):
                 changed_ids.append(entity_id)
             self._path_by_entity_id[entity_id] = path
 
+        self._remove_old_pixmaps()
         if changed_ids:
             self.thumbnails_changed.emit(changed_ids)
 
+    def _create_pixmap(
+        self, image: QtGui.QImage, device_pixel_ratio: float
+    ) -> QtGui.QPixmap:
+        """Create pixmap with rounded corners.
 
-class _LoadCallable:
-    """Function of a task that does not keep reference to the loader."""
+        Corners are rounded only once here, so painting of items does not
+        have to clip the pixmap.
+        """
+        radius = self._radius * device_pixel_ratio
+        if radius <= 0:
+            pixmap = QtGui.QPixmap.fromImage(image)
+        else:
+            pixmap = QtGui.QPixmap(image.size())
+            pixmap.fill(QtCore.Qt.transparent)
+            painter = QtGui.QPainter(pixmap)
+            painter.setRenderHint(QtGui.QPainter.Antialiasing)
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QBrush(image))
+            painter.drawRoundedRect(
+                QtCore.QRectF(pixmap.rect()), radius, radius
+            )
+            painter.end()
+        pixmap.setDevicePixelRatio(device_pixel_ratio)
+        return pixmap
 
-    def __init__(self, *args) -> None:
-        self._args = args
+    def _remove_old_pixmaps(self) -> None:
+        """Keep memory usage limited in projects with a lot of entities.
 
-    def __call__(
-        self
-    ) -> tuple[dict[str, Optional[str]], dict[str, QtGui.QImage]]:
-        return _load_thumbnails(*self._args)
+        Entities of removed pixmaps are loaded again when they are needed.
+        """
+        overflow = len(self._pixmap_by_path) - self.max_pixmaps
+        # Running tasks expect that already loaded pixmaps stay available
+        if overflow <= 0 or self._loading_ids:
+            return
+        # Remove more of them, so it does not happen on each load
+        removed_paths = set(itertools.islice(
+            self._pixmap_by_path, overflow + (self.max_pixmaps // 4)
+        ))
+        for path in removed_paths:
+            del self._pixmap_by_path[path]
+        for entity_id, path in tuple(self._path_by_entity_id.items()):
+            if path in removed_paths:
+                del self._path_by_entity_id[entity_id]
+                self._valid_ids.discard(entity_id)
 
 
 class _LoadedCallback:
@@ -294,8 +375,12 @@ class EntityThumbnailsPainter(QtCore.QObject):
     radius = 2
     # Thumbnail is hidden if less width would be left for icon and label
     min_label_width = 90
-    # Wait for more items to be painted, e.g. when scrolling
-    _request_delay = 50
+    # Thumbnails are requested when no new items were painted for this
+    #   time (in milliseconds), so nothing is requested while scrolling
+    _request_delay = 100
+    # Limit of items waiting for the request, the oldest are forgotten
+    #   and requested again on their next paint
+    _max_requested = 200
 
     def __init__(
         self,
@@ -312,6 +397,7 @@ class EntityThumbnailsPainter(QtCore.QObject):
             QtCore.QSize(
                 round(thumbnail_height * self.aspect_ratio), thumbnail_height
             ),
+            radius=self.radius,
             parent=self,
         )
 
@@ -335,6 +421,8 @@ class EntityThumbnailsPainter(QtCore.QObject):
         self._fade_curve = QtCore.QEasingCurve(QtCore.QEasingCurve.InOutQuad)
         self._requested: dict[str, QtCore.QPersistentModelIndex] = {}
         self._fade_start_by_id: dict[str, float] = {}
+        # Where fading thumbnails were painted, to repaint only them
+        self._fade_rect_by_id: dict[str, QtCore.QRect] = {}
 
     def is_enabled(self) -> bool:
         return self._enabled
@@ -388,14 +476,14 @@ class EntityThumbnailsPainter(QtCore.QObject):
     def paint(
         self,
         painter: QtGui.QPainter,
-        option: QtWidgets.QStyleOptionViewItem,
+        item_rect: QtCore.QRect,
         index: QtCore.QModelIndex,
     ) -> None:
         """Paint the thumbnail of an item, request it if is not loaded.
 
         Args:
             painter: Painter of the item.
-            option: Style option of the item.
+            item_rect: Rectangle of the item.
             index: Index of the item.
         """
         if not self._enabled:
@@ -404,29 +492,38 @@ class EntityThumbnailsPainter(QtCore.QObject):
         if not entity_id:
             return
 
+        # Thumbnail that would not be visible is not even requested
+        rect = self._get_thumbnail_rect(item_rect)
+        if rect.isEmpty():
+            return
+
         if self._loader.needs_load(entity_id):
-            self._requested[entity_id] = QtCore.QPersistentModelIndex(index)
-            if not self._request_timer.isActive():
-                self._request_timer.start()
+            self._request(entity_id, index)
 
         pixmap = self._loader.get_pixmap(entity_id)
         if pixmap is None:
             return
 
-        rect = self._get_thumbnail_rect(option.rect)
-        if rect.isEmpty():
-            return
+        opacity = 1.0
+        fade_start = self._fade_start_by_id.get(entity_id)
+        if fade_start is not None:
+            opacity = self._get_fade_opacity(fade_start)
+            self._fade_rect_by_id[entity_id] = rect
 
-        opacity = self._get_opacity(entity_id)
-        path = QtGui.QPainterPath()
-        path.addRoundedRect(QtCore.QRectF(rect), self.radius, self.radius)
         painter.save()
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
         painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
-        painter.setClipPath(path, QtCore.Qt.IntersectClip)
         painter.setOpacity(painter.opacity() * opacity)
         painter.drawPixmap(rect, pixmap)
         painter.restore()
+
+    def _request(self, entity_id: str, index: QtCore.QModelIndex) -> None:
+        if entity_id in self._requested:
+            return
+        if len(self._requested) >= self._max_requested:
+            del self._requested[next(iter(self._requested))]
+        self._requested[entity_id] = QtCore.QPersistentModelIndex(index)
+        # Restart the timer to wait until painting of new items settles
+        self._request_timer.start()
 
     def _get_thumbnail_rect(self, item_rect: QtCore.QRect) -> QtCore.QRect:
         size = QtCore.QSize(self._loader.get_thumbnail_size())
@@ -444,10 +541,7 @@ class EntityThumbnailsPainter(QtCore.QObject):
             return QtCore.QRect()
         return rect
 
-    def _get_opacity(self, entity_id: str) -> float:
-        fade_start = self._fade_start_by_id.get(entity_id)
-        if fade_start is None:
-            return 1.0
+    def _get_fade_opacity(self, fade_start: float) -> float:
         progress = (
             (time.monotonic() - fade_start) * 1000 / self.fade_duration
         )
@@ -459,7 +553,7 @@ class EntityThumbnailsPainter(QtCore.QObject):
         requested, self._requested = self._requested, {}
         # Items could be scrolled away, collapsed or removed in the meantime
         viewport_rect = self._view.viewport().rect()
-        entity_ids = set()
+        visible_ids = []
         for entity_id, index in requested.items():
             if not index.isValid():
                 continue
@@ -470,10 +564,15 @@ class EntityThumbnailsPainter(QtCore.QObject):
                 )
             )
             if rect.isValid() and rect.intersects(viewport_rect):
-                entity_ids.add(entity_id)
+                visible_ids.append((rect.top(), entity_id))
 
-        if entity_ids:
-            self._loader.load(entity_ids, self._view.devicePixelRatioF())
+        if visible_ids:
+            # Load thumbnails from top to bottom
+            visible_ids.sort()
+            self._loader.load(
+                [entity_id for _, entity_id in visible_ids],
+                self._view.devicePixelRatioF(),
+            )
 
     def _on_thumbnails_changed(self, entity_ids: list[str]) -> None:
         fade_start = time.monotonic()
@@ -482,16 +581,22 @@ class EntityThumbnailsPainter(QtCore.QObject):
                 self._fade_start_by_id[entity_id] = fade_start
         if self._fade_start_by_id and not self._fade_timer.isActive():
             self._fade_timer.start()
+        # Labels of the items are elided differently, repaint them all once
         self._view.viewport().update()
 
     def _on_fade_timer(self) -> None:
+        viewport = self._view.viewport()
         fade_end = time.monotonic() - (self.fade_duration / 1000)
         for entity_id, fade_start in tuple(self._fade_start_by_id.items()):
+            rect = self._fade_rect_by_id.get(entity_id)
             if fade_start <= fade_end:
-                self._fade_start_by_id.pop(entity_id)
+                del self._fade_start_by_id[entity_id]
+                self._fade_rect_by_id.pop(entity_id, None)
+            # Thumbnails that are not visible do not have a rectangle
+            if rect is not None:
+                viewport.update(rect)
         if not self._fade_start_by_id:
             self._fade_timer.stop()
-        self._view.viewport().update()
 
 
 class EntityThumbnailDelegate(TreeViewItemDelegate):
@@ -526,4 +631,4 @@ class EntityThumbnailDelegate(TreeViewItemDelegate):
         index: QtCore.QModelIndex,
     ) -> None:
         super().paint(painter, option, index)
-        self._thumbnails_painter.paint(painter, option, index)
+        self._thumbnails_painter.paint(painter, option.rect, index)
