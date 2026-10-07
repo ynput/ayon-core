@@ -13,6 +13,7 @@ from qtpy import QtWidgets
 
 from ayon_core.pipeline.workfile.task_usage import (
     TaskUsageItem,
+    get_same_workfile_items,
     get_task_usage_user_full_names,
 )
 from ayon_core.tools.utils import get_ayon_qt_app
@@ -37,11 +38,20 @@ def main() -> None:
         items,
         get_task_usage_user_full_names(items),
         confirm_label="Launch anyway",
+        version_up=bool(
+            get_same_workfile_items(items, data.get("workfile"))
+        ),
     )
     confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
 
     with open(json_path, "w") as stream:
-        json.dump({"confirmed": confirmed}, stream)
+        json.dump(
+            {
+                "confirmed": confirmed,
+                "version_up": dialog.is_version_up_requested(),
+            },
+            stream,
+        )
 
 
 if __name__ == "__main__":

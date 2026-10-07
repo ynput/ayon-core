@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import datetime
 import threading
+from dataclasses import replace
 from typing import Any, Optional
 
 import pytest
@@ -14,6 +15,7 @@ from ayon_core.pipeline.workfile.task_usage import (
     TaskUsageSettings,
     TaskUsageTracker,
     filter_other_users_items,
+    get_same_workfile_items,
     get_task_usage_settings,
     is_task_usage_enabled_in_project,
 )
@@ -854,3 +856,33 @@ def test_tracker_install_skipped_in_farm_jobs(monkeypatch, env_key):
     monkeypatch.setattr(task_usage, "_tracker", None)
     monkeypatch.setenv(env_key, "1")
     assert task_usage.install_task_usage_tracker(_MockHost()) is None
+
+
+def test_same_workfile_items():
+    same = _item("same", username="artist2")
+    other = replace(_item("other", username="artist3"), workfile="b_v002.ma")
+    no_file = replace(_item("none", username="artist4"), workfile=None)
+    items = [same, other, no_file]
+
+    assert get_same_workfile_items(items, None) == []
+    assert get_same_workfile_items(items, "sh010_anim_v001.ma") == [same]
+    # Path can be used and letter case is ignored
+    assert get_same_workfile_items(
+        items, "/work/SH010_anim_v001.ma"
+    ) == [same]
+    assert get_same_workfile_items(items, "sh010_anim_v003.ma") == []
+
+
+def test_tracker_version_up_only_for_opened_workfile(monkeypatch):
+    from ayon_core.pipeline.workfile import utils
+
+    calls = []
+    monkeypatch.setattr(utils, "save_next_version", lambda: calls.append(1))
+    host = _MockHost()
+    tracker = TaskUsageTracker(host)
+
+    tracker._version_up("other_v001.ma")
+    assert calls == []
+
+    tracker._version_up("sh010_anim_v001.ma")
+    assert calls == [1]

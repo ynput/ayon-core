@@ -604,9 +604,15 @@ class BaseWorkfileController(
         self._workfiles_model.confirm_task_usage_items(items)
 
     def open_workfile(
-        self, folder_id: str, task_id: str, filepath: str
+        self,
+        folder_id: str,
+        task_id: str,
+        filepath: str,
+        version_up: bool = False,
     ) -> None:
-        self._workfiles_model.open_workfile(folder_id, task_id, filepath)
+        self._workfiles_model.open_workfile(
+            folder_id, task_id, filepath, version_up
+        )
 
     def save_current_workfile(self) -> None:
         self._workfiles_model.save_current_workfile()

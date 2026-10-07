@@ -887,7 +887,11 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
     # Controller actions
     @abstractmethod
     def open_workfile(
-        self, folder_id: str, task_id: str, filepath: str
+        self,
+        folder_id: str,
+        task_id: str,
+        filepath: str,
+        version_up: bool = False,
     ) -> None:
         """Open a workfile for context.
 
@@ -895,6 +899,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             folder_id (str): Folder id.
             task_id (str): Task id.
             filepath (str): Workfile path.
+            version_up (bool): Save the opened workfile as next version.
 
         """
         pass
