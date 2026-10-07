@@ -38,9 +38,9 @@ class ExtractOTIOFile(publish.Extractor):
         otio.adapters.write_to_file(otio_timeline, otio_file_path)
 
         representation_otio = {
-            'name': "otio",
-            'ext': "otio",
-            'files': otio_file_name,
+            "name": "otio",
+            "ext": "otio",
+            "files": otio_file_name,
             "stagingDir": staging_dir,
         }
 
