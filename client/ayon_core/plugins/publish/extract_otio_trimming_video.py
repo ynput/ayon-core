@@ -75,7 +75,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             representations.append(repre_data)
             self.log.debug(repre_data)
 
-        self.log.debug("representations: {}".format(representations))
 
     def _ffmpeg_trim_seqment(
         self,
