@@ -327,7 +327,9 @@ class _RateLimitedLogger:
     def __init__(self, logger: logging.Logger, interval: float):
         self._logger = logger
         self._interval = interval
-        self._last_emit = 0.0
+        # Not '0.0', 'time.monotonic' may be lower than 'interval' shortly
+        #   after boot and the first warning would be suppressed.
+        self._last_emit: float | None = None
 
     def warning(self, msg: str, *args: Any) -> None:
         """Log a warning message if the rate limit allows.
@@ -341,7 +343,10 @@ class _RateLimitedLogger:
 
         """
         now = time.monotonic()
-        if now - self._last_emit < self._interval:
+        if (
+            self._last_emit is not None
+            and now - self._last_emit < self._interval
+        ):
             return
         self._last_emit = now
         # Only positional arguments - the wrapped logger is a plain

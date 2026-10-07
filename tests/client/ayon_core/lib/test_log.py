@@ -452,8 +452,10 @@ def test_vector_sender_survives_failures(log_module):
     assert len(stub.bodies) == 2
 
 
-def test_rate_limited_logger_accepts_arguments(log_module):
+def test_rate_limited_logger_accepts_arguments(log_module, monkeypatch):
     module = log_module()
+    # Monotonic clock shortly after boot, e.g. on a fresh CI machine
+    monkeypatch.setattr(module.time, "monotonic", lambda: 5.0)
     handler = _ListHandler()
     logger = logging.getLogger("ayon_core.tests.rate_limited")
     logger.addHandler(handler)
