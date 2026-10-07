@@ -19,7 +19,7 @@ from ayon_core.ui.style_types import get_ayon_style
 from ayon_core.ui.variants import QTreeViewVariants
 from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
-from .lib import RefreshThread, get_qt_icon
+from .lib import RefreshThread, get_qt_icon, get_description_tooltip
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -308,7 +308,10 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 task_type_icon_cache
             )
             item.setData(task_item.label, QtCore.Qt.DisplayRole)
-            item.setData(task_item.full_label, QtCore.Qt.ToolTipRole)
+            tooltip = get_description_tooltip(
+                task_item.description, task_item.full_label
+            )
+            item.setData(tooltip, QtCore.Qt.ToolTipRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)

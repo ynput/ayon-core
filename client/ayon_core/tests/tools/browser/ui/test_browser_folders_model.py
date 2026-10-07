@@ -47,6 +47,7 @@ def _folder_items(
             folder_type=folder_types.get(folder_id, "Folder"),
             label=label,
             status="In progress",
+            description="",
         )
         for folder_id, (parent_id, label) in folders.items()
     }

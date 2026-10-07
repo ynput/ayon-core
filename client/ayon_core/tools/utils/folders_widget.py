@@ -33,7 +33,7 @@ from ayon_core.ui.components.time_sliced_job import TimeSlicedJob
 from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .models import RecursiveSortFilterProxyModel
-from .lib import get_qt_icon
+from .lib import get_qt_icon, get_description_tooltip
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models import (
@@ -71,6 +71,7 @@ class FillFolderItem:
         "label",
         "folder_type",
         "status",
+        "description",
         "path_filter",
     )
     item: QtGui.QStandardItem
@@ -80,6 +81,7 @@ class FillFolderItem:
     label: str
     folder_type: str
     status: str
+    description: str
     path_filter: str
 
     @classmethod
@@ -97,6 +99,7 @@ class FillFolderItem:
             label=folder_item.label,
             folder_type=folder_item.folder_type,
             status=folder_item.status,
+            description=folder_item.description,
             path_filter=f"{folder_item.path} {label_path}".casefold(),
         )
 
@@ -440,6 +443,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
         item.setData(folder_item.folder_type, FOLDER_TYPE_ROLE)
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
+        item.setData(
+            get_description_tooltip(folder_item.description),
+            QtCore.Qt.ToolTipRole,
+        )
         item.setData(icon, QtCore.Qt.DecorationRole)
         item.setData(folder_item.status, FOLDER_STATUS_ROLE)
         status_icon = status_icon_by_name.get(folder_item.status)
@@ -488,6 +495,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         if update_status_icon:
             status_icon = status_icon_by_name.get(new_fill_item.status)
             item.setData(status_icon, FOLDER_STATUS_ICON_ROLE)
+
+        if new_fill_item.description != old_fill_item.description:
+            item.setData(
+                get_description_tooltip(new_fill_item.description),
+                QtCore.Qt.ToolTipRole,
+            )
 
         for new_value, old_value, role in (
             (new_fill_item.name, old_fill_item.name, FOLDER_NAME_ROLE),
