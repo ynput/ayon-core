@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 from unittest.mock import Mock
 
@@ -9,7 +10,6 @@ import ayon_api
 import pytest
 
 from ayon_core.tools.browser.control import BrowserController
-from ayon_core.tools.browser.ui import browser_controller
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
@@ -95,27 +95,84 @@ def test_activity_data_comes_from_the_backend_models(fake_server):
     assert users == backend.get_user_items("demo")
 
 
-def test_version_thumbnail_uses_the_thumbnails_of_the_browser(
+def test_version_thumbnail_comes_from_the_thumbnails_model(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    keys = []
+    calls = []
 
-    def thumbnail_loader(key: str) -> str:
-        keys.append(key)
-        return "" if "missing" in key else "/cache/thumbnail.jpg"
+    def get_thumbnail_path(
+        project_name: str, entity_type: str, entity_id: str, thumbnail_id: str
+    ):
+        calls.append((project_name, entity_type, entity_id, thumbnail_id))
+        return None if thumbnail_id == "missing" else "/cache/thumbnail.jpg"
 
+    # The cache of thumbnails shared by all tools and processes
     monkeypatch.setattr(
-        browser_controller, "_thumbnail_loader", thumbnail_loader
+        "ayon_core.tools.common_models.thumbnails.get_thumbnail_path",
+        get_thumbnail_path,
     )
     controller = BrowserWidgetController(BrowserController())
 
     path = controller.get_version_thumbnail_path("demo", "v1", "t1")
     assert path == "/cache/thumbnail.jpg"
     assert controller.get_version_thumbnail_path("demo", "v1", "") is None
-    # Same key as for thumbnails of the table, so they share the cache
-    assert keys == ["demo/v1/t1"]
+    assert calls == [("demo", "version", "v1", "t1")]
 
     assert (
-        controller.get_version_thumbnail_path("demo", "v1", "missing")
+        controller.get_version_thumbnail_path("demo", "v2", "missing")
         is None
     )
+
+
+def test_thumbnail_loader_asks_the_controller(tmp_path):
+    from ayon_core.tools.browser.ui._browser_thumbnails import (
+        _thumbnail_loader,
+    )
+
+    image_path = tmp_path / "thumbnail.png"
+    image_path.write_bytes(b"image")
+
+    class Controller:
+        calls = []
+
+        def get_version_thumbnail_path(self, *args):
+            self.calls.append(args)
+            return None if args[2] == "missing" else str(image_path)
+
+    controller = Controller()
+    # A key that is not in the image cache of the machine yet
+    project_name = f"demo_{uuid.uuid4().hex}"
+    key = f"{project_name}/v1/t1"
+
+    cached_path = _thumbnail_loader(key, controller)
+    assert cached_path
+    with open(cached_path, "rb") as stream:
+        assert stream.read() == b"image"
+    # The image cache serves the key from now on
+    assert _thumbnail_loader(key, controller) == cached_path
+    assert controller.calls == [(project_name, "v1", "t1")]
+
+    assert _thumbnail_loader(f"{project_name}/v1/missing", controller) == ""
+
+
+def test_users_are_queried_once_for_table_and_activity(fake_server):
+    controller = BrowserWidgetController(BrowserController())
+
+    assert controller._get_user_full_names("demo") == {
+        "libor": "Libor Batek"
+    }
+    user_items = controller.get_user_items("demo")
+    assert [user_item.username for user_item in user_items] == ["libor"]
+    assert fake_server["users"] == 1
+
+
+def test_user_avatar_comes_from_the_avatars_cache(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        "ayon_core.tools.common_models.users.get_user_avatar_path",
+        lambda username: f"/avatars/{username}.png",
+    )
+    controller = BrowserWidgetController(BrowserController())
+
+    assert controller.get_user_avatar_path("libor") == "/avatars/libor.png"

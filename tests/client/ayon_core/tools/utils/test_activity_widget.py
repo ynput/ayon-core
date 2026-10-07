@@ -109,6 +109,10 @@ class FakeController:
             UserItem("libor", None, None, None, True),
         ]
 
+    def get_user_avatar_path(self, username: str) -> str | None:
+        self.calls.append(("avatar", username))
+        return None
+
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:
@@ -225,6 +229,7 @@ def test_controllers_implement_the_interface(controller_class: type):
     assert set(methods) == {
         "get_activity_items",
         "get_project_status_items",
+        "get_user_avatar_path",
         "get_user_items",
         "get_version_thumbnail_path",
     }
@@ -506,3 +511,19 @@ def test_activity_widget_shares_a_passed_avatar_cache(qtbot):
     alone = _create_widget(qtbot, controller)
     assert isinstance(alone._avatar_cache, UserAvatarCache)
     assert alone._avatar_cache is not shared_cache
+
+
+def test_avatars_are_loaded_by_the_controller(qtbot, monkeypatch):
+    avatars_queue = FakeTaskQueue()
+    monkeypatch.setattr(
+        user_avatars, "get_task_queue", lambda: avatars_queue
+    )
+    controller = FakeController()
+    widget = _create_widget(qtbot, controller)
+
+    widget._avatar_cache.pixmap("libor", "Libor", 20)
+    assert avatars_queue.run() == 1
+    assert ("avatar", "libor") in controller.calls
+    # A user is asked for once, also when there is no avatar
+    widget._avatar_cache.pixmap("libor", "Libor", 20)
+    assert avatars_queue.run() == 0

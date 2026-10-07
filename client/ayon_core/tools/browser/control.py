@@ -16,6 +16,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     UsersModel,
     ActivitiesModel,
+    ThumbnailsModel,
 )
 
 from .abstract import (
@@ -57,6 +58,7 @@ class BrowserController(AbstractBrowserController):
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
         self._activities_model = ActivitiesModel()
+        self._thumbnails_model = ThumbnailsModel()
 
     @property
     def log(self):
@@ -149,6 +151,16 @@ class BrowserController(AbstractBrowserController):
 
     def get_user_items(self, project_name: str | None) -> list[UserItem]:
         return self._users_model.get_user_items(project_name)
+
+    def get_user_avatar_path(self, username: str) -> str | None:
+        return self._users_model.get_user_avatar_path(username)
+
+    def get_version_thumbnail_path(
+        self, project_name: str, version_id: str, thumbnail_id: str
+    ) -> str | None:
+        return self._thumbnails_model.get_thumbnail_path(
+            project_name, "version", version_id, thumbnail_id
+        )
 
     def get_activity_items(
         self,

@@ -524,7 +524,9 @@ class ReviewInspector(AYContainer):
             get_task_queue().enqueue(
                 AsyncTask(
                     name=f"inspector_thumb_{key}",
-                    function=lambda k=key: _thumbnail_loader(k),
+                    function=lambda k=key: _thumbnail_loader(
+                        k, inspector._controller
+                    ),
                     callback=_make_callback(key),
                     priority=1,
                     cancellable=True,
