@@ -2,21 +2,214 @@
 
 from __future__ import annotations
 
-from typing import Callable, Iterable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Protocol
 
 from qtpy import QtGui, shiboken
 
 from ayon_core.lib import Logger
-from ayon_core.tools.common_models.activities import (
-    ActivitiesModel,
-    ActivityFeed,
-    get_version_thumbnail_path,
-)
 from ayon_core.ui.components.activity_stream import AYActivityStream
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.user_avatars import UserAvatarCache
+from ayon_core.ui.data_models import (
+    AnnotationModel,
+    CommentModel,
+    FileModel,
+    StatusChangeModel,
+    User,
+    VersionPublishModel,
+)
+
+if TYPE_CHECKING:
+    from ayon_core.tools.common_models import StatusItem, UserItem
+    from ayon_core.tools.common_models.activities import ActivityItem
 
 log = Logger.get_logger(__name__)
+
+# Shown instead of a value that is not filled
+NOT_AVAILABLE = "n/a"
+
+
+class ActivityController(Protocol):
+    """Controller methods used by the activity widget.
+
+    Implement them in the controller of a tool to show the widget in it.
+    All of them may query the server and are called outside of the main
+    thread.
+    """
+
+    def get_activity_items(
+        self,
+        project_name: str,
+        entity_ids: list[str] | set[str],
+        limit: int = 50,
+    ) -> list[ActivityItem]:
+        """Latest activities of entities.
+
+        Args:
+            project_name: Project name.
+            entity_ids: Ids of entities to get activities for.
+            limit: Maximum number of activities.
+
+        Returns:
+            Activities sorted from the newest to the oldest, see
+                ``ActivitiesModel.get_activity_items``.
+        """
+
+    def get_project_status_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[StatusItem]:
+        """Status items for a project.
+
+        Args:
+            project_name: Project name.
+            sender: Who requested the items.
+
+        Returns:
+            Project statuses, see ``ProjectsModel.get_project_status_items``.
+        """
+
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
+        """User items for a project.
+
+        Args:
+            project_name: Project name.
+
+        Returns:
+            Users of the project, see ``UsersModel.get_user_items``.
+        """
+
+    def get_version_thumbnail_path(
+        self, project_name: str, version_id: str, thumbnail_id: str
+    ) -> str | None:
+        """Path to a thumbnail of a version, downloaded if needed.
+
+        Args:
+            project_name: Project name.
+            version_id: Version id.
+            thumbnail_id: Thumbnail id of the version.
+
+        Returns:
+            Path to the image file, or ``None`` if it is not available.
+        """
+
+
+@dataclass
+class _ActivityFeed:
+    """Data of a feed as received from the controller."""
+
+    activity_items: list[ActivityItem]
+    status_items: list[StatusItem]
+    user_items: list[UserItem]
+
+
+def _text(value: Any) -> str:
+    return NOT_AVAILABLE if value is None else str(value)
+
+
+def _create_users(user_items: list[UserItem]) -> list[User]:
+    return [
+        User(
+            name=user_item.username,
+            # Activities are matched to users by 'short_name'
+            short_name=user_item.username,
+            full_name=user_item.full_name or user_item.username,
+            email=user_item.email or "",
+        )
+        for user_item in user_items
+    ]
+
+
+def _create_status_definitions(
+    status_items: list[StatusItem],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "text": status_item.name,
+            "short_text": status_item.short,
+            "icon": status_item.icon,
+            "color": status_item.color,
+        }
+        for status_item in status_items
+    ]
+
+
+def _create_comment(
+    item: ActivityItem, user_name: str, user_full_name: str
+) -> CommentModel:
+    # Frames of annotations by ids of their files
+    ranges: dict[str | None, list[int] | None] = {}
+    annotations = []
+    for annotation in item.annotations:
+        annotations.append(
+            AnnotationModel(
+                id=_text(annotation.annotation_id),
+                range=annotation.frame_range or NOT_AVAILABLE,
+                composite=_text(annotation.composite),
+                transparent=_text(annotation.transparent),
+            )
+        )
+        ranges[annotation.composite] = annotation.frame_range
+        ranges[annotation.transparent] = annotation.frame_range
+    files = [
+        FileModel(
+            id=_text(file_item.file_id),
+            mime=_text(file_item.mime),
+            frame=(ranges.get(file_item.file_id) or (-1, -1))[0],
+        )
+        for file_item in item.files
+    ]
+    return CommentModel(
+        activity_id=item.activity_id,
+        user_full_name=user_full_name,
+        user_name=user_name,
+        comment=_text(item.body),
+        comment_date=_text(item.updated_at),
+        category=item.category or "",
+        files=files,
+        annotations=annotations,
+    )
+
+
+def _create_activity(
+    item: ActivityItem, full_names_by_username: dict[str, str]
+) -> CommentModel | VersionPublishModel | StatusChangeModel | None:
+    """Convert an activity item to the model of its widget.
+
+    Args:
+        item: Activity item.
+        full_names_by_username: Full names of project users.
+
+    Returns:
+        Model for the activity stream, ``None`` for an activity type
+            that the stream can not show.
+    """
+    user_name = _text(item.author)
+    user_full_name = full_names_by_username.get(user_name, user_name)
+    if item.activity_type == "comment":
+        return _create_comment(item, user_name, user_full_name)
+    if item.activity_type == "version.publish":
+        return VersionPublishModel(
+            activity_id=item.activity_id,
+            user_full_name=user_full_name,
+            user_name=user_name,
+            version=_text(item.version_name),
+            product=_text(item.product_name),
+            date=_text(item.updated_at),
+            status=item.version_status or "",
+        )
+    if item.activity_type == "status.change":
+        return StatusChangeModel(
+            activity_id=item.activity_id,
+            user_full_name=user_full_name,
+            user_name=user_name,
+            product=_text(item.product_name),
+            version=_text(item.version_name),
+            old_status=_text(item.old_status),
+            new_status=_text(item.new_status),
+            date=_text(item.updated_at),
+        )
+    return None
 
 
 class ActivityWidget(AYActivityStream):
@@ -26,9 +219,9 @@ class ActivityWidget(AYActivityStream):
     in a tab that the user may never open.
 
     Args:
+        controller: Controller of the tool, the source of all data of
+            the feed.
         *args: Forwarded to ``AYActivityStream``.
-        activities_model: Model used to fetch the feed, created if not
-            passed.
         avatar_cache: Source of user avatars, created if not passed. Pass
             the cache of the tool to share it with its other views.
         **kwargs: Forwarded to ``AYActivityStream``.
@@ -36,8 +229,8 @@ class ActivityWidget(AYActivityStream):
 
     def __init__(
         self,
+        controller: ActivityController,
         *args,
-        activities_model: ActivitiesModel | None = None,
         avatar_cache: UserAvatarCache | None = None,
         **kwargs,
     ) -> None:
@@ -48,7 +241,7 @@ class ActivityWidget(AYActivityStream):
             #   the widget
             self._avatar_cache = UserAvatarCache(self)
             self._avatar_cache.avatar_updated.connect(self._refresh_avatars)
-        self._activities_model = activities_model or ActivitiesModel()
+        self._controller = controller
         self._context_id = f"activity_widget_{id(self)}"
         self._project_name = ""
         self._entity_ids: tuple[str, ...] = ()
@@ -57,6 +250,9 @@ class ActivityWidget(AYActivityStream):
         self._request_key = ""
         # Key of the context that is displayed or being fetched
         self._loaded_key: str | None = None
+        # Project name, version id and thumbnail id by 'thumbnail_key' of
+        #   displayed publishes
+        self._thumbnail_sources: dict[str, tuple[str, str, str]] = {}
         self.set_message(self._no_context_text)
 
     def set_context(
@@ -91,17 +287,28 @@ class ActivityWidget(AYActivityStream):
     def _load_thumbnail(
         self, key: str, on_loaded: Callable[[str], None]
     ) -> None:
-        """Fetch a version thumbnail in the background."""
+        """Ask the controller for a version thumbnail in the background."""
+        source = self._thumbnail_sources.get(key)
+        if source is None:
+            return
+        controller = self._controller
         widget = self
 
-        def _on_loaded(path: str) -> None:
+        def _fetch() -> str | None:
+            try:
+                return controller.get_version_thumbnail_path(*source)
+            except Exception:
+                log.debug("Failed to fetch thumbnail %r", key, exc_info=True)
+                return None
+
+        def _on_loaded(path: str | None) -> None:
             if path and shiboken.isValid(widget):
                 on_loaded(path)
 
         get_task_queue().enqueue(
             AsyncTask(
                 name=f"activity_widget_thumbnail_{key}",
-                function=lambda: get_version_thumbnail_path(key),
+                function=_fetch,
                 callback=_on_loaded,
                 priority=5,
                 cancellable=True,
@@ -123,19 +330,23 @@ class ActivityWidget(AYActivityStream):
             return
 
         self.set_message("Loading activity…")
-        model = self._activities_model
+        controller = self._controller
         project_name = self._project_name
-        entity_ids = self._entity_ids
+        entity_ids = list(self._entity_ids)
         widget = self
 
-        def _fetch() -> ActivityFeed | None:
+        def _fetch() -> _ActivityFeed | None:
             try:
-                return model.get_activity_feed(project_name, entity_ids)
+                return _ActivityFeed(
+                    controller.get_activity_items(project_name, entity_ids),
+                    controller.get_project_status_items(project_name),
+                    controller.get_user_items(project_name),
+                )
             except Exception:
                 log.warning("Failed to fetch activities", exc_info=True)
                 return None
 
-        def _on_loaded(feed: ActivityFeed | None) -> None:
+        def _on_loaded(feed: _ActivityFeed | None) -> None:
             if not shiboken.isValid(widget) or widget._request_key != key:
                 return
             if feed is None:
@@ -143,9 +354,7 @@ class ActivityWidget(AYActivityStream):
                 widget._loaded_key = None
                 widget.set_message("Could not load activity")
                 return
-            widget.set_status_definitions(feed.statuses)
-            widget.set_user_list(feed.users)
-            widget.set_activities(feed.activities)
+            widget._set_feed(project_name, feed)
 
         task_queue.enqueue(
             AsyncTask(
@@ -157,3 +366,36 @@ class ActivityWidget(AYActivityStream):
                 cancellable=True,
             )
         )
+
+    def _set_feed(self, project_name: str, feed: _ActivityFeed) -> None:
+        """Show a fetched feed."""
+        users = _create_users(feed.user_items)
+        full_names_by_username = {user.name: user.full_name for user in users}
+        thumbnail_sources = {}
+        activities = []
+        for item in feed.activity_items:
+            activity = _create_activity(item, full_names_by_username)
+            if activity is None:
+                continue
+            if (
+                isinstance(activity, VersionPublishModel)
+                and item.version_id
+                and item.thumbnail_id
+            ):
+                # The Browser tool stores version thumbnails in the image
+                #   cache with this key, they are shown without asking
+                #   the controller
+                key = f"{project_name}/{item.version_id}/{item.thumbnail_id}"
+                thumbnail_sources[key] = (
+                    project_name, item.version_id, item.thumbnail_id
+                )
+                activity.thumbnail_key = key
+            activities.append(activity)
+
+        self._thumbnail_sources = thumbnail_sources
+        # Activity widgets are created with the statuses and users
+        self.set_status_definitions(
+            _create_status_definitions(feed.status_items)
+        )
+        self.set_user_list(users)
+        self.set_activities(activities)

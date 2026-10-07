@@ -61,7 +61,7 @@ class SidePanelWidget(AYContainer):
         )
         # Darker than the panel so comment cards stand out from it
         activity_widget = ActivityWidget(
-            variant=AYContainer.Variants.Low, layout_margin=6
+            controller, variant=AYContainer.Variants.Low, layout_margin=6
         )
         activity_page.add_widget(activity_context_label)
         activity_page.add_widget(activity_widget, stretch=1)

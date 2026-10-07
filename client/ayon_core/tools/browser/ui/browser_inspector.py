@@ -122,7 +122,9 @@ class ReviewInspector(AYContainer):
             layout_spacing=10,
         )
         details_page._layout.setAlignment(QtCore.Qt.AlignTop)
-        self._activity = ActivityWidget(avatar_cache=self._avatar_cache)
+        self._activity = ActivityWidget(
+            self._controller, avatar_cache=self._avatar_cache
+        )
         self._pages = QtWidgets.QStackedWidget()
         self._pages.addWidget(details_page)
         self._pages.addWidget(self._activity)
