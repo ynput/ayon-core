@@ -668,14 +668,12 @@ class BrowserSlicer(AYContainer):
     ) -> None:
         # Read the canonical full selection rather than the delta
         # arguments, which are unreliable under ExtendedSelection.
-        # A list folder stands for all the lists below it.
         ids: list[str] = []
         for idx in self._lists_view.selectionModel().selectedRows():
             data = idx.data(QtCore.Qt.ItemDataRole.UserRole)
-            if not data:
-                continue
-            for entity_id in data.get("listIds") or [data.get("id")]:
-                if entity_id and entity_id not in ids:
+            if data:
+                entity_id = data.get("id", "")
+                if entity_id:
                     ids.append(entity_id)
 
         log.debug("Selected: %s, Deselected: %s", selected, deselected)

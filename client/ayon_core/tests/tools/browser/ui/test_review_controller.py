@@ -756,7 +756,7 @@ def test_fetch_entity_lists_nests_lists_in_their_folders():
     assert folder.icon_color == "#ff0000"
     assert folder.icon_fill
     assert folder.has_children
-    assert sorted(folder.data["listIds"]) == ["review", "shots"]
+    assert not folder.selectable
     assert [
         (node.id, node.icon) for node in tree["folder-f1"]
     ] == [
@@ -795,7 +795,6 @@ def test_reviews_only_hold_review_sessions_in_their_folders():
 
     # The folder holding only a generic list is left out.
     assert [node.id for node in tree[None]] == ["folder-f1", "c"]
-    assert tree[None][0].data["listIds"] == ["a"]
     assert [node.id for node in tree["folder-f1"]] == ["a"]
 
 

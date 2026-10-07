@@ -3330,8 +3330,8 @@ class BrowserWidgetController(QtCore.QObject):
         before the lists, which are sorted newest first with the
         archived ones last.
 
-        Folder nodes use a prefixed id and carry the ids of all lists
-        below them as ``listIds``, selecting a folder selects those.
+        Folder nodes use a prefixed id and can't be selected, they only
+        group the lists.
 
         Returns:
             Mapping of parent node id (``None`` for root) to its
@@ -3351,7 +3351,7 @@ class BrowserWidgetController(QtCore.QObject):
             return None
 
         lists_by_parent: dict[str | None, list[dict[str, Any]]] = {}
-        list_ids_by_folder: dict[str, list[str]] = {}
+        used_folder_ids: set[str] = set()
         reviews_only = (
             self._current_category == BrowserSlicerCategory.REVIEWS.value
         )
@@ -3365,19 +3365,17 @@ class BrowserWidgetController(QtCore.QObject):
             lists_by_parent.setdefault(
                 parent_node_id(folder_id), []
             ).append(entity_list)
-            # Register the list on its folder and all folders above it
-            seen: set[str] = set()
-            while folder_id in folders_by_id and folder_id not in seen:
-                seen.add(folder_id)
-                list_ids_by_folder.setdefault(folder_id, []).append(
-                    entity_list["id"]
-                )
+            # Mark the folder of the list and all folders above it as used
+            while (
+                folder_id in folders_by_id
+                and folder_id not in used_folder_ids
+            ):
+                used_folder_ids.add(folder_id)
                 folder_id = folders_by_id[folder_id].get("parentId")
 
         output: dict[str | None, list[TreeNode]] = {}
         for folder in self._entity_list_folders_cache:
-            list_ids = list_ids_by_folder.get(folder["id"])
-            if not list_ids:
+            if folder["id"] not in used_folder_ids:
                 continue
             data = folder.get("data") or {}
             node = TreeNode(
@@ -3386,7 +3384,7 @@ class BrowserWidgetController(QtCore.QObject):
                 has_children=True,
                 icon=data.get("icon") or _ENTITY_LIST_FOLDER_ICON,
                 icon_fill=True,
-                data={"listIds": list_ids},
+                selectable=False,
             )
             if data.get("color"):
                 node.icon_color = data["color"]
