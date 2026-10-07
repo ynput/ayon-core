@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 import collections
 
 import ayon_api
@@ -213,8 +214,12 @@ class ThumbnailsCache:
 
         project_dir = self.make_sure_project_dir_exists(project_name)
         thumbnail_path = os.path.join(project_dir, thumbnail_id + ext)
-        with open(thumbnail_path, "wb") as stream:
+        # Write to a temp file first so other threads and processes never
+        #   find a partially written thumbnail
+        tmp_path = f"{thumbnail_path}.{uuid.uuid4().hex}.tmp"
+        with open(tmp_path, "wb") as stream:
             stream.write(content)
+        os.replace(tmp_path, thumbnail_path)
 
         current_time = time.time()
         os.utime(thumbnail_path, (current_time, current_time))
@@ -276,3 +281,49 @@ def get_thumbnail_path(
             result.content_type
         )
     return None
+
+
+def get_entity_thumbnail_path(
+    project_name: str,
+    entity_type: str,
+    entity_id: str,
+):
+    """Get path to thumbnail image the server resolves for an entity.
+
+    Unlike 'get_thumbnail_path' the entity does not have to have its own
+        thumbnail. Server may use a thumbnail of a related entity instead,
+        e.g. thumbnail of a version for a task.
+
+    Notes:
+        The thumbnail is always requested from the server, because that is
+            the only way to find out which thumbnail is used. Should be used
+            only for entities without own thumbnail id.
+
+    Args:
+        project_name (str): Project where the entity belongs to.
+        entity_type (str): Entity type "folder", "task", "version"
+            and "workfile".
+        entity_id (str): Entity id.
+
+    Returns:
+        Union[str, None]: Path to thumbnail image or None if the server
+            does not have a thumbnail for the entity.
+
+    """
+    con = ayon_api.get_server_api_connection()
+    result = con.get_thumbnail(project_name, entity_type, entity_id)
+    if result is None or not result.is_valid:
+        return None
+
+    filepath = _CacheItems.thumbnails_cache.get_thumbnail_filepath(
+        project_name, result.thumbnail_id
+    )
+    if filepath is not None:
+        return filepath
+
+    return _CacheItems.thumbnails_cache.store_thumbnail(
+        project_name,
+        result.thumbnail_id,
+        result.content,
+        result.content_type
+    )
