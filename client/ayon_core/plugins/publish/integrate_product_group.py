@@ -11,7 +11,6 @@ import pyblish.api
 
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib import (
-    prepare_template_data,
     StringTemplate,
     TemplateUnsolved
 )
@@ -71,7 +70,7 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         if "{task[" not in template.lower():
             task = task.get("name")
 
-        fill_pairs = prepare_template_data({
+        fill_pairs = {
             "task": task,
             "host": instance.context.data["hostName"],
             "product": {
@@ -80,7 +79,7 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
                 "basetype": product_base_type,
             },
             "renderlayer": instance.data.get("renderlayer")
-        })
+        }
 
         filled_template = None
         try:
