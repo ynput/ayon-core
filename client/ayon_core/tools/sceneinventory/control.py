@@ -9,9 +9,11 @@ from ayon_core.pipeline import (
     get_current_context,
 )
 from ayon_core.tools.common_models import (
+    ActivitiesModel,
     HierarchyModel,
     ProjectsModel,
     ProductTypeIconMapping,
+    UsersModel,
 )
 
 from .models import (
@@ -41,6 +43,8 @@ class SceneInventoryController:
         self._containers_model = ContainersModel(self)
         self._sitesync_model = SiteSyncModel(self)
         self._version_history_model = VersionHistoryModel(self)
+        self._activities_model = ActivitiesModel()
+        self._users_model = UsersModel(self)
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
         self._projects_model = ProjectsModel(self)
@@ -184,6 +188,35 @@ class SceneInventoryController:
         return self._version_history_model.get_thumbnail_path(
             project_name, version_id, thumbnail_id
         )
+
+    # Activity methods
+    def get_activity_items(self, project_name, entity_ids, limit=50):
+        """Latest activities of entities, e.g. of a version.
+
+        Args:
+            project_name (str): Project name.
+            entity_ids (Union[list[str], set[str]]): Ids of entities.
+            limit (int): Maximum number of activities.
+
+        Returns:
+            list[ActivityItem]: Activities from the newest to the oldest.
+
+        """
+        return self._activities_model.get_activity_items(
+            project_name, entity_ids, limit
+        )
+
+    def get_user_items(self, project_name):
+        """Users of a project.
+
+        Args:
+            project_name (Optional[str]): Project name.
+
+        Returns:
+            list[UserItem]: User items.
+
+        """
+        return self._users_model.get_user_items(project_name)
 
     # Site Sync methods
     def is_sitesync_enabled(self):

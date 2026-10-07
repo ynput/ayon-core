@@ -11,7 +11,6 @@ from typing import Any, Callable, Iterable
 import pytest
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core.tools.common_models.activities import ActivityFeed
 from ayon_core.tools.common_models.projects import StatusItem
 from ayon_core.tools.sceneinventory.models import (
     VersionHistoryItem,
@@ -97,6 +96,8 @@ class FakeController:
     """
 
     def __init__(self) -> None:
+        # What activity was asked for
+        self.activity_calls: list[tuple[str, tuple[str, ...]]] = []
         self.container_items: list[ContainerItem] = []
         self.repre_infos: dict[str, RepresentationInfo] = {}
         self.version_entities: dict[str, list[dict[str, Any]]] = {}
@@ -255,18 +256,14 @@ class FakeController:
         self.thumbnail_calls.append((project_name, version_id, thumbnail_id))
         return self.thumbnail_paths.get(thumbnail_id, "")
 
+    def get_activity_items(
+        self, project_name: str, entity_ids: list[str], limit: int = 50
+    ) -> list:
+        self.activity_calls.append((project_name, tuple(entity_ids)))
+        return []
 
-class FakeActivitiesModel:
-    """Activities model recording what was asked for."""
-
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, tuple[str, ...]]] = []
-
-    def get_activity_feed(
-        self, project_name: str, entity_ids: Iterable[str]
-    ) -> ActivityFeed:
-        self.calls.append((project_name, tuple(entity_ids)))
-        return ActivityFeed()
+    def get_user_items(self, project_name: str) -> list:
+        return []
 
 
 @pytest.fixture
@@ -421,10 +418,7 @@ def test_contexts_merge_containers_of_a_product(controller):
 
 
 def test_widget_lists_versions_and_marks_loaded_and_latest(app, controller):
-    activities_model = FakeActivitiesModel()
-    widget = VersionHistoryWidget(
-        controller, activities_model=activities_model
-    )
+    widget = VersionHistoryWidget(controller)
     widget.resize(900, 240)
     widget.show()
     assert widget._message_label.text() == NO_SELECTION_TEXT
@@ -462,22 +456,20 @@ def test_widget_lists_versions_and_marks_loaded_and_latest(app, controller):
     # Activity of the loaded version is shown by default
     loaded_id = controller.version_ids[("modelMain", 3)]
     assert widget.get_selected_version_id() == loaded_id
-    _wait_for(app, lambda: bool(activities_model.calls))
-    assert activities_model.calls == [(PROJECT_NAME, (loaded_id,))]
+    _wait_for(app, lambda: bool(controller.activity_calls))
+    assert controller.activity_calls == [(PROJECT_NAME, (loaded_id,))]
 
     # ... and follows the version selected in the list
     widget._versions_view.setCurrentIndex(model.index(0, 0))
     latest_id = model.index(0, widget.version_col).data(VERSION_ID_ROLE)
     assert latest_id == controller.version_ids[("modelMain", 5)]
-    _wait_for(app, lambda: len(activities_model.calls) == 2)
-    assert activities_model.calls[-1] == (PROJECT_NAME, (latest_id,))
+    _wait_for(app, lambda: len(controller.activity_calls) == 2)
+    assert controller.activity_calls[-1] == (PROJECT_NAME, (latest_id,))
     widget.close()
 
 
 def test_widget_needs_a_single_product(app, controller):
-    widget = VersionHistoryWidget(
-        controller, activities_model=FakeActivitiesModel()
-    )
+    widget = VersionHistoryWidget(controller)
     widget.show()
 
     widget.set_selected_item_ids(
@@ -497,9 +489,7 @@ def test_widget_needs_a_single_product(app, controller):
 
 
 def test_widget_remarks_loaded_version_without_fetching(app, controller):
-    widget = VersionHistoryWidget(
-        controller, activities_model=FakeActivitiesModel()
-    )
+    widget = VersionHistoryWidget(controller)
     widget.show()
     widget.set_selected_item_ids(controller.item_ids("modelMain"))
     _wait_for(app, lambda: widget._versions_model.rowCount() > 0)
@@ -520,9 +510,7 @@ def test_widget_remarks_loaded_version_without_fetching(app, controller):
 
 
 def test_widget_status_author_and_date_cells(app, controller):
-    widget = VersionHistoryWidget(
-        controller, activities_model=FakeActivitiesModel()
-    )
+    widget = VersionHistoryWidget(controller)
     widget.resize(900, 240)
     widget.show()
     widget.set_selected_item_ids(controller.item_ids("modelMain"))
@@ -583,9 +571,7 @@ def test_widget_loads_thumbnails_of_versions(app, controller, tmp_path):
     controller.thumbnail_paths = {
         f"thumbnail{version}": str(image_path) for version in (2, 3, 4)
     }
-    widget = VersionHistoryWidget(
-        controller, activities_model=FakeActivitiesModel()
-    )
+    widget = VersionHistoryWidget(controller)
     widget.show()
     widget.set_selected_item_ids(controller.item_ids("modelMain"))
     model = widget._versions_model
@@ -658,9 +644,7 @@ def test_model_downloads_thumbnail_to_image_cache(
 
 
 def test_widget_fetches_nothing_while_hidden(app, controller):
-    widget = VersionHistoryWidget(
-        controller, activities_model=FakeActivitiesModel()
-    )
+    widget = VersionHistoryWidget(controller)
 
     widget.set_selected_item_ids(controller.item_ids("modelMain"))
     app.processEvents()
@@ -720,3 +704,33 @@ def test_window_history_is_hidden_by_default_and_keeps_width(
     assert not history_widget.isVisible()
     assert window.size() == size
     window.close()
+
+
+def test_controller_provides_the_activity_of_versions(monkeypatch):
+    from ayon_core.tools.common_models import ActivitiesModel, UsersModel
+    from ayon_core.tools.sceneinventory.control import (
+        SceneInventoryController,
+    )
+
+    calls = []
+    monkeypatch.setattr(
+        ActivitiesModel,
+        "get_activity_items",
+        lambda self, *args: calls.append(("activities", args)) or [],
+    )
+    monkeypatch.setattr(
+        UsersModel,
+        "get_user_items",
+        lambda self, *args: calls.append(("users", args)) or [],
+    )
+    # A host is not needed for what the activity widget asks for
+    controller = SceneInventoryController(host=object())
+
+    assert controller.get_activity_items(PROJECT_NAME, ["version_id"]) == []
+    assert controller.get_user_items(PROJECT_NAME) == []
+    assert calls == [
+        ("activities", (PROJECT_NAME, ["version_id"], 50)),
+        ("users", (PROJECT_NAME,)),
+    ]
+    for name in ("get_project_status_items", "get_version_thumbnail_path"):
+        assert callable(getattr(controller, name))

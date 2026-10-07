@@ -18,7 +18,6 @@ from ayon_core.ui.components.user_avatars import UserAvatarCache
 from .models import VersionHistoryContext, VersionHistoryItem
 
 if TYPE_CHECKING:
-    from ayon_core.tools.common_models.activities import ActivitiesModel
 
     from .control import SceneInventoryController
 
@@ -328,8 +327,6 @@ class VersionHistoryWidget(QtWidgets.QWidget):
 
     Args:
         controller: Scene inventory controller.
-        activities_model: Model used to fetch activity of a version,
-            created if not passed.
         parent: Parent widget.
     """
 
@@ -344,7 +341,6 @@ class VersionHistoryWidget(QtWidgets.QWidget):
     def __init__(
         self,
         controller: SceneInventoryController,
-        activities_model: ActivitiesModel | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -412,7 +408,7 @@ class VersionHistoryWidget(QtWidgets.QWidget):
 
         # Avatars are shared with the author column of the version list
         activity_widget = ActivityWidget(
-            activities_model=activities_model, avatar_cache=avatar_cache
+            controller, avatar_cache=avatar_cache
         )
         activity_widget.setMinimumWidth(200)
 
