@@ -446,3 +446,168 @@ def test_stream_filters_checklists(qtbot) -> None:
         for activity, widget in stream._widgets
         if widget.isVisible()
     ] == ["checklist"]
+
+
+def test_stick_to_bottom_follows_the_end_of_the_feed(qtbot) -> None:
+    stream = AYActivityStream(stick_to_bottom=True)
+    qtbot.addWidget(stream)
+    stream.resize(300, 200)
+    stream.show()
+    stream.set_activities(_comments(30))
+    scroll_bar = stream._scroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: scroll_bar.maximum() > 0)
+    # A new feed starts at its end, where the newest activity is
+    assert scroll_bar.value() == scroll_bar.maximum()
+
+    # A new activity at the end is followed
+    maximum = scroll_bar.maximum()
+    stream.set_activities(_comments(31))
+    qtbot.waitUntil(lambda: scroll_bar.maximum() > maximum)
+    assert scroll_bar.value() == scroll_bar.maximum()
+
+    # A reader who scrolled away stays at the row they look at
+    scroll_bar.setValue(scroll_bar.maximum() // 2)
+    anchor, offset = stream._get_scroll_anchor()
+    stream.set_activities(_comments(32))
+    qtbot.waitUntil(lambda: scroll_bar.maximum() > maximum)
+    assert anchor.geometry().top() - scroll_bar.value() == offset
+    assert scroll_bar.value() < scroll_bar.maximum()
+
+    # Until asked to go to the end, e.g. after submitting a comment
+    stream.scroll_to_bottom()
+    assert scroll_bar.value() == scroll_bar.maximum()
+
+    # A different feed starts at its end again
+    scroll_bar.setValue(0)
+    stream.set_activities(_comments(30, first=100))
+    assert scroll_bar.value() == scroll_bar.maximum() > 0
+
+
+def test_stream_reports_the_activities_in_view(qtbot, monkeypatch) -> None:
+    monkeypatch.setattr(AYActivityStream, "viewport_changed_delay", 0)
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.resize(300, 200)
+    # Nothing is in view while the stream is not shown
+    stream.set_activities(_comments(30))
+    assert stream.get_visible_activities() == []
+
+    with qtbot.waitSignal(stream.viewport_changed, timeout=1000):
+        stream.show()
+    scroll_bar = stream._scroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: scroll_bar.maximum() > 0)
+    visible = [a.activity_id for a in stream.get_visible_activities()]
+    assert visible[0] == "comment0"
+    assert 0 < len(visible) < 30
+
+    with qtbot.waitSignal(stream.viewport_changed, timeout=1000):
+        scroll_bar.setValue(scroll_bar.maximum())
+    visible = [a.activity_id for a in stream.get_visible_activities()]
+    assert visible[-1] == "comment29"
+    assert "comment0" not in visible
+
+    # Rows hidden by the filter are not in view
+    with qtbot.waitSignal(stream.viewport_changed, timeout=1000):
+        stream._on_filter_clicked(2)
+    assert stream.get_visible_activities() == []
+
+
+def test_lazy_attachments_are_refreshed_by_file_id(
+    qtbot, tmp_path, monkeypatch
+) -> None:
+    from qtpy import QtGui
+
+    from ayon_core.ui.components import comment as comment_module
+    from ayon_core.ui.data_models import FileModel
+    from ayon_core.ui.image_cache import make_activity_cache_key
+
+    image_path = tmp_path / "attachment.png"
+    pixmap = QtGui.QPixmap(8, 8)
+    pixmap.fill(QtGui.QColor("red"))
+    pixmap.save(str(image_path))
+
+    class _ImageCache:
+        """Image cache with the files downloaded by the owner."""
+
+        paths: dict = {}
+
+        @classmethod
+        def get_instance(cls):
+            return cls()
+
+        def get_path(self, key: str):
+            return self.paths.get(key)
+
+        def get(self, key: str, file_closure) -> str:
+            return str(file_closure())
+
+    monkeypatch.setattr(comment_module, "ImageCache", _ImageCache)
+
+    def _comment() -> CommentModel:
+        return CommentModel(
+            activity_id="comment",
+            comment="See the attachment",
+            comment_date="2026-10-03T10:00:00+00:00",
+            files=[FileModel(id="file1", mime="image/png")],
+        )
+
+    # Attachments that are not downloaded take no space by default
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.show()
+    stream.set_activities([_comment()])
+    assert not stream._widgets[0][1].images_container.isVisible()
+
+    stream = AYActivityStream(lazy_attachments=True)
+    qtbot.addWidget(stream)
+    stream.show()
+    stream.set_activities([_comment(), _comments(1)[0]])
+    row = stream._widgets[0][1]
+    attachment = row._image_widgets["file1"]
+    # A placeholder keeps the height of the row
+    assert row.images_container.isVisible()
+    assert not attachment._thumb_path
+    assert not stream._widgets[1][1].images_container.isVisible()
+
+    # The owner downloaded the file and reports it
+    for is_thumbnail in (True, False):
+        key = make_activity_cache_key("demo", "file1", is_thumbnail)
+        _ImageCache.paths[key] = str(image_path)
+    assert stream.refresh_attachment("file1", "demo")
+    assert attachment._thumb_path == str(image_path)
+    assert attachment.image_path == str(image_path)
+    assert not stream.refresh_attachment("unknown", "demo")
+
+
+def test_page_is_shown_instead_of_the_feed(qtbot) -> None:
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.show()
+    page = QtWidgets.QLabel("Details of the version")
+    button = stream.add_page("Details", page)
+    assert not page.isVisible()
+
+    # A page is available without activities, and so is the way back
+    button.click()
+    assert page.isVisible()
+    assert not stream._message_label.isVisible()
+    assert stream._filter_buttons[0].isEnabled()
+    stream._filter_buttons[0].click()
+    assert not page.isVisible()
+    assert stream._message_label.isVisible()
+    assert not button.isChecked()
+
+    stream.set_activities(_activities())
+    button.click()
+    assert page.isVisible()
+    assert not stream._scroll.isVisible()
+    assert not stream._count_label.isVisible()
+    # A refresh of the feed keeps the page
+    stream.set_activities(_activities()[:2])
+    assert page.isVisible()
+    assert not stream._scroll.isVisible()
+
+    stream._filter_buttons[1].click()
+    assert not page.isVisible()
+    assert stream._scroll.isVisible()
+    assert stream._count_label.text() == "1 of 2"
