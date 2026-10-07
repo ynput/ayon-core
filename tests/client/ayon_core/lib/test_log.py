@@ -1355,3 +1355,46 @@ def test_vector_disabled_in_forked_child(log_module, monkeypatch):
         stub.close()
 
     assert os.waitstatus_to_exitcode(status) == 0
+
+
+class _BrokenStream:
+    """Stream which fails on every write, like some host streams do."""
+
+    def write(self, _text):
+        raise SystemError("<built-in function write> returned a result")
+
+    def flush(self):
+        pass
+
+
+def test_console_does_not_raise_on_broken_stream(log_module, monkeypatch):
+    """A failing stream must not break the code that is logging."""
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.broken_stream")
+
+    stream = _BrokenStream()
+    # The host replaces the standard streams too, so neither printing
+    # nor the 'handleError' report to 'sys.stderr' can succeed.
+    monkeypatch.setattr(sys, "stdout", stream)
+    monkeypatch.setattr(sys, "stderr", stream)
+
+    log.info("message %s", "value")
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        log.exception("failed")
+
+
+def test_console_propagates_keyboard_interrupt(log_module, monkeypatch):
+    """Interrupts raised while writing are not swallowed."""
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.interrupted")
+
+    class _InterruptedStream(_BrokenStream):
+        def write(self, _text):
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(sys, "stderr", _InterruptedStream())
+
+    with pytest.raises(KeyboardInterrupt):
+        log.info("message")

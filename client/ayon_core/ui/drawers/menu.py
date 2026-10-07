@@ -417,18 +417,27 @@ class MenuDrawer:
         right_margin = layout.pad_h + (
             layout.arrow_w + layout.pad_h if layout.arrow_w else 0
         )
+        # 'rect.right()' is the last pixel inside the rect, one short of
+        # its right edge - without the '+ 1' the label is a pixel narrower
+        # than the width measured for it and loses its last character.
         label_rect = QRect(
             x,
             rect.top(),
             rect.right()
+            + 1
             - x
             - right_margin
             - (layout.sc_w + layout.pad_h if layout.sc_w else 0),
             rect.height(),
         )
+        # Not clipped: with fractional font metrics (display scaling) the
+        # text can still be a pixel wider than measured, the padding next
+        # to it has room for that.
         painter.drawText(
             label_rect,
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            Qt.AlignmentFlag.AlignVCenter
+            | Qt.AlignmentFlag.AlignLeft
+            | Qt.TextFlag.TextDontClip,
             layout.label_text,
         )
 

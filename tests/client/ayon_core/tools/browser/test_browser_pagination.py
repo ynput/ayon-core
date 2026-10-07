@@ -13,6 +13,7 @@ from ayon_core.tools.browser.server_capabilities import (
 from ayon_core.tools.browser.ui import browser_queries
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
+    _ListEntityIds,
 )
 from ayon_core.tools.browser.ui.browser_group_by import GROUP_BY_NONE_KEY
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
@@ -97,6 +98,9 @@ class ControllerStub:
     _fetch_versions_page_base = (
         BrowserWidgetController._fetch_versions_page_base
     )
+    _is_entity_list_category = (
+        BrowserWidgetController._is_entity_list_category
+    )
 
     def __init__(self, server: FakeVersionsServer) -> None:
         self.log = logging.getLogger(__name__)
@@ -106,7 +110,7 @@ class ControllerStub:
         self._selected_folder_ids = ["folder_a", "folder_b"]
         self._include_folder_children = False
         self._tree_mode = False
-        self._review_session_version_ids = None
+        self._list_entity_ids = _ListEntityIds()
         self._page_cursors: dict[tuple[Any, ...], str] = {}
         self._pagination_generation = 0
 

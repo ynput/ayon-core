@@ -719,7 +719,14 @@ class _StderrHandler(logging.StreamHandler):
         except RecursionError:
             raise
         except Exception:
-            self.handleError(record)
+            # Logging must never break the caller. Some hosts replace
+            # 'sys.stdout' and 'sys.stderr' with streams that raise when
+            # written to from a non-main thread, in which case reporting
+            # the error through 'handleError' fails as well.
+            try:
+                self.handleError(record)
+            except Exception:
+                pass
 
     def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
         return (

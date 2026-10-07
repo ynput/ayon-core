@@ -17,21 +17,19 @@ from ayon_core.ui.components.table_model import BatchFetchRequest
 
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
+    _GroupCounts,
 )
 from ayon_core.tools.browser.control import BrowserController
 
 
 @pytest.fixture(autouse=True)
-def _mock_sitesync_model(monkeypatch):
+def _mock_sitesync_addon(monkeypatch):
+    # The Site Sync column provider looks up the addon on creation.
     addon_manager = Mock()
-    addon_manager.get_enabled_addons.return_value = []
+    addon_manager.get.return_value = None
     monkeypatch.setattr(
-        "ayon_core.tools.browser.control.AddonsManager",
+        "ayon_core.tools.browser.sitesync_columns.AddonsManager",
         lambda: addon_manager,
-    )
-    monkeypatch.setattr(
-        "ayon_core.tools.browser.control.SiteSyncModel",
-        lambda *args: Mock(),
     )
 
 
@@ -328,8 +326,6 @@ def test_fetch_versions_page_prepends_folders_and_tracks_cursors(
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["A", "B"]
     controller._include_folder_children = False
-    controller._folder_cursors = {"A": "stale", "B": "stale"}
-    controller._folder_has_more = {"A": True, "B": True}
 
     calls: list[tuple[str, str]] = []
 
@@ -387,8 +383,10 @@ def test_fetch_versions_page_prepends_folders_and_tracks_cursors(
         {"id": "folder:B", "has_children": True},
         {"id": "version:B"},
     ]
-    assert controller._folder_cursors == {"A": "cursor:A", "B": "cursor:B"}
-    assert controller._folder_has_more == {"A": True, "B": True}
+    assert controller._page_cursors == {
+        (*controller._page_key("A", None, False), 1): "cursor:A",
+        (*controller._page_key("B", None, False), 1): "cursor:B",
+    }
 
 
 def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
@@ -397,8 +395,9 @@ def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
     controller = BrowserWidgetController(BrowserController())
     controller._current_project = "test_project"
     controller._selected_folder_ids = ["A", "B"]
-    controller._folder_cursors = {"A": "cursor:A", "B": "cursor:B"}
-    controller._folder_has_more = {"A": True, "B": False}
+    # Only "A" has a second page to fetch.
+    page_key = controller._page_key("A", None, False)
+    controller._page_cursors = {(*page_key, 1): "cursor:A"}
 
     calls: list[tuple[str, str]] = []
 
@@ -444,8 +443,7 @@ def test_fetch_versions_page_batch_continuation_uses_each_parent_cursor(
     assert calls == [("A", "cursor:A")]
     assert result["A"] == [{"id": "version:A:page1"}]
     assert result["B"] == []
-    assert controller._folder_cursors["A"] == "cursor:A:next"
-    assert controller._folder_has_more["A"] is False
+    assert (*page_key, 2) not in controller._page_cursors
 
 
 def test_group_counts_use_filtered_distribution(monkeypatch):
@@ -489,7 +487,11 @@ def test_group_counts_use_filtered_distribution(monkeypatch):
         controller._group_by_options[GROUP_BY_TAGS_KEY]
     )
 
-    assert counts == {"Animation": 3, "Review": 2}
+    assert counts == _GroupCounts(
+        counts={"Animation": 3, "Review": 2},
+        total=3,
+        ungrouped=0,
+    )
     variables = connection.query_graphql.call_args.args[1]
     assert variables["folderIds"] == ["folder_A"]
     assert variables["targets"] == [{
@@ -535,7 +537,7 @@ def test_product_group_counts_normalize_uuid_values(monkeypatch):
         controller._group_by_options[GROUP_BY_PRODUCT_KEY]
     )
 
-    assert counts == {
+    assert counts.counts == {
         "6c035657168d11f1aa7460cf848a5b16": 1,
     }
 
@@ -556,7 +558,7 @@ def test_group_counts_control_empty_status_rows(monkeypatch):
     monkeypatch.setattr(
         controller,
         "_get_group_counts",
-        lambda _group: {"Done": 4},
+        lambda _group: _GroupCounts({"Done": 4}, total=4),
     )
     monkeypatch.setattr(
         controller,
@@ -598,7 +600,7 @@ def test_missing_filtered_counts_keep_product_groups_expandable(monkeypatch):
     monkeypatch.setattr(
         controller,
         "_fetch_product_group_headers",
-        lambda counts: [{
+        lambda counts, *_args: [{
             "counts": counts,
             "has_children": counts is None,
         }],
@@ -658,8 +660,8 @@ def test_attribute_grouping_only_exposes_scalar_types():
 
 def test_boolean_attribute_group_uses_scalar_equality():
     controller = BrowserWidgetController(BrowserController())
-    controller._version_attributes = {
-        "approved": {"type": "boolean"}
+    controller._attributes_by_scope = {
+        "version": {"approved": {"type": "boolean"}},
     }
 
     version_filter, product_filter = controller._build_version_filter(

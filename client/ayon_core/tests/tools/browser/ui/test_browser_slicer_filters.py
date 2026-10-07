@@ -336,6 +336,7 @@ def test_capture_view_extras_includes_my_tasks_filter():
             featured_version_order=["latest"],
             latest_per_folder=False,
             include_folder_children=False,
+            ungroup_empty_values=False,
         ),
         _card_view=SimpleNamespace(card_width=200),
         _display_type=SimpleNamespace(display_type="table"),
@@ -344,14 +345,36 @@ def test_capture_view_extras_includes_my_tasks_filter():
     extra = BrowserTable._capture_view_extras(table)
 
     assert extra["myTasksFilter"] is True
+    assert extra["ungroupEmptyValues"] is False
 
 
 def test_apply_view_extras_forwards_my_tasks_filter_to_controller():
     from ayon_core.tools.browser.ui._browser_table import BrowserTable
 
     controller = Mock()
-    table = SimpleNamespace(_controller=controller)
+    table = SimpleNamespace(
+        _controller=controller, _customize=Mock(), _model=Mock()
+    )
 
     BrowserTable._apply_view_extras(table, {"myTasksFilter": True})
 
     controller.set_my_tasks_filter.assert_called_once_with(True)
+
+
+def test_apply_view_extras_defaults_ungroup_empty_values():
+    """Views saved before the setting existed get the default."""
+    from ayon_core.tools.browser.ui._browser_table import BrowserTable
+
+    controller = Mock()
+    customize = Mock()
+    table = SimpleNamespace(
+        _controller=controller, _customize=customize, _model=Mock()
+    )
+
+    BrowserTable._apply_view_extras(table, {})
+    controller.set_ungroup_empty_values.assert_called_once_with(True)
+    customize.set_ungroup_empty_values.assert_called_once_with(True)
+
+    controller.reset_mock()
+    BrowserTable._apply_view_extras(table, {"ungroupEmptyValues": False})
+    controller.set_ungroup_empty_values.assert_called_once_with(False)
