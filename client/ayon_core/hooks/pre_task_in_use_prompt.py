@@ -56,7 +56,7 @@ class TaskInUsePrompt(PreLaunchHook):
 
         try:
             items = get_other_users_task_usage_items(
-                project_name, task_entity["id"], settings.stale_timeout_hours
+                project_name, task_entity["id"]
             )
         except Exception:
             self.log.warning(

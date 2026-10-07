@@ -183,14 +183,14 @@ class _SessionWidget(QtWidgets.QWidget):
         if opened_at is not None:
             labels.append(f"Opened {get_time_ago_label(opened_at, now)}")
 
-        # Session reports itself when a workfile is opened or saved,
-        #   but not more often than once per refresh interval
+        # Time of last activity is changed when a workfile is opened
+        #   or saved, heartbeats of the session do not change it
         updated_at = item.get_updated_at()
         if updated_at is not None and (
             opened_at is None
             or updated_at - opened_at >= MIN_SEEN_DIFFERENCE
         ):
-            labels.append(f"Last seen {get_time_ago_label(updated_at, now)}")
+            labels.append(f"Last active {get_time_ago_label(updated_at, now)}")
         return labels
 
 
