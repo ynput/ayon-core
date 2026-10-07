@@ -28,6 +28,7 @@ try:
         setup_asset_layer,
         add_ordered_sublayer,
         set_layer_defaults,
+        get_sdf_format_args,
         get_standard_default_prim_name
     )
 except ImportError:
@@ -859,6 +860,11 @@ class ExtractUSDLayerContribution(publish.Extractor):
                     layer=sdf_layer,
                     instance=contribution.instance
                 )
+                # The product may have been a sublayer contribution before
+                self.remove_previous_sublayer_contribution(
+                    layer=sdf_layer,
+                    instance=contribution.instance
+                )
 
                 # Add the contribution at the indicated order
                 self.add_reference_contribution(sdf_layer,
@@ -887,6 +893,12 @@ class ExtractUSDLayerContribution(publish.Extractor):
                 # republishing does not continuously add more versions of the
                 # same product
                 product_name = contribution.instance.data["productName"]
+
+                # The product may have been a variant contribution before
+                self.remove_previous_reference_contributions(
+                    layer=sdf_layer,
+                    instance=contribution.instance
+                )
                 add_ordered_sublayer(
                     layer=sdf_layer,
                     contribution_path=path,
@@ -921,6 +933,23 @@ class ExtractUSDLayerContribution(publish.Extractor):
             files=filename,
             staging_dir=staging_dir
         )
+
+    def remove_previous_sublayer_contribution(
+        self,
+        layer: "Sdf.Layer",
+        instance: pyblish.api.Instance
+    ):
+        """Remove existing sublayer contribution of the product in layer."""
+        product_name: str = instance.data["productName"]
+        remove_indices = [
+            index for index, path in enumerate(layer.subLayerPaths)
+            if get_sdf_format_args(path).get("layer_id") == product_name
+        ]
+        for index in reversed(remove_indices):
+            self.log.debug(
+                "Removing existing sublayer: %s", layer.subLayerPaths[index]
+            )
+            del layer.subLayerPaths[index]
 
     def remove_previous_reference_contributions(
         self,

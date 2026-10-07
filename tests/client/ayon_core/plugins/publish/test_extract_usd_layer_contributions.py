@@ -5,7 +5,10 @@ pytest.importorskip("pxr")
 
 from pxr import Sdf  # noqa: E402
 
-from ayon_core.pipeline.usdlib import variant_nested_prim_path  # noqa: E402
+from ayon_core.pipeline.usdlib import (  # noqa: E402
+    add_ordered_sublayer,
+    variant_nested_prim_path,
+)
 from ayon_core.plugins.publish.extract_usd_layer_contributions import (  # noqa: E402, E501
     ExtractUSDLayerContribution,
     VariantContribution,
@@ -40,6 +43,7 @@ def _contribute(plugin, layer, product_name, version, variant_name):
         variant_selections=[("model", variant_name)]
     )
     plugin.remove_previous_reference_contributions(layer, instance)
+    plugin.remove_previous_sublayer_contribution(layer, instance)
     plugin.add_reference_contribution(
         layer,
         variant_prim_path,
@@ -48,9 +52,28 @@ def _contribute(plugin, layer, product_name, version, variant_name):
     )
 
 
+def _contribute_sublayer(plugin, layer, product_name, version):
+    """Contribute product as sublayer like the plug-in does on process."""
+    instance = _Instance(product_name, version)
+    plugin.remove_previous_reference_contributions(layer, instance)
+    add_ordered_sublayer(
+        layer=layer,
+        contribution_path=f"/publish/{product_name}_v{version:03d}.usd",
+        layer_id=product_name,
+        order=0,
+        add_sdf_arguments_metadata=True
+    )
+
+
 def _references(layer, variant_name):
     prim_spec = layer.GetPrimAtPath(f"/hero{{model={variant_name}}}")
     return [ref.assetPath for ref in prim_spec.referenceList.prependedItems]
+
+
+def _sublayers(layer):
+    return [
+        Sdf.Layer.SplitIdentifier(path)[0] for path in layer.subLayerPaths
+    ]
 
 
 @pytest.fixture
@@ -85,3 +108,19 @@ def test_other_products_are_preserved(plugin, layer):
     assert _references(layer, "main") == ["/publish/modelProxy_v001.usd"]
     assert _references(layer, "damaged") == ["/publish/modelDamaged_v001.usd"]
     assert _references(layer, "default") == ["/publish/modelMain_v002.usd"]
+
+
+def test_sublayer_to_variant_removes_stale_sublayer(plugin, layer):
+    _contribute_sublayer(plugin, layer, "modelMain", 1)
+    _contribute_sublayer(plugin, layer, "modelProxy", 1)
+    _contribute(plugin, layer, "modelMain", 2, "main")
+    assert _sublayers(layer) == ["/publish/modelProxy_v001.usd"]
+    assert _references(layer, "main") == ["/publish/modelMain_v002.usd"]
+
+
+def test_variant_to_sublayer_removes_stale_reference(plugin, layer):
+    _contribute(plugin, layer, "modelMain", 1, "main")
+    _contribute(plugin, layer, "modelProxy", 1, "main")
+    _contribute_sublayer(plugin, layer, "modelMain", 2)
+    assert _sublayers(layer) == ["/publish/modelMain_v002.usd"]
+    assert _references(layer, "main") == ["/publish/modelProxy_v001.usd"]
