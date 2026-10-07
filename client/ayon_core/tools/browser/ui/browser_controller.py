@@ -14,7 +14,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import arrow
 import ayon_api
@@ -69,10 +69,15 @@ from ayon_core.tools.browser.ui.browser_queries import (
     server_supports_representation_filter,
     get_versions_query,
 )
+from ayon_core.tools.browser.ui._browser_thumbnails import _thumbnail_loader
 from ayon_core.tools.browser.ui.browser_types import (
     ENTITY_LIST_CATEGORIES,
     BrowserSlicerCategory,
 )
+
+if TYPE_CHECKING:
+    from ayon_core.tools.common_models import StatusItem, UserItem
+    from ayon_core.tools.common_models.activities import ActivityItem
 
 log = Logger.get_logger(__name__)
 
@@ -2180,6 +2185,79 @@ class BrowserWidgetController(QtCore.QObject):
             return
         self._reset_pagination()
         self.products_group_changed.emit()
+
+    def get_activity_items(
+        self,
+        project_name: str,
+        entity_ids: list[str] | set[str],
+        limit: int = 50,
+    ) -> list[ActivityItem]:
+        """Return the latest activities of entities, e.g. of versions.
+
+        Delegates to the main loader controller. Queries the server, so
+        it should be called from a background thread.
+
+        Args:
+            project_name: AYON project name.
+            entity_ids: Entity ids to get activities for.
+            limit: Maximum number of activities.
+
+        Returns:
+            Activities sorted from the newest to the oldest.
+        """
+        return self._loader_controller.get_activity_items(
+            project_name, entity_ids, limit
+        )
+
+    def get_project_status_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[StatusItem]:
+        """Return status items of a project, background thread safe.
+
+        Args:
+            project_name: AYON project name.
+            sender: Who requested the items.
+
+        Returns:
+            Project statuses.
+        """
+        return self._loader_controller.get_project_status_items(
+            project_name, sender
+        )
+
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
+        """Return user items of a project, background thread safe.
+
+        Args:
+            project_name: AYON project name.
+
+        Returns:
+            Users with access to the project.
+        """
+        return self._loader_controller.get_user_items(project_name)
+
+    def get_version_thumbnail_path(
+        self, project_name: str, version_id: str, thumbnail_id: str
+    ) -> str | None:
+        """Return the path to a thumbnail of a version.
+
+        The thumbnail is loaded the same way as for the table, cards and
+        the inspector, so it is downloaded only once for all of them.
+        Should be called from a background thread.
+
+        Args:
+            project_name: AYON project name.
+            version_id: Version id.
+            thumbnail_id: Thumbnail id of the version.
+
+        Returns:
+            Path to the image file, or ``None`` when it is not available.
+        """
+        if not project_name or not version_id or not thumbnail_id:
+            return None
+        return _thumbnail_loader(
+            f"{project_name}/{version_id}/{thumbnail_id}"
+        ) or None
 
     def _get_column_context(self) -> BrowserColumnContext:
         """Return an immutable state snapshot for column providers."""

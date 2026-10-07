@@ -16,6 +16,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     UsersModel,
 )
+from ayon_core.tools.common_models.activities import ActivitiesModel
 
 from .abstract import (
     AbstractBrowserController,
@@ -25,6 +26,8 @@ from .abstract import (
 from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import UserItem
+    from ayon_core.tools.common_models.activities import ActivityItem
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 NOT_SET = object()
@@ -54,6 +57,7 @@ class BrowserController(AbstractBrowserController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
+        self._activities_model = ActivitiesModel()
 
     @property
     def log(self):
@@ -142,6 +146,19 @@ class BrowserController(AbstractBrowserController):
             assignees.append(username)
         return self._hierarchy_model.get_entity_ids_for_assignees(
             project_name, assignees
+        )
+
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
+        return self._users_model.get_user_items(project_name)
+
+    def get_activity_items(
+        self,
+        project_name: str,
+        entity_ids: list[str] | set[str],
+        limit: int = 50,
+    ) -> list[ActivityItem]:
+        return self._activities_model.get_activity_items(
+            project_name, entity_ids, limit
         )
 
     def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
