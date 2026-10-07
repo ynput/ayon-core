@@ -143,8 +143,29 @@ class TestReferenceContributions:
                 ],
                 layer,
             )
-        assert sorted(_references(layer, "/root")) == [
-            "/other.usd", "/ref_v002.usd"
+        assert _references(layer, "/root") == ["/ref_v002.usd", "/other.usd"]
+
+    def test_higher_order_is_stronger(self, stacker, layer):
+        """Earlier prepended references are the stronger opinion."""
+        stacker.add_contributions_to_layer(
+            [
+                ReferenceContribution("/look.usd", "look", 200, "/root"),
+                ReferenceContribution("/model.usd", "model", 100, "/root"),
+                ReferenceContribution("/rig.usd", "rig", 300, "/root"),
+            ],
+            layer,
+        )
+        assert _references(layer, "/root") == [
+            "/rig.usd", "/look.usd", "/model.usd"
+        ]
+
+        # A later contribution is inserted at its order among existing ones
+        stacker.add_contributions_to_layer(
+            [ReferenceContribution("/groom.usd", "groom", 150, "/root")],
+            layer,
+        )
+        assert _references(layer, "/root") == [
+            "/rig.usd", "/look.usd", "/groom.usd", "/model.usd"
         ]
 
     def test_missing_target_prim_path(self, stacker, layer):

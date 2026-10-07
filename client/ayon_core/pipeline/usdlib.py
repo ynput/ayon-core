@@ -613,7 +613,7 @@ def add_ordered_reference(
         return prim_spec
 
     for index, existing_ref in enumerate(entries):
-        existing_order = existing_ref.customData.get("order")
+        existing_order = existing_ref.customData.get("ayon_order")
         if existing_order is not None and existing_order < order:
             log.debug(
                 f"Inserting new reference at {index}: {reference}"
