@@ -5,6 +5,7 @@ Centralises all business logic and data fetching for the reviews UI.
 
 from __future__ import annotations
 
+import collections
 import json
 import math
 import re
@@ -68,7 +69,10 @@ from ayon_core.tools.browser.ui.browser_queries import (
     server_supports_representation_filter,
     get_versions_query,
 )
-from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.browser.ui.browser_types import (
+    ENTITY_LIST_CATEGORIES,
+    BrowserSlicerCategory,
+)
 
 log = Logger.get_logger(__name__)
 
@@ -118,19 +122,6 @@ _QUERY_CONDITION_KEYS = (
     "representation_conditions",
 )
 
-
-#: Slicer categories whose tree holds entity lists instead of folders.
-_ENTITY_LIST_CATEGORIES = frozenset({
-    BrowserSlicerCategory.REVIEWS.value,
-    BrowserSlicerCategory.LISTS.value,
-})
-
-#: Slicer categories that can narrow the versions by folders, for which
-#: including the versions of their child folders applies.
-FOLDER_SLICER_CATEGORIES = frozenset({
-    BrowserSlicerCategory.HIERARCHY.value,
-    BrowserSlicerCategory.LISTS.value,
-})
 
 #: Icon of an entity list by the entity type it holds, matching the
 #: AYON frontend.
@@ -339,7 +330,7 @@ class BrowserWidgetController(QtCore.QObject):
         )
         self._selected_folder_ids: list[str] = []
         self._selected_task_ids: list[str] = []
-        self._list_entity_ids: _ListEntityIds | None = None
+        self._list_entity_ids = _ListEntityIds()
         self._version_attributes: dict[str, Any] = {}
         self._attributes_by_scope: dict[
             str, dict[str, dict[str, Any]]
@@ -707,7 +698,7 @@ class BrowserWidgetController(QtCore.QObject):
         self._current_category = category
         self._selected_folder_ids = []
         self._selected_task_ids = []
-        self._list_entity_ids = None
+        self._list_entity_ids = _ListEntityIds()
 
         if self._is_entity_list_category():
             # Entering Reviews or Lists is the first point the entity
@@ -803,12 +794,10 @@ class BrowserWidgetController(QtCore.QObject):
         previous_folder_ids = self._selected_folder_ids
         previous_list_entity_ids = self._list_entity_ids
         self._selected_folder_ids = list(ids)
-        self._list_entity_ids = None  # always clear first
+        self._list_entity_ids = _ListEntityIds()  # always clear first
 
         if self._is_entity_list_category() and ids:
-            self._list_entity_ids = (
-                self._get_entity_list_entity_ids(ids) or None
-            )
+            self._list_entity_ids = self._get_entity_list_entity_ids(ids)
 
         if (
             self._selected_folder_ids == previous_folder_ids
@@ -2627,16 +2616,6 @@ class BrowserWidgetController(QtCore.QObject):
         query_filters = self._get_query_filters()
         version_ids = query_filters["version_ids"]
         folder_ids: list[str] | None = self._selected_folder_ids or None
-        if self._is_entity_list_category():
-            list_entity_ids = self._list_entity_ids
-            if not list_entity_ids:
-                return _GroupCounts({}, 0)
-            if list_entity_ids.version_ids:
-                list_version_ids = set(list_entity_ids.version_ids)
-                if version_ids:
-                    list_version_ids.intersection_update(version_ids)
-                version_ids = list(list_version_ids)
-            folder_ids = list_entity_ids.folder_ids or None
 
         con = ayon_api.get_server_api_connection()
         if not con:
@@ -3318,7 +3297,7 @@ class BrowserWidgetController(QtCore.QObject):
 
     def _is_entity_list_category(self) -> bool:
         """Return whether the slicer tree currently holds entity lists."""
-        return self._current_category in _ENTITY_LIST_CATEGORIES
+        return self._current_category in ENTITY_LIST_CATEGORIES
 
     @staticmethod
     def _task_ids_filter(task_ids: list[str]) -> str:
@@ -3433,7 +3412,6 @@ class BrowserWidgetController(QtCore.QObject):
                 )
                 for entity_list in entity_lists
             )
-        output.setdefault(None, [])
         return output
 
     @staticmethod
@@ -3460,14 +3438,11 @@ class BrowserWidgetController(QtCore.QObject):
         if self._entity_lists_loaded:
             return
         project = self._current_project
-        con = ayon_api.get_server_api_connection()
-        fields = set(con.get_default_fields_for_type("entityList"))
-        fields.add("active")
+        fields = ayon_api.get_default_fields_for_type("entityList")
         try:
             entity_lists = list(
                 ayon_api.get_entity_lists(
-                    project_name=project,
-                    fields=fields | {"entityListFolderId"},
+                    project, fields={*fields, "entityListFolderId"}
                 )
             )
         except Exception:  # noqa: BLE001
@@ -3477,11 +3452,7 @@ class BrowserWidgetController(QtCore.QObject):
                 " fetching them without.",
                 exc_info=True,
             )
-            entity_lists = list(
-                ayon_api.get_entity_lists(
-                    project_name=project, fields=fields
-                )
-            )
+            entity_lists = list(ayon_api.get_entity_lists(project))
         self._entity_lists_cache = entity_lists
         self._entity_list_folders_cache = (
             self._get_entity_list_folders(project)
@@ -3529,38 +3500,23 @@ class BrowserWidgetController(QtCore.QObject):
         Returns:
             Ids of the listed entities by entity type.
         """
-        output = _ListEntityIds()
-        con = ayon_api.get_server_api_connection()
-        if not con:
-            return output
-        ids_by_entity_type: dict[str, set[str]] = {
-            "folder": set(),
-            "task": set(),
-            "product": set(),
-            "version": set(),
-        }
+        entity_ids: dict[str, set[str]] = collections.defaultdict(set)
         # Items of lists with a different entity type can't be fetched
         #   in one call
         for list_id in list_ids:
-            entity_list = next(
-                ayon_api.get_entity_lists(
-                    project_name=self._current_project,
-                    list_ids=[list_id],
-                    fields={"items"},
-                ),
-                None,
-            )
-            if entity_list is None:
-                continue
-            for item in entity_list.get("items", []):
-                entity_ids = ids_by_entity_type.get(item.get("entityType"))
-                if entity_ids is not None:
-                    entity_ids.add(item["entityId"])
-        output.folder_ids = sorted(ids_by_entity_type["folder"])
-        output.task_ids = sorted(ids_by_entity_type["task"])
-        output.product_ids = sorted(ids_by_entity_type["product"])
-        output.version_ids = sorted(ids_by_entity_type["version"])
-        return output
+            for entity_list in ayon_api.get_entity_lists(
+                self._current_project,
+                list_ids=[list_id],
+                fields={"items"},
+            ):
+                for item in entity_list.get("items", []):
+                    entity_ids[item["entityType"]].add(item["entityId"])
+        return _ListEntityIds(
+            folder_ids=sorted(entity_ids["folder"]),
+            task_ids=sorted(entity_ids["task"]),
+            product_ids=sorted(entity_ids["product"]),
+            version_ids=sorted(entity_ids["version"]),
+        )
 
     #: Seconds for which fetched project info is reused
     _PROJECT_INFO_LIFETIME = 60

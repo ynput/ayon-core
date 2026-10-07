@@ -34,7 +34,6 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.tools.browser.ui.browser_controller import (
-    FOLDER_SLICER_CATEGORIES,
     BrowserWidgetController,
 )
 from ayon_core.tools.browser.ui.browser_group_by import (
@@ -42,7 +41,10 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     GroupByOption,
     get_attribute_icon,
 )
-from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.browser.ui.browser_types import (
+    FOLDER_SLICER_CATEGORIES,
+    BrowserSlicerCategory,
+)
 from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 
 from ._browser_cell_delegates import (

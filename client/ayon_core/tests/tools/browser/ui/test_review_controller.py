@@ -819,11 +819,6 @@ def test_selected_lists_narrow_versions_by_their_entity_type(monkeypatch):
 
     monkeypatch.setattr(
         "ayon_core.tools.browser.ui.browser_controller.ayon_api"
-        ".get_server_api_connection",
-        lambda: Mock(),
-    )
-    monkeypatch.setattr(
-        "ayon_core.tools.browser.ui.browser_controller.ayon_api"
         ".get_entity_lists",
         fake_get_entity_lists,
     )
