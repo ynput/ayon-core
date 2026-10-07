@@ -253,6 +253,8 @@ class ActivityWidget(AYActivityStream):
         self._request_key = ""
         # Key of the context that is displayed or being fetched
         self._loaded_key: str | None = None
+        # Key of the context of the feed that is displayed
+        self._displayed_key: str | None = None
         # Project name, version id and thumbnail id by 'thumbnail_key' of
         #   displayed publishes
         self._thumbnail_sources: dict[str, tuple[str, str, str]] = {}
@@ -329,10 +331,15 @@ class ActivityWidget(AYActivityStream):
         # Only the latest context is relevant
         task_queue.clear_context_tasks(self._context_id)
         if not self._project_name or not self._entity_ids:
+            self._displayed_key = None
             self.set_message(self._no_context_text)
             return
 
-        self.set_message("Loading activity…")
+        # A refresh keeps the displayed feed until the new one arrives,
+        #   so its rows are reused and the scroll position is kept.
+        if key != self._displayed_key:
+            self._displayed_key = None
+            self.set_message("Loading activity…")
         controller = self._controller
         project_name = self._project_name
         entity_ids = list(self._entity_ids)
@@ -355,9 +362,11 @@ class ActivityWidget(AYActivityStream):
             if feed is None:
                 # Allow to retry by selecting the context again
                 widget._loaded_key = None
+                widget._displayed_key = None
                 widget.set_message("Could not load activity")
                 return
             widget._set_feed(project_name, feed)
+            widget._displayed_key = key
 
         task_queue.enqueue(
             AsyncTask(

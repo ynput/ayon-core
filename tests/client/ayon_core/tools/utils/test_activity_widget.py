@@ -396,6 +396,31 @@ def test_failed_fetch_shows_a_message_and_can_be_retried(
     assert widget.activity_count() == 3
 
 
+def test_refresh_keeps_the_feed_and_reuses_its_rows(
+    qtbot, task_queue, monkeypatch, project_name
+):
+    controller = FakeController()
+    widget = _create_widget(qtbot, controller)
+    widget.show()
+    widget.set_context(project_name, ["a"])
+    task_queue.run("activity_widget_feed")
+    rows = [row for _, row in widget._widgets]
+    assert len(rows) == 3
+
+    stream = StreamCalls(widget, monkeypatch)
+    widget.refresh()
+    # The feed stays displayed while it is fetched again
+    assert stream.get("set_message") == []
+    assert widget.activity_count() == 3
+    task_queue.run("activity_widget_feed")
+    assert [row for _, row in widget._widgets] == rows
+
+    # Another context shows the loading message
+    widget.set_context(project_name, ["b"])
+    assert stream.get("set_message")[-1].startswith("Loading")
+    assert widget.activity_count() == 0
+
+
 def test_result_of_a_previous_context_is_ignored(
     qtbot, task_queue, monkeypatch, project_name
 ):
