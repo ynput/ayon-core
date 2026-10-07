@@ -419,6 +419,135 @@ class TestNamedFormatSpecs:
         assert data == src_data
 
 
+class TestOptionalParts:
+    """Optional parts with named format specs and legacy keys."""
+
+    @staticmethod
+    def _get_data() -> dict:
+        data = _get_data()
+        data.pop("root")
+        data["nothing"] = None
+        data["task"]["short"] = None
+        return data
+
+    @pytest.mark.parametrize(
+        "template, expected, used_values",
+        [
+            # Missing key
+            ("{ext}<_{output:upper}>", "exr", {"ext": "exr"}),
+            # Available key
+            (
+                "{ext}<_{variant:upper}>",
+                "exr_MAIN",
+                {"ext": "exr", "variant": "main"},
+            ),
+            # Whole part is skipped if one of keys is missing
+            ("{ext}<_{variant:upper}_{output:lower}>", "exr", {"ext": "exr"}),
+            ("{ext}<_{output:lower}_{variant:upper}>", "exr", {"ext": "exr"}),
+            # Nested parts
+            (
+                "{ext}<_{variant:upper}<_{output:lower}>>",
+                "exr_MAIN",
+                {"ext": "exr", "variant": "main"},
+            ),
+            (
+                "{ext}<_{output:lower}<_{variant:upper}>>",
+                "exr",
+                {"ext": "exr"},
+            ),
+            (
+                "{ext}<_{variant:upper}<_{task[name]:pascal}<_{output}>>>",
+                "exr_MAIN_Animation",
+                {
+                    "ext": "exr",
+                    "variant": "main",
+                    "task": {"name": "animation"},
+                },
+            ),
+            # Value that cannot be formatted
+            ("<{nothing:upper}_>{ext}", "exr", {"ext": "exr"}),
+            ("<{task[short]:upper}_>{ext}", "exr", {"ext": "exr"}),
+            ("<{project:upper}_>{ext}", "exr", {"ext": "exr"}),
+            # List items
+            (
+                "<{tags[0]:upper}_><{tags[5]:upper}_>{ext}",
+                "FIRST_exr",
+                {"tags": ["first", "second"], "ext": "exr"},
+            ),
+            # Mixed with python format spec
+            (
+                "<v{version:0>3}_{variant:camel}>",
+                "v003_main",
+                {"version": 3, "variant": "main"},
+            ),
+            ("<v{version:0>3}_{output:camel}>", "", {}),
+        ],
+    )
+    def test_named_format_specs(
+        self, template: str, expected: str, used_values: dict
+    ):
+        result = StringTemplate(template).format_strict(self._get_data())
+        assert str(result) == expected
+        assert result.used_values == used_values
+        assert result.missing_keys == []
+        assert result.invalid_types == {}
+
+    @pytest.mark.parametrize(
+        "template, expected",
+        [
+            ("{ext}<_{Output}>", "exr"),
+            ("{ext}<_{OUTPUT}>", "exr"),
+            ("{ext}<_{Variant}>", "exr_Main"),
+            ("{ext}<_{VARIANT}>", "exr_MAIN"),
+            ("{ext}<_{VARIANT}_{Output}>", "exr"),
+            ("{ext}<_{Output}_{VARIANT}>", "exr"),
+            ("{ext}<_{Variant}<_{OUTPUT}>>", "exr_Main"),
+            ("{ext}<_{Output}<_{Variant}>>", "exr"),
+            (
+                "{ext}<_{Task[name]}<_{TASK[NAME]}<_{Output}>>>",
+                "exr_Animation_ANIMATION"
+            ),
+            ("<{Nothing}_>{ext}", "exr"),
+            ("<{Task[short]}_>{ext}", "exr"),
+            ("<{TASK[SHORT]}_>{ext}", "exr"),
+            ("<{Project}_>{ext}", "exr"),
+            ("<v{Version:0>3}_{Variant:camel}>", "v003_main"),
+            ("<{Variant:upper}><_{Output:upper}>", "MAIN"),
+        ],
+    )
+    def test_legacy_keys(self, template: str, expected: str):
+        """Result is the same as with prepared template data."""
+        data = self._get_data()
+        result = StringTemplate(template).format_strict(data)
+        prepared_result = StringTemplate(template).format_strict(
+            prepare_template_data(data)
+        )
+
+        assert str(result) == expected
+        assert str(prepared_result) == expected
+        assert result.used_values == prepared_result.used_values
+        assert result.missing_keys == prepared_result.missing_keys == []
+        assert result.invalid_types == prepared_result.invalid_types == {}
+
+    @pytest.mark.parametrize(
+        "template, missing_keys",
+        [
+            ("{output:upper}<_{variant:upper}>", ["output"]),
+            ("{Output}<_{Variant}>", ["Output"]),
+            ("<{variant:upper}>_{task[nope]:lower}", ["task[nope]"]),
+        ],
+    )
+    def test_required_key_is_missing(
+        self, template: str, missing_keys: list
+    ):
+        """Filled optional part does not make the template solved."""
+        result = StringTemplate(template).format(self._get_data())
+        assert not result.solved
+        assert result.missing_keys == missing_keys
+        with pytest.raises(TemplateUnsolved):
+            result.validate()
+
+
 class TestRegisterFormatSpec:
     @pytest.fixture
     def registered_specs(self, monkeypatch):
