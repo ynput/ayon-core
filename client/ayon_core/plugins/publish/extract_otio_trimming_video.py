@@ -29,6 +29,17 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
     families = ["otio.trim.video"]
 
     def process(self, instance):
+        repres_to_trim = [
+            repre
+            for repre in instance.data["representations"]
+            if "trim" in repre.get("tags", [])
+        ]
+        if not repres_to_trim:
+            self.log.info(
+                "No representation with 'trim' tag found, skipping trimming"
+            )
+            return
+
         self.staging_dir = self.staging_dir(instance)
         otio_trim_range = instance.data["otioTrimmingRange"]
         representations = instance.data["representations"]
@@ -36,13 +47,9 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         self.log.debug("self.staging_dir: {}".format(self.staging_dir))
 
         # get corresponding representation
-        for _repre in representations:
-            if "trim" not in _repre.get("tags", []):
-                continue
-
-            input_file = _repre["files"]
+        for _repre in repres_to_trim:
             input_file_path = os.path.normpath(os.path.join(
-                _repre["stagingDir"], input_file
+                _repre["stagingDir"], _repre["files"]
             ))
             self.log.debug("input_file_path: {}".format(input_file_path))
 
