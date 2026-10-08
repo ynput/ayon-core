@@ -317,6 +317,11 @@ class MentionCompleter(QObject):
 
     entities_requested = Signal()
 
+    # Events which can type text, to not make it part of a mention's link
+    _LEAVE_EVENTS = frozenset((
+        QEvent.Type.KeyPress, QEvent.Type.InputMethod,
+    ))
+
     def __init__(
         self, text_edit: QTextEdit, users: list[User] | None = None
     ) -> None:
@@ -598,7 +603,7 @@ class MentionCompleter(QObject):
         popup.setCurrentIndex(self._completer.completionModel().index(0, 0))
 
     def eventFilter(self, obj, event) -> bool:
-        if event.type() in (QEvent.Type.KeyPress, QEvent.Type.InputMethod):
+        if event.type() in self._LEAVE_EVENTS:
             self._leave_mention()
         return False
 
