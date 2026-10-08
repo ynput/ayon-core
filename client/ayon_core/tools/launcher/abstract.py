@@ -166,6 +166,48 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     @abstractmethod
+    def process_server_events(self) -> None:
+        """Process AYON server events received via websocket.
+
+        Server events are received in a background thread and are queued.
+        This method must be called from the main (UI) thread periodically,
+        the queued events are emitted as controller events:
+        - "ayon.connection.opened"
+        - "ayon.connection.closed"
+        - "ayon.auth.failed"
+        - "ayon.server.restart"
+
+        """
+        pass
+
+    @abstractmethod
+    def check_server_available(self) -> bool:
+        """Check if server is available.
+
+        Request to server is sent only if the connection state is not
+        known yet. Starts listening to server events, so
+        "ayon.connection.opened" is emitted once connection is established.
+
+        Can be used to postpone refresh of UI until the server is available.
+
+        Returns:
+            bool: 'False' if server is not available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_server_connection_state(self) -> bool | None:
+        """Server connection state.
+
+        Returns:
+            bool | None: 'True' if connected, 'False' if disconnected
+                and 'None' if state is not known yet.
+
+        """
+        pass
+
+    @abstractmethod
     def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
         """Used by tasks widget to define how tasks are sorted.
 

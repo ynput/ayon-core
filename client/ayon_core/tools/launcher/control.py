@@ -12,6 +12,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
 )
 
 from .abstract import (
@@ -52,6 +53,7 @@ class BaseLauncherController(
         self._actions_model = ActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -87,6 +89,15 @@ class BaseLauncherController(
 
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
 
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
