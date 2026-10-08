@@ -1025,6 +1025,7 @@ PixmapButton:disabled {
     font-family: "Noto Sans Mono";
 }
 #PublishLogMatches {
+    font-family: "Noto Sans Mono";
     background: {color:publisher:tab-bg};
 }
 #VariantInput[state="new"], #VariantInput[state="new"]:focus, #VariantInput[state="new"]:hover {

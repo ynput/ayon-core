@@ -334,6 +334,7 @@ class _LogMatch:
     """Search match in the logs document with the text around it."""
     start: int
     end: int
+    level: str
     before: str
     text: str
     after: str
@@ -426,6 +427,7 @@ class _LogFiller:
             self.matches.append(_LogMatch(
                 position,
                 self.cursor.position(),
+                log_level,
                 before,
                 match.group(),
                 after,
@@ -498,6 +500,7 @@ class _LogMatchesModel(QtCore.QAbstractListModel):
 
 class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
     """Draw a search match with the text around it and its source."""
+    _level_colors = dict(_LogFiller._color_mapping)
 
     def sizeHint(self, option, index) -> QtCore.QSize:
         return QtCore.QSize(0, option.fontMetrics.height() + 8)
@@ -520,6 +523,13 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
 
         painter.save()
         painter.setFont(option.font)
+        # Log level on the left in the color it has in the logs
+        painter.setPen(self._level_colors.get(match.level, dimmed_color))
+        painter.drawText(
+            rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, match.level
+        )
+        rect.setLeft(rect.left() + metrics.horizontalAdvance("TRACEBACK "))
+
         # Dimmed source of the log on the right
         source = metrics.elidedText(
             match.source, QtCore.Qt.ElideMiddle, rect.width() // 3
