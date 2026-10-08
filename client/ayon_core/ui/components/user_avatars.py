@@ -12,7 +12,7 @@ from __future__ import annotations
 import tempfile
 
 import ayon_api
-from qtpy import QtCore, QtGui, shiboken
+from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger
 
@@ -24,6 +24,9 @@ log = Logger.get_logger(__name__)
 
 #: Background priority - avatars are decoration, never blocking content.
 _FETCH_PRIORITY = 10
+
+#: Avatar diameter that fits a default row of the item views.
+ITEM_AVATAR_SIZE = 18
 
 
 def _is_generated_initials(content: bytes) -> bool:
@@ -192,3 +195,34 @@ class UserAvatarCache(QtCore.QObject):
         for key in [k for k in self._pixmaps if k[0] == user_name]:
             del self._pixmaps[key]
         self.avatar_updated.emit(user_name)
+
+
+def set_avatar_decoration(
+    option: QtWidgets.QStyleOptionViewItem,
+    avatar_cache: UserAvatarCache,
+    user_name: str | None,
+    full_name: str | None = None,
+    size: int = ITEM_AVATAR_SIZE,
+) -> None:
+    """Show the avatar of a user as the decoration of a view item.
+
+    Meant to be called from ``initStyleOption`` of an item delegate, so
+    the avatar is painted the same way as an icon of the item, to the
+    left of its text. The view should repaint on
+    :attr:`UserAvatarCache.avatar_updated`.
+
+    Args:
+        option: Style option of the painted item.
+        avatar_cache: Cache the avatar is taken from.
+        user_name: Login name of the user, nothing is changed without it.
+        full_name: Display name the initials are derived from.
+        size: Avatar diameter in logical pixels.
+    """
+    if not user_name:
+        return
+    pixmap = avatar_cache.pixmap(user_name, full_name or "", size)
+    if pixmap is None or pixmap.isNull():
+        return
+    option.icon = QtGui.QIcon(pixmap)
+    option.decorationSize = QtCore.QSize(size, size)
+    option.features |= QtWidgets.QStyleOptionViewItem.HasDecoration
