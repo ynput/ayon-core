@@ -438,9 +438,6 @@ class DetailsWidget(QtWidgets.QWidget):
 
         header_widget = QtWidgets.QWidget(self)
 
-        timestamp_check = NiceCheckbox(parent=header_widget)
-        timestamp_check.setChecked(True)
-        timestamp_label = QtWidgets.QLabel("Show timestamps", header_widget)
         search_field = AYLineEdit(
             parent=header_widget,
             placeholder="Search logs...",
@@ -483,14 +480,17 @@ class DetailsWidget(QtWidgets.QWidget):
         ):
             widget.setFixedHeight(control_height)
 
+        timestamp_check = NiceCheckbox(parent=header_widget)
+        timestamp_check.setChecked(True)
+        timestamp_label = QtWidgets.QLabel("Show timestamps", header_widget)
+
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(5, 5, 5, 5)
-        header_layout.addWidget(timestamp_check, 0)
-        header_layout.addWidget(timestamp_label, 0)
-        header_layout.addStretch(1)
         header_layout.addWidget(level_filter, 0)
         header_layout.addWidget(surrounding_lines, 0)
-        header_layout.addWidget(search_field, 0)
+        header_layout.addWidget(search_field, 1)
+        header_layout.addWidget(timestamp_check, 0)
+        header_layout.addWidget(timestamp_label, 0)
 
         output_widget = ZoomPlainText(self)
         output_widget.setObjectName("PublishLogConsole")
