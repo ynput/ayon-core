@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 from math import ceil
 import re
 import typing
 
-import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
@@ -406,11 +406,8 @@ class _LogFiller:
         for log in self.logs:
             timestamp = ""
             if self.show_timestamp and log.created is not None:
-                timestamp = (
-                    arrow
-                    .get(log.created)
-                    .to("local")
-                    .format("YYYY/MM/DD HH:mm:ss ")
+                timestamp = datetime.fromtimestamp(log.created).strftime(
+                    "%Y/%m/%d %H:%M:%S "
                 )
 
             if log.type == "record":
@@ -536,8 +533,14 @@ class DetailsWidget(QtWidgets.QWidget):
         layout.addWidget(header_widget, 0)
         layout.addWidget(output_widget, 1)
 
+        # Do not refresh the logs on each typed character
+        search_timer = QtCore.QTimer(self)
+        search_timer.setSingleShot(True)
+        search_timer.setInterval(100)
+
         timestamp_check.stateChanged.connect(self._on_timestamp_check)
-        search_field.textChanged.connect(self._on_search_changed)
+        search_field.textChanged.connect(lambda: search_timer.start())
+        search_timer.timeout.connect(self._on_search_changed)
         search_field.returnPressed.connect(self._on_search_return)
         search_mode_btn.clicked.connect(self._on_search_mode_toggle)
         prev_match_btn.clicked.connect(lambda: self._go_to_match(-1))
@@ -606,8 +609,8 @@ class DetailsWidget(QtWidgets.QWidget):
         cursor.setPosition(end, QtGui.QTextCursor.KeepAnchor)
         self._output_widget.setTextCursor(cursor)
 
-    def _on_search_changed(self, text: str) -> None:
-        self._search_text = text.strip().casefold()
+    def _on_search_changed(self) -> None:
+        self._search_text = self._search_field.text().strip().casefold()
         self._need_refresh = True
         self._update_logs()
 
