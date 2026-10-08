@@ -368,16 +368,16 @@ def _click_first_checkbox(qtbot, comment_row: QtWidgets.QWidget) -> bool:
     """Click the first checkbox of a comment, if there is any to hit."""
     from qtpy import QtCore
 
+    from ayon_core.ui.components.markdown_edit import AYMarkdownEdit
+
     text_field = comment_row.text_field
-    handler = text_field._checkbox_handler
     viewport = text_field.viewport()
     for y in range(0, viewport.height(), 2):
         for x in range(0, 60, 2):
             point = QtCore.QPoint(x, y)
-            found = handler.find_checkbox_at_click(
-                point, text_field.contentOffset().toPoint()
-            )
-            if found is not None and found[0]:
+            # Skip the field's own check, a disabled checkbox is still there
+            index = AYMarkdownEdit._checkbox_index_at(text_field, point)
+            if index is not None:
                 qtbot.mouseClick(
                     viewport, QtCore.Qt.MouseButton.LeftButton, pos=point
                 )
