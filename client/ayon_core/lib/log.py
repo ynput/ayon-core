@@ -1373,30 +1373,3 @@ class log_span(contextlib.ContextDecorator):  # noqa: N801
             self._name,
             " ".join(f"{key}={value!r}" for key, value in fields.items()),
         )
-
-
-def log_timing(message: str) -> log_span:
-    """Log execution time of a code block.
-
-    Logged at DEBUG level, or at INFO level when 'AYON_CORE_TIMERS'
-    is enabled, for backwards compatibility.
-
-    Deprecated:
-        Use 'log_span' with a stable name and attributes instead.
-
-    Args:
-        message (str): Description of the operation being timed.
-
-    Returns:
-        log_span: Span measuring the code block.
-
-    """
-    warnings.warn(
-        "'log_timing' is deprecated, use 'log_span' instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    level = logging.DEBUG
-    if env_value_to_bool("AYON_CORE_TIMERS"):
-        level = logging.INFO
-    return log_span(message, level=level)
