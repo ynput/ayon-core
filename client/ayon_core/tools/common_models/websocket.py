@@ -1057,12 +1057,30 @@ class WSEventsModel:
         (e.g. using QTimer in UI). That way a callback can safely touch Qt
         widgets and the controller event system.
 
+    When controller is passed, connection state changes are emitted as
+        controller events (see 'CONNECTION_TOPICS'). Websocket connection
+        is not created until 'process_events' is called for the first time,
+        so headless usage of a controller does not connect.
+
     Args:
+        controller (Any | None): Controller with 'emit_event' method.
         max_queue_size (int): Maximum number of queued events. Oldest events
             are dropped if events are not processed.
 
     """
-    def __init__(self, max_queue_size: int = 1000) -> None:
+    # Event hub topic -> controller event topic
+    CONNECTION_TOPICS: dict[str, str] = {
+        "connection.opened": "ayon.connection.opened",
+        "connection.closed": "ayon.connection.closed",
+        "auth.failed": "ayon.auth.failed",
+        "server.restart_requested": "ayon.server.restart",
+    }
+
+    def __init__(
+        self, controller: object, max_queue_size: int = 1000
+    ) -> None:
+        self._controller = controller
+        self._connection_callbacks_registered: bool = False
         self._hub_callbacks: list[EventCallback] = []
         self._queue: collections.deque[tuple[EventCallback, Event]] = (
             collections.deque(maxlen=max_queue_size)
@@ -1073,6 +1091,7 @@ class WSEventsModel:
         for callback in callbacks:
             callback.deregister()
         self._queue.clear()
+        self._connection_callbacks_registered = False
 
     def register_ayon_event_callback(
         self, topic: str, callback: Callable
@@ -1093,7 +1112,13 @@ class WSEventsModel:
         self._hub_callbacks.append(hub_callback)
 
     def process_events(self) -> None:
-        """Trigger callbacks for queued events in current thread."""
+        """Trigger callbacks for queued events in current thread.
+
+        First call also registers connection callbacks, which starts
+            websocket connection.
+
+        """
+        self._register_connection_callbacks()
         while True:
             try:
                 callback, event = self._queue.popleft()
@@ -1116,6 +1141,19 @@ class WSEventsModel:
 
     def is_server_restarting(self) -> bool:
         return _GlobalContext.get_event_hub().is_server_restarting()
+
+    def _register_connection_callbacks(self) -> None:
+        if self._connection_callbacks_registered:
+            return
+        self._connection_callbacks_registered = True
+        for hub_topic, topic in self.CONNECTION_TOPICS.items():
+            self.register_ayon_event_callback(
+                hub_topic,
+                weakref_partial(self._emit_controller_event, topic),
+            )
+
+    def _emit_controller_event(self, topic: str) -> None:
+        self._controller.emit_event(topic)
 
     def _enqueue(self, callback: EventCallback, event: Event) -> None:
         # 'deque.append' is thread safe
