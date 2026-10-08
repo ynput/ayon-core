@@ -16,7 +16,12 @@ from ayon_core.ui.components import (
 )
 from ayon_core.ui.style_types import get_ayon_style
 
-from .utils import BaseOverlayFrame, WorkfilesDelegate
+from .utils import (
+    USERNAME_ROLE,
+    BaseOverlayFrame,
+    WorkfilesDelegate,
+    create_avatar_cache,
+)
 
 REPRE_ID_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -220,8 +225,9 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
             else:
                 flags = QtCore.Qt.NoItemFlags
 
-            author = file_item.author
-            user_item = user_items_by_name.get(author)
+            username = file_item.author
+            author = username
+            user_item = user_items_by_name.get(username)
             if user_item is not None and user_item.full_name:
                 author = user_item.full_name
 
@@ -231,6 +237,7 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
             item.setData(filename, QtCore.Qt.DisplayRole)
             item.setData(file_item.filepath, FILEPATH_ROLE)
             item.setData(author, AUTHOR_ROLE)
+            item.setData(username, USERNAME_ROLE)
             item.setData(file_item.file_modified, DATE_MODIFIED_ROLE)
 
             self._items_by_id[repre_id] = item
@@ -335,6 +342,7 @@ class PublishedFilesWidget(AYContainer):
         view.setModel(proxy_model)
 
         work_files_delegate = WorkfilesDelegate(
+            create_avatar_cache(view),
             parent=view,
             style_model=get_ayon_style().model
         )
