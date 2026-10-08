@@ -286,8 +286,29 @@ def test_console_level_colors(log_module, monkeypatch):
     ]):
         # Level is followed by bold style of structlog
         assert re.search(
-            rf"\[\x1b\[38;5;{color}m(\x1b\[1m)?{level}", line
+            rf"\[ \x1b\[38;5;{color}m(\x1b\[1m)?{level}\x1b\[0m \]", line
         ), repr(line)
+
+
+def test_console_layout(log_module, monkeypatch):
+    """Level is not padded, logger name follows the message."""
+    monkeypatch.setenv("NO_COLOR", "1")
+    module = log_module()
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+
+    module.Logger.get_logger("ayon_core.tests.layout").info("Message", key=1)
+    logging.getLogger("ayon_core.tests.layout_foreign").warning("Foreign")
+
+    structlog_line, foreign_line = stream.getvalue().splitlines()
+    assert re.search(
+        r"\[ info \] Message +\[\S*ayon_core\.tests\.layout\] key=1$",
+        structlog_line,
+    ), structlog_line
+    assert re.search(
+        r"\[ warning \] Foreign +\[ayon_core\.tests\.layout_foreign\]$",
+        foreign_line,
+    ), foreign_line
 
 
 def test_console_time_format_from_env(log_module, monkeypatch):
