@@ -33,7 +33,7 @@ class AYONLogoAnimation(QtWidgets.QWidget):
     # Width of the symbol (rotated bars)
     _width_ratio: float = (_bar_gap_ratio + 1.0) * 2
 
-    _anim_duration: int = 1400
+    _anim_duration: int = 700
     # Animation timeline (normalized 0.0 - 1.0)
     _jump_start: float = 0.1
     _jump_peak: float = 0.5
@@ -41,7 +41,7 @@ class AYONLogoAnimation(QtWidgets.QWidget):
     _rotation_start: float = 0.15
     _rotation_end: float = 0.75
 
-    _bars_color = QtGui.QColor(154, 169, 183)
+    _bars_color = QtGui.QColor(255, 255, 255)
     _dot_color = QtGui.QColor(0, 215, 160)
     _dot_inactive_color = QtGui.QColor(220, 90, 90)
 
