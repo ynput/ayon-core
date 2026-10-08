@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 import logging
 from math import ceil
 import re
@@ -339,6 +340,12 @@ class _LogMatch:
     source: str
 
 
+@lru_cache(maxsize=2 ** 16)
+def _format_timestamp(created: float) -> str:
+    """Format log timestamp, cached as logs are refreshed often."""
+    return datetime.fromtimestamp(created).strftime("%Y/%m/%d %H:%M:%S ")
+
+
 class _LogFiller:
     _color_mapping = (
         ("TRACEBACK", QtGui.QColor(255, 74, 74)),
@@ -442,9 +449,7 @@ class _LogFiller:
         for source, log in self.logs:
             timestamp = ""
             if self.show_timestamp and log.created is not None:
-                timestamp = datetime.fromtimestamp(log.created).strftime(
-                    "%Y/%m/%d %H:%M:%S "
-                )
+                timestamp = _format_timestamp(log.created)
 
             if log.type == "record":
                 self._add_entry(
