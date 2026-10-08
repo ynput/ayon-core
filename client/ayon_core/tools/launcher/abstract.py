@@ -12,6 +12,7 @@ from ayon_core.tools.common_models import (
     FolderTypeItem,
     TaskItem,
     TaskTypeItem,
+    UserItem,
 )
 
 if typing.TYPE_CHECKING:
@@ -74,6 +75,7 @@ class WorkfileItem:
     version: int | None
     updated_at_time: float | None
     file_size: int | None = None
+    updated_by: str | None = None
 
 
 class AbstractLauncherCommon(ABC):
@@ -565,6 +567,24 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             list[WorkfileItem]: List of workfile items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_user_items_by_name(
+        self, project_name: Optional[str]
+    ) -> dict[str, UserItem]:
+        """Get user items of a project.
+
+        Users are queried from the server if they are not cached, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (Optional[str]): Project name.
+
+        Returns:
+            dict[str, UserItem]: User items by username.
 
         """
         pass
