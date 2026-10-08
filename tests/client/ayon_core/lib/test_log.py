@@ -262,6 +262,34 @@ def test_console_timestamp_format(
     )
 
 
+def test_console_level_colors(log_module, monkeypatch):
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.level_colors")
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+
+    log.debug("Debug")
+    log.info("Info")
+    log.warning("Warning")
+    log.error("Error")
+    log.critical("Critical")
+
+    lines = stream.getvalue().splitlines()
+    for line, (level, color) in zip(lines, [
+        ("debug", "245"),
+        ("info", "33"),
+        ("warning", "220"),
+        ("error", "208"),
+        ("critical", "196"),
+    ]):
+        # Level is followed by bold style of structlog
+        assert re.search(
+            rf"\[\x1b\[38;5;{color}m(\x1b\[1m)?{level}", line
+        ), repr(line)
+
+
 def test_console_time_format_from_env(log_module, monkeypatch):
     module = log_module(initialize=False)
 

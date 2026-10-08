@@ -644,16 +644,36 @@ if structlog is not None:
         'colorama.init()' replaces 'sys.stdout' and 'sys.stderr' of the
         whole process, which breaks hosts redirecting them. Whether the
         stream supports colors is resolved by '_StderrHandler' instead.
+
+        Log levels use AYON colors, see '_LEVEL_STYLES'.
         """
 
         _COLORFUL_STYLES = structlog.dev._colorful_styles
         _PLAIN_STYLES = structlog.dev._plain_styles
+        # ANSI 256-color styles of log levels, 'exception' is logged
+        #   as error
+        _LEVEL_STYLES = {
+            "critical": "\x1b[38;5;196m",  # red
+            "exception": "\x1b[38;5;208m",  # orange
+            "error": "\x1b[38;5;208m",  # orange
+            "warn": "\x1b[38;5;220m",  # yellow
+            "warning": "\x1b[38;5;220m",  # yellow
+            "info": "\x1b[38;5;33m",  # blue
+            "debug": "\x1b[38;5;245m",  # grey
+            "notset": "",
+        }
 
         @classmethod
         def get_default_column_styles(cls, colors, force_colors=False):
             if colors:
                 return cls._COLORFUL_STYLES
             return cls._PLAIN_STYLES
+
+        @staticmethod
+        def get_default_level_styles(colors: bool = True) -> dict[str, str]:
+            if colors:
+                return dict(_ConsoleRenderer._LEVEL_STYLES)
+            return dict.fromkeys(_ConsoleRenderer._LEVEL_STYLES, "")
 
 
 class _PlainFormatter(logging.Formatter):
