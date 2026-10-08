@@ -19,6 +19,7 @@ from ayon_core.lib import (
     is_staging_enabled,
     is_running_from_build,
 )
+from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
     ITrayAddon,
@@ -29,6 +30,7 @@ from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
 )
+from ayon_core.tools.common_models import WSEventsModel
 from ayon_core.tools.tray.lib import (
     set_tray_server_url,
     remove_tray_server_url,
@@ -81,6 +83,18 @@ class TrayManager:
         main_thread_timer.timeout.connect(self._main_thread_execution)
         update_check_timer.timeout.connect(self._on_update_check_timer)
 
+        # Server events (connection state, bundle changes) received
+        #   via websocket, processed in '_main_thread_execution'
+        self._event_system = QueuedEventSystem()
+        self._ws_events_model = WSEventsModel(self)
+        self._connection_lost = False
+        # Single bundle change can trigger multiple events in short time
+        bundle_validation_timer = QtCore.QTimer()
+        bundle_validation_timer.setSingleShot(True)
+        bundle_validation_timer.setInterval(1000)
+        bundle_validation_timer.timeout.connect(self._validate_bundle)
+        self._bundle_validation_timer = bundle_validation_timer
+
         self._addons_manager = TrayAddonsManager(self)
         self._host_listener = HostListener(self._addons_manager, self)
 
@@ -116,6 +130,15 @@ class TrayManager:
 
     def is_closing(self):
         return self._closing
+
+    def emit_event(self, topic, data=None, source=None):
+        """Emit event, used by 'WSEventsModel' for connection events."""
+        if data is None:
+            data = {}
+        self._event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback):
+        self._event_system.add_callback(topic, callback)
 
     @property
     def doubleclick_callback(self):
@@ -225,6 +248,7 @@ class TrayManager:
         # Print time report
         self._addons_manager.print_report()
 
+        self._init_server_events()
         self._main_thread_timer.start()
 
         if self._update_check_interval > 0:
@@ -373,9 +397,9 @@ class TrayManager:
             )
 
         if icon == "information":
-            icon = QtWidgets.QSystemTrayIconInformation
+            icon = QtWidgets.QSystemTrayIcon.Information
         elif icon == "warning":
-            icon = QtWidgets.QSystemTrayIconWarning
+            icon = QtWidgets.QSystemTrayIcon.Warning
         elif icon == "critical":
             icon = QtWidgets.QSystemTrayIcon.Critical
         else:
@@ -386,24 +410,77 @@ class TrayManager:
         )
         return json_response({"success": True})
 
+    def _init_server_events(self):
+        """Listen to AYON server events.
+
+        Connection state and authentication are watched by event hub, so
+            the tray does not have to poll the server. Bundle events
+            trigger validation of the bundle used by the tray.
+        """
+        self.register_event_callback(
+            "ayon.connection.opened", self._on_server_connection_opened
+        )
+        self.register_event_callback(
+            "ayon.connection.closed", self._on_server_connection_closed
+        )
+        self.register_event_callback(
+            "ayon.auth.failed", self._on_server_auth_failed
+        )
+        # - 'bundle.created', 'bundle.updated', 'bundle.status_changed'
+        self._ws_events_model.register_ayon_event_callback(
+            "bundle.*", self._on_bundle_event
+        )
+        self._ws_events_model.process_events()
+
+    def _on_server_connection_opened(self):
+        if not self._connection_lost:
+            return
+        self._connection_lost = False
+        self.show_tray_message(
+            "AYON server connection restored",
+            "Connection to AYON server was restored.",
+        )
+        # Bundles might have changed while the server was not available
+        self._bundle_validation_timer.start()
+
+    def _on_server_connection_closed(self):
+        if self._connection_lost:
+            return
+        self._connection_lost = True
+        self.show_tray_message(
+            "AYON server connection lost",
+            "Connection to AYON server was lost. Waiting for reconnection.",
+            QtWidgets.QSystemTrayIcon.Warning,
+        )
+
+    def _on_server_auth_failed(self):
+        self._revalidate_ayon_auth()
+
+    def _on_bundle_event(self, event):
+        self.log.debug(
+            f"Bundle event '{event.topic}' received, validating bundle."
+        )
+        self._bundle_validation_timer.start()
+
     def _on_update_check_timer(self):
+        self._validate_bundle()
+
+    def _validate_bundle(self):
+        """Check if bundle used by tray is still production/staging bundle.
+
+        Connection and authentication issues are handled by server events,
+            so the validation is skipped when server is not available.
+        """
+        if self._closing or is_dev_mode_enabled():
+            return
+
+        if self._ws_events_model.get_connection_state() is False:
+            return
+
         try:
             bundles = ayon_api.get_bundles()
-            user = ayon_api.get_user()
-            # This is a workaround for bug in ayon-python-api
-            if user.get("code") == 401:
-                raise Exception("Unauthorized")
         except Exception:
-            self._revalidate_ayon_auth()
-            if self._closing:
-                return
-
-            try:
-                bundles = ayon_api.get_bundles()
-            except Exception:
-                return
-
-        if is_dev_mode_enabled():
+            self.log.debug("Failed to get bundles.", exc_info=True)
             return
 
         bundle_type = (
@@ -466,13 +543,19 @@ class TrayManager:
             if self._execution_in_progress:
                 return
             self._execution_in_progress = True
+            try:
+                self._ws_events_model.process_events()
+            except Exception:
+                self.log.error(
+                    "Failed to process server events", exc_info=True
+                )
             for _ in range(len(self._main_thread_callbacks)):
                 if self._main_thread_callbacks:
                     item = self._main_thread_callbacks.popleft()
                     try:
                         item.execute()
                     except BaseException:
-                        self.log.erorr(
+                        self.log.error(
                             "Main thread execution failed", exc_info=True
                         )
 
