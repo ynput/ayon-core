@@ -9,6 +9,7 @@ replaces them once it has been downloaded in the background.
 
 from __future__ import annotations
 
+import os
 import tempfile
 
 import ayon_api
@@ -45,14 +46,16 @@ def _is_generated_initials(content: bytes) -> bool:
 
 
 def _fetch_avatar_file(user_name: str) -> str:
-    """Download a user avatar and return the cached file path.
+    """Download a user avatar to a temporary file.
+
+    The caller is responsible for removing the file.
 
     Args:
         user_name: Login name of the user.
 
     Returns:
-        Path to the cached image file, or ``""`` when the server has no
-        avatar for this user.
+        Path to the temporary image file, or ``""`` when the server has
+        no avatar for this user.
     """
     connection = ayon_api.get_server_api_connection()
     if connection is None:
@@ -146,11 +149,16 @@ class UserAvatarCache(QtCore.QObject):
 
         def _work() -> str:
             cache = ImageCache.get_instance()
+            downloaded: list[str] = []
+
+            def _download() -> str:
+                path = _fetch_avatar_file(user_name)
+                if path:
+                    downloaded.append(path)
+                return path
+
             try:
-                file_path = cache.get(
-                    f"user-avatar/{user_name}",
-                    lambda: _fetch_avatar_file(user_name),
-                )
+                file_path = cache.get(f"user-avatar/{user_name}", _download)
                 # Generated initials may be cached from before they
                 #   were skipped on download.
                 if file_path:
@@ -163,6 +171,13 @@ class UserAvatarCache(QtCore.QObject):
                     "Could not fetch avatar for %r", user_name, exc_info=True
                 )
                 return ""
+            finally:
+                # The cache keeps its own copy of the download
+                for path in downloaded:
+                    try:
+                        os.unlink(path)
+                    except OSError:
+                        pass
 
         def _done(file_path: str) -> None:
             # The cache outlives no view, but a queued download can land

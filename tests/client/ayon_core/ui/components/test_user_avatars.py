@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -129,3 +130,59 @@ def test_cached_generated_initials_are_ignored(monkeypatch, tmp_path):
     # The miss is remembered and the initials placeholder is kept
     assert cache._sources == {"kuba": ""}
     assert updated == []
+
+
+@pytest.mark.parametrize("copy_fails", [False, True], ids=["copied", "failed"])
+def test_downloaded_temp_file_is_removed(monkeypatch, tmp_path, copy_fails):
+    """The download is removed once the image cache has its own copy."""
+    from qtpy import QtWidgets
+
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    temp_dir = tmp_path / "temp"
+    temp_dir.mkdir()
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    sources: list[Path] = []
+
+    class FakeImageCache:
+        def get(self, key: str, file_closure: Any) -> str:
+            source = Path(file_closure())
+            sources.append(source)
+            assert source.read_bytes() == b"jpeg data"
+            if copy_fails:
+                raise OSError("Disk is full")
+            cached_path = cache_dir / source.name
+            shutil.copyfile(source, cached_path)
+            return str(cached_path)
+
+    class FakeQueue:
+        def enqueue(self, task: Any) -> None:
+            task.callback(task.function())
+
+    connection = FakeConnection(FakeResponse(b"jpeg data", "image/jpeg"))
+    monkeypatch.setattr(
+        user_avatars.ayon_api,
+        "get_server_api_connection",
+        lambda: connection,
+    )
+    monkeypatch.setattr(user_avatars.tempfile, "tempdir", str(temp_dir))
+    monkeypatch.setattr(
+        user_avatars.ImageCache,
+        "get_instance",
+        classmethod(lambda cls: FakeImageCache()),
+    )
+    monkeypatch.setattr(user_avatars, "get_task_queue", FakeQueue)
+    cache = user_avatars.UserAvatarCache()
+
+    assert cache.pixmap("kuba", "Kuba Trllo", 20) is not None
+    app.processEvents()
+
+    # The file was downloaded, and only the cached copy is left
+    assert len(sources) == 1
+    assert list(temp_dir.iterdir()) == []
+    if copy_fails:
+        assert cache._sources == {"kuba": ""}
+    else:
+        cached_path = cache_dir / sources[0].name
+        assert cache._sources == {"kuba": str(cached_path)}
+        assert cached_path.read_bytes() == b"jpeg data"
