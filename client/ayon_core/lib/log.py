@@ -250,6 +250,57 @@ except ValueError:
 # Each process writes its own file, see '_get_log_file_path'
 LOG_FILE_PREFIX = "ayon_"
 LOG_FILE_EXT = ".ndjson"
+# Default 'strftime' format of console timestamps, see
+#   'get_console_time_format_from_env'
+DEFAULT_CONSOLE_TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
+
+
+def get_console_time_format_from_env() -> str:
+    """Resolve format of console timestamps from environment variables.
+
+    Console timestamps are in local time. 'AYON_LOG_CONSOLE_TIME_FORMAT'
+    accepts a 'strftime' format, e.g. '%H:%M:%S.%f'. Defaults to
+    'DEFAULT_CONSOLE_TIME_FORMAT' when it is not set or is invalid.
+    JSON output for log file and Vector always uses ISO 8601 in UTC.
+
+    Returns:
+        str: Format of console timestamps.
+
+    """
+    time_format = os.getenv("AYON_LOG_CONSOLE_TIME_FORMAT", "")
+    if not time_format:
+        return DEFAULT_CONSOLE_TIME_FORMAT
+    try:
+        # Invalid directives raise 'ValueError' on some platforms
+        datetime.datetime.now().strftime(time_format)
+    except ValueError:
+        return DEFAULT_CONSOLE_TIME_FORMAT
+    return time_format
+
+
+def _create_console_timestamper(time_format: str) -> Callable:
+    """Processor replacing 'timestamp' with local time in 'time_format'.
+
+    Shared processors add ISO timestamp in UTC used by JSON output. Console
+    shows time of the log record instead. Must run before
+    'ProcessorFormatter.remove_processors_meta' removes the record.
+
+    Args:
+        time_format (str): 'strftime' format of the timestamp.
+
+    Returns:
+        Callable: structlog processor.
+
+    """
+    def _format_timestamp(logger, method_name, event_dict):
+        record = event_dict.get("_record")
+        if record is not None:
+            event_dict["timestamp"] = datetime.datetime.fromtimestamp(
+                record.created
+            ).strftime(time_format)
+        return event_dict
+
+    return _format_timestamp
 
 
 def _get_log_file_path(log_dir: str) -> str:
@@ -612,14 +663,13 @@ class _PlainFormatter(logging.Formatter):
         "%(asctime)s %(levelname)8s [%(name)s]  %(funcName)s: %(message)s"
     )
 
-    def __init__(self):
+    def __init__(self, time_format: str = DEFAULT_CONSOLE_TIME_FORMAT):
         super().__init__(self.FORMAT)
+        self._time_format = time_format
 
     def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
-        return (
-            datetime.datetime.fromtimestamp(record.created)
-            .astimezone(datetime.timezone.utc)
-            .isoformat(timespec="milliseconds")
+        return datetime.datetime.fromtimestamp(record.created).strftime(
+            self._time_format
         )
 
 
@@ -1001,7 +1051,9 @@ class Logger:
         cls._logging_configured = True
 
         if structlog is None:
-            console_formatter = _PlainFormatter()
+            console_formatter = _PlainFormatter(
+                get_console_time_format_from_env()
+            )
             color_formatter = None
             json_formatter = None
         else:
@@ -1148,10 +1200,15 @@ class Logger:
             structlog.stdlib.ProcessorFormatter.remove_processors_meta
         )
 
+        console_timestamper = _create_console_timestamper(
+            get_console_time_format_from_env()
+        )
+
         def _create_console_formatter(colors):
             return _EventDictProcessorFormatter(
                 foreign_pre_chain=shared_processors,
                 processors=[
+                    console_timestamper,
                     remove_processors_meta,
                     _drop_log_context,
                     _ConsoleRenderer(

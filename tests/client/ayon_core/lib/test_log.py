@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import queue
+import re
 import sys
 import threading
 import time
@@ -53,6 +54,7 @@ def log_module(monkeypatch):
         "AYON_VECTOR_LOG_URL",
         "AYON_EXECUTABLE",
         "AYON_CORE_TIMERS",
+        "AYON_LOG_CONSOLE_TIME_FORMAT",
         "NO_COLOR",
         "FORCE_COLOR",
     ):
@@ -220,6 +222,65 @@ def test_console_handler_uses_current_stderr(log_module, monkeypatch):
     # GUI processes may not have stderr at all
     monkeypatch.setattr(sys, "stderr", None)
     log.info("No crash")
+
+
+@pytest.mark.parametrize(
+    "time_format, pattern",
+    [
+        (None, r"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} "),
+        ("%H:%M:%S.%f", r"^\d{2}:\d{2}:\d{2}\.\d{6} "),
+    ],
+)
+def test_console_timestamp_format(
+    log_module, monkeypatch, foreign_handler, time_format, pattern
+):
+    if time_format is not None:
+        monkeypatch.setenv("AYON_LOG_CONSOLE_TIME_FORMAT", time_format)
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.console_time")
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+
+    log.info("Timed")
+    logging.getLogger("ayon_core.tests.console_time_foreign").info("Foreign")
+
+    lines = stream.getvalue().splitlines()
+    assert len(lines) == 2
+    for line in lines:
+        assert re.match(pattern, line), line
+
+    # JSON output keeps ISO timestamps
+    json_formatter = module._EventDictProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.processors.JSONRenderer(),
+        ],
+    )
+    payload = json.loads(json_formatter.format(foreign_handler.records[0]))
+    assert re.match(
+        r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", payload["timestamp"]
+    )
+
+
+def test_console_time_format_from_env(log_module, monkeypatch):
+    module = log_module(initialize=False)
+
+    assert (
+        module.get_console_time_format_from_env()
+        == module.DEFAULT_CONSOLE_TIME_FORMAT
+    )
+    monkeypatch.setenv("AYON_LOG_CONSOLE_TIME_FORMAT", "%H:%M")
+    assert module.get_console_time_format_from_env() == "%H:%M"
+
+
+def test_plain_formatter_time_format(log_module):
+    """Console formatter used when 'structlog' is not available."""
+    module = log_module(initialize=False)
+    record = logging.makeLogRecord({"msg": "Plain", "created": 0.0})
+
+    output = module._PlainFormatter("%H|%M").format(record)
+
+    assert re.match(r"^\d{2}\|\d{2} ", output), output
 
 
 def _raise_with_local(log):
