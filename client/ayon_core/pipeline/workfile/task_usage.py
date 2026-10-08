@@ -1,21 +1,29 @@
 """Task in-use tracking (advisory task locking).
 
-A session that works on a task registers itself in the task entity data
-on AYON server. Other users can then be notified that somebody is already
-working on the task before they open a workfile of the task.
+A session that works on a task registers itself on AYON server. Other users
+can then be notified that somebody is already working on the task before
+they open a workfile of the task.
 
 The information is advisory. It never blocks anybody from working on the
 task and a task can be used by multiple sessions at the same time.
 
-Each session is stored under its own key in the task data, the key is
-'TASK_USAGE_KEY_PREFIX' followed by the session id. AYON server merges
-top-level keys of entity data on update and removes keys with 'None' value,
-so a session can add, update and remove itself with a single request
-without reading the data first, and sessions can't override each other.
+Sessions are stored by server part of the core addon in Redis with a time
+to live. Nothing is stored on the task entity, so a session does not change
+the task, does not create events and the user does not need permissions to
+update the task. Timestamps of sessions are filled by the server.
 
-Sessions that did not update for longer than the stale timeout are ignored
-and are removed when the task is claimed by a session, so sessions of
-crashed applications do not stay on the task forever.
+A session must report itself to the server (heartbeat) to stay alive.
+The heartbeat is sent a few times per the time to live, so sessions of
+crashed applications expire on their own.
+
+Callbacks of the application do not wait for the server. Session of the
+application is handled by 'TaskUsageTracker' in a background thread, the
+main thread only passes current context to it. A notice about other users
+is passed to callbacks registered by a frontend, which shows it in its own
+thread, see 'register_task_in_use_notice_callback'.
+
+The endpoints are not available if the server runs older version of the
+core addon. In that case the tracking is disabled and nothing is reported.
 """
 from __future__ import annotations
 
@@ -24,10 +32,11 @@ import datetime
 import logging
 import os
 import socket
+import threading
 import time
-from dataclasses import dataclass, asdict, fields, replace
+from dataclasses import dataclass, asdict, field, fields, replace
 from functools import partial
-from typing import Any, Optional
+from typing import Any, Callable, Iterable, Optional
 
 import ayon_api
 
@@ -40,14 +49,30 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.events import register_event_callback
 from ayon_core.settings import get_project_settings
+from ayon_core.version import __version__
 
 log = logging.getLogger(__name__)
 
-TASK_USAGE_KEY_PREFIX = "inUse_"
-DEFAULT_STALE_TIMEOUT_HOURS = 8.0
-# Do not update the task more often if nothing but the time did change.
-#   Each update of a task creates an event on the server.
-REFRESH_INTERVAL_SECONDS = 15 * 60
+ADDON_NAME = "core"
+
+DEFAULT_SESSION_TIMEOUT_MINUTES = 5.0
+# Limits of time to live of a session on the server
+MIN_TTL_SECONDS = 60
+MAX_TTL_SECONDS = 60 * 60
+# Session survives a few missed heartbeats, e.g. when the application is
+#   busy or the server is not available for a moment
+HEARTBEATS_PER_TTL = 3
+# Do not wait for the server as long as for other requests, the requests
+#   are also sent before a workfile is opened and on application launch
+REQUEST_TIMEOUT_SECONDS = 5.0
+# Opened or saved workfile is reported as activity of the session, but not
+#   more often if the workfile did not change
+ACTIVITY_INTERVAL_SECONDS = 30.0
+# Scheduled context that was not processed for this time means that the
+#   background thread is not processed by the application
+STARVED_THREAD_SECONDS = 10.0
+# How long is exit of the application blocked to release the task
+EXIT_TIMEOUT_SECONDS = 3.0
 
 # Environment variables with value "1" in farm jobs
 FARM_JOB_ENV_KEYS = (
@@ -64,18 +89,35 @@ ACKNOWLEDGED_SESSIONS_ENV_KEY = "AYON_TASK_IN_USE_ACKNOWLEDGED"
 _acknowledged_session_ids: set[str] = set()
 
 
+class TaskUsageNotSupportedError(Exception):
+    """AYON server does not have task in-use endpoints of the core addon."""
+
+
 @dataclass
 class TaskUsageSettings:
     """Task in-use settings for a context.
 
     Attributes:
         enabled (bool): Task in-use tracking is enabled for the context.
-        stale_timeout_hours (float): Sessions without an update for more
-            than this amount of hours are ignored.
+        session_timeout_minutes (float): A session that did not report
+            itself to the server for this amount of minutes is removed.
 
     """
     enabled: bool = False
-    stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS
+    session_timeout_minutes: float = DEFAULT_SESSION_TIMEOUT_MINUTES
+
+    @property
+    def ttl_seconds(self) -> int:
+        """Time to live of a session on the server."""
+        return int(max(
+            MIN_TTL_SECONDS,
+            min(MAX_TTL_SECONDS, self.session_timeout_minutes * 60),
+        ))
+
+    @property
+    def heartbeat_interval(self) -> float:
+        """Seconds between heartbeats of a session."""
+        return self.ttl_seconds / HEARTBEATS_PER_TTL
 
 
 @dataclass
@@ -91,8 +133,9 @@ class TaskUsageItem:
         workfile (Optional[str]): Filename of the workfile opened in the
             session.
         opened_at (str): UTC time in ISO format when the session started
-            to work on the task.
-        updated_at (str): UTC time in ISO format of the last activity.
+            to work on the task. Filled by the server.
+        updated_at (str): UTC time in ISO format of the last activity,
+            e.g. opened or saved workfile. Filled by the server.
 
     """
     session_id: str
@@ -104,17 +147,12 @@ class TaskUsageItem:
     opened_at: str
     updated_at: str
 
-    @property
-    def data_key(self) -> str:
-        """Key under which is the session stored in task data."""
-        return get_session_data_key(self.session_id)
-
     def to_data(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_data(cls, data: Any) -> Optional[TaskUsageItem]:
-        """Create item from data stored on a task.
+        """Create item from data created with 'to_data'.
 
         Returns:
             Optional[TaskUsageItem]: Item or None if data are not valid.
@@ -138,16 +176,44 @@ class TaskUsageItem:
             return None
         return item
 
+    @classmethod
+    def from_server_data(cls, data: Any) -> Optional[TaskUsageItem]:
+        """Create item from session data received from the server.
+
+        Returns:
+            Optional[TaskUsageItem]: Item or None if data are not valid.
+
+        """
+        if not isinstance(data, dict):
+            return None
+        return cls.from_data({
+            "session_id": data.get("sessionId"),
+            "username": data.get("username"),
+            "machine": data.get("machine"),
+            "site_id": data.get("siteId"),
+            "host_name": data.get("hostName"),
+            "workfile": data.get("workfile"),
+            "opened_at": data.get("openedAt"),
+            "updated_at": data.get("updatedAt"),
+        })
+
+    def to_server_data(self) -> dict[str, Any]:
+        """Data of the session sent to the server.
+
+        Username and timestamps are filled by the server.
+        """
+        return {
+            "machine": self.machine,
+            "siteId": self.site_id,
+            "hostName": self.host_name,
+            "workfile": self.workfile,
+        }
+
     def get_opened_at(self) -> Optional[datetime.datetime]:
         return _parse_time(self.opened_at)
 
     def get_updated_at(self) -> Optional[datetime.datetime]:
         return _parse_time(self.updated_at)
-
-
-def get_session_data_key(session_id: str) -> str:
-    """Key under which is a session stored in task data."""
-    return f"{TASK_USAGE_KEY_PREFIX}{session_id}"
 
 
 def _get_now() -> datetime.datetime:
@@ -244,110 +310,10 @@ def get_task_usage_settings(
 
     return TaskUsageSettings(
         enabled=profile["enabled"],
-        stale_timeout_hours=profile.get(
-            "stale_timeout_hours", DEFAULT_STALE_TIMEOUT_HOURS
+        session_timeout_minutes=profile.get(
+            "session_timeout_minutes", DEFAULT_SESSION_TIMEOUT_MINUTES
         ),
     )
-
-
-def parse_task_usage_items(
-    task_data: Optional[dict[str, Any]]
-) -> list[TaskUsageItem]:
-    """Parse sessions stored in task data.
-
-    Args:
-        task_data (Optional[dict[str, Any]]): Value of task entity 'data'.
-
-    Returns:
-        list[TaskUsageItem]: All valid sessions stored on the task.
-
-    """
-    if not task_data:
-        return []
-    items = []
-    for key, item_data in task_data.items():
-        if not key.startswith(TASK_USAGE_KEY_PREFIX):
-            continue
-        item = TaskUsageItem.from_data(item_data)
-        # Session must be stored under its own key
-        if item is not None and item.data_key == key:
-            items.append(item)
-    return items
-
-
-def filter_active_items(
-    items: list[TaskUsageItem],
-    stale_timeout_hours: float,
-    now: Optional[datetime.datetime] = None,
-) -> list[TaskUsageItem]:
-    """Filter out sessions without recent activity.
-
-    Args:
-        items (list[TaskUsageItem]): Sessions to filter.
-        stale_timeout_hours (float): Maximum hours since the last update.
-        now (Optional[datetime.datetime]): Current time.
-
-    Returns:
-        list[TaskUsageItem]: Sessions that are not stale.
-
-    """
-    if now is None:
-        now = _get_now()
-    timeout = datetime.timedelta(hours=stale_timeout_hours)
-    return [
-        item
-        for item in items
-        if now - item.get_updated_at() <= timeout
-    ]
-
-
-def is_same_source(item: TaskUsageItem, other_item: TaskUsageItem) -> bool:
-    """Sessions are of the same user in the same host on the same machine.
-
-    A session with the same source as a session that just started is
-    considered a leftover of a crashed application.
-    """
-    return (
-        item.username == other_item.username
-        and item.site_id == other_item.site_id
-        and item.host_name == other_item.host_name
-    )
-
-
-def get_task_usage_cleanup_keys(
-    task_data: Optional[dict[str, Any]],
-    new_item: TaskUsageItem,
-    stale_timeout_hours: float,
-    now: Optional[datetime.datetime] = None,
-) -> set[str]:
-    """Keys of task data to remove when a session claims the task.
-
-    Removed are stale and invalid sessions, and other sessions with the
-    same source as the new session.
-
-    Args:
-        task_data (Optional[dict[str, Any]]): Value of task entity 'data'.
-        new_item (TaskUsageItem): Session that claims the task.
-        stale_timeout_hours (float): Maximum hours since the last update.
-        now (Optional[datetime.datetime]): Current time.
-
-    Returns:
-        set[str]: Keys to remove from the task data.
-
-    """
-    all_keys = {
-        key
-        for key in (task_data or {})
-        if key.startswith(TASK_USAGE_KEY_PREFIX)
-    }
-    keep_keys = {
-        item.data_key
-        for item in filter_active_items(
-            parse_task_usage_items(task_data), stale_timeout_hours, now
-        )
-        if not is_same_source(item, new_item)
-    }
-    return all_keys - keep_keys - {new_item.data_key}
 
 
 def filter_other_users_items(
@@ -458,38 +424,133 @@ def _get_session_id() -> str:
     return get_process_id()
 
 
+# 'False' when the server does not have the endpoints
+_endpoints_supported: Optional[bool] = None
+
+
+def is_task_usage_supported() -> bool:
+    """Server did not report that task in-use endpoints are missing."""
+    return _endpoints_supported is not False
+
+
+def _get_endpoint(project_name: str, *subpaths: str) -> str:
+    return ayon_api.get_addon_endpoint(
+        ADDON_NAME, __version__, "projects", project_name, "taskInUse",
+        *subpaths
+    )
+
+
+def _request(
+    method: str, endpoint: str, data: Optional[dict[str, Any]] = None
+) -> Any:
+    """Call task in-use endpoint of the core addon.
+
+    Raises:
+        TaskUsageNotSupportedError: The server does not have the endpoints.
+
+    """
+    global _endpoints_supported
+
+    if _endpoints_supported is False:
+        raise TaskUsageNotSupportedError(
+            "Task in-use endpoints are not available on the server."
+        )
+
+    kwargs: dict[str, Any] = {"timeout": REQUEST_TIMEOUT_SECONDS}
+    if data is not None:
+        kwargs["json"] = data
+    response = getattr(ayon_api, f"raw_{method}")(endpoint, **kwargs)
+    # The endpoints do not use status 404 for their own responses
+    if response.status_code == 404:
+        _endpoints_supported = False
+        log.warning(
+            "Task in-use notification is disabled. AYON server does not"
+            " have task in-use endpoints of '%s' addon version '%s',"
+            " the server addon is probably older than the client.",
+            ADDON_NAME,
+            __version__,
+        )
+        raise TaskUsageNotSupportedError(
+            "Task in-use endpoints are not available on the server."
+        )
+    response.raise_for_status()
+    _endpoints_supported = True
+    return response.data
+
+
+def _parse_server_items(sessions: Any) -> list[TaskUsageItem]:
+    if not isinstance(sessions, list):
+        return []
+    items = []
+    for session in sessions:
+        item = TaskUsageItem.from_server_data(session)
+        if item is not None:
+            items.append(item)
+    return items
+
+
 def get_task_usage_items(
     project_name: str,
     task_id: str,
-    stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS,
 ) -> list[TaskUsageItem]:
     """Get active sessions working on a task.
 
     Args:
         project_name (str): Project name.
         task_id (str): Task id.
-        stale_timeout_hours (float): Maximum hours since the last update
-            of a session.
 
     Returns:
-        list[TaskUsageItem]: Active sessions of the task.
+        list[TaskUsageItem]: Active sessions of the task. Empty list if
+            the server does not support task in-use tracking.
 
     """
-    task_entity = ayon_api.get_task_by_id(
-        project_name, task_id, fields={"id", "data"}
-    )
-    if not task_entity:
+    try:
+        data = _request("get", _get_endpoint(project_name, task_id))
+    except TaskUsageNotSupportedError:
         return []
-    return filter_active_items(
-        parse_task_usage_items(task_entity.get("data")),
-        stale_timeout_hours,
-    )
+    return _parse_server_items((data or {}).get("sessions"))
+
+
+def get_tasks_usage_items(
+    project_name: str,
+    task_ids: Iterable[str],
+) -> dict[str, list[TaskUsageItem]]:
+    """Get active sessions working on multiple tasks.
+
+    Args:
+        project_name (str): Project name.
+        task_ids (Iterable[str]): Task ids.
+
+    Returns:
+        dict[str, list[TaskUsageItem]]: Active sessions by task id. Each
+            passed task id is in the output.
+
+    """
+    output: dict[str, list[TaskUsageItem]] = {
+        task_id: [] for task_id in task_ids
+    }
+    if not output:
+        return output
+    try:
+        data = _request(
+            "post",
+            _get_endpoint(project_name, "query"),
+            {"taskIds": list(output)},
+        )
+    except TaskUsageNotSupportedError:
+        return output
+
+    tasks = (data or {}).get("tasks")
+    if isinstance(tasks, dict):
+        for task_id, sessions in tasks.items():
+            if task_id in output:
+                output[task_id] = _parse_server_items(sessions)
+    return output
 
 
 def get_other_users_task_usage_items(
     project_name: str,
     task_id: str,
-    stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS,
 ) -> list[TaskUsageItem]:
     """Get sessions of other users working on a task.
 
@@ -498,15 +559,13 @@ def get_other_users_task_usage_items(
     Args:
         project_name (str): Project name.
         task_id (str): Task id.
-        stale_timeout_hours (float): Maximum hours since the last update
-            of a session.
 
     Returns:
         list[TaskUsageItem]: Active sessions of other users.
 
     """
     return filter_other_users_items(
-        get_task_usage_items(project_name, task_id, stale_timeout_hours),
+        get_task_usage_items(project_name, task_id),
         get_ayon_username(),
         _acknowledged_session_ids,
     )
@@ -526,6 +585,7 @@ def create_session_item(
         TaskUsageItem: Session of current process.
 
     """
+    # Times are only informative, the server does fill its own
     now = _get_now().isoformat()
     return TaskUsageItem(
         session_id=_get_session_id(),
@@ -543,67 +603,65 @@ def claim_task(
     project_name: str,
     task_id: str,
     item: TaskUsageItem,
-    stale_timeout_hours: float = DEFAULT_STALE_TIMEOUT_HOURS,
+    ttl: Optional[int] = None,
+    heartbeat: bool = False,
 ) -> list[TaskUsageItem]:
-    """Register a session as working on a task.
+    """Register or refresh a session as working on a task.
 
-    Should be used when a session starts to work on a task. Stale sessions
-    and leftovers of the same user are removed from the task. Use
-    'update_task_session' for further updates of the session.
+    The session is removed by the server if it is not refreshed with
+    another call in the time to live.
 
     Args:
         project_name (str): Project name.
         task_id (str): Task id.
         item (TaskUsageItem): Session to register.
-        stale_timeout_hours (float): Sessions without an update for more
-            than this amount of hours are removed from the task.
+        ttl (Optional[int]): Time to live of the session in seconds.
+        heartbeat (bool): Only keep the session alive, the time of last
+            activity of the session is not changed.
 
     Returns:
         list[TaskUsageItem]: Other active sessions working on the task.
 
+    Raises:
+        TaskUsageNotSupportedError: The server does not have the endpoints.
+
     """
-    task_entity = ayon_api.get_task_by_id(
-        project_name, task_id, fields={"id", "data"}
+    if ttl is None:
+        ttl = TaskUsageSettings().ttl_seconds
+    data = _request(
+        "put",
+        _get_endpoint(project_name, task_id, item.session_id),
+        dict(item.to_server_data(), ttl=ttl, heartbeat=heartbeat),
     )
-    if not task_entity:
-        return []
-
-    task_data = task_entity.get("data") or {}
-    cleanup_keys = get_task_usage_cleanup_keys(
-        task_data, item, stale_timeout_hours
-    )
-    update_data: dict[str, Any] = {key: None for key in cleanup_keys}
-    update_data[item.data_key] = item.to_data()
-    ayon_api.update_task(project_name, task_id, data=update_data)
-
     return [
         other_item
-        for other_item in filter_active_items(
-            parse_task_usage_items(task_data), stale_timeout_hours
-        )
-        if (
-            other_item.data_key not in cleanup_keys
-            and other_item.session_id != item.session_id
-        )
+        for other_item in _parse_server_items((data or {}).get("sessions"))
+        if other_item.session_id != item.session_id
     ]
 
 
 def update_task_session(
-    project_name: str, task_id: str, item: TaskUsageItem
+    project_name: str,
+    task_id: str,
+    item: TaskUsageItem,
+    ttl: Optional[int] = None,
+    heartbeat: bool = False,
 ) -> None:
-    """Update a session on a task.
-
-    Only the key of the session is sent, the task data are not read.
+    """Update a session on a task and keep it alive.
 
     Args:
         project_name (str): Project name.
         task_id (str): Task id.
         item (TaskUsageItem): Session to update.
+        ttl (Optional[int]): Time to live of the session in seconds.
+        heartbeat (bool): Only keep the session alive, the time of last
+            activity of the session is not changed.
+
+    Raises:
+        TaskUsageNotSupportedError: The server does not have the endpoints.
 
     """
-    ayon_api.update_task(
-        project_name, task_id, data={item.data_key: item.to_data()}
-    )
+    claim_task(project_name, task_id, item, ttl, heartbeat)
 
 
 def release_task(
@@ -622,11 +680,12 @@ def release_task(
     """
     if session_id is None:
         session_id = _get_session_id()
-    ayon_api.update_task(
-        project_name,
-        task_id,
-        data={get_session_data_key(session_id): None},
-    )
+    try:
+        _request(
+            "delete", _get_endpoint(project_name, task_id, session_id)
+        )
+    except TaskUsageNotSupportedError:
+        pass
 
 
 @dataclass
@@ -636,18 +695,100 @@ class _TaskContext:
     settings: TaskUsageSettings
 
 
+@dataclass(frozen=True)
+class _HostState:
+    """Context of the host integration captured in the main thread."""
+    project_name: Optional[str]
+    folder_path: Optional[str]
+    task_name: Optional[str]
+    workfile: Optional[str]
+
+
+@dataclass
+class TaskInUseNotice:
+    """Other users are working on the task claimed by current process.
+
+    The task is already in use by current process at this point, e.g. the
+    application was launched with a workfile, so the user can only be
+    informed.
+
+    Attributes:
+        items (list[TaskUsageItem]): Sessions of other users.
+        user_full_names (dict[str, str]): Full names of the users by
+            username.
+        workfile (Optional[str]): Filename of workfile opened in current
+            process when the task was claimed.
+        version_up_callback (Optional[Callable[[], None]]): Callback to
+            save current workfile as next version. Is filled if the same
+            workfile is opened by other user. Must be called from the main
+            thread of the application.
+
+    """
+    items: list[TaskUsageItem]
+    user_full_names: dict[str, str] = field(default_factory=dict)
+    workfile: Optional[str] = None
+    version_up_callback: Optional[Callable[[], None]] = None
+
+
+_notice_callbacks: list[Callable[[TaskInUseNotice], None]] = []
+
+
+def register_task_in_use_notice_callback(
+    callback: Callable[[TaskInUseNotice], None]
+) -> None:
+    """Register callback called when the claimed task is in use.
+
+    The callback is a way how a frontend can show the notice to the user.
+    The frontend should call 'acknowledge_task_usage_items' with sessions
+    it did show, so the user is not asked about them again.
+
+    Warning:
+        The callback is called from a background thread. It must not
+        block and must not touch the application or its UI directly. It
+        has to pass the notice to the thread where it can be shown on
+        its own, e.g. with a queued Qt signal.
+
+    Args:
+        callback (Callable[[TaskInUseNotice], None]): Callback to register.
+
+    """
+    if callback not in _notice_callbacks:
+        _notice_callbacks.append(callback)
+
+
+def deregister_task_in_use_notice_callback(
+    callback: Callable[[TaskInUseNotice], None]
+) -> None:
+    """Remove callback registered for notices about task in use."""
+    if callback in _notice_callbacks:
+        _notice_callbacks.remove(callback)
+
+
 class TaskUsageTracker:
     """Keep current process registered on the task of current context.
 
     The tracker follows current context of the host integration. The task is
     claimed when context changes or a workfile is opened or saved, and is
     released when context changes to a different task or the process ends.
+    Claimed task is kept alive on the server with heartbeats.
 
-    When a task is claimed and other users are working on it, the user is
-    notified about them, unless the user did already confirm them, e.g. in
-    the Workfiles tool.
+    Callbacks of the application must not wait for the server, so the work
+    is split to 2 parts:
+        - 'sync' is called from the callbacks in the main thread. It only
+            reads current context from the host integration and schedules
+            it, without any request to the server.
+        - 'process' does all requests to the server. It is called from
+            a background thread, see 'start'. The thread sleeps most of
+            the time and never touches the host integration.
+
+    When a task is claimed and other users are working on it, callbacks
+    registered with 'register_task_in_use_notice_callback' are called,
+    unless the user did already confirm the sessions, e.g. in the launcher
+    or in the Workfiles tool.
 
     Failures are only logged. The tracker must never break host callbacks.
+    The tracker disables itself if the server does not support task in-use
+    tracking.
 
     Args:
         host (AbstractHost): Host integration.
@@ -655,29 +796,239 @@ class TaskUsageTracker:
     """
     def __init__(self, host):
         self._host = host
+        self._host_name: Optional[str] = getattr(host, "name", None)
+
+        # Context scheduled in main thread for the background thread
+        self._lock = threading.Lock()
+        self._scheduled: Optional[_HostState] = None
+        self._is_scheduled: bool = False
+        self._scheduled_at: float = 0.0
+
+        self._thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+        self._wake_event = threading.Event()
+
+        # Only one thread can talk to the server at a time
+        self._process_lock = threading.Lock()
+        # Attributes below are changed only during the processing
+        self._state: Optional[_HostState] = None
         self._claimed: Optional[_TaskContext] = None
         self._item: Optional[TaskUsageItem] = None
         self._last_update: float = 0.0
-        self._retry_after: float = 0.0
+        self._last_activity: float = 0.0
+        self._failed: bool = False
+        self._disabled: bool = False
         self._context_cache: dict[tuple, Optional[_TaskContext]] = {}
 
-    def sync(self) -> None:
-        """Synchronize the task registration with current host context.
+    @property
+    def is_disabled(self) -> bool:
+        """The server does not support task in-use tracking."""
+        return self._disabled
 
-        Is not processed for some time after a failure, e.g. when server is
-        not available or the user can't update tasks, to not slow down
-        every save of a workfile.
+    def sync(self) -> None:
+        """Schedule synchronization with current context of the host.
+
+        Should be called from the main thread of the application, e.g.
+        from callbacks of the host integration. Does not wait for the
+        server, the context is processed in the background thread.
         """
-        if time.monotonic() < self._retry_after:
+        if self._disabled:
             return
         try:
-            self._sync()
+            state = self._get_host_state()
         except Exception:
-            self._retry_after = time.monotonic() + REFRESH_INTERVAL_SECONDS
-            log.warning("Failed to update task in-use data.", exc_info=True)
+            log.warning(
+                "Failed to receive context for task in-use tracking.",
+                exc_info=True,
+            )
+            return
+        self._schedule(state)
 
     def release(self) -> None:
-        """Unregister from the claimed task."""
+        """Schedule release of the claimed task.
+
+        Does not wait for the server. The task is claimed again with next
+        'sync' call.
+        """
+        self._schedule(None)
+
+    def process(self) -> None:
+        """Apply scheduled context on the server and keep session alive.
+
+        Does requests to the server, so it is called from the background
+        thread. Can be called from any thread, e.g. if the thread is not
+        used. Nothing happens if other thread is processing right now.
+        """
+        if not self._process_lock.acquire(blocking=False):
+            return
+        try:
+            self._process()
+            self._failed = False
+        except TaskUsageNotSupportedError:
+            self._disable()
+        except Exception:
+            # Server may be temporarily not available, is repeated later
+            log_method = log.debug if self._failed else log.warning
+            log_method("Failed to update task in-use data.", exc_info=True)
+            self._failed = True
+        finally:
+            self._process_lock.release()
+
+    def start(self) -> None:
+        """Start background thread that does the processing.
+
+        The thread is a daemon, so it does not block exit of the process.
+        """
+        if self._thread is not None or self._disabled:
+            return
+        self._stop_event = stop_event = threading.Event()
+        self._thread = thread = threading.Thread(
+            target=self._run,
+            args=(stop_event,),
+            name="ayon-task-in-use",
+            daemon=True,
+        )
+        thread.start()
+
+    def stop(self, timeout: Optional[float] = None) -> None:
+        """Release the claimed task and stop the background thread.
+
+        The task is released by the thread. It is released in current
+        thread if the thread was not started.
+
+        Args:
+            timeout (Optional[float]): Seconds to wait until the task is
+                released by the thread, e.g. on exit of the application.
+                Does not wait if is not passed.
+
+        """
+        thread, self._thread = self._thread, None
+        with self._lock:
+            self._scheduled = None
+            self._is_scheduled = True
+            self._scheduled_at = time.monotonic()
+        self._stop_event.set()
+        self._wake_event.set()
+
+        if thread is None:
+            self.process()
+        elif timeout and thread is not threading.current_thread():
+            thread.join(timeout)
+
+    def _schedule(self, state: Optional[_HostState]) -> None:
+        now = time.monotonic()
+        with self._lock:
+            # Background threads are not processed in some applications
+            #   when Python code is not running in the main thread
+            is_starved = (
+                self._is_scheduled
+                and self._thread is not None
+                and now - self._scheduled_at >= STARVED_THREAD_SECONDS
+                and not self._process_lock.locked()
+            )
+            if not self._is_scheduled:
+                self._scheduled_at = now
+            self._scheduled = state
+            self._is_scheduled = True
+        self._wake_event.set()
+
+        if is_starved:
+            log.debug(
+                "Task in-use thread is not processed by the application."
+                " Processing in current thread."
+            )
+            self.process()
+
+    def _run(self, stop_event: threading.Event) -> None:
+        while True:
+            self._wake_event.wait(self._get_wait_seconds())
+            self._wake_event.clear()
+            # Scheduled release is processed before the thread stops
+            self.process()
+            if stop_event.is_set() or self._disabled:
+                break
+
+    def _get_wait_seconds(self) -> float:
+        """Seconds until the next heartbeat or next try after a failure."""
+        claimed = self._claimed
+        if claimed is None:
+            return TaskUsageSettings().heartbeat_interval
+        interval = claimed.settings.heartbeat_interval
+        if self._failed:
+            return interval
+        elapsed = time.monotonic() - self._last_update
+        return max(1.0, interval - elapsed)
+
+    def _disable(self) -> None:
+        self._disabled = True
+        self._claimed = None
+        self._item = None
+        self._thread = None
+        self._stop_event.set()
+        self._wake_event.set()
+
+    def _process(self) -> None:
+        if self._disabled:
+            return
+
+        is_activity = False
+        with self._lock:
+            if self._is_scheduled:
+                self._state = self._scheduled
+                self._scheduled = None
+                self._is_scheduled = False
+                is_activity = True
+
+        state = self._state
+        context = None
+        if state is not None:
+            context = self._get_task_context(state)
+
+        claimed = self._claimed
+        if claimed is not None and (
+            context is None
+            or context.project_name != claimed.project_name
+            or context.task_id != claimed.task_id
+        ):
+            self._release_claimed()
+            claimed = None
+
+        if context is None:
+            return
+
+        now = time.monotonic()
+        if claimed is None:
+            self._claim(context, state.workfile)
+            return
+
+        item = self._item
+        ttl = context.settings.ttl_seconds
+        if state.workfile != item.workfile or (
+            # Workfile was opened or saved, but do not report each save
+            is_activity
+            and now - self._last_activity >= ACTIVITY_INTERVAL_SECONDS
+        ):
+            item = replace(item, workfile=state.workfile)
+            update_task_session(
+                context.project_name, context.task_id, item, ttl
+            )
+            self._item = item
+            self._last_update = self._last_activity = now
+
+        elif (
+            now - self._last_update
+            >= context.settings.heartbeat_interval - 1.0
+        ):
+            update_task_session(
+                context.project_name,
+                context.task_id,
+                item,
+                ttl,
+                heartbeat=True,
+            )
+            self._last_update = now
+
+    def _release_claimed(self) -> None:
         claimed, self._claimed = self._claimed, None
         item, self._item = self._item, None
         if claimed is None or item is None:
@@ -687,106 +1038,68 @@ class TaskUsageTracker:
                 claimed.project_name, claimed.task_id, item.session_id
             )
         except Exception:
+            # The session does expire on the server
             log.warning("Failed to release task in-use data.", exc_info=True)
 
-    def _sync(self) -> None:
-        context = self._get_task_context()
-
-        claimed = self._claimed
-        if claimed is not None and (
-            context is None
-            or context.project_name != claimed.project_name
-            or context.task_id != claimed.task_id
-        ):
-            self.release()
-            claimed = None
-
-        if context is None:
-            return
-
-        workfile = self._get_workfile_name()
-        now = time.monotonic()
-        if claimed is None:
-            self._claim(context, workfile)
-
-        elif (
-            workfile != self._item.workfile
-            or now - self._last_update >= REFRESH_INTERVAL_SECONDS
-        ):
-            item = replace(
-                self._item,
-                workfile=workfile,
-                updated_at=_get_now().isoformat(),
-            )
-            update_task_session(context.project_name, context.task_id, item)
-            self._item = item
-
-        else:
-            return
-
-        self._last_update = now
-
     def _claim(self, context: _TaskContext, workfile: Optional[str]) -> None:
-        item = create_session_item(
-            workfile, getattr(self._host, "name", None)
-        )
+        item = create_session_item(workfile, self._host_name)
         other_items = claim_task(
             context.project_name,
             context.task_id,
             item,
-            context.settings.stale_timeout_hours,
+            context.settings.ttl_seconds,
         )
         self._claimed = context
         self._item = item
+        self._last_update = self._last_activity = time.monotonic()
 
         other_items = filter_other_users_items(
             other_items, item.username, _acknowledged_session_ids
         )
-        # Sessions stay unconfirmed if the user could not be notified, the
-        #   user is asked about them when opens a workfile of the task
-        if other_items and self._notify(other_items):
-            acknowledge_task_usage_items(other_items)
+        if other_items:
+            self._notify(other_items, workfile)
 
-    def _notify(self, items: list[TaskUsageItem]) -> bool:
+    def _notify(
+        self, items: list[TaskUsageItem], workfile: Optional[str]
+    ) -> None:
         """Notify user that other users are working on the claimed task.
 
-        The task is already in use by current process at this point, e.g.
-        the application was launched with a workfile, so the user can only
-        be informed.
-
-        Returns:
-            bool: The notice will be shown to the user.
-
+        Is called from the background thread, so the notice is only passed
+        to registered callbacks. Sessions stay unconfirmed until a frontend
+        does acknowledge them, the user is asked about them when opens
+        a workfile of the task otherwise.
         """
         log.warning(
             "Task is in use by other users: %s",
             ", ".join(sorted({item.username for item in items})),
         )
-        try:
-            from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
-                show_task_in_use_notice,
-            )
+        callbacks = list(_notice_callbacks)
+        if not callbacks:
+            return
 
-            version_up_callback = None
-            workfile = self._item.workfile if self._item else None
-            if get_same_workfile_items(items, workfile):
-                version_up_callback = partial(self._version_up, workfile)
+        version_up_callback = None
+        if get_same_workfile_items(items, workfile):
+            version_up_callback = partial(self._version_up, workfile)
 
-            return show_task_in_use_notice(
-                items,
-                get_task_usage_user_full_names(items),
-                version_up_callback=version_up_callback,
-            )
-        except Exception:
-            log.debug(
-                "Failed to show task in-use notice.", exc_info=True
-            )
-        return False
+        notice = TaskInUseNotice(
+            items,
+            get_task_usage_user_full_names(items),
+            workfile,
+            version_up_callback,
+        )
+        for callback in callbacks:
+            try:
+                callback(notice)
+            except Exception:
+                log.debug(
+                    "Failed to pass task in-use notice.", exc_info=True
+                )
 
     def _version_up(self, workfile: str) -> None:
         """Save current workfile as next version.
 
-        Nothing is saved if the workfile is not opened anymore.
+        Must be called from the main thread of the application. Nothing is
+        saved if the workfile is not opened anymore.
 
         Args:
             workfile (str): Filename of workfile the user was notified
@@ -815,12 +1128,21 @@ class TaskUsageTracker:
             return None
         return os.path.basename(filepath)
 
-    def _get_task_context(self) -> Optional[_TaskContext]:
-        """Task of current host context with enabled in-use tracking."""
+    def _get_host_state(self) -> _HostState:
+        """Current context of the host, is called from the main thread."""
         context = self._host.get_current_context()
-        project_name = context.get("project_name")
-        folder_path = context.get("folder_path")
-        task_name = context.get("task_name")
+        return _HostState(
+            context.get("project_name"),
+            context.get("folder_path"),
+            context.get("task_name"),
+            self._get_workfile_name(),
+        )
+
+    def _get_task_context(self, state: _HostState) -> Optional[_TaskContext]:
+        """Task of host context with enabled in-use tracking."""
+        project_name = state.project_name
+        folder_path = state.folder_path
+        task_name = state.task_name
         if not project_name or not folder_path or not task_name:
             return None
 
@@ -854,7 +1176,7 @@ class TaskUsageTracker:
 
         settings = get_task_usage_settings(
             project_name,
-            getattr(self._host, "name", None),
+            self._host_name,
             task_entity["taskType"],
             task_entity["name"],
         )
@@ -869,7 +1191,8 @@ _tracker: Optional[TaskUsageTracker] = None
 
 def _on_exit() -> None:
     if _tracker is not None:
-        _tracker.release()
+        # The task is released by the thread, wait for it only a moment
+        _tracker.stop(timeout=EXIT_TIMEOUT_SECONDS)
 
 
 def _connect_qt_quit() -> None:
@@ -887,11 +1210,32 @@ def _connect_qt_quit() -> None:
         log.debug("Failed to connect to Qt application quit.", exc_info=True)
 
 
+def _install_notice_frontend() -> None:
+    """Let a frontend show notices about task in use to the user.
+
+    The tracker does not know how to show a notice in the application, it
+    only calls registered callbacks. Nothing is registered if Qt is not
+    available. The user is then asked in the Workfiles tool or in the
+    launcher.
+    """
+    try:
+        from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
+            install_task_in_use_notifier,
+        )
+
+        install_task_in_use_notifier()
+    except Exception:
+        log.debug(
+            "Failed to install frontend of task in-use notice.",
+            exc_info=True,
+        )
+
+
 def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     """Start tracking of task in-use for the host integration.
 
-    Tracking is skipped in headless mode, in farm jobs and in automated
-    tests.
+    Should be called from the main thread of the application. Tracking is
+    skipped in headless mode, in farm jobs and in automated tests.
 
     Args:
         host (AbstractHost): Installed host integration.
@@ -936,7 +1280,9 @@ def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     atexit.register(_on_exit)
     _connect_qt_quit()
 
+    _install_notice_frontend()
     tracker.sync()
+    tracker.start()
     return tracker
 
 
@@ -946,4 +1292,4 @@ def uninstall_task_usage_tracker() -> None:
 
     tracker, _tracker = _tracker, None
     if tracker is not None:
-        tracker.release()
+        tracker.stop(timeout=EXIT_TIMEOUT_SECONDS)

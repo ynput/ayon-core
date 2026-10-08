@@ -214,16 +214,18 @@ class TaskInUseProfile(BaseSettingsModel):
         title="Task names",
     )
     enabled: bool = SettingsField(True, title="Enabled")
-    stale_timeout_hours: float = SettingsField(
-        8.0,
-        title="Stale timeout (hours)",
+    session_timeout_minutes: float = SettingsField(
+        5.0,
+        title="Session timeout (minutes)",
         description=(
-            "Session of a user that did not update for this amount of hours"
-            " is ignored. A session is updated when a workfile is opened"
-            " or saved. Sessions can become stale when an application"
-            " crashes."
+            "Session of a user is removed from the task if the application"
+            " did not report itself to the server for this amount of"
+            " minutes, e.g. when the application crashed. Running"
+            " application reports itself 3 times per the timeout."
+            " Allowed range is 1 to 60 minutes."
         ),
-        gt=0,
+        ge=1,
+        le=60,
     )
 
 
