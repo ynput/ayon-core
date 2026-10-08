@@ -208,6 +208,7 @@ class AttributesWidget(QtWidgets.QWidget):
 
             if label:
                 label_widget = QtWidgets.QLabel(label, self)
+                label_widget.setVisible(attr_def.visible)
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
