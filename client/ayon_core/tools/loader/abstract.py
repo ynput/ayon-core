@@ -802,7 +802,8 @@ class FrontendLoaderController(_BaseLoaderController):
         self,
         project_name,
         entity_type,
-        entity_ids
+        entity_ids,
+        use_server_fallback=True,
     ):
         """Get thumbnail path for thumbnail id.
 
@@ -814,6 +815,9 @@ class FrontendLoaderController(_BaseLoaderController):
             project_name (str): Project name.
             entity_type (str): Entity type.
             entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
 
         Returns:
             dict[str, Union[str, None]]: Thumbnail path by entity id.
