@@ -455,6 +455,7 @@ class DetailsWidget(QtWidgets.QWidget):
             ("Info", logging.INFO),
             ("Warning", logging.WARNING),
             ("Error", logging.ERROR),
+            ("Critical", logging.CRITICAL),
         ):
             level_filter.addItem(label, value)
         level_filter.setMinimumWidth(150)
