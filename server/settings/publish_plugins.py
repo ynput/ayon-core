@@ -1929,7 +1929,7 @@ class PublishPuginsModel(BaseSettingsModel):
     CollectUSDAssetContributions: CollectUSDAssetContributionsModel = (
         SettingsField(
             default_factory=CollectUSDAssetContributionsModel,
-            title="Collect USD Asset Contributions",
+            title="Collect Predefined USD Contributions",
         )
     )
     CollectVersionToList: CollectVersionToListModel = SettingsField(
