@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import time
 import collections
 import atexit
@@ -54,6 +55,9 @@ class TrayManager:
 
     Load submenus, actions, separators and addons into tray's context.
     """
+    # Delay of notification about lost connection to server (in ms)
+    connection_lost_notification_delay = 60 * 1000
+
     def __init__(self, tray_widget, main_window):
         self.tray_widget = tray_widget
         self.main_window = main_window
@@ -87,7 +91,21 @@ class TrayManager:
         #   via websocket, processed in '_main_thread_execution'
         self._event_system = QueuedEventSystem()
         self._ws_events_model = WSEventsModel(self)
+        # Connection was lost (icon shows orange dot)
         self._connection_lost = False
+        # User was notified about lost connection with tray message
+        self._connection_lost_notified = False
+        # Show notification only if connection is not restored in time,
+        #   short outages (e.g. server restart) only change the icon
+        connection_lost_timer = QtCore.QTimer()
+        connection_lost_timer.setSingleShot(True)
+        connection_lost_timer.setInterval(
+            self.connection_lost_notification_delay
+        )
+        connection_lost_timer.timeout.connect(
+            self._on_connection_lost_timer
+        )
+        self._connection_lost_timer = connection_lost_timer
         # Single bundle change can trigger multiple events in short time
         bundle_validation_timer = QtCore.QTimer()
         bundle_validation_timer.setSingleShot(True)
@@ -436,10 +454,17 @@ class TrayManager:
         if not self._connection_lost:
             return
         self._connection_lost = False
-        self.show_tray_message(
-            "AYON server connection restored",
-            "Connection to AYON server was restored.",
+        self._connection_lost_timer.stop()
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_OK
         )
+        # Tell user about restored connection only if was told it was lost
+        if self._connection_lost_notified:
+            self._connection_lost_notified = False
+            self.show_tray_message(
+                "AYON server connection restored",
+                "Connection to AYON server was restored.",
+            )
         # Bundles might have changed while the server was not available
         self._bundle_validation_timer.start()
 
@@ -447,6 +472,18 @@ class TrayManager:
         if self._connection_lost:
             return
         self._connection_lost = True
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_LOST
+        )
+        self._connection_lost_timer.start()
+
+    def _on_connection_lost_timer(self):
+        if not self._connection_lost or self._closing:
+            return
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_LOST_LONG
+        )
+        self._connection_lost_notified = True
         self.show_tray_message(
             "AYON server connection lost",
             "Connection to AYON server was lost. Waiting for reconnection.",
@@ -716,11 +753,34 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     doubleclick_time_ms = 100
 
+    # Connection status shown in icon
+    # - connected: no dot
+    # - lost: orange dot fading in/out (connection may be restored soon)
+    # - lost long: solid red dot
+    CONNECTION_OK = "ok"
+    CONNECTION_LOST = "lost"
+    CONNECTION_LOST_LONG = "lost_long"
+    # Duration of one fade in/out cycle
+    blink_cycle_ms = 800
+    # Number of icon frames per cycle (icon is updated for each frame)
+    blink_frames = 20
+
     def __init__(self, parent):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
 
         super().__init__(icon, parent)
 
+        self._icon = icon
+        self._dot_icons = {}
+        self._connection_status = self.CONNECTION_OK
+        self._blink_frame = 0
+
+        blink_timer = QtCore.QTimer()
+        blink_timer.setInterval(
+            max(1, self.blink_cycle_ms // self.blink_frames)
+        )
+        blink_timer.timeout.connect(self._on_blink_timer)
+        self._blink_timer = blink_timer
         self._exited = False
 
         self._doubleclick = False
@@ -758,6 +818,112 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def is_closing(self) -> bool:
         return self._tray_manager.is_closing()
+
+    def set_connection_status(self, status: str) -> None:
+        """Show connection status to server in icon.
+
+        Args:
+            status (str): One of 'CONNECTION_OK', 'CONNECTION_LOST' or
+                'CONNECTION_LOST_LONG'.
+
+        """
+        if self._connection_status == status:
+            return
+        self._connection_status = status
+        self._blink_timer.stop()
+        if status == self.CONNECTION_OK:
+            self.setIcon(self._icon)
+            self.setToolTip("")
+            return
+
+        self.setToolTip("AYON - Connection to server lost")
+        if status == self.CONNECTION_LOST:
+            self._blink_frame = 0
+            self.setIcon(self._get_dot_icon("#ff8c00"))
+            self._blink_timer.start()
+        else:
+            self.setIcon(self._get_dot_icon("#e53935"))
+
+    def _on_blink_timer(self):
+        if self._connection_status != self.CONNECTION_LOST:
+            self._blink_timer.stop()
+            return
+        self._blink_frame = (self._blink_frame + 1) % self.blink_frames
+        # Cosine curve - starts fully visible, fades out and in again
+        progress = self._blink_frame / self.blink_frames
+        opacity = (math.cos(progress * 2 * math.pi) + 1) * 0.5
+        self.setIcon(self._get_dot_icon("#ff8c00", opacity))
+
+    def _get_dot_icon(
+        self, color: str, opacity: float = 1.0
+    ) -> QtGui.QIcon:
+        """Tray icon with a colored dot in bottom right corner.
+
+        Args:
+            color (str): Color of the dot.
+            opacity (float): Opacity of the dot (0.0 - 1.0).
+
+        """
+        # Round opacity so the cache does not grow
+        opacity = round(opacity, 2)
+        key = (color, opacity)
+        icon = self._dot_icons.get(key)
+        if icon is not None:
+            return icon
+
+        size = 128
+        # Paint to own pixmap with device pixel ratio 1. Pixmap from
+        #   'QIcon.pixmap' has device pixel ratio of the screen (e.g. 1.5
+        #   on Windows with display scaling), so painting coordinates
+        #   would not match its size and the dot would be out of bounds.
+        pix = QtGui.QPixmap(size, size)
+        pix.fill(QtCore.Qt.transparent)
+        dot_size = size * 0.45
+        dot_rect = QtCore.QRectF(
+            size - dot_size, size - dot_size, dot_size, dot_size
+        )
+        painter = QtGui.QPainter(pix)
+        painter.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        painter.drawPixmap(
+            QtCore.QRect(0, 0, size, size),
+            self._icon.pixmap(size, size),
+        )
+        outline_color = QtGui.QColor(33, 37, 43)
+        pen_width = size * 0.05
+        ellipse_rect = dot_rect.adjusted(
+            pen_width * 0.5,
+            pen_width * 0.5,
+            -pen_width * 0.5,
+            -pen_width * 0.5,
+        )
+        # Dark backing (also outline separating the dot from the logo)
+        #   fades faster than the color, so half-transparent color is
+        #   blended with the backing instead of with the logo
+        painter.setOpacity(min(1.0, opacity * 2))
+        pen = QtGui.QPen(outline_color)
+        pen.setWidthF(pen_width)
+        painter.setPen(pen)
+        painter.setBrush(outline_color)
+        painter.drawEllipse(ellipse_rect)
+
+        painter.setOpacity(opacity)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(color))
+        painter.drawEllipse(
+            ellipse_rect.adjusted(
+                pen_width * 0.5,
+                pen_width * 0.5,
+                -pen_width * 0.5,
+                -pen_width * 0.5,
+            )
+        )
+        painter.end()
+        icon = QtGui.QIcon(pix)
+        self._dot_icons[key] = icon
+        return icon
 
     @property
     def initializing_addons(self):
@@ -808,6 +974,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             return
         self._exited = True
 
+        self._blink_timer.stop()
         self.hide()
         self._tray_manager.on_exit()
         QtCore.QCoreApplication.exit()
