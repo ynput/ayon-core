@@ -138,7 +138,6 @@ __all__ = (
     "MessageOverlayObject",
 
     "MultiSelectionComboBox",
-    "CompactMultiSelectionComboBox",
 
     "ThumbnailPainterWidget",
 
