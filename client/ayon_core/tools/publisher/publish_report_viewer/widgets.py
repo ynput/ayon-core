@@ -475,16 +475,12 @@ class DetailsWidget(QtWidgets.QWidget):
             "Include this many log entries before and after each match"
         )
 
-        header_controls = (
+        control_height = search_field.sizeHint().height()
+        for widget in (
             search_field,
             level_filter,
             surrounding_lines,
-        )
-        control_height = max(
-            widget.sizeHint().height()
-            for widget in header_controls
-        )
-        for widget in header_controls:
+        ):
             widget.setFixedHeight(control_height)
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
