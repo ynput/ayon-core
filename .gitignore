@@ -88,3 +88,6 @@ poetry.lock
 
 # ignore mkdocs build
 site/
+
+# handle test images from tests
+test_images
