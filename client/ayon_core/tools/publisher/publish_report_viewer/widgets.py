@@ -566,7 +566,7 @@ class DetailsWidget(QtWidgets.QWidget):
         self._matches: list[tuple[int, int]] = []
         self._match_index = -1
 
-        self._set_search_mode(False)
+        self._set_search_mode(True)
 
     def _on_timestamp_check(self):
         self._update_logs()
