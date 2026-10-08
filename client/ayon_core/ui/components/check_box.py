@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from qtpy.QtCore import QRect, QSize
-from qtpy.QtGui import QPainter, QPaintEvent
+from qtpy.QtCore import QPoint, QRect, QSize, Qt
+from qtpy.QtGui import QFont, QPainter, QPaintEvent
 from qtpy.QtWidgets import QCheckBox, QSizePolicy, QStyle, QStyleOptionButton
 
 from ..style_types import get_ayon_style
@@ -35,7 +35,11 @@ class AYCheckBox(StyleMixin, QCheckBox):
         self.setStyle(get_ayon_style())
 
         if variant == AYCheckBox.Variants.Button:
-            self.setFixedSize(self.sizeHint())
+            # Use a fixed size policy instead of 'setFixedSize' so the size
+            # follows text/font changes.
+            self.setSizePolicy(
+                QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+            )
 
     @property
     def style_dict(self):
@@ -114,26 +118,80 @@ class AYCheckBox(StyleMixin, QCheckBox):
                 QStyle.ControlElement.CE_CheckBox, option, p, self
             )
 
-    def sizeHint(self) -> QSize:
-        size = super().sizeHint()
+    def _indicator_on_right(self) -> bool:
+        return self.style_dict.get("indicator-position", "left") == "right"
 
+    def _content_size(self) -> QSize:
+        """Size of the painted [indicator + label] group.
+
+        Computed only from the AYON style metrics and the style font
+        (``self.fontMetrics()``) used for painting. ``QCheckBox.sizeHint``
+        must not be used as it measures with the C++ widget font, which
+        may differ (e.g. when an application stylesheet sets a font).
+        """
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        _style = get_ayon_style()
+        ind_w = _style.pixelMetric(
+            QStyle.PixelMetric.PM_IndicatorWidth, option, self
+        )
+        ind_h = _style.pixelMetric(
+            QStyle.PixelMetric.PM_IndicatorHeight, option, self
+        )
+        text = self.text()
+        if not text:
+            return QSize(ind_w, ind_h)
+
+        spacing = _style.pixelMetric(
+            QStyle.PixelMetric.PM_CheckBoxLabelSpacing, option, self
+        )
+        text_size = _style.itemTextRect(
+            self.fontMetrics(),
+            QRect(),
+            Qt.TextFlag.TextShowMnemonic,
+            False,
+            text,
+        ).size()
+        # Qt adds 4px label margins (see QCommonStyle CT_CheckBox).
+        return QSize(
+            ind_w + spacing + text_size.width() + 4,
+            max(ind_h, text_size.height() + 4),
+        )
+
+    def sizeHint(self) -> QSize:
+        size = self._content_size()
         if self._variant_str == AYCheckBox.Variants.Button.value:
             h_pad, v_pad = self.style_dict.get("padding", [6, 6])
-            size.setWidth(size.width() + h_pad * 2)
-            size.setHeight(size.height() + v_pad * 2)
-        else:
-            # Recalculate width using the custom style's actual metrics
-            option = QStyleOptionButton()
-            self.initStyleOption(option)
-            _style = get_ayon_style()
-            ind_w = _style.pixelMetric(
-                QStyle.PixelMetric.PM_IndicatorWidth, option, self
-            )
-            spacing = _style.pixelMetric(
-                QStyle.PixelMetric.PM_CheckBoxLabelSpacing, option, self
-            )
-            fm = self.fontMetrics()
-            text_w = fm.horizontalAdvance(self.text())
-            size.setWidth(ind_w + spacing + text_w)
-
+            size += QSize(h_pad * 2, v_pad * 2)
         return size
+
+    def minimumSizeHint(self) -> QSize:
+        # QCheckBox.minimumSizeHint returns its own cached sizeHint, make
+        # sure the custom one is used.
+        return self.sizeHint()
+
+    def hitButton(self, pos: QPoint) -> bool:
+        """Clickable area matching what is actually painted.
+
+        Qt's default uses 'SE_CheckBoxClickRect' (left aligned indicator +
+        text) which does not match the centered '[label  toggle]' layout
+        of right-indicator variants nor the button background.
+        """
+        if (
+            self._variant_str == AYCheckBox.Variants.Button.value
+            or self._indicator_on_right()
+        ):
+            return self.rect().contains(pos)
+        content = self._content_size()
+        if self.sizePolicy().horizontalPolicy() in (
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.MinimumExpanding,
+        ):
+            # Label is painted over the remaining width.
+            content.setWidth(self.width())
+        rect = QRect(0, 0, content.width(), self.height())
+        return rect.intersected(self.rect()).contains(pos)
+
+    def set_font(self, font: QFont) -> None:
+        super().set_font(font)
+        self.updateGeometry()
