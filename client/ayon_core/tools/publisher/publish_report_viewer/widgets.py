@@ -528,7 +528,11 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
         painter.drawText(
             rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, match.level
         )
-        rect.setLeft(rect.left() + metrics.horizontalAdvance("TRACEBACK "))
+        # Align the text after the common levels, longer ones push it
+        rect.setLeft(rect.left() + max(
+            metrics.horizontalAdvance("WARNING "),
+            metrics.horizontalAdvance(f"{match.level} "),
+        ))
 
         # Dimmed source of the log on the right
         source = metrics.elidedText(
@@ -569,7 +573,7 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
 
 class DetailsWidget(QtWidgets.QWidget):
     # Max rows of the search matches list visible without scrolling
-    max_visible_matches = 8
+    max_visible_matches = 6
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
