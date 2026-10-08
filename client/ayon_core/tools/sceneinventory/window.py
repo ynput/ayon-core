@@ -2,7 +2,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils import PlaceholderLineEdit, ConnectionOverlay
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
@@ -66,6 +66,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         main_layout.addWidget(headers_widget, 0)
         main_layout.addWidget(view, 1)
 
+        connection_overlay = ConnectionOverlay(controller, self)
+
         show_timer = QtCore.QTimer()
         show_timer.setInterval(0)
         show_timer.setSingleShot(False)
@@ -89,6 +91,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._update_all_button = update_all_button
         self._outdated_only_checkbox = outdated_only_checkbox
         self._view = view
+        self._connection_overlay = connection_overlay
 
         self._first_show = True
 

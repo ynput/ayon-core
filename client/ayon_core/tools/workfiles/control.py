@@ -17,6 +17,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     ProjectsModel,
     UsersModel,
+    WSEventsModel,
 )
 
 from .abstract import (
@@ -182,6 +183,7 @@ class BaseWorkfileController(
         self._projects_model = self._create_projects_model()
         self._hierarchy_model = self._create_hierarchy_model()
         self._workfiles_model = self._create_workfiles_model()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self) -> logging.Logger:
@@ -191,6 +193,12 @@ class BaseWorkfileController(
         if self._host is None:
             return None
         return self._host.name
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
 
     def is_host_valid(self) -> bool:
         return self._host_is_valid

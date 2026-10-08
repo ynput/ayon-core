@@ -20,6 +20,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
 )
 
 from .models import (
@@ -106,6 +107,8 @@ class PublisherController(
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._users_model = UsersModel(self)
+        # Websocket connection is created only when UI processes events
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -126,6 +129,12 @@ class PublisherController(
 
     def is_headless(self):
         return self._headless
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def get_server_connection_state(self) -> Optional[bool]:
+        return self._ws_events_model.get_connection_state()
 
     def get_host(self):
         return self._host

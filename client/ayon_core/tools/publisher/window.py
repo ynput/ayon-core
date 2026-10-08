@@ -20,6 +20,7 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     MessageOverlayObject,
     PixmapLabel,
+    ConnectionOverlay,
 )
 from ayon_core.tools.utils.lib import center_window
 
@@ -257,6 +258,8 @@ class PublisherWindow(QtWidgets.QDialog):
 
         create_overlay_button = CreateNextPageOverlay(self)
 
+        connection_overlay = ConnectionOverlay(controller, self)
+
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
         show_timer.timeout.connect(self._on_show_timer)
@@ -418,6 +421,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_visibility(False)
 
         self._create_overlay_button = create_overlay_button
+        self._connection_overlay = connection_overlay
         self._app_event_listener_installed = False
 
         self._show_timer = show_timer

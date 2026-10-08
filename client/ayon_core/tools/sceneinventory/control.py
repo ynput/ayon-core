@@ -12,6 +12,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     ProjectsModel,
     ProductTypeIconMapping,
+    WSEventsModel,
 )
 
 from .models import SiteSyncModel, ContainersModel
@@ -39,6 +40,7 @@ class SceneInventoryController:
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
         self._projects_model = ProjectsModel(self)
+        self._ws_events_model = WSEventsModel(self)
         self._event_system = self._create_event_system()
 
     def get_window_subtitle(self) -> Optional[str]:
@@ -48,6 +50,12 @@ class SceneInventoryController:
 
     def get_host(self) -> ILoadHost:
         return self._host
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def get_server_connection_state(self) -> Optional[bool]:
+        return self._ws_events_model.get_connection_state()
 
     def emit_event(self, topic, data=None, source=None):
         if data is None:

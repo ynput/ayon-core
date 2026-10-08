@@ -8,6 +8,7 @@ from ayon_core.tools.utils import (
     MessageOverlayObject,
     TasksWidget,
     FoldersFiltersWidget,
+    ConnectionOverlay,
 )
 from ayon_core.tools.workfiles.control import BaseWorkfileController
 from ayon_core.ui.components import (
@@ -131,6 +132,7 @@ class WorkfilesToolWindow(AYContainer):
         overlay_messages_widget = MessageOverlayObject(self)
         overlay_invalid_host = InvalidHostOverlay(self)
         overlay_invalid_host.setVisible(False)
+        connection_overlay = ConnectionOverlay(controller, self)
 
         show_timer = QtCore.QTimer()
         show_timer.setSingleShot(True)
@@ -165,6 +167,7 @@ class WorkfilesToolWindow(AYContainer):
 
         self._overlay_messages_widget = overlay_messages_widget
         self._overlay_invalid_host = overlay_invalid_host
+        self._connection_overlay = connection_overlay
         self._home_page_widget = home_page_widget
         self._pages_widget = pages_widget
         self._home_body_widget = home_body_widget
