@@ -21,7 +21,7 @@ from ayon_core.tools.utils import (
 from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
-from ayon_core.ui.components import AYLineEdit, AYSpinBox
+from ayon_core.ui.components import AYButton, AYLineEdit, AYSpinBox
 
 from .constants import (
     ITEM_ID_ROLE,
@@ -344,6 +344,7 @@ class _LogFiller:
         self.show_timestamp = show_timestamp
         self.logs = logs
         self.search_text = search_text
+        self.matches: list[tuple[int, int]] = []
         self.first_line = True
         self.cursor = None
         # Do not use the widget's current char format, it is the format
@@ -383,7 +384,9 @@ class _LogFiller:
             highlight_fmt = QtGui.QTextCharFormat(self.default_fmt)
             highlight_fmt.setBackground(QtGui.QColor(255, 213, 79))
             highlight_fmt.setForeground(QtGui.QColor(0, 0, 0))
+            position = self.cursor.position()
             self.cursor.insertText(match.group(), highlight_fmt)
+            self.matches.append((position, self.cursor.position()))
             start = match.end()
 
         self.cursor.insertText(message[start:], self.default_fmt)
@@ -440,12 +443,14 @@ class DetailsWidget(QtWidgets.QWidget):
 
         search_field = AYLineEdit(
             parent=header_widget,
-            placeholder="Search logs...",
             variant=AYLineEdit.Variants.Search_Field,
             name_id="PublishLogSearch",
         )
-        search_field.setToolTip("Filter the displayed logs")
         search_field.setMinimumWidth(180)
+        search_mode_btn = AYButton(
+            parent=header_widget,
+            variant=AYButton.Variants.Nav,
+        )
         level_filter = MultiSelectionComboBox(
             parent=header_widget,
             placeholder="Log levels (all)",
@@ -467,11 +472,33 @@ class DetailsWidget(QtWidgets.QWidget):
             maximum=99,
             value=0,
         )
-        surrounding_lines.setPrefix("Context: ")
-        surrounding_lines.setFixedWidth(100)
         surrounding_lines.setToolTip(
             "Include this many log entries before and after each match"
         )
+
+        # Replaces the surrounding lines field in search mode
+        match_nav_widget = QtWidgets.QWidget(header_widget)
+        prev_match_btn = AYButton(
+            parent=match_nav_widget,
+            variant=AYButton.Variants.Nav,
+            icon="arrow_back",
+            tooltip="Previous match (Shift+Enter)",
+        )
+        next_match_btn = AYButton(
+            parent=match_nav_widget,
+            variant=AYButton.Variants.Nav,
+            icon="arrow_forward",
+            tooltip="Next match (Enter)",
+        )
+        match_nav_layout = QtWidgets.QHBoxLayout(match_nav_widget)
+        match_nav_layout.setContentsMargins(0, 0, 0, 0)
+        match_nav_layout.setSpacing(0)
+        match_nav_layout.addWidget(prev_match_btn, 0)
+        match_nav_layout.addWidget(next_match_btn, 0)
+        surrounding_lines.setFixedWidth(match_nav_widget.sizeHint().width())
+        # Keep focus in the search field so its shortcuts remain usable
+        for btn in (search_mode_btn, prev_match_btn, next_match_btn):
+            btn.setFocusPolicy(QtCore.Qt.NoFocus)
 
         control_height = search_field.sizeHint().height()
         for widget in (
@@ -488,8 +515,10 @@ class DetailsWidget(QtWidgets.QWidget):
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(5, 5, 5, 5)
         header_layout.addWidget(level_filter, 0)
-        header_layout.addWidget(surrounding_lines, 0)
         header_layout.addWidget(search_field, 1)
+        header_layout.addWidget(search_mode_btn, 0)
+        header_layout.addWidget(surrounding_lines, 0)
+        header_layout.addWidget(match_nav_widget, 0)
         header_layout.addWidget(timestamp_check, 0)
         header_layout.addWidget(timestamp_label, 0)
 
@@ -505,6 +534,10 @@ class DetailsWidget(QtWidgets.QWidget):
 
         timestamp_check.stateChanged.connect(self._on_timestamp_check)
         search_field.textChanged.connect(self._on_search_changed)
+        search_field.returnPressed.connect(self._on_search_return)
+        search_mode_btn.clicked.connect(self._on_search_mode_toggle)
+        prev_match_btn.clicked.connect(lambda: self._go_to_match(-1))
+        next_match_btn.clicked.connect(lambda: self._go_to_match(1))
         level_filter.value_changed.connect(self._on_level_filter_changed)
         surrounding_lines.valueChanged.connect(
             self._on_surrounding_lines_changed
@@ -515,8 +548,10 @@ class DetailsWidget(QtWidgets.QWidget):
 
         self._timestamp_check = timestamp_check
         self._search_field = search_field
+        self._search_mode_btn = search_mode_btn
         self._level_filter_widget = level_filter
         self._surrounding_lines = surrounding_lines
+        self._match_nav_widget = match_nav_widget
         self._output_widget: ZoomPlainText = output_widget
         self._report_item: PublishReport | None = None
         self._instance_filter: set[str] = set()
@@ -524,9 +559,48 @@ class DetailsWidget(QtWidgets.QWidget):
         self._level_filter: set[int] = set()
         self._search_text = ""
         self._surrounding_line_count = 0
+        self._matches: list[tuple[int, int]] = []
+        self._match_index = -1
+
+        self._set_search_mode(False)
 
     def _on_timestamp_check(self):
         self._update_logs()
+
+    def _set_search_mode(self, search_mode: bool) -> None:
+        """Switch between filtering the logs and searching through them."""
+        self._search_mode = search_mode
+        mode, other_mode = "Filter", "search"
+        if search_mode:
+            mode, other_mode = "Search", "filter"
+        self._search_field.setPlaceholderText(f"{mode} logs...")
+        self._search_mode_btn.set_icon(
+            "search" if search_mode else "filter_alt"
+        )
+        self._search_mode_btn.setToolTip(f"Switch to {other_mode}")
+        self._surrounding_lines.setVisible(not search_mode)
+        self._match_nav_widget.setVisible(search_mode)
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_search_mode_toggle(self) -> None:
+        self._set_search_mode(not self._search_mode)
+
+    def _on_search_return(self) -> None:
+        if not self._search_mode:
+            return
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        self._go_to_match(-1 if modifiers & QtCore.Qt.ShiftModifier else 1)
+
+    def _go_to_match(self, step: int) -> None:
+        if not self._matches:
+            return
+        self._match_index = (self._match_index + step) % len(self._matches)
+        start, end = self._matches[self._match_index]
+        cursor = self._output_widget.textCursor()
+        cursor.setPosition(start)
+        cursor.setPosition(end, QtGui.QTextCursor.KeepAnchor)
+        self._output_widget.setTextCursor(cursor)
 
     def _on_search_changed(self, text: str) -> None:
         self._search_text = text.strip().casefold()
@@ -590,7 +664,7 @@ class DetailsWidget(QtWidgets.QWidget):
             if not self._level_filter or self._log_matches_level(log)
         ]
 
-        if self._search_text:
+        if self._search_text and not self._search_mode:
             matching_indices = {
                 index
                 for index, log in enumerate(filtered_logs)
@@ -622,6 +696,10 @@ class DetailsWidget(QtWidgets.QWidget):
             self._search_text,
         )
         filler.fill()
+        self._matches = filler.matches
+        self._match_index = -1
+        if self._search_mode:
+            self._go_to_match(1)
 
     def _log_matches_search(self, log: ReportLog) -> bool:
         if log.type == "record":
