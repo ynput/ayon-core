@@ -14,6 +14,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    ThumbnailsModel,
 )
 
 from .abstract import (
@@ -49,6 +50,7 @@ class BrowserController(AbstractBrowserController):
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._products_model = ProductsModel()
         self._loader_actions_model = LoaderActionsModel(self)
         self._users_model = UsersModel(self)
@@ -93,6 +95,7 @@ class BrowserController(AbstractBrowserController):
 
         self._products_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._loader_actions_model.reset()
         self._projects_model.reset()
         self._users_model.reset()
@@ -126,6 +129,17 @@ class BrowserController(AbstractBrowserController):
                 project_name, folder_id, sender
             ))
         return output
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
 
     def get_task_type_items(self, project_name, sender=None):
         return self._projects_model.get_task_type_items(
