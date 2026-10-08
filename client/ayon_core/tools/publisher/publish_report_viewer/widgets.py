@@ -534,15 +534,25 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
             metrics.horizontalAdvance(f"{match.level} "),
         ))
 
-        # Dimmed source of the log on the right
-        source = metrics.elidedText(
+        # Dimmed and slightly smaller source of the log on the right, sized
+        #   in whole pixels as the hinted glyphs get cramped in between
+        source_font = QtGui.QFont(option.font)
+        source_font.setPixelSize(
+            QtGui.QFontInfo(option.font).pixelSize() - 2
+        )
+        source_metrics = QtGui.QFontMetrics(source_font)
+        source = source_metrics.elidedText(
             match.source, QtCore.Qt.ElideMiddle, rect.width() // 3
         )
+        painter.setFont(source_font)
         painter.setPen(dimmed_color)
         painter.drawText(
             rect, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter, source
         )
-        rect.setRight(rect.right() - metrics.horizontalAdvance(source) - 16)
+        painter.setFont(option.font)
+        rect.setRight(
+            rect.right() - source_metrics.horizontalAdvance(source) - 16
+        )
 
         # Elide the text before the match so the match stays visible
         before = metrics.elidedText(
