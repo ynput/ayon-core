@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from math import ceil
 import re
 import typing
@@ -453,10 +454,10 @@ class DetailsWidget(QtWidgets.QWidget):
             placeholder="Log levels (all)",
         )
         for label, value in (
-            ("Debug", "DEBUG"),
-            ("Info", "INFO"),
-            ("Warning", "WARNING"),
-            ("Error", "ERROR"),
+            ("Debug", logging.DEBUG),
+            ("Info", logging.INFO),
+            ("Warning", logging.WARNING),
+            ("Error", logging.ERROR),
         ):
             level_filter.addItem(label, value)
         level_filter.setMinimumWidth(150)
@@ -473,6 +474,18 @@ class DetailsWidget(QtWidgets.QWidget):
         surrounding_lines.setToolTip(
             "Include this many log entries before and after each match"
         )
+
+        header_controls = (
+            search_field,
+            level_filter,
+            surrounding_lines,
+        )
+        control_height = max(
+            widget.sizeHint().height()
+            for widget in header_controls
+        )
+        for widget in header_controls:
+            widget.setFixedHeight(control_height)
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(5, 5, 5, 5)
@@ -511,7 +524,7 @@ class DetailsWidget(QtWidgets.QWidget):
         self._report_item: PublishReport | None = None
         self._instance_filter: set[str] = set()
         self._plugin_filter: set[str] = set()
-        self._level_filter: set[str] = set()
+        self._level_filter: set[int] = set()
         self._search_text = ""
         self._surrounding_line_count = 0
 
@@ -623,17 +636,17 @@ class DetailsWidget(QtWidgets.QWidget):
         elif log.type == "error":
             searchable_text = log.traceback or ""
         else:
-            searchable_text = ""
+            return False
         return self._search_text in searchable_text.casefold()
 
     def _log_matches_level(self, log: ReportLog) -> bool:
         if log.type == "error":
-            level = "ERROR"
+            normalized_level = logging.ERROR
         else:
-            level = (log.levelname or "").upper()
-            if level in {"CRITICAL", "TRACEBACK"}:
-                level = "ERROR"
-        return level in self._level_filter
+            normalized_level = log.levelno
+            if normalized_level == logging.CRITICAL:
+                normalized_level = logging.ERROR
+        return normalized_level in self._level_filter
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
