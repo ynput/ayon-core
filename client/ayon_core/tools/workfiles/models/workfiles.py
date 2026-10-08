@@ -286,6 +286,8 @@ class WorkfilesModel:
                 version=version,
                 comment=comment,
                 description=description,
+                # Duplicated workfile should not be opened
+                open_workfile=False,
                 prepared_data=prepared_data,
             )
 
