@@ -84,6 +84,10 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         view.data_changed.connect(self._on_refresh_request)
         refresh_button.clicked.connect(self._on_refresh_request)
         update_all_button.clicked.connect(self._on_update_all)
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
 
         self._show_timer = show_timer
         self._show_counter = 0
@@ -92,6 +96,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._outdated_only_checkbox = outdated_only_checkbox
         self._view = view
         self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
 
         self._first_show = True
 
@@ -129,7 +135,16 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             self._show_counter += 1
             return
         self._show_timer.stop()
-        self.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self.refresh()
+        else:
+            self._refresh_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self.refresh()
 
     def _on_hierarchy_view_change(self, enabled):
         self._view.set_hierarchy_view(enabled)

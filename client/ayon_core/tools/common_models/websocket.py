@@ -16,6 +16,13 @@ from typing import Any, Callable
 import weakref
 
 from ayon_api import get_server_api_connection
+try:
+    from ayon_api.exceptions import UnauthorizedError
+except ImportError:
+    # 'UnauthorizedError' is not available in older ayon-python-api versions
+    class UnauthorizedError(Exception):
+        pass
+
 import requests
 from websocket import ABNF, create_connection
 
@@ -569,6 +576,7 @@ class EventHub:
         self._loop_thread: threading.Thread | None = None
         self._thread_lock = threading.Lock()
         self._callbacks_lock = threading.RLock()
+        self._state_lock = threading.Lock()
         self._registered_callbacks: list[EventCallback] = []
         self._internal_callbacks: list[EventCallback] = [
             EventCallback(
@@ -612,6 +620,45 @@ class EventHub:
 
     def is_server_restarting(self) -> bool:
         return self._loop_state.server_is_restarting
+
+    def check_server_available(self) -> bool | None:
+        """Quick synchronous check if server is available.
+
+        Websocket connection is created in a background thread, so it takes
+            a while until the connection state is known. This check can be
+            used e.g. when a tool is opened to find out that the server is
+            not available before the tool tries to fetch data from it.
+
+        Request is sent only if the connection state is not known yet. When
+            the server is not available, the state is changed to
+            disconnected and 'connection.closed' event is emitted.
+
+        Returns:
+            bool | None: 'False' if server is not available, 'True' if
+                websocket is connected, 'None' if server did respond but
+                websocket connection is not established yet.
+
+        """
+        state = self._loop_state.connected
+        if state is not None:
+            return state
+
+        # Use 'get_info' so timeout and retries configured on the
+        #   connection are respected
+        try:
+            self._connection.get_info()
+            available = True
+        except UnauthorizedError:
+            # Server is running but rejected the token
+            available = True
+        except Exception:
+            available = False
+
+        if available:
+            return self._loop_state.connected
+
+        self._set_connected(False)
+        return False
 
     def add_callback(
         self,
@@ -878,14 +925,19 @@ class EventHub:
         return None
 
     def _set_connected(self, connected: bool) -> None:
+        # Can be called from websocket thread and from main thread
+        #   ('check_server_available').
         state = self._loop_state
-        if state.connected is connected:
-            return
-        state.connected = connected
+        with self._state_lock:
+            if state.connected is connected:
+                return
+            state.connected = connected
+            if connected:
+                state.failed_attempts = 0
+                state.server_is_restarting = False
+                state.auth_failed = False
+
         if connected:
-            state.failed_attempts = 0
-            state.server_is_restarting = False
-            state.auth_failed = False
             self.emit_event(Event("connection.opened"))
         else:
             self.emit_event(Event("connection.closed"))
@@ -1125,6 +1177,22 @@ class WSEventsModel:
             except IndexError:
                 break
             callback.process_event(event)
+
+    def check_server_available(self) -> bool:
+        """Check if server is available.
+
+        Starts listening to server events (if not started yet), so
+            'ayon.connection.opened' is emitted once the connection is
+            established. A request to server is sent only if the connection
+            state is not known yet.
+
+        Returns:
+            bool: 'False' if server is not available.
+
+        """
+        self._register_connection_callbacks()
+        hub = _GlobalContext.get_event_hub()
+        return hub.check_server_available() is not False
 
     def get_connection_state(self) -> bool | None:
         """Current connection state.
