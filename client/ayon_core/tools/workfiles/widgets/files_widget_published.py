@@ -12,11 +12,13 @@ from ayon_core.ui.components import (
     AYContainer,
     AYLabel,
     AYHBoxLayout,
+    AYMenu,
     AYTreeView
 )
 from ayon_core.ui.style_types import get_ayon_style
 
 from .utils import BaseOverlayFrame, WorkfilesDelegate
+from .actions_widgets import add_actions_to_menu
 
 REPRE_ID_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -304,12 +306,15 @@ class PublishedFilesWidget(AYContainer):
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
         parent (QtWidgets.QWidget): The parent widget.
+        actions_loader (Optional[WorkfileActionsLoader]): Loader of
+            workfile actions. Actions are not available in context menu
+            without it.
     """
 
     selection_changed = QtCore.Signal()
     save_as_requested = QtCore.Signal()
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, parent, actions_loader=None):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -352,6 +357,7 @@ class PublishedFilesWidget(AYContainer):
         selection_model = view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
         view.double_clicked.connect(self._on_mouse_double_click)
+        view.customContextMenuRequested.connect(self._on_context_menu)
 
         controller.register_event_callback(
             "expected_selection_changed",
@@ -364,6 +370,7 @@ class PublishedFilesWidget(AYContainer):
         self._proxy_model = proxy_model
         self._work_files_delegate = work_files_delegate
         self._controller = controller
+        self._actions_loader = actions_loader
 
     def set_published_mode(self, published_mode):
         self._model.set_published_mode(published_mode)
@@ -398,6 +405,36 @@ class PublishedFilesWidget(AYContainer):
     def _on_mouse_double_click(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self.save_as_requested.emit()
+
+    def _on_context_menu(self, point):
+        if self._actions_loader is None:
+            return
+
+        index = self._view.indexAt(point)
+        # Context menu is related only to the area if is not triggered
+        #   on a published workfile
+        on_workfile = (
+            index.isValid()
+            and bool(index.flags() & QtCore.Qt.ItemIsEnabled)
+        )
+        selection = self._controller.get_workfile_action_selection(
+            True, with_workfile=on_workfile
+        )
+        action_items = self._actions_loader.get_items(selection)
+        if not action_items:
+            return
+
+        menu = AYMenu(self)
+        items_by_action = add_actions_to_menu(menu, action_items)
+        action = menu.exec_(self._view.mapToGlobal(point))
+        action_item = items_by_action.get(action)
+        if action_item is not None:
+            self._controller.trigger_workfile_action(
+                action_item.identifier,
+                selection,
+                action_item.data,
+                {},
+            )
 
     def _on_expected_selection_change(self, event):
         repre_info = event["representation"]

@@ -1,16 +1,17 @@
 import os
 
 import qtawesome
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui
 
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from ayon_core.ui.components import AYContainer, AYTreeView
+from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
 from ayon_core.ui.style_types import get_ayon_style
 
 from .utils import WorkfilesDelegate
+from .actions_widgets import add_actions_to_menu
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -288,13 +289,15 @@ class WorkAreaFilesWidget(AYContainer):
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
         parent (QtWidgets.QWidget): The parent widget.
+        actions_loader (Optional[WorkfileActionsLoader]): Loader of
+            workfile actions. Actions are not available in context menu
+            without it.
     """
 
     selection_changed = QtCore.Signal()
     open_current_requested = QtCore.Signal()
-    duplicate_requested = QtCore.Signal()
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, parent, actions_loader=None):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -347,6 +350,7 @@ class WorkAreaFilesWidget(AYContainer):
         self._proxy_model = proxy_model
         self._work_files_delegate = work_files_delegate
         self._controller = controller
+        self._actions_loader = actions_loader
 
         self._published_mode = False
         self._change_selection_on_refresh = True
@@ -411,28 +415,37 @@ class WorkAreaFilesWidget(AYContainer):
 
     def _on_context_menu(self, point):
         index = self._view.indexAt(point)
-        if not index.isValid():
+        # Context menu is related only to the work area if is not
+        #   triggered on a workfile
+        on_workfile = (
+            index.isValid()
+            and bool(index.flags() & QtCore.Qt.ItemIsEnabled)
+        )
+
+        if self._actions_loader is None:
             return
 
-        if not index.flags() & QtCore.Qt.ItemIsEnabled:
+        selection = self._controller.get_workfile_action_selection(
+            False, with_workfile=on_workfile
+        )
+        action_items = self._actions_loader.get_items(selection)
+        if not action_items:
             return
 
-        menu = QtWidgets.QMenu(self)
-
-        # Duplicate
-        action = QtWidgets.QAction("Duplicate", menu)
-        tip = "Duplicate selected file."
-        action.setToolTip(tip)
-        action.setStatusTip(tip)
-        action.triggered.connect(self._on_duplicate_pressed)
-        menu.addAction(action)
+        menu = AYMenu(self)
+        items_by_action = add_actions_to_menu(menu, action_items)
 
         # Show the context action menu
         global_point = self._view.mapToGlobal(point)
-        _ = menu.exec_(global_point)
-
-    def _on_duplicate_pressed(self):
-        self.duplicate_requested.emit()
+        action = menu.exec_(global_point)
+        action_item = items_by_action.get(action)
+        if action_item is not None:
+            self._controller.trigger_workfile_action(
+                action_item.identifier,
+                selection,
+                action_item.data,
+                {},
+            )
 
     def _on_expected_selection_change(self, event):
         workfile_info = event["workfile"]

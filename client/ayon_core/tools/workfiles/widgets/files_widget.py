@@ -21,9 +21,11 @@ class FilesWidget(AYContainer):
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
         parent (QtWidgets.QWidget): The parent widget.
+        actions_loader (Optional[WorkfileActionsLoader]): Loader of
+            workfile actions.
     """
 
-    def __init__(self, controller, parent):
+    def __init__(self, controller, parent, actions_loader=None):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -33,8 +35,12 @@ class FilesWidget(AYContainer):
         )
 
         files_widget = QtWidgets.QStackedWidget(self)
-        workarea_widget = WorkAreaFilesWidget(controller, files_widget)
-        published_widget = PublishedFilesWidget(controller, files_widget)
+        workarea_widget = WorkAreaFilesWidget(
+            controller, files_widget, actions_loader=actions_loader
+        )
+        published_widget = PublishedFilesWidget(
+            controller, files_widget, actions_loader=actions_loader
+        )
         files_widget.addWidget(workarea_widget)
         files_widget.addWidget(published_widget)
 
@@ -121,8 +127,6 @@ class FilesWidget(AYContainer):
 
         workarea_widget.open_current_requested.connect(
             self._on_current_open_requests)
-        workarea_widget.duplicate_requested.connect(
-            self._on_duplicate_request)
         workarea_btn_open.clicked.connect(self._on_workarea_open_clicked)
         workarea_btn_browse.clicked.connect(self._on_workarea_browse_clicked)
         workarea_btn_save.clicked.connect(self._on_workarea_save_clicked)
@@ -215,15 +219,38 @@ class FilesWidget(AYContainer):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def _open_workfile(self, folder_id, task_name, filepath):
+    def open_workfile(self, filepath, folder_id=None, task_id=None):
+        """Open a workfile the same way as with 'Open' button.
+
+        User is asked what to do with unsaved changes of current workfile.
+
+        Args:
+            filepath (str): Path to the workfile.
+            folder_id (Optional[str]): Folder id of workfile context.
+                Selected folder is used if is not passed.
+            task_id (Optional[str]): Task id of workfile context. Selected
+                task is used if is not passed.
+
+        Returns:
+            bool: False if user cancelled the opening.
+
+        """
+        if not folder_id:
+            folder_id = self._selected_folder_id
+        if not task_id:
+            task_id = self._selected_task_id
+        return self._open_workfile(folder_id, task_id, filepath)
+
+    def _open_workfile(self, folder_id, task_id, filepath):
         if self._controller.has_unsaved_changes():
             result = self._save_changes_prompt()
             if result is None:
-                return
+                return False
 
             if result:
                 self._controller.save_current_workfile()
-        self._controller.open_workfile(folder_id, task_name, filepath)
+        self._controller.open_workfile(folder_id, task_id, filepath)
+        return True
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()
@@ -239,9 +266,16 @@ class FilesWidget(AYContainer):
         #   under mouse
         self._on_workarea_open_clicked()
 
-    def _on_duplicate_request(self):
-        filepath = self._workarea_widget.get_selected_path()
-        if filepath is None:
+    def duplicate_workfile(self, filepath):
+        """Duplicate a workfile to selected context.
+
+        User is asked for version and comment of the new workfile.
+
+        Args:
+            filepath (str): Path to the workfile to duplicate.
+
+        """
+        if not filepath:
             return
 
         result = self._exec_save_as_dialog()
