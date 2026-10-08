@@ -52,6 +52,9 @@ from .overlay_messages import (
     MessageOverlayObject,
 )
 from .multiselection_combobox import MultiSelectionComboBox
+from .compact_multiselection_combobox import (
+    CompactMultiSelectionComboBox,
+)
 from .thumbnail_paint_widget import ThumbnailPainterWidget
 from .sliders import NiceSlider
 from .nice_checkbox import NiceCheckbox
@@ -138,6 +141,7 @@ __all__ = (
     "MessageOverlayObject",
 
     "MultiSelectionComboBox",
+    "CompactMultiSelectionComboBox",
 
     "ThumbnailPainterWidget",
 
