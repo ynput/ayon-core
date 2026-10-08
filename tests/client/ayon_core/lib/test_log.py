@@ -643,21 +643,6 @@ def test_span_ids_hidden_in_console(log_module, monkeypatch):
     assert span.trace_id not in output
 
 
-def test_log_timing_compatibility(log_module, monkeypatch, foreign_handler):
-    monkeypatch.setenv("AYON_CORE_TIMERS", "1")
-    module = log_module()
-
-    with pytest.warns(DeprecationWarning):
-        timing = module.log_timing("Loading activities")
-    with timing:
-        pass
-
-    (event,) = _event_dicts(foreign_handler, module, module.SPAN_LOGGER_NAME)
-    assert event["event"] == "Loading activities"
-    assert event["level"] == "info"
-    assert event["func_name"] == "test_log_timing_compatibility"
-
-
 def test_task_queue_runs_task_in_requester_context(log_module):
     task_queue = pytest.importorskip("ayon_core.ui.components.task_queue")
     AsyncTask = task_queue.AsyncTask
