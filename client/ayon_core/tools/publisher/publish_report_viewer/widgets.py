@@ -872,19 +872,18 @@ class DetailsWidget(QtWidgets.QWidget):
             self._set_matches([])
             return
 
-        # Logs with their source: the plugin and the instance or context
+        # Logs with their source: the plugin and the instance if it has one
         plugin_labels = {
             plugin.id: plugin.label for plugin in report.plugins_info
         }
         instance_labels = {
-            instance_id: instance.label or "No label"
+            instance_id: f" | {instance.label or 'No label'}"
             for instance_id, instance in report.instances_by_id.items()
         }
-        context_label = report.context.label
         filtered_logs = [
             (
-                f"{plugin_labels.get(plugin_id, '')} | "
-                f"{instance_labels.get(instance_id, context_label)}",
+                plugin_labels.get(plugin_id, "")
+                + instance_labels.get(instance_id, ""),
                 log,
             )
             for plugin_id, instance_id, log in report.iter_logs(
