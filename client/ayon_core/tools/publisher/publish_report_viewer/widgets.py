@@ -443,7 +443,7 @@ class DetailsWidget(QtWidgets.QWidget):
 
         search_field = AYLineEdit(
             parent=header_widget,
-            variant=AYLineEdit.Variants.Search_Field,
+            variant=AYLineEdit.Variants.Low,
             name_id="PublishLogSearch",
         )
         search_field.setMinimumWidth(180)
@@ -514,11 +514,15 @@ class DetailsWidget(QtWidgets.QWidget):
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(5, 5, 5, 5)
+        search_layout = QtWidgets.QHBoxLayout()
+        search_layout.setSpacing(2)
+        search_layout.addWidget(search_mode_btn, 0)
+        search_layout.addWidget(search_field, 1)
+        search_layout.addWidget(surrounding_lines, 0)
+        search_layout.addWidget(match_nav_widget, 0)
+
         header_layout.addWidget(level_filter, 0)
-        header_layout.addWidget(search_field, 1)
-        header_layout.addWidget(search_mode_btn, 0)
-        header_layout.addWidget(surrounding_lines, 0)
-        header_layout.addWidget(match_nav_widget, 0)
+        header_layout.addLayout(search_layout, 1)
         header_layout.addWidget(timestamp_check, 0)
         header_layout.addWidget(timestamp_label, 0)
 
