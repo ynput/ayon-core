@@ -62,7 +62,7 @@ There are three outputs, additive to each other:
 ### Environment variables
 | Variable | Description | Default |
 | --- | --- | --- |
-| `AYON_LOG_LEVEL` | Log level of all outputs, a name (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) or a number (`10`). | `INFO` |
+| `AYON_LOG_LEVEL` | Log level of all outputs, a name (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) or a number (`10`). | `INFO`, or `DEBUG` when `AYON_DEBUG` is `1` |
 | `AYON_LOG_CONSOLE` | `1` always adds console handler, `0` never adds it. | added when root logger has no handlers |
 | `AYON_LOG_CONSOLE_STYLE` | `ayon` - compact layout `structlog` - default structlog layout with padded log level and all fields always shown. | `ayon` |
 | `AYON_LOG_CONSOLE_TIME_FORMAT` | [strftime](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes) format of console timestamps, e.g. `%H:%M:%S.%f`. Invalid format falls back to the default. | `%Y/%m/%d %H:%M:%S` |
