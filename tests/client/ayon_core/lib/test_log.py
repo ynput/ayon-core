@@ -50,11 +50,12 @@ def log_module(monkeypatch):
     for key in (
         "AYON_LOG_LEVEL",
         "AYON_DEBUG",
-        "AYON_LOG_FILE",
+        "AYON_LOG_TO_FILE",
         "AYON_VECTOR_LOG_URL",
         "AYON_EXECUTABLE",
         "AYON_CORE_TIMERS",
         "AYON_LOG_CONSOLE_TIME_FORMAT",
+        "AYON_LOG_CONSOLE_STYLE",
         "NO_COLOR",
         "FORCE_COLOR",
     ):
@@ -175,9 +176,11 @@ def test_foreign_handlers_get_plain_message(log_module, foreign_handler):
 
 
 def test_console_formatter_ignores_mutated_record_msg(
-    log_module, foreign_handler
+    log_module, monkeypatch, foreign_handler
 ):
     """Other handlers may replace 'record.msg', e.g. pyblish does."""
+    # Key values are shown only with DEBUG level
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.mutated")
     handler = next(
@@ -286,13 +289,31 @@ def test_console_level_colors(log_module, monkeypatch):
     ]):
         # Level is followed by bold style of structlog
         assert re.search(
-            rf"\[ \x1b\[38;5;{color}m(\x1b\[1m)?{level}\x1b\[0m \]", line
+            rf"\[\x1b\[38;5;{color}m(\x1b\[1m)?{level}\x1b\[0m\]", line
         ), repr(line)
 
 
-def test_console_layout(log_module, monkeypatch):
-    """Level is not padded, logger name follows the message."""
+@pytest.mark.parametrize(
+    "env, info, warning, key_values",
+    [
+        # Key values are shown only with DEBUG level
+        ({}, r"\[info\]", r"\[warning\]", ""),
+        ({"AYON_LOG_LEVEL": "DEBUG"}, r"\[info\]", r"\[warning\]", " key=1"),
+        # Default structlog layout
+        (
+            {"AYON_LOG_CONSOLE_STYLE": "structlog"},
+            r"\[info {5}\]",
+            r"\[warning {2}\]",
+            " key=1",
+        ),
+    ],
+)
+def test_console_layout(
+    log_module, monkeypatch, env, info, warning, key_values
+):
     monkeypatch.setenv("NO_COLOR", "1")
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
     module = log_module()
     stream = io.StringIO()
     monkeypatch.setattr(sys, "stderr", stream)
@@ -302,13 +323,47 @@ def test_console_layout(log_module, monkeypatch):
 
     structlog_line, foreign_line = stream.getvalue().splitlines()
     assert re.search(
-        r"\[ info \] Message +\[\S*ayon_core\.tests\.layout\] key=1$",
+        rf"{info} Message +\[\S*ayon_core\.tests\.layout\]{key_values}$",
         structlog_line,
     ), structlog_line
     assert re.search(
-        r"\[ warning \] Foreign +\[ayon_core\.tests\.layout_foreign\]$",
+        rf"{warning} Foreign +\[ayon_core\.tests\.layout_foreign\]$",
         foreign_line,
     ), foreign_line
+
+
+def test_console_shows_span_timing(log_module, monkeypatch):
+    """Span timing is shown even when other key values are hidden."""
+    monkeypatch.setenv("NO_COLOR", "1")
+    module = log_module()
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+
+    with module.log_span(
+        "tests.span", level=logging.INFO, other="hidden-value"
+    ):
+        pass
+
+    output = stream.getvalue()
+    assert re.search(r"duration_ms=[\d.]+ status=ok$", output.strip())
+    assert "hidden-value" not in output
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (None, "ayon"),
+        ("structlog", "structlog"),
+        (" StructLog ", "structlog"),
+        ("bogus", "ayon"),
+    ],
+)
+def test_console_style_from_env(log_module, monkeypatch, value, expected):
+    module = log_module(initialize=False)
+    if value is not None:
+        monkeypatch.setenv("AYON_LOG_CONSOLE_STYLE", value)
+
+    assert module.get_console_style_from_env() == expected
 
 
 def test_console_time_format_from_env(log_module, monkeypatch):
@@ -409,7 +464,7 @@ def test_log_file_per_process_and_cleanup(log_module, monkeypatch, tmp_path):
         old_time = time.time() - (3 * 24 * 60 * 60)
         os.utime(path, (old_time, old_time))
 
-    monkeypatch.setenv("AYON_LOG_FILE", "1")
+    monkeypatch.setenv("AYON_LOG_TO_FILE", "1")
     monkeypatch.setenv("AYON_LOG_RETENTION_DAYS", "2")
     monkeypatch.setattr(
         "ayon_core.lib.local_settings.get_launcher_local_dir",
@@ -803,6 +858,8 @@ def test_process_context_in_records_of_all_threads(
 
 
 def test_process_context_not_in_console(log_module, monkeypatch):
+    # Other key values are shown only with DEBUG level
+    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.process_console")
     stream = _capture_stderr(monkeypatch)
@@ -965,7 +1022,7 @@ def test_without_structlog_span_is_logged(
 def test_without_structlog_skips_file_and_vector(
     log_module_without_structlog, monkeypatch, foreign_handler
 ):
-    monkeypatch.setenv("AYON_LOG_FILE", "1")
+    monkeypatch.setenv("AYON_LOG_TO_FILE", "1")
     monkeypatch.setenv("AYON_VECTOR_LOG_URL", "http://127.0.0.1:1/")
     module = log_module_without_structlog()
     # Repeated configuration does not add handlers
@@ -1026,7 +1083,7 @@ def log_root(tmp_path_factory):
 
 
 def _enable_log_file(monkeypatch, tmp_path):
-    monkeypatch.setenv("AYON_LOG_FILE", "1")
+    monkeypatch.setenv("AYON_LOG_TO_FILE", "1")
     monkeypatch.setattr(
         "ayon_core.lib.local_settings.get_launcher_local_dir",
         lambda *args: str(tmp_path.joinpath(*args)),

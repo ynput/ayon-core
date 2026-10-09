@@ -20,7 +20,7 @@ import socket
 import sys
 import time
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from contextvars import ContextVar, Token
 from typing import TYPE_CHECKING, Any
 import warnings
@@ -238,21 +238,46 @@ def get_log_level_from_env() -> int:
 
 
 VECTOR_LOG_URL = os.getenv("AYON_VECTOR_LOG_URL", None)
-LOG_FILE_ENABLED = os.getenv("AYON_LOG_FILE") == "1"
+LOG_FILE_ENABLED = os.getenv("AYON_LOG_TO_FILE") == "1"
 try:
     LOG_FILE_RETENTION_DAYS = int(
         max(1, int(
-            os.getenv("AYON_LOG_RETENTION_DAYS", "1")
+            os.getenv("AYON_LOG_RETENTION_DAYS", "3")
         ))
     )
 except ValueError:
-    LOG_FILE_RETENTION_DAYS = 1
+    LOG_FILE_RETENTION_DAYS = 3
 # Each process writes its own file, see '_get_log_file_path'
 LOG_FILE_PREFIX = "ayon_"
 LOG_FILE_EXT = ".ndjson"
 # Default 'strftime' format of console timestamps, see
 #   'get_console_time_format_from_env'
 DEFAULT_CONSOLE_TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
+# Console layouts, see 'get_console_style_from_env'
+CONSOLE_STYLE_AYON = "ayon"
+CONSOLE_STYLE_STRUCTLOG = "structlog"
+
+
+def get_console_style_from_env() -> str:
+    """Resolve console layout from environment variables.
+
+    'AYON_LOG_CONSOLE_STYLE' accepts:
+        - 'ayon' (default) - log level without padding, e.g. '[info]', and
+            'key=value' fields of records shown only with DEBUG log level,
+            except 'duration_ms' and 'status' of spans.
+        - 'structlog' - default structlog layout, padded log level and
+            'key=value' fields always shown.
+
+    Invalid value is handled as 'ayon'.
+
+    Returns:
+        str: 'CONSOLE_STYLE_AYON' or 'CONSOLE_STYLE_STRUCTLOG'.
+
+    """
+    style = os.getenv("AYON_LOG_CONSOLE_STYLE", "").strip().lower()
+    if style == CONSOLE_STYLE_STRUCTLOG:
+        return CONSOLE_STYLE_STRUCTLOG
+    return CONSOLE_STYLE_AYON
 
 
 def get_console_time_format_from_env() -> str:
@@ -639,7 +664,7 @@ def _get_console_exception_formatter(colors: bool) -> ExceptionRenderer:
 
 if structlog is not None:
     class _LevelColumnFormatter(structlog.dev.LogLevelColumnFormatter):
-        """Format a log level without padding, e.g. '[ debug ]'."""
+        """Format a log level without padding, e.g. '[debug]'."""
 
         def __call__(self, key: str, value: object) -> str:
             level = str(value)
@@ -648,7 +673,32 @@ if structlog is not None:
                 if self.level_styles is None
                 else self.level_styles.get(level, "")
             )
-            return f"[ {style}{level}{self.reset_style} ]"
+            return f"[{style}{level}{self.reset_style}]"
+
+    class _ShownKeysColumnFormatter:
+        """Column formatter showing only some fields.
+
+        See '_ConsoleRenderer'.
+
+        Args:
+            formatter (Callable[[str, object], str]): Formatter of shown
+                fields.
+            keys (Iterable[str]): Keys of shown fields.
+
+        """
+
+        def __init__(
+            self,
+            formatter: Callable[[str, object], str],
+            keys: Iterable[str],
+        ) -> None:
+            self._formatter = formatter
+            self._keys = frozenset(keys)
+
+        def __call__(self, key: str, value: object) -> str:
+            if key in self._keys:
+                return self._formatter(key, value)
+            return ""
 
     class _ConsoleRenderer(structlog.dev.ConsoleRenderer):
         """ConsoleRenderer not initializing colorama on Windows.
@@ -657,9 +707,35 @@ if structlog is not None:
         whole process, which breaks hosts redirecting them. Whether the
         stream supports colors is resolved by '_StderrHandler' instead.
 
-        Log levels use AYON colors, see '_LEVEL_STYLES', and are not
-        padded, e.g. '[ info ] Message [AYON.module] key=value'.
+        Log levels use AYON colors, see '_LEVEL_STYLES'.
+
+        Args:
+            compact_level (bool): Log level is not padded, e.g. '[info]'
+                instead of '[info     ]'.
+            show_key_values (bool): Show additional fields of the event
+                as 'key=value' pairs. Fields in '_ALWAYS_SHOWN_KEYS' are
+                shown always.
+            *args (Any): Arguments of 'ConsoleRenderer'.
+            **kwargs (Any): Keyword arguments of 'ConsoleRenderer'.
+
         """
+
+        def __init__(
+            self,
+            *args: Any,
+            compact_level: bool = False,
+            show_key_values: bool = True,
+            **kwargs: Any,
+        ) -> None:
+            # Used by '_configure_columns' called in '__init__' of base
+            #   class
+            self._compact_level = compact_level
+            self._show_key_values = show_key_values
+            super().__init__(*args, **kwargs)
+
+        # Fields shown even when other key values are hidden, timing of
+        #   spans is useful in console output, see 'log_span'
+        _ALWAYS_SHOWN_KEYS = ("duration_ms", "status")
 
         _COLORFUL_STYLES = structlog.dev._colorful_styles
         _PLAIN_STYLES = structlog.dev._plain_styles
@@ -689,9 +765,18 @@ if structlog is not None:
             return dict.fromkeys(_ConsoleRenderer._LEVEL_STYLES, "")
 
         def _configure_columns(self) -> None:
-            # Called by structlog whenever styles change, level column of
-            #   the base class is replaced by one without padding
+            # Called by structlog whenever styles change, columns of the
+            #   base class are adjusted
             super()._configure_columns()
+            if not self._show_key_values:
+                # Fields without own column, exceptions are rendered
+                #   separately
+                self._default_column_formatter = _ShownKeysColumnFormatter(
+                    self._default_column_formatter, self._ALWAYS_SHOWN_KEYS
+                )
+            if not self._compact_level:
+                return
+
             columns = []
             for column in self._columns:
                 formatter = column.formatter
@@ -1257,6 +1342,13 @@ class Logger:
         console_timestamper = _create_console_timestamper(
             get_console_time_format_from_env()
         )
+        ayon_console_style = (
+            get_console_style_from_env() == CONSOLE_STYLE_AYON
+        )
+        show_key_values = (
+            not ayon_console_style
+            or get_log_level_from_env() <= logging.DEBUG
+        )
 
         def _create_console_formatter(colors):
             return _EventDictProcessorFormatter(
@@ -1270,6 +1362,8 @@ class Logger:
                         exception_formatter=(
                             _get_console_exception_formatter(colors)
                         ),
+                        compact_level=ayon_console_style,
+                        show_key_values=show_key_values,
                     ),
                 ],
             )
