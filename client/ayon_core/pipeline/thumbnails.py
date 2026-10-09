@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 import collections
 
 import ayon_api
@@ -123,9 +124,16 @@ class ThumbnailsCache:
         for root, _, filenames in os.walk(thumbnails_dir):
             for filename in filenames:
                 path = os.path.join(root, filename)
-                modification_time = os.path.getmtime(path)
-                if current_time - modification_time > self._days_alive_secs:
-                    os.remove(path)
+                try:
+                    modification_time = os.path.getmtime(path)
+                    if (
+                        current_time - modification_time
+                        > self._days_alive_secs
+                    ):
+                        os.remove(path)
+                except OSError:
+                    # File is used or was removed by other process
+                    pass
 
     def _max_size_cleanup(self, thumbnails_dir):
         files_info = self.get_thumbnails_dir_file_info()
@@ -186,8 +194,8 @@ class ThumbnailsCache:
 
     def make_sure_project_dir_exists(self, project_name):
         project_dir = self.get_project_dir(project_name)
-        if not os.path.exists(project_dir):
-            os.makedirs(project_dir)
+        # The directory can be created by other thread at the same time
+        os.makedirs(project_dir, exist_ok=True)
         return project_dir
 
     def store_thumbnail(self, project_name, thumbnail_id, content, mime_type):
@@ -213,11 +221,23 @@ class ThumbnailsCache:
 
         project_dir = self.make_sure_project_dir_exists(project_name)
         thumbnail_path = os.path.join(project_dir, thumbnail_id + ext)
-        with open(thumbnail_path, "wb") as stream:
-            stream.write(content)
-
-        current_time = time.time()
-        os.utime(thumbnail_path, (current_time, current_time))
+        # Write to a temp file first so other threads and processes never
+        #   find a partially written thumbnail
+        tmp_path = f"{thumbnail_path}.{uuid.uuid4().hex}.tmp"
+        try:
+            with open(tmp_path, "wb") as stream:
+                stream.write(content)
+            os.replace(tmp_path, thumbnail_path)
+            current_time = time.time()
+            os.utime(thumbnail_path, (current_time, current_time))
+        except OSError:
+            # The same thumbnail could be stored by other thread or process
+            #   in the meantime, and the file can be already in use
+            if not os.path.exists(thumbnail_path):
+                raise
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
         return thumbnail_path
 
@@ -262,17 +282,53 @@ def get_thumbnail_path(
     if filepath is not None:
         return filepath
 
+    return get_entity_thumbnail_path(project_name, entity_type, entity_id)
+
+
+def get_entity_thumbnail_path(
+    project_name: str,
+    entity_type: str,
+    entity_id: str,
+):
+    """Get path to thumbnail image the server resolves for an entity.
+
+    Unlike 'get_thumbnail_path' the entity does not have to have its own
+        thumbnail. Server may use a thumbnail of a related entity instead,
+        e.g. thumbnail of a version for a task.
+
+    Notes:
+        The thumbnail is always requested from the server, because that is
+            the only way to find out which thumbnail is used. Should be used
+            only for entities without own thumbnail id.
+
+    Args:
+        project_name (str): Project where the entity belongs to.
+        entity_type (str): Entity type "folder", "task", "version"
+            and "workfile".
+        entity_id (str): Entity id.
+
+    Returns:
+        Union[str, None]: Path to thumbnail image or None if the server
+            does not have a thumbnail for the entity.
+
+    """
     # 'ayon_api' had a bug, public function
     #   'get_thumbnail_by_id' did not return output of
     #   'ServerAPI' method.
     con = ayon_api.get_server_api_connection()
     result = con.get_thumbnail(project_name, entity_type, entity_id)
+    if result is None or not result.is_valid:
+        return None
 
-    if result is not None and result.is_valid:
-        return _CacheItems.thumbnails_cache.store_thumbnail(
-            project_name,
-            thumbnail_id,
-            result.content,
-            result.content_type
-        )
-    return None
+    filepath = _CacheItems.thumbnails_cache.get_thumbnail_filepath(
+        project_name, result.thumbnail_id
+    )
+    if filepath is not None:
+        return filepath
+
+    return _CacheItems.thumbnails_cache.store_thumbnail(
+        project_name,
+        result.thumbnail_id,
+        result.content,
+        result.content_type
+    )

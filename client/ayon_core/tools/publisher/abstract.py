@@ -585,6 +585,33 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, str | None]: Thumbnail path by entity id.
+
+        """
+        pass
+
+    @abstractmethod
     def get_folder_type_items(
         self, project_name: str, sender: str | None = None
     ) -> list[FolderTypeItem]:

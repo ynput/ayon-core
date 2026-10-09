@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import ayon_api
@@ -13,12 +14,18 @@ from ayon_core.tools.workfiles.control import BaseWorkfileController
 
 
 @pytest.fixture
-def fake_server(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+def fake_server(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> dict[str, Any]:
+    # Cached thumbnail paths are used only if their files exist
+    thumbnail_path = tmp_path / "thumbnail.jpg"
+    thumbnail_path.touch()
     calls: dict[str, Any] = {
         "activities": [],
         "users": 0,
         "project": 0,
         "thumbnails": [],
+        "thumbnail_path": str(thumbnail_path),
     }
 
     def get_activities(project_name: str, **kwargs: Any):
@@ -62,7 +69,7 @@ def fake_server(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
     def get_thumbnail_path(*args: str) -> str:
         calls["thumbnails"].append(args)
-        return "/cache/thumbnail.jpg"
+        return calls["thumbnail_path"]
 
     monkeypatch.setattr(ayon_api, "get_activities", get_activities)
     monkeypatch.setattr(ayon_api, "get_users", get_users)
@@ -94,7 +101,7 @@ def test_version_thumbnail_comes_from_the_thumbnails_model(fake_server):
 
     for _ in range(2):
         path = controller.get_version_thumbnail_path("demo", "v1", "t1")
-        assert path == "/cache/thumbnail.jpg"
+        assert path == fake_server["thumbnail_path"]
     assert fake_server["thumbnails"] == [("demo", "version", "v1", "t1")]
 
     assert controller.get_version_thumbnail_path("demo", "v1", "") is None
