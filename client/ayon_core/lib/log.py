@@ -27,9 +27,32 @@ import warnings
 
 try:
     import structlog
-except ImportError:
-    # Older AYON launcher or dependency package without 'structlog'.
-    #   Logging falls back to standard library 'logging' without structured
+
+    # Names of 'structlog' used in this module, some of them are not
+    #   public. Older 'structlog' misses them, see the fallback below.
+    for _owner, _names in (
+        (
+            structlog.dev,
+            (
+                "Column",
+                "LogLevelColumnFormatter",
+                "RichTracebackFormatter",
+                "plain_traceback",
+                "_colorful_styles",
+                "_plain_styles",
+            ),
+        ),
+        (structlog.dev.ConsoleRenderer, ("_configure_columns",)),
+        (structlog.stdlib.ProcessorFormatter, ("remove_processors_meta",)),
+        (structlog.contextvars, ("reset_contextvars",)),
+    ):
+        for _name in _names:
+            getattr(_owner, _name)
+except (ImportError, AttributeError):
+    # Older AYON launcher or dependency package without 'structlog', or
+    #   'structlog' older than 25.5 was imported instead, e.g. from
+    #   site-packages of a host application.
+    # Logging falls back to standard library 'logging' without structured
     #   fields, log file and Vector delivery.
     structlog = None  # type: ignore[assignment]
 
@@ -86,6 +109,20 @@ def _render_for_stdlib(
     return (str(event_dict.get("event", "")),), kwargs
 
 
+# Levels of logging methods of structlog loggers, see
+#   '_LevelAwareBoundLogger'
+_METHOD_LEVELS = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "warn": logging.WARNING,
+    "error": logging.ERROR,
+    "exception": logging.ERROR,
+    "critical": logging.CRITICAL,
+    "fatal": logging.CRITICAL,
+}
+
+
 if structlog is not None:
     class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
         """ProcessorFormatter reading the event dict from the record.
@@ -116,6 +153,31 @@ if structlog is not None:
                 record.msg = event_dict
                 record.args = ()
             return super().format(record)
+
+    class _LevelAwareBoundLogger(structlog.stdlib.BoundLogger):
+        """BoundLogger checking the log level before processing an event.
+
+        'structlog.stdlib.BoundLogger' runs all processors first and leaves
+        the level check to the standard library logger. A call of disabled
+        level, e.g. 'log.debug' with INFO log level, then costs as much as
+        an enabled one without the output, and raises when '%s' style
+        arguments do not match the message, which standard library logger
+        never formats for a disabled level.
+        """
+
+        def _proxy_to_logger(
+            self,
+            method_name: str,
+            event: str | None = None,
+            *event_args: Any,
+            **event_kw: Any,
+        ) -> Any:
+            level = _METHOD_LEVELS.get(method_name)
+            if level is not None and not self._logger.isEnabledFor(level):
+                return None
+            return super()._proxy_to_logger(
+                method_name, event, *event_args, **event_kw
+            )
 
 
 def bind_contextvars(**kwargs) -> Mapping[str, Token[Any]]:
@@ -220,7 +282,8 @@ def get_log_level_from_env() -> int:
     """Resolve the AYON log level from environment variables.
 
     'AYON_LOG_LEVEL' accepts a numeric ('10') or a named ('DEBUG') level.
-    Defaults to INFO when it is not set or is invalid.
+    When it is not set or is invalid, enabled 'AYON_DEBUG' gives DEBUG,
+    otherwise the level is INFO.
 
     Returns:
         int: Log level.
@@ -234,6 +297,10 @@ def get_log_level_from_env() -> int:
             level = _get_level_names_mapping().get(log_level.upper(), 0)
         if level > 0:
             return level
+    # AYON launcher without structured logging sets only 'AYON_DEBUG'
+    #   for '--debug' argument, newer one also sets 'AYON_LOG_LEVEL'.
+    if env_value_to_bool("AYON_DEBUG", default=False):
+        return logging.DEBUG
     return logging.INFO
 
 
@@ -476,6 +543,9 @@ class VectorHTTPSender:
     'failure_threshold' consecutive failed requests. Records are dropped
     meanwhile so a dead endpoint cannot slow down the process.
 
+    Failed requests are not repeated, except for a temporary error
+    response of the endpoint. The next batch is the next attempt.
+
     'None' in the queue is the stop sentinel, see 'stop'.
     """
 
@@ -497,6 +567,9 @@ class VectorHTTPSender:
         self._consecutive_failures = 0
         self._circuit_open_until = 0.0
         self._thread: threading.Thread | None = None
+        # 'stop' was called, see '_send'
+        self._stopping = False
+        self._gave_up = False
 
         # Import only when Vector is used, to not slow down import of
         #   'ayon_core.lib' in every process.
@@ -507,8 +580,14 @@ class VectorHTTPSender:
         # Reuse a single session so repeated POSTs reuse pooled
         # connections instead of opening a new one per request.
         self._session = requests.Session()
+        # Only temporary error responses are retried. Connection and read
+        #   errors are not: an unreachable endpoint rarely recovers within
+        #   the backoff, each attempt waits for the timeout again, and
+        #   a batch whose response was not read would be sent twice.
         retry = urllib3.util.Retry(
             total=2,
+            connect=0,
+            read=0,
             backoff_factor=0.3,
             status_forcelist=(502, 503, 504),
             allowed_methods=("POST",),
@@ -520,15 +599,23 @@ class VectorHTTPSender:
         self._session.mount("https://", adapter)
 
     def start(self) -> None:
+        self._stopping = False
+        self._gave_up = False
         self._thread = threading.Thread(
             target=self._run, name="AYONVectorSender", daemon=True
         )
         self._thread.start()
 
     def stop(self, timeout: float = 5.0) -> None:
-        """Send records remaining in the queue and stop the thread."""
+        """Send records remaining in the queue and stop the thread.
+
+        Called on exit of the process. Remaining records are dropped
+        after the first failed request, an unreachable endpoint must
+        not delay the exit by an attempt for each remaining batch.
+        """
         if self._thread is None:
             return
+        self._stopping = True
         try:
             self._queue.put(None, timeout=timeout)
         except queue.Full:
@@ -573,6 +660,8 @@ class VectorHTTPSender:
             # Circuit is open - skip the HTTP attempt entirely so a dead
             # Vector endpoint cannot slow down the sender thread.
             return
+        if self._gave_up:
+            return
         try:
             response = self._session.post(
                 self._url,
@@ -582,6 +671,9 @@ class VectorHTTPSender:
             )
             response.raise_for_status()
         except Exception:
+            if self._stopping:
+                # Process is exiting, see 'stop'
+                self._gave_up = True
             self._consecutive_failures += 1
             if self._consecutive_failures >= self._failure_threshold:
                 self._circuit_open_until = now + self._cooldown
@@ -1181,26 +1273,38 @@ class Logger:
         if json_formatter is None:
             if LOG_FILE_ENABLED or VECTOR_LOG_URL:
                 logging.getLogger(__name__).warning(
-                    "Log file and Vector logging require 'structlog',"
-                    " which is not available. Update AYON launcher"
-                    " or dependency package."
+                    "Log file and Vector logging require 'structlog' 25.5"
+                    " or newer, which is not available. Update AYON"
+                    " launcher or dependency package."
                 )
             return
 
+        # Failed setup of log file or Vector must not break the process,
+        #   this runs on import of 'ayon_core.lib'. Console output is kept.
+        setup_log = logging.getLogger(__name__)
         if LOG_FILE_ENABLED:
-            log_dir = get_launcher_local_dir("logs")
-            os.makedirs(log_dir, exist_ok=True)
-            _remove_old_log_files(log_dir, LOG_FILE_RETENTION_DAYS)
-            file_handler = TimedRotatingFileHandler(
-                _get_log_file_path(log_dir),
-                when="midnight",
-                backupCount=LOG_FILE_RETENTION_DAYS,
-                encoding="utf-8",
-            )
-            file_handler.addFilter(pyblish_filter)
-            file_handler.setFormatter(json_formatter)
-            setattr(file_handler, STRUCTURED_HANDLER_ATTR, True)
-            root_logger.addHandler(file_handler)
+            try:
+                log_dir = get_launcher_local_dir("logs")
+                os.makedirs(log_dir, exist_ok=True)
+                _remove_old_log_files(log_dir, LOG_FILE_RETENTION_DAYS)
+                file_handler = TimedRotatingFileHandler(
+                    _get_log_file_path(log_dir),
+                    when="midnight",
+                    backupCount=LOG_FILE_RETENTION_DAYS,
+                    encoding="utf-8",
+                )
+            except Exception as exc:
+                # E.g. the directory is not writable or the disk is full
+                setup_log.warning(
+                    "Failed to create AYON log file, logging to file"
+                    " is disabled: %s",
+                    exc,
+                )
+            else:
+                file_handler.addFilter(pyblish_filter)
+                file_handler.setFormatter(json_formatter)
+                setattr(file_handler, STRUCTURED_HANDLER_ATTR, True)
+                root_logger.addHandler(file_handler)
 
         if VECTOR_LOG_URL:
             # Send logs to Vector asynchronously so HTTP calls
@@ -1214,8 +1318,17 @@ class Logger:
             queue_handler.addFilter(pyblish_filter)
             queue_handler.setFormatter(json_formatter)
             setattr(queue_handler, STRUCTURED_HANDLER_ATTR, True)
-            vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
-            vector_sender.start()
+            try:
+                vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
+                vector_sender.start()
+            except Exception as exc:
+                # E.g. 'requests' can't be imported in the host
+                setup_log.warning(
+                    "Failed to start sending of logs to Vector, it"
+                    " is disabled: %s",
+                    exc,
+                )
+                return
             _vector_sender = vector_sender
             # The sender thread is a daemon thread, it would be killed on
             # interpreter exit with records still in the queue. Stopping it
@@ -1296,6 +1409,30 @@ class Logger:
                 )
             return event_dict
 
+        positional_args_formatter = (
+            structlog.stdlib.PositionalArgumentsFormatter()
+        )
+
+        def _format_positional_args(logger, method_name, event_dict):
+            # Arguments not matching the message must not raise in the
+            #   code that logs, e.g. 'log.info("Data:", data)'. Standard
+            #   library logger reports them to stderr and drops the
+            #   record, here they are added to the message instead.
+            try:
+                return positional_args_formatter(
+                    logger, method_name, event_dict
+                )
+            except Exception:
+                args = event_dict.pop("positional_args", ())
+                try:
+                    formatted_args = " ".join(repr(arg) for arg in args)
+                except Exception:
+                    formatted_args = "<unprintable arguments>"
+                event_dict["event"] = (
+                    f"{event_dict.get('event')} {formatted_args}"
+                )
+                return event_dict
+
         shared_processors: list[Callable] = [
             structlog.contextvars.merge_contextvars,
             _add_process_context,
@@ -1313,12 +1450,12 @@ class Logger:
                 #   'log.info("Loaded %s", name)'. Records from plain
                 #   stdlib loggers are already formatted by
                 #   'ProcessorFormatter' via 'record.getMessage()'.
-                structlog.stdlib.PositionalArgumentsFormatter(),
+                _format_positional_args,
                 # Hand over to standard logging, rendered by formatters
                 _render_for_stdlib,
             ],
             logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
+            wrapper_class=_LevelAwareBoundLogger,
             cache_logger_on_first_use=True,
         )
 

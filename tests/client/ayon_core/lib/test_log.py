@@ -125,8 +125,11 @@ def foreign_handler():
         ({"AYON_LOG_LEVEL": "warning"}, logging.WARNING),
         ({"AYON_LOG_LEVEL": "bogus"}, logging.INFO),
         ({"AYON_LOG_LEVEL": "0"}, logging.INFO),
-        # Does not affect log level, see '--debug' of AYON launcher
-        ({"AYON_DEBUG": "1"}, logging.INFO),
+        # '--debug' of AYON launcher without structured logging
+        ({"AYON_DEBUG": "1"}, logging.DEBUG),
+        ({"AYON_DEBUG": "0"}, logging.INFO),
+        # Explicit log level has precedence
+        ({"AYON_DEBUG": "1", "AYON_LOG_LEVEL": "WARNING"}, logging.WARNING),
     ],
 )
 def test_log_level_from_env(log_module, monkeypatch, env, expected):
@@ -159,6 +162,61 @@ def test_positional_arguments_are_formatted(log_module, foreign_handler):
     log.info("Loaded %s from %s", "asset", "disk")
 
     assert foreign_handler.messages == ["Loaded asset from disk"]
+
+
+def test_disabled_level_is_not_processed(
+    log_module, foreign_handler, restore_logger_levels
+):
+    """Events of disabled level are dropped before processors run."""
+    module = log_module()
+    processed = []
+
+    def _record_method(logger, method_name, event_dict):
+        processed.append(method_name)
+        return event_dict
+
+    structlog.get_config()["processors"].insert(0, _record_method)
+    name = "ayon_core.tests.disabled"
+    log = module.Logger.get_logger(name)
+
+    log.debug("Disabled %s", "debug")
+    log.log(logging.DEBUG, "Disabled log")
+    # Arguments not matching the message are not formatted either
+    log.debug("Data:", [1, 2])
+    log.info("Enabled")
+
+    assert processed == ["info"]
+    assert foreign_handler.messages == ["Enabled"]
+
+    # Level set on a single logger is respected
+    restore_logger_levels(name).setLevel(logging.DEBUG)
+    log.debug("Enabled %s", "debug")
+
+    assert processed == ["info", "debug"]
+    assert foreign_handler.messages == ["Enabled", "Enabled debug"]
+
+
+@pytest.mark.parametrize(
+    "message, args, expected",
+    [
+        # Too few arguments
+        ("Loaded %s from %s", ("asset",), "Loaded %s from %s 'asset'"),
+        # Arguments passed like to 'print'
+        ("Data:", ([1, 2],), "Data: [1, 2]"),
+        # Wrong type of argument
+        ("Version %d", ("v001",), "Version %d 'v001'"),
+    ],
+)
+def test_mismatched_arguments_do_not_raise(
+    log_module, foreign_handler, message, args, expected
+):
+    """Logging must not break the caller, arguments are kept in message."""
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.bad_args")
+
+    log.info(message, *args)
+
+    assert foreign_handler.messages == [expected]
 
 
 def test_foreign_handlers_get_plain_message(log_module, foreign_handler):
@@ -507,6 +565,51 @@ def test_log_file_per_process_and_cleanup(log_module, monkeypatch, tmp_path):
     assert [r["event"] for r in records] == ["To file"]
 
 
+def test_log_file_failure_does_not_break_logging(
+    log_module, monkeypatch, tmp_path, foreign_handler
+):
+    """Logging is configured on import, which must not fail."""
+    not_a_dir = tmp_path / "not_a_dir"
+    not_a_dir.write_text("")
+    monkeypatch.setenv("AYON_LOG_TO_FILE", "1")
+    monkeypatch.setattr(
+        "ayon_core.lib.local_settings.get_launcher_local_dir",
+        lambda *args: str(not_a_dir.joinpath(*args)),
+    )
+
+    module = log_module()
+    module.Logger.get_logger("ayon_core.tests.file").info("Still logged")
+
+    handler_types = [type(handler) for handler in logging.getLogger().handlers]
+    assert TimedRotatingFileHandler not in handler_types
+    assert module._StderrHandler in handler_types
+    assert any(
+        message.startswith("Failed to create AYON log file")
+        for message in foreign_handler.messages
+    )
+    assert "Still logged" in foreign_handler.messages
+
+
+def test_vector_failure_does_not_break_logging(
+    log_module, monkeypatch, foreign_handler
+):
+    monkeypatch.setenv("AYON_VECTOR_LOG_URL", "http://127.0.0.1:1/")
+    # 'requests' can't be imported
+    monkeypatch.setitem(sys.modules, "requests", None)
+
+    module = log_module()
+    module.Logger.get_logger("ayon_core.tests.vector").info("Still logged")
+
+    handler_types = [type(handler) for handler in logging.getLogger().handlers]
+    assert module._DroppingQueueHandler not in handler_types
+    assert module._vector_sender is None
+    assert any(
+        message.startswith("Failed to start sending of logs to Vector")
+        for message in foreign_handler.messages
+    )
+    assert "Still logged" in foreign_handler.messages
+
+
 def test_vector_queue_renders_in_logging_thread(log_module):
     module = log_module()
     log_queue = queue.Queue()
@@ -633,6 +736,65 @@ def test_vector_sender_survives_failures(log_module):
 
     # Circuit opened after 2 failed requests, the rest was dropped
     assert len(stub.bodies) == 2
+
+
+def test_vector_sender_does_not_retry_unreachable_endpoint(log_module):
+    """Each attempt to connect waits for the timeout again."""
+    pytest.importorskip("requests")
+    module = log_module()
+    url = "http://127.0.0.1:1/"
+    sender = module.VectorHTTPSender(url, queue.Queue())
+
+    retries = sender._session.get_adapter(url).max_retries
+
+    assert retries.connect == 0
+    assert retries.read == 0
+    # Temporary error responses of reachable endpoint are still retried
+    assert retries.total == 2
+    assert 503 in retries.status_forcelist
+
+
+def test_vector_sender_stop_gives_up_after_failed_request(
+    log_module, monkeypatch
+):
+    """Unreachable endpoint must not delay exit of the process."""
+    pytest.importorskip("requests")
+    module = log_module()
+    log_queue = queue.Queue()
+    sender = module.VectorHTTPSender(
+        "http://127.0.0.1:1/",
+        log_queue,
+        batch_size=1,
+        flush_interval=5.0,
+        failure_threshold=100,
+    )
+    request_started = threading.Event()
+    release_request = threading.Event()
+    requests_count = []
+
+    def _post(*args, **kwargs):
+        requests_count.append(1)
+        request_started.set()
+        release_request.wait(5.0)
+        raise ConnectionError("Endpoint is unreachable")
+
+    monkeypatch.setattr(sender._session, "post", _post)
+    for idx in range(5):
+        log_queue.put(json.dumps({"event": str(idx)}))
+    sender.start()
+    assert request_started.wait(5.0)
+
+    # 'stop' is called on exit while the first request is in progress
+    stop_thread = threading.Thread(target=sender.stop)
+    stop_thread.start()
+    _wait_for(lambda: sender._stopping)
+    release_request.set()
+    stop_thread.join(5.0)
+
+    assert not stop_thread.is_alive()
+    # Remaining 4 batches were dropped without a request
+    assert len(requests_count) == 1
+    assert log_queue.empty()
 
 
 def test_rate_limited_logger_accepts_arguments(log_module, monkeypatch):
@@ -1055,6 +1217,34 @@ def test_without_structlog_skips_file_and_vector(
         "require 'structlog'" in message
         for message in foreign_handler.messages
     )
+
+
+@pytest.mark.parametrize(
+    "owner, name",
+    [
+        # Missing in 'structlog' older than 25.5
+        (structlog.dev, "_colorful_styles"),
+        # Missing in 'structlog' older than 23.3
+        (structlog.dev, "LogLevelColumnFormatter"),
+    ],
+)
+def test_unsupported_structlog_uses_stdlib_logger(
+    log_module, monkeypatch, foreign_handler, owner, name
+):
+    """Older 'structlog' is handled as if it would not be available.
+
+    It may be imported instead of the one AYON requires, e.g. from
+    site-packages of a host application.
+    """
+    monkeypatch.delattr(owner, name)
+    module = log_module()
+    assert module.structlog is None
+
+    log = module.Logger.get_logger("ayon_core.tests.old_structlog")
+    assert isinstance(log, logging.Logger)
+    log.info("Loaded %s", "asset")
+
+    assert foreign_handler.messages == ["Loaded asset"]
 
 
 def _capture_stderr(monkeypatch):
