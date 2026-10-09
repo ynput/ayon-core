@@ -502,8 +502,12 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
     """Draw a search match with the text around it and its source."""
     _level_colors = dict(_LogFiller._color_mapping)
 
+    @staticmethod
+    def row_height(metrics: QtGui.QFontMetrics) -> int:
+        return metrics.height() + 8
+
     def sizeHint(self, option, index) -> QtCore.QSize:
-        return QtCore.QSize(0, option.fontMetrics.height() + 8)
+        return QtCore.QSize(0, self.row_height(option.fontMetrics))
 
     def paint(self, painter, option, index) -> None:
         option = QtWidgets.QStyleOptionViewItem(option)
@@ -579,6 +583,24 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
             )
             rect.setLeft(text_rect.right() + 1)
         painter.restore()
+
+
+class _LogMatchesView(QtWidgets.QListView):
+    """List of search matches showing a placeholder when it is empty."""
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        model = self.model()
+        if model is not None and model.rowCount():
+            return
+        color = QtGui.QColor(self.palette().color(QtGui.QPalette.Text))
+        color.setAlphaF(0.5)
+        painter = QtGui.QPainter(self.viewport())
+        painter.setPen(color)
+        painter.drawText(
+            self.viewport().rect(), QtCore.Qt.AlignCenter, "No matches"
+        )
+        painter.end()
 
 
 class DetailsWidget(QtWidgets.QWidget):
@@ -677,7 +699,7 @@ class DetailsWidget(QtWidgets.QWidget):
 
         # List of search matches, controlled from the search field
         matches_model = _LogMatchesModel(self)
-        matches_view = QtWidgets.QListView(self)
+        matches_view = _LogMatchesView(self)
         matches_view.setObjectName("PublishLogMatches")
         matches_view.setModel(matches_model)
         matches_view.setItemDelegate(_LogMatchDelegate(matches_view))
@@ -712,7 +734,8 @@ class DetailsWidget(QtWidgets.QWidget):
         matches_view.selectionModel().currentChanged.connect(
             self._on_match_changed
         )
-        matches_view.clicked.connect(matches_view.hide)
+        matches_view.clicked.connect(self._on_match_changed)
+        matches_view.doubleClicked.connect(self._confirm_match)
         search_mode_btn.clicked.connect(self._on_search_mode_toggle)
         prev_match_btn.clicked.connect(lambda: self._go_to_match(-1))
         next_match_btn.clicked.connect(lambda: self._go_to_match(1))
@@ -744,10 +767,24 @@ class DetailsWidget(QtWidgets.QWidget):
 
     def eventFilter(self, obj, event) -> bool:
         """Control the search matches list from the search field."""
-        if (
-            obj is self._search_field
-            and event.type() == QtCore.QEvent.KeyPress
+        if obj is not self._search_field:
+            return super().eventFilter(obj, event)
+
+        event_type = event.type()
+        if event_type == QtCore.QEvent.FocusIn:
+            self._update_matches_view()
+
+        elif (
+            event_type == QtCore.QEvent.FocusOut
+            and event.reason() not in (
+                QtCore.Qt.ActiveWindowFocusReason,
+                QtCore.Qt.PopupFocusReason,
+            )
         ):
+            # The matches list does not take focus, any other widget does
+            self._matches_view.hide()
+
+        elif event_type == QtCore.QEvent.KeyPress:
             key = event.key()
             if key == QtCore.Qt.Key_Escape and self._matches_view.isVisible():
                 self._matches_view.hide()
@@ -759,11 +796,13 @@ class DetailsWidget(QtWidgets.QWidget):
                     QtCore.Qt.Key_PageUp,
                     QtCore.Qt.Key_PageDown,
                 )
-                and self._search_mode
-                and self._matches_model.rowCount()
+                and self._can_show_matches()
             ):
-                self._matches_view.show()
-                QtWidgets.QApplication.sendEvent(self._matches_view, event)
+                self._update_matches_view()
+                if self._matches_model.rowCount():
+                    QtWidgets.QApplication.sendEvent(
+                        self._matches_view, event
+                    )
                 return True
         return super().eventFilter(obj, event)
 
@@ -794,10 +833,16 @@ class DetailsWidget(QtWidgets.QWidget):
             return
         # Confirm the match that is selected in the matches list
         if self._matches_view.isVisible():
-            self._matches_view.hide()
+            if self._matches_model.rowCount():
+                self._confirm_match()
             return
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         self._go_to_match(-1 if modifiers & QtCore.Qt.ShiftModifier else 1)
+
+    def _confirm_match(self) -> None:
+        """Hide the matches list and move focus to the logs output."""
+        self._matches_view.hide()
+        self._output_widget.setFocus(QtCore.Qt.OtherFocusReason)
 
     def _go_to_match(self, step: int) -> None:
         count = self._matches_model.rowCount()
@@ -814,18 +859,35 @@ class DetailsWidget(QtWidgets.QWidget):
         cursor.setPosition(match.start)
         cursor.setPosition(match.end, QtGui.QTextCursor.KeepAnchor)
         self._output_widget.setTextCursor(cursor)
+        self._output_widget.ensureCursorVisible()
 
     def _set_matches(self, matches: list[_LogMatch]) -> None:
         self._matches_model.set_matches(matches)
-        view = self._matches_view
-        visible = self._search_mode and bool(matches)
-        view.setVisible(visible)
-        if visible:
-            rows = min(len(matches), self.max_visible_matches)
-            view.setFixedHeight(
-                rows * view.sizeHintForRow(0) + 2 * view.frameWidth()
-            )
+        self._update_matches_view()
+        if self._search_mode:
             self._go_to_match(1)
+
+    def _can_show_matches(self) -> bool:
+        return bool(
+            self._search_mode
+            and self._search_text
+            and self._search_field.hasFocus()
+        )
+
+    def _update_matches_view(self) -> None:
+        """Show the matches list only while searching in the search field."""
+        view = self._matches_view
+        if not self._can_show_matches():
+            view.hide()
+            return
+        # Keep one row for the 'No matches' placeholder
+        rows = min(
+            max(self._matches_model.rowCount(), 1),
+            self.max_visible_matches,
+        )
+        row_height = _LogMatchDelegate.row_height(view.fontMetrics())
+        view.setFixedHeight(rows * row_height + 2 * view.frameWidth())
+        view.show()
 
     def _on_search_changed(self) -> None:
         self._search_text = self._search_field.text().strip().casefold()
