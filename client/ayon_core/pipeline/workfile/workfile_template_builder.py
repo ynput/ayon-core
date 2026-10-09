@@ -18,7 +18,7 @@ import copy
 from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Optional, Any, overload
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import ayon_api
 from ayon_api import (
@@ -152,6 +152,73 @@ class TemplatePreset:
 
         """
         return self.path and os.path.exists(self.path)
+
+
+@dataclass
+class PlaceholderPreviewItem:
+    """Single entry of a placeholder preview.
+
+    Attributes:
+        label (str): Main label of the entry. E.g. product path that will
+            be loaded.
+        detail (Optional[str]): Additional information about the entry.
+            E.g. version and representation name.
+
+    """
+    label: str
+    detail: Optional[str] = None
+
+    def to_data(self) -> dict[str, Any]:
+        return {"label": self.label, "detail": self.detail}
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "PlaceholderPreviewItem":
+        return cls(**data)
+
+
+@dataclass
+class PlaceholderPreview:
+    """Preview of what a placeholder would do when it is populated.
+
+    Preview is calculated from placeholder options that are currently filled
+    in UI, so an artist can see the outcome before the placeholder is even
+    created.
+
+    Attributes:
+        title (str): Short summary. E.g. "Will load 3 representations".
+        items (list[PlaceholderPreviewItem]): Entries that would be
+            processed.
+        hint (Optional[str]): Additional information shown under the title.
+            Used for explanation why nothing was found or what is missing.
+        is_error (bool): Preview could not be calculated, 'hint' contains
+            the reason.
+        hidden_items_count (int): How many entries were left out of 'items'
+            because of a limit.
+
+    """
+    title: str = ""
+    items: list[PlaceholderPreviewItem] = field(default_factory=list)
+    hint: Optional[str] = None
+    is_error: bool = False
+    hidden_items_count: int = 0
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "items": [item.to_data() for item in self.items],
+            "hint": self.hint,
+            "is_error": self.is_error,
+            "hidden_items_count": self.hidden_items_count,
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "PlaceholderPreview":
+        data = dict(data)
+        data["items"] = [
+            PlaceholderPreviewItem.from_data(item)
+            for item in data.get("items") or []
+        ]
+        return cls(**data)
 
 
 class AbstractTemplateBuilder(ABC):
@@ -549,6 +616,52 @@ class AbstractTemplateBuilder(ABC):
             placeholders,
             key=lambda placeholder: placeholder.order
         ))
+
+    def get_placeholder_by_scene_identifier(self, scene_identifier):
+        """Find collected placeholder by its scene identifier.
+
+        Args:
+            scene_identifier (str): Unique scene identifier of placeholder.
+
+        Returns:
+            Optional[PlaceholderItem]: Placeholder item if found.
+
+        """
+        for placeholder in self.get_placeholders():
+            if placeholder.scene_identifier == scene_identifier:
+                return placeholder
+        return None
+
+    def update_placeholder(self, placeholder_item, placeholder_data):
+        """Update placeholder item with new data.
+
+        Args:
+            placeholder_item (PlaceholderItem): Placeholder item to update.
+            placeholder_data (dict[str, Any]): New placeholder data matching
+                plugin options.
+
+        """
+        placeholder_item.plugin.update_placeholder(
+            placeholder_item, placeholder_data
+        )
+
+    def delete_placeholder(self, placeholder_item):
+        """Remove placeholder from the scene.
+
+        Args:
+            placeholder_item (PlaceholderItem): Placeholder item to remove.
+
+        """
+        placeholder_item.plugin.delete_placeholder(placeholder_item)
+
+    def select_placeholder(self, placeholder_item):
+        """Select placeholder in the host scene.
+
+        Args:
+            placeholder_item (PlaceholderItem): Placeholder item to select.
+
+        """
+        placeholder_item.plugin.select_placeholder(placeholder_item)
 
     def _backwards_compatibility_build_template(func):
         """Decorator for backwards compatibility of build_template method.
@@ -1326,6 +1439,10 @@ class PlaceholderPlugin(ABC):
     """
 
     label = None
+    # Icon definition used in UI. Can be any value supported by
+    #   'ayon_core.tools.utils.get_qt_icon'. E.g.
+    #   {"type": "material-symbols", "name": "download", "color": "#FFFFFF"}
+    icon = None
     _log = None
 
     def __init__(self, builder):
@@ -1432,6 +1549,144 @@ class PlaceholderPlugin(ABC):
         option_keys = get_attributes_keys(self.get_placeholder_options())
         option_keys.add("plugin_identifier")
         return option_keys
+
+    def get_placeholder_label(self, placeholder_item):
+        """Human readable label of a single placeholder item.
+
+        Used by UIs to show the placeholder in a list. Plugins can override
+        it to show more meaningful information, e.g. the product that will
+        be loaded.
+
+        Args:
+            placeholder_item (PlaceholderItem): Placeholder item to label.
+
+        Returns:
+            str: Label of the placeholder item.
+
+        """
+        return placeholder_item.scene_identifier
+
+    def get_placeholder_preview(self, placeholder_data):
+        """Preview of what the placeholder would do when populated.
+
+        Called with options that are currently filled in UI, so the
+        placeholder does not have to exist in the scene yet. Implementation
+        should be read-only and reasonably fast, it is re-calculated while
+        the user changes the options.
+
+        Default implementation uses the preview of load/create mixin when
+        the plugin is based on one of them.
+
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
+
+        Returns:
+            Optional[PlaceholderPreview]: Preview of the outcome, or None
+                when the plugin does not support previews.
+
+        """
+        if isinstance(self, PlaceholderLoadMixin):
+            return self.get_load_placeholder_preview(placeholder_data)
+
+        if isinstance(self, PlaceholderCreateMixin):
+            return self.get_create_placeholder_preview(placeholder_data)
+
+        return None
+
+    def get_placeholder_completions(self, placeholder_data):
+        """Completion suggestions for text options of the placeholder.
+
+        Called with options that are currently filled in UI. Returned values
+        are used as autocompletion of matching text inputs, they are only
+        hints and don't limit what the user can type.
+
+        Default implementation uses the suggestions of load/create mixin
+        when the plugin is based on one of them.
+
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
+
+        Returns:
+            dict[str, list[str]]: Suggestions by option key.
+
+        """
+        if isinstance(self, PlaceholderLoadMixin):
+            return self.get_load_placeholder_completions(placeholder_data)
+
+        return {}
+
+    def delete_placeholder(self, placeholder_item):
+        """Remove placeholder from the scene.
+
+        Note:
+            Implement 'delete_placeholder' to enable placeholder removal
+                from workfile template builder UI.
+
+        Args:
+            placeholder_item (PlaceholderItem): Placeholder item to remove.
+
+        """
+        self.log.debug("Delete of placeholder is not implemented.")
+
+    def select_placeholder(self, placeholder_item):
+        """Select placeholder in the host scene.
+
+        Called when user wants to find the placeholder in the host, e.g. to
+        select the node representing it in a node graph or outliner.
+
+        Note:
+            Implement 'select_placeholder' to enable "select in scene" in
+                workfile template builder UI.
+
+        Args:
+            placeholder_item (PlaceholderItem): Placeholder item to select.
+
+        """
+        self.log.debug("Select of placeholder is not implemented.")
+
+    def is_delete_placeholder_supported(self):
+        """Plugin implements removal of placeholders from the scene.
+
+        Returns:
+            bool: Placeholder can be deleted using 'delete_placeholder'.
+
+        """
+        return self._is_method_implemented("delete_placeholder")
+
+    def is_select_placeholder_supported(self):
+        """Plugin implements selection of placeholders in the scene.
+
+        Returns:
+            bool: Placeholder can be selected using 'select_placeholder'.
+
+        """
+        return self._is_method_implemented("select_placeholder")
+
+    @classmethod
+    def _is_method_implemented(cls, method_name):
+        """Method is overridden by the plugin implementation.
+
+        Both 'PlaceholderPlugin' and the load/create mixins define no-op
+        default implementations, so identity against all of them has to be
+        checked.
+
+        Args:
+            method_name (str): Name of the method to check.
+
+        Returns:
+            bool: Method is implemented by the plugin.
+
+        """
+        method = getattr(cls, method_name, None)
+        if method is None:
+            return False
+
+        for base_cls in (
+            PlaceholderPlugin, PlaceholderLoadMixin, PlaceholderCreateMixin
+        ):
+            if method is getattr(base_cls, method_name, None):
+                return False
+        return True
 
     def prepare_placeholders(self, placeholders):
         """Preparation part of placeholders.
@@ -1687,6 +1942,35 @@ class PlaceholderItem(object):
         """
 
         return self._errors
+
+
+@dataclass
+class _LoadQueryResult:
+    """Entities matching options of a load placeholder.
+
+    Attributes:
+        folder_entities_by_id (dict[str, dict]): Folder entities matching
+            builder type and folder filter.
+        product_entities_by_id (dict[str, dict]): Product entities matching
+            product base type and product filter.
+        version_entities_by_id (dict[str, dict]): Last version entities of
+            matching products.
+        representation_entities (list[dict]): Representation entities of
+            matching versions.
+
+    """
+    folder_entities_by_id: dict[str, dict[str, Any]] = field(
+        default_factory=dict
+    )
+    product_entities_by_id: dict[str, dict[str, Any]] = field(
+        default_factory=dict
+    )
+    version_entities_by_id: dict[str, dict[str, Any]] = field(
+        default_factory=dict
+    )
+    representation_entities: list[dict[str, Any]] = field(
+        default_factory=list
+    )
 
 
 class PlaceholderLoadMixin(object):
@@ -1954,20 +2238,176 @@ class PlaceholderLoadMixin(object):
                 ayon_api.get_hero_versions(
                     project_name,
                     product_ids=product_ids,
-                    fields={"id"},
+                    fields={"id", "version", "productId"},
             ))
 
         else:
             version_entities.extend(
                 version_entity
                 for version_entity in get_last_versions(
-                    project_name, product_ids, fields={"id"}
+                    project_name,
+                    product_ids,
+                    fields={"id", "version", "productId"},
                 ).values()
                 # Version may be none if a product has no versions
                 if version_entity is not None
             )
 
         return version_entities
+
+    def _get_load_folder_entities(self, placeholder_data):
+        """Folder entities matching 'builder_type' of load options.
+
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
+
+        Returns:
+            list[dict[str, Any]]: Folder entities to look for products in.
+
+        """
+        project_name = self.builder.project_name
+        builder_type = placeholder_data["builder_type"]
+        folder_path_regex = placeholder_data["folder_path"]
+
+        if builder_type == "all_folders":
+            return list(get_folders(
+                project_name,
+                folder_path_regex=folder_path_regex,
+                fields={"id", "path"}
+            ))
+
+        if builder_type == "context_folder":
+            folder_entity = self.builder.current_folder_entity
+            if not folder_entity:
+                return []
+            return [folder_entity]
+
+        if builder_type == "linked_folders":
+            if not isinstance(self.builder, AbstractTemplateBuilder):
+                return []
+            # link type from placeholder data or default to "template"
+            link_type = placeholder_data.get("link_type", "template")
+            return list(self.builder.get_linked_folder_entities(
+                link_type=link_type,
+                folder_path_regex=folder_path_regex
+            ))
+
+        return []
+
+    def _query_load_options(
+        self,
+        placeholder_data,
+        filter_representation_name=True,
+        filter_product_name=True,
+        placeholder=None,
+    ):
+        """Query entities matching load options of a placeholder.
+
+        This function is directly connected to options defined in
+        'get_load_plugin_options'. It does not require an existing
+        placeholder item so it can also be used to preview options that are
+        not stored in the scene yet.
+
+        Note:
+            Versions are resolved by '_get_version_entities', based on the
+                'version' option.
+
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
+            filter_representation_name (bool): Filter representations by
+                'representation' option.
+            filter_product_name (bool): Filter products by 'product_name'
+                regex option.
+            placeholder (Optional[PlaceholderItem]): Placeholder item the
+                options belong to. A temporary item is used when the
+                options are not stored in the scene yet.
+
+        Returns:
+            _LoadQueryResult: Matching entities.
+
+        """
+        project_name = self.builder.project_name
+
+        product_base_type = placeholder_data.get("product_base_type")
+        if product_base_type is None:
+            product_base_type = placeholder_data.get("product_type")
+            if product_base_type is None:
+                product_base_type = placeholder_data["family"]
+
+        folder_entities_by_id = {
+            folder_entity["id"]: folder_entity
+            for folder_entity in self._get_load_folder_entities(
+                placeholder_data
+            )
+        }
+        if not folder_entities_by_id:
+            return _LoadQueryResult()
+
+        filter_key = "product_base_types"
+        if ayon_api.get_server_version_tuple() < (1, 14, 0):
+            filter_key = "product_types"
+        filter_kwargs = {
+            filter_key: {product_base_type},
+        }
+
+        product_name_regex = None
+        if filter_product_name:
+            product_name_regex_value = placeholder_data["product_name"]
+            if product_name_regex_value:
+                product_name_regex = re.compile(product_name_regex_value)
+
+        product_entities_by_id = {
+            product_entity["id"]: product_entity
+            for product_entity in get_products(
+                project_name,
+                folder_ids=set(folder_entities_by_id),
+                **filter_kwargs,
+                fields={"id", "name", "folderId"}
+            )
+            if (
+                product_name_regex is None
+                or product_name_regex.match(product_entity["name"])
+            )
+        }
+        if not product_entities_by_id:
+            return _LoadQueryResult(
+                folder_entities_by_id=folder_entities_by_id
+            )
+
+        if placeholder is None:
+            placeholder = PlaceholderItem("", placeholder_data, self)
+
+        version_entities_by_id = {
+            version_entity["id"]: version_entity
+            for version_entity in self._get_version_entities(
+                project_name,
+                set(product_entities_by_id),
+                placeholder
+            )
+        }
+        if not version_entities_by_id:
+            return _LoadQueryResult(
+                folder_entities_by_id=folder_entities_by_id,
+                product_entities_by_id=product_entities_by_id,
+            )
+
+        representation_names = None
+        if filter_representation_name:
+            representation_name = placeholder_data["representation"]
+            if representation_name:
+                representation_names = [representation_name]
+
+        representation_entities = list(get_representations(
+            project_name,
+            representation_names=representation_names,
+            version_ids=set(version_entities_by_id)
+        ))
+        return _LoadQueryResult(
+            folder_entities_by_id=folder_entities_by_id,
+            product_entities_by_id=product_entities_by_id,
+            version_entities_by_id=version_entities_by_id,
+            representation_entities=representation_entities,
+        )
 
     def _get_representations(self, placeholder):
         """Prepared query of representations based on load options.
@@ -1995,98 +2435,167 @@ class PlaceholderLoadMixin(object):
         if "asset" in placeholder.data:
             return []
 
-        representation_names = None
-        representation_name: str = placeholder.data["representation"]
-        if representation_name:
-            representation_names = [representation_name]
+        return self._query_load_options(
+            placeholder.data, placeholder=placeholder
+        ).representation_entities
 
-        project_name = self.builder.project_name
-        current_folder_entity = self.builder.current_folder_entity
+    def get_load_placeholder_preview(self, placeholder_data):
+        """Products that would be loaded with current load options.
 
-        folder_path_regex = placeholder.data["folder_path"]
-        product_name_regex_value = placeholder.data["product_name"]
-        product_name_regex = None
-        if product_name_regex_value:
-            product_name_regex = re.compile(product_name_regex_value)
-        product_base_type = placeholder.data.get("product_base_type")
-        if product_base_type is None:
-            product_base_type = placeholder.data.get("product_type")
-            if product_base_type is None:
-                product_base_type = placeholder.data["family"]
+        Use it in 'get_placeholder_preview'. Default implementation of
+        'PlaceholderPlugin.get_placeholder_preview' calls it automatically.
 
-        builder_type = placeholder.data["builder_type"]
-        folder_ids = []
-        if builder_type == "all_folders":
-            folder_ids = {
-                folder_entity["id"]
-                for folder_entity in get_folders(
-                    project_name,
-                    folder_path_regex=folder_path_regex,
-                    fields={"id"}
-                )
-            }
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
 
-        elif builder_type == "context_folder":
-            folder_ids = [current_folder_entity["id"]]
+        Returns:
+            PlaceholderPreview: Products matching the options.
 
-        elif builder_type == "linked_folders":
-            # link type from placeholder data or default to "template"
-            link_type = placeholder.data.get("link_type", "template")
-            # Get all linked folders for the current folder
-            if hasattr(self, "builder") and isinstance(
-                    self.builder, AbstractTemplateBuilder):
-                # self.builder: AbstractTemplateBuilder
-                folder_ids = [
-                    linked_folder_entity["id"]
-                    for linked_folder_entity in (
-                        self.builder.get_linked_folder_entities(
-                            link_type=link_type,
-                            folder_path_regex=folder_path_regex
-                        )
-                    )
-                ]
-
-        if not folder_ids:
-            return []
-
-        filter_key = "product_base_types"
-        if ayon_api.get_server_version_tuple() < (1, 14, 0):
-            filter_key = "product_types"
-        filter_kwargs = {
-            filter_key: {product_base_type},
-        }
-
-        products = list(get_products(
-            project_name,
-            folder_ids=folder_ids,
-            **filter_kwargs,
-            fields={"id", "name"}
-        ))
-        filtered_product_ids = set()
-        for product in products:
-            if (
-                product_name_regex is None
-                or product_name_regex.match(product["name"])
-            ):
-                filtered_product_ids.add(product["id"])
-
-        if not filtered_product_ids:
-            return []
-
-        version_ids = set(
-            version["id"]
-            for version in self._get_version_entities(
-                project_name,
-                filtered_product_ids,
-                placeholder
+        """
+        if "asset" in placeholder_data:
+            return PlaceholderPreview(
+                title="Legacy placeholder",
+                hint=(
+                    "Placeholder was created in OpenPype and can't be"
+                    " populated in AYON. Create a new placeholder to"
+                    " replace it."
+                ),
+                is_error=True,
             )
+
+        product_base_type = (
+            placeholder_data.get("product_base_type")
+            or placeholder_data.get("product_type")
+            or placeholder_data.get("family")
+        )
+        if not product_base_type:
+            return PlaceholderPreview(
+                title="Nothing to load",
+                hint=(
+                    "Fill in 'Product base type' to see which products"
+                    " would be loaded."
+                ),
+            )
+
+        try:
+            result = self._query_load_options(placeholder_data)
+        except Exception as exc:
+            return PlaceholderPreview(
+                title="Preview failed",
+                hint=str(exc),
+                is_error=True,
+            )
+
+        items = []
+        for repre_entity in result.representation_entities:
+            version_entity = result.version_entities_by_id.get(
+                repre_entity["versionId"]
+            )
+            if version_entity is None:
+                continue
+            product_entity = result.product_entities_by_id.get(
+                version_entity.get("productId")
+            )
+            if product_entity is None:
+                continue
+            folder_entity = result.folder_entities_by_id.get(
+                product_entity["folderId"]
+            )
+            folder_path = "<unknown>"
+            if folder_entity is not None:
+                folder_path = folder_entity.get("path") or folder_path
+
+            version = version_entity.get("version")
+            if version is None:
+                version_label = "v???"
+            elif version < 0:
+                # Hero versions have negative version numbers
+                version_label = "HERO"
+            else:
+                version_label = "v{:0>3}".format(version)
+
+            items.append(PlaceholderPreviewItem(
+                label="{}/{}".format(folder_path, product_entity["name"]),
+                detail="{} - {}".format(version_label, repre_entity["name"]),
+            ))
+
+        items.sort(key=lambda item: (item.label, item.detail or ""))
+
+        hint = None
+        loader_name = placeholder_data.get("loader")
+        if not loader_name:
+            hint = "No loader is selected, nothing will be loaded."
+        elif loader_name not in self.builder.get_loaders_by_name():
+            hint = "Loader '{}' is not available in this host.".format(
+                loader_name
+            )
+
+        if not items:
+            return PlaceholderPreview(
+                title="Nothing to load",
+                hint=hint or (
+                    "No representations match the filled in options in the"
+                    " current context."
+                ),
+                is_error=bool(hint),
+            )
+
+        max_items = 30
+        hidden_items_count = max(0, len(items) - max_items)
+        return PlaceholderPreview(
+            title="Would load {} representation{}".format(
+                len(items), "" if len(items) == 1 else "s"
+            ),
+            items=items[:max_items],
+            hint=hint,
+            is_error=bool(hint),
+            hidden_items_count=hidden_items_count,
         )
 
-        return list(get_representations(
-            project_name,
-            representation_names=representation_names,
-            version_ids=version_ids
-        ))
+    def get_load_placeholder_completions(self, placeholder_data):
+        """Representation and product names available for load options.
+
+        Use it in 'get_placeholder_completions'. Default implementation of
+        'PlaceholderPlugin.get_placeholder_completions' calls it
+        automatically.
+
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
+
+        Returns:
+            dict[str, list[str]]: Suggestions by option key.
+
+        """
+        output = {}
+        product_base_type = (
+            placeholder_data.get("product_base_type")
+            or placeholder_data.get("product_type")
+            or placeholder_data.get("family")
+        )
+        if not product_base_type:
+            return output
+
+        try:
+            result = self._query_load_options(
+                placeholder_data,
+                filter_representation_name=False,
+                filter_product_name=False,
+            )
+        except Exception:
+            self.log.debug(
+                "Failed to collect placeholder completions.", exc_info=True
+            )
+            return output
+
+        output["representation"] = sorted({
+            repre_entity["name"]
+            for repre_entity in result.representation_entities
+        })
+        output["product_name"] = sorted({
+            product_entity["name"]
+            for product_entity in result.product_entities_by_id.values()
+        })
+        return output
 
     def _before_placeholder_load(self, placeholder):
         """Can be overridden. It's called before placeholder representations
@@ -2351,6 +2860,79 @@ class PlaceholderCreateMixin(object):
                 )
             )
         ]
+
+    def get_create_placeholder_preview(self, placeholder_data):
+        """Publish instance that would be created with current options.
+
+        Use it in 'get_placeholder_preview'. Default implementation of
+        'PlaceholderPlugin.get_placeholder_preview' calls it automatically.
+
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
+
+        Returns:
+            PlaceholderPreview: Instance matching the options.
+
+        """
+        creator_name = placeholder_data.get("creator")
+        if not creator_name:
+            return PlaceholderPreview(
+                title="Nothing to create",
+                hint=(
+                    "Fill in 'Creator' to see which publish instance would"
+                    " be created."
+                ),
+            )
+
+        creator_plugin = self.builder.get_creators_by_name().get(creator_name)
+        if creator_plugin is None:
+            return PlaceholderPreview(
+                title="Preview failed",
+                hint="Creator '{}' is not available in this host.".format(
+                    creator_name
+                ),
+                is_error=True,
+            )
+
+        folder_entity = self.builder.current_folder_entity
+        if not folder_entity:
+            return PlaceholderPreview(
+                title="Preview failed",
+                hint="Current context does not have set folder.",
+                is_error=True,
+            )
+
+        create_variant = placeholder_data.get("create_variant") or ""
+        try:
+            product_name = creator_plugin.get_product_name(
+                self.builder.project_name,
+                folder_entity,
+                self.builder.current_task_entity,
+                create_variant,
+                self.builder.host_name,
+            )
+        except Exception as exc:
+            return PlaceholderPreview(
+                title="Preview failed",
+                hint=str(exc),
+                is_error=True,
+            )
+
+        state = "active"
+        if not placeholder_data.get("active", True):
+            state = "inactive"
+
+        return PlaceholderPreview(
+            title="Would create 1 publish instance",
+            items=[PlaceholderPreviewItem(
+                label="{}/{}".format(
+                    folder_entity["path"], product_name
+                ),
+                detail="{} - {}".format(
+                    creator_plugin.label or creator_name, state
+                ),
+            )],
+        )
 
     def populate_create_placeholder(self, placeholder, pre_create_data=None):
         """Create placeholder is going to create matching publishabe instance.
