@@ -6,6 +6,7 @@ import tempfile
 import webbrowser
 from pathlib import Path
 from shutil import rmtree
+from typing import Any, Callable, Optional
 
 from qtpy.QtCore import (
     QEvent,
@@ -17,9 +18,12 @@ from qtpy.QtCore import (
 from qtpy.QtGui import (
     QColor,
     QEnterEvent,
+    QFontMetrics,
     QPainter,
     QPaintEvent,
+    QPalette,
     QPixmap,
+    QResizeEvent,
 )
 from qtpy.QtWidgets import QLabel, QLayout, QMessageBox, QTextEdit, QWidget
 
@@ -27,158 +31,357 @@ from ..data_models import (
     CommentModel,
     EntityMention,
     StatusChangeModel,
-    StatusUiModel,
     User,
     VersionPublishModel,
+    relative_date,
 )
 from ..image_cache import ImageCache, make_activity_cache_key
+from ..style_types import get_ayon_style
 from ..utils import color_blend
 from .buttons import AYButton
 from .comment_completion import is_mention_href
-from .container import AYContainer, AYFrame
+from .container import AYContainer
+from .entity_thumbnail import AYEntityThumbnail
 from .gallery_dialog import GalleryDialog
 from .label import AYLabel, get_icon
-from .layouts import AYHBoxLayout, AYVBoxLayout
+from .layouts import AYHBoxLayout
 from .markdown_edit import AYMarkdownEdit
 from .user_image import AYUserImage
 
 logger = logging.getLogger(__name__)
 
+# ACTIVITY ROWS --------------------------------------------------------------
+
+# Non-blocking loader of an image that is not in the 'ImageCache' yet,
+#   called as '(key, on_loaded)', see 'AYEntityThumbnail'
+ThumbnailLoader = Optional[Callable[[str, Callable[[str], None]], None]]
+
+_NOT_AVAILABLE = {"", "n/a", "Not available"}
+
+
+def _create_status_label(
+    status_name: str,
+    status_definitions: list[dict[str, Any]],
+    icon_only: bool = False,
+) -> AYLabel:
+    """Create a label of a status with its icon and color.
+
+    Args:
+        status_name: Name of the status.
+        status_definitions: Project statuses as dictionaries with ``text``,
+            ``short_text``, ``icon`` and ``color`` keys. A status that is
+            not defined is shown by its name only.
+        icon_only: Show only the icon, with the name in the tooltip. The
+            name is shown anyway if the status has no icon.
+
+    Returns:
+        The status label.
+    """
+    status = next(
+        (
+            status
+            for status in status_definitions
+            if status.get("text") == status_name
+        ),
+        {},
+    )
+    icon = status.get("icon", "")
+    if icon_only and icon:
+        return AYLabel(
+            icon=icon,
+            icon_color=status.get("color", ""),
+            icon_size=14,
+            tool_tip=status_name,
+        )
+    return AYLabel(
+        status_name,
+        icon=icon,
+        icon_color=status.get("color", ""),
+        icon_size=14,
+        icon_text_spacing=3,
+        rel_text_size=-1,
+        elide_mode=Qt.TextElideMode.ElideRight,
+    )
+
+
+class AYActivityRow(AYContainer):
+    """Compact one-event row: who did what and when, plus the subject.
+
+    Built to stay readable in narrow side panels: the verb is dropped
+    before the user name gets elided, and so is :attr:`thumbnail`.
+
+    Args:
+        *args: Forwarded to ``AYContainer``, e.g. the parent.
+        user_name: Username, used for the avatar.
+        user_full_name: Name displayed next to the avatar.
+        user_src: Path to the avatar image.
+        verb: What the user did, hidden when the row is too narrow.
+        date: Date of the event in ISO format.
+        tooltip: Description of the event.
+        card: Show the subject on a card, like the body of a comment.
+        **kwargs: Forwarded to ``AYContainer``.
+    """
+
+    thumbnail_min_row_width = 230
+
+    def __init__(
+        self,
+        *args,
+        user_name: str = "",
+        user_full_name: str = "",
+        user_src: str = "",
+        verb: str = "",
+        date: str = "",
+        tooltip: str = "",
+        card: bool = False,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            *args,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_spacing=4 if card else 2,
+            **kwargs,
+        )
+        self.setToolTip(tooltip)
+        # Widget hidden when the row is too narrow to fit it
+        self.thumbnail: QWidget | None = None
+        self._header = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_spacing=8,
+        )
+        header = self._header
+        self.user_icon = AYUserImage(
+            size=20,
+            src=user_src,
+            name=user_name,
+            full_name=user_full_name,
+            outline=False,
+        )
+        header.add_widget(self.user_icon)
+        self.user_name = AYLabel(
+            user_full_name,
+            bold=True,
+            elide_mode=Qt.TextElideMode.ElideRight,
+        )
+        self._verb_label = AYLabel(verb, dim=True, rel_text_size=-1)
+        self.date = AYLabel(relative_date(date), dim=True, rel_text_size=-2)
+        header.add_widget(self.user_name)
+        header.add_widget(self._verb_label)
+        header.addStretch(1)
+        header.add_widget(self.date)
+        self.add_widget(header)
+
+        if card:
+            self.detail = AYContainer(
+                layout=AYContainer.Layout.HBox,
+                variant=AYContainer.Variants.High,
+                layout_spacing=6,
+                layout_margin=8,
+            )
+            self.add_widget(self.detail)
+            return
+
+        self.detail = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_spacing=6,
+        )
+        # Align the detail line with the name, past the avatar
+        self.detail._layout.setContentsMargins(28, 0, 0, 0)
+        self.add_widget(self.detail)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        if self.thumbnail is not None:
+            self.thumbnail.setVisible(
+                event.size().width() >= self.thumbnail_min_row_width
+            )
+        # The verb is dropped before the name gets elided
+        spacing = self._header._layout.spacing()
+        # An eliding label reports a size hint smaller than its text
+        font = self.user_name.font()
+        font.setBold(True)
+        name_width = QFontMetrics(font).horizontalAdvance(
+            self.user_name.text()
+        )
+        # Avatar, 3 labels and the stretch between them
+        needed = (
+            20
+            + max(name_width, self.user_name.sizeHint().width())
+            + self._verb_label.sizeHint().width()
+            + self.date.sizeHint().width()
+            + 5 * spacing
+        )
+        self._verb_label.setVisible(needed <= event.size().width())
+
+
 # STATUS ---------------------------------------------------------------------
 
 
-class AYStatusChange(AYFrame):
+class AYStatusChange(AYActivityRow):
+    """Status change of a version, shown as a single line.
+
+    Args:
+        *args: Forwarded to ``AYActivityRow``, e.g. the parent.
+        data: The status change.
+        status_definitions: Project statuses, see
+            :func:`_create_status_label`.
+        compact: Fit narrow side panels: the previous status is shown as
+            an icon only and the product and version only in the tooltip.
+        **kwargs: Forwarded to ``AYActivityRow``.
+    """
+
     def __init__(
         self,
         *args,
         data: StatusChangeModel | None = None,
-        status_definitions: dict | None = None,
+        status_definitions: list[dict[str, Any]] | None = None,
+        compact: bool = False,
         **kwargs,
-    ):
+    ) -> None:
         self._data = data or StatusChangeModel()
-        self.statuses = {
-            kw["text"]: StatusUiModel(**kw)
-            for kw in status_definitions or []
-        }
+        data = self._data
+        status_definitions = status_definitions or []
+        subject = " ".join(
+            value
+            for value in (data.product, data.version)
+            if value not in _NOT_AVAILABLE
+        )
+        tooltip = f"Changed status from {data.old_status} to {data.new_status}"
+        if subject:
+            tooltip += f"\n{subject}"
         super().__init__(
-            *args, variant=AYFrame.Variants.Low, margin=0, **kwargs
+            *args,
+            user_name=data.user_name,
+            user_full_name=data.user_full_name,
+            user_src=data.user_src,
+            verb="changed status",
+            date=data.date,
+            tooltip=f"{tooltip}\n{data.short_date}",
+            **kwargs,
         )
-        self._build()
-
-    @property
-    def unknown_status(self):
-        return StatusUiModel(
-            "Unknown Status", "UKN", "shield_question", "#d05050"
+        self.detail.add_widget(
+            _create_status_label(
+                data.old_status, status_definitions, icon_only=compact
+            )
         )
-
-    def status_icon(self, status):
-        model = self.statuses.get(status, self.unknown_status)
-        return model.icon, model.color
-
-    def _build_top_bar(self):
-        small_icon_size = 14
-        self.str_1 = AYLabel(
-            f"{self._data.user_full_name} - {self._data.product} / "
-            f"{self._data.version} - ",
-            dim=True,
-            rel_text_size=-2,
+        # An icon of the size of the status icons, so the arrow is on
+        #   their center line. A text arrow sits on the text baseline.
+        arrow_color = get_ayon_style().model.base_palette.color(
+            QPalette.ColorGroup.Active, QPalette.ColorRole.PlaceholderText
         )
-        icon_name_0, icon_color_0 = self.status_icon(self._data.old_status)
-        self.status_0 = AYLabel(
-            self._data.old_status,
-            icon=icon_name_0,
-            icon_color=icon_color_0,
-            icon_size=small_icon_size,
-            icon_text_spacing=3,
-            dim=True,
-            rel_text_size=-2,
+        self.detail.add_widget(
+            AYLabel(
+                icon="arrow_forward",
+                icon_color=arrow_color.name(),
+                icon_size=14,
+            )
         )
-        self.str_2 = AYLabel(" → ", dim=True, rel_text_size=-2)
-        icon_name_1, icon_color_1 = self.status_icon(self._data.new_status)
-        self.status_1 = AYLabel(
-            self._data.new_status,
-            icon=icon_name_1,
-            icon_color=icon_color_1,
-            icon_size=small_icon_size,
-            icon_text_spacing=3,
-            dim=True,
-            rel_text_size=-2,
+        new_status = _create_status_label(data.new_status, status_definitions)
+        if compact or not subject:
+            self.detail.add_widget(new_status, stretch=1)
+            return
+        self.detail.add_widget(new_status)
+        self.detail.add_widget(
+            AYLabel(
+                subject,
+                dim=True,
+                rel_text_size=-1,
+                elide_mode=Qt.TextElideMode.ElideRight,
+            ),
+            stretch=1,
         )
-        self.date = AYLabel(self._data.short_date, dim=True, rel_text_size=-2)
-        cntr = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            layout_spacing=0,
-        )
-        cntr.add_widget(self.str_1, stretch=0)
-        cntr.add_widget(self.status_0, stretch=0)
-        cntr.add_widget(self.str_2, stretch=0)
-        cntr.add_widget(self.status_1, stretch=0)
-        cntr.addStretch()
-        cntr.add_widget(self.date, stretch=0)
-        return cntr
-
-    def _build(self):
-        lyt = AYVBoxLayout(self, margin=0, spacing=0)
-        lyt.addWidget(self._build_top_bar(), stretch=0)
 
 
 # PUBLISH ---------------------------------------------------------------------
 
 
-class AYPublish(AYFrame):
+class AYPublish(AYActivityRow):
+    """Published version, shown as a card.
+
+    The card has the product and version, and when the data has them the
+    current status of the version and its thumbnail.
+
+    Args:
+        *args: Forwarded to ``AYActivityRow``, e.g. the parent.
+        data: The publish.
+        status_definitions: Project statuses, see
+            :func:`_create_status_label`.
+        thumbnail_loader: Non-blocking loader called as
+            ``(key, on_loaded)`` with the ``thumbnail_key`` of the publish
+            when the key is not in the image cache yet.
+        **kwargs: Forwarded to ``AYActivityRow``.
+    """
+
     def __init__(
-        self, *args, data: VersionPublishModel | None = None, **kwargs
-    ):
+        self,
+        *args,
+        data: VersionPublishModel | None = None,
+        status_definitions: list[dict[str, Any]] | None = None,
+        thumbnail_loader: ThumbnailLoader = None,
+        **kwargs,
+    ) -> None:
         self._data = data or VersionPublishModel()
+        data = self._data
         super().__init__(
-            *args, variant=AYFrame.Variants.Low, margin=0, **kwargs
+            *args,
+            user_name=data.user_name,
+            user_full_name=data.user_full_name,
+            user_src=data.user_src,
+            verb="published a version",
+            date=data.date,
+            tooltip=(
+                f"Published {data.product} {data.version}"
+                f"\n{data.short_date}"
+            ),
+            card=True,
+            **kwargs,
         )
-        self._build()
-
-    def _build_top_bar(self):
-        self.user_icon = AYUserImage(
-            parent=self,
-            size=20,
-            src=self._data.user_src,
-            name=self._data.user_name,
-            full_name=self._data.user_full_name,
-            outline=False,
+        text = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.High,
+            layout_spacing=2,
         )
-        self.user_name = AYLabel(self._data.user_full_name, bold=True)
-        self.date = AYLabel(self._data.short_date, dim=True, rel_text_size=-2)
-        self.static = AYLabel(
-            "published a version", dim=True, rel_text_size=-2
+        text.add_widget(
+            AYLabel(
+                data.product,
+                icon="layers",
+                icon_size=14,
+                elide_mode=Qt.TextElideMode.ElideMiddle,
+            )
         )
-        cntr = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            layout_spacing=8,
-        )
-        cntr.setContentsMargins(0, 0, 0, 4)
-        cntr.add_widget(self.user_icon, stretch=0)
-        cntr.add_widget(self.user_name, stretch=0)
-        cntr.add_widget(self.static, stretch=0)
-        cntr.addStretch()
-        cntr.add_widget(self.date, stretch=0)
-        return cntr
-
-    def _build(self):
-        lyt = AYVBoxLayout(self, margin=0, spacing=0)
-        lyt.addWidget(self._build_top_bar(), stretch=0)
-
-        cntr = AYContainer(
+        version_line = AYContainer(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.High,
+            layout_spacing=8,
         )
-        self.text_field = AYCommentField(
-            text=f"**{self._data.product}**\n{self._data.version}",
-            num_lines=3,
-            read_only=True,
-        )
-        cntr.add_widget(self.text_field, stretch=0)
+        version_line.add_widget(AYLabel(data.version, dim=True))
+        if data.status:
+            status_label = _create_status_label(
+                data.status, status_definitions or []
+            )
+            status_label.setToolTip(
+                f"Current status of the version: {data.status}"
+            )
+            version_line.add_widget(status_label, stretch=1)
+        else:
+            version_line.addStretch(1)
+        text.add_widget(version_line)
+        self.detail.add_widget(text, stretch=1)
 
-        lyt.addWidget(cntr, stretch=0)
+        if data.thumbnail_key:
+            self.thumbnail = AYEntityThumbnail(
+                src=data.thumbnail_key,
+                async_file_cacher=thumbnail_loader,
+                size=(64, 36),
+                fill_area=True,
+                # No frame around the image, the card is the background
+                transparent=True,
+                image_inset=0,
+            )
+            self.detail.add_widget(self.thumbnail)
 
     def update_params(self, model: CommentModel):
         if self._data:
@@ -186,7 +389,7 @@ class AYPublish(AYFrame):
                 self._data.user_src, self._data.user_full_name
             )
             self.user_name.setText(self._data.user_name)
-            self.date.setText(self._data.short_date)
+            self.date.setText(relative_date(self._data.date))
 
 
 # COMMENT ---------------------------------------------------------------------
@@ -218,6 +421,7 @@ class AYCommentField(AYMarkdownEdit):
         self._read_only: bool = read_only
         self._data = model
         self._bg_color = None
+        self._checkboxes_enabled: bool = True
 
         super().__init__(
             *args, user_list=user_list, variant=variant, **kwargs
@@ -296,6 +500,22 @@ class AYCommentField(AYMarkdownEdit):
         """Recalculate height when width changes (affects text wrapping)."""
         super().resizeEvent(event)
         self._adjust_height_to_content()
+
+    def set_checkboxes_enabled(self, enabled: bool) -> None:
+        """Allow or forbid to toggle checkboxes by clicking them.
+
+        Toggling changes the comment, so it should be forbidden where the
+        change can not be saved.
+
+        Args:
+            enabled: Checkboxes can be toggled.
+        """
+        self._checkboxes_enabled = enabled
+
+    def _checkbox_index_at(self, pos: QPoint) -> int | None:
+        if not self._checkboxes_enabled:
+            return None
+        return super()._checkbox_index_at(pos)
 
     def mousePressEvent(self, event) -> None:
         """Handle mouse press events for checkboxes and links.
@@ -618,7 +838,7 @@ class AYComment(AYContainer):
         if data:
             self._data = data
         self.text_field.set_markdown(self._data.comment)
-        self.date.setText(self._data.short_date)
+        self._update_date()
         self.set_comment_category()
         if not self._attachments_built or prev_data.files != self._data.files:
             self.images_container.clear()
@@ -650,7 +870,8 @@ class AYComment(AYContainer):
             outline=False,
         )
         self.user_name = AYLabel(self._data.user_full_name, bold=True)
-        self.date = AYLabel(self._data.short_date, dim=True, rel_text_size=-2)
+        self.date = AYLabel("", dim=True, rel_text_size=-2)
+        self._update_date()
         cntr = AYContainer(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.Low,
@@ -935,7 +1156,12 @@ class AYComment(AYContainer):
                 self._data.user_src, self._data.user_full_name
             )
             self.user_name.setText(self._data.user_name)
-            self.date.setText(self._data.short_date)
+            self._update_date()
+
+    def _update_date(self) -> None:
+        """Show the time passed since, with the date in the tooltip."""
+        self.date.setText(relative_date(self._data.comment_date))
+        self.date.setToolTip(self._data.short_date)
 
     def refresh_image(
         self,
