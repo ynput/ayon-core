@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import typing
 from typing import Iterable, Any, Callable
 
@@ -55,6 +55,33 @@ class RepreItem:
             data["representation_icon"]
         )
         return cls(**data)
+
+
+@dataclass
+class ProductGroupsInfo:
+    """Product group names related to a selection of products.
+
+    Attributes:
+        selected (set[str]): Group names set on the selected products.
+        available (set[str]): Group names used by any product in the
+            folders of the selected products.
+    """
+
+    selected: set[str] = field(default_factory=set)
+    available: set[str] = field(default_factory=set)
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            selected=list(self.selected),
+            available=list(self.available),
+        )
+
+    @classmethod
+    def from_data(cls, data) -> ProductGroupsInfo:
+        return cls(
+            selected=set(data["selected"]),
+            available=set(data["available"]),
+        )
 
 
 @dataclass
@@ -316,6 +343,33 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, str | None]: Thumbnail path by entity id.
+
+        """
+        pass
+
+    @abstractmethod
     def get_task_type_items(self, project_name, sender=None):
         """Task type items for a project.
 
@@ -397,6 +451,57 @@ class AbstractBrowserController(ABC):
 
         Returns:
             dict[str, int]: Representation count by version id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        """Product group names related to passed products.
+
+        Args:
+            project_name (str): Project name.
+            product_ids (set[str]): Product ids.
+
+        Returns:
+            ProductGroupsInfo: Group names of the products and group names
+                available in their folders.
+
+        """
+        pass
+
+    @abstractmethod
+    def can_change_products_group(self, project_name: str) -> bool:
+        """Whether current user may write the product group attribute.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            bool: Product group attribute can be changed by the user.
+
+        """
+        pass
+
+    @abstractmethod
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        """Change group name of passed products.
+
+        Triggers event "products.group.changed" with data:
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            }
+
+        Args:
+            project_name (str): Project name.
+            product_ids (set[str]): Product ids to change group name for.
+            group_name (str): Group name to set, empty string to ungroup.
 
         """
         pass

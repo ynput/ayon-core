@@ -8,6 +8,7 @@ from ayon_server.settings import (
     MultiplatformPathModel,
     normalize_name,
     ensure_unique_names,
+    folder_types_enum,
     task_types_enum,
 )
 from ayon_server.lib.postgres import Postgres
@@ -334,6 +335,210 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
         return value
+
+
+class SearchParentProductModel(BaseSettingsModel):
+    folder_type: str = SettingsField(
+        "",
+        title="Parent folder type",
+        enum_resolver=folder_types_enum,
+    )
+    product_name: str = SettingsField(
+        "",
+        title="Product name",
+        description="Product name to load from",
+    )
+    version: str = SettingsField(
+        "latest",
+        title="Version",
+        description="Version to load. A digit, 'hero' or 'latest'.",
+    )
+    representation_name: str = SettingsField(
+        "usd",
+        title="Representation name"
+    )
+    as_ayon_entity_uri: bool = SettingsField(
+        True,
+        title="Load as AYON Entity URI",
+        description=(
+            "Load the version as AYON Entity URI when enabled. If disabled, it"
+            " must point to an existing product otherwise no path will be"
+            " added even if allowing non-existing versions is enabled on the"
+            " contribution profile."
+        )
+    )
+
+
+class ReferenceContributionModel(BaseSettingsModel):
+    _layout = "expanded"
+    target_prim_path: str = SettingsField(
+        "/{default_prim_name}",
+        title="Target Prim Path",
+    )
+
+
+class VariantContributionModel(ReferenceContributionModel):
+    _layout = "expanded"
+    variant_set_name: str = SettingsField(
+        "",
+        title="Variant set name",
+    )
+    variant_name: str = SettingsField(
+        "",
+        title="Variant name",
+    )
+    variant_default_policy: str = SettingsField(
+        "if_not_set",
+        title="Set as default variant selection",
+        enum_resolver=contribution_variant_default_policy_enum,
+        description=(
+            "Controls whether this contribution's variant name is authored "
+            "as the selected default for the variant set."
+        ),
+    )
+
+
+def usd_contribution_layering_types_enum_resolver():
+    return [
+        "sublayer",
+        "reference",
+        "variant"  # reference in variant
+    ]
+
+
+def usd_contribution_load_from_enum_resolver():
+    return [
+        {
+            "value": "source_path",
+            "label": "Source Path (e.g. filepath or AYON Entity URI)",
+        },
+        {
+            "value": "search_product",
+            "label": (
+                "Find product in first parent folder of given folder type"
+            ),
+        },
+    ]
+
+
+class ContributionSearchLayersModel(BaseSettingsModel):
+    """Additional contribution to add into the USD Asset or Shot."""
+    _layout = "expanded"
+    name: str = SettingsField(
+        "",
+        title="Layer Identifier",
+        description=(
+            "Specific layer identifier to search for in the Sdf layer. If it"
+            " is already found the original layer identifier will be swapped"
+            " with this newer, so you can contribute updates to the same"
+            " product."
+        ),
+    )
+    order: int = SettingsField(
+        0,
+        title="Order",
+        description=(
+            "Strength of the contribution among other contributions. "
+            "Higher order means a higher strength and stacks the layer on top."
+        ),
+    )
+    type: str = SettingsField(
+        "sublayer",
+        title="Load",
+        enum_resolver=usd_contribution_layering_types_enum_resolver,
+        conditional_enum=True,
+        description=(
+            "How to add the contribution: as a sublayer, as a reference on a"
+            " prim or as a reference inside a variant on a prim."
+        ),
+    )
+
+    # Load type specific-settings
+    reference: ReferenceContributionModel = SettingsField(
+        default_factory=ReferenceContributionModel,
+        title="Reference Contribution"
+    )
+    variant: VariantContributionModel = SettingsField(
+        default_factory=VariantContributionModel,
+        title="Variant Contribution",
+    )
+
+    only_if_existing: bool = SettingsField(
+        default=True,
+        title="Add only if version exists",
+        description=(
+            "Add the layer only if the given representation filepath exists."
+        )
+    )
+
+    # Now we need to define what file or path the user should be loading.
+    # These can be AYON Entity URIs or a 'searched product' at a specific
+    # folder path or parent folder path
+    load_from: str = SettingsField(
+        "source_path",
+        title="Layer method",
+        enum_resolver=usd_contribution_load_from_enum_resolver,
+        conditional_enum=True,
+        description=(
+            "How to define the layer to contribute: an explicit source path"
+            " or a product found in a parent folder of a given folder type."
+        ),
+    )
+
+    source_path: str = SettingsField(
+        "",
+        title="Source Path",
+        description=(
+            "Layer path. This can be an AYON entity URI or a relative file"
+            " path. It will be taken 1:1 into the result so use with caution."
+        ),
+    )
+    search_product: SearchParentProductModel = SettingsField(
+        default_factory=SearchParentProductModel,
+        title="Find product in first parent folder of a given folder type",
+    )
+
+
+class CollectUSDAssetLayerContributionsProfileModel(BaseSettingsModel):
+    """Define additional contributions to the USD Asset or Shot."""
+    _layout = "expanded"
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+        description=(
+            "The current create context task type to filter against. This"
+            " allows to filter the profile to only be valid if currently "
+            " creating from within that task type."
+        ),
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Product names",
+    )
+    contributions: list[ContributionSearchLayersModel] = SettingsField(
+        default_factory=list,
+        title="Contributions",
+    )
+
+    @validator("contributions")
+    def validate_unique_outputs(cls, value):
+        ensure_unique_names(value)
+        return value
+
+
+class CollectUSDAssetContributionsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    profiles: list[CollectUSDAssetLayerContributionsProfileModel] = (
+        SettingsField(
+            default_factory=list,
+            title="Profiles",
+            description=(
+                "Define additional contributions to add into the USD Asset"
+                " or Shot per context."
+            ),
+        )
+    )
 
 
 def list_type_enum():
@@ -1037,6 +1242,38 @@ class ExtractOIIOPostProcessModel(BaseSettingsModel):
     )
 
 
+class ExtractOTIOReviewModel(BaseSettingsModel):
+    """Extract review representation from OTIO based input products.
+    """
+    representation_name: str = SettingsField(
+        "",
+        title="Representation name",
+        description=(
+            "The name of the representation generated by the OTIO extractor. "
+            "(Defaults to the Output Extension.)"
+        )
+    )
+    output_ext: str = SettingsField(
+        "png",
+        title="Output extension",
+        # TODO: need to work-out the plugin logic
+        # before we allow more than 'png' extension.
+        disabled=True,
+    )
+    default_width: int = SettingsField(
+        1280,
+        ge=0,
+        le=100000,
+        title="Default width"
+    )
+    default_height: int = SettingsField(
+        720,
+        ge=0,
+        le=100000,
+        title="Default height"
+    )
+
+
 # --- [START] Extract Review ---
 class ExtractReviewFFmpegModel(BaseSettingsModel):
     video_filters: list[str] = SettingsField(
@@ -1689,6 +1926,12 @@ class PublishPuginsModel(BaseSettingsModel):
             title="Collect USD Layer Contributions",
         )
     )
+    CollectUSDAssetContributions: CollectUSDAssetContributionsModel = (
+        SettingsField(
+            default_factory=CollectUSDAssetContributionsModel,
+            title="Collect Predefined USD Contributions",
+        )
+    )
     CollectVersionToList: CollectVersionToListModel = SettingsField(
         default_factory=CollectVersionToListModel,
         title="Collect Version to List",
@@ -1746,6 +1989,10 @@ class PublishPuginsModel(BaseSettingsModel):
     ExtractOIIOPostProcess: ExtractOIIOPostProcessModel = SettingsField(
         default_factory=ExtractOIIOPostProcessModel,
         title="Extract OIIO Post Process"
+    )
+    ExtractOTIOReview: ExtractOTIOReviewModel = SettingsField(
+        default_factory=ExtractOTIOReviewModel,
+        title="Extract OTIO review"
     )
     ExtractReview: ExtractReviewModel = SettingsField(
         default_factory=ExtractReviewModel,
@@ -1961,6 +2208,10 @@ DEFAULT_PUBLISH_VALUES = {
             },
         ]
     },
+    "CollectUSDAssetContributions": {
+        "enabled": False,
+        "profiles": []
+    },
     "CollectVersionToList": {
         "enabled": False,
         "profiles": []
@@ -2064,6 +2315,12 @@ DEFAULT_PUBLISH_VALUES = {
                 "height": 170
             }
         },
+    },
+    "ExtractOTIOReview": {
+        "representation_name": "review_png",
+        "default_width": 1280,
+        "default_height": 720,
+        "output_ext": "png",
     },
     "ExtractOIIOTranscode": {
         "enabled": True,

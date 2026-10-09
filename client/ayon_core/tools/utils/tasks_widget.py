@@ -20,6 +20,10 @@ from ayon_core.ui.variants import QTreeViewVariants
 from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .lib import RefreshThread, get_qt_icon
+from .entity_thumbnails import (
+    EntityThumbnailsPainter,
+    EntityThumbnailDelegate,
+)
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -307,7 +311,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 task_type_item_by_name,
                 task_type_icon_cache
             )
-            item.setData(task_item.full_label, QtCore.Qt.DisplayRole)
+            item.setData(task_item.label, QtCore.Qt.DisplayRole)
+            item.setData(task_item.full_label, QtCore.Qt.ToolTipRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
@@ -503,6 +508,19 @@ class TasksWidget(QtWidgets.QWidget):
                 variant=QTreeViewVariants.Default.value,
             )
         )
+        # Thumbnails are painted on the right side of task label
+        thumbnails_painter = EntityThumbnailsPainter(
+            tasks_view, controller, "task", ITEM_ID_ROLE
+        )
+        tasks_view.setItemDelegateForColumn(
+            0,
+            EntityThumbnailDelegate(
+                thumbnails_painter,
+                parent=tasks_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -531,6 +549,7 @@ class TasksWidget(QtWidgets.QWidget):
         self._tasks_view = tasks_view
         self._tasks_model = tasks_model
         self._tasks_proxy_model = tasks_proxy_model
+        self._thumbnails_painter = thumbnails_painter
 
         self._selected_folder_id = None
 
@@ -638,6 +657,14 @@ class TasksWidget(QtWidgets.QWidget):
     def set_status_column_visible(self, visible: bool):
         self._tasks_view.setColumnHidden(1, not visible)
 
+    def set_thumbnails_visible(self, visible: bool):
+        """Show or hide task thumbnails.
+
+        Thumbnails are visible by default, if the controller implements
+        'get_thumbnail_paths'.
+        """
+        self._thumbnails_painter.set_enabled(visible)
+
     def _on_tasks_refresh_finished(self, event):
         """Tasks were refreshed in controller.
 
@@ -670,6 +697,9 @@ class TasksWidget(QtWidgets.QWidget):
             self._on_selection_change()
 
         self._update_task_type_sorting()
+        self._thumbnails_painter.set_project_name(
+            self._tasks_model.get_last_project_name()
+        )
         self.refreshed.emit()
 
     def _on_tasks_project_change(self):

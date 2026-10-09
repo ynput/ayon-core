@@ -25,7 +25,7 @@ wheels = [
 
 [[package]]
 name = "ayon-core"
-version = "1.9.14+dev"
+version = "1.10.0+dev"
 source = { virtual = "." }
 dependencies = [
     { name = "arrow" },
@@ -59,6 +59,7 @@ test = [
     { name = "pytest-qt" },
     { name = "pytest-regressions", extra = ["image"] },
     { name = "pytest-timeout" },
+    { name = "usd-core" },
 ]
 
 [package.metadata]
@@ -90,6 +91,7 @@ requires-dist = [
     { name = "ruff", specifier = ">=0.11.7" },
     { name = "semver", specifier = ">=3.0.2" },
     { name = "speedcopy", specifier = ">=2.1.0" },
+    { name = "usd-core", marker = "extra == 'test'" },
 ]
 provides-extras = ["test"]
 
@@ -746,6 +748,16 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
+]
+
+[[package]]
+name = "usd-core"
+version = "26.8"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5d/7b/fd674dc4c3273e18cede49c50be75d90649d38dbec6180bda83b4047a8f0/usd_core-26.8-cp311-none-macosx_10_15_universal2.whl", hash = "sha256:781ddef732e3a6d300a5fa2d0c5b8af103aa8589a88c4af77ac6608f39293880", size = 40653076, upload-time = "2026-07-20T14:32:11.676Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/d7/491a3dd0f62424f92f59240c5aa5c64c03588c1b4920b00f5df2ac4f4087/usd_core-26.8-cp311-none-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:53ebbc130108c7e0e7b4af9a4fe3bdac2ae084a12db13496a50f895db527382e", size = 29611915, upload-time = "2026-07-20T14:32:14.833Z" },
+    { url = "https://files.pythonhosted.org/packages/66/18/7ccfb5c69366fa0d7590697e0f62adb4b5c20f02a3c3a674331b4bf40d43/usd_core-26.8-cp311-none-win_amd64.whl", hash = "sha256:d39cef20efdfc29473e92887487bb8c10c45e966c492b5356d32a52724c3578f", size = 13848082, upload-time = "2026-07-20T14:32:17.701Z" },
 ]
 
 [[package]]
