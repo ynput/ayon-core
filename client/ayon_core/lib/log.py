@@ -27,9 +27,32 @@ import warnings
 
 try:
     import structlog
-except ImportError:
-    # Older AYON launcher or dependency package without 'structlog'.
-    #   Logging falls back to standard library 'logging' without structured
+
+    # Names of 'structlog' used in this module, some of them are not
+    #   public. Older 'structlog' misses them, see the fallback below.
+    for _owner, _names in (
+        (
+            structlog.dev,
+            (
+                "Column",
+                "LogLevelColumnFormatter",
+                "RichTracebackFormatter",
+                "plain_traceback",
+                "_colorful_styles",
+                "_plain_styles",
+            ),
+        ),
+        (structlog.dev.ConsoleRenderer, ("_configure_columns",)),
+        (structlog.stdlib.ProcessorFormatter, ("remove_processors_meta",)),
+        (structlog.contextvars, ("reset_contextvars",)),
+    ):
+        for _name in _names:
+            getattr(_owner, _name)
+except (ImportError, AttributeError):
+    # Older AYON launcher or dependency package without 'structlog', or
+    #   'structlog' older than 25.5 was imported instead, e.g. from
+    #   site-packages of a host application.
+    # Logging falls back to standard library 'logging' without structured
     #   fields, log file and Vector delivery.
     structlog = None  # type: ignore[assignment]
 
@@ -1181,9 +1204,9 @@ class Logger:
         if json_formatter is None:
             if LOG_FILE_ENABLED or VECTOR_LOG_URL:
                 logging.getLogger(__name__).warning(
-                    "Log file and Vector logging require 'structlog',"
-                    " which is not available. Update AYON launcher"
-                    " or dependency package."
+                    "Log file and Vector logging require 'structlog' 25.5"
+                    " or newer, which is not available. Update AYON"
+                    " launcher or dependency package."
                 )
             return
 
