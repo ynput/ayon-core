@@ -50,6 +50,7 @@ test = [
     "pytest-timeout",
     "pytest-qt",
     "pytest-regressions[image]",
+    "usd-core",
     "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
 ]
 
