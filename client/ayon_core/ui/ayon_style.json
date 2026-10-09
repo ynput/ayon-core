@@ -121,9 +121,6 @@
                 },
                 "header-action": {
                     "background-color": "--md-sys-color-surface-container-low-dark",
-                    "color": "--md-sys-color-on-surface-dark",
-                    "border-color": "--md-sys-color-shadow-dark",
-                    "focus-outline-color": "--md-sys-color-primary-dark",
                     "icon-padding": [
                         2,
                         2
@@ -133,10 +130,6 @@
                     },
                     "pressed": {
                         "background-color": "--md-ref-palette-secondary20"
-                    },
-                    "disabled": {
-                        "background-color": "--md-sys-color-surface-container-low-dark",
-                        "opacity": 0.5
                     }
                 },
                 "nav-small-circle": {
