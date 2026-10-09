@@ -1057,6 +1057,34 @@ def test_without_structlog_skips_file_and_vector(
     )
 
 
+@pytest.mark.parametrize(
+    "owner, name",
+    [
+        # Missing in 'structlog' older than 25.5
+        (structlog.dev, "_colorful_styles"),
+        # Missing in 'structlog' older than 23.3
+        (structlog.dev, "LogLevelColumnFormatter"),
+    ],
+)
+def test_unsupported_structlog_uses_stdlib_logger(
+    log_module, monkeypatch, foreign_handler, owner, name
+):
+    """Older 'structlog' is handled as if it would not be available.
+
+    It may be imported instead of the one AYON requires, e.g. from
+    site-packages of a host application.
+    """
+    monkeypatch.delattr(owner, name)
+    module = log_module()
+    assert module.structlog is None
+
+    log = module.Logger.get_logger("ayon_core.tests.old_structlog")
+    assert isinstance(log, logging.Logger)
+    log.info("Loaded %s", "asset")
+
+    assert foreign_handler.messages == ["Loaded asset"]
+
+
 def _capture_stderr(monkeypatch):
     # Must be called in the test, pytest replaces 'sys.stderr' after
     #   fixtures are set up
