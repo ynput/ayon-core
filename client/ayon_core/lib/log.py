@@ -1358,6 +1358,30 @@ class Logger:
                 )
             return event_dict
 
+        positional_args_formatter = (
+            structlog.stdlib.PositionalArgumentsFormatter()
+        )
+
+        def _format_positional_args(logger, method_name, event_dict):
+            # Arguments not matching the message must not raise in the
+            #   code that logs, e.g. 'log.info("Data:", data)'. Standard
+            #   library logger reports them to stderr and drops the
+            #   record, here they are added to the message instead.
+            try:
+                return positional_args_formatter(
+                    logger, method_name, event_dict
+                )
+            except Exception:
+                args = event_dict.pop("positional_args", ())
+                try:
+                    formatted_args = " ".join(repr(arg) for arg in args)
+                except Exception:
+                    formatted_args = "<unprintable arguments>"
+                event_dict["event"] = (
+                    f"{event_dict.get('event')} {formatted_args}"
+                )
+                return event_dict
+
         shared_processors: list[Callable] = [
             structlog.contextvars.merge_contextvars,
             _add_process_context,
@@ -1375,7 +1399,7 @@ class Logger:
                 #   'log.info("Loaded %s", name)'. Records from plain
                 #   stdlib loggers are already formatted by
                 #   'ProcessorFormatter' via 'record.getMessage()'.
-                structlog.stdlib.PositionalArgumentsFormatter(),
+                _format_positional_args,
                 # Hand over to standard logging, rendered by formatters
                 _render_for_stdlib,
             ],
