@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import typing
-from typing import Iterable, Any, Callable
+from typing import Iterable, Any, Callable, Literal
 
 from ayon_core.lib.icon_definitions import (
     IconBase,
@@ -112,6 +112,13 @@ class ActionItem:
     data: dict[str, Any] | None
     options: list[AbstractAttrDef] | None
 
+    @property
+    def full_label(self) -> str:
+        """Label including the group, e.g. 'Open file / exr'."""
+        if self.group_label:
+            return f"{self.group_label} / {self.label}"
+        return self.label
+
     def _options_to_data(self):
         options = self.options
         if not options:
@@ -147,6 +154,9 @@ class ActionItem:
             options = deserialize_attr_defs(options)
         data["options"] = options
         return cls(**data)
+
+
+DefaultActionTrigger = Literal["double_click", "spacebar"]
 
 
 class AbstractBrowserController(ABC):
@@ -561,6 +571,44 @@ class AbstractBrowserController(ABC):
         Args:
             project_name (str): Project name.
             version_ids (set[str]): Selected version ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def trigger_default_action(
+        self,
+        project_name: str,
+        version_id: str,
+        trigger: DefaultActionTrigger,
+    ) -> bool:
+        """Trigger the default action of a version.
+
+        The action is defined by 'ayon+settings://core/tools/browser'
+        profiles, matched by the host and the version's task and product.
+        The first available action of the matching profile is triggered
+        the same way as with 'trigger_action_item'.
+
+        Triggers event "default_action.triggered" with data:
+            {
+                "project_name": project_name,
+                "version_id": version_id,
+                "trigger": trigger,
+                "action_names": [<Action names from settings>],
+                "action_label": <Label of triggered action> | None,
+            }
+
+        The "action_label" is None if none of the actions is available
+        for the version, nothing is triggered in that case.
+
+        Args:
+            project_name (str): Project name.
+            version_id (str): Version id.
+            trigger (DefaultActionTrigger): What the user did.
+
+        Returns:
+            bool: False if no action is set for the trigger, so the UI
+                should handle the trigger its own way.
 
         """
         pass

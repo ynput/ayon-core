@@ -21,6 +21,7 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractBrowserController,
     ActionItem,
+    DefaultActionTrigger,
     ProductGroupsInfo,
 )
 from .models import ProductsModel, LoaderActionsModel
@@ -223,6 +224,30 @@ class BrowserController(AbstractBrowserController):
     ) -> None:
         self._loader_actions_model.prefetch_versions_context(
             project_name, version_ids
+        )
+
+    def trigger_default_action(
+        self,
+        project_name: str,
+        version_id: str,
+        trigger: DefaultActionTrigger,
+    ) -> bool:
+        settings = self._settings_model.get_settings(project_name)
+        profiles = (
+            settings["core"]["tools"]["browser"]["default_action_profiles"]
+        )
+        if not profiles:
+            self.log.debug(
+                "No Browser default action profiles in settings of"
+                " project '%s'.",
+                project_name,
+            )
+            return False
+        host_name = None
+        if self._host is not None:
+            host_name = self._host.name
+        return self._loader_actions_model.trigger_default_action(
+            project_name, version_id, trigger, profiles, host_name
         )
 
     def trigger_action_item(

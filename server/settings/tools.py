@@ -325,6 +325,64 @@ class LoaderToolModel(BaseSettingsModel):
     )
 
 
+class BrowserDefaultActionProfile(BaseSettingsModel):
+    _layout = "expanded"
+    # TODO this should use hosts enum
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names"
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types"
+    )
+    double_click_actions: list[str] = SettingsField(
+        default_factory=list,
+        title="Double click actions",
+        section="Default actions",
+        description=(
+            "Actions to run when a version is double clicked, in order of"
+            " preference. The first action available for the version is"
+            " used. Use the label of the action as shown in the context"
+            " menu, e.g. 'Open file' or 'Open file / exr' to target"
+            " a single entry of a submenu. A loader plugin name or action"
+            " identifier works too. Leave empty to do nothing."
+        ),
+    )
+    spacebar_actions: list[str] = SettingsField(
+        default_factory=list,
+        title="Spacebar actions",
+        description=(
+            "Actions to run when the space bar is pressed on a version,"
+            " in order of preference. Accepts the same values as"
+            " 'Double click actions'. Leave empty to do nothing."
+        ),
+    )
+
+
+class BrowserToolModel(BaseSettingsModel):
+    default_action_profiles: list[BrowserDefaultActionProfile] = (
+        SettingsField(
+            default_factory=list,
+            title="Default action profiles",
+            description=(
+                "Define which action runs on double click and on space bar"
+                " press. The profile is matched against the host and"
+                " the task and product of the version."
+            ),
+        )
+    )
+
+
 class PublishTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
     product_base_types: list[str] = SettingsField(
@@ -479,6 +537,10 @@ class GlobalToolsModel(BaseSettingsModel):
     loader: LoaderToolModel = SettingsField(
         default_factory=LoaderToolModel,
         title="Loader"
+    )
+    browser: BrowserToolModel = SettingsField(
+        default_factory=BrowserToolModel,
+        title="Browser"
     )
     publish: PublishToolModel = SettingsField(
         default_factory=PublishToolModel,
@@ -682,6 +744,18 @@ DEFAULT_TOOLS_VALUES = {
     "loader": {
         "use_legacy_loader": False,
         "product_type_filter_profiles": []
+    },
+    "browser": {
+        "default_action_profiles": [
+            {
+                "host_names": [],
+                "task_types": [],
+                "task_names": [],
+                "product_base_types": [],
+                "double_click_actions": [],
+                "spacebar_actions": ["Open file"]
+            }
+        ]
     },
     "publish": {
         "template_name_profiles": [
