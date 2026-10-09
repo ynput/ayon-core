@@ -9,8 +9,7 @@ replaces them once it has been downloaded in the background.
 
 from __future__ import annotations
 
-import os
-import tempfile
+import io
 
 import ayon_api
 from qtpy import QtCore, QtGui, shiboken
@@ -45,32 +44,34 @@ def _is_generated_initials(content: bytes) -> bool:
     return b"<svg" in head and b"dominant-baseline" in head
 
 
-def _fetch_avatar_file(user_name: str) -> str:
-    """Download a user avatar to a temporary file.
+class _NoAvatarError(Exception):
+    """The server has no avatar for the user."""
 
-    The caller is responsible for removing the file.
+
+def _fetch_avatar(user_name: str) -> io.BytesIO | None:
+    """Download a user avatar to memory.
 
     Args:
         user_name: Login name of the user.
 
     Returns:
-        Path to the temporary image file, or ``""`` when the server has
-        no avatar for this user.
+        Stream with the image, named to carry the file extension, or
+        ``None`` when the server has no avatar for this user.
     """
     connection = ayon_api.get_server_api_connection()
     if connection is None:
-        return ""
+        return None
     response = connection.raw_get(f"users/{user_name}/avatar")
     content = getattr(response, "content", None)
     if not content:
-        return ""
+        return None
     if _is_generated_initials(content):
-        return ""
+        return None
     content_type = getattr(response, "content_type", "") or ""
     ext = ".jpg" if "jpeg" in content_type else ".png"
-    with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as handle:
-        handle.write(content)
-        return handle.name
+    stream = io.BytesIO(content)
+    stream.name = f"{user_name}{ext}"
+    return stream
 
 
 class UserAvatarCache(QtCore.QObject):
@@ -149,13 +150,12 @@ class UserAvatarCache(QtCore.QObject):
 
         def _work() -> str:
             cache = ImageCache.get_instance()
-            downloaded: list[str] = []
 
-            def _download() -> str:
-                path = _fetch_avatar_file(user_name)
-                if path:
-                    downloaded.append(path)
-                return path
+            def _download() -> io.BytesIO:
+                stream = _fetch_avatar(user_name)
+                if stream is None:
+                    raise _NoAvatarError(user_name)
+                return stream
 
             try:
                 file_path = cache.get(f"user-avatar/{user_name}", _download)
@@ -166,18 +166,13 @@ class UserAvatarCache(QtCore.QObject):
                         if _is_generated_initials(stream.read(1024)):
                             return ""
                 return file_path
+            except _NoAvatarError:
+                return ""
             except Exception:  # noqa: BLE001 - avatars are optional
                 log.debug(
                     "Could not fetch avatar for %r", user_name, exc_info=True
                 )
                 return ""
-            finally:
-                # The cache keeps its own copy of the download
-                for path in downloaded:
-                    try:
-                        os.unlink(path)
-                    except OSError:
-                        pass
 
         def _done(file_path: str) -> None:
             # The cache outlives no view, but a queued download can land

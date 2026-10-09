@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import multiprocessing
 import sqlite3
 import threading
@@ -116,6 +117,46 @@ def test_get_missing_file_reloads(cache: ImageCache, src_dir: Path) -> None:
 
     assert len(calls) == 2
     assert Path(second).exists()
+
+
+def test_get_caches_stream(cache: ImageCache, cache_dir: Path) -> None:
+    """file_closure may return the content in memory instead of a file."""
+    content = b"PNG image data"
+    calls: list[int] = []
+
+    def closure() -> io.BytesIO:
+        calls.append(1)
+        stream = io.BytesIO()
+        # Position is left at the end, as after a download to the stream
+        stream.write(content)
+        stream.name = "avatar.png"
+        return stream
+
+    first = cache.get("key1", closure)
+    second = cache.get("key1", closure)
+
+    assert len(calls) == 1
+    assert first == second
+    assert Path(first).parent == cache_dir
+    assert Path(first).suffix == ".png"
+    assert Path(first).read_bytes() == content
+    row = (
+        cache._get_conn()
+        .execute("SELECT size_bytes FROM cache WHERE key = ?", ("key1",))
+        .fetchone()
+    )
+    assert row == (len(content),)
+    # No temporary file is left next to the cached one
+    assert list(cache_dir.glob("*.tmp")) == []
+
+
+def test_get_caches_unnamed_stream(cache: ImageCache) -> None:
+    """A stream without a name is cached without an extension."""
+    result = cache.get("key1", lambda: io.BytesIO(b"data"))
+
+    assert Path(result).suffix == ""
+    assert Path(result).read_bytes() == b"data"
+    assert cache.has("key1") is True
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +291,17 @@ def test_empty_key_raises(cache: ImageCache) -> None:
 def test_invalid_closure_raises(cache: ImageCache) -> None:
     with pytest.raises(ValueError, match="non-existent"):
         cache.get("key1", lambda: Path("/does/not/exist.png"))
+
+
+def test_invalid_closure_type_raises(
+    cache: ImageCache, cache_dir: Path
+) -> None:
+    """Nothing is cached when the closure returns no file nor stream."""
+    with pytest.raises(TypeError, match="NoneType"):
+        cache.get("key1", lambda: None)
+
+    assert cache.has("key1") is False
+    assert list(cache_dir.glob("*.tmp")) == []
 
 
 # ---------------------------------------------------------------------------
