@@ -355,23 +355,19 @@ class AYMenu(QtWidgets.QMenu):
         style.style_widget(self)
 
     def actionEvent(self, arg__1: QtGui.QActionEvent) -> None:
-        """Keep the rows wide enough for how the AYON style paints them."""
-        super().actionEvent(arg__1)
-        self._update_minimum_width()
+        """Keep the rows wide enough for how the AYON style paints them.
 
-    def _update_minimum_width(self) -> None:
-        """Reserve the width the AYON style needs to paint the rows.
-
-        Assigning the AYON style does not guarantee Qt measures the rows
-        with it: with a stylesheet on a parent widget (or the application)
-        the menu ends up with a ``QStyleSheetStyle`` that sizes the rows
-        using the stylesheet's ``QMenu::item`` rules instead.  Those rows
-        are narrower than what is painted here, so the label runs into
-        the submenu arrow.  Qt stretches the rows to the minimum width of
-        the menu, so that is used to enforce the width the painting needs.
+        Qt does not measure the rows with the AYON style when a parent
+        widget (or the application) has a stylesheet: the style of the
+        menu is then wrapped in a ``QStyleSheetStyle`` that measures them
+        using the stylesheet's ``QMenu::item`` rules.  Those rows are
+        narrower than what ``paintEvent`` paints, so the label runs into
+        the submenu arrow.  Qt has no hook to measure the rows ourselves,
+        but it does stretch them to the minimum width of the menu.
         """
+        super().actionEvent(arg__1)
         ayon_style = get_ayon_style()
-        row_width = 0
+        width = 0
         for action in self.actions():
             if (
                 action.isSeparator()
@@ -387,24 +383,15 @@ class AYMenu(QtWidgets.QMenu):
                 QtCore.QSize(0, 0),
                 self,
             )
-            row_width = max(row_width, size.width())
+            width = max(width, size.width())
 
-        if not row_width:
-            self.setMinimumWidth(0)
-            return
-
-        # Same space Qt adds around the rows when it lays them out
-        qstyle = self.style()
+        # Space around the rows, from the style Qt lays them out with
         pm = QtWidgets.QStyle.PixelMetric
-        frame_width = qstyle.pixelMetric(pm.PM_MenuPanelWidth, None, self)
-        h_margin = qstyle.pixelMetric(pm.PM_MenuHMargin, None, self)
-        margins = self.contentsMargins()
-        self.setMinimumWidth(
-            row_width
-            + margins.left()
-            + margins.right()
-            + 2 * (frame_width + h_margin)
+        width += 2 * (
+            self.style().pixelMetric(pm.PM_MenuPanelWidth, None, self)
+            + self.style().pixelMetric(pm.PM_MenuHMargin, None, self)
         )
+        self.setMinimumWidth(width)
 
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         """Paint the menu using AYON's QStyle implementation.
