@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import atexit
-import logging
 import tempfile
 import webbrowser
 from pathlib import Path
@@ -23,6 +22,8 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import QLabel, QLayout, QMessageBox, QTextEdit, QWidget
 
+from ayon_core.lib import Logger
+
 from ..data_models import (
     CommentModel,
     EntityMention,
@@ -42,7 +43,7 @@ from .layouts import AYHBoxLayout, AYVBoxLayout
 from .markdown_edit import AYMarkdownEdit
 from .user_image import AYUserImage
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 # STATUS ---------------------------------------------------------------------
 

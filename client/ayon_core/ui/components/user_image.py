@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-import logging
 from functools import partial
 from pathlib import Path
 from typing import Callable
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.lib import Logger
+
 from ..image_cache import ImageCache
 from ..style_types import get_ayon_style
 from ..variants import AYUserImageVariants
 from .style_mixin import StyleMixin
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 class AYUserImage(StyleMixin, QtWidgets.QLabel):

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -17,9 +16,11 @@ from qtpy.QtCore import (
 
 from qtmaterialsymbols import get_icon  # type: ignore
 
+from ayon_core.lib import Logger
+
 from .task_queue import AsyncTask, get_task_queue
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 @dataclass

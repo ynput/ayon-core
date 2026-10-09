@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from functools import partial
 
@@ -27,6 +26,8 @@ from qtpy.QtWidgets import (
     QSizePolicy,
 )
 
+from ayon_core.lib import Logger
+
 from ..data_models import (
     CommentCategory,
     EntityMention,
@@ -41,7 +42,7 @@ from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .markdown_edit import AYMarkdownEdit
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class AYTextEditor(AYMarkdownEdit):

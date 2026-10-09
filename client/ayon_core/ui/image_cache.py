@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import atexit
 import hashlib
-import logging
 import os
 import shutil
 import sqlite3
@@ -13,7 +12,9 @@ import weakref
 from pathlib import Path
 from typing import Callable
 
-logger = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+logger = Logger.get_logger(__name__)
 
 _DB_FILENAME = "cache_metadata.db"
 

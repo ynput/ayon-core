@@ -25,13 +25,14 @@ Example:
 
 from __future__ import annotations
 
-import logging
 import time
 from typing import Generator, Optional
 
 from qtpy.QtCore import QObject, QTimer, Signal
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 
 class TimeSlicedJob(QObject):

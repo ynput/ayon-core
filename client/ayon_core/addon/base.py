@@ -672,7 +672,7 @@ class AddonsManager:
         # Make sure modules are loaded
         load_addons()
 
-        self.log.debug("*** AYON addons initialization.")
+        self.log.debug("AYON addons initialization.")
 
         # Prepare settings for addons
         settings = self._settings

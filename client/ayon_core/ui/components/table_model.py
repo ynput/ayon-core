@@ -24,7 +24,6 @@ dispatches them as one :class:`AsyncTask` via a zero-delay
 
 from __future__ import annotations
 
-import logging
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -41,9 +40,11 @@ from qtpy.QtCore import (
 )
 from qtpy.QtGui import QBrush, QColor
 
+from ayon_core.lib import Logger
+
 from .task_queue import AsyncTask, get_task_queue
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 class _TableNode:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 from qtpy.QtCore import (
@@ -18,13 +17,15 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from ayon_core.lib import Logger
+
 from ..style_types import get_ayon_style
 from .buttons import AYButton
 from .container import AYContainer
 from .label import AYLabel
 from .layouts import AYVBoxLayout
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class GalleryDialog(QDialog):

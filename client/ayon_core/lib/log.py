@@ -1,65 +1,888 @@
 from __future__ import annotations
 
+import atexit
+import contextlib
 import copy
+import functools
 import datetime
 import getpass
 import inspect
 import logging
+import queue
+from logging.handlers import (
+    QueueHandler,
+    TimedRotatingFileHandler,
+)
 import os
 import platform
+import secrets
 import socket
 import sys
 import time
 import threading
+from collections.abc import Callable, Mapping
+from contextvars import ContextVar, Token
+from typing import TYPE_CHECKING, Any
 import warnings
-from contextlib import contextmanager
-from typing import Generator
 
-from . import Terminal
+try:
+    import structlog
+except ImportError:
+    # Older AYON launcher or dependency package without 'structlog'.
+    #   Logging falls back to standard library 'logging' without structured
+    #   fields, log file and Vector delivery.
+    structlog = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    from structlog.typing import ExceptionRenderer
+
+from .local_settings import get_launcher_local_dir
+
 from .env_tools import env_value_to_bool
 
 # force the logger to use the same format for all log levels.
 USE_STD_FMT = env_value_to_bool("AYON_USE_STD_LOG_FORMAT", default=False)
 
 
-class LogStreamHandler(logging.StreamHandler):
-    """StreamHandler class.
+# Record attribute holding the structlog logger, method name and event
+#   dict, see '_render_for_stdlib' and '_EventDictProcessorFormatter'.
+# - must not be '_logger' and '_name' used by 'wrap_for_formatter', plain
+#   'ProcessorFormatter' would expect the event dict in 'record.msg'
+_EVENT_DICT_ATTR = "_ayon_event_dict"
 
-    This was originally designed to handle UTF errors in python 2.x hosts,
-    however currently solely remains for backwards compatibility.
+
+def _render_for_stdlib(
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: dict[str, Any]) -> tuple[tuple[str], dict[str, Any]]:
+    """Last structlog processor handing the event over to stdlib logging.
+
+    Unlike 'ProcessorFormatter.wrap_for_formatter', which stores the event
+    dict in 'record.msg', the record keeps a plain string message. Handlers
+    not using AYON formatters (DCC script editors, pyblish, the publisher
+    report) show the message instead of a dict repr. The event dict is
+    attached to the record for '_EventDictProcessorFormatter'.
+
+    Args:
+        logger (logging.Logger): The standard library logger.
+        method_name (str): The logging method name (e.g., "info", "error").
+        event_dict (dict[str, Any]): The structlog event dictionary.
+
+    Returns:
+        tuple[tuple[str], dict[str, Any]]: A tuple containing
+            the message tuple and keyword arguments for
+            the standard library logger.
 
     """
+    kwargs: dict[str, Any] = {
+        "extra": {
+            _EVENT_DICT_ATTR: (logger, method_name, event_dict),
+        }
+    }
+    exc_info = event_dict.get("exc_info")
+    if exc_info:
+        # Let foreign handlers show the traceback too
+        kwargs["exc_info"] = exc_info
+    return (str(event_dict.get("event", "")),), kwargs
 
-    def __init__(self, stream=None):
-        super(LogStreamHandler, self).__init__(stream)
-        self.enabled = True
 
-    def enable(self):
-        """Enable StreamHandler
+if structlog is not None:
+    class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
+        """ProcessorFormatter reading the event dict from the record.
 
-        Make StreamHandler output again
+        Counterpart of '_render_for_stdlib'. Other handlers may modify
+        'record.msg' (pyblish does), the event dict is not affected.
+        Records from 'wrap_for_formatter' and foreign stdlib records are
+        processed as by 'ProcessorFormatter'.
         """
-        self.enabled = True
 
-    def disable(self):
-        """Disable StreamHandler
+        def format(self, record: logging.LogRecord) -> str:
+            """Format the log record, extracting the event dict if present.
 
-        Used to silence output
+            Args:
+                record (logging.LogRecord): The log record to format.
+
+            Returns:
+                str: The formatted log message.
+
+            """
+            structlog_data = getattr(record, _EVENT_DICT_ATTR, None)
+            if structlog_data is not None:
+                logger, method_name, event_dict = structlog_data
+                # Attributes are set only on the copy, see '_EVENT_DICT_ATTR'
+                record = logging.makeLogRecord(record.__dict__)
+                record._logger = logger
+                record._name = method_name
+                record.msg = event_dict
+                record.args = ()
+            return super().format(record)
+
+
+def bind_contextvars(**kwargs) -> Mapping[str, Token[Any]]:
+    """Bind values to the logging context of the current thread or task.
+
+    Does nothing when 'structlog' is not available.
+
+    Returns:
+        Mapping[str, Token[Any]]: Tokens to reset the bound values.
+
+    """
+    if structlog is None:
+        return {}
+    return structlog.contextvars.bind_contextvars(**kwargs)
+
+
+def clear_contextvars() -> None:
+    """Clear the logging context of the current thread or task.
+
+    Does nothing when 'structlog' is not available.
+    """
+    if structlog is not None:
+        structlog.contextvars.clear_contextvars()
+
+
+def unbind_contextvars(*keys: str) -> None:
+    """Remove keys from the logging context of the current thread or task.
+
+    Does nothing when 'structlog' is not available.
+    """
+    if structlog is not None:
+        structlog.contextvars.unbind_contextvars(*keys)
+
+
+# Fields added to every record of the process, see 'set_process_context'.
+#   Replaced on change, never mutated, so it can be read without the lock.
+_process_context: dict[str, Any] = {}
+_process_context_lock = threading.Lock()
+
+
+def set_process_context(**values: Any) -> None:
+    """Set fields added to every log record of the process.
+
+    Meant for values same for the whole process, e.g. host name and
+    current project, folder and task. Unlike values bound by
+    'bind_contextvars', which are available only in the current thread
+    or task, these are in records of all threads, e.g. of 'QThread'
+    workers.
+
+    Fields are shown in log file and Vector, not in console output.
+
+    Args:
+        **values (Any): Fields to set. Value 'None' removes the field.
+
+    """
+    global _process_context
+
+    with _process_context_lock:
+        context = dict(_process_context)
+        for key, value in values.items():
+            if value is None:
+                context.pop(key, None)
+            else:
+                context[key] = value
+        _process_context = context
+
+
+def get_process_context() -> dict[str, Any]:
+    """Fields added to every log record of the process.
+
+    Returns:
+        dict[str, Any]: Copy of the fields, see 'set_process_context'.
+
+    """
+    return dict(_process_context)
+
+
+def _add_process_context(logger, method_name, event_dict):
+    for key, value in _process_context.items():
+        event_dict.setdefault(key, value)
+    return event_dict
+
+
+def _get_level_names_mapping() -> dict[str, int]:
+    """Level name to level mapping, including custom levels.
+
+    'logging.getLevelName' is deprecated for name to level lookup.
+    'logging.getLevelNamesMapping' is available since Python 3.11,
+    older interpreters in DCCs fall back to the private mapping.
+
+    Returns:
+        dict[str, int]: Level name to level mapping.
+
+    """
+    getter = getattr(logging, "getLevelNamesMapping", None)
+    if getter is not None:
+        return getter()
+    return dict(logging._nameToLevel)
+
+
+def get_log_level_from_env() -> int:
+    """Resolve the AYON log level from environment variables.
+
+    'AYON_LOG_LEVEL' accepts a numeric ('10') or a named ('DEBUG') level.
+    Defaults to INFO when it is not set or is invalid.
+
+    Returns:
+        int: Log level.
+
+    """
+    log_level = os.getenv("AYON_LOG_LEVEL", "").strip()
+    if log_level:
+        if log_level.isdigit():
+            level = int(log_level)
+        else:
+            level = _get_level_names_mapping().get(log_level.upper(), 0)
+        if level > 0:
+            return level
+    return logging.INFO
+
+
+VECTOR_LOG_URL = os.getenv("AYON_VECTOR_LOG_URL", None)
+LOG_FILE_ENABLED = os.getenv("AYON_LOG_TO_FILE") == "1"
+try:
+    LOG_FILE_RETENTION_DAYS = int(
+        max(1, int(
+            os.getenv("AYON_LOG_RETENTION_DAYS", "3")
+        ))
+    )
+except ValueError:
+    LOG_FILE_RETENTION_DAYS = 3
+# Each process writes its own file, see '_get_log_file_path'
+LOG_FILE_PREFIX = "ayon_"
+LOG_FILE_EXT = ".ndjson"
+# Default 'strftime' format of console timestamps, see
+#   'get_console_time_format_from_env'
+DEFAULT_CONSOLE_TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
+# Console layouts, see 'get_console_style_from_env'
+CONSOLE_STYLE_AYON = "ayon"
+CONSOLE_STYLE_STRUCTLOG = "structlog"
+
+
+def get_console_style_from_env() -> str:
+    """Resolve console layout from environment variables.
+
+    'AYON_LOG_CONSOLE_STYLE' accepts:
+        - 'ayon' (default) - log level without padding, e.g. '[info]', and
+            'key=value' fields of records shown only with DEBUG log level.
+        - 'structlog' - default structlog layout, padded log level and
+            'key=value' fields always shown.
+
+    Invalid value is handled as 'ayon'.
+
+    Returns:
+        str: 'CONSOLE_STYLE_AYON' or 'CONSOLE_STYLE_STRUCTLOG'.
+
+    """
+    style = os.getenv("AYON_LOG_CONSOLE_STYLE", "").strip().lower()
+    if style == CONSOLE_STYLE_STRUCTLOG:
+        return CONSOLE_STYLE_STRUCTLOG
+    return CONSOLE_STYLE_AYON
+
+
+def get_console_time_format_from_env() -> str:
+    """Resolve format of console timestamps from environment variables.
+
+    Console timestamps are in local time. 'AYON_LOG_CONSOLE_TIME_FORMAT'
+    accepts a 'strftime' format, e.g. '%H:%M:%S.%f'. Defaults to
+    'DEFAULT_CONSOLE_TIME_FORMAT' when it is not set or is invalid.
+    JSON output for log file and Vector always uses ISO 8601 in UTC.
+
+    Returns:
+        str: Format of console timestamps.
+
+    """
+    time_format = os.getenv("AYON_LOG_CONSOLE_TIME_FORMAT", "")
+    if not time_format:
+        return DEFAULT_CONSOLE_TIME_FORMAT
+    try:
+        # Invalid directives raise 'ValueError' on some platforms
+        datetime.datetime.now().strftime(time_format)
+    except ValueError:
+        return DEFAULT_CONSOLE_TIME_FORMAT
+    return time_format
+
+
+def _create_console_timestamper(time_format: str) -> Callable:
+    """Processor replacing 'timestamp' with local time in 'time_format'.
+
+    Shared processors add ISO timestamp in UTC used by JSON output. Console
+    shows time of the log record instead. Must run before
+    'ProcessorFormatter.remove_processors_meta' removes the record.
+
+    Args:
+        time_format (str): 'strftime' format of the timestamp.
+
+    Returns:
+        Callable: structlog processor.
+
+    """
+    def _format_timestamp(logger, method_name, event_dict):
+        record = event_dict.get("_record")
+        if record is not None:
+            event_dict["timestamp"] = datetime.datetime.fromtimestamp(
+                record.created
+            ).strftime(time_format)
+        return event_dict
+
+    return _format_timestamp
+
+
+def _get_log_file_path(log_dir: str) -> str:
+    """Log file path unique for the current process.
+
+    Multiple AYON processes (tray, hosts, publish jobs) log at the same
+    time. They must not share one file: writes would interleave and
+    rotation of a shared file fails on Windows when another process has
+    the file open.
+    """
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    return os.path.join(
+        log_dir,
+        f"{LOG_FILE_PREFIX}{timestamp}_{os.getpid()}{LOG_FILE_EXT}"
+    )
+
+
+def _remove_old_log_files(log_dir: str, retention_days: int) -> None:
+    """Remove AYON log files not modified within retention period.
+
+    Includes files of other processes, and rotated files of this one.
+    """
+    threshold = time.time() - (retention_days * 24 * 60 * 60)
+    try:
+        filenames = os.listdir(log_dir)
+    except OSError:
+        return
+    for filename in filenames:
+        if (
+            not filename.startswith(LOG_FILE_PREFIX)
+            or LOG_FILE_EXT not in filename
+        ):
+            continue
+        path = os.path.join(log_dir, filename)
+        try:
+            if os.path.getmtime(path) < threshold:
+                os.remove(path)
+        except OSError:
+            # Removed meanwhile or still open by other process on Windows
+            pass
+
+
+# Max records buffered for Vector delivery. Beyond this, new records are
+# dropped rather than growing memory unbounded during an outage.
+VECTOR_QUEUE_MAX_SIZE = 10_000
+# Max records sent to Vector in one request.
+VECTOR_BATCH_SIZE = 500
+# Max seconds a record waits for more records to be batched with it.
+VECTOR_FLUSH_INTERVAL = 1.0
+# Consecutive send failures after which the circuit opens (stop trying
+# HTTP calls for a while, just drop records fast).
+VECTOR_FAILURE_THRESHOLD = 5
+# How long the circuit stays open once tripped.
+VECTOR_CIRCUIT_COOLDOWN = 30.0
+# Minimum time between "records are being dropped" warnings, to avoid
+# flooding the console/log file during a prolonged outage.
+VECTOR_WARN_INTERVAL = 30.0
+# Logger for problems of Vector delivery. Its records are not sent to
+# Vector, see '_DroppingQueueHandler'.
+_VECTOR_LOGGER_NAME = "ayon.vector_log"
+# Attribute marking handlers writing structured records (log file, Vector),
+#   see 'Logger.get_structured_handlers'. Other packages configuring
+#   logging (e.g. 'ayon_common' in ayon-launcher) should set it on their
+#   handlers too.
+STRUCTURED_HANDLER_ATTR = "ayon_structured_handler"
+
+
+class _RateLimitedLogger:
+    """Log a warning at most once per 'interval' seconds.
+
+    Used in logging to vector to prevent flooding the log
+    with repeated warnings when there is vector delivery failure.
+
+    """
+    def __init__(self, logger: logging.Logger, interval: float):
+        self._logger = logger
+        self._interval = interval
+        # Not '0.0', 'time.monotonic' may be lower than 'interval' shortly
+        #   after boot and the first warning would be suppressed.
+        self._last_emit: float | None = None
+
+    def warning(self, msg: str, *args: Any) -> None:
+        """Log a warning message if the rate limit allows.
+
+        Args:
+            msg (str): The warning message.
+            *args (Any): Positional arguments for the log message.
+
+        Returns:
+            None
+
         """
-        self.enabled = False
+        now = time.monotonic()
+        if (
+            self._last_emit is not None
+            and now - self._last_emit < self._interval
+        ):
+            return
+        self._last_emit = now
+        # Only positional arguments - the wrapped logger is a plain
+        #   stdlib logger which raises 'TypeError' on unknown kwargs.
+        self._logger.warning(msg, *args)
 
-    def emit(self, record):
-        if not self.enabled or self.stream is None:
+
+_vector_warn_logger = _RateLimitedLogger(
+    logging.getLogger(_VECTOR_LOGGER_NAME), VECTOR_WARN_INTERVAL
+)
+
+
+class _DroppingQueueHandler(QueueHandler):
+    """QueueHandler rendering records for Vector, dropping on overflow.
+
+    Records are rendered with the handler's formatter in the logging
+    thread and the resulting JSON string is queued. Rendering in the
+    sender thread instead would race with other handlers mutating the
+    shared record (e.g. pyblish's 'MessageHandler' replaces 'record.msg')
+    and with later changes of mutable log arguments.
+
+    Records about Vector delivery itself are not queued, they would only
+    add load to an endpoint that is already failing.
+    """
+
+    def __init__(self, log_queue: queue.Queue):
+        super().__init__(log_queue)
+        self.addFilter(lambda record: record.name != _VECTOR_LOGGER_NAME)
+
+    def prepare(self, record: logging.LogRecord) -> str:
+        return self.format(record)
+
+    def enqueue(self, record: logging.LogRecord) -> None:
+        # handle full queue gracefully by dropping
+        # the record instead of raising.
+        try:
+            self.queue.put_nowait(record)
+        except queue.Full:
+            _vector_warn_logger.warning(
+                "Vector log queue is full, dropping log records."
+            )
+
+
+class VectorHTTPSender:
+    """Send rendered log records from a queue to a Vector HTTP source.
+
+    A daemon thread collects up to 'batch_size' records, or what arrived
+    within 'flush_interval' seconds, and sends them as one JSON array per
+    request. Vector's 'json' decoding creates one event per array item.
+
+    A circuit breaker stops sending for 'cooldown' seconds after
+    'failure_threshold' consecutive failed requests. Records are dropped
+    meanwhile so a dead endpoint cannot slow down the process.
+
+    'None' in the queue is the stop sentinel, see 'stop'.
+    """
+
+    def __init__(
+        self,
+        url: str,
+        log_queue: queue.Queue[str | None],
+        batch_size: int = VECTOR_BATCH_SIZE,
+        flush_interval: float = VECTOR_FLUSH_INTERVAL,
+        failure_threshold: int = VECTOR_FAILURE_THRESHOLD,
+        cooldown: float = VECTOR_CIRCUIT_COOLDOWN,
+    ):
+        self._url = url
+        self._queue = log_queue
+        self._batch_size = batch_size
+        self._flush_interval = flush_interval
+        self._failure_threshold = failure_threshold
+        self._cooldown = cooldown
+        self._consecutive_failures = 0
+        self._circuit_open_until = 0.0
+        self._thread: threading.Thread | None = None
+
+        # Import only when Vector is used, to not slow down import of
+        #   'ayon_core.lib' in every process.
+        import requests
+        import requests.adapters
+        import urllib3.util
+
+        # Reuse a single session so repeated POSTs reuse pooled
+        # connections instead of opening a new one per request.
+        self._session = requests.Session()
+        retry = urllib3.util.Retry(
+            total=2,
+            backoff_factor=0.3,
+            status_forcelist=(502, 503, 504),
+            allowed_methods=("POST",),
+        )
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=1, pool_maxsize=1, max_retries=retry
+        )
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
+
+    def start(self) -> None:
+        self._thread = threading.Thread(
+            target=self._run, name="AYONVectorSender", daemon=True
+        )
+        self._thread.start()
+
+    def stop(self, timeout: float = 5.0) -> None:
+        """Send records remaining in the queue and stop the thread."""
+        if self._thread is None:
             return
         try:
-            msg = self.format(record)
-            msg = Terminal.log(msg)
-            stream = self.stream
-            stream.write(f"{msg}\n")
-            self.flush()
-        except (KeyboardInterrupt, SystemExit):
-            raise
+            self._queue.put(None, timeout=timeout)
+        except queue.Full:
+            pass
+        self._thread.join(timeout)
+        self._thread = None
+        self._session.close()
 
+    def reset_after_fork(self) -> None:
+        """Forget the sender thread in a child process created by fork.
+
+        Only the forking thread exists in the child, 'stop' would wait for
+        the sender thread and put to a queue nobody reads.
+        """
+        self._thread = None
+
+    def _run(self) -> None:
+        stop = False
+        while not stop:
+            item = self._queue.get()
+            if item is None:
+                break
+            batch = [item]
+            deadline = time.monotonic() + self._flush_interval
+            while len(batch) < self._batch_size:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    item = self._queue.get(timeout=remaining)
+                except queue.Empty:
+                    break
+                if item is None:
+                    stop = True
+                    break
+                batch.append(item)
+            self._send(batch)
+
+    def _send(self, batch: list[str]) -> None:
+        now = time.monotonic()
+        if now < self._circuit_open_until:
+            # Circuit is open - skip the HTTP attempt entirely so a dead
+            # Vector endpoint cannot slow down the sender thread.
+            return
+        try:
+            response = self._session.post(
+                self._url,
+                data="[{}]".format(",".join(batch)).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                timeout=(0.3, 2.0),
+            )
+            response.raise_for_status()
+        except Exception:
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self._failure_threshold:
+                self._circuit_open_until = now + self._cooldown
+                self._consecutive_failures = 0
+                _vector_warn_logger.warning(
+                    "Vector endpoint unreachable, pausing log delivery"
+                    " for %s seconds.",
+                    self._cooldown,
+                )
+            else:
+                # Rate-limit warnings in case of Vector outage.
+                _vector_warn_logger.warning(
+                    "Failed to send %s log records to Vector.", len(batch)
+                )
+        else:
+            self._consecutive_failures = 0
+
+
+# Sender of this process, see 'Logger._configure_logger'
+_vector_sender: VectorHTTPSender | None = None
+
+
+def _disable_vector_after_fork(
+    queue_handler: logging.Handler, vector_sender: VectorHTTPSender
+) -> None:
+    """Disable Vector delivery in a child process created by 'os.fork'.
+
+    The sender thread does not exist in the child, records would only
+    fill the queue. The queue lock is also copied in the state of the
+    fork, if the sender thread held it, logging would block forever.
+    """
+    global _vector_sender
+
+    logging.getLogger().removeHandler(queue_handler)
+    vector_sender.reset_after_fork()
+    _vector_sender = None
+
+
+def _is_running_from_sources() -> bool:
+    """AYON launcher runs from sources, not from a build.
+
+    Same check as 'ayon_info.is_running_from_build', which can't be
+    imported here because of an import cycle.
+
+
+    Returns:
+        bool: True if running from sources, False otherwise.
+
+    """
+    executable = os.environ.get("AYON_EXECUTABLE") or sys.executable
+    return "python" in os.path.basename(executable).lower()
+
+
+def _get_console_exception_formatter(colors: bool) -> ExceptionRenderer:
+    """Exception formatter for console output.
+
+    Rich tracebacks are used only when running from sources. Builds use
+    plain tracebacks. Locals are never shown, they may hold large or
+    sensitive values (e.g. credentials).
+
+    Returns:
+        ExceptionRenderer: The exception formatter for console output.
+
+    """
+    if structlog is None:
+        raise RuntimeError("Console exception formatter requires 'structlog'.")
+    if _is_running_from_sources():
+        try:
+            import rich  # noqa: F401
+        except ImportError:
+            pass
+        else:
+            return structlog.dev.RichTracebackFormatter(
+                color_system="truecolor" if colors else None,  # ty: ignore[invalid-argument-type]
+                show_locals=False,
+            )
+    return structlog.dev.plain_traceback
+
+
+if structlog is not None:
+    class _LevelColumnFormatter(structlog.dev.LogLevelColumnFormatter):
+        """Format a log level without padding, e.g. '[debug]'."""
+
+        def __call__(self, key: str, value: object) -> str:
+            level = str(value)
+            style = (
+                ""
+                if self.level_styles is None
+                else self.level_styles.get(level, "")
+            )
+            return f"[{style}{level}{self.reset_style}]"
+
+    def _hide_key_value(key: str, value: object) -> str:
+        """Column formatter hiding the value, see '_ConsoleRenderer'."""
+        return ""
+
+    class _ConsoleRenderer(structlog.dev.ConsoleRenderer):
+        """ConsoleRenderer not initializing colorama on Windows.
+
+        'colorama.init()' replaces 'sys.stdout' and 'sys.stderr' of the
+        whole process, which breaks hosts redirecting them. Whether the
+        stream supports colors is resolved by '_StderrHandler' instead.
+
+        Log levels use AYON colors, see '_LEVEL_STYLES'.
+
+        Args:
+            compact_level (bool): Log level is not padded, e.g. '[info]'
+                instead of '[info     ]'.
+            show_key_values (bool): Show additional fields of the event
+                as 'key=value' pairs.
+            *args (Any): Arguments of 'ConsoleRenderer'.
+            **kwargs (Any): Keyword arguments of 'ConsoleRenderer'.
+
+        """
+
+        def __init__(
+            self,
+            *args: Any,
+            compact_level: bool = False,
+            show_key_values: bool = True,
+            **kwargs: Any,
+        ) -> None:
+            # Used by '_configure_columns' called in '__init__' of base
+            #   class
+            self._compact_level = compact_level
+            self._show_key_values = show_key_values
+            super().__init__(*args, **kwargs)
+
+        _COLORFUL_STYLES = structlog.dev._colorful_styles
+        _PLAIN_STYLES = structlog.dev._plain_styles
+        # ANSI 256-color styles of log levels, 'exception' is logged
+        #   as error
+        _LEVEL_STYLES = {
+            "critical": "\x1b[38;5;196m",  # red
+            "exception": "\x1b[38;5;208m",  # orange
+            "error": "\x1b[38;5;208m",  # orange
+            "warn": "\x1b[38;5;220m",  # yellow
+            "warning": "\x1b[38;5;220m",  # yellow
+            "info": "\x1b[38;5;33m",  # blue
+            "debug": "\x1b[38;5;245m",  # grey
+            "notset": "",
+        }
+
+        @classmethod
+        def get_default_column_styles(cls, colors, force_colors=False):
+            if colors:
+                return cls._COLORFUL_STYLES
+            return cls._PLAIN_STYLES
+
+        @staticmethod
+        def get_default_level_styles(colors: bool = True) -> dict[str, str]:
+            if colors:
+                return dict(_ConsoleRenderer._LEVEL_STYLES)
+            return dict.fromkeys(_ConsoleRenderer._LEVEL_STYLES, "")
+
+        def _configure_columns(self) -> None:
+            # Called by structlog whenever styles change, columns of the
+            #   base class are adjusted
+            super()._configure_columns()
+            if not self._show_key_values:
+                # Fields without own column, exceptions are rendered
+                #   separately
+                self._default_column_formatter = _hide_key_value
+            if not self._compact_level:
+                return
+
+            columns = []
+            for column in self._columns:
+                formatter = column.formatter
+                if column.key == "level" and isinstance(
+                    formatter, structlog.dev.LogLevelColumnFormatter
+                ):
+                    column = structlog.dev.Column(
+                        column.key,
+                        _LevelColumnFormatter(
+                            formatter.level_styles,
+                            reset_style=formatter.reset_style,
+                            width=0,
+                        ),
+                    )
+                columns.append(column)
+            self._columns = columns
+
+
+class _PlainFormatter(logging.Formatter):
+    """Console formatter used when 'structlog' is not available."""
+
+    FORMAT = (
+        "%(asctime)s %(levelname)8s [%(name)s]  %(funcName)s: %(message)s"
+    )
+
+    def __init__(self, time_format: str = DEFAULT_CONSOLE_TIME_FORMAT):
+        super().__init__(self.FORMAT)
+        self._time_format = time_format
+
+    def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
+        return datetime.datetime.fromtimestamp(record.created).strftime(
+            self._time_format
+        )
+
+
+# Console mode flag enabling ANSI escape sequences on Windows
+_ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
+
+@functools.lru_cache(maxsize=None)
+def _enable_windows_ansi(fileno: int) -> bool:
+    """Enable ANSI escape sequences in Windows console of 'fileno'.
+
+    Returns:
+        bool: The console supports ANSI escape sequences.
+
+    """
+    try:
+        import ctypes
+        import msvcrt
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = msvcrt.get_osfhandle(fileno)  # type: ignore[attr-defined]
+        mode = ctypes.c_uint32()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        if mode.value & _ENABLE_VIRTUAL_TERMINAL_PROCESSING:
+            return True
+        return bool(kernel32.SetConsoleMode(
+            handle, mode.value | _ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        ))
+    except Exception:
+        return False
+
+
+def _stream_supports_colors(stream) -> bool:
+    """Stream is a terminal able to show ANSI colors.
+
+    'NO_COLOR' and 'FORCE_COLOR' environment variables have precedence,
+    see https://no-color.org and https://force-color.org.
+    """
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    try:
+        if not stream.isatty():
+            return False
+        if sys.platform == "win32":
+            return _enable_windows_ansi(stream.fileno())
+    except (AttributeError, ValueError, OSError):
+        # Replaced streams may not implement 'isatty' or 'fileno'
+        return False
+    return os.environ.get("TERM") != "dumb"
+
+
+class _StderrHandler(logging.StreamHandler):
+    """StreamHandler writing to the current 'sys.stderr'.
+
+    Hosts and AYON tools replace 'sys.stderr' after logging is configured.
+    'logging.StreamHandler' would keep writing to the stream it received
+    on creation. Same approach as stdlib 'logging._StderrHandler'.
+
+    Logs go to stderr so stdout of AYON CLI commands stays usable for
+    their output.
+
+    Records are formatted with 'color_formatter' when the current stream
+    supports colors, otherwise with the handler's formatter.
+    """
+
+    def __init__(self, level=logging.NOTSET, color_formatter=None):
+        logging.Handler.__init__(self, level)
+        self.color_formatter = color_formatter
+
+    @property
+    def stream(self):
+        return sys.stderr
+
+    def format(self, record):
+        if (
+            self.color_formatter is not None
+            and _stream_supports_colors(sys.stderr)
+        ):
+            return self.color_formatter.format(record)
+        return super().format(record)
+
+    def emit(self, record):
+        stream = sys.stderr
+        # 'sys.stderr' is None in GUI processes without console
+        if stream is None:
+            return
+        try:
+            msg = self.format(record) + self.terminator
+            try:
+                stream.write(msg)
+            except UnicodeEncodeError:
+                # Stream encoding can't represent some characters, e.g.
+                #   non-latin names on a 'cp1252' Windows console.
+                encoding = getattr(stream, "encoding", None) or "ascii"
+                stream.write(
+                    msg.encode(encoding, "backslashreplace").decode(encoding)
+                )
+            self.flush()
+        except RecursionError:
+            raise
         except Exception:
             # Logging must never break the caller. Some hosts replace
             # 'sys.stdout' and 'sys.stderr' with streams that raise when
@@ -70,39 +893,6 @@ class LogStreamHandler(logging.StreamHandler):
             except Exception:
                 pass
 
-
-class LogFormatter(logging.Formatter):
-    DFT = "%(levelname)s >>> { %(name)s }: [ %(message)s ]"
-    default_formatter = logging.Formatter(DFT)
-
-    def __init__(self, formats):
-        super(LogFormatter, self).__init__()
-        self.formatters = {}
-        for loglevel in formats:
-            self.formatters[loglevel] = logging.Formatter(formats[loglevel])
-
-    def format(self, record):
-        formatter = self.formatters.get(record.levelno, self.default_formatter)
-
-        _exc_info = record.exc_info
-        record.exc_info = None
-
-        out = formatter.format(record)
-        record.exc_info = _exc_info
-
-        if record.exc_info is not None:
-            line_len = len(str(record.exc_info[1]))
-            if line_len > 30:
-                line_len = 30
-            out = "{}\n{}\n{}\n{}\n{}".format(
-                out,
-                line_len * "=",
-                str(record.exc_info[1]),
-                line_len * "=",
-                self.formatException(record.exc_info),
-            )
-        return out
-
     def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
         return (
             datetime.datetime.fromtimestamp(record.created)
@@ -111,9 +901,56 @@ class LogFormatter(logging.Formatter):
         )
 
 
+class _PyblishLevelFilter(logging.Filter):
+    """Apply AYON log level to records of pyblish loggers.
+
+    Pyblish sets DEBUG level on logger of every plugin when the plugin
+    class is created, see 'pyblish.plugin.append_logger'. Without this
+    filter all debug records of publish plugins would be sent to log file
+    and Vector. Levels of other loggers are respected, e.g. DEBUG level
+    set on a single logger to debug it.
+
+    Used only by log file and Vector handlers. Console shows all plugin
+    records, including DEBUG, e.g. in output of farm publish jobs.
+    """
+
+    def __init__(self, level: int):
+        super().__init__()
+        self._level = level
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.name == "pyblish" or record.name.startswith("pyblish."):
+            return record.levelno >= self._level
+        return True
+
+
+def _console_handler_enabled() -> bool:
+    """AYON console handler should be added to the root logger.
+
+    'AYON_LOG_CONSOLE' set to '1' or '0' forces it on or off. When not set,
+    the console handler is added only if the root logger has no handlers.
+    Host applications (e.g. Maya script editor) attach their own handler
+    to the root logger, AYON records propagate to it and a second console
+    handler would show them twice.
+
+    Returns:
+        bool: Console handler should be added.
+
+    """
+    value = os.getenv("AYON_LOG_CONSOLE", "").strip()
+    if value:
+        return env_value_to_bool(value=value, default=True)
+    return all(
+        isinstance(handler, logging.NullHandler)
+        for handler in logging.getLogger().handlers
+    )
+
+
 def _deprecated_getter(func):
-    def _get_logger_deprecate(cls, name: str | None = None) -> logging.Logger:
-        if name is None:
+    def _get_logger_deprecate(cls, name: str | None = None) -> Any:
+        # Empty name would return the root logger, it can't be reparented
+        #   under the 'AYON' logger, which is its child
+        if not name:
             warnings.warn(
                 "DEPRECATION: 'Logger.get_logger' without passed name is"
                 " deprecated and will be removed in future versions.",
@@ -125,24 +962,10 @@ def _deprecated_getter(func):
 
 
 class Logger:
-    DFT = "%(levelname)s >>> { %(name)s }: [ %(message)s ] "
-    DBG = "  - { %(name)s }: [ %(message)s ] "
-    INF = ">>> [ %(message)s ] "
-    WRN = "*** WRN: >>> { %(name)s }: [ %(message)s ] "
-    ERR = "!!! ERR: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
-    CRI = "!!! CRI: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
-    STD = "%(asctime)s %(levelname)8s [%(name)s]  %(funcName)s: %(message)s"
-
-    FORMAT_FILE = {
-        logging.INFO: STD if USE_STD_FMT else INF,
-        logging.DEBUG: STD if USE_STD_FMT else DBG,
-        logging.WARNING: STD if USE_STD_FMT else WRN,
-        logging.ERROR: STD if USE_STD_FMT else ERR,
-        logging.CRITICAL: STD if USE_STD_FMT else CRI,
-    }
-
     # Is static class initialized
     initialized = False
+    # Handlers were added to root logger, see '_configure_logger'
+    _logging_configured = False
     _init_lock = threading.Lock()
     _root_logger = None
 
@@ -156,66 +979,89 @@ class Logger:
 
     @classmethod
     @_deprecated_getter
-    def get_logger(cls, name: str) -> logging.Logger:
+    def get_logger(cls, name: str) -> Any:
+        """Get a logger by name, initializing the logging system if necessary.
+
+        Reparent the underlying stdlib logger under the "AYON" root so
+        its effective level/propagation is controlled from one place,
+        regardless of where the logger's dotted name places it in the
+        stdlib logger hierarchy.
+
+        Args:
+            name (str): The name of the logger to retrieve.
+
+        Returns:
+            structlog.stdlib.BoundLogger | logging.Logger: The logger
+                associated with the given name. Standard library logger
+                when 'structlog' is not available.
+
+        """
         if not cls.initialized:
             cls.initialize()
 
-        logger = logging.getLogger(name or "__main__")
-        logger.setLevel(cls.log_level)
-        logger.parent = cls._root_logger
+        logger = logging.getLogger(name)
+        if logger is not cls._root_logger:
+            logger.parent = cls._root_logger
 
-        return logger
+        if structlog is None:
+            return logger
+        return structlog.get_logger(name)
 
     @classmethod
     def get_root_logger(cls) -> logging.Logger:
         if not cls.initialized:
             cls.initialize()
-        return cls._root_logger
-
-    @classmethod
-    def _get_console_handler(cls):
-        formatter = LogFormatter(cls.FORMAT_FILE)
-        console_handler = LogStreamHandler()
-
-        console_handler.set_name("LogStreamHandler")
-        console_handler.setFormatter(formatter)
-        return console_handler
+        return cls._root_logger  # type: ignore[invalid-return-type, return-value]
 
     @classmethod
     def initialize(cls):
         # TODO update already created loggers on re-initialization
-        if not cls._init_lock.locked():
-            with cls._init_lock:
-                cls._initialize()
-        else:
-            # If lock is locked wait until is finished
-            while cls._init_lock.locked():
-                time.sleep(0.1)
+        if cls.initialized:
+            return
+
+        with cls._init_lock:
+            if cls.initialized:
+                return
+            cls._initialize()
 
     @classmethod
     def _initialize(cls):
         # Change initialization state to prevent runtime changes
         # if is executed during runtime
         cls.initialized = False
+        cls._configure_logger()
 
-        # Define what is logging level
-        log_level = os.getenv("AYON_LOG_LEVEL")
-        if not log_level:
-            # Check AYON_DEBUG for debug level
-            op_debug = os.getenv("AYON_DEBUG")
-            if op_debug and int(op_debug) > 0:
-                log_level = 10
-            else:
-                log_level = 20
-        cls.log_level = int(log_level)
+        cls.log_level = get_log_level_from_env()
         root_logger = logging.getLogger("AYON")
-        root_logger.propagate = False
         root_logger.setLevel(cls.log_level)
-        root_logger.addHandler(cls._get_console_handler())
+        # Records propagate to the stdlib root logger which holds
+        #   the handlers, see '_configure_logger'.
         cls._root_logger = root_logger
 
         # Mark as initialized
         cls.initialized = True
+
+    @classmethod
+    def get_structured_handlers(cls) -> list[logging.Handler]:
+        """Handlers of root logger writing structured records.
+
+        Log file and Vector handlers, without console handlers. Can be
+        attached to a logger which does not propagate its records to
+        the root logger, to keep its records out of the console but still
+        in the log file and Vector.
+
+        Returns:
+            list[logging.Handler]: Handlers marked by
+                'STRUCTURED_HANDLER_ATTR'.
+
+        """
+        if not cls.initialized:
+            cls.initialize()
+        return [
+            handler
+            for handler in logging.getLogger().handlers
+            if getattr(handler, STRUCTURED_HANDLER_ATTR, False)
+        ]
 
     @classmethod
     def get_process_data(cls):
@@ -284,50 +1130,441 @@ class Logger:
         cls._process_name = process_name
         return cls._process_name
 
+    @classmethod
+    def _configure_logger(cls) -> None:
+        """Configure logging handlers and structlog.
 
-# Dedicated logger for timing with a concise format
-_log_timing_enabled = env_value_to_bool("AYON_CORE_TIMERS")
-_timing_logger = Logger.get_logger("ayon-core-timers")
-_timing_logger.setLevel(logging.INFO)
+        Adds handlers for console, log file and Vector HTTP to the root
+        logger. Log file and Vector are available only with 'structlog',
+        without it only console output is configured. Console handler is
+        not added when the host application already handles root logger
+        records, see '_console_handler_enabled'.
+
+        Level of the root logger is not changed, it belongs to the host
+        application. Records of pyblish loggers are filtered by AYON log
+        level on log file and Vector handlers, see '_PyblishLevelFilter'.
+
+        Safe to call multiple times, and safe even if another package (e.g.
+        'ayon_common' in ayon-launcher) configures logging first - only the
+        first call in the process has any effect, to avoid attaching
+        duplicate handlers.
+
+        """
+        global _vector_sender
+
+        if cls._logging_configured:
+            return
+        # 'structlog.is_configured()' is process-wide, so it also guards
+        # against other packages configuring logging first.
+        if structlog is not None and structlog.is_configured():
+            return
+        cls._logging_configured = True
+
+        if structlog is None:
+            console_formatter = _PlainFormatter(
+                get_console_time_format_from_env()
+            )
+            color_formatter = None
+            json_formatter = None
+        else:
+            console_formatter, color_formatter, json_formatter = (
+                cls._configure_structlog()
+            )
+
+        pyblish_filter = _PyblishLevelFilter(get_log_level_from_env())
+        root_logger = logging.getLogger()
+        if _console_handler_enabled():
+            handler = _StderrHandler(color_formatter=color_formatter)
+            handler.setFormatter(console_formatter)
+            root_logger.addHandler(handler)
+
+        if json_formatter is None:
+            if LOG_FILE_ENABLED or VECTOR_LOG_URL:
+                logging.getLogger(__name__).warning(
+                    "Log file and Vector logging require 'structlog',"
+                    " which is not available. Update AYON launcher"
+                    " or dependency package."
+                )
+            return
+
+        if LOG_FILE_ENABLED:
+            log_dir = get_launcher_local_dir("logs")
+            os.makedirs(log_dir, exist_ok=True)
+            _remove_old_log_files(log_dir, LOG_FILE_RETENTION_DAYS)
+            file_handler = TimedRotatingFileHandler(
+                _get_log_file_path(log_dir),
+                when="midnight",
+                backupCount=LOG_FILE_RETENTION_DAYS,
+                encoding="utf-8",
+            )
+            file_handler.addFilter(pyblish_filter)
+            file_handler.setFormatter(json_formatter)
+            setattr(file_handler, STRUCTURED_HANDLER_ATTR, True)
+            root_logger.addHandler(file_handler)
+
+        if VECTOR_LOG_URL:
+            # Send logs to Vector asynchronously so HTTP calls
+            # don't block the app.
+            # Queue is bounded so a Vector outage drops records instead of
+            # growing memory without bound.
+            log_queue: queue.Queue[str | None] = queue.Queue(
+                VECTOR_QUEUE_MAX_SIZE
+            )
+            queue_handler = _DroppingQueueHandler(log_queue)
+            queue_handler.addFilter(pyblish_filter)
+            queue_handler.setFormatter(json_formatter)
+            setattr(queue_handler, STRUCTURED_HANDLER_ATTR, True)
+            vector_sender = VectorHTTPSender(VECTOR_LOG_URL, log_queue)
+            vector_sender.start()
+            _vector_sender = vector_sender
+            # The sender thread is a daemon thread, it would be killed on
+            # interpreter exit with records still in the queue. Stopping it
+            # at exit delivers the queued records first.
+            atexit.register(vector_sender.stop)
+            # Available only on POSIX, Windows does not fork
+            if hasattr(os, "register_at_fork"):
+                os.register_at_fork(
+                    after_in_child=functools.partial(
+                        _disable_vector_after_fork,
+                        queue_handler,
+                        vector_sender,
+                    )
+                )
+            root_logger.addHandler(queue_handler)
+
+    @staticmethod
+    def _configure_structlog() -> tuple[
+        logging.Formatter, logging.Formatter, logging.Formatter
+    ]:
+        """Configure structlog and create formatters for its records.
+
+        Returns:
+            tuple[logging.Formatter, logging.Formatter, logging.Formatter]:
+                Console formatter without colors, console formatter with
+                colors and JSON formatter for log file and Vector.
+
+        Raises:
+            RuntimeError: 'structlog' is not available.
+
+        """
+        if structlog is None:
+            raise RuntimeError("'structlog' is not available.")
+
+        def _add_site_id(logger, method_name, event_dict):
+            event_dict.setdefault(
+                "site_id", os.environ.get("AYON_SITE_ID", "unknown")
+            )
+            return event_dict
+
+        def _add_session_id(logger, method_name, event_dict):
+            session_id = os.environ.get("AYON_SESSION_ID")
+            if session_id:
+                event_dict.setdefault("session_id", session_id)
+            return event_dict
+
+        def _drop_log_context(logger, method_name, event_dict):
+            # Keep context fields in JSON sent to Vector but not
+            # in console output
+            for key in (
+                "site_id",
+                "session_id",
+                "trace_id",
+                "span_id",
+                "parent_span_id",
+            ):
+                event_dict.pop(key, None)
+            # Same for each record of the process, values passed
+            #   explicitly to the record are kept
+            for key, value in _process_context.items():
+                if event_dict.get(key) == value:
+                    event_dict.pop(key)
+            return event_dict
+
+        def _add_span_duration_to_event(logger, method_name, event_dict):
+            # Show duration of span in console message, e.g.
+            #   'thumbnail.fetch (duration 0.12s)'. JSON output keeps the
+            #   span name as the event, so records of a span can be
+            #   grouped by it, and the duration in 'duration_ms'.
+            duration_ms = event_dict.get("duration_ms")
+            if (
+                event_dict.get("logger") == SPAN_LOGGER_NAME
+                and isinstance(duration_ms, (int, float))
+            ):
+                event = event_dict.get("event")
+                event_dict["event"] = (
+                    f"{event} (duration {duration_ms / 1000:.2f}s)"
+                )
+            return event_dict
+
+        shared_processors: list[Callable] = [
+            structlog.contextvars.merge_contextvars,
+            _add_process_context,
+            structlog.processors.add_log_level,
+            structlog.stdlib.add_logger_name,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            _add_site_id,
+            _add_session_id,
+        ]
+
+        structlog.configure(
+            processors=shared_processors + [
+                # Support '%s' style arguments, e.g.
+                #   'log.info("Loaded %s", name)'. Records from plain
+                #   stdlib loggers are already formatted by
+                #   'ProcessorFormatter' via 'record.getMessage()'.
+                structlog.stdlib.PositionalArgumentsFormatter(),
+                # Hand over to standard logging, rendered by formatters
+                _render_for_stdlib,
+            ],
+            logger_factory=structlog.stdlib.LoggerFactory(),
+            wrapper_class=structlog.stdlib.BoundLogger,
+            cache_logger_on_first_use=True,
+        )
+
+        remove_processors_meta = (
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta
+        )
+
+        console_timestamper = _create_console_timestamper(
+            get_console_time_format_from_env()
+        )
+        ayon_console_style = (
+            get_console_style_from_env() == CONSOLE_STYLE_AYON
+        )
+        show_key_values = (
+            not ayon_console_style
+            or get_log_level_from_env() <= logging.DEBUG
+        )
+
+        def _create_console_formatter(colors):
+            return _EventDictProcessorFormatter(
+                foreign_pre_chain=shared_processors,
+                processors=[
+                    console_timestamper,
+                    remove_processors_meta,
+                    _drop_log_context,
+                    _add_span_duration_to_event,
+                    _ConsoleRenderer(
+                        colors=colors,
+                        exception_formatter=(
+                            _get_console_exception_formatter(colors)
+                        ),
+                        compact_level=ayon_console_style,
+                        show_key_values=show_key_values,
+                    ),
+                ],
+            )
+
+        json_formatter = _EventDictProcessorFormatter(
+            foreign_pre_chain=shared_processors,
+            processors=[
+                remove_processors_meta,
+                structlog.processors.format_exc_info,
+                structlog.processors.JSONRenderer(),
+            ],
+        )
+
+        return (
+            _create_console_formatter(colors=False),
+            _create_console_formatter(colors=True),
+            json_formatter,
+        )
 
 
-@contextmanager
-def log_timing(message: str) -> Generator[None, None, None]:
-    """Context manager to log the execution time of a code block.
+# Logger receiving span events, see 'log_span'. AYON log level controls
+#   which spans are logged, e.g. 'AYON_LOG_LEVEL=DEBUG' enables all of them.
+SPAN_LOGGER_NAME = "ayon.span"
+# Currently open span in this context as '(trace_id, span_id)'.
+_current_span: ContextVar[tuple[str, str] | None] = ContextVar(
+    "ayon_current_span", default=None
+)
+_span_logger = None
+
+
+def _get_span_logger() -> Any:
+    """Structlog logger for span events, created on first use.
+
+    Created lazily so importing 'ayon_core.lib' does not configure
+    logging.
+    """
+    global _span_logger
+    if _span_logger is None:
+        _span_logger = Logger.get_logger(SPAN_LOGGER_NAME)
+    return _span_logger
+
+
+class log_span(contextlib.ContextDecorator):  # noqa: N801
+    """Measure a block of code and log it as one structured span event.
+
+    Event is logged when the block ends, with fields 'duration_ms',
+    'status' ('ok' or 'error'), 'trace_id', 'span_id', 'parent_span_id',
+    'module', 'func_name' and passed attributes. The span name is used
+    as the event, it should be stable and low-cardinality
+    (e.g. 'thumbnail.fetch'), variable data belong to attributes. Console
+    message also contains the duration, e.g.
+    'thumbnail.fetch (duration 0.12s)'.
+
+    While the block runs, 'trace_id' and 'span_id' are bound to structlog
+    context variables, so all records logged inside carry them. Nested
+    spans share 'trace_id' of the outermost span. Correlation across
+    processes is done by 'session_id', see 'AYON_SESSION_ID'.
+
+    Spans are logged at 'level' by 'SPAN_LOGGER_NAME' logger, DEBUG by
+    default. A span taking longer than 'slow_threshold' seconds is logged
+    at least as WARNING, so slow operations are visible even when DEBUG
+    logs are disabled.
+
+    Can be used as a context manager or as a decorator.
 
     Args:
-        message (str): Description of the operation being timed.
-
-    Yields:
-        None
+        name (str): Span name used as the log event.
+        level (int): Log level of the span event.
+        slow_threshold (Optional[float]): Duration in seconds from which
+            the span is considered slow.
+        **attributes (Any): Additional fields of the span event.
 
     Example:
-        with log_timing("Loading activities"):
-            # Your code here
-            data = fetch_data()
+        with log_span("thumbnail.fetch", key=key) as span:
+            path = cache.get(key)
+            span.set(cache_hit=bool(path))
+
+        @log_span("activities.load", slow_threshold=2.0)
+        def load_activities():
+            ...
+
     """
 
-    if not _log_timing_enabled:
-        yield
-        return
+    def __init__(
+        self,
+        name: str,
+        *,
+        level: int = logging.DEBUG,
+        slow_threshold: float | None = None,
+        **attributes: Any,
+    ) -> None:
+        self._name = name
+        self._level = level
+        self._slow_threshold = slow_threshold
+        self._attributes = attributes
+        self._callsite: tuple[str, str] | None = None
+        self._start = 0.0
+        self._trace_id = ""
+        self._span_id = ""
+        self._parent_span_id: str | None = None
+        self._span_token: Token[tuple[str, str] | None] | None = None
+        self._contextvars_tokens: Mapping[str, Token[Any]] = {}
 
-    # Get the caller's function name with simple error handling
-    func_name = "unknown"
-    try:
-        frame = inspect.currentframe()
-        if frame and frame.f_back and frame.f_back.f_back:
-            func_name = frame.f_back.f_back.f_code.co_name
-    except (AttributeError, ValueError):
-        pass  # Use default "unknown" if inspection fails
+    def __call__(self, func: Callable) -> Callable:
+        self._callsite = (
+            getattr(func, "__module__", "") or "",
+            getattr(func, "__qualname__", "") or "",
+        )
+        return super().__call__(func)
 
-    start = time.perf_counter()
-    try:
-        yield
-    finally:
-        elapsed = time.perf_counter() - start
-        _timing_logger.info(
-            "TIMER:  %s :: %s took %.3f seconds",
-            func_name,
-            message,
-            elapsed,
+    def _recreate_cm(self) -> "log_span":
+        # Decorated function gets a new span on each call, which also
+        #   makes the decorator thread safe
+        span = type(self)(
+            self._name,
+            level=self._level,
+            slow_threshold=self._slow_threshold,
+            **self._attributes,
+        )
+        span._callsite = self._callsite
+        return span
+
+    @property
+    def trace_id(self) -> str:
+        return self._trace_id
+
+    @property
+    def span_id(self) -> str:
+        return self._span_id
+
+    def set(self, **attributes: Any) -> None:
+        """Add attributes known only inside the block.
+
+        Args:
+            **attributes (Any): Additional fields of the span event.
+
+        """
+        self._attributes.update(attributes)
+
+    def __enter__(self) -> "log_span":
+        if self._callsite is None:
+            frame = inspect.currentframe()
+            caller = frame.f_back if frame is not None else None
+            if caller is not None:
+                self._callsite = (
+                    caller.f_globals.get("__name__", ""),
+                    caller.f_code.co_name,
+                )
+            # Break reference cycle of frames
+            del frame, caller
+
+        parent = _current_span.get()
+        if parent is None:
+            self._trace_id = secrets.token_hex(16)
+            self._parent_span_id = None
+        else:
+            self._trace_id, self._parent_span_id = parent
+        self._span_id = secrets.token_hex(8)
+        self._span_token = _current_span.set((self._trace_id, self._span_id))
+        self._contextvars_tokens = bind_contextvars(
+            trace_id=self._trace_id,
+            span_id=self._span_id,
+        )
+        self._start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb) -> None:
+        duration = time.perf_counter() - self._start
+        if structlog is not None:
+            structlog.contextvars.reset_contextvars(
+                **self._contextvars_tokens
+            )
+        if self._span_token is not None:
+            _current_span.reset(self._span_token)
+
+        level = self._level
+        slow = (
+            self._slow_threshold is not None
+            and duration >= self._slow_threshold
+        )
+        if slow:
+            level = max(level, logging.WARNING)
+
+        span_logger = _get_span_logger()
+        if not logging.getLogger(SPAN_LOGGER_NAME).isEnabledFor(level):
+            return
+
+        fields: dict[str, Any] = {
+            "trace_id": self._trace_id,
+            "span_id": self._span_id,
+            "duration_ms": round(duration * 1000, 3),
+        }
+        fields.update(self._attributes)
+        if self._slow_threshold is not None:
+            fields["slow"] = slow
+        if exc_type is None:
+            fields["status"] = "ok"
+        else:
+            fields["status"] = "error"
+            fields["error_type"] = exc_type.__name__
+        if self._parent_span_id is not None:
+            fields["parent_span_id"] = self._parent_span_id
+        if self._callsite is not None:
+            fields["module"], fields["func_name"] = self._callsite
+
+        if structlog is not None:
+            span_logger.log(level, self._name, **fields)
+            return
+
+        # Standard library logger does not accept event fields
+        span_logger.log(
+            level,
+            "%s %s",
+            self._name,
+            " ".join(f"{key}={value!r}" for key, value in fields.items()),
         )

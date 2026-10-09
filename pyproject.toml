@@ -34,6 +34,10 @@ dependencies = [
     "qtpy >=2.4.3",
     "pyside6 >=6.8.3",
     "Pillow ==9.5.0",
+    "structlog ~= 25.5.0",
+    "rich>=15.0.0",
+    "requests>=2.32.5",
+    "types-requests",  # for mypy
     "qtawesome ==0.7.3"
 ]
 
@@ -70,6 +74,8 @@ log_cli = true
 log_cli_level = "INFO"
 addopts = "-ra -q -m 'not optional'"
 testpaths = [
+    "tests/client/ayon_core/lib",
+    "tests/client/ayon_core/pipeline",
     "client/ayon_core/tests",
     "tests/client/ayon_core/ui",
 ]
@@ -85,4 +91,10 @@ markers = [
     "slow: Slow tests",
     "server: Tests that require a running AYON server",
     "optional: Tests excluded from the default test run",
+]
+
+[tool.ty.environment]
+extra-paths = [
+    "client",
+    "tests/client/ayon_core/ui",
 ]

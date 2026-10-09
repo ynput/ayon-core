@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import contextlib
 import typing
 from typing import Optional, Any
@@ -9,7 +8,7 @@ from dataclasses import dataclass
 
 import ayon_api
 
-from ayon_core.lib import emit_event
+from ayon_core.lib import Logger, emit_event
 
 from .constants import ContextChangeReason
 from .abstract import AbstractHost, ApplicationInformation
@@ -118,12 +117,11 @@ class HostBase(AbstractHost):
         triggered.
 
         """
-        pass
 
     @property
-    def log(self) -> logging.Logger:
+    def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def get_current_project_name(self) -> str:

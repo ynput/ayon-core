@@ -1,5 +1,4 @@
 import collections
-import logging
 from functools import partial
 
 from qtpy import QtWidgets, QtCore
@@ -20,6 +19,7 @@ from ayon_core.tools.utils.lib import (
     get_qt_icon,
 )
 from ayon_core.tools.utils.delegates import StatusDelegate
+from ayon_core.lib import Logger
 
 from .switch_dialog import SwitchAssetDialog
 from .model import (
@@ -39,7 +39,7 @@ from .select_version_dialog import SelectVersionDialog, VersionOption
 
 DEFAULT_COLOR = "#fb9c15"
 
-log = logging.getLogger("SceneInventory")
+log = Logger.get_logger("SceneInventory")
 
 
 class SceneInventoryView(QtWidgets.QTreeView):

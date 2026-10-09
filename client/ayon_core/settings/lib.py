@@ -1,6 +1,5 @@
 import os
 import json
-import logging
 import collections
 import copy
 import time
@@ -9,7 +8,9 @@ from urllib.parse import urlencode
 
 import ayon_api
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 
 class CacheItem:

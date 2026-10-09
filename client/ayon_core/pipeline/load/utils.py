@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import uuid
 import warnings
-import logging
 import inspect
 import collections
 import numbers
@@ -16,13 +15,14 @@ from ayon_api.exceptions import GraphQlQueryFailed
 
 from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.lib import (
+    Logger,
     StringTemplate,
     TemplateUnsolved,
 )
 from ayon_core.lib.path_templates import TemplateResult
 from ayon_core.pipeline import Anatomy
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 ContainersFilterResult = collections.namedtuple(
     "ContainersFilterResult",

@@ -1,5 +1,4 @@
 import json
-import logging
 from concurrent.futures import CancelledError
 
 import aiohttp
@@ -10,8 +9,9 @@ from ayon_core.addon import ITrayService
 from ayon_core.tools.stdout_broker.window import ConsoleDialog
 
 from ayon_core.tools.tray import HostMsgAction
+from ayon_core.lib import Logger
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 # Host listener icon type

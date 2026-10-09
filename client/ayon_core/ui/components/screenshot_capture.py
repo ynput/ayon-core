@@ -5,7 +5,6 @@ Based on AYON core screenshot widget with proper DPI handling.
 
 from __future__ import annotations
 
-import logging
 import os
 import tempfile
 import uuid
@@ -22,7 +21,9 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import QApplication, QWidget
 
-logger = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 class ScreenMarqueeDialog(QWidget):
