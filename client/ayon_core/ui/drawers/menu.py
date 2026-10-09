@@ -374,6 +374,8 @@ class MenuDrawer:
         # --- Left gutter (icon or check mark) ---
         x = rect.left() + layout.pad_h
         cy = rect.center().y()
+        # Icons are drawn slightly towards the edge, away from the label
+        icon_x = x - 2
 
         check_type = option.checkType
         not_checkable = QStyleOptionMenuItem.CheckType.NotCheckable
@@ -395,7 +397,7 @@ class MenuDrawer:
                     fill=False,
                 )
                 check_rect = QRect(
-                    x,
+                    icon_x,
                     cy - layout.icon_size // 2,
                     layout.icon_size,
                     layout.icon_size,
@@ -403,7 +405,7 @@ class MenuDrawer:
                 check_icon.paint(painter, check_rect)
         elif not option.icon.isNull():
             icon_rect = QRect(
-                x,
+                icon_x,
                 cy - layout.icon_size // 2,
                 layout.icon_size,
                 layout.icon_size,
