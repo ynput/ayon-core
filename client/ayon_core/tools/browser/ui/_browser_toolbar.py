@@ -121,10 +121,9 @@ class AddColumnButton(AYButton):
         super().__init__(
             parent=parent,
             icon="add",
-            variant=AYButton.Variants.Nav_Small,
+            variant=AYButton.Variants.Surface,
             tooltip="Add or remove columns",
         )
-        self.setFixedSize(28, 28)
         self._columns: list[TableColumn] = []
         self._states: list[ColumnState] = []
         self._updating_actions: bool = False
