@@ -2071,14 +2071,23 @@ class OverscanCrop:
 
     Resolution: 2000px 1000px
 
-    | String        | Output        |
-    |---------------|---------------|
-    | "100px 120px" | 2100px 1120px |
-    | "-10% -200px" | 1800px 800px  |
+    | String          | Output        |
+    |-----------------|---------------|
+    | "+100px +120px" | 2100px 1120px |
+    | "-10% -200px"   | 1800px 800px  |
+    | "3072px 1728px" | 3072px 1728px |
+    | "3072 1728"     | 3072px 1728px |
+    | "+100 -200"     | 2100px 800px  |
+    | "50% 300"       | 1000px 300px  |
+
+    Only suffixes "px", "%", "%+" and "%-" are supported, where "%+" and "%-"
+    are valid only for relative values (with sign). Any other suffix,
+    e.g. "300p" or "10%+", or more than two values raise 'ValueError'.
     """
 
-    item_regex = re.compile(r"([\+\-])?([0-9]+)(.+)?")
-    relative_source_regex = re.compile(r"%([\+\-])")
+    # Optional sign, number and optional suffix "%", "%+" or "%-"
+    # - suffix "px" is removed from string before the regex is used
+    item_regex = re.compile(r"([\+\-])?([0-9]+)(%[\+\-]?)?")
 
     def __init__(
         self, input_width, input_height, string_value, overscan_color=None
@@ -2188,35 +2197,39 @@ class OverscanCrop:
         error_msg = "Invalid string for rescaling \"{}\"".format(
             orig_string_value
         )
-        if 1 > len(string_parts) > 2:
+        if not 1 <= len(string_parts) <= 2:
             raise ValueError(error_msg)
 
         output = []
         for item in string_parts:
-            groups = self.item_regex.findall(item)
-            if not groups:
+            match = self.item_regex.fullmatch(item)
+            if not match:
                 raise ValueError(error_msg)
 
-            relative_sign, value, ending = groups[0]
+            relative_sign, value, ending = match.groups()
             if not relative_sign:
+                # Value without suffix is explicit pixel size
                 if not ending:
                     output.append(PixValueExplicit(value))
-                else:
+                elif ending == "%":
                     output.append(PercentValueExplicit(value))
-            else:
-                source_sign_group = self.relative_source_regex.findall(ending)
-                if not ending:
-                    output.append(PixValueRelative(int(relative_sign + value)))
-
-                elif source_sign_group:
-                    source_sign = source_sign_group[0]
-                    output.append(PercentValueRelativeSource(
-                        float(relative_sign + value), source_sign
-                    ))
                 else:
-                    output.append(
-                        PercentValueRelative(float(relative_sign + value))
-                    )
+                    # Suffix "%+" and "%-" is valid only for relative value
+                    raise ValueError(error_msg)
+
+            elif not ending:
+                output.append(PixValueRelative(int(relative_sign + value)))
+
+            elif ending == "%":
+                output.append(
+                    PercentValueRelative(float(relative_sign + value))
+                )
+
+            else:
+                source_sign = ending[-1]
+                output.append(PercentValueRelativeSource(
+                    float(relative_sign + value), source_sign
+                ))
 
         if len(output) == 1:
             width = output.pop(0)
