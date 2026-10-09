@@ -9,6 +9,7 @@ replaces them once it has been downloaded in the background.
 
 from __future__ import annotations
 
+from functools import lru_cache
 import os
 import tempfile
 import time
@@ -232,6 +233,19 @@ class UserAvatarCache(QtCore.QObject):
         self.avatar_updated.emit(user_name)
 
 
+@lru_cache
+def _get_max_screen_pixel_ratio() -> float:
+    application = QtWidgets.QApplication.instance()
+    screens = application.screens()
+    if not screens:
+        return 1.0
+    pixel_ratio = max(
+        screen.devicePixelRatio()
+        for screen in screens
+    )
+    return max(pixel_ratio, 1.0)
+
+
 def set_avatar_decoration(
     option: QtWidgets.QStyleOptionViewItem,
     avatar_cache: UserAvatarCache,
@@ -255,7 +269,9 @@ def set_avatar_decoration(
     """
     if not user_name:
         return
-    pixmap = avatar_cache.pixmap(user_name, full_name or "", size)
+
+    pix_size = int(size * _get_max_screen_pixel_ratio())
+    pixmap = avatar_cache.pixmap(user_name, full_name or "", pix_size)
     if pixmap is None or pixmap.isNull():
         return
     option.icon = QtGui.QIcon(pixmap)
