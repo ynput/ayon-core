@@ -319,9 +319,10 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name,
         entity_type,
         entity_ids,
+        use_server_fallback=True,
     ):
         return self._thumbnails_model.get_thumbnail_paths(
-            project_name, entity_type, entity_ids
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     def change_products_group(self, project_name, product_ids, group_name):
