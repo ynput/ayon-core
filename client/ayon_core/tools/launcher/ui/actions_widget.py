@@ -473,7 +473,14 @@ class ActionMenuPopup(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
+        self.setWindowFlags(
+            # Use ToolTip which allows to position window exactly where needed
+            #   on linux. (Tool would be positioned by compositor).
+            # Because of ToolTip we also have to define NoDropShadowWindowHint
+            QtCore.Qt.ToolTip
+            | QtCore.Qt.FramelessWindowHint
+            | QtCore.Qt.NoDropShadowWindowHint
+        )
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
