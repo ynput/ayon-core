@@ -151,7 +151,6 @@ class TaskItem:
         tags (list[str]): List of tags assigned to task.
         full_label (str): Full label of task. Is filled automatically.
         status (str): Task status name.
-        description (str): Task description.
     """
     task_id: str
     name: str
@@ -162,7 +161,6 @@ class TaskItem:
     tags: list[str]
     status: str
     full_label: str = ""
-    description: str = ""
 
     def __post_init__(self):
         if not self.full_label:
@@ -195,7 +193,6 @@ class TaskItem:
             tags=self.tags.copy(),
             full_label=self.full_label,
             status=self.status,
-            description=self.description,
         )
 
     @classmethod
@@ -225,7 +222,6 @@ class TaskItem:
             TaskItem: Task item.
 
         """
-        attrib = entity.get("attrib") or {}
         return cls(
             task_id=entity["id"],
             name=entity["name"],
@@ -234,8 +230,7 @@ class TaskItem:
             task_type_order=task_type_order,
             parent_id=entity["folderId"],
             tags=entity["tags"],
-            status=entity["status"],
-            description=attrib.get("description") or "",
+            status=entity["status"]
         )
 
 
@@ -748,7 +743,6 @@ class HierarchyModel:
                 "type",
                 "tags",
                 "status",
-                "attrib.description",
             }
         ))
         task_type_items: list[TaskTypeItem] = (

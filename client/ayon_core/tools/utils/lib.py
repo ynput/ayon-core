@@ -88,31 +88,6 @@ def html_escape(text):
     )
 
 
-def get_description_tooltip(
-    description: str | None, label: str | None = None
-) -> str | None:
-    """Prepare tooltip of an entity with its description.
-
-    Qt does not word wrap plain text tooltips, so rich text is used when
-    description is available.
-
-    Args:
-        description (str | None): Entity description.
-        label (str | None): Label shown above the description.
-
-    Returns:
-        str | None: Tooltip text, only label if description is empty.
-
-    """
-    description = (description or "").strip()
-    if not description:
-        return label
-    text = html_escape(description)
-    if label:
-        text = f"{html_escape(label)}\n\n{text}"
-    return f'<div style="white-space: pre-wrap;">{text}</div>'
-
-
 def set_style_property(widget, property_name, property_value):
     """Set widget's property that may affect style.
 

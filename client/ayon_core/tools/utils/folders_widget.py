@@ -34,10 +34,15 @@ from ayon_core.ui.components.time_sliced_job import TimeSlicedJob
 from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .models import RecursiveSortFilterProxyModel
-from .lib import get_qt_icon, get_description_tooltip
+from .lib import get_qt_icon
 from .entity_thumbnails import (
     EntityThumbnailsPainter,
     EntityThumbnailDelegate,
+)
+from .entity_hover_card import (
+    EntityHoverCardHandler,
+    EntityHoverInfo,
+    get_folder_hover_info,
 )
 
 if typing.TYPE_CHECKING:
@@ -178,7 +183,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     refreshed = QtCore.Signal()
     # Used by 'AYTreeView' to show loading placeholder
     loading_changed = QtCore.Signal(bool)
-    description_loaded = QtCore.Signal(str)
 
     def __init__(self, controller):
         super().__init__()
@@ -201,12 +205,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self._has_content = False
         self._is_refreshing = False
         self._build_job: TimeSlicedJob | None = None
-
-        # Folder descriptions are loaded on demand for tooltips
-        self._descriptions_by_id: dict[str, str] = {}
-        self._descriptions_fetching: set[str] = set()
-        self._descriptions_generation = 0
-        self._description_tasks: dict[str, RefreshTask] = {}
 
     @property
     def is_refreshing(self):
@@ -277,66 +275,15 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 return folder_id
         return None
 
-    def fetch_description(self, folder_id: str | None) -> None:
-        """Load folder description to show it in the folder tooltip.
+    def get_folder_type_item(
+        self, folder_type: str
+    ) -> FolderTypeItem | None:
+        """Folder type item by name from the last refresh."""
+        return self._fill_data.folder_types_by_name.get(folder_type)
 
-        Descriptions are not part of folder items, they are loaded on
-        demand in a thread. Signal 'description_loaded' is emitted when
-        the description is available.
-
-        Args:
-            folder_id (str | None): Folder id.
-
-        """
-        project_name = self._last_project_name
-        if (
-            not project_name
-            or not folder_id
-            or folder_id in self._descriptions_by_id
-            or folder_id in self._descriptions_fetching
-            or not hasattr(self._controller, "get_folder_entity")
-        ):
-            return
-
-        self._descriptions_fetching.add(folder_id)
-        task = RefreshTask(
-            f"{self._descriptions_generation}|{folder_id}",
-            None,
-            self._controller.get_folder_entity,
-            project_name,
-            folder_id,
-        )
-        self._description_tasks[task.id] = task
-        task.finished.connect(self._on_description_task)
-        self._refresh_threadpool.start(task)
-
-    def _on_description_task(self, task_id: str, success: bool) -> None:
-        task = self._description_tasks.pop(task_id)
-        generation, folder_id = task_id.split("|", 1)
-        # Folders were refreshed or project changed in the meantime
-        if int(generation) != self._descriptions_generation:
-            return
-        self._descriptions_fetching.discard(folder_id)
-        if not success:
-            return
-
-        folder_entity = task.get_result() or {}
-        attrib = folder_entity.get("attrib") or {}
-        description = attrib.get("description") or ""
-        self._descriptions_by_id[folder_id] = description
-        fill_item = self._fill_data.items_by_id.get(folder_id)
-        if fill_item is None:
-            return
-        fill_item.item.setData(
-            get_description_tooltip(description), QtCore.Qt.ToolTipRole
-        )
-        self.description_loaded.emit(folder_id)
-
-    def _clear_descriptions(self) -> None:
-        # Results of running tasks are ignored by changed generation
-        self._descriptions_generation += 1
-        self._descriptions_by_id = {}
-        self._descriptions_fetching = set()
+    def get_status_item(self, status_name: str) -> StatusItem | None:
+        """Status item by name from the last refresh."""
+        return self._fill_data.statuses_by_name.get(status_name)
 
     def get_project_name(self) -> str | None:
         """Project name which model currently use.
@@ -410,7 +357,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     def _clear_items(self) -> None:
         self._cancel_build()
-        self._clear_descriptions()
         self._fill_data = _FillData()
         self._has_content = False
         root_item = self.invisibleRootItem()
@@ -634,8 +580,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         responsive and are added to the model at once when done.
         """
         self._cancel_build()
-        # Make sure descriptions are loaded again after refresh
-        self._clear_descriptions()
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
@@ -1036,25 +980,18 @@ class FoldersWidget(QtWidgets.QWidget):
         folders_view.double_clicked.connect(self.double_clicked)
         folders_model.refreshed.connect(self._on_model_refresh)
 
-        # Description for tooltip is loaded when the mouse stays on a folder
-        #   for a moment, which is earlier than the tooltip is requested.
-        hover_timer = QtCore.QTimer(self)
-        hover_timer.setSingleShot(True)
-        hover_timer.setInterval(100)
-        hover_timer.timeout.connect(self._on_hover_timeout)
-        folders_view.entered.connect(self._on_folder_entered)
-        folders_view.viewportEntered.connect(self._on_viewport_entered)
-        folders_model.description_loaded.connect(self._on_description_loaded)
+        # Card with folder information is shown when a folder is hovered
+        hover_card_handler = EntityHoverCardHandler(
+            folders_view, FOLDER_ID_ROLE, self._get_hover_info
+        )
+        folders_model.refreshed.connect(hover_card_handler.clear_cache)
 
         self._controller = controller
         self._folders_view = folders_view
         self._folders_model = folders_model
         self._folders_proxy_model = folders_proxy_model
         self._thumbnails_painter = thumbnails_painter
-
-        self._hover_timer = hover_timer
-        self._hover_folder_id = None
-        self._hover_elapsed = QtCore.QElapsedTimer()
+        self._hover_card_handler = hover_card_handler
 
         self._handle_expected_selection = handle_expected_selection
         self._expected_selection = None
@@ -1264,48 +1201,30 @@ class FoldersWidget(QtWidgets.QWidget):
     def _on_controller_refresh(self):
         self._update_expected_selection()
 
-    def _on_folder_entered(self, index: QtCore.QModelIndex) -> None:
-        folder_id = index.data(FOLDER_ID_ROLE)
-        if folder_id == self._hover_folder_id:
-            return
-        self._hover_folder_id = folder_id
-        self._hover_elapsed.restart()
-        self._hover_timer.start()
+    def _get_hover_info(self, folder_id: str) -> EntityHoverInfo | None:
+        """Information for hover card of a folder. Is called in a thread."""
+        controller = self._controller
+        project_name = self._folders_model.get_project_name()
+        if not project_name or not hasattr(controller, "get_folder_entity"):
+            return None
+        folder_entity = controller.get_folder_entity(project_name, folder_id)
+        if not folder_entity:
+            return None
 
-    def _on_viewport_entered(self) -> None:
-        # Mouse is not on a folder anymore
-        self._hover_folder_id = None
-        self._hover_timer.stop()
-
-    def _on_hover_timeout(self) -> None:
-        self._folders_model.fetch_description(self._hover_folder_id)
-
-    def _on_description_loaded(self, folder_id: str) -> None:
-        """Show tooltip if description was loaded after tooltip request."""
-        if (
-            folder_id != self._hover_folder_id
-            or QtWidgets.QToolTip.isVisible()
-        ):
-            return
-        wake_up_delay = self.style().styleHint(
-            QtWidgets.QStyle.SH_ToolTip_WakeUpDelay
+        thumbnail_path = None
+        if hasattr(controller, "get_thumbnail_paths"):
+            thumbnail_path = controller.get_thumbnail_paths(
+                project_name, "folder", {folder_id}
+            ).get(folder_id)
+        return get_folder_hover_info(
+            project_name,
+            folder_entity,
+            self._folders_model.get_folder_type_item(
+                folder_entity["folderType"]
+            ),
+            self._folders_model.get_status_item(folder_entity["status"]),
+            thumbnail_path,
         )
-        if self._hover_elapsed.elapsed() < wake_up_delay:
-            return
-
-        view = self._folders_view
-        viewport = view.viewport()
-        if not viewport.underMouse():
-            return
-        global_pos = QtGui.QCursor.pos()
-        index = view.indexAt(viewport.mapFromGlobal(global_pos))
-        if index.data(FOLDER_ID_ROLE) != folder_id:
-            return
-        tooltip = index.data(QtCore.Qt.ToolTipRole)
-        if tooltip:
-            QtWidgets.QToolTip.showText(
-                global_pos, tooltip, viewport, view.visualRect(index)
-            )
 
     def _on_model_refresh(self):
         if self._expected_selection:
