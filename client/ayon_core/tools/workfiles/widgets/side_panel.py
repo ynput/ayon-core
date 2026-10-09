@@ -23,9 +23,8 @@ class SidePanelWidget(AYContainer):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
+        actions_loader (WorkfileActionsLoader): Loader of workfile actions.
         parent (QtWidgets.QWidget): The parent widget.
-        actions_loader (Optional[WorkfileActionsLoader]): Loader of
-            workfile actions. Quick actions are not shown without it.
     """
 
     published_workfile_message = (
@@ -33,7 +32,7 @@ class SidePanelWidget(AYContainer):
         " temp directory on your machine. Current temp size: <b>{}</b>."
     )
 
-    def __init__(self, controller, parent, actions_loader=None):
+    def __init__(self, controller, actions_loader, parent):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -70,10 +69,8 @@ class SidePanelWidget(AYContainer):
 
         # Quick actions for the selection
         # - the row always takes its space, the buttons fade in and out
-        actions_row = None
-        if actions_loader is not None:
-            actions_row = WorkfileActionsRow(controller, actions_loader, self)
-            self.add_widget(actions_row, stretch=0)
+        actions_row = WorkfileActionsRow(controller, actions_loader, self)
+        self.add_widget(actions_row, stretch=0)
 
         # ── Note/Comment section reused for both ────────────
         self._note_label = AYLabel(
@@ -149,8 +146,7 @@ class SidePanelWidget(AYContainer):
         )
         self._btn_description_save.setVisible(not published_mode)
         self._description_input.setReadOnly(published_mode)
-        if self._actions_row is not None:
-            self._actions_row.set_published_mode(published_mode)
+        self._actions_row.set_published_mode(published_mode)
 
         # Clear the context when switching modes to avoid showing stale data
         if published_mode:

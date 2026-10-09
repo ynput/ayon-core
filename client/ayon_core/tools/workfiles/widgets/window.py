@@ -117,9 +117,7 @@ class WorkfilesToolWindow(AYContainer):
         tasks_widget.set_status_column_visible(True)
         col_3_widget = self._create_col_3_widget(controller, home_body_widget)
         side_panel = SidePanelWidget(
-            controller,
-            home_body_widget,
-            actions_loader=self._actions_loader,
+            controller, self._actions_loader, home_body_widget
         )
 
         pages_widget.addWidget(home_page_widget)
@@ -269,7 +267,7 @@ class WorkfilesToolWindow(AYContainer):
         header_layout.addWidget(published_checkbox, 0)
 
         files_widget = FilesWidget(
-            controller, col_widget, actions_loader=self._actions_loader
+            controller, self._actions_loader, col_widget
         )
 
         col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)

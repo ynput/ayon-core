@@ -236,7 +236,7 @@ class WorkfileActionsModel:
                 project_settings = self._controller.get_project_settings(
                     project_name
                 )
-            self._context.reset(project_name, project_settings)
+            self._context.reset(project_settings)
             self._context_is_reset = True
 
     def _create_selection(

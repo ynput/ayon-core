@@ -920,9 +920,10 @@ class WorkfileActionsContext:
     Takes care about the public api of workfile actions and internal logic
         like discovery and initialization of plugins.
 
+    Project of the host integration is used to get settings for plugins.
+        Studio settings are used if host integration is not available.
+
     Args:
-        project_name (Optional[str]): Project name used to get settings for
-            plugins. Studio settings are used if is not passed in.
         project_settings (Optional[dict[str, Any]]): Prepared settings.
         addons_manager (Optional[AddonsManager]): Prepared addons manager.
         host (Optional[AbstractHost]): Host integration. Registered host is
@@ -931,7 +932,6 @@ class WorkfileActionsContext:
     """
     def __init__(
         self,
-        project_name: Optional[str] = None,
         project_settings: Optional[dict[str, Any]] = None,
         addons_manager: Optional[AddonsManager] = None,
         host: Optional[AbstractHost] = _PLACEHOLDER,
@@ -943,7 +943,6 @@ class WorkfileActionsContext:
         self._lock = threading.RLock()
 
         # Attributes that are re-cached on reset
-        self._project_name = project_name
         self._project_settings = project_settings
         self._plugin_paths = None
         self._plugins = None
@@ -951,9 +950,7 @@ class WorkfileActionsContext:
         self._execution_requests: Optional[_ExecutionRequests] = None
 
     def reset(
-        self,
-        project_name: Optional[str] = None,
-        project_settings: Optional[dict[str, Any]] = None,
+        self, project_settings: Optional[dict[str, Any]] = None
     ) -> None:
         """Reset context cache.
 
@@ -964,12 +961,10 @@ class WorkfileActionsContext:
                 be a reason to do so.
 
         Args:
-            project_name (Optional[str]): Project name used to get settings.
             project_settings (Optional[dict[str, Any]]): Prepared settings.
 
         """
         with self._lock:
-            self._project_name = project_name
             self._project_settings = project_settings
             self._plugin_paths = None
             self._plugins = None
@@ -1004,21 +999,32 @@ class WorkfileActionsContext:
         return host.name
 
     def get_project_name(self) -> Optional[str]:
-        return self._project_name
+        """Project name of the host integration.
+
+        Returns:
+            Optional[str]: Project name or None if host integration is not
+                available.
+
+        """
+        host = self.get_host()
+        if host is None:
+            return None
+        return host.get_current_project_name()
 
     def get_project_settings(self) -> dict[str, Any]:
         """Settings used to set up the plugins.
 
         Returns:
             dict[str, Any]: Project settings or studio settings if project
-                name is not defined.
+                name is not available.
 
         """
         with self._lock:
             if self._project_settings is None:
-                if self._project_name:
+                project_name = self.get_project_name()
+                if project_name:
                     self._project_settings = get_project_settings(
-                        self._project_name
+                        project_name
                     )
                 else:
                     self._project_settings = get_studio_settings()

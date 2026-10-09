@@ -333,6 +333,10 @@ class WorkfilesModel:
         """Workfile info if is already cached.
 
         Unlike 'get_workfile_info' does not trigger listing of workfiles.
+            It is used to prepare selection for workfile actions, which
+            happens on each selection change and out of the main thread,
+            where the listing (host call and server queries) should not be
+            triggered.
 
         Args:
             task_id (str | None): Task id.

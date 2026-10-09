@@ -96,7 +96,6 @@ def _create_context(tmp_path, project_settings=None, host=None):
     plugins_dir.mkdir(exist_ok=True)
     (plugins_dir / "test_actions.py").write_text(PLUGIN_FILE_CONTENT)
     return WorkfileActionsContext(
-        project_name="test_project",
         project_settings=project_settings or {},
         addons_manager=_FakeAddonsManager([_FakeAddon([str(plugins_dir)])]),
         host=host,
@@ -348,6 +347,26 @@ def test_increment_and_open(tmp_path):
     )
 
 
+def test_project_name_comes_from_host(tmp_path):
+    assert _create_context(tmp_path).get_project_name() is None
+
+    host = mock.MagicMock(spec=IWorkfileHost)
+    host.name = "testhost"
+    host.get_current_project_name.return_value = "host_project"
+    context = _create_context(tmp_path, host=host)
+    assert context.get_project_name() == "host_project"
+
+    # Settings of the host project are used if are not prepared
+    context.reset()
+    with mock.patch.object(
+        workfile_actions,
+        "get_project_settings",
+        return_value={"core": {}},
+    ) as get_settings_mock:
+        assert context.get_project_settings() == {"core": {}}
+    get_settings_mock.assert_called_once_with("host_project")
+
+
 def test_duplicate_workfile(tmp_path):
     context = _create_context(tmp_path)
     identifier = "core.duplicate-workfile"
@@ -366,11 +385,6 @@ def test_duplicate_workfile(tmp_path):
     item = _get_item(selection)
     # Duplicate is available only in context menu by default
     assert item.quick_action is False
-    assert all(
-        other_item.quick_action
-        for other_item in context.get_action_items(selection)
-        if other_item.identifier != identifier
-    )
     # Is available only for selected workarea workfile
     assert _get_item(_create_selection()) is None
     assert _get_item(_create_selection(

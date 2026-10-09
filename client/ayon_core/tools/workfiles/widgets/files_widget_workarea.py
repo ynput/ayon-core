@@ -288,16 +288,14 @@ class WorkAreaFilesWidget(AYContainer):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
+        actions_loader (WorkfileActionsLoader): Loader of workfile actions.
         parent (QtWidgets.QWidget): The parent widget.
-        actions_loader (Optional[WorkfileActionsLoader]): Loader of
-            workfile actions. Actions are not available in context menu
-            without it.
     """
 
     selection_changed = QtCore.Signal()
     open_current_requested = QtCore.Signal()
 
-    def __init__(self, controller, parent, actions_loader=None):
+    def __init__(self, controller, actions_loader, parent):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -421,9 +419,6 @@ class WorkAreaFilesWidget(AYContainer):
             index.isValid()
             and bool(index.flags() & QtCore.Qt.ItemIsEnabled)
         )
-
-        if self._actions_loader is None:
-            return
 
         selection = self._controller.get_workfile_action_selection(
             False, with_workfile=on_workfile

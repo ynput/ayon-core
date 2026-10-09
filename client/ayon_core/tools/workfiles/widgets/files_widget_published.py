@@ -305,16 +305,14 @@ class PublishedFilesWidget(AYContainer):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
+        actions_loader (WorkfileActionsLoader): Loader of workfile actions.
         parent (QtWidgets.QWidget): The parent widget.
-        actions_loader (Optional[WorkfileActionsLoader]): Loader of
-            workfile actions. Actions are not available in context menu
-            without it.
     """
 
     selection_changed = QtCore.Signal()
     save_as_requested = QtCore.Signal()
 
-    def __init__(self, controller, parent, actions_loader=None):
+    def __init__(self, controller, actions_loader, parent):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -407,9 +405,6 @@ class PublishedFilesWidget(AYContainer):
             self.save_as_requested.emit()
 
     def _on_context_menu(self, point):
-        if self._actions_loader is None:
-            return
-
         index = self._view.indexAt(point)
         # Context menu is related only to the area if is not triggered
         #   on a published workfile
