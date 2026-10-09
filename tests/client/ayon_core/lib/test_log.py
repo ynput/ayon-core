@@ -562,6 +562,51 @@ def test_log_file_per_process_and_cleanup(log_module, monkeypatch, tmp_path):
     assert [r["event"] for r in records] == ["To file"]
 
 
+def test_log_file_failure_does_not_break_logging(
+    log_module, monkeypatch, tmp_path, foreign_handler
+):
+    """Logging is configured on import, which must not fail."""
+    not_a_dir = tmp_path / "not_a_dir"
+    not_a_dir.write_text("")
+    monkeypatch.setenv("AYON_LOG_TO_FILE", "1")
+    monkeypatch.setattr(
+        "ayon_core.lib.local_settings.get_launcher_local_dir",
+        lambda *args: str(not_a_dir.joinpath(*args)),
+    )
+
+    module = log_module()
+    module.Logger.get_logger("ayon_core.tests.file").info("Still logged")
+
+    handler_types = [type(handler) for handler in logging.getLogger().handlers]
+    assert TimedRotatingFileHandler not in handler_types
+    assert module._StderrHandler in handler_types
+    assert any(
+        message.startswith("Failed to create AYON log file")
+        for message in foreign_handler.messages
+    )
+    assert "Still logged" in foreign_handler.messages
+
+
+def test_vector_failure_does_not_break_logging(
+    log_module, monkeypatch, foreign_handler
+):
+    monkeypatch.setenv("AYON_VECTOR_LOG_URL", "http://127.0.0.1:1/")
+    # 'requests' can't be imported
+    monkeypatch.setitem(sys.modules, "requests", None)
+
+    module = log_module()
+    module.Logger.get_logger("ayon_core.tests.vector").info("Still logged")
+
+    handler_types = [type(handler) for handler in logging.getLogger().handlers]
+    assert module._DroppingQueueHandler not in handler_types
+    assert module._vector_sender is None
+    assert any(
+        message.startswith("Failed to start sending of logs to Vector")
+        for message in foreign_handler.messages
+    )
+    assert "Still logged" in foreign_handler.messages
+
+
 def test_vector_queue_renders_in_logging_thread(log_module):
     module = log_module()
     log_queue = queue.Queue()
