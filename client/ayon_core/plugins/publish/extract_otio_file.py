@@ -24,32 +24,32 @@ class ExtractOTIOFile(publish.Extractor):
 
         # Mark instance for 'ExtractOTIOWorkfileOld'
         instance.data[self.HAS_RUN_KEY] = True
-        if not instance.context.data.get("otioTimeline"):
+
+        otio_timeline = instance.context.data.get("otioTimeline")
+        if not otio_timeline:
             return
-        # create representation data
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
 
         name = instance.data["name"]
         staging_dir = self.staging_dir(instance)
 
-        otio_timeline = instance.context.data["otioTimeline"]
         # create otio timeline representation
         otio_file_name = name + ".otio"
         otio_file_path = os.path.join(staging_dir, otio_file_name)
         otio.adapters.write_to_file(otio_timeline, otio_file_path)
 
         representation_otio = {
-            'name': "otio",
-            'ext': "otio",
-            'files': otio_file_name,
+            "name": "otio",
+            "ext": "otio",
+            "files": otio_file_name,
             "stagingDir": staging_dir,
         }
 
-        instance.data["representations"].append(representation_otio)
+        instance_repres = instance.data.setdefault("representations", [])
+        instance_repres.append(representation_otio)
 
-        self.log.info("Added OTIO file representation: {}".format(
-            representation_otio))
+        self.log.info(
+            f"Added OTIO file representation: {representation_otio}"
+        )
 
 
 class ExtractOTIOFileOld(ExtractOTIOFile):
