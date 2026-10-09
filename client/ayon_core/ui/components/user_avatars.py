@@ -9,7 +9,9 @@ replaces them once it has been downloaded in the background.
 
 from __future__ import annotations
 
+import os
 import tempfile
+import time
 
 import ayon_api
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
@@ -45,6 +47,32 @@ def _is_generated_initials(content: bytes) -> bool:
     """
     head = bytes(content[:1024]).lower()
     return b"<svg" in head and b"dominant-baseline" in head
+
+
+def _read_file_head(file_path: str) -> bytes:
+    """Read the start of a cached avatar image.
+
+    The image cache is shared by all AYON processes on the machine. On
+    Windows the file cannot be opened at the moment another process is
+    storing it, so the read is repeated for a short time.
+
+    Args:
+        file_path: Path to the cached image file.
+
+    Returns:
+        Start of the file content.
+    """
+    attempts = 5
+    for attempt in range(attempts):
+        try:
+            with open(file_path, "rb") as stream:
+                return stream.read(1024)
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            # Called in a background thread
+            time.sleep(0.05)
+    return b""
 
 
 def _fetch_avatar_file(user_name: str) -> str:
@@ -130,8 +158,15 @@ class UserAvatarCache(QtCore.QObject):
         The widget is only a renderer here - it is never shown - so the
         avatars stay identical to the ones the rest of the UI draws.
         """
+        src = self._sources.get(user_name, "")
+        if src and not os.path.exists(src):
+            # The image cache is shared by all AYON processes on the
+            #   machine, any of them may have evicted the file meanwhile.
+            #   Fall back to initials and let it be downloaded again.
+            del self._sources[user_name]
+            src = ""
         widget = AYUserImage(
-            src=self._sources.get(user_name, ""),
+            src=src,
             name=user_name,
             full_name=full_name or user_name,
             size=size,
@@ -156,10 +191,10 @@ class UserAvatarCache(QtCore.QObject):
                 )
                 # Generated initials may be cached from before they
                 #   were skipped on download.
-                if file_path:
-                    with open(file_path, "rb") as stream:
-                        if _is_generated_initials(stream.read(1024)):
-                            return ""
+                if file_path and _is_generated_initials(
+                    _read_file_head(file_path)
+                ):
+                    return ""
                 return file_path
             except Exception:  # noqa: BLE001 - avatars are optional
                 log.debug(
