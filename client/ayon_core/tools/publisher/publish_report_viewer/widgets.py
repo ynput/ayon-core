@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
+from functools import lru_cache
+import logging
 from math import ceil
+import re
 import typing
 
-import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
@@ -12,12 +16,14 @@ from ayon_core.tools.utils import (
     ElideLabel,
     SeparatorWidget,
     IconButton,
+    MultiSelectionComboBox,
     paint_image_with_color,
     get_qt_icon,
 )
 from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
+from ayon_core.ui.components import AYButton, AYLineEdit, AYSpinBox
 
 from .constants import (
     ITEM_ID_ROLE,
@@ -317,6 +323,30 @@ class ZoomPlainText(QtWidgets.QTextEdit):
             self._scheduled_scalings += 1
 
 
+MATCH_BG_COLOR = QtGui.QColor(255, 213, 79)
+MATCH_FG_COLOR = QtGui.QColor(0, 0, 0)
+# Max characters kept before and after a match for the matches list
+MATCH_CONTEXT_LENGTH = 200
+
+
+@dataclass
+class _LogMatch:
+    """Search match in the logs document with the text around it."""
+    start: int
+    end: int
+    level: str
+    before: str
+    text: str
+    after: str
+    source: str
+
+
+@lru_cache(maxsize=2 ** 16)
+def _format_timestamp(created: float) -> str:
+    """Format log timestamp, cached as logs are refreshed often."""
+    return datetime.fromtimestamp(created).strftime("%Y/%m/%d %H:%M:%S ")
+
+
 class _LogFiller:
     _color_mapping = (
         ("TRACEBACK", QtGui.QColor(255, 74, 74)),
@@ -332,12 +362,15 @@ class _LogFiller:
     def __init__(
         self,
         output_widget: QtWidgets.QTextEdit,
-        logs: list[ReportLog],
+        logs: list[tuple[str, ReportLog]],
         show_timestamp: bool,
+        search_text: str = "",
     ) -> None:
         self.output_widget = output_widget
         self.show_timestamp = show_timestamp
         self.logs = logs
+        self.search_text = search_text
+        self.matches: list[_LogMatch] = []
         self.first_line = True
         self.cursor = None
         # Do not use the widget's current char format, it is the format
@@ -353,7 +386,11 @@ class _LogFiller:
         self.prefix_fmts = prefix_fmts
 
     def _add_entry(
-        self, message: str, timestamp: str = "", log_level: str = ""
+        self,
+        message: str,
+        timestamp: str = "",
+        log_level: str = "",
+        source: str = "",
     ) -> None:
         if not self.first_line:
             self.cursor.insertBlock()
@@ -363,7 +400,41 @@ class _LogFiller:
             self.cursor.insertText(
                 f"{timestamp}{log_level}: ", fmt
             )
-        self.cursor.insertText(message, self.default_fmt)
+        if not self.search_text:
+            self.cursor.insertText(message, self.default_fmt)
+            return
+
+        start = 0
+        for match in re.finditer(
+            re.escape(self.search_text), message, re.IGNORECASE
+        ):
+            self.cursor.insertText(
+                message[start:match.start()], self.default_fmt
+            )
+            highlight_fmt = QtGui.QTextCharFormat(self.default_fmt)
+            highlight_fmt.setBackground(MATCH_BG_COLOR)
+            highlight_fmt.setForeground(MATCH_FG_COLOR)
+            position = self.cursor.position()
+            self.cursor.insertText(match.group(), highlight_fmt)
+            start = match.end()
+            # Text around the match on the same line
+            before = message[
+                max(0, match.start() - MATCH_CONTEXT_LENGTH):match.start()
+            ].rpartition("\n")[2]
+            after = message[
+                start:start + MATCH_CONTEXT_LENGTH
+            ].partition("\n")[0]
+            self.matches.append(_LogMatch(
+                position,
+                self.cursor.position(),
+                log_level,
+                before,
+                match.group(),
+                after,
+                source,
+            ))
+
+        self.cursor.insertText(message[start:], self.default_fmt)
 
     def fill(self) -> None:
         self.output_widget.clear()
@@ -377,25 +448,22 @@ class _LogFiller:
         )
         self.cursor = QtGui.QTextCursor(document)
 
-        for log in self.logs:
+        for source, log in self.logs:
             timestamp = ""
             if self.show_timestamp and log.created is not None:
-                timestamp = (
-                    arrow
-                    .get(log.created)
-                    .to("local")
-                    .format("YYYY/MM/DD HH:mm:ss ")
-                )
+                timestamp = _format_timestamp(log.created)
 
             if log.type == "record":
-                self._add_entry(log.message, timestamp, log.levelname)
+                self._add_entry(
+                    log.message, timestamp, log.levelname, source
+                )
                 exc_info = log.exc_info
                 if exc_info:
-                    self._add_entry(exc_info)
+                    self._add_entry(exc_info, source=source)
 
             elif log.type == "error":
                 self._add_entry(
-                    log.traceback, timestamp, "TRACEBACK"
+                    log.traceback, timestamp, "TRACEBACK", source
                 )
 
             else:
@@ -409,11 +477,207 @@ class _LogFiller:
         self.output_widget.setDocument(document)
 
 
+class _LogMatchesModel(QtCore.QAbstractListModel):
+    """Search matches of the logs, the match is in 'UserRole' data."""
+
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
+        super().__init__(parent)
+        self._matches: list[_LogMatch] = []
+
+    def set_matches(self, matches: list[_LogMatch]) -> None:
+        self.beginResetModel()
+        self._matches = matches
+        self.endResetModel()
+
+    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
+        return 0 if parent.isValid() else len(self._matches)
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if role == QtCore.Qt.UserRole and index.isValid():
+            return self._matches[index.row()]
+        return None
+
+
+class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
+    """Draw a search match with the text around it and its source."""
+    _level_colors = dict(_LogFiller._color_mapping)
+
+    @staticmethod
+    def row_height(metrics: QtGui.QFontMetrics) -> int:
+        return metrics.height() + 8
+
+    def sizeHint(self, option, index) -> QtCore.QSize:
+        return QtCore.QSize(0, self.row_height(option.fontMetrics))
+
+    def paint(self, painter, option, index) -> None:
+        option = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(option, index)
+        option.widget.style().drawPrimitive(
+            QtWidgets.QStyle.PE_PanelItemViewItem,
+            option,
+            painter,
+            option.widget,
+        )
+        match: _LogMatch = index.data(QtCore.Qt.UserRole)
+        metrics = option.fontMetrics
+        rect = option.rect.adjusted(8, 0, -8, 0)
+        text_color = option.palette.color(QtGui.QPalette.Text)
+        dimmed_color = QtGui.QColor(text_color)
+        dimmed_color.setAlphaF(0.5)
+
+        painter.save()
+        painter.setFont(option.font)
+        # Log level on the left in the color it has in the logs
+        painter.setPen(self._level_colors.get(match.level, dimmed_color))
+        painter.drawText(
+            rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, match.level
+        )
+        # Align the text after the common levels, longer ones push it
+        rect.setLeft(rect.left() + max(
+            metrics.horizontalAdvance("WARNING "),
+            metrics.horizontalAdvance(f"{match.level} "),
+        ))
+
+        # Dimmed and slightly smaller source of the log on the right, sized
+        #   in whole pixels as the hinted glyphs get cramped in between
+        source_font = QtGui.QFont(option.font)
+        source_font.setPixelSize(
+            QtGui.QFontInfo(option.font).pixelSize() - 2
+        )
+        source_metrics = QtGui.QFontMetrics(source_font)
+        source = source_metrics.elidedText(
+            match.source, QtCore.Qt.ElideMiddle, rect.width() // 3
+        )
+        painter.setFont(source_font)
+        painter.setPen(dimmed_color)
+        painter.drawText(
+            rect, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter, source
+        )
+        painter.setFont(option.font)
+        rect.setRight(
+            rect.right() - source_metrics.horizontalAdvance(source) - 16
+        )
+
+        # Elide the text before the match so the match stays visible
+        before = metrics.elidedText(
+            match.before.lstrip(), QtCore.Qt.ElideLeft, rect.width() // 3
+        )
+        for text, is_match in (
+            (before, False),
+            (match.text, True),
+            (match.after, False),
+        ):
+            text = metrics.elidedText(
+                text, QtCore.Qt.ElideRight, rect.width()
+            )
+            text_rect = QtCore.QRect(rect)
+            text_rect.setWidth(metrics.horizontalAdvance(text))
+            painter.setPen(text_color)
+            if is_match:
+                painter.fillRect(
+                    text_rect.adjusted(0, 3, 0, -3), MATCH_BG_COLOR
+                )
+                painter.setPen(MATCH_FG_COLOR)
+            painter.drawText(
+                text_rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, text
+            )
+            rect.setLeft(text_rect.right() + 1)
+        painter.restore()
+
+
+class _LogMatchesView(QtWidgets.QListView):
+    """List of search matches showing a placeholder when it is empty."""
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        model = self.model()
+        if model is not None and model.rowCount():
+            return
+        color = QtGui.QColor(self.palette().color(QtGui.QPalette.Text))
+        color.setAlphaF(0.5)
+        painter = QtGui.QPainter(self.viewport())
+        painter.setPen(color)
+        painter.drawText(
+            self.viewport().rect(), QtCore.Qt.AlignCenter, "No matches"
+        )
+        painter.end()
+
+
 class DetailsWidget(QtWidgets.QWidget):
+    # Max rows of the search matches list visible without scrolling
+    max_visible_matches = 6
+
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         header_widget = QtWidgets.QWidget(self)
+
+        search_field = AYLineEdit(
+            parent=header_widget,
+            variant=AYLineEdit.Variants.Low,
+            name_id="PublishLogSearch",
+        )
+        search_field.setMinimumWidth(180)
+        search_mode_btn = AYButton(
+            parent=header_widget,
+            variant=AYButton.Variants.Nav,
+        )
+        level_filter = MultiSelectionComboBox(
+            parent=header_widget,
+            placeholder="Log levels (all)",
+        )
+        for label, value in (
+            ("Debug", logging.DEBUG),
+            ("Info", logging.INFO),
+            ("Warning", logging.WARNING),
+            ("Error", logging.ERROR),
+            ("Critical", logging.CRITICAL),
+        ):
+            level_filter.addItem(label, value)
+        level_filter.setMinimumWidth(150)
+        level_filter.setToolTip("Filter logs by level")
+        surrounding_lines = AYSpinBox(
+            parent=header_widget,
+            name_id="PublishLogSurroundingLines",
+            minimum=0,
+            maximum=99,
+            value=0,
+        )
+        surrounding_lines.setToolTip(
+            "Include this many log entries before and after each match"
+        )
+
+        # Replaces the surrounding lines field in search mode
+        match_nav_widget = QtWidgets.QWidget(header_widget)
+        prev_match_btn = AYButton(
+            parent=match_nav_widget,
+            variant=AYButton.Variants.Nav,
+            icon="arrow_back",
+            tooltip="Previous match (Shift+Enter)",
+        )
+        next_match_btn = AYButton(
+            parent=match_nav_widget,
+            variant=AYButton.Variants.Nav,
+            icon="arrow_forward",
+            tooltip="Next match (Enter)",
+        )
+        match_nav_layout = QtWidgets.QHBoxLayout(match_nav_widget)
+        match_nav_layout.setContentsMargins(0, 0, 0, 0)
+        match_nav_layout.setSpacing(0)
+        match_nav_layout.addWidget(prev_match_btn, 0)
+        match_nav_layout.addWidget(next_match_btn, 0)
+        surrounding_lines.setFixedWidth(match_nav_widget.sizeHint().width())
+        # Keep focus in the search field so its shortcuts remain usable
+        for btn in (search_mode_btn, prev_match_btn, next_match_btn):
+            btn.setFocusPolicy(QtCore.Qt.NoFocus)
+
+        control_height = search_field.sizeHint().height()
+        for widget in (
+            search_field,
+            level_filter,
+            surrounding_lines,
+        ):
+            widget.setFixedHeight(control_height)
 
         timestamp_check = NiceCheckbox(parent=header_widget)
         timestamp_check.setChecked(True)
@@ -421,9 +685,30 @@ class DetailsWidget(QtWidgets.QWidget):
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(5, 5, 5, 5)
+        search_layout = QtWidgets.QHBoxLayout()
+        search_layout.setSpacing(2)
+        search_layout.addWidget(search_mode_btn, 0)
+        search_layout.addWidget(search_field, 1)
+        search_layout.addWidget(surrounding_lines, 0)
+        search_layout.addWidget(match_nav_widget, 0)
+
+        header_layout.addWidget(level_filter, 0)
+        header_layout.addLayout(search_layout, 1)
         header_layout.addWidget(timestamp_check, 0)
         header_layout.addWidget(timestamp_label, 0)
-        header_layout.addStretch(1)
+
+        # List of search matches, controlled from the search field
+        matches_model = _LogMatchesModel(self)
+        matches_view = _LogMatchesView(self)
+        matches_view.setObjectName("PublishLogMatches")
+        matches_view.setModel(matches_model)
+        matches_view.setItemDelegate(_LogMatchDelegate(matches_view))
+        matches_view.setUniformItemSizes(True)
+        matches_view.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        matches_view.setFocusPolicy(QtCore.Qt.NoFocus)
+        matches_view.setVisible(False)
 
         output_widget = ZoomPlainText(self)
         output_widget.setObjectName("PublishLogConsole")
@@ -433,20 +718,190 @@ class DetailsWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(header_widget, 0)
+        layout.addWidget(matches_view, 0)
         layout.addWidget(output_widget, 1)
 
+        # Do not refresh the logs on each typed character
+        search_timer = QtCore.QTimer(self)
+        search_timer.setSingleShot(True)
+        search_timer.setInterval(100)
+
         timestamp_check.stateChanged.connect(self._on_timestamp_check)
+        search_field.textChanged.connect(lambda: search_timer.start())
+        search_timer.timeout.connect(self._on_search_changed)
+        search_field.returnPressed.connect(self._on_search_return)
+        search_field.installEventFilter(self)
+        matches_view.selectionModel().currentChanged.connect(
+            self._on_match_changed
+        )
+        matches_view.clicked.connect(self._on_match_changed)
+        matches_view.doubleClicked.connect(self._confirm_match)
+        search_mode_btn.clicked.connect(self._on_search_mode_toggle)
+        prev_match_btn.clicked.connect(lambda: self._go_to_match(-1))
+        next_match_btn.clicked.connect(lambda: self._go_to_match(1))
+        level_filter.value_changed.connect(self._on_level_filter_changed)
+        surrounding_lines.valueChanged.connect(
+            self._on_surrounding_lines_changed
+        )
 
         self._is_active: bool = True
         self._need_refresh: bool = False
 
         self._timestamp_check = timestamp_check
+        self._search_field = search_field
+        self._search_mode_btn = search_mode_btn
+        self._level_filter_widget = level_filter
+        self._surrounding_lines = surrounding_lines
+        self._match_nav_widget = match_nav_widget
+        self._matches_model = matches_model
+        self._matches_view = matches_view
         self._output_widget: ZoomPlainText = output_widget
         self._report_item: PublishReport | None = None
         self._instance_filter: set[str] = set()
         self._plugin_filter: set[str] = set()
+        self._level_filter: set[int] = set()
+        self._search_text = ""
+        self._surrounding_line_count = 0
+
+        self._set_search_mode(True)
+
+    def eventFilter(self, obj, event) -> bool:
+        """Control the search matches list from the search field."""
+        if obj is not self._search_field:
+            return super().eventFilter(obj, event)
+
+        event_type = event.type()
+        if event_type == QtCore.QEvent.FocusIn:
+            self._update_matches_view()
+
+        elif (
+            event_type == QtCore.QEvent.FocusOut
+            and event.reason() not in (
+                QtCore.Qt.ActiveWindowFocusReason,
+                QtCore.Qt.PopupFocusReason,
+            )
+        ):
+            # The matches list does not take focus, any other widget does
+            self._matches_view.hide()
+
+        elif event_type == QtCore.QEvent.KeyPress:
+            key = event.key()
+            if key == QtCore.Qt.Key_Escape and self._matches_view.isVisible():
+                self._matches_view.hide()
+                return True
+            if (
+                key in (
+                    QtCore.Qt.Key_Up,
+                    QtCore.Qt.Key_Down,
+                    QtCore.Qt.Key_PageUp,
+                    QtCore.Qt.Key_PageDown,
+                )
+                and self._can_show_matches()
+            ):
+                self._update_matches_view()
+                if self._matches_model.rowCount():
+                    QtWidgets.QApplication.sendEvent(
+                        self._matches_view, event
+                    )
+                return True
+        return super().eventFilter(obj, event)
 
     def _on_timestamp_check(self):
+        self._update_logs()
+
+    def _set_search_mode(self, search_mode: bool) -> None:
+        """Switch between filtering the logs and searching through them."""
+        self._search_mode = search_mode
+        mode, other_mode = "Filter", "search"
+        if search_mode:
+            mode, other_mode = "Search", "filter"
+        self._search_field.setPlaceholderText(f"{mode} logs...")
+        self._search_mode_btn.set_icon(
+            "search" if search_mode else "filter_alt"
+        )
+        self._search_mode_btn.setToolTip(f"Switch to {other_mode}")
+        self._surrounding_lines.setVisible(not search_mode)
+        self._match_nav_widget.setVisible(search_mode)
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_search_mode_toggle(self) -> None:
+        self._set_search_mode(not self._search_mode)
+
+    def _on_search_return(self) -> None:
+        if not self._search_mode:
+            return
+        # Confirm the match that is selected in the matches list
+        if self._matches_view.isVisible():
+            if self._matches_model.rowCount():
+                self._confirm_match()
+            return
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        self._go_to_match(-1 if modifiers & QtCore.Qt.ShiftModifier else 1)
+
+    def _confirm_match(self) -> None:
+        """Hide the matches list and move focus to the logs output."""
+        self._matches_view.hide()
+        self._output_widget.setFocus(QtCore.Qt.OtherFocusReason)
+
+    def _go_to_match(self, step: int) -> None:
+        count = self._matches_model.rowCount()
+        if not count:
+            return
+        row = (self._matches_view.currentIndex().row() + step) % count
+        self._matches_view.setCurrentIndex(self._matches_model.index(row))
+
+    def _on_match_changed(self, index: QtCore.QModelIndex) -> None:
+        match: _LogMatch | None = index.data(QtCore.Qt.UserRole)
+        if match is None:
+            return
+        cursor = self._output_widget.textCursor()
+        cursor.setPosition(match.start)
+        cursor.setPosition(match.end, QtGui.QTextCursor.KeepAnchor)
+        self._output_widget.setTextCursor(cursor)
+        self._output_widget.ensureCursorVisible()
+
+    def _set_matches(self, matches: list[_LogMatch]) -> None:
+        self._matches_model.set_matches(matches)
+        self._update_matches_view()
+        if self._search_mode:
+            self._go_to_match(1)
+
+    def _can_show_matches(self) -> bool:
+        return bool(
+            self._search_mode
+            and self._search_text
+            and self._search_field.hasFocus()
+        )
+
+    def _update_matches_view(self) -> None:
+        """Show the matches list only while searching in the search field."""
+        view = self._matches_view
+        if not self._can_show_matches():
+            view.hide()
+            return
+        # Keep one row for the 'No matches' placeholder
+        rows = min(
+            max(self._matches_model.rowCount(), 1),
+            self.max_visible_matches,
+        )
+        row_height = _LogMatchDelegate.row_height(view.fontMetrics())
+        view.setFixedHeight(rows * row_height + 2 * view.frameWidth())
+        view.show()
+
+    def _on_search_changed(self) -> None:
+        self._search_text = self._search_field.text().strip().casefold()
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_level_filter_changed(self) -> None:
+        self._level_filter = set(self._level_filter_widget.value())
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_surrounding_lines_changed(self, value: int) -> None:
+        self._surrounding_line_count = value
+        self._need_refresh = True
         self._update_logs()
 
     def clear(self) -> None:
@@ -462,6 +917,10 @@ class DetailsWidget(QtWidgets.QWidget):
         self._report_item = report
         self._plugin_filter = set()
         self._instance_filter = set()
+        self._level_filter_widget.set_value([])
+        self._level_filter = set()
+        self._surrounding_lines.setValue(0)
+        self._surrounding_line_count = 0
         self._need_refresh = True
         self._update_logs()
 
@@ -479,23 +938,88 @@ class DetailsWidget(QtWidgets.QWidget):
         if not self._is_active or not self._need_refresh:
             return
 
-        if self._report_item is None:
+        report = self._report_item
+        if report is None:
             self._output_widget.setPlainText("")
+            self._set_matches([])
             return
 
+        # Logs with their source: the plugin and the instance if it has one
+        plugin_labels = {
+            plugin.id: plugin.label for plugin in report.plugins_info
+        }
+        instance_labels = {
+            instance_id: f" | {instance.label or 'No label'}"
+            for instance_id, instance in report.instances_by_id.items()
+        }
         filtered_logs = [
-            log
-            for _, _, log in self._report_item.iter_logs(
+            (
+                plugin_labels.get(plugin_id, "")
+                + instance_labels.get(instance_id, ""),
+                log,
+            )
+            for plugin_id, instance_id, log in report.iter_logs(
                 plugin_ids_filter=self._plugin_filter or None,
                 instance_ids_filter=self._instance_filter or None,
             )
+            if not self._level_filter or self._log_matches_level(log)
         ]
+
+        if self._search_text and not self._search_mode:
+            matching_indices = {
+                index
+                for index, (_, log) in enumerate(filtered_logs)
+                if self._log_matches_search(log)
+            }
+            if self._surrounding_line_count:
+                matching_indices = {
+                    context_index
+                    for index in matching_indices
+                    for context_index in range(
+                        max(0, index - self._surrounding_line_count),
+                        min(
+                            len(filtered_logs),
+                            index + self._surrounding_line_count + 1,
+                        ),
+                    )
+                }
+            filtered_logs = [
+                item
+                for index, item in enumerate(filtered_logs)
+                if index in matching_indices
+            ]
 
         show_timestamp = self._timestamp_check.isChecked()
         filler = _LogFiller(
-            self._output_widget, filtered_logs, show_timestamp
+            self._output_widget,
+            filtered_logs,
+            show_timestamp,
+            self._search_text,
         )
         filler.fill()
+        self._set_matches(filler.matches)
+
+    def _log_matches_search(self, log: ReportLog) -> bool:
+        if log.type == "record":
+            searchable_text = "\n".join(
+                text
+                for text in (log.message, log.exc_info)
+                if text
+            )
+        elif log.type == "error":
+            searchable_text = log.traceback or ""
+        else:
+            return False
+        return self._search_text in searchable_text.casefold()
+
+    def _log_matches_level(self, log: ReportLog) -> bool:
+        if log.type == "error":
+            normalized_level = logging.ERROR
+        else:
+            normalized_level = log.levelno
+            if normalized_level == logging.CRITICAL:
+                normalized_level = logging.ERROR
+        return normalized_level in self._level_filter
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
