@@ -109,10 +109,6 @@ class FakeController:
             UserItem("libor", None, None, None, True),
         ]
 
-    def get_user_avatar_path(self, username: str) -> str | None:
-        self.calls.append(("avatar", username))
-        return None
-
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:
@@ -229,7 +225,6 @@ def test_controllers_implement_the_interface(controller_class: type):
     assert set(methods) == {
         "get_activity_items",
         "get_project_status_items",
-        "get_user_avatar_path",
         "get_user_items",
         "get_version_thumbnail_path",
     }
@@ -513,17 +508,33 @@ def test_activity_widget_shares_a_passed_avatar_cache(qtbot):
     assert alone._avatar_cache is not shared_cache
 
 
-def test_avatars_are_loaded_by_the_controller(qtbot, monkeypatch):
+def test_avatars_come_from_the_shared_image_cache(
+    qtbot, monkeypatch, tmp_path
+):
+    """Avatars are not downloaded again for the activity feed."""
+    avatar_path = tmp_path / "libor.png"
+    avatar_path.write_bytes(b"png")
+    keys = []
+
+    class FakeImageCache:
+        def get(self, key, file_closure):
+            keys.append(key)
+            return str(avatar_path)
+
+    monkeypatch.setattr(
+        user_avatars.ImageCache, "get_instance", FakeImageCache
+    )
     avatars_queue = FakeTaskQueue()
     monkeypatch.setattr(
         user_avatars, "get_task_queue", lambda: avatars_queue
     )
-    controller = FakeController()
-    widget = _create_widget(qtbot, controller)
+    widget = _create_widget(qtbot, FakeController())
 
     widget._avatar_cache.pixmap("libor", "Libor", 20)
     assert avatars_queue.run() == 1
-    assert ("avatar", "libor") in controller.calls
-    # A user is asked for once, also when there is no avatar
+    # The key that the views of all tools use for the avatar of a user
+    assert keys == ["user-avatar/libor"]
+    assert widget._avatar_cache._sources == {"libor": str(avatar_path)}
+    # A user is asked for once
     widget._avatar_cache.pixmap("libor", "Libor", 20)
     assert avatars_queue.run() == 0

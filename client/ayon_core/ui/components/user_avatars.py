@@ -13,7 +13,6 @@ from functools import lru_cache
 import os
 import tempfile
 import time
-from typing import Callable
 
 import ayon_api
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
@@ -109,27 +108,14 @@ class UserAvatarCache(QtCore.QObject):
     :meth:`pixmap` never blocks: it returns an initials avatar right away
     and schedules the real image, emitting :attr:`avatar_updated` when the
     download lands so views can repaint.
-
-    Args:
-        parent: Parent object.
-        avatar_loader: Callable returning the path to the avatar image of
-            a username, or nothing if the user has none. It is called in
-            a background thread. Tools pass a method of their controller,
-            so the avatar is downloaded by the backend. Without it the
-            avatar is downloaded from the server by this cache.
     """
 
     #: Emitted with the login name once a downloaded avatar replaced the
     #: initials placeholder for that user.
     avatar_updated = QtCore.Signal(str)
 
-    def __init__(
-        self,
-        parent: QtCore.QObject | None = None,
-        avatar_loader: Callable[[str], str | None] | None = None,
-    ) -> None:
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
-        self._avatar_loader = avatar_loader
         self._pixmaps: dict[tuple[str, int], QtGui.QPixmap] = {}
         self._sources: dict[str, str] = {}
         self._pending: set[str] = set()
@@ -197,20 +183,7 @@ class UserAvatarCache(QtCore.QObject):
             return
         self._pending.add(user_name)
 
-        avatar_loader = self._avatar_loader
-
         def _work() -> str:
-            if avatar_loader is not None:
-                # The loader has its own cache
-                try:
-                    return avatar_loader(user_name) or ""
-                except Exception:  # noqa: BLE001 - avatars are optional
-                    log.debug(
-                        "Could not load avatar for %r",
-                        user_name,
-                        exc_info=True,
-                    )
-                    return ""
             cache = ImageCache.get_instance()
             try:
                 file_path = cache.get(

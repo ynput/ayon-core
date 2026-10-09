@@ -139,9 +139,7 @@ class BrowserTable(AYContainer):
         self._tags_delegate = TagsDelegate(self._table)
         self._boolean_delegate = BooleanCheckboxDelegate(self._table)
         self._time_delegate = PrettyTimeDelegate(self._table)
-        self._avatar_cache = UserAvatarCache(
-            self, avatar_loader=self._controller.get_user_avatar_path
-        )
+        self._avatar_cache = UserAvatarCache(self)
         self._avatar_cache.avatar_updated.connect(
             lambda _name: self._table.viewport().update()
         )

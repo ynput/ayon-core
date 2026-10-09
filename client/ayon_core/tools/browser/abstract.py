@@ -435,23 +435,6 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
-    def get_user_avatar_path(self, username: str) -> str | None:
-        """Path to the avatar image of a user.
-
-        The avatar is downloaded if it is not in the avatars cache of the
-        machine, so it should not be called from the main thread.
-
-        Args:
-            username (str): Name of the user.
-
-        Returns:
-            str | None: Path to the image, or None if the user has no
-                avatar.
-
-        """
-        pass
-
-    @abstractmethod
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:

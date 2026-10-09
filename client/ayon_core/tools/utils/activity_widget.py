@@ -82,16 +82,6 @@ class ActivityController(Protocol):
             Users of the project, see ``UsersModel.get_user_items``.
         """
 
-    def get_user_avatar_path(self, username: str) -> str | None:
-        """Path to the avatar image of a user, downloaded if needed.
-
-        Args:
-            username: Name of the user.
-
-        Returns:
-            Path to the image file, or ``None`` if the user has no avatar.
-        """
-
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:
@@ -236,7 +226,8 @@ class ActivityWidget(AYActivityStream):
             the feed.
         *args: Forwarded to ``AYActivityStream``.
         avatar_cache: Source of user avatars, created if not passed. Pass
-            the cache of the tool to share it with its other views.
+            the cache of the tool to share it with its other views. The
+            downloaded avatars are shared by all caches either way.
         **kwargs: Forwarded to ``AYActivityStream``.
     """
 
@@ -252,9 +243,7 @@ class ActivityWidget(AYActivityStream):
         if avatar_cache is None:
             # Created after 'super().__init__' as it is parented to
             #   the widget
-            self._avatar_cache = UserAvatarCache(
-                self, avatar_loader=controller.get_user_avatar_path
-            )
+            self._avatar_cache = UserAvatarCache(self)
             self._avatar_cache.avatar_updated.connect(self._refresh_avatars)
         self._controller = controller
         self._context_id = f"activity_widget_{id(self)}"

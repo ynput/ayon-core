@@ -164,9 +164,6 @@ class BrowserController(AbstractBrowserController):
     def get_user_items(self, project_name: str | None) -> list[UserItem]:
         return self._users_model.get_user_items(project_name)
 
-    def get_user_avatar_path(self, username: str) -> str | None:
-        return self._users_model.get_user_avatar_path(username)
-
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:

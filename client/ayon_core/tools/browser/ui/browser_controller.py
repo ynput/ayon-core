@@ -2245,17 +2245,6 @@ class BrowserWidgetController(QtCore.QObject):
         """
         return self._loader_controller.get_user_items(project_name)
 
-    def get_user_avatar_path(self, username: str) -> str | None:
-        """Return the path to the avatar of a user, background thread safe.
-
-        Args:
-            username: Name of the user.
-
-        Returns:
-            Path to the image file, or ``None`` if the user has no avatar.
-        """
-        return self._loader_controller.get_user_avatar_path(username)
-
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:
