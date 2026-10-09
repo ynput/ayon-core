@@ -338,6 +338,7 @@ query GetProducts(
             updatedAt
             version
             featuredVersionType
+            heroVersionId
           }
         }
         cursor
