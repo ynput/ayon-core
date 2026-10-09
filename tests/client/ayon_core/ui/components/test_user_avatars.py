@@ -221,3 +221,71 @@ def test_user_without_avatar_is_not_cached(monkeypatch):
     # The miss is remembered and the initials placeholder is kept
     assert connection.urls == ["users/kuba/avatar"]
     assert cache._sources == {"kuba": ""}
+
+
+def test_cached_avatar_is_read_while_other_process_stores_it(
+    monkeypatch, tmp_path
+):
+    """On Windows a file cannot be opened while it is being replaced."""
+    avatar_path = tmp_path / "avatar.png"
+    avatar_path.write_bytes(b"png data")
+    attempts: list[str] = []
+
+    def open_file_in_use(file_path: str, mode: str) -> Any:
+        attempts.append(file_path)
+        if len(attempts) < 3:
+            raise PermissionError(13, "Permission denied", file_path)
+        return open(file_path, mode)
+
+    monkeypatch.setattr(
+        user_avatars, "open", open_file_in_use, raising=False
+    )
+    monkeypatch.setattr(user_avatars.time, "sleep", lambda _seconds: None)
+
+    assert user_avatars._read_file_head(str(avatar_path)) == b"png data"
+    assert len(attempts) == 3
+
+
+def test_avatar_removed_by_other_process_is_downloaded_again(
+    monkeypatch, tmp_path
+):
+    """The image cache is shared, other process can evict the file."""
+    from qtpy import QtGui, QtWidgets
+
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    image = QtGui.QImage(32, 32, QtGui.QImage.Format_ARGB32)
+    image.fill(QtGui.QColor("red"))
+    avatar_path = str(tmp_path / "avatar.png")
+    assert image.save(avatar_path)
+
+    class FakeImageCache:
+        def get(self, key: str, file_closure: Any) -> str:
+            return avatar_path
+
+    tasks: list[Any] = []
+
+    class ManualQueue:
+        def enqueue(self, task: Any) -> None:
+            tasks.append(task)
+
+    monkeypatch.setattr(
+        user_avatars.ImageCache,
+        "get_instance",
+        classmethod(lambda cls: FakeImageCache()),
+    )
+    monkeypatch.setattr(user_avatars, "get_task_queue", ManualQueue)
+    cache = user_avatars.UserAvatarCache()
+    cache._sources["kuba"] = str(tmp_path / "evicted.png")
+
+    # Initials are shown instead of an empty image
+    pixmap = cache.pixmap("kuba", "Kuba Trllo", 20)
+    color = pixmap.toImage().pixelColor(2, pixmap.height() // 2)
+    assert color.alpha() > 0
+    assert "kuba" not in cache._sources
+
+    # The avatar is downloaded again
+    assert len(tasks) == 1
+    task = tasks.pop()
+    task.callback(task.function())
+    app.processEvents()
+    assert cache._sources == {"kuba": avatar_path}
