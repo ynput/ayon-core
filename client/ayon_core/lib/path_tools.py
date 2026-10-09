@@ -64,18 +64,18 @@ def collect_frames(files):
         files, minimum_items=1, patterns=patterns)
 
     sources_and_frames = {}
-    if collections:
-        for collection in collections:
-            src_head = collection.head
-            src_tail = collection.tail
+    for collection in collections:
+        src_head = collection.head
+        src_tail = collection.tail
 
-            for index in collection.indexes:
-                src_frame = collection.format("{padding}") % index
-                src_file_name = "{}{}{}".format(
-                    src_head, src_frame, src_tail)
-                sources_and_frames[src_file_name] = src_frame
-    else:
-        sources_and_frames[remainder.pop()] = None
+        for index in collection.indexes:
+            src_frame = collection.format("{padding}") % index
+            src_file_name = "{}{}{}".format(
+                src_head, src_frame, src_tail)
+            sources_and_frames[src_file_name] = src_frame
+
+    for src_file_name in remainder:
+        sources_and_frames[src_file_name] = None
 
     return sources_and_frames
 
