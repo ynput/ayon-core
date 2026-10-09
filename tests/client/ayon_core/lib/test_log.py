@@ -193,6 +193,29 @@ def test_disabled_level_is_not_processed(
     assert foreign_handler.messages == ["Enabled", "Enabled debug"]
 
 
+@pytest.mark.parametrize(
+    "message, args, expected",
+    [
+        # Too few arguments
+        ("Loaded %s from %s", ("asset",), "Loaded %s from %s 'asset'"),
+        # Arguments passed like to 'print'
+        ("Data:", ([1, 2],), "Data: [1, 2]"),
+        # Wrong type of argument
+        ("Version %d", ("v001",), "Version %d 'v001'"),
+    ],
+)
+def test_mismatched_arguments_do_not_raise(
+    log_module, foreign_handler, message, args, expected
+):
+    """Logging must not break the caller, arguments are kept in message."""
+    module = log_module()
+    log = module.Logger.get_logger("ayon_core.tests.bad_args")
+
+    log.info(message, *args)
+
+    assert foreign_handler.messages == [expected]
+
+
 def test_foreign_handlers_get_plain_message(log_module, foreign_handler):
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.foreign")
