@@ -22,6 +22,14 @@ class WorkfileActionsModel(BaseSettingsModel):
             " or with a different comment."
         ),
     )
+    CopyFileAction: WorkfileActionPluginModel = SettingsField(
+        default_factory=WorkfileActionPluginModel,
+        title="Copy file path / Copy file",
+        description=(
+            "Copy path of the selected workfile, or the workfile itself,"
+            " to clipboard."
+        ),
+    )
     IncrementAndOpenAction: WorkfileActionPluginModel = SettingsField(
         default_factory=WorkfileActionPluginModel,
         title="Increment and open",
@@ -37,6 +45,9 @@ DEFAULT_WORKFILE_ACTIONS_VALUES = {
         "enabled": True
     },
     "DuplicateWorkfileAction": {
+        "enabled": True
+    },
+    "CopyFileAction": {
         "enabled": True
     },
     "IncrementAndOpenAction": {

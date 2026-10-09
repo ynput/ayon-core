@@ -131,6 +131,8 @@ def test_discovery_and_sorting(tmp_path):
         "test.redirect",
         "test.redirect",
         "core.duplicate-workfile",
+        "core.copy-file",
+        "core.copy-file",
         "core.explore-here",
     ]
     assert [item.label for item in items[1:3]] == ["A", "Redirect"]
@@ -151,6 +153,8 @@ def test_settings_can_disable_plugins(tmp_path):
     assert [(item.identifier, item.order) for item in items] == [
         ("test.save-changes", -10),
         ("core.duplicate-workfile", 30),
+        ("core.copy-file", 40),
+        ("core.copy-file", 41),
         ("test.redirect", 100),
         ("test.redirect", 100),
     ]
@@ -365,6 +369,33 @@ def test_project_name_comes_from_host(tmp_path):
     ) as get_settings_mock:
         assert context.get_project_settings() == {"core": {}}
     get_settings_mock.assert_called_once_with("host_project")
+
+
+def test_copy_file_items(tmp_path):
+    context = _create_context(tmp_path)
+    identifier = "core.copy-file"
+
+    def _get_items(selection):
+        return [
+            item
+            for item in context.get_action_items(selection)
+            if item.identifier == identifier
+        ]
+
+    items = _get_items(_create_selection(filepath="/work/file_v001.ma"))
+    assert [(item.label, item.data, item.quick_action) for item in items] == [
+        ("Copy file path", {"action": "copy-path"}, False),
+        ("Copy file", {"action": "copy-file"}, False),
+    ]
+    # Published workfile can be copied too
+    assert len(_get_items(_create_selection(
+        area="published",
+        representation_id="repre-1",
+        filepath="/publish/file_v001.ma",
+    ))) == 2
+    # There is nothing to copy without selected workfile
+    assert _get_items(_create_selection()) == []
+    assert _get_items(_create_selection(area="published")) == []
 
 
 def test_duplicate_workfile(tmp_path):

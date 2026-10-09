@@ -21,7 +21,7 @@ class DuplicateWorkfileAction(WorkfileSimpleActionPlugin):
 
     label = "Duplicate"
     order = 30
-    icon = MaterialSymbolsIcon("file_copy")
+    icon = MaterialSymbolsIcon("control_point_duplicate")
     tooltip = "Duplicate selected workfile"
     description = (
         "Copy the selected workfile to a different version"

@@ -82,6 +82,8 @@ def test_selection_and_action_items(controller):
     assert [item.identifier for item in items] == [
         "core.increment-and-open",
         "core.duplicate-workfile",
+        "core.copy-file",
+        "core.copy-file",
         "core.explore-here",
     ]
 
@@ -112,6 +114,7 @@ def test_action_items_are_converted_for_ui(controller):
         "core.explore-here": True,
         "core.increment-and-open": True,
         "core.duplicate-workfile": False,
+        "core.copy-file": False,
     }
     # Items can be converted to data and back
     assert [ActionItem.from_data(item.to_data()) for item in items] == items
@@ -145,6 +148,33 @@ def test_action_items_are_cached(controller):
     # Reset of the model does clear the cache too
     controller._actions_model.reset()
     assert controller.get_cached_workfile_action_items(selection) is None
+
+
+def test_copy_file_to_clipboard(controller, qapp):
+    selection = controller.get_workfile_action_selection(False)
+    filepath = os.path.normpath(selection.filepath)
+    events = []
+
+    def _on_event(event):
+        events.append(event)
+
+    controller.register_event_callback("workfile_action.finished", _on_event)
+
+    clipboard = qapp.clipboard()
+    clipboard.clear()
+    controller.trigger_workfile_action(
+        "core.copy-file", selection, {"action": "copy-path"}, {}
+    )
+    assert events[-1]["crashed"] is False
+    assert events[-1]["result"].success is True
+    assert clipboard.text() == filepath
+
+    controller.trigger_workfile_action(
+        "core.copy-file", selection, {"action": "copy-file"}, {}
+    )
+    assert events[-1]["crashed"] is False
+    urls = clipboard.mimeData().urls()
+    assert [os.path.normpath(url.toLocalFile()) for url in urls] == [filepath]
 
 
 def test_selection_passes_cached_data_to_plugins(controller):
