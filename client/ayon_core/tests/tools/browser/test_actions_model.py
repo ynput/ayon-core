@@ -20,46 +20,25 @@ from ayon_core.tools.browser.models.actions import (
 from ayon_core.tools.browser.ui.actions_utils import _get_group_key
 
 
-class _ImageLoader:
-    label = "Load image"
-    order = 0
-    icon = None
-
-    @classmethod
-    def get_options(cls, contexts):
-        return []
-
-
-class _ReferenceLoader:
-    label = "Reference"
-    order = -10
-    icon = None
-
-    @classmethod
-    def get_options(cls, contexts):
-        return []
+def _loader(name: str, label: str, order: int) -> type:
+    """Minimal stand-in for a loader plugin class."""
+    return type(
+        name,
+        (),
+        {
+            "label": label,
+            "order": order,
+            "icon": None,
+            "get_options": classmethod(lambda cls, contexts: []),
+        },
+    )
 
 
-class _OtherImageLoader:
-    """Different loader with the label of the image loader."""
-
-    label = "Load image"
-    order = 20
-    icon = None
-
-    @classmethod
-    def get_options(cls, contexts):
-        return []
-
-
-class _ProductLoader:
-    label = "Delete old versions"
-    order = 35
-    icon = None
-
-    @classmethod
-    def get_options(cls, contexts):
-        return []
+_ImageLoader = _loader("ImageLoader", "Load image", 0)
+_ReferenceLoader = _loader("ReferenceLoader", "Reference", -10)
+# Different loader with the label of the image loader
+_OtherImageLoader = _loader("OtherImageLoader", "Load image", 20)
+_ProductLoader = _loader("ProductLoader", "Delete old versions", 35)
 
 
 def _repre_context(repre_id: str, repre_name: str) -> dict:
