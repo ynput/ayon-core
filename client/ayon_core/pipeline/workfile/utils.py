@@ -597,7 +597,7 @@ def copy_workfile_to_context(
     description: Optional[str] = None,
     open_workfile: bool = True,
     prepared_data: Optional[CopyWorkfileOptionalData] = None,
-) -> None:
+) -> str:
     """Copy workfile to a context.
 
     Copy workfile to a specified folder and task. Destination path is
@@ -611,9 +611,13 @@ def copy_workfile_to_context(
             passed.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
+        open_workfile (bool): Open the workfile when copied.
         prepared_data (Optional[CopyWorkfileOptionalData]): Prepared data
             for speed enhancements. Rootless path is calculated in this
             function.
+
+    Returns:
+        str: Path to the destination workfile.
 
     """
     from ayon_core.pipeline import Anatomy
@@ -621,6 +625,8 @@ def copy_workfile_to_context(
 
     host = registered_host()
     project_name = host.get_current_project_name()
+    if prepared_data is None:
+        prepared_data = CopyWorkfileOptionalData()
 
     anatomy = prepared_data.anatomy
     if anatomy is None:
@@ -654,11 +660,13 @@ def copy_workfile_to_context(
             task_entity,
             prepared_data=list_prepared_data
         )
-        if workfiles:
-            version = max(
-                workfile.version
-                for workfile in workfiles
-            ) + 1
+        versions = [
+            workfile.version
+            for workfile in workfiles
+            if workfile.version is not None
+        ]
+        if versions:
+            version = max(versions) + 1
         else:
             version = get_versioning_start(
                 project_name,
@@ -708,6 +716,7 @@ def copy_workfile_to_context(
         open_workfile=open_workfile,
         prepared_data=prepared_data,
     )
+    return str(workfile_path)
 
 
 def find_workfile_rootless_path(

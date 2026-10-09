@@ -12,6 +12,9 @@ from ayon_core.tools.workfiles.widgets import (
     files_widget_published,
     files_widget_workarea,
 )
+from ayon_core.tools.workfiles.widgets.actions_widgets import (
+    WorkfileActionsLoader,
+)
 from ayon_core.tools.workfiles.widgets.utils import (
     USERNAME_ROLE,
     WorkfilesDelegate,
@@ -113,7 +116,10 @@ def test_published_author_has_avatar(avatar_tasks):
 
 
 def test_avatar_download_repaints_the_view(qtbot, avatar_tasks):
-    widget = files_widget_workarea.WorkAreaFilesWidget(_Controller(), None)
+    controller = _Controller()
+    widget = files_widget_workarea.WorkAreaFilesWidget(
+        controller, WorkfileActionsLoader(controller), None
+    )
     qtbot.addWidget(widget)
     avatar_cache = widget._work_files_delegate._avatar_cache
     paints = []

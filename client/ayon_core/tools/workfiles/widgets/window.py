@@ -3,12 +3,16 @@ from pathlib import Path
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources
+from ayon_core.pipeline.actions import WorkfileAreaType
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils import (
     FoldersWidget,
     MessageOverlayObject,
     TasksWidget,
     FoldersFiltersWidget,
+    get_qt_icon,
 )
+from ayon_core.tools.workfiles.abstract import ActionSelectionData
 from ayon_core.tools.workfiles.control import BaseWorkfileController
 from ayon_core.ui.components import (
     AYButton,
@@ -20,6 +24,7 @@ from ayon_core.ui.components import (
     AYLineEdit
 )
 
+from .actions_widgets import WorkfileActionsLoader
 from .files_widget import FilesWidget
 from .side_panel import SidePanelWidget
 from .utils import BaseOverlayFrame
@@ -94,6 +99,10 @@ class WorkfilesToolWindow(AYContainer):
         self._host_is_valid = None
 
         self._controller = controller
+        # Result of workfile action that requested to open a workfile
+        self._action_result_on_open = None
+        # Loader of workfile actions shared across widgets
+        self._actions_loader = WorkfileActionsLoader(controller, self)
 
         # Create pages widget and set it as central widget
         pages_widget = QtWidgets.QStackedWidget(self)
@@ -107,7 +116,9 @@ class WorkfilesToolWindow(AYContainer):
         )
         tasks_widget.set_status_column_visible(True)
         col_3_widget = self._create_col_3_widget(controller, home_body_widget)
-        side_panel = SidePanelWidget(controller, home_body_widget)
+        side_panel = SidePanelWidget(
+            controller, self._actions_loader, home_body_widget
+        )
 
         pages_widget.addWidget(home_page_widget)
 
@@ -153,6 +164,10 @@ class WorkfilesToolWindow(AYContainer):
         controller.register_event_callback(
             "open_workfile.finished",
             self._on_open_finished
+        )
+        controller.register_event_callback(
+            "workfile_action.finished",
+            self._on_workfile_action_finished
         )
         controller.register_event_callback(
             "controller.reset.started",
@@ -251,7 +266,9 @@ class WorkfilesToolWindow(AYContainer):
         header_layout.addWidget(files_filter_input, 1)
         header_layout.addWidget(published_checkbox, 0)
 
-        files_widget = FilesWidget(controller, col_widget)
+        files_widget = FilesWidget(
+            controller, self._actions_loader, col_widget
+        )
 
         col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)
@@ -411,13 +428,132 @@ class WorkfilesToolWindow(AYContainer):
             )
 
     def _on_open_finished(self, event):
+        action_result = self._action_result_on_open
+        self._action_result_on_open = None
         if event["failed"]:
             self._overlay_messages_widget.add_message(
                 "Failed to open workfile",
                 "error",
             )
+            if action_result is not None:
+                self._apply_action_result_context(action_result)
         else:
             self.close()
+
+    def _on_workfile_action_finished(self, event):
+        if event["crashed"]:
+            self._overlay_messages_widget.add_message(
+                "Action failed",
+                "error",
+            )
+            return
+
+        result = event["result"]
+        if result is None:
+            return
+
+        if result.message:
+            message_type = None if result.success else "error"
+            self._overlay_messages_widget.add_message(
+                result.message, message_type
+            )
+
+        if result.form is not None:
+            # Action continues when the form is submitted
+            form_values = self._exec_action_form(
+                result.form, result.form_values
+            )
+            if form_values is not None:
+                self._controller.trigger_workfile_action(
+                    event["identifier"],
+                    ActionSelectionData.from_data(event["selection"]),
+                    event["data"],
+                    form_values,
+                )
+            return
+
+        if result.close_tool:
+            self.close()
+            return
+
+        open_workfile = result.open_workfile
+        if open_workfile is not None:
+            # Refresh and redirect are applied if the workfile is not opened
+            self._action_result_on_open = result
+            if self._files_widget.open_workfile(
+                open_workfile.filepath,
+                open_workfile.folder_id,
+                open_workfile.task_id,
+            ):
+                return
+            # User cancelled the opening
+            self._action_result_on_open = None
+
+        if result.duplicate_workfile:
+            self._files_widget.duplicate_workfile(result.duplicate_workfile)
+
+        self._apply_action_result_context(result)
+
+    def _apply_action_result_context(self, result):
+        redirect = result.redirect
+        # Redirect does refresh too, so files created by the action can be
+        #   selected
+        if result.refresh or redirect is not None:
+            self.refresh()
+
+        if redirect is not None:
+            self._redirect(redirect)
+
+    def _exec_action_form(self, form, form_values):
+        dialog = AttributeDefinitionsDialog(
+            form.fields,
+            title=form.title,
+            parent=self,
+        )
+        if form_values:
+            dialog.set_values(form_values)
+
+        if form.submit_label:
+            dialog.set_submit_label(form.submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if form.submit_icon:
+            dialog.set_submit_icon(get_qt_icon(form.submit_icon))
+
+        if form.cancel_label:
+            dialog.set_cancel_label(form.cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if form.cancel_icon:
+            dialog.set_cancel_icon(get_qt_icon(form.cancel_icon))
+
+        dialog.setMinimumSize(300, 140)
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+            return None
+        return dialog.get_values()
+
+    def _redirect(self, redirect):
+        if redirect.area is not None:
+            self._published_checkbox.setChecked(
+                redirect.area == WorkfileAreaType.published
+            )
+
+        # Use current selection if the context is not defined
+        folder_id = redirect.folder_id
+        task_name = redirect.task_name
+        if not folder_id:
+            folder_id = self._controller.get_selected_folder_id()
+            if not task_name:
+                task_name = self._controller.get_selected_task_name()
+
+        self._controller.set_expected_selection(
+            folder_id,
+            task_name,
+            workfile_name=redirect.workfile_name,
+            representation_id=redirect.representation_id,
+        )
 
     def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
         folder_ids = None
