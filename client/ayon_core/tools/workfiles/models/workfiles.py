@@ -35,6 +35,12 @@ from ayon_core.pipeline.workfile import (
     get_workdir_with_workdir_data,
     get_workfile_template_key,
     save_workfile_info,
+    save_next_version,
+)
+from ayon_core.pipeline.workfile.task_usage import (
+    acknowledge_task_usage_items,
+    get_task_usage_settings,
+    get_other_users_task_usage_items,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.tools.workfiles.abstract import (
@@ -45,6 +51,7 @@ from ayon_core.tools.workfiles.abstract import (
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline.anatomy import Anatomy, AnatomyTemplateResult
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
 
 
 class WorkfilesModel:
@@ -104,12 +111,55 @@ class WorkfilesModel:
     def get_current_workfile(self) -> str | None:
         return self._host.get_current_workfile()
 
+    def get_task_usage_items(self, task_id: str) -> list[TaskUsageItem]:
+        """Sessions of other users that are working on a task.
+
+        Args:
+            task_id (str): Task id.
+
+        Returns:
+            list[TaskUsageItem]: Sessions of other users working on the
+                task. Empty list if the notification is not enabled for
+                the task. Sessions the user did confirm are skipped.
+
+        """
+        project_name = self._controller.get_current_project_name()
+        try:
+            task_entity = self._controller.get_task_entity(
+                project_name, task_id
+            )
+            settings = get_task_usage_settings(
+                project_name,
+                self._host.name,
+                task_entity["taskType"],
+                task_entity["name"],
+                project_settings=self._controller.project_settings,
+            )
+            if not settings.enabled:
+                return []
+            return get_other_users_task_usage_items(
+                project_name, task_id, settings.stale_timeout_hours
+            )
+        except Exception:
+            self._log.warning(
+                "Failed to receive task in-use information.", exc_info=True
+            )
+        return []
+
+    def confirm_task_usage_items(self, items: list[TaskUsageItem]) -> None:
+        acknowledge_task_usage_items(items)
+
     def open_workfile(
-        self, folder_id: str, task_id: str, filepath: str
+        self,
+        folder_id: str,
+        task_id: str,
+        filepath: str,
+        version_up: bool = False,
     ) -> None:
         self._emit_event("open_workfile.started")
 
         failed = False
+        version_up_failed = False
         try:
             self._open_workfile(folder_id, task_id, filepath)
 
@@ -117,9 +167,26 @@ class WorkfilesModel:
             failed = True
             self._log.warning("Open of workfile failed", exc_info=True)
 
+        if version_up and not failed:
+            try:
+                save_next_version(
+                    prepared_data=SaveWorkfileOptionalData(
+                        project_entity=self._controller.get_project_entity(
+                            self._project_name
+                        ),
+                        anatomy=self._controller.project_anatomy,
+                        project_settings=self._controller.project_settings,
+                    )
+                )
+            except Exception:
+                version_up_failed = True
+                self._log.warning(
+                    "Version up of workfile failed", exc_info=True
+                )
+
         self._emit_event(
             "open_workfile.finished",
-            {"failed": failed},
+            {"failed": failed, "version_up_failed": version_up_failed},
         )
 
     def save_current_workfile(self) -> None:

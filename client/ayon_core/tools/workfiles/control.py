@@ -31,6 +31,7 @@ if typing.TYPE_CHECKING:
     import logging
 
     from ayon_core.host import WorkfileInfo
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
 
     from ayon_core.tools.common_models.settings import TaskSortMode
     from ayon_core.tools.common_models import (
@@ -610,10 +611,22 @@ class BaseWorkfileController(
         )
 
     # Controller actions
+    def get_task_usage_items(self, task_id: str) -> list[TaskUsageItem]:
+        return self._workfiles_model.get_task_usage_items(task_id)
+
+    def confirm_task_usage_items(self, items: list[TaskUsageItem]) -> None:
+        self._workfiles_model.confirm_task_usage_items(items)
+
     def open_workfile(
-        self, folder_id: str, task_id: str, filepath: str
+        self,
+        folder_id: str,
+        task_id: str,
+        filepath: str,
+        version_up: bool = False,
     ) -> None:
-        self._workfiles_model.open_workfile(folder_id, task_id, filepath)
+        self._workfiles_model.open_workfile(
+            folder_id, task_id, filepath, version_up
+        )
 
     def save_current_workfile(self) -> None:
         self._workfiles_model.save_current_workfile()

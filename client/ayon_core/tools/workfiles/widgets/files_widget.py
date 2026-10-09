@@ -10,7 +10,12 @@ from ayon_core.ui.components import (
     AYButton
 )
 
+from ayon_core.pipeline.workfile.task_usage import (
+    get_same_workfile_items,
+)
+
 from .save_as_dialog import SaveAsDialog
+from .task_in_use_dialog import TaskInUseDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
 
@@ -215,7 +220,52 @@ class FilesWidget(AYContainer):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def _open_workfile(self, folder_id, task_name, filepath):
+    def _confirm_task_in_use(
+        self, task_id, confirm_label="Open anyway", workfile=None
+    ):
+        """Notify user that the task is in use by other users.
+
+        Args:
+            task_id (str): Task id.
+            confirm_label (str): Label of the button to continue.
+            workfile (Optional[str]): Workfile that will be opened. Version
+                up is offered if other user works in the same workfile.
+
+        Returns:
+            Optional[bool]: None if user did cancel the action, True if
+                user wants to work in next version of the workfile,
+                otherwise False.
+        """
+        items = self._controller.get_task_usage_items(task_id)
+        if not items:
+            return False
+        full_names = {
+            username: user_item.full_name
+            for username, user_item in (
+                self._controller.get_user_items_by_name().items()
+            )
+            if user_item.full_name
+        }
+        dialog = TaskInUseDialog(
+            items,
+            full_names,
+            parent=self,
+            confirm_label=confirm_label,
+            version_up=bool(get_same_workfile_items(items, workfile)),
+        )
+        confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
+        version_up = dialog.is_version_up_requested()
+        dialog.deleteLater()
+        if not confirmed:
+            return None
+        self._controller.confirm_task_usage_items(items)
+        return version_up
+
+    def _open_workfile(self, folder_id, task_id, filepath):
+        version_up = self._confirm_task_in_use(task_id, workfile=filepath)
+        if version_up is None:
+            return
+
         if self._controller.has_unsaved_changes():
             result = self._save_changes_prompt()
             if result is None:
@@ -223,7 +273,9 @@ class FilesWidget(AYContainer):
 
             if result:
                 self._controller.save_current_workfile()
-        self._controller.open_workfile(folder_id, task_name, filepath)
+        self._controller.open_workfile(
+            folder_id, task_id, filepath, version_up
+        )
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()
@@ -300,6 +352,10 @@ class FilesWidget(AYContainer):
         result = self._exec_save_as_dialog()
         if result is None:
             return
+        if self._confirm_task_in_use(
+            result["task_id"], "Save anyway"
+        ) is None:
+            return
         self._controller.save_as_workfile(
             result["folder_id"],
             result["task_id"],
@@ -355,6 +411,8 @@ class FilesWidget(AYContainer):
             extension=extension,
         )
         if result is None:
+            return
+        if self._confirm_task_in_use(result["task_id"]) is None:
             return
 
         self._controller.copy_workfile_representation(
