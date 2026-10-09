@@ -296,6 +296,147 @@ class TestStaleContributions:
         assert _references(layer, "/hero{model=main}") == ["/proxy_v001.usd"]
 
 
+class TestEmptyVariantCleanup:
+    """Variants emptied by removing a stale contribution are removed."""
+
+    @staticmethod
+    def _variants(layer: Sdf.Layer, variant_set_name="model") -> list[str]:
+        prim_spec = layer.GetPrimAtPath("/hero")
+        if variant_set_name not in prim_spec.variantSets:
+            return []
+        return sorted(prim_spec.variantSets[variant_set_name].variants.keys())
+
+    @staticmethod
+    def _selections(layer: Sdf.Layer) -> dict[str, str]:
+        return dict(layer.GetPrimAtPath("/hero").variantSelections)
+
+    @pytest.mark.parametrize("policy", ["never", "if_not_set", "always"])
+    def test_renamed_variant_is_removed(self, stacker, layer, policy):
+        """Selection of the removed variant moves along with the rename."""
+        stacker.add_contributions_to_layer(
+            [_variant("main", "/main_v001.usd", "modelMain", "always")],
+            layer,
+        )
+        stacker.add_contributions_to_layer(
+            [_variant("default", "/main_v002.usd", "modelMain", policy)],
+            layer,
+        )
+        assert self._variants(layer) == ["default"]
+        assert self._selections(layer) == {"model": "default"}
+        assert _references(layer, "/hero{model=default}") == [
+            "/main_v002.usd"
+        ]
+
+    def test_selection_of_other_variant_is_preserved(self, stacker, layer):
+        stacker.add_contributions_to_layer(
+            [
+                _variant("main", "/main_v001.usd", "modelMain", "never"),
+                _variant("damaged", "/dmg_v001.usd", "modelDamaged", "always"),
+            ],
+            layer,
+        )
+        stacker.add_contributions_to_layer(
+            [_variant("default", "/main_v002.usd", "modelMain", "never")],
+            layer,
+        )
+        assert self._variants(layer) == ["damaged", "default"]
+        assert self._selections(layer) == {"model": "damaged"}
+
+    def test_variant_with_other_contribution_is_kept(self, stacker, layer):
+        stacker.add_contributions_to_layer(
+            [
+                _variant("main", "/main_v001.usd", "modelMain", "always"),
+                _variant("main", "/proxy_v001.usd", "modelProxy", "never"),
+            ],
+            layer,
+        )
+        stacker.add_contributions_to_layer(
+            [_variant("default", "/main_v002.usd", "modelMain", "never")],
+            layer,
+        )
+        assert self._variants(layer) == ["default", "main"]
+        assert self._selections(layer) == {"model": "main"}
+
+    def test_variant_with_other_opinions_is_kept(self, stacker, layer):
+        stacker.add_contributions_to_layer(
+            [_variant("main", "/main_v001.usd", "modelMain", "always")],
+            layer,
+        )
+        # Manually authored opinion inside the variant
+        Sdf.CreatePrimInLayer(layer, "/hero{model=main}child")
+        stacker.add_contributions_to_layer(
+            [_variant("default", "/main_v002.usd", "modelMain", "never")],
+            layer,
+        )
+        assert self._variants(layer) == ["default", "main"]
+        assert _references(layer, "/hero{model=main}") == []
+        assert self._selections(layer) == {"model": "main"}
+
+    def test_untouched_empty_variant_is_kept(self, stacker, layer):
+        stacker.add_contributions_to_layer(
+            [_variant("main", "/main_v001.usd", "modelMain", "always")],
+            layer,
+        )
+        # An intentionally empty variant not created by a contribution
+        Sdf.CreatePrimInLayer(layer, "/hero{model=none}")
+        stacker.add_contributions_to_layer(
+            [_variant("default", "/main_v002.usd", "modelMain", "never")],
+            layer,
+        )
+        assert self._variants(layer) == ["default", "none"]
+
+    def test_variant_refilled_in_same_publish_is_kept(self, stacker, layer):
+        stacker.add_contributions_to_layer(
+            [_variant("main", "/main_v001.usd", "modelMain", "always")],
+            layer,
+        )
+        stacker.add_contributions_to_layer(
+            [
+                _variant("default", "/main_v002.usd", "modelMain", "never"),
+                _variant("main", "/proxy_v001.usd", "modelProxy", "never"),
+            ],
+            layer,
+        )
+        assert self._variants(layer) == ["default", "main"]
+        assert _references(layer, "/hero{model=main}") == ["/proxy_v001.usd"]
+        assert self._selections(layer) == {"model": "main"}
+
+    def test_variant_to_sublayer_removes_variant_set(self, stacker, layer):
+        stacker.add_contributions_to_layer(
+            [_variant("main", "/main_v001.usd", "modelMain", "always")],
+            layer,
+        )
+        stacker.add_contributions_to_layer(
+            [SublayerContribution("/main_v002.usd", "modelMain", 0)],
+            layer,
+        )
+        prim_spec = layer.GetPrimAtPath("/hero")
+        assert _sublayers(layer) == [("/main_v002.usd", "modelMain")]
+        assert dict(prim_spec.variantSets) == {}
+        assert not prim_spec.HasInfo("variantSetNames")
+        assert self._selections(layer) == {}
+        assert "variant" not in layer.ExportToString()
+
+    def test_moved_to_other_variant_set(self, stacker, layer):
+        stacker.add_contributions_to_layer(
+            [
+                _variant("main", "/main_v001.usd", "modelMain", "always"),
+                _variant("damaged", "/dmg_v001.usd", "modelDamaged", "never"),
+            ],
+            layer,
+        )
+        contribution = _variant(
+            "main", "/main_v002.usd", "modelMain", "if_not_set"
+        )
+        contribution.variant_set_name = "geo"
+        stacker.add_contributions_to_layer([contribution], layer)
+
+        assert self._variants(layer, "model") == ["damaged"]
+        assert self._variants(layer, "geo") == ["main"]
+        # No selection remains for the removed variant of the other set
+        assert self._selections(layer) == {"geo": "main"}
+
+
 def test_unsupported_contribution_type(stacker, layer):
     with pytest.raises(TypeError):
         stacker.add_contributions_to_layer(
