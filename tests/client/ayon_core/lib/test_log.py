@@ -161,6 +161,38 @@ def test_positional_arguments_are_formatted(log_module, foreign_handler):
     assert foreign_handler.messages == ["Loaded asset from disk"]
 
 
+def test_disabled_level_is_not_processed(
+    log_module, foreign_handler, restore_logger_levels
+):
+    """Events of disabled level are dropped before processors run."""
+    module = log_module()
+    processed = []
+
+    def _record_method(logger, method_name, event_dict):
+        processed.append(method_name)
+        return event_dict
+
+    structlog.get_config()["processors"].insert(0, _record_method)
+    name = "ayon_core.tests.disabled"
+    log = module.Logger.get_logger(name)
+
+    log.debug("Disabled %s", "debug")
+    log.log(logging.DEBUG, "Disabled log")
+    # Arguments not matching the message are not formatted either
+    log.debug("Data:", [1, 2])
+    log.info("Enabled")
+
+    assert processed == ["info"]
+    assert foreign_handler.messages == ["Enabled"]
+
+    # Level set on a single logger is respected
+    restore_logger_levels(name).setLevel(logging.DEBUG)
+    log.debug("Enabled %s", "debug")
+
+    assert processed == ["info", "debug"]
+    assert foreign_handler.messages == ["Enabled", "Enabled debug"]
+
+
 def test_foreign_handlers_get_plain_message(log_module, foreign_handler):
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.foreign")
