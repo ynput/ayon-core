@@ -10,7 +10,6 @@ import ayon_api
 from ayon_core.lib import (
     StringTemplate,
     filter_profiles,
-    prepare_template_data,
     Logger,
     is_func_signature_supported,
 )
@@ -141,7 +140,7 @@ def _get_product_name_old(
             " Please use '{task[name]}' instead."
         )
 
-    elif "{task[short]}" in template_low:
+    elif "{task[short]" in template_low:
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
@@ -151,7 +150,7 @@ def _get_product_name_old(
         task_short = task_types_by_name.get(task_type, {}).get("shortName")
         task_value["short"] = task_short
 
-    if not product_base_type and "{product[basetype]}" in template.lower():
+    if not product_base_type and "{product[basetype]" in template_low:
         warn(
             "You have Product base type in product name template, "
             "but it is not provided by the creator, please update your "
@@ -181,7 +180,7 @@ def _get_product_name_old(
     try:
         return StringTemplate.format_strict_template(
             template=template,
-            data=prepare_template_data(fill_pairs)
+            data=fill_pairs
         )
     except KeyError as exp:
         msg = (
@@ -454,7 +453,7 @@ def get_product_name(
             " Please use '{task[name]}' instead."
         )
 
-    elif "{task[short]}" in template_low:
+    elif "{task[short]" in template_low:
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
@@ -496,7 +495,7 @@ def get_product_name(
     try:
         return StringTemplate.format_strict_template(
             template=template,
-            data=prepare_template_data(fill_pairs)
+            data=fill_pairs
         )
     except KeyError as exp:
         msg = (

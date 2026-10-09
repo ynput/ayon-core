@@ -2,6 +2,7 @@
 import pytest
 from unittest.mock import patch
 
+from ayon_core.lib import TemplateUnsolved
 from ayon_core.pipeline.create.product_name import (
     get_product_name_template,
     get_product_name,
@@ -121,9 +122,8 @@ class TestGetProductName:
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
     @patch("ayon_core.pipeline.create.product_name."
            "StringTemplate.format_strict_template")
-    @patch("ayon_core.pipeline.create.product_name.prepare_template_data")
     def test_empty_product_type_returns_empty(
-        self, mock_prepare, mock_format, mock_get_tmpl
+        self, mock_format, mock_get_tmpl
     ):
         assert (
             get_product_name(
@@ -138,22 +138,14 @@ class TestGetProductName:
         )
         mock_get_tmpl.assert_not_called()
         mock_format.assert_not_called()
-        mock_prepare.assert_not_called()
 
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
     @patch("ayon_core.pipeline.create.product_name."
            "StringTemplate.format_strict_template")
-    @patch("ayon_core.pipeline.create.product_name.prepare_template_data")
     def test_happy_path(
-        self, mock_prepare, mock_format, mock_get_tmpl
+        self, mock_format, mock_get_tmpl
     ):
         mock_get_tmpl.return_value = "{task[name]}_{product[type]}_{variant}"
-        mock_prepare.return_value = {
-            "task": {"name": "modeling"},
-            "product": {"type": "model"},
-            "variant": "Main",
-            "family": "model",
-        }
         mock_format.return_value = "modeling_model_Main"
 
         result = get_product_name(
@@ -166,25 +158,17 @@ class TestGetProductName:
         )
         assert result == "modeling_model_Main"
         mock_get_tmpl.assert_called_once()
-        mock_prepare.assert_called_once()
         mock_format.assert_called_once()
 
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
     @patch("ayon_core.pipeline.create.product_name."
            "StringTemplate.format_strict_template")
-    @patch("ayon_core.pipeline.create.product_name.prepare_template_data")
     def test_product_name_with_base_type(
-        self, mock_prepare, mock_format, mock_get_tmpl
+        self, mock_format, mock_get_tmpl
     ):
         mock_get_tmpl.return_value = (
             "{task[name]}_{product[basetype]}_{variant}"
         )
-        mock_prepare.return_value = {
-            "task": {"name": "modeling"},
-            "product": {"type": "model"},
-            "variant": "Main",
-            "family": "model",
-        }
         mock_format.return_value = "modeling_modelBase_Main"
 
         result = get_product_name(
@@ -198,7 +182,6 @@ class TestGetProductName:
         )
         assert result == "modeling_modelBase_Main"
         mock_get_tmpl.assert_called_once()
-        mock_prepare.assert_called_once()
         mock_format.assert_called_once()
 
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
@@ -218,19 +201,12 @@ class TestGetProductName:
     @patch("ayon_core.pipeline.create.product_name.ayon_api.get_project")
     @patch("ayon_core.pipeline.create.product_name.StringTemplate."
            "format_strict_template")
-    @patch("ayon_core.pipeline.create.product_name.prepare_template_data")
     def test_task_short_name_is_used(
-        self, mock_prepare, mock_format, mock_get_project, mock_get_tmpl
+        self, mock_format, mock_get_project, mock_get_tmpl
     ):
         mock_get_tmpl.return_value = "{task[short]}_{variant}"
         mock_get_project.return_value = {
             "taskTypes": [{"name": "Modeling", "shortName": "mdl"}]
-        }
-        mock_prepare.return_value = {
-            "task": {
-                "short": "mdl"
-            },
-            "variant": "Main"
         }
         mock_format.return_value = "mdl_Main"
 
@@ -247,12 +223,10 @@ class TestGetProductName:
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
     @patch("ayon_core.pipeline.create.product_name.StringTemplate."
            "format_strict_template")
-    @patch("ayon_core.pipeline.create.product_name.prepare_template_data")
     def test_template_fill_error_translated(
-        self, mock_prepare, mock_format, mock_get_tmpl
+        self, mock_format, mock_get_tmpl
     ):
         mock_get_tmpl.return_value = "{missing_key}_{variant}"
-        mock_prepare.return_value = {"variant": "Main"}
         mock_format.side_effect = KeyError("missing_key")
         with pytest.raises(TemplateFillError):
             get_product_name(
@@ -268,21 +242,13 @@ class TestGetProductName:
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
     @patch("ayon_core.pipeline.create.product_name."
            "StringTemplate.format_strict_template")
-    @patch("ayon_core.pipeline.create.product_name.prepare_template_data")
     def test_warns_when_template_needs_base_type_but_missing(
         self,
-        mock_prepare,
         mock_format,
         mock_get_tmpl,
         mock_warn,
     ):
         mock_get_tmpl.return_value = "{product[basetype]}_{variant}"
-
-        mock_prepare.return_value = {
-            "product": {"type": "model"},
-            "variant": "Main",
-            "family": "model",
-        }
         mock_format.return_value = "asset_Main"
 
         _ = get_product_name(
@@ -298,12 +264,10 @@ class TestGetProductName:
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
     @patch("ayon_core.pipeline.create.product_name."
            "StringTemplate.format_strict_template")
-    @patch("ayon_core.pipeline.create.product_name.prepare_template_data")
     def test_dynamic_data_overrides_defaults(
-        self, mock_prepare, mock_format, mock_get_tmpl
+        self, mock_format, mock_get_tmpl
     ):
         mock_get_tmpl.return_value = "{custom}_{variant}"
-        mock_prepare.return_value = {"custom": "overridden", "variant": "Main"}
         mock_format.return_value = "overridden_Main"
 
         result = get_product_name(
@@ -331,3 +295,132 @@ class TestGetProductName:
         )
         args, kwargs = mock_get_tmpl.call_args
         assert kwargs["product_type"] == "look"
+
+
+@patch("ayon_core.pipeline.create.product_name.get_product_name_template")
+class TestGetProductNameFormatting:
+    """Product name templates filled without mocked formatting."""
+
+    FOLDER_ENTITY = {
+        "name": "char_superHero",
+        "folderType": "Asset",
+        "label": "Super Hero",
+    }
+    TASK_ENTITY = {"name": "modeling", "taskType": "Modeling"}
+    PROJECT_ENTITY = {
+        "taskTypes": [{"name": "Modeling", "shortName": "mdl"}]
+    }
+
+    def _get_product_name(self, **kwargs):
+        return get_product_name(
+            project_name="proj",
+            folder_entity=self.FOLDER_ENTITY,
+            task_entity=self.TASK_ENTITY,
+            product_base_type="model",
+            product_type="model",
+            host_name="maya",
+            variant="main",
+            project_entity=self.PROJECT_ENTITY,
+            **kwargs
+        )
+
+    @pytest.mark.parametrize(
+        "template, expected",
+        [
+            # Default template
+            ("{product[type]}{variant}", "modelmain"),
+            (DEFAULT_PRODUCT_TEMPLATE, "modelMain"),
+            # Legacy keys
+            ("{product[type]}{Task[name]}{Variant}", "modelModelingMain"),
+            ("{family}{Task}{Variant}", "modelModelingMain"),
+            ("{Family}_{FAMILY}_{family}", "Model_MODEL_model"),
+            (
+                "{PRODUCT[TYPE]}_{TASK[NAME]}_{VARIANT}",
+                "MODEL_MODELING_MAIN"
+            ),
+            (
+                "{Product[basetype]}{Task[short]}{Host[name]}",
+                "ModelMdlMaya"
+            ),
+            (
+                "{Folder[name]}_{FOLDER[NAME]}_{Folder[type]}",
+                "Char_superHero_CHAR_SUPERHERO_Asset"
+            ),
+            ("{product[type]}<_{Missing}>{Variant}", "modelMain"),
+            # Named format specs
+            (
+                "{product[type]}{task[name]:upperfirst}{variant:upperfirst}",
+                "modelModelingMain"
+            ),
+            (
+                "{product[type]:upper}_{task[short]:upper}_{variant:upper}",
+                "MODEL_MDL_MAIN"
+            ),
+            (
+                "{folder[name]:pascal}_{folder[label]:snake}",
+                "CharSuperHero_super_hero"
+            ),
+            ("{task[type]:lower}<_{missing:upper}>", "modeling"),
+        ],
+    )
+    def test_template(self, mock_get_tmpl, template, expected):
+        mock_get_tmpl.return_value = template
+        assert self._get_product_name() == expected
+
+    @pytest.mark.parametrize(
+        "template, expected",
+        [
+            ("{family}{Task[name]}{Variant}", "modelModelingMain"),
+            ("{FAMILY}_{TASK}_{VARIANT}", "MODEL_MODELING_MAIN"),
+            ("{Product[type]}{Task[short]}{Host[name]}", "ModelMdlMaya"),
+            (
+                "{product[type]:upper}{task[name]:upperfirst}",
+                "MODELModeling"
+            ),
+        ],
+    )
+    def test_template_deprecated_signature(
+        self, mock_get_tmpl, template, expected
+    ):
+        mock_get_tmpl.return_value = template
+        with pytest.warns(DeprecationWarning):
+            result = get_product_name(
+                project_name="proj",
+                task_name="modeling",
+                task_type="Modeling",
+                host_name="maya",
+                product_type="model",
+                variant="main",
+                project_entity=self.PROJECT_ENTITY,
+            )
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "template, expected",
+        [
+            ("{family}{Renderlayer}_{Aov}", "modelBeautyMain_DiffuseDirect"),
+            ("{family}_{RENDERLAYER}_{AOV}", "model_BEAUTYMAIN_DIFFUSEDIRECT"),
+            ("{family}_{renderLayer}", "model_shotLayer"),
+            ("{family}_{Renderlayer2}", "model_ShotLayer"),
+            ("{family}_{RENDERLAYER2}", "model_SHOTLAYER"),
+            ("{family}_{renderlayer:snake}", "model_beauty_main"),
+        ],
+    )
+    def test_dynamic_data(self, mock_get_tmpl, template, expected):
+        mock_get_tmpl.return_value = template
+        dynamic_data = {
+            "renderlayer": "beautyMain",
+            "aov": "diffuseDirect",
+            "renderLayer": "shotLayer",
+            "renderLayer2": "shotLayer",
+        }
+        result = self._get_product_name(dynamic_data=dynamic_data)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "template", ["{Missing}_{variant}", "{missing:upper}_{variant}"]
+    )
+    def test_missing_key(self, mock_get_tmpl, template):
+        mock_get_tmpl.return_value = template
+        with pytest.raises(TemplateUnsolved):
+            self._get_product_name()

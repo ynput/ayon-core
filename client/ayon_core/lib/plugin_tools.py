@@ -72,6 +72,12 @@ def prepare_template_data(fill_pairs):
     It produces multiple variants of keys (key, Key, KEY) to control
     format of filled template.
 
+    Note:
+        Data formatted with 'StringTemplate' do not have to be
+            prepared, '{Key}' and '{KEY}' are resolved from 'key'
+            during formatting. Use '{key:upperfirst}' and
+            '{key:upper}' in new templates.
+
     Example:
         >>> src_data = {
         ...    "host": "maya",
