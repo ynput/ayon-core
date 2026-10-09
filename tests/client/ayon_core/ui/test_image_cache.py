@@ -11,6 +11,7 @@ from typing import Iterator
 
 import pytest
 
+from ayon_core.ui import image_cache
 from ayon_core.ui.image_cache import ImageCache, _DB_FILENAME
 
 
@@ -392,3 +393,132 @@ def test_clear_on_startup(cache_dir: Path, src_dir: Path) -> None:
         )
     finally:
         ic._close_all_connections()
+
+
+# ---------------------------------------------------------------------------
+# Same key cached by more processes at the same moment
+# ---------------------------------------------------------------------------
+
+
+def _replace_file_in_use(src: str, dst: str) -> None:
+    """Replace on Windows when other process has the destination open."""
+    raise PermissionError(13, "Access is denied", str(dst))
+
+
+def _tmp_files(cache: ImageCache) -> list[Path]:
+    return list(cache.cache_path.glob("*.tmp"))
+
+
+def test_get_uses_file_stored_by_other_process(
+    cache: ImageCache, src_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """File stored by other process is used instead of replacing it."""
+    src = _make_source_file(src_dir)
+    # Other process stored the file but did not add it to the DB yet
+    cached_path = cache.cache_path / cache._generate_cache_filename(
+        "key1", src
+    )
+    cached_path.write_bytes(src.read_bytes())
+    # The file is in use by the other process, it cannot be replaced
+    monkeypatch.setattr(image_cache.os, "replace", _replace_file_in_use)
+
+    result = cache.get("key1", lambda: src)
+
+    assert Path(result) == cached_path
+    assert cache.get_path("key1") == str(cached_path)
+    assert _tmp_files(cache) == []
+
+
+def test_get_keeps_file_that_cannot_be_replaced(
+    cache: ImageCache, src_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Other process stored the file right before it would be replaced."""
+    src = _make_source_file(src_dir)
+
+    def replace_lost_race(tmp_path: str, dst: str) -> None:
+        Path(dst).write_bytes(src.read_bytes())
+        _replace_file_in_use(tmp_path, dst)
+
+    monkeypatch.setattr(image_cache.os, "replace", replace_lost_race)
+
+    result = cache.get("key1", lambda: src)
+
+    assert Path(result).read_bytes() == src.read_bytes()
+    assert cache.get_path("key1") == result
+    assert _tmp_files(cache) == []
+
+
+def test_get_fails_if_file_cannot_be_stored(
+    cache: ImageCache, src_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Failed replace is an error if there is no file to use instead."""
+    src = _make_source_file(src_dir)
+    monkeypatch.setattr(image_cache.os, "replace", _replace_file_in_use)
+
+    with pytest.raises(IOError):
+        cache.get("key1", lambda: src)
+
+    assert not cache.has("key1")
+    assert _tmp_files(cache) == []
+
+
+def test_set_path_fails_if_file_cannot_be_replaced(
+    cache: ImageCache, src_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """File of a key is changed on purpose, the old one is not kept."""
+    src = _make_source_file(src_dir)
+    cache.get("key1", lambda: src)
+    new_src = src_dir / "new.png"
+    new_src.write_bytes(b"new content")
+    monkeypatch.setattr(image_cache.os, "replace", _replace_file_in_use)
+
+    with pytest.raises(IOError):
+        cache.set_path("key1", str(new_src))
+
+    assert _tmp_files(cache) == []
+
+
+def _same_key_worker_process(
+    cache_dir: str, src_file: str, barrier: multiprocessing.Barrier
+) -> None:
+    """Target function for subprocess workers caching the same key."""
+    ic = _fresh_cache(Path(cache_dir))
+    # Start at the same moment as the other processes
+    barrier.wait(timeout=60)
+    path = ic.get("shared_key", lambda: Path(src_file))
+    assert Path(path).exists()
+    ic._close_all_connections()
+
+
+def test_concurrent_processes_same_key(
+    cache_dir: Path, src_dir: Path
+) -> None:
+    """Multiple processes caching the same key must all get the file."""
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    src = _make_source_file(src_dir)
+
+    process_count = 8
+    barrier = multiprocessing.Barrier(process_count)
+    procs = [
+        multiprocessing.Process(
+            target=_same_key_worker_process,
+            args=(str(cache_dir), str(src), barrier),
+        )
+        for _ in range(process_count)
+    ]
+    for p in procs:
+        p.start()
+    for p in procs:
+        p.join(timeout=60)
+
+    for p in procs:
+        assert p.exitcode == 0, f"Process exited with {p.exitcode}"
+
+    conn = sqlite3.connect(str(cache_dir / "cache_metadata.db"))
+    try:
+        rows = conn.execute("SELECT key, file_path FROM cache").fetchall()
+    finally:
+        conn.close()
+    assert [key for key, _ in rows] == ["shared_key"]
+    assert Path(rows[0][1]).read_bytes() == src.read_bytes()
+    assert list(cache_dir.glob("*.tmp")) == []
