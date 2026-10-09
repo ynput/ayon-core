@@ -12,6 +12,7 @@ from ayon_core.ui.components.buttons import (
 )
 from ayon_core.ui.components import AYMenu
 from ayon_core.ui.components.check_box import AYCheckBox
+from ayon_core.ui.components.combo_box import AYComboBox
 from ayon_core.ui.components.container import (
     AYContainer,
     AYHBoxLayout,
@@ -28,6 +29,7 @@ from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import Logger
+from ayon_core.tools.browser.abstract import LoadersGrouping
 from ayon_core.tools.browser.ui.browser_group_by import GroupByOption
 from ayon_core.ui.components.table_model import TableColumn
 from ayon_core.ui.components.views.data_models import ColumnState
@@ -383,6 +385,7 @@ class Customize(AYButtonMenu):
     featured_version_order_changed = QtCore.Signal(list)  # type: ignore
     latest_per_folder_changed = QtCore.Signal(bool)  # type: ignore
     include_children_changed = QtCore.Signal(bool)  # type: ignore
+    loaders_grouping_changed = QtCore.Signal(object)  # type: ignore
     columns_requested = QtCore.Signal()
 
     # Maps UI display labels to GraphQL featuredVersion order keys.
@@ -390,6 +393,13 @@ class Customize(AYButtonMenu):
         "Latest Done": "latestDone",
         "Latest": "latest",
         "Hero": "hero",
+    }
+
+    # Labels of the loaders grouping options, in the listed order.
+    _LOADERS_GROUPING_LABELS: dict[LoadersGrouping, str] = {
+        LoadersGrouping.UNGROUPED: "Ungrouped",
+        LoadersGrouping.GROUPED: "Grouped",
+        LoadersGrouping.GROUPED_IF_MULTIPLE: "Group if multiple",
     }
 
     _CARD_WIDTH_MIN = 150
@@ -417,12 +427,14 @@ class Customize(AYButtonMenu):
         initial_featured_version_order: tuple[str, ...],
         initial_latest_per_folder: bool,
         initial_include_children: bool,
+        initial_loaders_grouping: LoadersGrouping,
     ) -> None:
         self._show_empty_groups = bool(initial_show_empty_groups)
         self._ungroup_empty_values = bool(initial_ungroup_empty_values)
         self._display_type = initial_display_type
         self._latest_per_folder = bool(initial_latest_per_folder)
         self._include_children = bool(initial_include_children)
+        self._loaders_grouping = initial_loaders_grouping
         self._featured_version_order = tuple(
             initial_featured_version_order
         )
@@ -573,6 +585,40 @@ class Customize(AYButtonMenu):
         layout.addWidget(self.include_children_ui, stretch=0)
         self.include_children_ui.toggled.connect(
             self.include_children_changed
+        )
+
+        loaders_grouping_tooltip = (
+            "How the right-click menu lists the loaders that load a"
+            " single representation.\n\n"
+            "Ungrouped: an entry for each loader and representation.\n"
+            "Grouped: a submenu per loader, listing the representations"
+            " it can load.\n"
+            "Group if multiple: a submenu only for the loaders that can"
+            " load more than one representation. A loader matching a"
+            " single representation stays a regular entry."
+        )
+        loaders_grouping_label = AYLabel(
+            "Group loaders", variant=AYLabel.Variants.Default
+        )
+        loaders_grouping_label.setToolTip(loaders_grouping_tooltip)
+        self.loaders_grouping_ui = AYComboBox(
+            items=[
+                {"text": label, "short_text": label}
+                for label in self._LOADERS_GROUPING_LABELS.values()
+            ],
+            variant=AYComboBox.Variants.Low,
+            parent=self,
+        )
+        self.loaders_grouping_ui.setToolTip(loaders_grouping_tooltip)
+        self.loaders_grouping_ui.setCurrentIndex(
+            list(self._LOADERS_GROUPING_LABELS).index(self._loaders_grouping)
+        )
+        loaders_grouping_lyt = AYHBoxLayout(margin=0, spacing=10)
+        loaders_grouping_lyt.addWidget(loaders_grouping_label)
+        loaders_grouping_lyt.addWidget(self.loaders_grouping_ui, stretch=1)
+        layout.addLayout(loaders_grouping_lyt)
+        self.loaders_grouping_ui.currentIndexChanged.connect(
+            self._on_loaders_grouping_index_changed
         )
 
         # Page 2: featured version settings
@@ -766,6 +812,23 @@ class Customize(AYButtonMenu):
                 self._include_children and not disabled
             )
             self.include_children_ui.setEnabled(not disabled)
+
+    def _on_loaders_grouping_index_changed(self, index: int) -> None:
+        groupings = list(self._LOADERS_GROUPING_LABELS)
+        if not 0 <= index < len(groupings):
+            return
+        self._loaders_grouping = groupings[index]
+        self.loaders_grouping_changed.emit(self._loaders_grouping)
+
+    def set_loaders_grouping(self, grouping: LoadersGrouping) -> None:
+        """Update the selected option without emitting a change."""
+        self._loaders_grouping = grouping
+        if not hasattr(self, "loaders_grouping_ui"):
+            return
+        with QSignalBlocker(self.loaders_grouping_ui):
+            self.loaders_grouping_ui.setCurrentIndex(
+                list(self._LOADERS_GROUPING_LABELS).index(grouping)
+            )
 
 
 class DisplayType(AYContainer):

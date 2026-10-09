@@ -9,6 +9,7 @@ from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.widgets import OptionDialog
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.models.actions import LOADER_PLUGIN_ID
 from ayon_core.ui.components import AYOptionalAction, AYOptionalMenu
 
 
@@ -24,6 +25,18 @@ def _actions_sorter(item: tuple[ActionItem, str, str]):
         group_label = label
         label = ""
     return action_item.order, group_label, label
+
+
+def _get_group_key(action_item: ActionItem) -> tuple[str, Optional[str]]:
+    """Key of the submenu an action item with a group label belongs to.
+
+    Loader plugins sharing a label each get a submenu of their own, at the
+    position of their own order.
+    """
+    loader_identifier = None
+    if action_item.identifier == LOADER_PLUGIN_ID:
+        loader_identifier = action_item.data["loader"]
+    return action_item.group_label, loader_identifier
 
 
 def show_actions_menu(
@@ -50,7 +63,7 @@ def show_actions_menu(
             (action_item, action_item.group_label, action_item.label)
         )
 
-    group_menu_by_label = {}
+    group_menu_by_key = {}
     action_items_by_id = {}
     option_action = [None]
     for item in sorted(action_items_with_labels, key=_actions_sorter):
@@ -86,13 +99,14 @@ def show_actions_menu(
 
         group_label = action_item.group_label
         if group_label:
-            group_menu = group_menu_by_label.get(group_label)
+            group_key = _get_group_key(action_item)
+            group_menu = group_menu_by_key.get(group_key)
             if group_menu is None:
                 group_menu = AYOptionalMenu(group_label, parent=menu)
                 if icon is not None:
                     group_menu.setIcon(icon)
                 menu.addMenu(group_menu)
-                group_menu_by_label[group_label] = group_menu
+                group_menu_by_key[group_key] = group_menu
             group_menu.addAction(action)
         else:
             menu.addAction(action)
@@ -135,7 +149,11 @@ def _get_options(action, action_item, parent):
     if not action.property("optioned") or not options:
         return {}
 
-    dialog_title = action.text() + " Options"
+    # Grouped items only have the representation name as label
+    dialog_title = action_item.label
+    if action_item.group_label:
+        dialog_title = f"{action_item.group_label} ({dialog_title})"
+    dialog_title += " Options"
     if isinstance(options[0], AbstractAttrDef):
         qargparse_options = False
         dialog = AttributeDefinitionsDialog(

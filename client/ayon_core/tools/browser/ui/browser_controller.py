@@ -33,7 +33,11 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.abstract import ActionItem, ProductGroupsInfo
+from ayon_core.tools.browser.abstract import (
+    ActionItem,
+    LoadersGrouping,
+    ProductGroupsInfo,
+)
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
     BrowserColumnManager,
@@ -361,6 +365,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._ungroup_empty_values: bool = (
             BROWSER_VIEW_DEFAULTS.ungroup_empty_values
         )
+        self._loaders_grouping: LoadersGrouping = (
+            BROWSER_VIEW_DEFAULTS.loaders_grouping
+        )
         self._requested_column_keys: set[str] | None = None
         # Project info by project name, '(fetch time, data)'
         self._project_info_cache: dict[str, tuple[float, dict]] = {}
@@ -498,6 +505,20 @@ class BrowserWidgetController(QtCore.QObject):
             return False
         self._reset_pagination()
         return True
+
+    @property
+    def loaders_grouping(self) -> LoadersGrouping:
+        """Return how the actions menu groups loaders in submenus.
+
+        A grouped loader that loads per representation gets a single
+        submenu listing the representations, instead of an entry for each
+        of them.
+        """
+        return self._loaders_grouping
+
+    def set_loaders_grouping(self, grouping: LoadersGrouping) -> None:
+        """Set how the actions menu groups loaders in submenus."""
+        self._loaders_grouping = LoadersGrouping(grouping)
 
     def get_extension_columns(self) -> list[TableColumn]:
         """Return columns contributed by enabled addons."""
@@ -2068,6 +2089,7 @@ class BrowserWidgetController(QtCore.QObject):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
     ) -> list[ActionItem]:
         """Return action items for the given entity selection.
 
@@ -2079,12 +2101,15 @@ class BrowserWidgetController(QtCore.QObject):
             project_name: AYON project name.
             entity_ids: Set of selected entity IDs.
             entity_type: Entity type string (e.g. ``"version"``).
+            loaders_grouping: Whether the items of a loader that loads
+                per representation are grouped under the loader label,
+                with the representation name as item label.
 
         Returns:
             List of :class:`ActionItem` objects.
         """
         return self._loader_controller.get_action_items(
-            project_name, entity_ids, entity_type
+            project_name, entity_ids, entity_type, loaders_grouping
         )
 
     def warm_up_action_items(self, project_name: str) -> None:
