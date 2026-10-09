@@ -15,6 +15,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
     ThumbnailsModel,
 )
 
@@ -56,6 +57,7 @@ class BrowserController(AbstractBrowserController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -70,6 +72,15 @@ class BrowserController(AbstractBrowserController):
         if self._host is None:
             return None
         return self._host.name
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
 
     # Events system
     def emit_event(

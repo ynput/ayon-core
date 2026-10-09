@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import time
 import collections
 import atexit
@@ -19,6 +20,7 @@ from ayon_core.lib import (
     is_staging_enabled,
     is_running_from_build,
 )
+from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
     ITrayAddon,
@@ -29,6 +31,7 @@ from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
 )
+from ayon_core.tools.common_models import WSEventsModel
 from ayon_core.tools.tray.lib import (
     set_tray_server_url,
     remove_tray_server_url,
@@ -52,6 +55,9 @@ class TrayManager:
 
     Load submenus, actions, separators and addons into tray's context.
     """
+    # Delay of notification about lost connection to server (in ms)
+    connection_lost_notification_delay = 60 * 1000
+
     def __init__(self, tray_widget, main_window):
         self.tray_widget = tray_widget
         self.main_window = main_window
@@ -80,6 +86,32 @@ class TrayManager:
 
         main_thread_timer.timeout.connect(self._main_thread_execution)
         update_check_timer.timeout.connect(self._on_update_check_timer)
+
+        # Server events (connection state, bundle changes) received
+        #   via websocket, processed in '_main_thread_execution'
+        self._event_system = QueuedEventSystem()
+        self._ws_events_model = WSEventsModel(self)
+        # Connection was lost (icon shows orange dot)
+        self._connection_lost = False
+        # User was notified about lost connection with tray message
+        self._connection_lost_notified = False
+        # Show notification only if connection is not restored in time,
+        #   short outages (e.g. server restart) only change the icon
+        connection_lost_timer = QtCore.QTimer()
+        connection_lost_timer.setSingleShot(True)
+        connection_lost_timer.setInterval(
+            self.connection_lost_notification_delay
+        )
+        connection_lost_timer.timeout.connect(
+            self._on_connection_lost_timer
+        )
+        self._connection_lost_timer = connection_lost_timer
+        # Single bundle change can trigger multiple events in short time
+        bundle_validation_timer = QtCore.QTimer()
+        bundle_validation_timer.setSingleShot(True)
+        bundle_validation_timer.setInterval(1000)
+        bundle_validation_timer.timeout.connect(self._validate_bundle)
+        self._bundle_validation_timer = bundle_validation_timer
 
         self._addons_manager = TrayAddonsManager(self)
         self._host_listener = HostListener(self._addons_manager, self)
@@ -116,6 +148,15 @@ class TrayManager:
 
     def is_closing(self):
         return self._closing
+
+    def emit_event(self, topic, data=None, source=None):
+        """Emit event, used by 'WSEventsModel' for connection events."""
+        if data is None:
+            data = {}
+        self._event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback):
+        self._event_system.add_callback(topic, callback)
 
     @property
     def doubleclick_callback(self):
@@ -225,6 +266,7 @@ class TrayManager:
         # Print time report
         self._addons_manager.print_report()
 
+        self._init_server_events()
         self._main_thread_timer.start()
 
         if self._update_check_interval > 0:
@@ -373,9 +415,9 @@ class TrayManager:
             )
 
         if icon == "information":
-            icon = QtWidgets.QSystemTrayIconInformation
+            icon = QtWidgets.QSystemTrayIcon.Information
         elif icon == "warning":
-            icon = QtWidgets.QSystemTrayIconWarning
+            icon = QtWidgets.QSystemTrayIcon.Warning
         elif icon == "critical":
             icon = QtWidgets.QSystemTrayIcon.Critical
         else:
@@ -386,24 +428,96 @@ class TrayManager:
         )
         return json_response({"success": True})
 
+    def _init_server_events(self):
+        """Listen to AYON server events.
+
+        Connection state and authentication are watched by event hub, so
+            the tray does not have to poll the server. Bundle events
+            trigger validation of the bundle used by the tray.
+        """
+        self.register_event_callback(
+            "ayon.connection.opened", self._on_server_connection_opened
+        )
+        self.register_event_callback(
+            "ayon.connection.closed", self._on_server_connection_closed
+        )
+        self.register_event_callback(
+            "ayon.auth.failed", self._on_server_auth_failed
+        )
+        # - 'bundle.created', 'bundle.updated', 'bundle.status_changed'
+        self._ws_events_model.register_ayon_event_callback(
+            "bundle.*", self._on_bundle_event
+        )
+        self._ws_events_model.process_events()
+
+    def _on_server_connection_opened(self):
+        if not self._connection_lost:
+            return
+        self._connection_lost = False
+        self._connection_lost_timer.stop()
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_OK
+        )
+        # Tell user about restored connection only if was told it was lost
+        if self._connection_lost_notified:
+            self._connection_lost_notified = False
+            self.show_tray_message(
+                "AYON server connection restored",
+                "Connection to AYON server was restored.",
+            )
+        # Bundles might have changed while the server was not available
+        self._bundle_validation_timer.start()
+
+    def _on_server_connection_closed(self):
+        if self._connection_lost:
+            return
+        self._connection_lost = True
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_LOST
+        )
+        self._connection_lost_timer.start()
+
+    def _on_connection_lost_timer(self):
+        if not self._connection_lost or self._closing:
+            return
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_LOST_LONG
+        )
+        self._connection_lost_notified = True
+        self.show_tray_message(
+            "AYON server connection lost",
+            "Connection to AYON server was lost. Waiting for reconnection.",
+            QtWidgets.QSystemTrayIcon.Warning,
+        )
+
+    def _on_server_auth_failed(self):
+        self._revalidate_ayon_auth()
+
+    def _on_bundle_event(self, event):
+        self.log.debug(
+            f"Bundle event '{event.topic}' received, validating bundle."
+        )
+        self._bundle_validation_timer.start()
+
     def _on_update_check_timer(self):
+        self._validate_bundle()
+
+    def _validate_bundle(self):
+        """Check if bundle used by tray is still production/staging bundle.
+
+        Connection and authentication issues are handled by server events,
+            so the validation is skipped when server is not available.
+        """
+        if self._closing or is_dev_mode_enabled():
+            return
+
+        if self._ws_events_model.get_connection_state() is False:
+            return
+
         try:
             bundles = ayon_api.get_bundles()
-            user = ayon_api.get_user()
-            # This is a workaround for bug in ayon-python-api
-            if user.get("code") == 401:
-                raise Exception("Unauthorized")
         except Exception:
-            self._revalidate_ayon_auth()
-            if self._closing:
-                return
-
-            try:
-                bundles = ayon_api.get_bundles()
-            except Exception:
-                return
-
-        if is_dev_mode_enabled():
+            self.log.debug("Failed to get bundles.", exc_info=True)
             return
 
         bundle_type = (
@@ -466,13 +580,19 @@ class TrayManager:
             if self._execution_in_progress:
                 return
             self._execution_in_progress = True
+            try:
+                self._ws_events_model.process_events()
+            except Exception:
+                self.log.error(
+                    "Failed to process server events", exc_info=True
+                )
             for _ in range(len(self._main_thread_callbacks)):
                 if self._main_thread_callbacks:
                     item = self._main_thread_callbacks.popleft()
                     try:
                         item.execute()
                     except BaseException:
-                        self.log.erorr(
+                        self.log.error(
                             "Main thread execution failed", exc_info=True
                         )
 
@@ -646,11 +766,34 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     # How long after the menu is shown mouse clicks are ignored
     menu_click_guard_ms = 400
 
+    # Connection status shown in icon
+    # - connected: no dot
+    # - lost: orange dot fading in/out (connection may be restored soon)
+    # - lost long: solid red dot
+    CONNECTION_OK = "ok"
+    CONNECTION_LOST = "lost"
+    CONNECTION_LOST_LONG = "lost_long"
+    # Duration of one fade in/out cycle
+    blink_cycle_ms = 800
+    # Number of icon frames per cycle (icon is updated for each frame)
+    blink_frames = 20
+
     def __init__(self, parent):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
 
         super().__init__(icon, parent)
 
+        self._icon = icon
+        self._dot_icons = {}
+        self._connection_status = self.CONNECTION_OK
+        self._blink_frame = 0
+
+        blink_timer = QtCore.QTimer()
+        blink_timer.setInterval(
+            max(1, self.blink_cycle_ms // self.blink_frames)
+        )
+        blink_timer.timeout.connect(self._on_blink_timer)
+        self._blink_timer = blink_timer
         self._exited = False
 
         self._click_pos = None
@@ -703,6 +846,112 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def is_closing(self) -> bool:
         return self._tray_manager.is_closing()
+
+    def set_connection_status(self, status: str) -> None:
+        """Show connection status to server in icon.
+
+        Args:
+            status (str): One of 'CONNECTION_OK', 'CONNECTION_LOST' or
+                'CONNECTION_LOST_LONG'.
+
+        """
+        if self._connection_status == status:
+            return
+        self._connection_status = status
+        self._blink_timer.stop()
+        if status == self.CONNECTION_OK:
+            self.setIcon(self._icon)
+            self.setToolTip("")
+            return
+
+        self.setToolTip("AYON - Connection to server lost")
+        if status == self.CONNECTION_LOST:
+            self._blink_frame = 0
+            self.setIcon(self._get_dot_icon("#ff8c00"))
+            self._blink_timer.start()
+        else:
+            self.setIcon(self._get_dot_icon("#e53935"))
+
+    def _on_blink_timer(self):
+        if self._connection_status != self.CONNECTION_LOST:
+            self._blink_timer.stop()
+            return
+        self._blink_frame = (self._blink_frame + 1) % self.blink_frames
+        # Cosine curve - starts fully visible, fades out and in again
+        progress = self._blink_frame / self.blink_frames
+        opacity = (math.cos(progress * 2 * math.pi) + 1) * 0.5
+        self.setIcon(self._get_dot_icon("#ff8c00", opacity))
+
+    def _get_dot_icon(
+        self, color: str, opacity: float = 1.0
+    ) -> QtGui.QIcon:
+        """Tray icon with a colored dot in bottom right corner.
+
+        Args:
+            color (str): Color of the dot.
+            opacity (float): Opacity of the dot (0.0 - 1.0).
+
+        """
+        # Round opacity so the cache does not grow
+        opacity = round(opacity, 2)
+        key = (color, opacity)
+        icon = self._dot_icons.get(key)
+        if icon is not None:
+            return icon
+
+        size = 128
+        # Paint to own pixmap with device pixel ratio 1. Pixmap from
+        #   'QIcon.pixmap' has device pixel ratio of the screen (e.g. 1.5
+        #   on Windows with display scaling), so painting coordinates
+        #   would not match its size and the dot would be out of bounds.
+        pix = QtGui.QPixmap(size, size)
+        pix.fill(QtCore.Qt.transparent)
+        dot_size = size * 0.45
+        dot_rect = QtCore.QRectF(
+            size - dot_size, size - dot_size, dot_size, dot_size
+        )
+        painter = QtGui.QPainter(pix)
+        painter.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        painter.drawPixmap(
+            QtCore.QRect(0, 0, size, size),
+            self._icon.pixmap(size, size),
+        )
+        outline_color = QtGui.QColor(33, 37, 43)
+        pen_width = size * 0.05
+        ellipse_rect = dot_rect.adjusted(
+            pen_width * 0.5,
+            pen_width * 0.5,
+            -pen_width * 0.5,
+            -pen_width * 0.5,
+        )
+        # Dark backing (also outline separating the dot from the logo)
+        #   fades faster than the color, so half-transparent color is
+        #   blended with the backing instead of with the logo
+        painter.setOpacity(min(1.0, opacity * 2))
+        pen = QtGui.QPen(outline_color)
+        pen.setWidthF(pen_width)
+        painter.setPen(pen)
+        painter.setBrush(outline_color)
+        painter.drawEllipse(ellipse_rect)
+
+        painter.setOpacity(opacity)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(color))
+        painter.drawEllipse(
+            ellipse_rect.adjusted(
+                pen_width * 0.5,
+                pen_width * 0.5,
+                -pen_width * 0.5,
+                -pen_width * 0.5,
+            )
+        )
+        painter.end()
+        icon = QtGui.QIcon(pix)
+        self._dot_icons[key] = icon
+        return icon
 
     @property
     def initializing_addons(self):
@@ -829,6 +1078,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             return
         self._exited = True
 
+        self._blink_timer.stop()
         self.hide()
         self._tray_manager.on_exit()
         QtCore.QCoreApplication.exit()
