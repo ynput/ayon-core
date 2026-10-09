@@ -904,6 +904,7 @@ class BrowserWidgetController(QtCore.QObject):
                 parts["representation_conditions"]
             ),
             "featured_only": parts["featured_only"] or None,
+            "featured_types": parts["featured_types"] or None,
             "search": parts["search"],
             "version_ids": parts["version_ids"],
             "has_reviewables": parts["has_reviewables"],
@@ -1004,6 +1005,7 @@ class BrowserWidgetController(QtCore.QObject):
         folder_conditions: list[dict[str, Any]] = []
         representation_conditions: list[dict[str, Any]] = []
         featured_only: list[str] = []
+        featured_types: list[str] = []
         search: str | None = None
         version_ids: list[str] | None = None
         has_reviewables: bool | None = None
@@ -1106,6 +1108,10 @@ class BrowserWidgetController(QtCore.QObject):
                 # NOTE: Combined with other featured types the server picks
                 #   one version per product by priority, which can only be
                 #   expressed using 'featuredOnly'.
+                # The product group headers show the featured version of
+                # these types, like the frontend does, so the header
+                # matches the versions listed below it.
+                featured_types.extend(featured_values)
                 hero_only = featured_values == ["hero"]
                 if hero_only:
                     featured_values = []
@@ -1289,6 +1295,7 @@ class BrowserWidgetController(QtCore.QObject):
             "folder_conditions": folder_conditions,
             "representation_conditions": representation_conditions,
             "featured_only": featured_only,
+            "featured_types": featured_types,
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
@@ -2534,6 +2541,12 @@ class BrowserWidgetController(QtCore.QObject):
             )
             row["thumbnailId"] = featured_version.get("thumbnailId", "")
             row["_version_id"] = featured_version.get("id", "")
+            # The featured "hero" is the regular version the hero version
+            # was made from, but acting on it must use the hero version.
+            if featured_version.get("featuredVersionType") == "hero":
+                hero_version_id = featured_version.get("heroVersionId")
+                if hero_version_id:
+                    row["_action_version_id"] = hero_version_id
             row["status"] = featured_version.get("status", "")
             row["status__icon"] = self._pinfo(
                 "statuses", row["status"], "icon", ""
@@ -3002,6 +3015,7 @@ class BrowserWidgetController(QtCore.QObject):
         folder_filter: str = "",
         search: str | None = None,
         include_folder_children: bool = False,
+        featured_version_order: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of products via GraphQL.
 
@@ -3021,6 +3035,11 @@ class BrowserWidgetController(QtCore.QObject):
             task_filter: JSON-encoded task filter string.
             folder_filter: JSON-encoded folder filter string.
             search: Full-text product search string.
+            include_folder_children: Whether to include products of
+                the child folders of *folder_ids*.
+            featured_version_order: Priority order used to pick the
+                featured version of each product. Defaults to the
+                featured version customization.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -3050,7 +3069,9 @@ class BrowserWidgetController(QtCore.QObject):
             "includeFolderChildren": include_folder_children,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
-            "featuredVersionOrder": self._featured_version_order,
+            "featuredVersionOrder": (
+                featured_version_order or self._featured_version_order
+            ),
         }
         if descending:
             variables["last"] = page_size
@@ -3157,6 +3178,7 @@ class BrowserWidgetController(QtCore.QObject):
                 folder_filter=query_filters["folder_filter"],
                 search=query_filters["search"],
                 include_folder_children=self._include_folder_children,
+                featured_version_order=query_filters["featured_types"],
             )
             all_edges.extend(edges)
 

@@ -516,9 +516,9 @@ class BrowserTable(AYContainer):
             self._on_viewport_resize()
         elif obj is self._table.header():
             if event.type() == QtCore.QEvent.Type.Enter:
-                self._add_column_btn.show()
+                self._add_column_btn.set_revealed(True)
             elif event.type() == QtCore.QEvent.Type.Leave:
-                self._add_column_btn.hide()
+                self._add_column_btn.set_revealed(False)
         return False
 
     def _on_viewport_resize(self) -> None:
