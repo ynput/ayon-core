@@ -12,6 +12,7 @@ from ayon_core.tools.common_models import (
     FolderTypeItem,
     TaskItem,
     TaskTypeItem,
+    UserItem,
 )
 
 if typing.TYPE_CHECKING:
@@ -74,6 +75,7 @@ class WorkfileItem:
     version: int | None
     updated_at_time: float | None
     file_size: int | None = None
+    updated_by: str | None = None
 
 
 class AbstractLauncherCommon(ABC):
@@ -289,6 +291,33 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Returns:
             list[TaskItem]: Minimum possible information needed
                 for visualisation of tasks.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, Optional[str]]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, Optional[str]]: Thumbnail path by entity id.
 
         """
         pass
@@ -538,6 +567,24 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             list[WorkfileItem]: List of workfile items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_user_items_by_name(
+        self, project_name: Optional[str]
+    ) -> dict[str, UserItem]:
+        """Get user items of a project.
+
+        Users are queried from the server if they are not cached, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (Optional[str]): Project name.
+
+        Returns:
+            dict[str, UserItem]: User items by username.
 
         """
         pass

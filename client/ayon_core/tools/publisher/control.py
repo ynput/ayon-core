@@ -20,6 +20,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    ThumbnailsModel,
 )
 
 from .models import (
@@ -105,6 +106,7 @@ class PublisherController(
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._users_model = UsersModel(self)
 
     @property
@@ -259,6 +261,17 @@ class PublisherController(
             project_name, folder_id, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     def get_folder_entity(self, project_name, folder_id):
         return self._hierarchy_model.get_folder_entity(
             project_name, folder_id
@@ -378,6 +391,7 @@ class PublisherController(
         self._emit_event("controller.reset.started")
 
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._users_model.reset()
 
         # Publish part must be reset after plugins
