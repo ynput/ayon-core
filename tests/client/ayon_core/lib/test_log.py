@@ -735,6 +735,65 @@ def test_vector_sender_survives_failures(log_module):
     assert len(stub.bodies) == 2
 
 
+def test_vector_sender_does_not_retry_unreachable_endpoint(log_module):
+    """Each attempt to connect waits for the timeout again."""
+    pytest.importorskip("requests")
+    module = log_module()
+    url = "http://127.0.0.1:1/"
+    sender = module.VectorHTTPSender(url, queue.Queue())
+
+    retries = sender._session.get_adapter(url).max_retries
+
+    assert retries.connect == 0
+    assert retries.read == 0
+    # Temporary error responses of reachable endpoint are still retried
+    assert retries.total == 2
+    assert 503 in retries.status_forcelist
+
+
+def test_vector_sender_stop_gives_up_after_failed_request(
+    log_module, monkeypatch
+):
+    """Unreachable endpoint must not delay exit of the process."""
+    pytest.importorskip("requests")
+    module = log_module()
+    log_queue = queue.Queue()
+    sender = module.VectorHTTPSender(
+        "http://127.0.0.1:1/",
+        log_queue,
+        batch_size=1,
+        flush_interval=5.0,
+        failure_threshold=100,
+    )
+    request_started = threading.Event()
+    release_request = threading.Event()
+    requests_count = []
+
+    def _post(*args, **kwargs):
+        requests_count.append(1)
+        request_started.set()
+        release_request.wait(5.0)
+        raise ConnectionError("Endpoint is unreachable")
+
+    monkeypatch.setattr(sender._session, "post", _post)
+    for idx in range(5):
+        log_queue.put(json.dumps({"event": str(idx)}))
+    sender.start()
+    assert request_started.wait(5.0)
+
+    # 'stop' is called on exit while the first request is in progress
+    stop_thread = threading.Thread(target=sender.stop)
+    stop_thread.start()
+    _wait_for(lambda: sender._stopping)
+    release_request.set()
+    stop_thread.join(5.0)
+
+    assert not stop_thread.is_alive()
+    # Remaining 4 batches were dropped without a request
+    assert len(requests_count) == 1
+    assert log_queue.empty()
+
+
 def test_rate_limited_logger_accepts_arguments(log_module, monkeypatch):
     module = log_module()
     # Monotonic clock shortly after boot, e.g. on a fresh CI machine

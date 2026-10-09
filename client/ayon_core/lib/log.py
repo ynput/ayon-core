@@ -538,6 +538,9 @@ class VectorHTTPSender:
     'failure_threshold' consecutive failed requests. Records are dropped
     meanwhile so a dead endpoint cannot slow down the process.
 
+    Failed requests are not repeated, except for a temporary error
+    response of the endpoint. The next batch is the next attempt.
+
     'None' in the queue is the stop sentinel, see 'stop'.
     """
 
@@ -559,6 +562,9 @@ class VectorHTTPSender:
         self._consecutive_failures = 0
         self._circuit_open_until = 0.0
         self._thread: threading.Thread | None = None
+        # 'stop' was called, see '_send'
+        self._stopping = False
+        self._gave_up = False
 
         # Import only when Vector is used, to not slow down import of
         #   'ayon_core.lib' in every process.
@@ -569,8 +575,14 @@ class VectorHTTPSender:
         # Reuse a single session so repeated POSTs reuse pooled
         # connections instead of opening a new one per request.
         self._session = requests.Session()
+        # Only temporary error responses are retried. Connection and read
+        #   errors are not: an unreachable endpoint rarely recovers within
+        #   the backoff, each attempt waits for the timeout again, and
+        #   a batch whose response was not read would be sent twice.
         retry = urllib3.util.Retry(
             total=2,
+            connect=0,
+            read=0,
             backoff_factor=0.3,
             status_forcelist=(502, 503, 504),
             allowed_methods=("POST",),
@@ -582,15 +594,23 @@ class VectorHTTPSender:
         self._session.mount("https://", adapter)
 
     def start(self) -> None:
+        self._stopping = False
+        self._gave_up = False
         self._thread = threading.Thread(
             target=self._run, name="AYONVectorSender", daemon=True
         )
         self._thread.start()
 
     def stop(self, timeout: float = 5.0) -> None:
-        """Send records remaining in the queue and stop the thread."""
+        """Send records remaining in the queue and stop the thread.
+
+        Called on exit of the process. Remaining records are dropped
+        after the first failed request, an unreachable endpoint must
+        not delay the exit by an attempt for each remaining batch.
+        """
         if self._thread is None:
             return
+        self._stopping = True
         try:
             self._queue.put(None, timeout=timeout)
         except queue.Full:
@@ -635,6 +655,8 @@ class VectorHTTPSender:
             # Circuit is open - skip the HTTP attempt entirely so a dead
             # Vector endpoint cannot slow down the sender thread.
             return
+        if self._gave_up:
+            return
         try:
             response = self._session.post(
                 self._url,
@@ -644,6 +666,9 @@ class VectorHTTPSender:
             )
             response.raise_for_status()
         except Exception:
+            if self._stopping:
+                # Process is exiting, see 'stop'
+                self._gave_up = True
             self._consecutive_failures += 1
             if self._consecutive_failures >= self._failure_threshold:
                 self._circuit_open_until = now + self._cooldown
