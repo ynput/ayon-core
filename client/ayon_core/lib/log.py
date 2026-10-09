@@ -282,7 +282,8 @@ def get_log_level_from_env() -> int:
     """Resolve the AYON log level from environment variables.
 
     'AYON_LOG_LEVEL' accepts a numeric ('10') or a named ('DEBUG') level.
-    Defaults to INFO when it is not set or is invalid.
+    When it is not set or is invalid, enabled 'AYON_DEBUG' gives DEBUG,
+    otherwise the level is INFO.
 
     Returns:
         int: Log level.
@@ -296,6 +297,10 @@ def get_log_level_from_env() -> int:
             level = _get_level_names_mapping().get(log_level.upper(), 0)
         if level > 0:
             return level
+    # AYON launcher without structured logging sets only 'AYON_DEBUG'
+    #   for '--debug' argument, newer one also sets 'AYON_LOG_LEVEL'.
+    if env_value_to_bool("AYON_DEBUG", default=False):
+        return logging.DEBUG
     return logging.INFO
 
 

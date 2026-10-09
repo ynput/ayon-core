@@ -125,8 +125,11 @@ def foreign_handler():
         ({"AYON_LOG_LEVEL": "warning"}, logging.WARNING),
         ({"AYON_LOG_LEVEL": "bogus"}, logging.INFO),
         ({"AYON_LOG_LEVEL": "0"}, logging.INFO),
-        # Does not affect log level, see '--debug' of AYON launcher
-        ({"AYON_DEBUG": "1"}, logging.INFO),
+        # '--debug' of AYON launcher without structured logging
+        ({"AYON_DEBUG": "1"}, logging.DEBUG),
+        ({"AYON_DEBUG": "0"}, logging.INFO),
+        # Explicit log level has precedence
+        ({"AYON_DEBUG": "1", "AYON_LOG_LEVEL": "WARNING"}, logging.WARNING),
     ],
 )
 def test_log_level_from_env(log_module, monkeypatch, env, expected):
