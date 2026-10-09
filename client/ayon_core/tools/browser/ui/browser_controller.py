@@ -518,7 +518,7 @@ class BrowserWidgetController(QtCore.QObject):
 
     def set_loaders_grouping(self, grouping: LoadersGrouping) -> None:
         """Set how the actions menu groups loaders in submenus."""
-        self._loaders_grouping = LoadersGrouping(grouping)
+        self._loaders_grouping = grouping
 
     def get_extension_columns(self) -> list[TableColumn]:
         """Return columns contributed by enabled addons."""

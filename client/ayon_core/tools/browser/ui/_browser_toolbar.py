@@ -395,12 +395,12 @@ class Customize(AYButtonMenu):
         "Hero": "hero",
     }
 
-    # Labels of the loaders grouping options, in the listed order.
-    _LOADERS_GROUPING_LABELS: dict[LoadersGrouping, str] = {
-        LoadersGrouping.UNGROUPED: "Ungrouped",
-        LoadersGrouping.GROUPED: "Grouped",
-        LoadersGrouping.GROUPED_IF_MULTIPLE: "Group if multiple",
-    }
+    # Loaders grouping options with their label, in the listed order.
+    _LOADERS_GROUPINGS: tuple[tuple[LoadersGrouping, str], ...] = (
+        (LoadersGrouping.UNGROUPED, "Ungrouped"),
+        (LoadersGrouping.GROUPED, "Grouped"),
+        (LoadersGrouping.GROUPED_IF_MULTIPLE, "Group if multiple"),
+    )
 
     _CARD_WIDTH_MIN = 150
     _CARD_WIDTH_MAX = 500
@@ -409,6 +409,16 @@ class Customize(AYButtonMenu):
 
     _CARD_SIZE_TOOLTIP = "Adjust card size in the cards view"
     _ROW_HEIGHT_TOOLTIP = "Adjust row height in the table view"
+    _LOADERS_GROUPING_TOOLTIP = (
+        "How the right-click menu of versions lists the loaders that load"
+        " per representation.\n\n"
+        "Ungrouped: an entry for each loader and representation.\n"
+        "Grouped: a submenu per loader, listing the representations it"
+        " can load.\n"
+        "Group if multiple: a submenu only for the loaders that can load"
+        " more than one representation. A loader that can load only one"
+        " representation stays a single entry."
+    )
     _UNGROUP_EMPTY_VALUES_TOOLTIP = (
         "When grouping, list versions that have nothing filled in for the"
         " grouped field below the groups, instead of in a group of their"
@@ -587,32 +597,17 @@ class Customize(AYButtonMenu):
             self.include_children_changed
         )
 
-        loaders_grouping_tooltip = (
-            "How the right-click menu lists the loaders that load a"
-            " single representation.\n\n"
-            "Ungrouped: an entry for each loader and representation.\n"
-            "Grouped: a submenu per loader, listing the representations"
-            " it can load.\n"
-            "Group if multiple: a submenu only for the loaders that can"
-            " load more than one representation. A loader matching a"
-            " single representation stays a regular entry."
-        )
         loaders_grouping_label = AYLabel(
             "Group loaders", variant=AYLabel.Variants.Default
         )
-        loaders_grouping_label.setToolTip(loaders_grouping_tooltip)
+        loaders_grouping_label.setToolTip(self._LOADERS_GROUPING_TOOLTIP)
         self.loaders_grouping_ui = AYComboBox(
-            items=[
-                {"text": label, "short_text": label}
-                for label in self._LOADERS_GROUPING_LABELS.values()
-            ],
+            items=[{"text": label} for _, label in self._LOADERS_GROUPINGS],
             variant=AYComboBox.Variants.Low,
             parent=self,
         )
-        self.loaders_grouping_ui.setToolTip(loaders_grouping_tooltip)
-        self.loaders_grouping_ui.setCurrentIndex(
-            list(self._LOADERS_GROUPING_LABELS).index(self._loaders_grouping)
-        )
+        self.loaders_grouping_ui.setToolTip(self._LOADERS_GROUPING_TOOLTIP)
+        self.set_loaders_grouping(self._loaders_grouping)
         loaders_grouping_lyt = AYHBoxLayout(margin=0, spacing=10)
         loaders_grouping_lyt.addWidget(loaders_grouping_label)
         loaders_grouping_lyt.addWidget(self.loaders_grouping_ui, stretch=1)
@@ -814,10 +809,9 @@ class Customize(AYButtonMenu):
             self.include_children_ui.setEnabled(not disabled)
 
     def _on_loaders_grouping_index_changed(self, index: int) -> None:
-        groupings = list(self._LOADERS_GROUPING_LABELS)
-        if not 0 <= index < len(groupings):
+        if not 0 <= index < len(self._LOADERS_GROUPINGS):
             return
-        self._loaders_grouping = groupings[index]
+        self._loaders_grouping = self._LOADERS_GROUPINGS[index][0]
         self.loaders_grouping_changed.emit(self._loaders_grouping)
 
     def set_loaders_grouping(self, grouping: LoadersGrouping) -> None:
@@ -825,10 +819,9 @@ class Customize(AYButtonMenu):
         self._loaders_grouping = grouping
         if not hasattr(self, "loaders_grouping_ui"):
             return
+        index = [item[0] for item in self._LOADERS_GROUPINGS].index(grouping)
         with QSignalBlocker(self.loaders_grouping_ui):
-            self.loaders_grouping_ui.setCurrentIndex(
-                list(self._LOADERS_GROUPING_LABELS).index(grouping)
-            )
+            self.loaders_grouping_ui.setCurrentIndex(index)
 
 
 class DisplayType(AYContainer):
