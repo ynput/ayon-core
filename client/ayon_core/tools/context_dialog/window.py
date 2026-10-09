@@ -13,6 +13,7 @@ from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
     HierarchyModel,
+    ThumbnailsModel,
 )
 from ayon_core.tools.utils import (
     ProjectsCombobox,
@@ -168,6 +169,7 @@ class ContextDialogController:
         self._settings_model = SettingsModel()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._selection_model = SelectionModel(self)
         self._expected_selection = ExpectedSelection(self)
 
@@ -198,6 +200,7 @@ class ContextDialogController:
         self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
 
         self._emit_event("controller.reset.finished")
 
@@ -207,6 +210,7 @@ class ContextDialogController:
         self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
 
         self._emit_event("controller.refresh.finished")
 
@@ -259,6 +263,17 @@ class ContextDialogController:
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._hierarchy_model.get_task_items(
             project_name, folder_id, sender
+        )
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     # Expected selection helpers
