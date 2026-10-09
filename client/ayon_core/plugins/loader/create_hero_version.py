@@ -20,11 +20,11 @@ from ayon_core.pipeline.publish import get_publish_template_name
 from ayon_core.pipeline.template_data import get_template_data
 
 from ayon_core.pipeline.actions import (
-    LoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
 )
+from ayon_core.pipeline.actions.loader import CoreLoaderActionPlugin
 
 
 class HeroCreationError(Exception):
@@ -59,7 +59,7 @@ def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
     return changes
 
 
-class CreateHeroVersion(LoaderActionPlugin):
+class CreateHeroVersion(CoreLoaderActionPlugin):
     """Create hero version from selected context."""
 
     is_multiple_contexts_compatible = False

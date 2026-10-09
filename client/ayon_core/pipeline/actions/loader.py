@@ -630,6 +630,72 @@ class LoaderActionPlugin(ABC):
         pass
 
 
+class CoreLoaderActionPlugin(LoaderActionPlugin):
+    """Base class for configurable core loader actions."""
+
+    def apply_settings(self, studio_settings: dict[str, Any]) -> None:
+        """Apply settings controlling whether the action is available."""
+        loader_settings = (
+            studio_settings
+            .get("core", {})
+            .get("tools", {})
+            .get("loader", {})
+        )
+        actions_settings = loader_settings.get("actions", {})
+        self.enabled = actions_settings.get(self.__class__.__name__, True)
+
+    @property
+    def identifier(self) -> str:
+        """Identifier of the plugin.
+
+        Returns:
+            str: Plugin identifier.
+
+        """
+        return self.__class__.__name__
+
+    @property
+    def host_name(self) -> Optional[str]:
+        """Name of the current host."""
+        return self._context.get_host_name()
+
+    @abstractmethod
+    def get_action_items(
+        self, selection: LoaderActionSelection
+    ) -> list[LoaderActionItem]:
+        """Action items for the selection.
+
+        Args:
+            selection (LoaderActionSelection): Selection.
+
+        Returns:
+            list[LoaderActionItem]: Action items.
+
+        """
+        pass
+
+    @abstractmethod
+    def execute_action(
+        self,
+        selection: LoaderActionSelection,
+        data: Optional[DataType],
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
+        """Execute an action.
+
+        Args:
+            selection (LoaderActionSelection): Selection wrapper. Can be used
+                to get entities or get context of original selection.
+            data (Optional[DataType]): Additional action item data.
+            form_values (dict[str, Any]): Attribute values.
+
+        Returns:
+            Optional[LoaderActionResult]: Result of the action execution.
+
+        """
+        pass
+
+
 class LoaderActionsContext:
     """Wrapper for loader actions and their logic.
 
