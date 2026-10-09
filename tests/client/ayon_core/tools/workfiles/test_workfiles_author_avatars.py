@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.tools.common_models import UserItem
 from ayon_core.tools.workfiles.widgets import (
@@ -132,3 +132,54 @@ def test_avatar_download_repaints_the_view(qtbot, avatar_tasks):
 
     avatar_cache.avatar_updated.emit("roy")
     qtbot.waitUntil(lambda: bool(paints), timeout=5000)
+
+
+def test_avatar_is_not_jagged_on_scaled_screen(avatar_tasks):
+    """Avatar is filtered when it does not match pixels of the screen.
+
+    With 125% scaling of a screen the 18px avatar covers 22.5 pixels. It
+    cannot be painted pixel for pixel, without filtering some of its rows
+    and columns are doubled, which shows as jagged edges.
+    """
+    scale = 1.25
+    model = files_widget_workarea.WorkAreaFilesModel(_Controller())
+    model._on_task_changed({"folder_id": "f", "task_name": "comp"})
+    avatar_cache = user_avatars.UserAvatarCache(model)
+    delegate = WorkfilesDelegate(avatar_cache)
+
+    # Avatar of black and white pixels, as rendered for the scaled screen
+    size = user_avatars.ITEM_AVATAR_SIZE
+    pixel_size = int(size * scale)
+    avatar = QtGui.QImage(
+        pixel_size, pixel_size, QtGui.QImage.Format_ARGB32
+    )
+    for x in range(pixel_size):
+        for y in range(pixel_size):
+            color = QtCore.Qt.black if (x + y) % 2 else QtCore.Qt.white
+            avatar.setPixelColor(x, y, QtGui.QColor(color))
+    avatar.setDevicePixelRatio(scale)
+    avatar_cache._pixmaps[("roy", size)] = QtGui.QPixmap.fromImage(avatar)
+
+    cell_rect = QtCore.QRect(0, 0, 120, 28)
+    image = QtGui.QImage(
+        int(cell_rect.width() * scale),
+        int(cell_rect.height() * scale),
+        QtGui.QImage.Format_ARGB32,
+    )
+    image.setDevicePixelRatio(scale)
+    image.fill(QtCore.Qt.black)
+    option = QtWidgets.QStyleOptionViewItem()
+    option.rect = cell_rect
+    option.state = QtWidgets.QStyle.State_Enabled
+    painter = QtGui.QPainter(image)
+    delegate.paint(painter, option, model.index(0, 1))
+    painter.end()
+
+    # Inner pixels of the avatar, away from its edges and the name
+    values = {
+        image.pixelColor(x, y).red()
+        for x in range(14, 28)
+        for y in range(10, 24)
+    }
+    # Only black and white pixels would mean pixels were just repeated
+    assert values - {0, 255}
