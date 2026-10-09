@@ -125,6 +125,9 @@ class AddColumnButton(AYButton):
             variant=AYButton.Variants.Header_Action,
             tooltip="Add or remove columns",
         )
+        # Size is otherwise only applied on first paint, but the button is
+        # positioned in the header while still hidden.
+        self.setFixedSize(self.sizeHint())
         # Hidden until revealed by hovering the header
         self._opacity_effect = QtWidgets.QGraphicsOpacityEffect(self)
         self._opacity_effect.setOpacity(0.0)
