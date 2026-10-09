@@ -39,6 +39,11 @@ from .entity_thumbnails import (
     EntityThumbnailsPainter,
     EntityThumbnailDelegate,
 )
+from .entity_hover_card import (
+    EntityHoverCardHandler,
+    EntityHoverInfo,
+    get_folder_hover_info,
+)
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models import (
@@ -269,6 +274,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             if item.path == folder_path:
                 return folder_id
         return None
+
+    def get_folder_type_item(
+        self, folder_type: str
+    ) -> FolderTypeItem | None:
+        """Folder type item by name from the last refresh."""
+        return self._fill_data.folder_types_by_name.get(folder_type)
+
+    def get_status_item(self, status_name: str) -> StatusItem | None:
+        """Status item by name from the last refresh."""
+        return self._fill_data.statuses_by_name.get(status_name)
 
     def get_project_name(self) -> str | None:
         """Project name which model currently use.
@@ -965,11 +980,18 @@ class FoldersWidget(QtWidgets.QWidget):
         folders_view.double_clicked.connect(self.double_clicked)
         folders_model.refreshed.connect(self._on_model_refresh)
 
+        # Card with folder information is shown when a folder is hovered
+        hover_card_handler = EntityHoverCardHandler(
+            folders_view, FOLDER_ID_ROLE, self._get_hover_info
+        )
+        folders_model.refreshed.connect(hover_card_handler.clear_cache)
+
         self._controller = controller
         self._folders_view = folders_view
         self._folders_model = folders_model
         self._folders_proxy_model = folders_proxy_model
         self._thumbnails_painter = thumbnails_painter
+        self._hover_card_handler = hover_card_handler
 
         self._handle_expected_selection = handle_expected_selection
         self._expected_selection = None
@@ -1178,6 +1200,31 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def _on_controller_refresh(self):
         self._update_expected_selection()
+
+    def _get_hover_info(self, folder_id: str) -> EntityHoverInfo | None:
+        """Information for hover card of a folder. Is called in a thread."""
+        controller = self._controller
+        project_name = self._folders_model.get_project_name()
+        if not project_name or not hasattr(controller, "get_folder_entity"):
+            return None
+        folder_entity = controller.get_folder_entity(project_name, folder_id)
+        if not folder_entity:
+            return None
+
+        thumbnail_path = None
+        if hasattr(controller, "get_thumbnail_paths"):
+            thumbnail_path = controller.get_thumbnail_paths(
+                project_name, "folder", {folder_id}
+            ).get(folder_id)
+        return get_folder_hover_info(
+            project_name,
+            folder_entity,
+            self._folders_model.get_folder_type_item(
+                folder_entity["folderType"]
+            ),
+            self._folders_model.get_status_item(folder_entity["status"]),
+            thumbnail_path,
+        )
 
     def _on_model_refresh(self):
         if self._expected_selection:

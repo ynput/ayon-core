@@ -24,6 +24,11 @@ from .entity_thumbnails import (
     EntityThumbnailsPainter,
     EntityThumbnailDelegate,
 )
+from .entity_hover_card import (
+    EntityHoverCardHandler,
+    EntityHoverInfo,
+    get_task_hover_info,
+)
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -57,6 +62,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._controller = controller
 
         self._items_by_name = {}
+        self._task_type_items_by_name = {}
+        self._status_items_by_name = {}
         self._has_content = False
         self._is_refreshing = False
 
@@ -109,6 +116,14 @@ class TasksQtModel(QtGui.QStandardItemModel):
         if item is None:
             return QtCore.QModelIndex()
         return self.indexFromItem(item)
+
+    def get_task_type_item(self, task_type):
+        """Task type item by name from the last refresh."""
+        return self._task_type_items_by_name.get(task_type)
+
+    def get_status_item(self, status_name):
+        """Status item by name from the last refresh."""
+        return self._status_items_by_name.get(status_name)
 
     def get_last_project_name(self):
         """Get last refreshed project name.
@@ -291,6 +306,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
         task_type_item_by_name = {
             task_type_item.name: task_type_item
             for task_type_item in task_type_items
+        }
+        self._task_type_items_by_name = task_type_item_by_name
+        self._status_items_by_name = {
+            status.name: status
+            for status in status_items
         }
         task_type_icon_cache = {}
         new_items = []
@@ -545,11 +565,18 @@ class TasksWidget(QtWidgets.QWidget):
         tasks_model.refreshed.connect(self._on_tasks_model_refresh)
         tasks_model.project_changed.connect(self._on_tasks_project_change)
 
+        # Card with task information is shown when a task is hovered
+        hover_card_handler = EntityHoverCardHandler(
+            tasks_view, ITEM_ID_ROLE, self._get_hover_info
+        )
+        tasks_model.refreshed.connect(hover_card_handler.clear_cache)
+
         self._controller = controller
         self._tasks_view = tasks_view
         self._tasks_model = tasks_model
         self._tasks_proxy_model = tasks_proxy_model
         self._thumbnails_painter = thumbnails_painter
+        self._hover_card_handler = hover_card_handler
 
         self._selected_folder_id = None
 
@@ -690,6 +717,38 @@ class TasksWidget(QtWidgets.QWidget):
         self._selected_folder_id = event["folder_id"]
         self._tasks_model.set_context(
             event["project_name"], self._selected_folder_id
+        )
+
+    def _get_hover_info(self, task_id: str) -> Optional[EntityHoverInfo]:
+        """Information for hover card of a task. Is called in a thread."""
+        controller = self._controller
+        project_name = self._tasks_model.get_last_project_name()
+        if not project_name or not hasattr(controller, "get_task_entity"):
+            return None
+        task_entity = controller.get_task_entity(project_name, task_id)
+        if not task_entity:
+            return None
+
+        folder_path = None
+        if hasattr(controller, "get_folder_entity"):
+            folder_entity = controller.get_folder_entity(
+                project_name, task_entity["folderId"]
+            )
+            if folder_entity:
+                folder_path = folder_entity["path"]
+
+        thumbnail_path = None
+        if hasattr(controller, "get_thumbnail_paths"):
+            thumbnail_path = controller.get_thumbnail_paths(
+                project_name, "task", {task_id}
+            ).get(task_id)
+        return get_task_hover_info(
+            project_name,
+            task_entity,
+            folder_path,
+            self._tasks_model.get_task_type_item(task_entity["taskType"]),
+            self._tasks_model.get_status_item(task_entity["status"]),
+            thumbnail_path,
         )
 
     def _on_tasks_model_refresh(self):
