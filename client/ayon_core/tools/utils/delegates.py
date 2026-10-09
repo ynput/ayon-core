@@ -23,9 +23,6 @@ def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):
     Else:
         "%Y-%m-%d %H:%M:%S"
 
-    Activity feeds use 'ayon_core.ui.data_models.relative_date' instead,
-    which stays relative for older dates like the web frontend does.
-
     """
 
     assert isinstance(t, datetime)
