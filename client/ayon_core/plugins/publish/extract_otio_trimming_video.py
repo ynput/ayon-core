@@ -134,7 +134,7 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
         output = run_subprocess(
             command, logger=self.log
         )
-        self.log.debug(f"### Output\n{output}")
+        self.log.debug(f"Output\n{output}")
 
         return os.path.basename(output_path)
 
