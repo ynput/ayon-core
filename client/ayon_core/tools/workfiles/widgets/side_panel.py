@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from qtpy import QtCore
+from qtpy import QtCore, QtWidgets
 
+from ayon_core.tools.utils.activity_widget import ActivityWidget
 from ayon_core.tools.utils.delegates import file_size_to_string
 from ayon_core.ui.components import (
     AYContainer,
@@ -10,10 +11,14 @@ from ayon_core.ui.components import (
     AYLabel,
     AYTextEdit
 )
+from ayon_core.ui.components.tab_bar import AYTabBar
 
 
 class SidePanelWidget(AYContainer):
-    """Details about selected workfile.
+    """Details about selected workfile and activity of its task.
+
+    The activity is a second tab so the panel does not take more space.
+    It shows the selected task, or the folder until a task is selected.
 
     Todos:
         At this moment only shows created and modified date of file
@@ -38,9 +43,36 @@ class SidePanelWidget(AYContainer):
             layout_spacing=4,
         )
 
-        # ── Details section ─────────────────────────────────────────
-        self.add_widget(AYLabel("Details", rel_text_size=1, parent=self))
+        tabs = AYTabBar(["Details", "Activity"], parent=self)
+        self.add_widget(tabs)
 
+        details_page = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.High,
+            layout_spacing=4,
+        )
+        activity_page = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.High,
+            layout_spacing=6,
+        )
+        activity_context_label = AYLabel(
+            "", dim=True, rel_text_size=-1, icon_size=14
+        )
+        # Darker than the panel so comment cards stand out from it
+        activity_widget = ActivityWidget(
+            controller, variant=AYContainer.Variants.Low, layout_margin=6
+        )
+        activity_page.add_widget(activity_context_label)
+        activity_page.add_widget(activity_widget, stretch=1)
+
+        pages = QtWidgets.QStackedWidget(self)
+        pages.addWidget(details_page)
+        pages.addWidget(activity_page)
+        tabs.current_changed.connect(pages.setCurrentIndex)
+        self.add_widget(pages, stretch=1)
+
+        # ── Details section ─────────────────────────────────────────
         details_form = AYContainer(
             layout=AYContainer.Layout.Form,
             variant=AYContainer.Variants.High,
@@ -62,13 +94,13 @@ class SidePanelWidget(AYContainer):
         modified_val.setWordWrap(True)
         details_form.add_row(modified_key, modified_val)
 
-        self.add_widget(details_form, stretch=0)
+        details_page.add_widget(details_form, stretch=0)
 
         # ── Note/Comment section reused for both ────────────
         self._note_label = AYLabel(
             "Artist Note", rel_text_size=1, parent=self
         )
-        self.add_widget(self._note_label)
+        details_page.add_widget(self._note_label)
 
         note_frame = AYContainer(
             layout=AYContainer.Layout.VBox,
@@ -88,7 +120,7 @@ class SidePanelWidget(AYContainer):
             btn_description_save, QtCore.Qt.AlignRight
         )
 
-        self.add_widget(note_frame, stretch=1)
+        details_page.add_widget(note_frame, stretch=1)
 
         description_input.textChanged.connect(self._on_description_change)
         btn_description_save.clicked.connect(self._on_save_click)
@@ -101,6 +133,14 @@ class SidePanelWidget(AYContainer):
             "selection.representation.changed",
             self._on_representation_selection_change,
         )
+        controller.register_event_callback(
+            "selection.folder.changed",
+            self._on_folder_selection_change,
+        )
+        controller.register_event_callback(
+            "selection.task.changed",
+            self._on_task_selection_change,
+        )
 
         self._details_form = details_form
         self._size_val = size_val
@@ -109,6 +149,8 @@ class SidePanelWidget(AYContainer):
         self._note_frame = note_frame
         self._description_input = description_input
         self._btn_description_save = btn_description_save
+        self._activity_context_label = activity_context_label
+        self._activity_widget = activity_widget
 
         self._published_mode = False
         self._folder_id = None
@@ -120,6 +162,7 @@ class SidePanelWidget(AYContainer):
         self._controller = controller
 
         self._set_context(False, None, None)
+        self._set_activity_context(None, None, None)
 
     def set_published_mode(self, published_mode: bool) -> None:
         """Change published mode.
@@ -169,6 +212,38 @@ class SidePanelWidget(AYContainer):
         representation_id = event["representation_id"]
 
         self._set_publish_context(folder_id, task_id, representation_id)
+
+    def _on_folder_selection_change(self, event):
+        self._set_activity_context(event["folder_id"], None, None)
+
+    def _on_task_selection_change(self, event):
+        self._set_activity_context(
+            event["folder_id"], event["task_id"], event["task_name"]
+        )
+
+    def _set_activity_context(
+        self,
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        task_name: Optional[str],
+    ) -> None:
+        """Show activity of the task, or of the folder without a task."""
+        if task_id:
+            label, icon = task_name or "Task", "check_circle"
+        elif folder_id:
+            label, icon = "Folder", "folder"
+        else:
+            label, icon = "", ""
+        self._activity_context_label.setText(label)
+        self._activity_context_label.set_icon(icon)
+        self._activity_context_label.setVisible(bool(label))
+
+        entity_id = task_id or folder_id
+        self._activity_widget.set_context(
+            self._controller.get_current_project_name(),
+            [entity_id] if entity_id else [],
+            "Select a folder or task to see its activity",
+        )
 
     def _on_description_change(self):
         text = self._description_input.toPlainText()

@@ -18,7 +18,12 @@ from ayon_core.lib.attribute_definitions import (
 from ayon_core.tools.common_models import TaskItem, ProjectItem
 
 if typing.TYPE_CHECKING:
-    from ayon_core.tools.common_models import FolderTypeItem, StatusItem
+    from ayon_core.tools.common_models import (
+        ActivityItem,
+        FolderTypeItem,
+        StatusItem,
+        UserItem,
+    )
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 
@@ -412,6 +417,66 @@ class AbstractBrowserController(ABC):
 
         Returns:
             dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
+        """User items for a project.
+
+        Args:
+            project_name (str | None): Project name.
+
+        Returns:
+            list[UserItem]: Users with access to the project.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_version_thumbnail_path(
+        self, project_name: str, version_id: str, thumbnail_id: str
+    ) -> str | None:
+        """Path to a thumbnail of a version.
+
+        The thumbnail is downloaded if it is not in the thumbnails cache
+        of the machine, so it should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            version_id (str): Version id.
+            thumbnail_id (str): Thumbnail id of the version.
+
+        Returns:
+            str | None: Path to the thumbnail, or None if it is not
+                available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_activity_items(
+        self,
+        project_name: str,
+        entity_ids: list[str] | set[str],
+        limit: int = 50,
+    ) -> list[ActivityItem]:
+        """Latest activities of entities.
+
+        Activities are comments, publishes and status changes. They are
+        queried from the server on each call, so it should not be called
+        from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_ids (list[str] | set[str]): Entity ids, e.g. of
+                versions.
+            limit (int): Maximum number of activities.
+
+        Returns:
+            list[ActivityItem]: Activities sorted from the newest to
+                the oldest.
 
         """
         pass

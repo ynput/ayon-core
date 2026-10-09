@@ -14,7 +14,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import arrow
 import ayon_api
@@ -73,6 +73,13 @@ from ayon_core.tools.browser.ui.browser_types import (
     ENTITY_LIST_CATEGORIES,
     BrowserSlicerCategory,
 )
+
+if TYPE_CHECKING:
+    from ayon_core.tools.common_models import (
+        ActivityItem,
+        StatusItem,
+        UserItem,
+    )
 
 log = Logger.get_logger(__name__)
 
@@ -2188,6 +2195,79 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
         self.products_group_changed.emit()
 
+    def get_activity_items(
+        self,
+        project_name: str,
+        entity_ids: list[str] | set[str],
+        limit: int = 50,
+    ) -> list[ActivityItem]:
+        """Return the latest activities of entities, e.g. of versions.
+
+        Delegates to the main loader controller. Queries the server, so
+        it should be called from a background thread.
+
+        Args:
+            project_name: AYON project name.
+            entity_ids: Entity ids to get activities for.
+            limit: Maximum number of activities.
+
+        Returns:
+            Activities sorted from the newest to the oldest.
+        """
+        return self._loader_controller.get_activity_items(
+            project_name, entity_ids, limit
+        )
+
+    def get_project_status_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[StatusItem]:
+        """Return status items of a project, background thread safe.
+
+        Args:
+            project_name: AYON project name.
+            sender: Who requested the items.
+
+        Returns:
+            Project statuses.
+        """
+        return self._loader_controller.get_project_status_items(
+            project_name, sender
+        )
+
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
+        """Return user items of a project, background thread safe.
+
+        Args:
+            project_name: AYON project name.
+
+        Returns:
+            Users with access to the project.
+        """
+        return self._loader_controller.get_user_items(project_name)
+
+    def get_version_thumbnail_path(
+        self, project_name: str, version_id: str, thumbnail_id: str
+    ) -> str | None:
+        """Return the path to a thumbnail of a version.
+
+        The backend downloads it into the thumbnails cache of the machine,
+        which is shared by all AYON tools and processes. Should be called
+        from a background thread.
+
+        Args:
+            project_name: AYON project name.
+            version_id: Version id.
+            thumbnail_id: Thumbnail id of the version.
+
+        Returns:
+            Path to the image file, or ``None`` when it is not available.
+        """
+        if not project_name or not version_id or not thumbnail_id:
+            return None
+        return self._loader_controller.get_version_thumbnail_path(
+            project_name, version_id, thumbnail_id
+        )
+
     def _get_column_context(self) -> BrowserColumnContext:
         """Return an immutable state snapshot for column providers."""
         filters = tuple(
@@ -2450,6 +2530,8 @@ class BrowserWidgetController(QtCore.QObject):
             )
             row["thumbnailId"] = featured_version.get("thumbnailId", "")
             row["_version_id"] = featured_version.get("id", "")
+            # The 'version' of the row also has the count of versions
+            row["_version_name"] = featured_version.get("name", "")
             # The featured "hero" is the regular version the hero version
             # was made from, but acting on it must use the hero version.
             if featured_version.get("featuredVersionType") == "hero":
@@ -3671,7 +3753,7 @@ class BrowserWidgetController(QtCore.QObject):
                 "productTypes": product_type_default,
                 "productBaseTypes": product_type_default,
             },
-            "user_full_names": self._fetch_user_full_names(name),
+            "user_full_names": self._get_user_full_names(name),
             "attributes_by_scope": attributes_by_scope,
             # The server omits attributes an entity never set, so a
             # boolean column would have no value to paint for exactly the
@@ -3850,9 +3932,11 @@ class BrowserWidgetController(QtCore.QObject):
             value = self._appearance_defaults.get(category, {}).get(key)
         return default if value is None else value
 
-    @staticmethod
-    def _fetch_user_full_names(project_name: str) -> dict[str, str]:
+    def _get_user_full_names(self, project_name: str) -> dict[str, str]:
         """Return a login to full-name mapping for the project's users.
+
+        Users come from the users model of the backend, which caches
+        them, so they are queried once for the table and the activity.
 
         Author columns display the full name the way the web UI does; the
         login stays the stored value so filtering and sorting keep working
@@ -3866,7 +3950,7 @@ class BrowserWidgetController(QtCore.QObject):
             are omitted so callers can fall back to the login.
         """
         try:
-            users = ayon_api.get_users(project_name=project_name) or []
+            user_items = self._loader_controller.get_user_items(project_name)
         except Exception:  # noqa: BLE001 - users are a display nicety
             log.warning(
                 "Could not fetch users for project %r", project_name,
@@ -3874,13 +3958,9 @@ class BrowserWidgetController(QtCore.QObject):
             )
             return {}
         output = {}
-        for user in users:
-            if not isinstance(user, dict):
-                continue
-            name = str(user.get("name") or "").strip()
-            full_name = str(
-                (user.get("ownAttrib") or {}).get("fullName") or ""
-            ).strip()
+        for user_item in user_items:
+            name = str(user_item.username or "").strip()
+            full_name = str(user_item.full_name or "").strip()
             if name and full_name:
                 output[name] = full_name
         return output

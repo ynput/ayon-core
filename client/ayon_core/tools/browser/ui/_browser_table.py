@@ -209,7 +209,9 @@ class BrowserTable(AYContainer):
         self._refresh_btn.setToolTip("Refresh")
         self._refresh_btn.clicked.connect(self.refresh_filter)
 
-        _card_fetcher = _make_card_async_fetcher(self._model)
+        _card_fetcher = _make_card_async_fetcher(
+            self._model, self._controller
+        )
 
         def _card_mapper(row_data: dict) -> dict:
             data = _browser_card_mapper(row_data)
@@ -605,6 +607,11 @@ class BrowserTable(AYContainer):
     # ------------------------------------------------------------------
     # Public properties
     # ------------------------------------------------------------------
+
+    @property
+    def avatar_cache(self) -> UserAvatarCache:
+        """Cache of user avatars, to share with other views of the tool."""
+        return self._avatar_cache
 
     @property
     def table(self) -> AYTableView:
@@ -1400,7 +1407,9 @@ class BrowserTable(AYContainer):
             get_task_queue().enqueue(
                 AsyncTask(
                     name=f"eager_thumb_{key}",
-                    function=lambda k=key: _thumbnail_loader(k),
+                    function=lambda k=key: _thumbnail_loader(
+                        k, self._controller
+                    ),
                     callback=_update_viewport,
                     priority=2,
                     context_id=request_id,
@@ -1672,6 +1681,7 @@ class BrowserTable(AYContainer):
                 return LazyThumbnailWidget(
                     key=key,
                     context_id=request_id,
+                    controller=self._controller,
                     size=(64, 30),
                 )
 
