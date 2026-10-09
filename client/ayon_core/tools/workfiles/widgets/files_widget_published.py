@@ -226,17 +226,17 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
                 flags = QtCore.Qt.NoItemFlags
 
             username = file_item.author
-            author = username
+            user_label = username
             user_item = user_items_by_name.get(username)
             if user_item is not None and user_item.full_name:
-                author = user_item.full_name
+                user_label = user_item.full_name
 
             filename = os.path.basename(file_item.filepath)
 
             item.setFlags(flags)
             item.setData(filename, QtCore.Qt.DisplayRole)
             item.setData(file_item.filepath, FILEPATH_ROLE)
-            item.setData(author, AUTHOR_ROLE)
+            item.setData(user_label, AUTHOR_ROLE)
             item.setData(username, USERNAME_ROLE)
             item.setData(file_item.file_modified, DATE_MODIFIED_ROLE)
 
