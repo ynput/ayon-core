@@ -21,6 +21,8 @@ from ayon_core.pipeline.template_data import get_template_data
 from .path_resolving import (
     get_workdir,
     get_workfile_template_key,
+    get_workfile_custom_keys,
+    resolve_workfile_custom_data,
 )
 
 if typing.TYPE_CHECKING:
@@ -426,6 +428,7 @@ def save_next_version(
     description: Optional[str] = None,
     *,
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
+    custom_data: Optional[dict[str, Any]] = None,
 ) -> None:
     """Save workfile using current context, version and comment.
 
@@ -440,6 +443,10 @@ def save_next_version(
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
+        custom_data (Optional[dict[str, Any]]): Values of custom keys used
+            in the workfile file template (e.g. 'revision'). Values of
+            the current workfile, or of the last workfile, are used for
+            keys that are not passed in.
 
     """
     from ayon_core.pipeline import Anatomy
@@ -504,9 +511,10 @@ def save_next_version(
         project_settings=project_settings,
     )
     rootless_dir = workdir.rootless
+    custom_keys = get_workfile_custom_keys(file_template, template_data)
     last_workfile = None
     current_workfile = None
-    if version is None or comment is None:
+    if version is None or comment is None or custom_keys:
         workfiles = host.list_workfiles(
             project_name, folder_entity, task_entity,
             prepared_data=ListWorkfilesOptionalData(
@@ -548,6 +556,18 @@ def save_next_version(
     template_data["version"] = version
     if comment:
         template_data["comment"] = comment
+
+    # Custom keys keep the value of the current workfile, fallback to
+    #   the last workfile and then to the default value of the key
+    if custom_keys:
+        custom_data = resolve_workfile_custom_data(
+            custom_keys,
+            custom_data,
+            current_workfile.custom_data if current_workfile else None,
+            last_workfile.custom_data if last_workfile else None,
+        )
+        template_data.update(custom_data)
+        prepared_data.custom_data = custom_data
 
     # Resolve extension
     # - Don't fill any if the host does not have defined any -> e.g. if host

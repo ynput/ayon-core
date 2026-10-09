@@ -7,7 +7,7 @@ import typing
 import warnings
 import functools
 from abc import abstractmethod
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Optional, Any
 
 import ayon_api
@@ -229,6 +229,7 @@ class SaveWorkfileOptionalData(_WorkfileOptionalData):
         project_settings: Optional[dict[str, Any]] = None,
         rootless_path: Optional[str] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
+        custom_data: Optional[dict[str, Any]] = None,
         **kwargs
     ):
         super().__init__(
@@ -240,6 +241,8 @@ class SaveWorkfileOptionalData(_WorkfileOptionalData):
 
         self.rootless_path = rootless_path
         self.workfile_entities = workfile_entities
+        # Values of custom keys used in workfile file template
+        self.custom_data = custom_data
 
     def get_workfile_entities(self, project_name: str, task_id: str):
         """Fill workfile entities if not provided."""
@@ -392,6 +395,7 @@ class SaveWorkfileContext:
     dst_path: str
     rootless_path: str
     workfile_entities: list[dict[str, Any]]
+    custom_data: dict[str, Any]
 
 
 @dataclass
@@ -537,6 +541,7 @@ def get_save_workfile_context(
         dst_path=filepath,
         rootless_path=rootless_path,
         workfile_entities=workfile_entities,
+        custom_data=dict(prepared_data.custom_data or {}),
     )
 
 
@@ -580,6 +585,7 @@ def get_copy_workfile_context(
         dst_path=context.dst_path,
         rootless_path=context.rootless_path,
         workfile_entities=context.workfile_entities,
+        custom_data=context.custom_data,
     )
 
 
@@ -631,6 +637,7 @@ def get_copy_repre_workfile_context(
         project_settings=context.project_settings,
         rootless_path=context.rootless_path,
         workfile_entities=context.workfile_entities,
+        custom_data=context.custom_data,
         src_anatomy=src_anatomy,
     )
 
@@ -660,6 +667,8 @@ class WorkfileInfo:
         updated_by (Optional[str]): User id of the user who updated the
             workfile entity.
         available (bool): True if workfile is available on the machine.
+        custom_data (dict[str, Any]): Values of custom keys used in
+            the workfile file template (e.g. 'revision').
 
     """
     filepath: str
@@ -674,6 +683,7 @@ class WorkfileInfo:
     created_by: Optional[str]
     updated_by: Optional[str]
     available: bool
+    custom_data: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def new(
@@ -685,6 +695,7 @@ class WorkfileInfo:
         comment: Optional[str],
         available: bool,
         workfile_entity: dict[str, Any],
+        custom_data: Optional[dict[str, Any]] = None,
     ):
         file_size = file_modified = file_created = None
         if filepath and os.path.exists(filepath):
@@ -713,6 +724,7 @@ class WorkfileInfo:
             created_by=workfile_entity.get("createdBy"),
             updated_by=workfile_entity.get("updatedBy"),
             available=available,
+            custom_data=dict(custom_data or {}),
         )
 
     def to_data(self) -> dict[str, Any]:
@@ -1142,16 +1154,22 @@ class IWorkfileHost(AbstractHost):
             workfile_entity = workfile_entities_by_path.pop(
                 filepath, None
             )
-            version = comment = None
+            version = comment = custom_data = None
             if workfile_entity is not None:
                 _data = workfile_entity["data"]
                 version = _data.get("version")
                 comment = _data.get("comment")
+                custom_data = _data.get("custom_data")
 
-            if version is None:
+            if version is None or (
+                custom_data is None and data_parser.has_custom_keys
+            ):
                 parsed_data = data_parser.parse_data(filename)
-                version = parsed_data.version
-                comment = parsed_data.comment
+                if version is None:
+                    version = parsed_data.version
+                    comment = parsed_data.comment
+                if custom_data is None:
+                    custom_data = parsed_data.custom_data
 
             item = WorkfileInfo.new(
                 filepath,
@@ -1160,6 +1178,7 @@ class IWorkfileHost(AbstractHost):
                 comment=comment,
                 available=True,
                 workfile_entity=workfile_entity,
+                custom_data=custom_data,
             )
             items.append(item)
 
@@ -1174,11 +1193,17 @@ class IWorkfileHost(AbstractHost):
             _data = workfile_entity["data"]
             version = _data.get("version")
             comment = _data.get("comment")
-            if version is None:
+            custom_data = _data.get("custom_data")
+            if version is None or (
+                custom_data is None and data_parser.has_custom_keys
+            ):
                 filename = os.path.basename(rootless_path)
                 parsed_data = data_parser.parse_data(filename)
-                version = parsed_data.version
-                comment = parsed_data.comment
+                if version is None:
+                    version = parsed_data.version
+                    comment = parsed_data.comment
+                if custom_data is None:
+                    custom_data = parsed_data.custom_data
 
             available = os.path.exists(filepath)
             items.append(WorkfileInfo.new(
@@ -1188,6 +1213,7 @@ class IWorkfileHost(AbstractHost):
                 comment=comment,
                 available=available,
                 workfile_entity=workfile_entity,
+                custom_data=custom_data,
             ))
 
         return items
@@ -1594,6 +1620,10 @@ class IWorkfileHost(AbstractHost):
 
         data["ayon_app_name"] = app_addon_name
         data["ayon_app_tools"] = app_addon_tools
+
+        # Store values of custom keys used in the file template
+        if save_workfile_context.custom_data:
+            data["custom_data"] = save_workfile_context.custom_data
 
         workfile_info = save_workfile_info(
             project_name,

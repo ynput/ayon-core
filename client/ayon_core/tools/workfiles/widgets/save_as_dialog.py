@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from qtpy import QtWidgets
+from typing import Any
+
+from qtpy import QtWidgets, QtCore
 
 from ayon_core.ui.components import (
     AYButton,
@@ -16,6 +18,16 @@ from ayon_core.ui.components import (
     AYHBoxLayout,
     AYGridLayout,
 )
+
+# Rows of the inputs layout
+# - there are gaps for inputs of custom template keys which are added
+#   before or after the version based on their position in the template
+_VERSION_ROW = 50
+_SUBVERSION_ROW = 51
+_CUSTOM_KEYS_ROW = 52
+_EXTENSION_ROW = 100
+_PREVIEW_ROW = 101
+_DESCRIPTION_ROW = 102
 
 
 class SaveAsDialog(QtWidgets.QDialog):
@@ -42,6 +54,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._template_key = None
         self._comment_value = None
         self._version_value = None
+        self._custom_data: dict[str, Any] = {}
+        self._custom_widgets: list[QtWidgets.QWidget] = []
         self._ext_value = None
         self._filename = None
         self._workdir = None
@@ -152,16 +166,20 @@ class SaveAsDialog(QtWidgets.QDialog):
         btns_layout.addWidget(btn_cancel, 1)
 
         # Build inputs
-        inputs_layout.addWidget(version_label, 0, 0)
-        inputs_layout.addLayout(versions_layout, 0, 1)
-        inputs_layout.addWidget(subversion_label, 1, 0)
-        inputs_layout.addLayout(subversion_layout, 1, 1)
-        inputs_layout.addWidget(extension_label, 2, 0)
-        inputs_layout.addWidget(extension_combobox, 2, 1)
-        inputs_layout.addWidget(preview_label, 3, 0)
-        inputs_layout.addWidget(preview_widget, 3, 1)
-        inputs_layout.addWidget(description_label, 4, 0, 1, 2)
-        inputs_layout.addWidget(description_frame, 5, 0, 1, 2)
+        inputs_layout.addWidget(version_label, _VERSION_ROW, 0)
+        inputs_layout.addLayout(versions_layout, _VERSION_ROW, 1)
+        inputs_layout.addWidget(subversion_label, _SUBVERSION_ROW, 0)
+        inputs_layout.addLayout(subversion_layout, _SUBVERSION_ROW, 1)
+        inputs_layout.addWidget(extension_label, _EXTENSION_ROW, 0)
+        inputs_layout.addWidget(extension_combobox, _EXTENSION_ROW, 1)
+        inputs_layout.addWidget(preview_label, _PREVIEW_ROW, 0)
+        inputs_layout.addWidget(preview_widget, _PREVIEW_ROW, 1)
+        inputs_layout.addWidget(
+            description_label, _DESCRIPTION_ROW, 0, 1, 2
+        )
+        inputs_layout.addWidget(
+            description_frame, _DESCRIPTION_ROW + 1, 0, 1, 2
+        )
 
         surface.add_layout(inputs_layout, 0)
         surface.add_layout(btns_layout, 0)
@@ -182,6 +200,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         btn_cancel.pressed.connect(self._on_cancel_pressed)
 
         # Store objects
+        self._surface = surface
         self._inputs_layout = inputs_layout
 
         self._btn_ok = btn_ok
@@ -260,8 +279,12 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._last_version_check.setVisible(template_has_version)
         if template_has_version:
             if vw_idx == -1:
-                self._inputs_layout.addWidget(self._version_label, 0, 0)
-                self._inputs_layout.addLayout(self._versions_layout, 0, 1)
+                self._inputs_layout.addWidget(
+                    self._version_label, _VERSION_ROW, 0
+                )
+                self._inputs_layout.addLayout(
+                    self._versions_layout, _VERSION_ROW, 1
+                )
         elif vw_idx != -1:
             self._inputs_layout.takeAt(vw_idx)
             self._inputs_layout.takeAt(
@@ -274,8 +297,12 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._subversion_menu_btn.setVisible(template_has_comment)
         if template_has_comment:
             if cw_idx == -1:
-                self._inputs_layout.addWidget(self._subversion_label, 1, 0)
-                self._inputs_layout.addLayout(self._subversion_layout, 1, 1)
+                self._inputs_layout.addWidget(
+                    self._subversion_label, _SUBVERSION_ROW, 0
+                )
+                self._inputs_layout.addLayout(
+                    self._subversion_layout, _SUBVERSION_ROW, 1
+                )
         elif cw_idx != -1:
             self._inputs_layout.takeAt(cw_idx)
             self._inputs_layout.takeAt(
@@ -285,6 +312,81 @@ class SaveAsDialog(QtWidgets.QDialog):
         if template_has_comment:
             self._subversion_input.setText(comment or "")
             self._set_subversion_items(comment_hints)
+        self._set_custom_keys(data["custom_keys"])
+        self._update_filename()
+
+    def _set_custom_keys(self, custom_keys: list[dict[str, Any]]) -> None:
+        """Create inputs for custom keys of the workfile file template.
+
+        Number keys (e.g. '{revision:0>2}') are represented by a spin box
+        and other keys by a line edit. The values are not incremented
+        automatically, they are fully controlled by the user.
+
+        Args:
+            custom_keys (list[dict[str, Any]]): Custom keys information.
+
+        """
+        for widget in self._custom_widgets:
+            self._inputs_layout.removeWidget(widget)
+            widget.setVisible(False)
+            widget.deleteLater()
+        self._custom_widgets = []
+        self._custom_data = {}
+
+        before_row = 0
+        after_row = _CUSTOM_KEYS_ROW
+        for custom_key in custom_keys:
+            key = custom_key["key"]
+            value = custom_key["value"]
+            self._custom_data[key] = value
+
+            label_widget = AYLabel(
+                f"{custom_key['label']}:", parent=self._surface
+            )
+            if custom_key["is_number"]:
+                input_widget = AYSpinBox(
+                    parent=self._surface,
+                    variant=AYSpinBox.Variants.Low,
+                    minimum=0,
+                    maximum=9999,
+                    value=value or 0,
+                )
+                input_widget.valueChanged.connect(
+                    lambda value, key=key: self._on_custom_value_change(
+                        key, value
+                    )
+                )
+                alignment = QtCore.Qt.AlignLeft
+            else:
+                input_widget = AYLineEdit(
+                    parent=self._surface, variant=AYLineEdit.Variants.Low
+                )
+                input_widget.setText(value or "")
+                placeholder = "Will be part of filename."
+                if not custom_key["optional"]:
+                    placeholder = "Required. Will be part of filename."
+                input_widget.setPlaceholderText(placeholder)
+                input_widget.textChanged.connect(
+                    lambda value, key=key: self._on_custom_value_change(
+                        key, value
+                    )
+                )
+                alignment = QtCore.Qt.Alignment()
+
+            if custom_key["before_version"]:
+                row = before_row
+                before_row += 1
+            else:
+                row = after_row
+                after_row += 1
+            self._inputs_layout.addWidget(label_widget, row, 0)
+            self._inputs_layout.addWidget(input_widget, row, 1, alignment)
+            self._custom_widgets.extend([label_widget, input_widget])
+
+    def _on_custom_value_change(self, key: str, value: Any) -> None:
+        if self._custom_data.get(key) == value:
+            return
+        self._custom_data[key] = value
         self._update_filename()
 
     def _on_version_spinbox_change(self, value):
@@ -358,6 +460,11 @@ class SaveAsDialog(QtWidgets.QDialog):
             "template_key": self._template_key,
             "version": self._version_value,
             "comment": self._comment_value,
+            "custom_data": {
+                key: value
+                for key, value in self._custom_data.items()
+                if value is not None and value != ""
+            },
             "description": self._description_input.toPlainText(),
         }
         self.close()
@@ -373,13 +480,19 @@ class SaveAsDialog(QtWidgets.QDialog):
             self._last_version_check.isChecked(),
             self._version_value,
             self._comment_value,
+            self._custom_data,
         )
         self._filename = result.filename
-        self._btn_ok.setEnabled(not result.exists)
+        self._btn_ok.setEnabled(
+            bool(result.filename) and not result.exists
+        )
 
         color = "green"
         text = result.filename
-        if result.exists:
+        if not result.filename:
+            color = "red"
+            text = "Cannot create filename, fill all required values."
+        elif result.exists:
             color = "red"
             text = f'Cannot create "{result.filename}" because file exists!'
 

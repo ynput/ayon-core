@@ -258,7 +258,8 @@ class FilesWidget(AYContainer):
             result["filename"],
             version=result["version"],
             comment=result["comment"],
-            description=result["description"]
+            description=result["description"],
+            custom_data=result["custom_data"],
         )
 
     def _on_workarea_browse_clicked(self):
@@ -308,7 +309,8 @@ class FilesWidget(AYContainer):
             result["filename"],
             version=result["version"],
             comment=result["comment"],
-            description=result["description"]
+            description=result["description"],
+            custom_data=result["custom_data"],
         )
 
     def _on_workarea_path_changed(self, event):
@@ -368,6 +370,7 @@ class FilesWidget(AYContainer):
             version=result["version"],
             comment=result["comment"],
             description=result["description"],
+            custom_data=result["custom_data"],
         )
 
     def _on_save_as_request(self):
