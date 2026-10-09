@@ -125,8 +125,11 @@ class AddColumnButton(AYButton):
             variant=AYButton.Variants.Header_Action,
             tooltip="Add or remove columns",
         )
+        # Hidden until revealed by hovering the header
         self._opacity_effect = QtWidgets.QGraphicsOpacityEffect(self)
+        self._opacity_effect.setOpacity(0.0)
         self.setGraphicsEffect(self._opacity_effect)
+        self.hide()
         self._fade_anim = QtCore.QPropertyAnimation(
             self._opacity_effect, b"opacity", self
         )
