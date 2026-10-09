@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from qtpy.QtCore import QRect, QSize
+from qtpy.QtCore import QEasingCurve, QRect, QSize, QVariantAnimation
 from qtpy.QtGui import QPainter, QPaintEvent
 from qtpy.QtWidgets import QCheckBox, QSizePolicy, QStyle, QStyleOptionButton
 
@@ -23,6 +23,8 @@ class AYCheckBox(StyleMixin, QCheckBox):
 
     Variants = QCheckBoxVariants
 
+    _TOGGLE_ANIMATION_DURATION = 120
+
     def __init__(
         self,
         *args,
@@ -34,8 +36,42 @@ class AYCheckBox(StyleMixin, QCheckBox):
         self._style_dict = None
         self.setStyle(get_ayon_style())
 
+        # 0.0 is fully unchecked, 1.0 is fully checked. Read by the
+        # CheckboxDrawer to paint the sliding toggle.
+        self._toggle_progress = 1.0 if self.isChecked() else 0.0
+        self._toggle_anim = QVariantAnimation(self)
+        self._toggle_anim.setDuration(self._TOGGLE_ANIMATION_DURATION)
+        self._toggle_anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self._toggle_anim.valueChanged.connect(self._on_toggle_anim_changed)
+        self.toggled.connect(self._on_toggled)
+
         if variant == AYCheckBox.Variants.Button:
             self.setFixedSize(self.sizeHint())
+
+    @property
+    def toggle_progress(self) -> float:
+        """Animated toggle position, 0.0 (unchecked) to 1.0 (checked)."""
+        return self._toggle_progress
+
+    def is_animating(self) -> bool:
+        """Whether the toggle slider is currently animating."""
+        return self._toggle_anim.state() == QVariantAnimation.State.Running
+
+    def _on_toggled(self, checked: bool) -> None:
+        target = 1.0 if checked else 0.0
+        self._toggle_anim.stop()
+        if not (self.isVisible() and self.isEnabled()):
+            # Do not animate hidden or disabled checkboxes.
+            self._toggle_progress = target
+            self.update()
+            return
+        self._toggle_anim.setStartValue(self._toggle_progress)
+        self._toggle_anim.setEndValue(target)
+        self._toggle_anim.start()
+
+    def _on_toggle_anim_changed(self, value: float) -> None:
+        self._toggle_progress = float(value)
+        self.update()
 
     @property
     def style_dict(self):

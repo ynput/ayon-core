@@ -21,6 +21,11 @@ from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+from ayon_core.ui.components.user_avatars import (
+    ITEM_AVATAR_SIZE,
+    UserAvatarCache,
+    set_avatar_decoration,
+)
 from ayon_core.ui.style_types import get_ayon_style
 
 
@@ -29,6 +34,8 @@ WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
 FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
+UPDATED_BY_ROLE = QtCore.Qt.UserRole + 6
+UPDATED_BY_LABEL_ROLE = QtCore.Qt.UserRole + 7
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -99,7 +106,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         project_name = self._selected_project_name
         task_id = self._selected_task_id
         if not project_name or not task_id:
-            self._fill([])
+            self._fill([], {})
             self._set_loading(False)
             return
 
@@ -124,17 +131,23 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
     def _fetch_workfile_items(
         self, project_name: str, task_id: str
-    ) -> list:
+    ) -> tuple[list, dict]:
         """Called in a worker thread, must not touch the model."""
         workfile_items = self._controller.get_workfile_items(
             project_name, task_id
         )
+        # Users are queried here so filling the model does not wait
+        user_items_by_name = {}
+        if any(item.updated_by for item in workfile_items):
+            user_items_by_name = self._controller.get_user_items_by_name(
+                project_name
+            )
         # Download url icons here so filling the model does not wait
         prefetch_qt_icons([
             self._get_icon_def(icon_url)
             for icon_url in {item.icon for item in workfile_items}
         ])
-        return workfile_items
+        return workfile_items, user_items_by_name
 
     def _set_loading(self, loading: bool) -> None:
         if self._is_loading == loading:
@@ -143,13 +156,14 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self.loading_changed.emit(loading)
 
     def _on_workfiles_fetched(
-        self, refresh_id: int, workfile_items: Optional[list]
+        self, refresh_id: int, result: Optional[tuple[list, dict]]
     ) -> None:
         # Selection changed meanwhile, newer refresh is running
         if refresh_id != self._refresh_id:
             return
         # 'None' means fetching failed
-        self._fill(workfile_items or [])
+        workfile_items, user_items_by_name = result or ([], {})
+        self._fill(workfile_items, user_items_by_name)
         self._set_loading(False)
 
     def _clear(self) -> None:
@@ -158,7 +172,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._host_items_by_name = {}
         self._items_by_host_name = collections.defaultdict(list)
 
-    def _fill(self, workfile_items: list) -> None:
+    def _fill(self, workfile_items: list, user_items_by_name: dict) -> None:
         self._group_host_names = set(
             self._controller.get_grouped_host_names()
         )
@@ -173,12 +187,19 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             file_size = ""
             if workfile_item.file_size is not None:
                 file_size = file_size_to_string(workfile_item.file_size)
+            updated_by = workfile_item.updated_by
+            updated_by_label = updated_by
+            user_item = user_items_by_name.get(updated_by)
+            if user_item is not None and user_item.full_name:
+                updated_by_label = user_item.full_name
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
             item.setData(file_size, FILE_SIZE_ROLE)
+            item.setData(updated_by, UPDATED_BY_ROLE)
+            item.setData(updated_by_label, UPDATED_BY_LABEL_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
             item.setColumnCount(self.columnCount())
             flags = QtCore.Qt.NoItemFlags
@@ -271,7 +292,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             WORKFILE_ID_ROLE,
             HOST_NAME_ROLE,
             ITEM_TYPE_ROLE,
-            FILE_SIZE_ROLE
+            FILE_SIZE_ROLE,
+            UPDATED_BY_ROLE,
+            UPDATED_BY_LABEL_ROLE,
         }:
             if index.column() != 0:
                 index = index.sibling(index.row(), 0)
@@ -279,10 +302,12 @@ class WorkfilesModel(QtGui.QStandardItemModel):
 
         col = index.column()
         if col != 0:
-            if role != QtCore.Qt.DisplayRole:
+            if role == QtCore.Qt.ToolTipRole and col == 1:
+                # Name of the user whose avatar is shown in the column
+                role = UPDATED_BY_LABEL_ROLE
+            elif role != QtCore.Qt.DisplayRole:
                 return None
-
-            if col == 1:
+            elif col == 1:
                 role = UPDATED_AT_ROLE
             elif col == 2:
                 role = FILE_SIZE_ROLE
@@ -359,9 +384,25 @@ class WorkfilesDelegate(TreeViewItemDelegate):
     """Unified delegate for the workfiles tree view.
 
     Column 0: workfile name with middle-elide.
-    Column 1: pretty-printed timestamp.
+    Column 1: pretty-printed timestamp with the avatar of the user who
+        made the last change.
     Column 2: file size in human-readable format.
+
+    Args:
+        avatar_cache: Cache of the user avatars. The view should be
+            repainted when an avatar is updated.
+        parent: The parent widget.
+        style_model: Style data of the tree view.
     """
+
+    def __init__(
+        self,
+        avatar_cache: UserAvatarCache,
+        parent: Optional[QtWidgets.QWidget] = None,
+        style_model=None,
+    ) -> None:
+        super().__init__(parent=parent, style_model=style_model)
+        self._avatar_cache = avatar_cache
 
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
@@ -377,6 +418,13 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                 if pretty is not None:
                     text = pretty
             option.text = text
+            # Never blocks, the avatar is downloaded in the background.
+            set_avatar_decoration(
+                option,
+                self._avatar_cache,
+                index.data(UPDATED_BY_ROLE),
+                index.data(UPDATED_BY_LABEL_ROLE),
+            )
 
 
 class WorkfilesPage(AYContainer):
@@ -407,7 +455,11 @@ class WorkfilesPage(AYContainer):
 
         workfiles_view.setModel(workfiles_proxy)
 
+        avatar_cache = UserAvatarCache(workfiles_view)
+        avatar_cache.avatar_updated.connect(self._on_avatar_updated)
+
         workfiles_delegate = WorkfilesDelegate(
+            avatar_cache,
             parent=workfiles_view,
             style_model=get_ayon_style().model
         )
@@ -478,13 +530,19 @@ class WorkfilesPage(AYContainer):
         )
 
         # Resize workfiles column
+        # - modified column shows avatar of the user next to the date
+        col_1_width = 140 + ITEM_AVATAR_SIZE + 6
+        col_2_width = 80
         view_size = self._workfiles_view.size()
-        col_0_width = view_size.width() - 220
+        col_0_width = view_size.width() - (col_1_width + col_2_width)
         if col_0_width < 120:
             col_0_width = 120
         view_header.resizeSection(0, col_0_width)
-        view_header.resizeSection(1, 140)
-        view_header.resizeSection(2, 80)
+        view_header.resizeSection(1, col_1_width)
+        view_header.resizeSection(2, col_2_width)
+
+    def _on_avatar_updated(self, _username: str) -> None:
+        self._workfiles_view.viewport().update()
 
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
