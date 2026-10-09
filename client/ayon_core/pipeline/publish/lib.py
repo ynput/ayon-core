@@ -1415,6 +1415,47 @@ def get_trait_representations(
     return instance.data.get(TRAIT_INSTANCE_KEY, [])
 
 
+def get_file_collections(
+        files: list[str]
+) -> tuple[list[clique.Collection], list[str]]:
+    """Get collections from list of files from representation
+    data using clique.
+
+    Args:
+        files (list[str]): list of sequence file paths
+
+    Returns:
+        tuple[list[clique.Collection], list[str]]: tuple of collections
+        and remainders from clique.
+    """
+    if len(files) == 1:
+        # A lone file only counts as a frame when the frame number is
+        # delimited as `.[frames].[ext]` or `_[frames].[ext]`.
+        pattern = r"(?<=[._])(?P<index>(?P<padding>0*)\d+)\.\D+\d?$"
+        minimum_items = 1
+    else:
+        pattern = r"(?P<index>(?P<padding>0*)\d+)\.\D+\d?$"
+        minimum_items = 2
+    collections, remainders = clique.assemble(
+        files,
+        minimum_items=minimum_items,
+        assume_padded_when_ambiguous=True,
+        patterns=[pattern]
+    )
+
+    # Return if collection was found or there is only a single file
+    if collections or len(files) == 1:
+        return collections, remainders
+
+    # If custom pattern yields no collections,
+    # retry default clique parsing.
+    return clique.assemble(
+        files,
+        minimum_items=minimum_items,
+        assume_padded_when_ambiguous=True
+    )
+
+
 def fill_sequence_gaps_with_previous_version(
     collection: str,
     staging_dir: str,
