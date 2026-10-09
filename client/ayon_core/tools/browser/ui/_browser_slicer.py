@@ -21,6 +21,10 @@ from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.utils.folders_widget import CenteredIconDelegate
+from ayon_core.tools.utils.entity_thumbnails import (
+    EntityThumbnailsPainter,
+    EntityThumbnailDelegate,
+)
 
 from .tasks_widget import BrowserTasksWidget
 from .folders_model import (
@@ -48,6 +52,12 @@ CATEGORIES = [
         "text": BrowserSlicerCategory.REVIEWS.value,
         "short_text": "REV",
         "icon": "subscriptions",
+        "color": "#f4f5f5",
+    },
+    {
+        "text": BrowserSlicerCategory.LISTS.value,
+        "short_text": "LIS",
+        "icon": "list_alt",
         "color": "#f4f5f5",
     },
 ]
@@ -234,7 +244,7 @@ class SlicerCategories(AYContainer):
 
 
 class BrowserFolderTreeView(AYTreeView):
-    """Tree view used inside the review slicer."""
+    """Tree view used inside the Browser slicer."""
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent, variant=AYTreeView.Variants.Low)
@@ -327,17 +337,30 @@ class BrowserSlicer(AYContainer):
                 variant=QTreeViewVariants.Default.value,
             )
         )
-
-        self._reviews_view = BrowserFolderTreeView(self)
-        self._reviews_model = BulkTreeModel(
-            fetch_all=self._ui_controller.fetch_reviews
+        # Thumbnails are painted on the right side of folder label
+        self._folder_thumbnails_painter = EntityThumbnailsPainter(
+            self._folders_view, be_controller, "folder", FOLDER_ID_ROLE
         )
-        self._reviews_proxy = TreeFilterProxyModel(self)
-        self._reviews_proxy.setSourceModel(self._reviews_model)
-        self._reviews_view.setModel(self._reviews_proxy)
+        self._folders_view.setItemDelegateForColumn(
+            0,
+            EntityThumbnailDelegate(
+                self._folder_thumbnails_painter,
+                parent=self._folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Low.value,
+            )
+        )
+
+        self._lists_view = BrowserFolderTreeView(self)
+        self._lists_model = BulkTreeModel(
+            fetch_all=self._ui_controller.fetch_entity_lists
+        )
+        self._lists_proxy = TreeFilterProxyModel(self)
+        self._lists_proxy.setSourceModel(self._lists_model)
+        self._lists_view.setModel(self._lists_proxy)
 
         self.add_widget(self._folders_view, stretch=1)
-        self.add_widget(self._reviews_view, stretch=1)
+        self.add_widget(self._lists_view, stretch=1)
 
         self._set_view(initial_category)
 
@@ -364,11 +387,14 @@ class BrowserSlicer(AYContainer):
             self._on_folders_selection_changed
         )
         self._folders_model.reset_finished.connect(self._on_folders_reset)
-        self._reviews_view.selection_changed.connect(
-            self._on_reviews_selection_changed
+        self._folders_model.reset_finished.connect(
+            self._update_folder_thumbnails
         )
-        self._reviews_model.loading_changed.connect(
-            self._on_reviews_loading_changed
+        self._lists_view.selection_changed.connect(
+            self._on_lists_selection_changed
+        )
+        self._lists_model.loading_changed.connect(
+            self._on_lists_loading_changed
         )
         self._tasks.task_selection_changed.connect(
             self._on_task_selection_changed
@@ -413,12 +439,16 @@ class BrowserSlicer(AYContainer):
         if category == BrowserSlicerCategory.HIERARCHY.value:
             self._folders_model.reset()
         else:
-            self._reviews_model.reset()
+            self._lists_model.reset()
 
     def _on_category_changed(self, category: str) -> None:
         self._set_view(category)
         self._ui_controller.set_category(category)
         enabled = category == BrowserSlicerCategory.HIERARCHY.value
+        if not enabled:
+            # Reviews and Lists share a tree that is refilled without a
+            # selection change, and a review session is in both of them.
+            self._last_selection_ids = None
         self._tasks.setEnabled(enabled)
         if enabled:
             self._tasks.set_context(
@@ -447,7 +477,7 @@ class BrowserSlicer(AYContainer):
         folders widget's behaviour on a non-empty filter.
         """
         self._folders_proxy.set_name_filter(text)
-        self._reviews_proxy.set_filter_text(text)
+        self._lists_proxy.set_filter_text(text)
 
         if text:
             self._current_view().expandAll()
@@ -472,15 +502,15 @@ class BrowserSlicer(AYContainer):
 
     def _set_view(self, category: str) -> None:
         folders_visible = category == BrowserSlicerCategory.HIERARCHY.value
-        review_visible = not folders_visible
+        lists_visible = not folders_visible
         self._folders_view.setVisible(folders_visible)
-        self._reviews_view.setVisible(review_visible)
+        self._lists_view.setVisible(lists_visible)
         filter_text = self._categories.filter_text()
         if filter_text:
             if folders_visible:
                 self._folders_view.expandAll()
             else:
-                self._reviews_view.expandAll()
+                self._lists_view.expandAll()
 
     def select_current_context(self) -> None:
         """Select the host's current folder in the hierarchy tree."""
@@ -551,7 +581,7 @@ class BrowserSlicer(AYContainer):
         """Return the tree view shown for the current category."""
         if self.current_category() == BrowserSlicerCategory.HIERARCHY.value:
             return self._folders_view
-        return self._reviews_view
+        return self._lists_view
 
     def _get_view_index_by_id(self, folder_id: str) -> QtCore.QModelIndex:
         model = self._current_view().model()
@@ -640,6 +670,11 @@ class BrowserSlicer(AYContainer):
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
         self._apply_tree_selection(explicit_ids, ids)
 
+    def _update_folder_thumbnails(self) -> None:
+        self._folder_thumbnails_painter.set_project_name(
+            self._folders_model.get_project_name()
+        )
+
     def _on_folders_reset(self):
         # A search typed while the folders were still loading had
         # nothing to expand yet - expand the now-filled tree.
@@ -651,7 +686,7 @@ class BrowserSlicer(AYContainer):
         ):
             self._advance_context_selection(self._folder_selection_attempt)
 
-    def _on_reviews_selection_changed(
+    def _on_lists_selection_changed(
         self,
         selected: QItemSelection,
         deselected: QItemSelection,
@@ -659,7 +694,7 @@ class BrowserSlicer(AYContainer):
         # Read the canonical full selection rather than the delta
         # arguments, which are unreliable under ExtendedSelection.
         ids: list[str] = []
-        for idx in self._reviews_view.selectionModel().selectedRows():
+        for idx in self._lists_view.selectionModel().selectedRows():
             data = idx.data(QtCore.Qt.ItemDataRole.UserRole)
             if data:
                 entity_id = data.get("id", "")
@@ -698,7 +733,7 @@ class BrowserSlicer(AYContainer):
             task_id_scope=self._ui_controller.get_task_id_scope(),
         )
 
-    def _on_reviews_loading_changed(self, loading: bool) -> None:
+    def _on_lists_loading_changed(self, loading: bool) -> None:
         """Re-expand the view once a still-loading model finishes.
 
         A search typed while the model's data has not arrived yet
@@ -707,11 +742,11 @@ class BrowserSlicer(AYContainer):
         Once loading finishes and the proxy has re-synced against the
         now-populated model, re-run it for any search still active.
         """
-        if loading or self._reviews_view is None:
+        if loading or self._lists_view is None:
             return
 
         if self._categories.filter_text():
-            self._reviews_view.expandAll()
+            self._lists_view.expandAll()
 
     def set_task_names(self, names: list[str]) -> None:
         """Update task-list selection from the active filter criterion."""
