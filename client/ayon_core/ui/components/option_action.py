@@ -354,6 +354,58 @@ class AYMenu(QtWidgets.QMenu):
         # open which recreates the native window and can cause crashes.
         style.style_widget(self)
 
+    def actionEvent(self, arg__1: QtGui.QActionEvent) -> None:
+        """Keep the rows wide enough for how the AYON style paints them."""
+        super().actionEvent(arg__1)
+        self._update_minimum_width()
+
+    def _update_minimum_width(self) -> None:
+        """Reserve the width the AYON style needs to paint the rows.
+
+        Assigning the AYON style does not guarantee Qt measures the rows
+        with it: with a stylesheet on a parent widget (or the application)
+        the menu ends up with a ``QStyleSheetStyle`` that sizes the rows
+        using the stylesheet's ``QMenu::item`` rules instead.  Those rows
+        are narrower than what is painted here, so the label runs into
+        the submenu arrow.  Qt stretches the rows to the minimum width of
+        the menu, so that is used to enforce the width the painting needs.
+        """
+        ayon_style = get_ayon_style()
+        row_width = 0
+        for action in self.actions():
+            if (
+                action.isSeparator()
+                or not action.isVisible()
+                or isinstance(action, QtWidgets.QWidgetAction)
+            ):
+                continue
+            opt = QtWidgets.QStyleOptionMenuItem()
+            self.initStyleOption(opt, action)
+            size = ayon_style.sizeFromContents(
+                QtWidgets.QStyle.ContentsType.CT_MenuItem,
+                opt,
+                QtCore.QSize(0, 0),
+                self,
+            )
+            row_width = max(row_width, size.width())
+
+        if not row_width:
+            self.setMinimumWidth(0)
+            return
+
+        # Same space Qt adds around the rows when it lays them out
+        qstyle = self.style()
+        pm = QtWidgets.QStyle.PixelMetric
+        frame_width = qstyle.pixelMetric(pm.PM_MenuPanelWidth, None, self)
+        h_margin = qstyle.pixelMetric(pm.PM_MenuHMargin, None, self)
+        margins = self.contentsMargins()
+        self.setMinimumWidth(
+            row_width
+            + margins.left()
+            + margins.right()
+            + 2 * (frame_width + h_margin)
+        )
+
     def paintEvent(self, arg__1: QtGui.QPaintEvent) -> None:
         """Paint the menu using AYON's QStyle implementation.
 
