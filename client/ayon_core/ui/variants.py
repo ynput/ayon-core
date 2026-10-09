@@ -10,6 +10,7 @@ class QPushButtonVariants(Enum):
     Nav = "nav"
     Nav_Small = "nav-small"
     Nav_Small_Circle = "nav-small-circle"
+    Header_Action = "header-action"
     Danger = "danger"
     Tertiary = "tertiary"
     Text = "text"
