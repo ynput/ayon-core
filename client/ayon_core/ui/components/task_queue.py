@@ -290,6 +290,17 @@ class AsyncTaskQueue(QThread):
         if not self._callback_queue.empty():
             QTimer.singleShot(1, self._drain_callback_queue)
 
+    def start(self, *args: Any, **kwargs: Any) -> None:
+        """Start the dispatch thread.
+
+        The running flag is set here and not in :meth:`run`.  The thread
+        begins to run with a delay, so setting the flag there would
+        overwrite a :meth:`stop` called in the meantime and the dispatch
+        loop would never end.
+        """
+        self._running = True
+        super().start(*args, **kwargs)
+
     def run(self) -> None:
         """Dispatch loop - runs in the QThread context.
 
@@ -298,7 +309,6 @@ class AsyncTaskQueue(QThread):
         so it wakes the instant :meth:`enqueue` adds a new task, eliminating
         the 50 ms polling delay of the previous single-worker design.
         """
-        self._running = True
         self._executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=self._num_workers,
             thread_name_prefix="ayon_task_worker",
