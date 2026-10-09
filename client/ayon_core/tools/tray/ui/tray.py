@@ -714,6 +714,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             self._tray_manager.initialize_addons()
         finally:
             self._initializing_addons = False
+        self._prepare_menu_size()
 
     def eventFilter(self, obj, event):
         # Ignore mouse clicks on menu right after it was shown. That prevents
@@ -738,12 +739,46 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     def _click_timer_timeout(self):
         self._show_context_menu()
 
+    def _prepare_menu_size(self):
+        # Menu is not polished before it is shown for the first time, so its
+        #   size is unknown and 'popup' can't place it correctly (it ends up
+        #   at the very bottom of the screen instead of above the cursor).
+        menu = self.contextMenu()
+        menu.ensurePolished()
+        menu.adjustSize()
+
+    def _get_menu_pos(self, pos):
+        menu = self.contextMenu()
+        screen = QtGui.QGuiApplication.screenAt(pos)
+        if screen is None:
+            screen = QtGui.QGuiApplication.primaryScreen()
+        if screen is None:
+            return pos
+
+        # Use full screen geometry (not available geometry) so the menu
+        #   can overlap the taskbar and opens at the cursor, the same way
+        #   as the context menu on right click.
+        geo = screen.geometry()
+        size = menu.sizeHint()
+        x = pos.x()
+        y = pos.y()
+        # Open menu above/left of the cursor if it does not fit
+        #   (tray is usually at the bottom right corner)
+        if x + size.width() > geo.right():
+            x -= size.width()
+        if y + size.height() > geo.bottom():
+            y -= size.height()
+        x = max(geo.left(), min(x, geo.right() - size.width()))
+        y = max(geo.top(), min(y, geo.bottom() - size.height()))
+        return QtCore.QPoint(x, y)
+
     def _show_context_menu(self):
         pos = self._click_pos
         self._click_pos = None
         if pos is None:
             pos = QtGui.QCursor().pos()
-        self.contextMenu().popup(pos)
+        self._prepare_menu_size()
+        self.contextMenu().popup(self._get_menu_pos(pos))
 
     def _on_trigger(self):
         now = time.monotonic()
