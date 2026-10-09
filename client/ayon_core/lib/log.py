@@ -20,7 +20,7 @@ import socket
 import sys
 import time
 import threading
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Mapping
 from contextvars import ContextVar, Token
 from typing import TYPE_CHECKING, Any
 import warnings
@@ -263,8 +263,7 @@ def get_console_style_from_env() -> str:
 
     'AYON_LOG_CONSOLE_STYLE' accepts:
         - 'ayon' (default) - log level without padding, e.g. '[info]', and
-            'key=value' fields of records shown only with DEBUG log level,
-            except 'duration_ms' and 'status' of spans.
+            'key=value' fields of records shown only with DEBUG log level.
         - 'structlog' - default structlog layout, padded log level and
             'key=value' fields always shown.
 
@@ -675,30 +674,9 @@ if structlog is not None:
             )
             return f"[{style}{level}{self.reset_style}]"
 
-    class _ShownKeysColumnFormatter:
-        """Column formatter showing only some fields.
-
-        See '_ConsoleRenderer'.
-
-        Args:
-            formatter (Callable[[str, object], str]): Formatter of shown
-                fields.
-            keys (Iterable[str]): Keys of shown fields.
-
-        """
-
-        def __init__(
-            self,
-            formatter: Callable[[str, object], str],
-            keys: Iterable[str],
-        ) -> None:
-            self._formatter = formatter
-            self._keys = frozenset(keys)
-
-        def __call__(self, key: str, value: object) -> str:
-            if key in self._keys:
-                return self._formatter(key, value)
-            return ""
+    def _hide_key_value(key: str, value: object) -> str:
+        """Column formatter hiding the value, see '_ConsoleRenderer'."""
+        return ""
 
     class _ConsoleRenderer(structlog.dev.ConsoleRenderer):
         """ConsoleRenderer not initializing colorama on Windows.
@@ -713,8 +691,7 @@ if structlog is not None:
             compact_level (bool): Log level is not padded, e.g. '[info]'
                 instead of '[info     ]'.
             show_key_values (bool): Show additional fields of the event
-                as 'key=value' pairs. Fields in '_ALWAYS_SHOWN_KEYS' are
-                shown always.
+                as 'key=value' pairs.
             *args (Any): Arguments of 'ConsoleRenderer'.
             **kwargs (Any): Keyword arguments of 'ConsoleRenderer'.
 
@@ -732,10 +709,6 @@ if structlog is not None:
             self._compact_level = compact_level
             self._show_key_values = show_key_values
             super().__init__(*args, **kwargs)
-
-        # Fields shown even when other key values are hidden, timing of
-        #   spans is useful in console output, see 'log_span'
-        _ALWAYS_SHOWN_KEYS = ("duration_ms", "status")
 
         _COLORFUL_STYLES = structlog.dev._colorful_styles
         _PLAIN_STYLES = structlog.dev._plain_styles
@@ -771,9 +744,7 @@ if structlog is not None:
             if not self._show_key_values:
                 # Fields without own column, exceptions are rendered
                 #   separately
-                self._default_column_formatter = _ShownKeysColumnFormatter(
-                    self._default_column_formatter, self._ALWAYS_SHOWN_KEYS
-                )
+                self._default_column_formatter = _hide_key_value
             if not self._compact_level:
                 return
 
@@ -1309,6 +1280,22 @@ class Logger:
                     event_dict.pop(key)
             return event_dict
 
+        def _add_span_duration_to_event(logger, method_name, event_dict):
+            # Show duration of span in console message, e.g.
+            #   'thumbnail.fetch (duration 0.12s)'. JSON output keeps the
+            #   span name as the event, so records of a span can be
+            #   grouped by it, and the duration in 'duration_ms'.
+            duration_ms = event_dict.get("duration_ms")
+            if (
+                event_dict.get("logger") == SPAN_LOGGER_NAME
+                and isinstance(duration_ms, (int, float))
+            ):
+                event = event_dict.get("event")
+                event_dict["event"] = (
+                    f"{event} (duration {duration_ms / 1000:.2f}s)"
+                )
+            return event_dict
+
         shared_processors: list[Callable] = [
             structlog.contextvars.merge_contextvars,
             _add_process_context,
@@ -1357,6 +1344,7 @@ class Logger:
                     console_timestamper,
                     remove_processors_meta,
                     _drop_log_context,
+                    _add_span_duration_to_event,
                     _ConsoleRenderer(
                         colors=colors,
                         exception_formatter=(
@@ -1413,7 +1401,9 @@ class log_span(contextlib.ContextDecorator):  # noqa: N801
     'status' ('ok' or 'error'), 'trace_id', 'span_id', 'parent_span_id',
     'module', 'func_name' and passed attributes. The span name is used
     as the event, it should be stable and low-cardinality
-    (e.g. 'thumbnail.fetch'), variable data belong to attributes.
+    (e.g. 'thumbnail.fetch'), variable data belong to attributes. Console
+    message also contains the duration, e.g.
+    'thumbnail.fetch (duration 0.12s)'.
 
     While the block runs, 'trace_id' and 'span_id' are bound to structlog
     context variables, so all records logged inside carry them. Nested

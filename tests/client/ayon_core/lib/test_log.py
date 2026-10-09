@@ -332,8 +332,10 @@ def test_console_layout(
     ), foreign_line
 
 
-def test_console_shows_span_timing(log_module, monkeypatch):
-    """Span timing is shown even when other key values are hidden."""
+def test_console_span_message_has_duration(
+    log_module, monkeypatch, foreign_handler
+):
+    """Console message of span contains duration, JSON event does not."""
     monkeypatch.setenv("NO_COLOR", "1")
     module = log_module()
     stream = io.StringIO()
@@ -345,8 +347,24 @@ def test_console_shows_span_timing(log_module, monkeypatch):
         pass
 
     output = stream.getvalue()
-    assert re.search(r"duration_ms=[\d.]+ status=ok$", output.strip())
-    assert "hidden-value" not in output
+    assert re.search(r"\[info\] tests\.span \(duration \d+\.\d{2}s\)", output)
+    # Key values are hidden without DEBUG level
+    for value in ("hidden-value", "duration_ms", "status"):
+        assert value not in output
+
+    json_formatter = module._EventDictProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.processors.JSONRenderer(),
+        ],
+    )
+    span_record = next(
+        record for record in foreign_handler.records
+        if record.name == module.SPAN_LOGGER_NAME
+    )
+    payload = json.loads(json_formatter.format(span_record))
+    assert payload["event"] == "tests.span"
+    assert isinstance(payload["duration_ms"], float)
 
 
 @pytest.mark.parametrize(

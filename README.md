@@ -54,7 +54,8 @@ There are three outputs, additive to each other:
 3. **Vector** - JSON records sent to a [Vector](https://vector.dev) HTTP source, enabled by setting `AYON_VECTOR_LOG_URL`.
 
 
-- Additional fields (`key=value`) are shown only with `DEBUG` log level, except `duration_ms` and `status` of spans. Log file and Vector always contain all fields.
+- Additional fields (`key=value`) are shown only with `DEBUG` log level. Log file and Vector always contain all fields.
+- Message of spans contains their duration, e.g. `launcher.bootstrap (duration 3.65s)`. Log file and Vector keep the span name as `event` and the duration in `duration_ms`.
 - Context fields (`site_id`, `session_id`, `trace_id`, `span_id`, `parent_span_id` and process context) are never shown in console.
 - Timestamps are in local time. Log file and Vector use ISO 8601 in UTC.
 
