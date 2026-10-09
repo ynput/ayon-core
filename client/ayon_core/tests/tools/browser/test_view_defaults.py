@@ -24,6 +24,7 @@ def test_browser_view_defaults_create_complete_independent_settings():
         "latestPerFolder": defaults.latest_per_folder,
         "includeChildren": defaults.include_children,
         "ungroupEmptyValues": defaults.ungroup_empty_values,
+        "loadersGrouping": "ungrouped",
         "myTasksFilter": False,
     }
     assert [

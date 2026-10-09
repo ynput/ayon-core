@@ -315,7 +315,10 @@ class BrowserWidget(AYContainer):
             return
 
         action_items = self._controller.get_action_items(
-            project_name, version_ids, "version"
+            project_name,
+            version_ids,
+            "version",
+            loaders_grouping=self._controller.loaders_grouping,
         )
 
         if not action_items:

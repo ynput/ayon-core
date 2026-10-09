@@ -27,7 +27,7 @@ from ayon_core.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.abstract import ActionItem, LoadersGrouping
 
 ACTIONS_MODEL_SENDER = "actions.model"
 LOADER_PLUGIN_ID = "__loader_plugin__"
@@ -142,11 +142,27 @@ class LoaderActionsModel:
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
     ) -> list[ActionItem]:
+        """Action items for the selected entities.
+
+        Args:
+            project_name (str): Project name.
+            entity_ids (set[str]): Selected entity ids.
+            entity_type (str): Selected entity type.
+            loaders_grouping (LoadersGrouping): Whether the items of a
+                loader that loads per representation are grouped under
+                the loader label, with the representation name as item
+                label.
+
+        Returns:
+            list[ActionItem]: List of action items.
+
+        """
         # Wait for a running prefetch instead of doing the same work twice
         with self._lock:
             return self._get_action_items(
-                project_name, entity_ids, entity_type
+                project_name, entity_ids, entity_type, loaders_grouping
             )
 
     def _get_action_items(
@@ -154,6 +170,7 @@ class LoaderActionsModel:
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
     ) -> list[ActionItem]:
         version_context_by_id = {}
         repre_context_by_id = {}
@@ -172,7 +189,8 @@ class LoaderActionsModel:
         action_items = self._get_action_items_for_contexts(
             project_name,
             version_context_by_id,
-            repre_context_by_id
+            repre_context_by_id,
+            loaders_grouping,
         )
         action_items.extend(self._get_loader_action_items(
             project_name,
@@ -395,9 +413,14 @@ class LoaderActionsModel:
         entity_ids,
         entity_type,
         repre_name=None,
+        group_by_loader=False,
     ):
         label = self._get_action_label(loader)
-        if repre_name:
+        group_label = None
+        if repre_name and group_by_loader:
+            group_label = label
+            label = repre_name
+        elif repre_name:
             label = f"{label} ({repre_name})"
         return ActionItem(
             LOADER_PLUGIN_ID,
@@ -407,7 +430,7 @@ class LoaderActionsModel:
                 "loader": get_loader_identifier(loader),
             },
             label=label,
-            group_label=None,
+            group_label=group_label,
             icon=self._get_action_icon(loader),
             tooltip=self._get_action_tooltip(loader),
             order=loader.order,
@@ -806,7 +829,8 @@ class LoaderActionsModel:
         self,
         project_name,
         version_context_by_id,
-        repre_context_by_id
+        repre_context_by_id,
+        loaders_grouping=LoadersGrouping.UNGROUPED,
     ):
         """Prepare action items based on contexts.
 
@@ -818,6 +842,8 @@ class LoaderActionsModel:
             version_context_by_id (dict[str, dict[str, Any]]): Version
                 contexts by version id.
             repre_context_by_id (dict[str, dict[str, Any]]): Representation
+            loaders_grouping (LoadersGrouping): Whether the items of a
+                representation loader are grouped under the loader label.
         """
 
         action_items = []
@@ -832,6 +858,7 @@ class LoaderActionsModel:
             repre_contexts_by_name[repre_name].append(repre_context)
 
         for loader in repre_loaders:
+            loader_repres = []
             for repre_name, repre_contexts in repre_contexts_by_name.items():
                 filtered_repre_contexts = filter_repre_contexts_by_loader(
                     repre_contexts, loader)
@@ -842,13 +869,23 @@ class LoaderActionsModel:
                     repre_context["representation"]["id"]
                     for repre_context in filtered_repre_contexts
                 }
+                loader_repres.append((repre_name, repre_contexts, repre_ids))
 
+            group_by_loader = (
+                loaders_grouping is LoadersGrouping.GROUPED
+                or (
+                    loaders_grouping is LoadersGrouping.GROUPED_IF_MULTIPLE
+                    and len(loader_repres) > 1
+                )
+            )
+            for repre_name, repre_contexts, repre_ids in loader_repres:
                 item = self._create_loader_action_item(
                     loader,
                     repre_contexts,
                     repre_ids,
                     "representation",
                     repre_name=repre_name,
+                    group_by_loader=group_by_loader,
                 )
                 action_items.append(item)
 

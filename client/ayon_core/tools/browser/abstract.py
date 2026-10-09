@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import Enum
 import typing
 from typing import Iterable, Any, Callable
 
@@ -82,6 +83,21 @@ class ProductGroupsInfo:
             selected=set(data["selected"]),
             available=set(data["available"]),
         )
+
+
+class LoadersGrouping(Enum):
+    """How the actions menu lists loaders that load per representation.
+
+    Attributes:
+        UNGROUPED: An item for each loader and representation.
+        GROUPED: A submenu for each loader, listing its representations.
+        GROUPED_IF_MULTIPLE: A submenu only for the loaders that can load
+            more than one representation, the others get a single item.
+
+    """
+    UNGROUPED = "ungrouped"
+    GROUPED = "grouped"
+    GROUPED_IF_MULTIPLE = "grouped_if_multiple"
 
 
 @dataclass
@@ -522,6 +538,7 @@ class AbstractBrowserController(ABC):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
     ) -> list[ActionItem]:
         """Action items for versions selection.
 
@@ -529,6 +546,10 @@ class AbstractBrowserController(ABC):
             project_name (str): Project name.
             entity_ids (set[str]): Entity ids.
             entity_type (str): Entity type.
+            loaders_grouping (LoadersGrouping): Whether the items of a
+                loader that loads per representation are grouped under
+                the loader label, with the representation name as item
+                label.
 
         Returns:
             list[ActionItem]: List of action items.
