@@ -31,7 +31,7 @@ from ayon_core.pipeline.publish import (
     set_trait_representations,
     get_rootless_path,
     get_version_data_from_instance,
-    get_instance_template_name,
+    get_publish_template_object,
 )
 from ayon_core.pipeline.traits import (
     Persistent,
@@ -213,9 +213,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
         instance.data["versionEntity"] = version_entity
 
-        template_name = get_instance_template_name(instance)
-        anatomy = instance.context.data["anatomy"]
-        template: Any = anatomy.get_template_item("publish", template_name)
+        template: Any = get_publish_template_object(
+            instance, logger=self.log
+        )
 
         transfers = get_transfers_from_representations(
             instance, template, representations)
