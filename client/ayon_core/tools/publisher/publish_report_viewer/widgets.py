@@ -340,9 +340,9 @@ class _LogFiller:
         self.logs = logs
         self.first_line = True
         self.cursor = None
-        default_format = QtGui.QTextCharFormat(
-            self.output_widget.currentCharFormat()
-        )
+        # Do not use the widget's current char format, it is the format
+        #   of the text at its cursor (e.g. a colored log level prefix)
+        default_format = QtGui.QTextCharFormat()
         prefix_fmts = {}
         for key, color in self._color_mapping:
             fmt = QtGui.QTextCharFormat(default_format)
