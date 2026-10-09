@@ -522,7 +522,13 @@ class ImageCache:
             cache_filename = self._generate_cache_filename(key, source_path)
             cached_path = self.cache_path / cache_filename
 
-            self._atomic_copy(source_path, cached_path)
+            # Another process may have stored the file of this key
+            #   meanwhile. Such file is kept, replacing it would break
+            #   the processes that are reading it right now.
+            if not os.path.exists(cached_path):
+                self._atomic_copy(
+                    source_path, cached_path, keep_existing=True
+                )
 
             conn = self._get_conn()
             file_size = cached_path.stat().st_size
@@ -573,15 +579,23 @@ class ImageCache:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _atomic_copy(self, src: Path, dst: Path) -> None:
+    def _atomic_copy(
+        self, src: Path, dst: Path, keep_existing: bool = False
+    ) -> None:
         """Copy *src* to *dst* atomically using a temp file + os.replace().
 
         The temporary file is created in the same directory as *dst* so that
         ``os.replace`` is an atomic rename on the same filesystem.
 
+        On Windows a file cannot be replaced while any process has it
+        open, which happens when more processes cache the same key at the
+        same moment. With *keep_existing* the file stored by the other
+        process is used instead of failing.
+
         Args:
             src: Source file path.
             dst: Destination file path.
+            keep_existing: Keep *dst* if it exists and cannot be replaced.
 
         Raises:
             IOError: If the copy or rename fails.
@@ -594,6 +608,12 @@ class ImageCache:
             os.replace(tmp_path, dst)
         except OSError as exc:
             tmp_path.unlink(missing_ok=True)
+            if (
+                keep_existing
+                and isinstance(exc, PermissionError)
+                and os.path.exists(dst)
+            ):
+                return
             raise IOError(f"Failed to cache file: {exc}") from exc
 
     def set_path(self, key: str, file_path: str) -> Path:
