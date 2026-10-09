@@ -494,6 +494,83 @@ def test_browser_inspector_uses_its_controller(qtbot, monkeypatch):
     assert inspector._activity._avatar_cache is avatar_cache
 
 
+def test_browser_inspector_tells_what_the_activity_is_of(
+    qtbot, monkeypatch
+):
+    from qtpy import QtCore, QtGui
+
+    from ayon_core.tools.browser.control import BrowserController
+    from ayon_core.tools.browser.ui import browser_inspector
+
+    addon_manager = Mock()
+    addon_manager.get.return_value = None
+    monkeypatch.setattr(
+        "ayon_core.tools.browser.sitesync_columns.AddonsManager",
+        lambda: addon_manager,
+    )
+    # Representations of the selection are not relevant
+    monkeypatch.setattr(browser_inspector, "get_task_queue", FakeTaskQueue)
+    controller = BrowserWidgetController(BrowserController())
+    inspector = browser_inspector.ReviewInspector(controller)
+    qtbot.addWidget(inspector)
+    inspector.show()
+    # The label has an icon, its text is read from the tooltip
+    label = inspector._activity_context_label
+    activity = inspector._activity
+
+    version_row = {
+        "id": "version_1",
+        "entityType": "version",
+        "project_name": "demo",
+        "productName": "modelMain",
+        "version": "v001",
+    }
+    # Group of a product shows the activity of its featured version
+    group_row = {
+        "id": "grp:product:product_id",
+        "entityType": "Product",
+        "project_name": "demo",
+        "productName": "modelMain",
+        "version": "v003 (3 versions)",
+        "_version_id": "version_3",
+        "_version_name": "v003",
+    }
+    folder_row = {"id": "folder_id", "entityType": "folder"}
+    model = QtGui.QStandardItemModel()
+    for row in (version_row, group_row, folder_row):
+        item = QtGui.QStandardItem()
+        item.setData(row, QtCore.Qt.ItemDataRole.UserRole)
+        model.appendRow(item)
+
+    def _select(*rows: int) -> None:
+        inspector._current_selection = {
+            model.index(row, 0): None for row in rows
+        }
+        inspector._update()
+
+    _select(1)
+    assert label.toolTip() == "modelMain v003"
+    assert not label.isHidden()
+    assert activity._entity_ids == ("version_3",)
+
+    _select(0)
+    assert label.toolTip() == "modelMain v001"
+
+    _select(0, 1)
+    assert label.toolTip() == "2 versions"
+    assert activity._entity_ids == ("version_1", "version_3")
+
+    # Nothing with a version is selected
+    _select(2)
+    assert label.isHidden()
+    assert activity._entity_ids == ()
+
+    monkeypatch.setattr(inspector, "activity_selection_limit", 1)
+    _select(0, 1)
+    assert label.isHidden()
+    assert activity._entity_ids == ()
+
+
 def test_activity_widget_shares_a_passed_avatar_cache(qtbot):
     controller = FakeController()
     shared_cache = UserAvatarCache()

@@ -2530,6 +2530,8 @@ class BrowserWidgetController(QtCore.QObject):
             )
             row["thumbnailId"] = featured_version.get("thumbnailId", "")
             row["_version_id"] = featured_version.get("id", "")
+            # The 'version' of the row also has the count of versions
+            row["_version_name"] = featured_version.get("name", "")
             # The featured "hero" is the regular version the hero version
             # was made from, but acting on it must use the hero version.
             if featured_version.get("featuredVersionType") == "hero":
