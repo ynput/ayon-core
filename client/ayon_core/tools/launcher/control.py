@@ -12,6 +12,8 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    ThumbnailsModel,
+    UserItem,
 )
 
 from .abstract import (
@@ -49,6 +51,7 @@ class BaseLauncherController(
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._actions_model = ActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
@@ -135,6 +138,17 @@ class BaseLauncherController(
             project_name, folder_id, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     # Project settings for applications actions
     def get_project_settings(self, project_name):
         return self._settings_model.get_settings(project_name)
@@ -197,6 +211,11 @@ class BaseLauncherController(
             task_id,
         )
 
+    def get_user_items_by_name(
+        self, project_name: Optional[str]
+    ) -> dict[str, UserItem]:
+        return self._users_model.get_user_items_by_name(project_name)
+
     # Actions
     def get_action_items(
         self, project_name, folder_id, task_id, workfile_id
@@ -239,6 +258,7 @@ class BaseLauncherController(
         self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._users_model.reset()
 
         self._actions_model.refresh()
