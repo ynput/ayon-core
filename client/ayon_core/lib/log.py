@@ -109,6 +109,20 @@ def _render_for_stdlib(
     return (str(event_dict.get("event", "")),), kwargs
 
 
+# Levels of logging methods of structlog loggers, see
+#   '_LevelAwareBoundLogger'
+_METHOD_LEVELS = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "warn": logging.WARNING,
+    "error": logging.ERROR,
+    "exception": logging.ERROR,
+    "critical": logging.CRITICAL,
+    "fatal": logging.CRITICAL,
+}
+
+
 if structlog is not None:
     class _EventDictProcessorFormatter(structlog.stdlib.ProcessorFormatter):
         """ProcessorFormatter reading the event dict from the record.
@@ -139,6 +153,31 @@ if structlog is not None:
                 record.msg = event_dict
                 record.args = ()
             return super().format(record)
+
+    class _LevelAwareBoundLogger(structlog.stdlib.BoundLogger):
+        """BoundLogger checking the log level before processing an event.
+
+        'structlog.stdlib.BoundLogger' runs all processors first and leaves
+        the level check to the standard library logger. A call of disabled
+        level, e.g. 'log.debug' with INFO log level, then costs as much as
+        an enabled one without the output, and raises when '%s' style
+        arguments do not match the message, which standard library logger
+        never formats for a disabled level.
+        """
+
+        def _proxy_to_logger(
+            self,
+            method_name: str,
+            event: str | None = None,
+            *event_args: Any,
+            **event_kw: Any,
+        ) -> Any:
+            level = _METHOD_LEVELS.get(method_name)
+            if level is not None and not self._logger.isEnabledFor(level):
+                return None
+            return super()._proxy_to_logger(
+                method_name, event, *event_args, **event_kw
+            )
 
 
 def bind_contextvars(**kwargs) -> Mapping[str, Token[Any]]:
@@ -1341,7 +1380,7 @@ class Logger:
                 _render_for_stdlib,
             ],
             logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
+            wrapper_class=_LevelAwareBoundLogger,
             cache_logger_on_first_use=True,
         )
 
