@@ -1,6 +1,8 @@
 import os
 import re
 import logging
+import platform
+import subprocess
 
 import clique
 
@@ -26,6 +28,45 @@ def format_file_size(file_size, suffix=None):
             return "%3.1f%s%s" % (file_size, unit, suffix)
         file_size /= 1024.0
     return "%.1f%s%s" % (file_size, "Yi", suffix)
+
+
+def open_in_file_browser(path):
+    """Open path in file browser of the OS.
+
+    A directory is opened in the file browser. A file is selected in the
+        file browser if the platform does support it, otherwise the
+        directory of the file is opened.
+
+    Args:
+        path (str): Path to a directory or to a file.
+
+    Raises:
+        RuntimeError: If the platform is not supported.
+
+    """
+    path = os.path.normpath(path)
+    is_file = os.path.isfile(path)
+    platform_name = platform.system().lower()
+    if platform_name == "windows":
+        if is_file:
+            subprocess.Popen(["explorer", "/select,", path])
+        else:
+            os.startfile(path)
+
+    elif platform_name == "darwin":
+        args = ["open", path]
+        if is_file:
+            # Reveal the file in Finder
+            args.insert(1, "-R")
+        subprocess.Popen(args)
+
+    elif platform_name == "linux":
+        if is_file:
+            path = os.path.dirname(path)
+        subprocess.Popen(["xdg-open", path])
+
+    else:
+        raise RuntimeError(f"Unknown platform {platform.system()}")
 
 
 def create_hard_link(src_path, dst_path):

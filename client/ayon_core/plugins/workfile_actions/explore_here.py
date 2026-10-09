@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import os
-import platform
-import subprocess
 from typing import Optional, Any
 
+from ayon_core.lib import open_in_file_browser
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.actions import (
     WorkfileSimpleActionPlugin,
@@ -24,40 +23,6 @@ def _find_existing_dir(path: str) -> Optional[str]:
             break
         path = parent
     return None
-
-
-def open_in_file_browser(path: str) -> None:
-    """Open path in file browser of OS.
-
-    The file is selected in the file browser if the path leads to a file
-        and the platform does support it.
-
-    Args:
-        path (str): Path to a directory or to a file.
-
-    """
-    path = os.path.normpath(path)
-    is_file = os.path.isfile(path)
-    platform_name = platform.system().lower()
-    if platform_name == "windows":
-        if is_file:
-            subprocess.Popen(["explorer", "/select,", path])
-        else:
-            os.startfile(path)
-
-    elif platform_name == "darwin":
-        args = ["open", path]
-        if is_file:
-            args.insert(1, "-R")
-        subprocess.Popen(args)
-
-    elif platform_name == "linux":
-        if is_file:
-            path = os.path.dirname(path)
-        subprocess.Popen(["xdg-open", path])
-
-    else:
-        raise RuntimeError(f"Unknown platform {platform.system()}")
 
 
 class ExploreHereAction(WorkfileSimpleActionPlugin):
