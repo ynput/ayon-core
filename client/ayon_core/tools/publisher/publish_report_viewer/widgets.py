@@ -5,7 +5,6 @@ from datetime import datetime
 from functools import lru_cache
 import logging
 from math import ceil
-import re
 import typing
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -341,6 +340,50 @@ class _LogMatch:
     source: str
 
 
+def _iter_search_matches(
+    text: str, search_text: str
+) -> typing.Iterator[tuple[int, int]]:
+    """Find caseless matches of the search text.
+
+    Case folding can change length of the text (e.g. 'ß' -> 'ss'), so
+        the matching is done on the folded text and the match ranges are
+        mapped back to the original text.
+
+    Args:
+        text (str): Text to search in.
+        search_text (str): Already casefolded text to search for.
+
+    Yields:
+        tuple[int, int]: Start and end of a match in the original text.
+
+    """
+    if not search_text:
+        return
+    folded_text = text.casefold()
+    start = folded_text.find(search_text)
+    if start == -1:
+        return
+
+    # Case folding never shortens a character, so the same length means
+    #   the offsets are the same as in the original text
+    original_indices = None
+    if len(folded_text) != len(text):
+        # Index of the original character for each folded character
+        original_indices = [
+            index
+            for index, char in enumerate(text)
+            for _ in char.casefold()
+        ]
+
+    while start != -1:
+        end = start + len(search_text)
+        if original_indices is None:
+            yield start, end
+        else:
+            yield original_indices[start], original_indices[end - 1] + 1
+        start = folded_text.find(search_text, end)
+
+
 @lru_cache(maxsize=2 ** 16)
 def _format_timestamp(created: float) -> str:
     """Format log timestamp, cached as logs are refreshed often."""
@@ -405,21 +448,26 @@ class _LogFiller:
             return
 
         start = 0
-        for match in re.finditer(
-            re.escape(self.search_text), message, re.IGNORECASE
+        for match_start, match_end in _iter_search_matches(
+            message, self.search_text
         ):
+            # Matches may share a character expanded by case folding
+            match_start = max(match_start, start)
+            if match_start >= match_end:
+                continue
             self.cursor.insertText(
-                message[start:match.start()], self.default_fmt
+                message[start:match_start], self.default_fmt
             )
+            match_text = message[match_start:match_end]
             highlight_fmt = QtGui.QTextCharFormat(self.default_fmt)
             highlight_fmt.setBackground(MATCH_BG_COLOR)
             highlight_fmt.setForeground(MATCH_FG_COLOR)
             position = self.cursor.position()
-            self.cursor.insertText(match.group(), highlight_fmt)
-            start = match.end()
+            self.cursor.insertText(match_text, highlight_fmt)
+            start = match_end
             # Text around the match on the same line
             before = message[
-                max(0, match.start() - MATCH_CONTEXT_LENGTH):match.start()
+                max(0, match_start - MATCH_CONTEXT_LENGTH):match_start
             ].rpartition("\n")[2]
             after = message[
                 start:start + MATCH_CONTEXT_LENGTH
@@ -429,7 +477,7 @@ class _LogFiller:
                 self.cursor.position(),
                 log_level,
                 before,
-                match.group(),
+                match_text,
                 after,
                 source,
             ))
@@ -1001,16 +1049,17 @@ class DetailsWidget(QtWidgets.QWidget):
 
     def _log_matches_search(self, log: ReportLog) -> bool:
         if log.type == "record":
-            searchable_text = "\n".join(
-                text
-                for text in (log.message, log.exc_info)
-                if text
-            )
+            searchable_texts = (log.message, log.exc_info)
         elif log.type == "error":
-            searchable_text = log.traceback or ""
+            searchable_texts = (log.traceback,)
         else:
             return False
-        return self._search_text in searchable_text.casefold()
+        # Use the same matching as highlighting in '_LogFiller'
+        return any(
+            next(_iter_search_matches(text, self._search_text), None)
+            for text in searchable_texts
+            if text
+        )
 
     def _log_matches_level(self, log: ReportLog) -> bool:
         if log.type == "error":
