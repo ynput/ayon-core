@@ -1,6 +1,7 @@
 """Tests for the Browser's compatibility with older AYON servers.
 
-The Browser supports AYON server 1.15.0 and newer. What an older server
+The Browser supports AYON server 1.15.0 and newer, the legacy Loader is
+shown on older servers instead. What an older supported server
 lacks is detected by introspecting its GraphQL schema, see
 :mod:`ayon_core.tools.browser.server_capabilities`.
 
@@ -548,3 +549,71 @@ def test_latest_per_folder_is_disabled_when_unsupported(
     assert ("1.16.1" in checkbox.tooltip) is not supported
     # The setting itself is kept, so it is not lost from a saved view.
     assert customize._latest_per_folder is True
+
+
+# ----------------------------------------------------------------------
+# Legacy Loader on servers too old for the Browser
+# ----------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("server_version", "supported"),
+    [
+        pytest.param(
+            (1, 14, 0, "", ""), False,
+            marks=pytest.mark.server_compat("1.14.5"),
+        ),
+        pytest.param(
+            (1, 14, 5, "", ""), False,
+            marks=pytest.mark.server_compat("1.14.5"),
+        ),
+        pytest.param((1, 15, 0, "", ""), True),
+        pytest.param((1, 16, 8, "", "DEVELOP"), True),
+    ],
+)
+def test_server_supports_browser(
+    monkeypatch, server_version: tuple[Any, ...], supported: bool
+) -> None:
+    monkeypatch.setattr(
+        ayon_api, "get_server_version_tuple", lambda: server_version
+    )
+
+    assert server_capabilities.server_supports_browser() is supported
+
+
+@pytest.mark.unit
+@pytest.mark.server_compat("1.14.5")
+def test_legacy_loader_is_forced_on_unsupported_server(
+    monkeypatch, caplog
+) -> None:
+    """Not even the environment variable opens the Browser there."""
+    from ayon_core.tools.utils import host_tools
+
+    monkeypatch.setattr(
+        ayon_api, "get_server_version_tuple", lambda: (1, 14, 5, "", "")
+    )
+    monkeypatch.setattr(ayon_api, "get_server_version", lambda: "1.14.5")
+    monkeypatch.setenv("AYON_USE_LEGACY_LOADER", "0")
+    # AYON loggers do not propagate to the root logger pytest captures.
+    monkeypatch.setattr(
+        host_tools, "Logger", SimpleNamespace(get_logger=logging.getLogger)
+    )
+
+    with caplog.at_level(logging.WARNING):
+        assert host_tools.use_legacy_loader() is True
+    assert "requires AYON server 1.15.0" in caplog.text
+
+
+@pytest.mark.unit
+def test_legacy_loader_is_optional_on_supported_server(monkeypatch) -> None:
+    from ayon_core.tools.utils import host_tools
+
+    monkeypatch.setattr(
+        ayon_api, "get_server_version_tuple", lambda: (1, 15, 0, "", "")
+    )
+
+    monkeypatch.setenv("AYON_USE_LEGACY_LOADER", "0")
+    assert host_tools.use_legacy_loader() is False
+    monkeypatch.setenv("AYON_USE_LEGACY_LOADER", "1")
+    assert host_tools.use_legacy_loader() is True
