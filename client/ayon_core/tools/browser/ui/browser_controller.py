@@ -3515,23 +3515,11 @@ class BrowserWidgetController(QtCore.QObject):
             return
         project = self._current_project
         fields = ayon_api.get_default_fields_for_type("entityList")
-        try:
-            entity_lists = list(
-                ayon_api.get_entity_lists(
-                    project, fields={*fields, "entityListFolderId"}
-                )
+        self._entity_lists_cache = list(
+            ayon_api.get_entity_lists(
+                project, fields={*fields, "entityListFolderId"}
             )
-        except Exception:  # noqa: BLE001
-            # TODO: Backwards compatibility for AYON server < 1.12.1.
-            #   Can be removed, the minimum supported server is newer.
-            # Servers without entity list folders reject the field.
-            self.log.debug(
-                "Failed to fetch entity lists with their folder,"
-                " fetching them without.",
-                exc_info=True,
-            )
-            entity_lists = list(ayon_api.get_entity_lists(project))
-        self._entity_lists_cache = entity_lists
+        )
         self._entity_list_folders_cache = (
             self._get_entity_list_folders(project)
         )
@@ -3550,25 +3538,13 @@ class BrowserWidgetController(QtCore.QObject):
 
         Returns:
             Folders with ``id``, ``label``, ``parentId`` and ``data``
-            (``icon`` and ``color``). Empty when the server does not
-            support entity list folders.
+            (``icon`` and ``color``).
         """
-        # TODO: Backwards compatibility for AYON server < 1.12.1.
-        #   Can be removed, the minimum supported server is newer.
-        #   Older servers have no entity list folders endpoint.
-        try:
-            response = ayon_api.get(
-                f"projects/{project_name}/entityListFolders"
-            )
-            response.raise_for_status()
-            return list(response.data.get("folders") or [])
-        except Exception:  # noqa: BLE001
-            self.log.debug(
-                "Failed to fetch entity list folders of project %s",
-                project_name,
-                exc_info=True,
-            )
-            return []
+        response = ayon_api.get(
+            f"projects/{project_name}/entityListFolders"
+        )
+        response.raise_for_status()
+        return list(response.data.get("folders") or [])
 
     def _get_entity_list_entity_ids(
         self, list_ids: list[str]
