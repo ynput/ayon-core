@@ -319,6 +319,61 @@ def test_fetch_product_group_headers_fetches_all_pages_and_deduplicates(
     assert [row["child_count"] for row in rows] == [2, 3, 1]
 
 
+def test_fetch_product_group_headers_uses_featured_filter_types(
+    monkeypatch,
+):
+    controller = BrowserWidgetController(BrowserController())
+    controller._current_project = "test_project"
+    controller._featured_version_order = ["latestDone", "latest", "hero"]
+    orders: list[list[str] | None] = []
+
+    def fake_get_products_page(*args, **kwargs):
+        orders.append(kwargs["featured_version_order"])
+        return [], {"hasNextPage": False, "endCursor": None}
+
+    monkeypatch.setattr(
+        controller, "_get_products_page", fake_get_products_page
+    )
+
+    controller._fetch_product_group_headers({})
+    controller.set_filter_criteria([
+        FilterCriterion("version", "Version", ["Hero"]),
+    ])
+    controller._fetch_product_group_headers({})
+
+    # Without a featured type filter the customization order is used
+    assert orders == [None, ["hero"]]
+
+
+def test_hero_group_header_acts_on_hero_version():
+    controller = BrowserWidgetController(BrowserController())
+    controller._current_project = "test_project"
+    group_option = controller._group_by_options["product"]
+
+    def build(featured_version):
+        return controller._build_group_header_row(
+            group_option,
+            value="prod_1",
+            label="Product 1",
+            product_type="render",
+            featured_version=featured_version,
+        )
+
+    base = {"id": "v3", "name": "v003", "parents": ["shot", "Product 1"]}
+
+    hero_row = build({
+        **base, "featuredVersionType": "hero", "heroVersionId": "hero_id"
+    })
+    assert hero_row["_version_id"] == "v3"
+    assert hero_row["_action_version_id"] == "hero_id"
+
+    # A regular version flagged as hero source is not the hero itself
+    latest_row = build({
+        **base, "featuredVersionType": "latest", "heroVersionId": "hero_id"
+    })
+    assert "_action_version_id" not in latest_row
+
+
 def test_fetch_versions_page_prepends_folders_and_tracks_cursors(
     monkeypatch,
 ):
