@@ -207,11 +207,12 @@ class StyleData:
         }
         p = QPalette()
         for role, color_name in bp.items():
-            p.setColor(
+            color = QColor(self._palette.get(color_name, "#ff0000"))
+            for group in (
                 QPalette.ColorGroup.Active,
-                role,
-                QColor(self._palette.get(color_name, "#ff0000")),
-            )
+                QPalette.ColorGroup.Inactive,
+            ):
+                p.setColor(group, role, color)
         return p
 
     def get_style_palette(self, widget: QWidget, widget_key: str) -> QPalette:

@@ -494,6 +494,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         """
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)

@@ -747,11 +747,18 @@ class TrayManager:
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     """Tray widget.
 
+    Mouse behavior (Windows and Linux):
+        - Left click: show tray menu (delayed by system double-click
+            interval so it can be distinguished from double-click).
+        - Double click: execute double-click callback (e.g. launcher).
+        - Right click: show tray menu (handled by Qt).
+
     :param parent: Main widget that cares about all GUIs
     :type parent: QtWidgets.QMainWindow
     """
 
-    doubleclick_time_ms = 100
+    # Fallback values (in ms) if the system value is not available
+    default_doubleclick_time_ms = 400
 
     # Connection status shown in icon
     # - connected: no dot
@@ -783,9 +790,16 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._blink_timer = blink_timer
         self._exited = False
 
-        self._doubleclick = False
         self._click_pos = None
         self._initializing_addons = False
+        # Timestamps used to filter out unwanted clicks
+        self._menu_hidden_at = 0.0
+        self._ignore_trigger_until = 0.0
+
+        doubleclick_time_ms = QtWidgets.QApplication.doubleClickInterval()
+        if not doubleclick_time_ms or doubleclick_time_ms <= 0:
+            doubleclick_time_ms = self.default_doubleclick_time_ms
+        self._doubleclick_time_ms = doubleclick_time_ms
 
         # Store parent - QtWidgets.QMainWindow()
         self._parent = parent
@@ -793,14 +807,18 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Setup menu in Tray
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
+        self.menu.aboutToHide.connect(self._on_menu_about_to_hide)
 
         # Set addons
         self._tray_manager = TrayManager(self, parent)
 
         # Add menu to Context of SystemTrayIcon
+        #   - right click (Context) is handled by Qt itself
         self.setContextMenu(self.menu)
 
         atexit.register(self.exit)
+
+        self._click_timer = None
 
         # Catch activate event for left click if not on MacOS
         #   - MacOS has this ability by design and is harder to modify this
@@ -810,8 +828,9 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
         self.activated.connect(self.on_systray_activated)
 
-        click_timer = QtCore.QTimer()
-        click_timer.setInterval(self.doubleclick_time_ms)
+        click_timer = QtCore.QTimer(self)
+        click_timer.setSingleShot(True)
+        click_timer.setInterval(self._doubleclick_time_ms)
         click_timer.timeout.connect(self._click_timer_timeout)
 
         self._click_timer = click_timer
@@ -935,35 +954,94 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             self._tray_manager.initialize_addons()
         finally:
             self._initializing_addons = False
+        self._prepare_menu_size()
+
+    def _on_menu_about_to_hide(self):
+        self._menu_hidden_at = time.monotonic()
 
     def _click_timer_timeout(self):
-        self._click_timer.stop()
-        doubleclick = self._doubleclick
-        # Reset bool value
-        self._doubleclick = False
-        if doubleclick:
-            self._tray_manager.execute_doubleclick()
-        else:
-            self._show_context_menu()
+        self._show_context_menu()
+
+    def _prepare_menu_size(self):
+        # Menu is not polished before it is shown for the first time, so its
+        #   size is unknown and 'popup' can't place it correctly (it ends up
+        #   at the very bottom of the screen instead of above the cursor).
+        menu = self.contextMenu()
+        menu.ensurePolished()
+        menu.adjustSize()
+
+    def _get_menu_pos(self, pos):
+        menu = self.contextMenu()
+        screen = QtGui.QGuiApplication.screenAt(pos)
+        if screen is None:
+            screen = QtGui.QGuiApplication.primaryScreen()
+        if screen is None:
+            return pos
+
+        # Use full screen geometry (not available geometry) so the menu
+        #   can overlap the taskbar and opens at the cursor, the same way
+        #   as the context menu on right click.
+        geo = screen.geometry()
+        size = menu.sizeHint()
+        x = pos.x()
+        y = pos.y()
+        # Open menu above/left of the cursor if it does not fit
+        #   (tray is usually at the bottom right corner)
+        if x + size.width() > geo.right():
+            x -= size.width()
+        if y + size.height() > geo.bottom():
+            y -= size.height()
+        x = max(geo.left(), min(x, geo.right() - size.width()))
+        y = max(geo.top(), min(y, geo.bottom() - size.height()))
+        return QtCore.QPoint(x, y)
 
     def _show_context_menu(self):
         pos = self._click_pos
         self._click_pos = None
         if pos is None:
             pos = QtGui.QCursor().pos()
-        self.contextMenu().popup(pos)
+        self._prepare_menu_size()
+        self.contextMenu().popup(self._get_menu_pos(pos))
+
+    def _on_trigger(self):
+        now = time.monotonic()
+        # Release of the second click of double-click may also emit
+        #   'Trigger' (depends on Qt version)
+        if now < self._ignore_trigger_until:
+            return
+
+        # Click on tray icon while menu was open closed the menu (on press)
+        #   -> don't open it again on release, behave as toggle
+        if (now - self._menu_hidden_at) * 1000 < self._doubleclick_time_ms:
+            return
+
+        if self.contextMenu().isVisible():
+            self.contextMenu().hide()
+            return
+
+        self._click_pos = QtGui.QCursor().pos()
+        # Wait for possible double-click, then show menu
+        self._click_timer.start()
+
+    def _on_doubleclick(self):
+        # Cancel pending single click
+        self._click_timer.stop()
+        self._click_pos = None
+        self._ignore_trigger_until = (
+            time.monotonic() + (self._doubleclick_time_ms / 1000)
+        )
+        # Menu might be already visible if the timer timed out before
+        #   the second click arrived
+        if self.contextMenu().isVisible():
+            self.contextMenu().hide()
+        self._tray_manager.execute_doubleclick()
 
     def on_systray_activated(self, reason):
-        # show contextMenu if left click
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
-            if self._tray_manager.doubleclick_callback:
-                self._click_pos = QtGui.QCursor().pos()
-                self._click_timer.start()
-            else:
-                self._show_context_menu()
+            self._on_trigger()
 
         elif reason == QtWidgets.QSystemTrayIcon.DoubleClick:
-            self._doubleclick = True
+            self._on_doubleclick()
 
     def exit(self):
         """ Exit whole application.

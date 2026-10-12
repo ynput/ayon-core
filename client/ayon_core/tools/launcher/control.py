@@ -14,6 +14,7 @@ from ayon_core.tools.common_models import (
     UsersModel,
     WSEventsModel,
     ThumbnailsModel,
+    UserItem,
 )
 
 from .abstract import (
@@ -220,6 +221,11 @@ class BaseLauncherController(
             project_name,
             task_id,
         )
+
+    def get_user_items_by_name(
+        self, project_name: Optional[str]
+    ) -> dict[str, UserItem]:
+        return self._users_model.get_user_items_by_name(project_name)
 
     # Actions
     def get_action_items(
