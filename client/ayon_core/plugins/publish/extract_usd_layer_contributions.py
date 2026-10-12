@@ -38,6 +38,7 @@ try:
         setup_asset_layer,
         add_ordered_sublayer,
         set_layer_defaults,
+        get_sdf_format_args,
         get_standard_default_prim_name,
         BaseContribution,
         ReferenceContribution,
@@ -823,16 +824,40 @@ class USDContributionStackingMixin:
         if not contributions:
             return
 
+        # Variants a previous contribution got removed from, by variant prim
+        # path. The value is the variant name the contribution moved to if it
+        # remained in the same variant set.
+        emptied_variants: dict[Sdf.Path, Optional[str]] = {}
         for contribution in sorted(contributions, key=attrgetter("order")):
-            self._add_contribution_to_layer(contribution, sdf_layer)
+            emptied_variants.update(
+                self._add_contribution_to_layer(contribution, sdf_layer)
+            )
+
+        # Clean up after all contributions are added, because a variant may
+        # also be filled again by another contribution.
+        for variant_prim_path, replacement in emptied_variants.items():
+            self.remove_variant_if_empty(
+                layer=sdf_layer,
+                variant_prim_path=variant_prim_path,
+                replacement_variant_name=replacement
+            )
 
     def _add_contribution_to_layer(
         self,
         contribution: BaseContribution,
         sdf_layer: Sdf.Layer
-    ):
-        """Add a single contribution to the layer."""
+    ) -> dict[Sdf.Path, Optional[str]]:
+        """Add a single contribution to the layer.
+
+        Returns:
+            dict[Sdf.Path, Optional[str]]: The variant prim paths a previous
+                reference of this contribution was removed from. The value is
+                the variant name the contribution moved to if it remained in
+                the same variant set of the same prim.
+
+        """
         path = self._resolve_contribution_path(contribution)
+        emptied_variants: dict[Sdf.Path, Optional[str]] = {}
 
         # Handle references, and references in variants
         if isinstance(contribution, ReferenceContribution):
@@ -874,13 +899,35 @@ class USDContributionStackingMixin:
                     ]
                 )
 
-            # Remove any existing matching entry of same contribution key
-            prim_spec = sdf_layer.GetPrimAtPath(target_prim_path)
-            if prim_spec:
-                self.remove_previous_reference_contribution(
-                    prim_spec=prim_spec,
+            # Remove any existing matching entry of same contribution key.
+            # This is done for the full layer so that no stale contribution
+            # remains if the target prim path, variant set name or variant
+            # name changed since the last publish, or if it previously was a
+            # sublayer contribution.
+            for variant_prim_path in (
+                self.remove_previous_reference_contributions(
+                    layer=sdf_layer,
                     contribution=contribution
                 )
+            ):
+                # Keep track of the new variant name if the contribution only
+                # moved to another variant in the same variant set
+                replacement: Optional[str] = None
+                if isinstance(contribution, VariantContribution):
+                    variant_set_name, _ = (
+                        variant_prim_path.GetVariantSelection()
+                    )
+                    if (
+                        variant_prim_path.GetParentPath() == prim_path
+                        and variant_set_name == contribution.variant_set_name
+                    ):
+                        replacement = contribution.variant_name
+                emptied_variants[variant_prim_path] = replacement
+
+            self.remove_previous_sublayer_contribution(
+                layer=sdf_layer,
+                contribution=contribution
+            )
 
             # Add the contribution at the indicated order
             self.add_reference_contribution(
@@ -891,6 +938,17 @@ class USDContributionStackingMixin:
         elif isinstance(contribution, SublayerContribution):
             # Sublayer source file
             self.log.debug(f"Adding sublayer: {contribution}")
+
+            # The contribution may have been a reference contribution before.
+            # An existing sublayer of the same contribution key is replaced
+            # when adding the sublayer.
+            for variant_prim_path in (
+                self.remove_previous_reference_contributions(
+                    layer=sdf_layer,
+                    contribution=contribution
+                )
+            ):
+                emptied_variants[variant_prim_path] = None
 
             add_ordered_sublayer(
                 layer=sdf_layer,
@@ -903,12 +961,134 @@ class USDContributionStackingMixin:
             raise TypeError(
                 f"Unsupported contribution type: {type(contribution)}"
             )
+        return emptied_variants
+
+    def remove_variant_if_empty(
+        self,
+        layer: "Sdf.Layer",
+        variant_prim_path: "Sdf.Path",
+        replacement_variant_name: Optional[str] = None
+    ) -> bool:
+        """Remove the variant from the layer if it has no opinions left.
+
+        A variant selection on the prim for the removed variant is set to the
+        replacement variant if provided, otherwise the selection is removed.
+        The variant set is removed if it has no variants left.
+
+        Returns:
+            bool: Whether the variant was removed.
+
+        """
+        variant_prim_spec = layer.GetPrimAtPath(variant_prim_path)
+        if not variant_prim_spec:
+            return False
+
+        # A variant created by a contribution only has a specifier and type
+        # name authored aside of its references. Anything else is considered
+        # to be data we should preserve.
+        if (
+            variant_prim_spec.nameChildren
+            or variant_prim_spec.properties
+            or variant_prim_spec.variantSets
+            or set(variant_prim_spec.ListInfoKeys()) - {
+                "specifier", "typeName"
+            }
+        ):
+            return False
+
+        variant_set_name, variant_name = (
+            variant_prim_path.GetVariantSelection()
+        )
+        prim_spec = layer.GetPrimAtPath(variant_prim_path.GetParentPath())
+        variant_set_spec = prim_spec.variantSets[variant_set_name]
+        self.log.debug("Removing empty variant: %s", variant_prim_path)
+        variant_set_spec.RemoveVariant(variant_set_spec.variants[variant_name])
+
+        # Do not leave a variant selection behind for a non-existing variant
+        if prim_spec.variantSelections.get(variant_set_name) == variant_name:
+            if replacement_variant_name in variant_set_spec.variants:
+                prim_spec.variantSelections[variant_set_name] = (
+                    replacement_variant_name
+                )
+            else:
+                del prim_spec.variantSelections[variant_set_name]
+
+        # Remove the variant set if this was its last variant
+        if not variant_set_spec.variants:
+            self.log.debug(
+                "Removing empty variant set '%s' on: %s",
+                variant_set_name, prim_spec.path
+            )
+            del prim_spec.variantSets[variant_set_name]
+            prim_spec.variantSetNameList.Erase(variant_set_name)
+            if not prim_spec.variantSetNameList.GetAddedOrExplicitItems():
+                prim_spec.ClearInfo("variantSetNames")
+        return True
+
+    def remove_previous_sublayer_contribution(
+        self,
+        layer: "Sdf.Layer",
+        contribution: BaseContribution
+    ):
+        """Remove existing sublayer of the contribution key in the layer."""
+        remove_indices = [
+            index for index, path in enumerate(layer.subLayerPaths)
+            if (
+                get_sdf_format_args(path).get("layer_id")
+                == contribution.layer_id
+            )
+        ]
+        for index in reversed(remove_indices):
+            self.log.debug(
+                "Removing existing sublayer: %s", layer.subLayerPaths[index]
+            )
+            del layer.subLayerPaths[index]
+
+    def remove_previous_reference_contributions(
+        self,
+        layer: "Sdf.Layer",
+        contribution: BaseContribution
+    ):
+        """Remove existing references of the contribution key in the layer.
+
+        This includes any prims inside variants.
+
+        Returns:
+            list[Sdf.Path]: The variant prim paths a reference was removed
+                from, e.g. `/prim{variant_set=variant}`.
+
+        """
+        prim_paths = []
+        emptied_variants: list[Sdf.Path] = []
+
+        def _collect_prim_path(path: "Sdf.Path"):
+            if path.IsPrimPath() or path.IsPrimVariantSelectionPath():
+                prim_paths.append(path)
+
+        layer.Traverse(Sdf.Path.absoluteRootPath, _collect_prim_path)
+        for prim_path in prim_paths:
+            prim_spec = layer.GetPrimAtPath(prim_path)
+            if not prim_spec:
+                continue
+            removed = self.remove_previous_reference_contribution(
+                prim_spec=prim_spec,
+                contribution=contribution
+            )
+            if removed and prim_path.IsPrimVariantSelectionPath():
+                emptied_variants.append(prim_path)
+        return emptied_variants
 
     def remove_previous_reference_contribution(
         self,
         prim_spec: "Sdf.PrimSpec",
-        contribution: ReferenceContribution
-    ):
+        contribution: BaseContribution
+    ) -> bool:
+        """Remove existing references of the contribution key on the prim.
+
+        Returns:
+            bool: Whether any reference was removed.
+
+        """
         remove_indices = set()
         key_to_match = contribution.layer_id
         for index, ref in enumerate(prim_spec.referenceList.prependedItems):
@@ -934,6 +1114,7 @@ class USDContributionStackingMixin:
         # Remove in reverse order to keep indices valid
         for index in sorted(remove_indices, reverse=True):
             del prim_spec.referenceList.prependedItems[index]
+        return bool(remove_indices)
 
     def add_reference_contribution(
         self,
