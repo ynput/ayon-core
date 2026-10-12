@@ -211,7 +211,7 @@ class BrowserController(AbstractBrowserController):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
-        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         return self._loader_actions_model.get_action_items(
             project_name, entity_ids, entity_type, loaders_grouping

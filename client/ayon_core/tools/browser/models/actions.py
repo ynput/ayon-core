@@ -142,7 +142,7 @@ class LoaderActionsModel:
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
-        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         """Action items for the selected entities.
 
@@ -170,7 +170,7 @@ class LoaderActionsModel:
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
-        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         version_context_by_id = {}
         repre_context_by_id = {}
@@ -412,8 +412,8 @@ class LoaderActionsModel:
         contexts,
         entity_ids,
         entity_type,
+        group_by_loader,
         repre_name=None,
-        group_by_loader=False,
     ):
         label = self._get_action_label(loader)
         group_label = None
@@ -830,7 +830,7 @@ class LoaderActionsModel:
         project_name,
         version_context_by_id,
         repre_context_by_id,
-        loaders_grouping=LoadersGrouping.UNGROUPED,
+        loaders_grouping,
     ):
         """Prepare action items based on contexts.
 
@@ -884,8 +884,8 @@ class LoaderActionsModel:
                     repre_contexts,
                     repre_ids,
                     "representation",
-                    repre_name=repre_name,
                     group_by_loader=group_by_loader,
+                    repre_name=repre_name,
                 )
                 action_items.append(item)
 
@@ -904,6 +904,8 @@ class LoaderActionsModel:
                 version_contexts,
                 version_ids,
                 "version",
+                # A loader of whole versions has no representations to list
+                group_by_loader=False,
             )
             action_items.append(item)
         return action_items

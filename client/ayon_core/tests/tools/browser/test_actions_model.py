@@ -70,7 +70,7 @@ def model(monkeypatch):
     return model
 
 
-def _get_items(model, *args):
+def _get_items(model, loaders_grouping: LoadersGrouping):
     version_context_by_id = {
         "version1": {
             "product": {"id": "product1"},
@@ -82,7 +82,7 @@ def _get_items(model, *args):
         "repre2": _repre_context("repre2", "png"),
     }
     return model._get_action_items_for_contexts(
-        "demo", version_context_by_id, repre_context_by_id, *args
+        "demo", version_context_by_id, repre_context_by_id, loaders_grouping
     )
 
 
@@ -90,19 +90,15 @@ def _labels(items: list[ActionItem]) -> list[tuple[str, str]]:
     return sorted((item.group_label or "", item.label) for item in items)
 
 
-def test_repre_loader_items_are_ungrouped_by_default(model):
-    expected_labels = [
+def test_repre_loader_items_ungrouped(model):
+    items = _get_items(model, LoadersGrouping.UNGROUPED)
+
+    assert _labels(items) == [
         ("", "Delete old versions"),
         ("", "Load image (exr)"),
         ("", "Load image (png)"),
         ("", "Reference (exr)"),
     ]
-
-    assert _labels(_get_items(model)) == expected_labels
-    assert (
-        _labels(_get_items(model, LoadersGrouping.UNGROUPED))
-        == expected_labels
-    )
 
 
 def test_repre_loader_items_grouped_by_loader(model):
@@ -143,7 +139,7 @@ def test_grouping_does_not_change_what_is_loaded(model, loaders_grouping):
             for item in items
         )
 
-    ungrouped_items = _get_items(model)
+    ungrouped_items = _get_items(model, LoadersGrouping.UNGROUPED)
     items = _get_items(model, loaders_grouping)
 
     assert _trigger_data(items) == _trigger_data(ungrouped_items)

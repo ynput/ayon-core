@@ -538,7 +538,7 @@ class AbstractBrowserController(ABC):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
-        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         """Action items for versions selection.
 

@@ -2089,7 +2089,7 @@ class BrowserWidgetController(QtCore.QObject):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
-        loaders_grouping: LoadersGrouping = LoadersGrouping.UNGROUPED,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         """Return action items for the given entity selection.
 
