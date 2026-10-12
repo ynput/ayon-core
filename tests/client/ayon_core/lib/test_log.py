@@ -1220,23 +1220,33 @@ def test_without_structlog_skips_file_and_vector(
 
 
 @pytest.mark.parametrize(
-    "owner, name",
+    "version, expected",
     [
-        # Missing in 'structlog' older than 25.5
-        (structlog.dev, "_colorful_styles"),
-        # Missing in 'structlog' older than 23.3
-        (structlog.dev, "LogLevelColumnFormatter"),
+        ("25.5.0", True),
+        ("25.5.0.dev1", True),
+        ("25.10.1", True),
+        ("26.1.0", True),
+        ("25.4.0", False),
+        ("24.4.0", False),
+        ("9.0.0", False),
+        ("", False),
+        ("unknown", False),
     ],
 )
+def test_structlog_version_supported(log_module, version, expected):
+    module = log_module()
+    assert module._is_structlog_version_supported(version) is expected
+
+
 def test_unsupported_structlog_uses_stdlib_logger(
-    log_module, monkeypatch, foreign_handler, owner, name
+    log_module, monkeypatch, foreign_handler
 ):
     """Older 'structlog' is handled as if it would not be available.
 
     It may be imported instead of the one AYON requires, e.g. from
     site-packages of a host application.
     """
-    monkeypatch.delattr(owner, name)
+    monkeypatch.setattr(structlog, "__version__", "24.4.0", raising=False)
     module = log_module()
     assert module.structlog is None
 

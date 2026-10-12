@@ -25,43 +25,55 @@ from contextvars import ContextVar, Token
 from typing import TYPE_CHECKING, Any
 import warnings
 
+from .local_settings import get_launcher_local_dir
+
+from .env_tools import env_value_to_bool
+
+
+# Oldest 'structlog' version this module works with, it uses some of its
+#   non-public names, e.g. 'structlog.dev._colorful_styles'
+MIN_STRUCTLOG_VERSION = (25, 5)
+
+
+def _is_structlog_version_supported(version: str) -> bool:
+    """Whether 'structlog' of 'version' is supported.
+
+    Only major and minor version are compared, e.g. '25.5.0.dev1' is
+    handled as '25.5'.
+
+    Args:
+        version (str): Version of 'structlog', e.g. '25.5.0'.
+
+    Returns:
+        bool: Version is supported. Unknown version is not supported.
+
+    """
+    try:
+        major, minor = (int(part) for part in version.split(".")[:2])
+    except ValueError:
+        return False
+    return (major, minor) >= MIN_STRUCTLOG_VERSION
+
+
 try:
     import structlog
 
-    # Names of 'structlog' used in this module, some of them are not
-    #   public. Older 'structlog' misses them, see the fallback below.
-    for _owner, _names in (
-        (
-            structlog.dev,
-            (
-                "Column",
-                "LogLevelColumnFormatter",
-                "RichTracebackFormatter",
-                "plain_traceback",
-                "_colorful_styles",
-                "_plain_styles",
-            ),
-        ),
-        (structlog.dev.ConsoleRenderer, ("_configure_columns",)),
-        (structlog.stdlib.ProcessorFormatter, ("remove_processors_meta",)),
-        (structlog.contextvars, ("reset_contextvars",)),
-    ):
-        for _name in _names:
-            getattr(_owner, _name)
-except (ImportError, AttributeError):
+    # Version is resolved from package metadata, missing metadata
+    #   raises 'PackageNotFoundError', a subclass of 'ImportError'
+    if not _is_structlog_version_supported(structlog.__version__):
+        raise ImportError(
+            f"'structlog' {structlog.__version__} is not supported."
+        )
+except ImportError:
     # Older AYON launcher or dependency package without 'structlog', or
-    #   'structlog' older than 25.5 was imported instead, e.g. from
-    #   site-packages of a host application.
+    #   'structlog' older than 'MIN_STRUCTLOG_VERSION' was imported
+    #   instead, e.g. from site-packages of a host application.
     # Logging falls back to standard library 'logging' without structured
     #   fields, log file and Vector delivery.
     structlog = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from structlog.typing import ExceptionRenderer
-
-from .local_settings import get_launcher_local_dir
-
-from .env_tools import env_value_to_bool
 
 # force the logger to use the same format for all log levels.
 USE_STD_FMT = env_value_to_bool("AYON_USE_STD_LOG_FORMAT", default=False)
@@ -1328,22 +1340,22 @@ class Logger:
                     " is disabled: %s",
                     exc,
                 )
-                return
-            _vector_sender = vector_sender
-            # The sender thread is a daemon thread, it would be killed on
-            # interpreter exit with records still in the queue. Stopping it
-            # at exit delivers the queued records first.
-            atexit.register(vector_sender.stop)
-            # Available only on POSIX, Windows does not fork
-            if hasattr(os, "register_at_fork"):
-                os.register_at_fork(
-                    after_in_child=functools.partial(
-                        _disable_vector_after_fork,
-                        queue_handler,
-                        vector_sender,
+            else:
+                _vector_sender = vector_sender
+                # The sender thread is a daemon thread, it would be killed
+                # on interpreter exit with records still in the queue.
+                # Stopping it at exit delivers the queued records first.
+                atexit.register(vector_sender.stop)
+                # Available only on POSIX, Windows does not fork
+                if hasattr(os, "register_at_fork"):
+                    os.register_at_fork(
+                        after_in_child=functools.partial(
+                            _disable_vector_after_fork,
+                            queue_handler,
+                            vector_sender,
+                        )
                     )
-                )
-            root_logger.addHandler(queue_handler)
+                root_logger.addHandler(queue_handler)
 
     @staticmethod
     def _configure_structlog() -> tuple[
