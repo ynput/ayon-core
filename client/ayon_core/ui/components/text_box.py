@@ -7,7 +7,6 @@ from functools import partial
 from qtpy import QtWidgets
 from qtpy.QtCore import (
     QObject,
-    QPoint,
     Qt,
     Signal,
     Slot,
@@ -15,57 +14,40 @@ from qtpy.QtCore import (
 from qtpy.QtGui import (
     QColor,
     QFont,
+    QKeySequence,
     QPalette,
     QPixmap,
     QTextCharFormat,
     QTextCursor,
-    QTextDocument,
     QTextListFormat,
 )
 from qtpy.QtWidgets import (
     QLabel,
     QScrollArea,
     QSizePolicy,
-    QTextEdit,
 )
 
-from ..data_models import CommentCategory, ProjectData, User
-from ..style_types import get_ayon_style
-from ..variants import QFrameVariants, QTextEditVariants
+from ..data_models import (
+    CommentCategory,
+    EntityMention,
+    ProjectData,
+    User,
+)
+from ..variants import QFrameVariants
 from .buttons import AYButton
-from .checkbox_handler import (
-    CHECKBOX_CHECKED_PROP,
-    CHECKBOX_FORMAT_TYPE,
-    CHECKBOX_INDEX_PROP,
-    CheckboxHandler,
-)
 from .combo_box import AYComboBox
-from .comment_completion import (
-    CODE_BG,
-    CODE_FG,
-    apply_code_block_backgrounds,
-    format_comment_on_change,
-    on_completer_activated,
-    on_completer_key_press,
-    on_completer_text_changed,
-    on_users_updated,
-    setup_user_completer,
-    strip_user_mention_display,
-)
+from .comment_completion import CODE_BG, CODE_FG
 from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
-from .text_edit import AYTextEdit
+from .markdown_edit import AYMarkdownEdit
 
 logger = logging.getLogger(__name__)
 
-MD_DIALECT = QTextDocument.MarkdownFeature.MarkdownDialectGitHub
 
-
-class AYTextEditor(AYTextEdit):
-    Variants = QTextEditVariants
-
+class AYTextEditor(AYMarkdownEdit):
     submitted = Signal()  # Signal emitted when Ctrl+Enter is pressed
-    checklist_changed = Signal()  # Signal emitted when checkbox state changes
+
+    _checkbox_indent = "  "
 
     def __init__(
         self,
@@ -73,24 +55,16 @@ class AYTextEditor(AYTextEdit):
         num_lines: int = 0,
         read_only: bool = False,
         user_list: list[User] | None,
-        variant: Variants = Variants.Default,
+        variant: AYMarkdownEdit.Variants = AYMarkdownEdit.Variants.Default,
         **kwargs,
     ):
         # remove our kwargs
         self.num_lines: int = num_lines
         self._read_only: bool = read_only
-        self._user_list: list[User] = user_list or []
-        self._variant_str: str = variant.value
-        self._checkbox_handler: CheckboxHandler | None = None
-        # Guard flag: when True, format_comment_on_change is a no-op.
-        self._suppress_formatting: bool = False
 
-        super().__init__(*args, variant=variant, **kwargs)
-        self.setStyle(get_ayon_style())
-        # Enable mouse tracking on viewport to receive mouseMoveEvent
-        self.viewport().setMouseTracking(True)
-
-        self.document().setIndentWidth(22)  # pixels per indent level
+        super().__init__(
+            *args, user_list=user_list, variant=variant, **kwargs
+        )
 
         if self.num_lines:
             doc = self.document()
@@ -113,9 +87,6 @@ class AYTextEditor(AYTextEdit):
             else QSizePolicy.Policy.Fixed,
         )
 
-        # automatic bullet lists
-        self.setAutoFormatting(QTextEdit.AutoFormattingFlag.AutoAll)
-
         if not self._read_only:
             self.setPlaceholderText(
                 "Comment or mention with @user, @@version, @@@task..."
@@ -124,218 +95,39 @@ class AYTextEditor(AYTextEdit):
         palette = self.palette()
         palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("white"))
         self.setPalette(palette)
-        # Setup user completer
-        setup_user_completer(
-            self,
-            self._on_completer_activated,
-            self._on_text_changed,
-        )
-
-        self.document().contentsChanged.connect(self._on_contents_changed)
-
-    def _on_contents_changed(self) -> None:
-        """Forward contentsChanged to format_comment_on_change.
-
-        Skipped when ``_suppress_formatting`` is True so that checkbox
-        insertion code can mutate the document without triggering a
-        full re-format pass.
-        """
-        if not self._suppress_formatting:
-            format_comment_on_change(self)
-            apply_code_block_backgrounds(self)
-
-    def _on_text_changed(self) -> None:
-        """Handle text changes to show/hide completer."""
-        on_completer_text_changed(self)
-
-    def _on_completer_activated(self, text: str) -> None:
-        """Handle completer selection."""
-        on_completer_activated(self, text)
 
     def keyPressEvent(self, event) -> None:
-        """Handle key press events for completer."""
-        if on_completer_key_press(self, event):
-            event.accept()
-            return
-
         # ctrl/cmd-enter to submit
         if (
             event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter}
             and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+            and not self._mentions.popup_visible()
         ):
             self.submitted.emit()
+            event.accept()
+            return
 
-        # Auto-continue checkbox on Enter
-        if (
-            event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter}
-            and self._checkbox_handler
-            and self._checkbox_handler.has_checkboxes()
+        for shortcut, style in (
+            (QKeySequence.StandardKey.Bold, "stl_bold"),
+            (QKeySequence.StandardKey.Italic, "stl_italic"),
         ):
-            cursor = self.textCursor()
-            block_text = cursor.block().text()
-
-            if "\ufffc" in block_text:
-                # Extract text after the checkbox object char
-                parts = block_text.split("\ufffc", 1)
-                after_checkbox = parts[1].strip() if len(parts) > 1 else ""
-
-                if not after_checkbox:
-                    # Empty checkbox line → end the list
-                    # Remove the checkbox content from current block
-                    cursor.movePosition(
-                        QTextCursor.MoveOperation.StartOfBlock,
-                        QTextCursor.MoveMode.MoveAnchor,
-                    )
-                    cursor.movePosition(
-                        QTextCursor.MoveOperation.EndOfBlock,
-                        QTextCursor.MoveMode.KeepAnchor,
-                    )
-                    cursor.removeSelectedText()
-                    # Remove the last checkbox from handler
-                    self._checkbox_handler.remove_last_checkbox()
-                    # Insert a plain newline
-                    super().keyPressEvent(event)
-                    return
-
-                # Non-empty checkbox line → insert new checkbox
+            if event.matches(shortcut):
+                self.set_style(style)
                 event.accept()
-                self._suppress_formatting = True
-
-                cursor.beginEditBlock()
-                cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock)
-                cursor.insertBlock()
-                self._insert_checkbox_at_cursor(cursor)
-                cursor.endEditBlock()
-
-                self._suppress_formatting = False
-                self.setTextCursor(cursor)
                 return
 
         super().keyPressEvent(event)
 
-    def _setup_checkbox_handler(self) -> None:
-        """Initialize checkbox handler if not already done."""
-        if self._checkbox_handler is None:
-            self._checkbox_handler = CheckboxHandler(self)
-            self._checkbox_handler.checklist_changed.connect(
-                self._on_checklist_changed
-            )
-
-    def _on_checklist_changed(self) -> None:
-        """Handle checkbox state changes."""
-        self.checklist_changed.emit()
-
-    def _insert_checkbox_at_cursor(self, cursor: QTextCursor) -> None:
-        """Insert a new unchecked checkbox object at the cursor position.
-
-        Inserts a two-space prefix, the custom checkbox object character
-        (``\\ufffc``), and a trailing space, then records the document
-        position on the :class:`CheckboxItem` for fast hit-testing.
-        The checkbox handler must already be initialised via
-        :meth:`_setup_checkbox_handler`.
-
-        Args:
-            cursor: Cursor at the insertion point; advanced past the
-                inserted characters on return.
-        """
-        self._setup_checkbox_handler()
-        new_item = self._checkbox_handler.add_checkbox()
-        fmt = QTextCharFormat()
-        fmt.setObjectType(CHECKBOX_FORMAT_TYPE)
-        fmt.setProperty(CHECKBOX_CHECKED_PROP, False)
-        fmt.setProperty(CHECKBOX_INDEX_PROP, new_item.index)
-        fmt.setVerticalAlignment(
-            QTextCharFormat.VerticalAlignment.AlignBaseline
-        )
-        cursor.insertText("  ")
-        new_item.doc_position = cursor.position()
-        cursor.insertText("\ufffc", fmt)
-        cursor.insertText(" ")
-
-    def set_markdown(self, md: str) -> None:
-        """Set markdown content with checkbox support.
-
-        Args:
-            md: Markdown text to display
-        """
-        if CheckboxHandler.contains_checkboxes(md):
-            self._setup_checkbox_handler()
-            self._checkbox_handler.parse_and_render(md)
+    def _merge_char_format(
+        self, cursor: QTextCursor, fmt: QTextCharFormat
+    ) -> None:
+        """Apply a style to the selection or to the text typed next."""
+        if cursor.hasSelection():
+            cursor.mergeCharFormat(fmt)
+            self.setTextCursor(cursor)
         else:
-            self.document().setMarkdown(md, MD_DIALECT)
-        apply_code_block_backgrounds(self)
-
-    def as_markdown(self) -> str:
-        """Get the content as GitHub-flavored markdown.
-
-        Returns:
-            Markdown string.
-        """
-        if self._checkbox_handler and self._checkbox_handler.has_checkboxes():
-            return self._checkbox_handler.to_markdown()
-        rendered_md = self.document().toMarkdown(MD_DIALECT)
-        return strip_user_mention_display(rendered_md, self._user_list)
-
-    def _is_checkbox_at_cursor(
-        self, click_pos: QPoint
-    ) -> tuple[bool, int | None]:
-        """Check if a click position hits a checkbox bounding rect.
-
-        Delegates to :meth:`CheckboxHandler.find_checkbox_at_click` which
-        uses stored document positions instead of scanning the full text.
-
-        Args:
-            click_pos: QPoint from event.pos(), viewport coords.
-
-        Returns:
-            Tuple of (is_checkbox, document_position_for_lookup).
-        """
-        if not self._checkbox_handler:
-            return False, None
-
-        # Account for scroll offset
-        scroll_offset = QPoint(
-            -self.horizontalScrollBar().value(),
-            -self.verticalScrollBar().value(),
-        )
-        result = self._checkbox_handler.find_checkbox_at_click(
-            click_pos, scroll_offset
-        )
-        if result is None:
-            return False, None
-        return result
-
-    def mousePressEvent(self, event) -> None:
-        """Handle mouse press events for checkboxes.
-
-        Checkboxes can be toggled even in read-only mode.
-        """
-        is_cb, cb_pos = self._is_checkbox_at_cursor(event.pos())
-        if is_cb and cb_pos is not None:
-            assert self._checkbox_handler is not None  # implied by is_cb==True
-            checkbox_idx = self._checkbox_handler.get_checkbox_at_position(
-                cb_pos
-            )
-            if checkbox_idx is not None:
-                self._checkbox_handler.toggle_checkbox(checkbox_idx)
-                self.viewport().update()
-                event.accept()
-                return
-
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        """Show arrow cursor over checkboxes, hand over links, I-beam else."""
-        pos = event.pos()
-        cursor = self.cursorForPosition(pos)
-        fmt = cursor.charFormat()
-        if fmt.objectType() == CHECKBOX_FORMAT_TYPE:
-            self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
-        elif fmt.isAnchor():
-            self.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
-        else:
-            self.viewport().setCursor(Qt.CursorShape.IBeamCursor)
-        super().mouseMoveEvent(event)
+            # Setting the text cursor would reset the current format
+            self.mergeCurrentCharFormat(fmt)
 
     def set_style(self, style: str) -> None:
         """Apply a character style to the current selection or cursor.
@@ -348,6 +140,12 @@ class AYTextEditor(AYTextEdit):
             style: Style identifier string (e.g. ``"stl_bold"``).
         """
         cursor = self.textCursor()
+        # Without a selection the style applies to the text typed next
+        current_fmt = (
+            cursor.charFormat()
+            if cursor.hasSelection()
+            else self.currentCharFormat()
+        )
 
         # Suppress formatting during style application
         self._suppress_formatting = True
@@ -356,7 +154,7 @@ class AYTextEditor(AYTextEdit):
 
         if style == "stl_bold":
             # Toggle bold, preserving all other formatting
-            current_weight = cursor.charFormat().fontWeight()
+            current_weight = current_fmt.fontWeight()
             new_weight = (
                 QFont.Weight.Normal
                 if current_weight == QFont.Weight.Bold
@@ -365,30 +163,20 @@ class AYTextEditor(AYTextEdit):
             fmt = QTextCharFormat()
             fmt.setFontWeight(new_weight)
 
-            if cursor.hasSelection():
-                cursor.mergeCharFormat(fmt)
-            else:
-                self.mergeCurrentCharFormat(fmt)
-
-            self.setTextCursor(cursor)
+            self._merge_char_format(cursor, fmt)
 
         elif style == "stl_italic":
             # Toggle italic, preserving all other formatting
-            new_italic = not cursor.charFormat().fontItalic()
+            new_italic = not current_fmt.fontItalic()
             fmt = QTextCharFormat()
             fmt.setFontItalic(new_italic)
 
-            if cursor.hasSelection():
-                cursor.mergeCharFormat(fmt)
-            else:
-                self.mergeCurrentCharFormat(fmt)
-
-            self.setTextCursor(cursor)
+            self._merge_char_format(cursor, fmt)
 
         elif style == "stl_h1":
             # Toggle heading size, preserving all other formatting
             base_size = self.font().pointSizeF()
-            current_size = cursor.charFormat().fontPointSize()
+            current_size = current_fmt.fontPointSize()
 
             fmt = QTextCharFormat()
             if current_size > base_size:  # Already a header
@@ -398,12 +186,7 @@ class AYTextEditor(AYTextEdit):
                 fmt.setFontPointSize(base_size * 1.5)
                 fmt.setFontWeight(QFont.Weight.Bold)
 
-            if cursor.hasSelection():
-                cursor.mergeCharFormat(fmt)
-            else:
-                self.mergeCurrentCharFormat(fmt)
-
-            self.setTextCursor(cursor)
+            self._merge_char_format(cursor, fmt)
 
         elif style == "stl_link":
             pw = self.parentWidget()
@@ -442,7 +225,7 @@ class AYTextEditor(AYTextEdit):
 
         elif style == "stl_code":
             # Detect if already in code style
-            is_code = cursor.charFormat().fontFixedPitch()
+            is_code = current_fmt.fontFixedPitch()
             fmt = QTextCharFormat()
 
             if is_code:
@@ -463,12 +246,7 @@ class AYTextEditor(AYTextEdit):
                 fmt.setBackground(CODE_BG)
                 fmt.setForeground(CODE_FG)
 
-            if cursor.hasSelection():
-                cursor.mergeCharFormat(fmt)
-            else:
-                self.mergeCurrentCharFormat(fmt)
-
-            self.setTextCursor(cursor)
+            self._merge_char_format(cursor, fmt)
 
         cursor.endEditBlock()
         self._suppress_formatting = False
@@ -720,6 +498,8 @@ class AYTextBoxSignals(QObject):
 
 class AYTextBox(AYContainer):
     signals = AYTextBoxSignals()
+    # The popup to mention a version or task opened
+    mention_entities_requested = Signal()
     Variants = QFrameVariants
     style_icons = {
         "stl_h1": "format_h1",
@@ -735,10 +515,8 @@ class AYTextBox(AYContainer):
     }
     mention_map = {
         "person": "@",
-        # TODO: Implement support for version and task mentions in completer
-        #  before enabling these
-        # "layers": "@@",
-        # "check_circle": "@@@",
+        "layers": "@@",
+        "check_circle": "@@@",
     }
 
     def __init__(
@@ -850,6 +628,9 @@ class AYTextBox(AYContainer):
             )
 
         self.edit_field.submitted.connect(self._on_comment_clicked)
+        self.edit_field.mention_entities_requested.connect(
+            self.mention_entities_requested
+        )
 
         return self.edit_field
 
@@ -893,10 +674,7 @@ class AYTextBox(AYContainer):
 
     def _add_mention_to_editor(self, mention: str) -> None:
         """Add mention text to the editor at cursor position."""
-        cursor = self.edit_field.textCursor()
-        cursor.insertText(mention)
-        self.edit_field.setTextCursor(cursor)
-        self.edit_field.setFocus()
+        self.edit_field.insert_mention_trigger(mention)
 
     def _on_category_changed(self, category: str) -> None:
         self.category = category if category != NO_CATEGORY["text"] else ""
@@ -1057,8 +835,24 @@ class AYTextBox(AYContainer):
         )
         if self.show_categories:
             self.com_cat.update_items(self.comment_categories)
-        self.edit_field._user_list = self._user_list = data.users
-        on_users_updated(self.edit_field)
+        self._user_list = data.users
+        self.edit_field.set_user_list(data.users)
+
+    def set_mention_entities(
+        self,
+        versions: list[EntityMention] | None = None,
+        tasks: list[EntityMention] | None = None,
+    ) -> None:
+        """Set the versions (``@@``) and tasks (``@@@``) to mention.
+
+        Either up front or in response to
+        :attr:`mention_entities_requested`.
+        """
+        self.edit_field.set_mention_entities(versions, tasks)
+
+    def clear_mention_entities(self) -> None:
+        """Forget the versions and tasks, they show as loading until set."""
+        self.edit_field.clear_mention_entities()
 
     def _build(self, num_lines):
         self.add_layout(self._build_upper_bar())

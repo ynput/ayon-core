@@ -11,6 +11,7 @@ from ayon_core.tools.utils.folders_widget import (
     FoldersProxyModel,
     FOLDER_ID_ROLE,
 )
+from ayon_core.tools.utils.entity_thumbnails import EntityThumbnailsPainter
 
 UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 50
 
@@ -24,8 +25,9 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
     """
     bar_height = 3
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, thumbnails_painter=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self._thumbnails_painter = thumbnails_painter
         colors = get_objected_colors("loader", "asset-view")
         self._selected_color = colors["selected"].get_qcolor()
         self._hover_color = colors["hover"].get_qcolor()
@@ -163,13 +165,27 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
             item_rect.width(),
             item_rect.height()
         )
+        text = index.data(QtCore.Qt.DisplayRole)
+        thumbnails_painter = self._thumbnails_painter
+        if thumbnails_painter is not None:
+            # Do not paint the text under the thumbnail
+            reserved_width = thumbnails_painter.get_reserved_width(
+                item_rect, index
+            )
+            if reserved_width:
+                text_rect.setRight(
+                    item_rect.right() - (reserved_width + 4)
+                )
+                text = option.fontMetrics.elidedText(
+                    text, QtCore.Qt.ElideRight, text_rect.width()
+                )
 
-        painter.drawText(
-            text_rect, QtCore.Qt.AlignVCenter,
-            index.data(QtCore.Qt.DisplayRole)
-        )
+        painter.drawText(text_rect, QtCore.Qt.AlignVCenter, text)
 
         painter.restore()
+
+        if thumbnails_painter is not None:
+            thumbnails_painter.paint(painter, item_rect, index)
 
 
 class LoaderFoldersModel(FoldersQtModel):
@@ -254,7 +270,12 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-        folders_label_delegate = UnderlinesFolderDelegate(folders_view)
+        thumbnails_painter = EntityThumbnailsPainter(
+            folders_view, controller, "folder", FOLDER_ID_ROLE
+        )
+        folders_label_delegate = UnderlinesFolderDelegate(
+            folders_view, thumbnails_painter=thumbnails_painter
+        )
 
         folders_view.setModel(folders_proxy_model)
         folders_view.setItemDelegate(folders_label_delegate)
@@ -288,6 +309,7 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         self._folders_model = folders_model
         self._folders_proxy_model = folders_proxy_model
         self._folders_label_delegate = folders_label_delegate
+        self._thumbnails_painter = thumbnails_painter
 
         self._expected_selection = None
 
@@ -341,6 +363,9 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         if self._expected_selection:
             self._set_expected_selection()
         self._folders_proxy_model.sort(0)
+        self._thumbnails_painter.set_project_name(
+            self._folders_model.get_project_name()
+        )
         self.refreshed.emit()
 
     def _get_selected_item_ids(self):

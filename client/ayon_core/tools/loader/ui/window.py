@@ -761,8 +761,10 @@ class LoaderWindow(QtWidgets.QWidget):
             entity_ids = set(self._selected_folder_ids)
             entity_type = "folder"
 
+        # Server fallback needs a request for each entity without own
+        #   thumbnail, which would block the UI as this is the main thread
         thumbnail_path_by_entity_id = self._controller.get_thumbnail_paths(
-            project_name, entity_type, entity_ids
+            project_name, entity_type, entity_ids, use_server_fallback=False
         )
         thumbnail_paths = set(thumbnail_path_by_entity_id.values())
         thumbnail_paths.discard(None)

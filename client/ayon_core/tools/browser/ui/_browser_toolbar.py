@@ -116,15 +116,28 @@ class AddColumnButton(AYButton):
     """Header button exposing a frontend-style add-column menu."""
 
     column_state_changed = QtCore.Signal(list)
+    _FADE_DURATION_MS = 150
 
     def __init__(self, parent=None) -> None:
         super().__init__(
             parent=parent,
             icon="add",
-            variant=AYButton.Variants.Nav_Small,
+            variant=AYButton.Variants.Header_Action,
             tooltip="Add or remove columns",
         )
-        self.setFixedSize(28, 28)
+        # Size is otherwise only applied on first paint, but the button is
+        # positioned in the header while still hidden.
+        self.setFixedSize(self.sizeHint())
+        # Hidden until revealed by hovering the header
+        self._opacity_effect = QtWidgets.QGraphicsOpacityEffect(self)
+        self._opacity_effect.setOpacity(0.0)
+        self.setGraphicsEffect(self._opacity_effect)
+        self.hide()
+        self._fade_anim = QtCore.QPropertyAnimation(
+            self._opacity_effect, b"opacity", self
+        )
+        self._fade_anim.setDuration(self._FADE_DURATION_MS)
+        self._fade_anim.finished.connect(self._on_fade_finished)
         self._columns: list[TableColumn] = []
         self._states: list[ColumnState] = []
         self._updating_actions: bool = False
@@ -139,6 +152,19 @@ class AddColumnButton(AYButton):
         )
         self._attribute_scope_menus: dict[str, _ColumnMenu] = {}
         self.clicked.connect(lambda: self.show_menu(self))
+
+    def set_revealed(self, revealed: bool) -> None:
+        """Fade the button in or out."""
+        self._fade_anim.stop()
+        self._fade_anim.setStartValue(self._opacity_effect.opacity())
+        self._fade_anim.setEndValue(1.0 if revealed else 0.0)
+        if revealed:
+            self.show()
+        self._fade_anim.start()
+
+    def _on_fade_finished(self) -> None:
+        if not self._fade_anim.endValue():
+            self.hide()
 
     def set_columns(self, columns: list[TableColumn]) -> None:
         columns = list(columns)
