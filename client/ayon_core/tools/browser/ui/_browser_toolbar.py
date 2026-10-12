@@ -800,18 +800,37 @@ class Customize(AYButtonMenu):
             self.row_height_slider.setValue(self._initial_row_height)
 
     def set_latest_per_folder(
-        self, enabled: bool, *, disabled: bool = False
+        self,
+        enabled: bool,
+        *,
+        disabled: bool = False,
+        supported: bool = True,
     ) -> None:
-        """Reflect the latest-per-folder setting in the customize menu."""
+        """Reflect the latest-per-folder setting in the customize menu.
+
+        Args:
+            enabled: Whether the setting is enabled.
+            disabled: Whether the setting does not apply right now, when
+                grouping by product.
+            supported: Whether the server supports the setting.
+        """
         self._latest_per_folder = bool(enabled)
         if not hasattr(self, "latest_per_folder_ui"):
             return
+        # TODO: Backwards compatibility for AYON server < 1.16.1.
+        #   Remove this once 1.16.1 is the minimum supported server.
+        #   Remove the 'supported' argument with it.
+        disabled = disabled or not supported
         with QSignalBlocker(self.latest_per_folder_ui):
             self.latest_per_folder_ui.setChecked(
                 self._latest_per_folder and not disabled
             )
             self.latest_per_folder_ui.setEnabled(not disabled)
-            if disabled:
+            if not supported:
+                self.latest_per_folder_ui.setToolTip(
+                    "Requires AYON server 1.16.1 or newer"
+                )
+            elif disabled:
                 self.latest_per_folder_ui.setToolTip(
                     "Disabled when grouping by product"
                 )

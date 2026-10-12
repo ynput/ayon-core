@@ -633,18 +633,12 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         - Double click: execute double-click callback (e.g. launcher).
         - Right click: show tray menu (handled by Qt).
 
-    Menu opened by a click ignores mouse clicks for a short time after
-        it is shown. Without that the second click of a (slow) double-click
-        lands on the menu item under the cursor, which is usually 'Exit'.
-
     :param parent: Main widget that cares about all GUIs
     :type parent: QtWidgets.QMainWindow
     """
 
     # Fallback values (in ms) if the system value is not available
     default_doubleclick_time_ms = 400
-    # How long after the menu is shown mouse clicks are ignored
-    menu_click_guard_ms = 400
 
     def __init__(self, parent):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
@@ -656,7 +650,6 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._click_pos = None
         self._initializing_addons = False
         # Timestamps used to filter out unwanted clicks
-        self._menu_shown_at = 0.0
         self._menu_hidden_at = 0.0
         self._ignore_trigger_until = 0.0
 
@@ -671,9 +664,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Setup menu in Tray
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
-        self.menu.aboutToShow.connect(self._on_menu_about_to_show)
         self.menu.aboutToHide.connect(self._on_menu_about_to_hide)
-        self.menu.installEventFilter(self)
 
         # Set addons
         self._tray_manager = TrayManager(self, parent)
@@ -715,23 +706,6 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         finally:
             self._initializing_addons = False
         self._prepare_menu_size()
-
-    def eventFilter(self, obj, event):
-        # Ignore mouse clicks on menu right after it was shown. That prevents
-        #   to trigger an action (usually 'Exit' as it is under cursor)
-        #   by the second click of double-click.
-        if obj is self.menu and event.type() in (
-            QtCore.QEvent.MouseButtonPress,
-            QtCore.QEvent.MouseButtonRelease,
-            QtCore.QEvent.MouseButtonDblClick,
-        ):
-            elapsed_ms = (time.monotonic() - self._menu_shown_at) * 1000
-            if elapsed_ms < self.menu_click_guard_ms:
-                return True
-        return super().eventFilter(obj, event)
-
-    def _on_menu_about_to_show(self):
-        self._menu_shown_at = time.monotonic()
 
     def _on_menu_about_to_hide(self):
         self._menu_hidden_at = time.monotonic()
