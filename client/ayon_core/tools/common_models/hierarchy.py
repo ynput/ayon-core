@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import collections
 import contextlib
 from dataclasses import dataclass
 import threading
@@ -687,10 +688,24 @@ class HierarchyModel:
 
     def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
         folders = ayon_api.get_rest_folders(project_name, include_attrib=False)
-        return {
-            folder["id"]: FolderItem.from_rest_data(folder)
-            for folder in folders
-        }
+        folders_by_parent_id = collections.defaultdict(list)
+        for folder in folders:
+            folders_by_parent_id[folder["parentId"]].append(folder)
+
+        # REST endpoint does not filter inactive folders, skip them
+        #   and their descendants
+        output = {}
+        hierarchy_queue = collections.deque()
+        hierarchy_queue.append(None)
+        while hierarchy_queue:
+            parent_id = hierarchy_queue.popleft()
+            for folder in folders_by_parent_id[parent_id]:
+                if not folder.get("active", True):
+                    continue
+                folder_id = folder["id"]
+                output[folder_id] = FolderItem.from_rest_data(folder)
+                hierarchy_queue.append(folder_id)
+        return output
 
     def _query_folder_entities(
         self, project_name: str, folder_ids: set[str]
