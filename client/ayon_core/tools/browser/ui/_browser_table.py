@@ -41,7 +41,10 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     GroupByOption,
     get_attribute_icon,
 )
-from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.browser.ui.browser_types import (
+    FOLDER_SLICER_CATEGORIES,
+    BrowserSlicerCategory,
+)
 from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 
 from ._browser_cell_delegates import (
@@ -316,7 +319,7 @@ class BrowserTable(AYContainer):
             self._controller.include_folder_children,
             disabled=(
                 self._controller.current_category
-                != BrowserSlicerCategory.HIERARCHY.value
+                not in FOLDER_SLICER_CATEGORIES
             ),
         )
         self._customize.set_latest_per_folder(
@@ -509,9 +512,9 @@ class BrowserTable(AYContainer):
             self._on_viewport_resize()
         elif obj is self._table.header():
             if event.type() == QtCore.QEvent.Type.Enter:
-                self._add_column_btn.show()
+                self._add_column_btn.set_revealed(True)
             elif event.type() == QtCore.QEvent.Type.Leave:
-                self._add_column_btn.hide()
+                self._add_column_btn.set_revealed(False)
         return False
 
     def _on_viewport_resize(self) -> None:
@@ -695,6 +698,7 @@ class BrowserTable(AYContainer):
                 criterion.key,
                 tuple(sorted(criterion.values)),
                 criterion.use_substring,
+                criterion.exclude,
             )
             for criterion in criteria
             if criterion.key not in local_keys
@@ -854,7 +858,7 @@ class BrowserTable(AYContainer):
         )
         self._customize.set_include_children(
             self._controller.include_folder_children,
-            disabled=category != BrowserSlicerCategory.HIERARCHY.value,
+            disabled=category not in FOLDER_SLICER_CATEGORIES,
         )
         self._view_selector.set_view_type(BROWSER_VIEW_TYPE)
         self._update_empty_state()
@@ -874,8 +878,8 @@ class BrowserTable(AYContainer):
     def _on_display_type_changed(self, display_type: str) -> None:
         log.debug("Display type changed: %s", display_type)
         self._customize.set_display_type(display_type)
-        # The views group versions without a value differently, so the
-        # loaded rows may need a refetch.
+        # The views query different fields and group versions without a
+        # value differently, so the loaded rows may need a refetch.
         if self._controller.set_display_type(display_type):
             self._model.set_fetch_enabled(self._controller.has_selection)
             self._reset_expansion_state()
@@ -903,7 +907,7 @@ class BrowserTable(AYContainer):
         self.display_type_changed.emit(active)
 
     def _on_include_children_changed(self, enabled: bool) -> None:
-        """Update descendant-folder querying for the hierarchy slicer."""
+        """Update descendant-folder querying for the slicer's folders."""
         self._controller.set_include_folder_children(enabled)
         self._model.reset_data()
         self._update_empty_state()
@@ -1132,7 +1136,7 @@ class BrowserTable(AYContainer):
                 include_children,
                 disabled=(
                     self._controller.current_category
-                    != BrowserSlicerCategory.HIERARCHY.value
+                    not in FOLDER_SLICER_CATEGORIES
                 ),
             )
             self._controller.set_include_folder_children(include_children)

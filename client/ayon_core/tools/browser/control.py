@@ -15,9 +15,14 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    ThumbnailsModel,
 )
 
-from .abstract import AbstractBrowserController, ActionItem
+from .abstract import (
+    AbstractBrowserController,
+    ActionItem,
+    ProductGroupsInfo,
+)
 from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
@@ -46,6 +51,7 @@ class BrowserController(AbstractBrowserController):
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._products_model = ProductsModel()
         self._loader_actions_model = LoaderActionsModel(self)
         self._users_model = UsersModel(self)
@@ -90,6 +96,7 @@ class BrowserController(AbstractBrowserController):
 
         self._products_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._loader_actions_model.reset()
         self._projects_model.reset()
         self._users_model.reset()
@@ -123,6 +130,17 @@ class BrowserController(AbstractBrowserController):
                 project_name, folder_id, sender
             ))
         return output
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
 
     def get_task_type_items(self, project_name, sender=None):
         return self._projects_model.get_task_type_items(
@@ -160,6 +178,31 @@ class BrowserController(AbstractBrowserController):
     ):
         return self._products_model.get_versions_repre_count(
             project_name, version_ids
+        )
+
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        return self._products_model.get_product_groups_info(
+            project_name, product_ids
+        )
+
+    def can_change_products_group(self, project_name: str) -> bool:
+        return self._products_model.can_change_products_group(project_name)
+
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        self._products_model.change_products_group(
+            project_name, product_ids, group_name
+        )
+        self._emit_event(
+            "products.group.changed",
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            },
         )
 
     def get_action_items(

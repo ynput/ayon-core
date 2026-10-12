@@ -36,6 +36,7 @@ class BrowserFilter:
     key: str
     values: tuple[str, ...]
     use_substring: bool = False
+    exclude: bool = False
 
 
 @dataclass(frozen=True)

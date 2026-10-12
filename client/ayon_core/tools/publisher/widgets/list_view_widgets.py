@@ -1090,7 +1090,7 @@ class InstanceListView(AbstractInstanceView):
         instance_ids: set[str] | None = None,
     ) -> None:
         if instance_ids is None:
-            instance_ids, _, _ = self.get_selected_items()
+            instance_ids = self.get_selected_items().instance_ids
         if active_id and active_id not in instance_ids:
             instance_ids = {active_id}
 

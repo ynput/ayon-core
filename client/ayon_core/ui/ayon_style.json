@@ -119,6 +119,19 @@
                         "background-color": "--md-sys-color-primary-container-dark-hover"
                     }
                 },
+                "header-action": {
+                    "background-color": "--md-sys-color-surface-container-low-dark",
+                    "icon-padding": [
+                        2,
+                        2
+                    ],
+                    "hover": {
+                        "background-color": "--md-sys-color-background-dark"
+                    },
+                    "pressed": {
+                        "background-color": "--md-ref-palette-secondary20"
+                    }
+                },
                 "nav-small-circle": {
                     "background-color": "transparent",
                     "color": "--md-sys-color-on-surface-dark",

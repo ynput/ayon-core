@@ -726,28 +726,11 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 /* Messages overlay */
 OverlayMessageWidget {
     border-radius: 0.2em;
-    background: {color:overlay-messages:bg-success};
-}
-
-OverlayMessageWidget:hover {
-    background: {color:overlay-messages:bg-success-hover};
-}
-
-OverlayMessageWidget[type="error"] {
-    background: {color:overlay-messages:bg-error};
-}
-OverlayMessageWidget[type="error"]:hover {
-    background: {color:overlay-messages:bg-error-hover};
-}
-
-OverlayMessageWidget[type="info"] {
-    background: {color:overlay-messages:bg-info};
-}
-OverlayMessageWidget[type="info"]:hover {
-    background: {color:overlay-messages:bg-info-hover};
+    background: {color:overlay-messages:bg};
 }
 
 OverlayMessageWidget QWidget {
+    color: {color:overlay-messages:font};
     background: transparent;
 }
 
@@ -1040,6 +1023,10 @@ PixmapButton:disabled {
 
 #PublishLogConsole {
     font-family: "Noto Sans Mono";
+}
+#PublishLogMatches {
+    font-family: "Noto Sans Mono";
+    background: {color:publisher:tab-bg};
 }
 #VariantInput[state="new"], #VariantInput[state="new"]:focus, #VariantInput[state="new"]:hover {
     border-color: {color:publisher:success};
