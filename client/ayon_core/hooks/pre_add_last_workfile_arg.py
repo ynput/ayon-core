@@ -18,6 +18,7 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "maya",
         "nuke",
         "nukex",
+        "nukeassist",
         "hiero",
         "houdini",
         "nukestudio",
@@ -55,4 +56,4 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
             return
 
         # Add path to workfile to arguments
-        self.launch_context.launch_args.append(workfile_path)
+        self.launch_context.launch_args.append(os.path.normpath(workfile_path))

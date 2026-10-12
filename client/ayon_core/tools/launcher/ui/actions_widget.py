@@ -13,9 +13,12 @@ from ayon_core.lib.icon_definitions import (
 )
 from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
+from ayon_core.ui.components import AYContainer, AYLabel, AYGridLayout
+from ayon_core.ui.components.scroll_area import AYScrollBar
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 
 ANIMATION_LEN = 7
 SHADOW_FRAME_MARGINS = (1, 1, 1, 1)
@@ -90,7 +93,7 @@ class ActionOverlayWidget(QtWidgets.QFrame):
         settings_icon.setToolTip("Right click for options")
         settings_icon.setVisible(False)
 
-        main_layout = QtWidgets.QGridLayout(self)
+        main_layout = AYGridLayout(self)
         main_layout.setContentsMargins(5, 5, 0, 0)
         main_layout.addWidget(settings_icon, 0, 0)
         main_layout.setColumnStretch(0, 1)
@@ -121,6 +124,11 @@ class ActionsQtModel(QtGui.QStandardItemModel):
     def __init__(self, controller):
         self._log = Logger.get_logger(self.__class__.__name__)
         super().__init__()
+
+        self._refresh_id = 0
+        # Selection for which shown actions were collected
+        self._filled_context = None
+        self._context_id = f"launcher_actions_model_{id(self)}"
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -195,13 +203,63 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         root = self.invisibleRootItem()
         root.removeRows(0, root.rowCount())
 
-    def refresh(self):
-        items = self._controller.get_action_items(
+    def is_outdated(self) -> bool:
+        """Shown actions were collected for a different selection.
+
+        Returns:
+            bool: Shown actions don't match current selection.
+        """
+        return self._filled_context != self._get_context()
+
+    def _get_context(self):
+        return (
             self._selected_project_name,
             self._selected_folder_id,
             self._selected_task_id,
             self._selected_workfile_id,
         )
+
+    def refresh(self):
+        """Collect actions for current selection.
+
+        Collecting actions can take a while, it happens in the shared task
+        queue so the UI stays responsive.
+        """
+        self._refresh_id += 1
+        refresh_id = self._refresh_id
+        context = self._get_context()
+        task_queue = get_task_queue()
+        # Drop pending collections of previous selection
+        task_queue.clear_context_tasks(self._context_id)
+        task_queue.enqueue(AsyncTask(
+            name="collect_launcher_actions",
+            function=lambda: self._collect_items(*context),
+            callback=lambda items: self._on_items_collected(
+                refresh_id, context, items
+            ),
+            priority=1,
+            context_id=self._context_id,
+            cancellable=True,
+        ))
+
+    def _collect_items(self, project_name, folder_id, task_id, workfile_id):
+        """Called in a worker thread, must not touch the model."""
+        items = self._controller.get_action_items(
+            project_name, folder_id, task_id, workfile_id
+        )
+        # Download url icons here so filling the model does not wait
+        prefetch_qt_icons([item.icon for item in items])
+        return items
+
+    def _on_items_collected(self, refresh_id: int, context, items) -> None:
+        # Selection changed meanwhile, newer refresh is running
+        if refresh_id != self._refresh_id:
+            return
+        # 'None' means collection failed
+        self._filled_context = context
+        self._fill(items or [])
+
+    def _fill(self, items):
         if not items:
             self._clear_items()
             self.refreshed.emit()
@@ -430,7 +488,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
 
-        group_label = QtWidgets.QLabel("|", self)
+        group_label = AYLabel("|", parent=self)
         group_label.setObjectName("GroupLabel")
 
         # View with actions
@@ -442,11 +500,11 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.stackUnder(group_label)
 
         # Background draw
-        bg_frame = QtWidgets.QFrame(self)
+        bg_frame = QtWidgets.QFrame(parent=self)
         bg_frame.setObjectName("ShadowFrame")
         bg_frame.stackUnder(view)
 
-        wrapper = QtWidgets.QFrame(self)
+        wrapper = QtWidgets.QFrame(parent=self)
         wrapper.setObjectName("Wrapper")
 
         effect = QtWidgets.QGraphicsBlurEffect(wrapper)
@@ -857,8 +915,9 @@ class ActionsView(QtWidgets.QListView):
         self.setWordWrap(True)
         self.setMouseTracking(True)
 
-        vertical_scroll = self.verticalScrollBar()
-        vertical_scroll.setSingleStep(8)
+        vsb = AYScrollBar(self)
+        self.setVerticalScrollBar(vsb)
+        vsb.setSingleStep(8)
 
         delegate = ActionDelegate(self)
         self.setItemDelegate(delegate)
@@ -911,9 +970,14 @@ class ActionsView(QtWidgets.QListView):
         self._overlay_widgets = overlay_widgets
 
 
-class ActionsWidget(QtWidgets.QWidget):
+class ActionsWidget(AYContainer):
     def __init__(self, controller, parent):
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
         self._controller = controller
 
@@ -927,9 +991,7 @@ class ActionsWidget(QtWidgets.QWidget):
         proxy_model.setSourceModel(model)
         view.setModel(proxy_model)
 
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(view)
+        self.add_widget(view)
 
         animation_timer = QtCore.QTimer()
         animation_timer.setInterval(40)
@@ -1063,6 +1125,9 @@ class ActionsWidget(QtWidgets.QWidget):
         )
 
     def _trigger_action(self, action_id, index=None):
+        # Shown actions were collected for previous selection
+        if self._model.is_outdated():
+            return
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()

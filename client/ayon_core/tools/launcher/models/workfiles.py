@@ -49,7 +49,7 @@ class WorkfilesModel:
         for workfile_entity in ayon_api.get_workfiles_info(
             project_name,
             task_ids={task_id},
-            fields={"id", "path", "data", "updatedAt"},
+            fields={"id", "path", "data", "updatedAt", "updatedBy"},
         ):
             rootless_path = workfile_entity["path"]
             exists = False
@@ -64,9 +64,10 @@ class WorkfilesModel:
                 )
 
             mod_time = None
+            file_size = None
             if path and exists:
                 mod_time = os.path.getmtime(path)
-
+                file_size = os.path.getsize(path)
             else:
                 updated_at = workfile_entity["updatedAt"]
                 if updated_at:
@@ -86,6 +87,8 @@ class WorkfilesModel:
                 icon=self._get_host_icon(host_name),
                 version=version,
                 updated_at_time=mod_time,
+                file_size=file_size,
+                updated_by=workfile_entity.get("updatedBy"),
             ))
         cache.update_data(items)
         return items

@@ -99,8 +99,11 @@ class CreatorToolModel(BaseSettingsModel):
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
         title="Filter creator profiles",
-        description="Allowed list of creator labels that will be only shown"
-                    " if profile matches context."
+        description=(
+            "Limit which creators are shown per context.\n\n"
+            "Allowed list of creator labels that will be only shown if the"
+            " profile matches the context."
+        ),
     )
 
     @validator("product_types_smart_select")
@@ -312,6 +315,11 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
 
 
 class LoaderToolModel(BaseSettingsModel):
+    use_legacy_loader: bool = SettingsField(
+        False,
+        title="Use legacy loader",
+        description="Use legacy loader UI.",
+    )
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
     )
@@ -672,6 +680,7 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
+        "use_legacy_loader": False,
         "product_type_filter_profiles": []
     },
     "publish": {

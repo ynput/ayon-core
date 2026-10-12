@@ -42,6 +42,7 @@ from .lib import (
     get_qt_app,
     get_ayon_qt_app,
     get_qt_icon,
+    prefetch_qt_icons,
 )
 
 from .models import (
@@ -130,6 +131,7 @@ __all__ = (
     "get_qt_app",
     "get_ayon_qt_app",
     "get_qt_icon",
+    "prefetch_qt_icons",
 
     "RecursiveSortFilterProxyModel",
 

@@ -20,6 +20,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    ThumbnailsModel,
 )
 
 from .models import (
@@ -34,6 +35,7 @@ from .abstract import (
 )
 
 if typing.TYPE_CHECKING:
+    from ayon_core.lib import AbstractAttrDef
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 
@@ -104,6 +106,7 @@ class PublisherController(
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._users_model = UsersModel(self)
 
     @property
@@ -191,6 +194,11 @@ class PublisherController(
         """Creators that can be shown in create dialog."""
         return self._create_model.get_creator_items()
 
+    def get_pre_create_attribute_defs(
+        self, identifier: str
+    ) -> list[AbstractAttrDef]:
+        return self._create_model.get_pre_create_attribute_defs(identifier)
+
     def get_creator_item_by_id(self, identifier):
         return self._create_model.get_creator_item_by_id(identifier)
 
@@ -251,6 +259,17 @@ class PublisherController(
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._hierarchy_model.get_task_items(
             project_name, folder_id, sender
+        )
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     def get_folder_entity(self, project_name, folder_id):
@@ -372,6 +391,7 @@ class PublisherController(
         self._emit_event("controller.reset.started")
 
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._users_model.reset()
 
         # Publish part must be reset after plugins

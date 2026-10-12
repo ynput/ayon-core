@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 import os
+import threading
 from typing import Any
 import uuid
 from urllib.parse import urlencode, urlparse
@@ -104,6 +105,9 @@ class ActionsModel:
 
         self._log = None
 
+        # Action items are also collected from worker threads, discovery
+        #   of actions must happen only once at a time.
+        self._lock = threading.RLock()
         self._discovered_actions = None
         self._actions = None
         self._action_items = {}
@@ -127,13 +131,13 @@ class ActionsModel:
         return self._log
 
     def refresh(self):
-        self._discovered_actions = None
-        self._actions = None
-        self._action_items = {}
-        self._webaction_items.reset()
-
         self._controller.emit_event("actions.refresh.started")
-        self._get_action_objects()
+        with self._lock:
+            self._discovered_actions = None
+            self._actions = None
+            self._action_items = {}
+            self._webaction_items.reset()
+            self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
     def get_action_items(
@@ -159,8 +163,8 @@ class ActionsModel:
             project_name, folder_id, task_id, workfile_id
         )
         output = []
-        action_items = self._get_action_items(project_name)
-        for identifier, action in self._get_action_objects().items():
+        actions, action_items = self._get_actions_snapshot(project_name)
+        for identifier, action in actions.items():
             if action.is_compatible(selection):
                 output.append(action_items[identifier])
         output.extend(self._get_webactions(selection))
@@ -181,10 +185,10 @@ class ActionsModel:
         failed = False
         error_message = None
         action_label = identifier
-        action_items = self._get_action_items(project_name)
+        actions, action_items = self._get_actions_snapshot(project_name)
         trigger_id = uuid.uuid4().hex
         try:
-            action = self._actions[identifier]
+            action = actions[identifier]
             action_item = action_items[identifier]
             action_label = action_item.full_label
             self._controller.emit_event(
@@ -578,6 +582,10 @@ class ActionsModel:
         return response
 
     def _get_discovered_action_classes(self):
+        with self._lock:
+            return self._discover_action_classes()
+
+    def _discover_action_classes(self):
         if self._discovered_actions is None:
             # NOTE We don't need to register the paths, but that would
             #   require to change discovery logic and deprecate all functions
@@ -593,29 +601,49 @@ class ActionsModel:
         return self._discovered_actions
 
     def _get_action_objects(self):
-        if self._actions is None:
-            actions = {}
-            for cls in self._get_discovered_action_classes():
-                obj = cls()
-                identifier = getattr(obj, "identifier", None)
-                if identifier is None:
-                    identifier = cls.__name__
-                actions[identifier] = obj
-            self._actions = actions
-        return self._actions
+        with self._lock:
+            if self._actions is None:
+                actions = {}
+                for cls in self._get_discovered_action_classes():
+                    obj = cls()
+                    identifier = getattr(obj, "identifier", None)
+                    if identifier is None:
+                        identifier = cls.__name__
+                    actions[identifier] = obj
+                self._actions = actions
+            return self._actions
 
-    def _get_action_items(self, project_name):
-        action_items = self._action_items.get(project_name)
-        if action_items is not None:
-            return action_items
+    def _get_actions_snapshot(self, project_name):
+        """Get action objects and their items from one discovery.
 
+        A refresh from another thread must not change actions between
+        getting the objects and their items.
+
+        Returns:
+            tuple[dict[str, LauncherAction], dict[str, ActionItem]]: Action
+                objects and action items by identifier.
+
+        """
+        # Query server outside of the lock, controller caches the results
         project_entity = None
         if project_name:
             project_entity = self._controller.get_project_entity(project_name)
         project_settings = self._controller.get_project_settings(project_name)
+        with self._lock:
+            actions = self._get_action_objects()
+            action_items = self._action_items.get(project_name)
+            if action_items is None:
+                action_items = self._build_action_items(
+                    project_name, actions, project_entity, project_settings
+                )
+                self._action_items[project_name] = action_items
+        return actions, action_items
 
+    def _build_action_items(
+        self, project_name, actions, project_entity, project_settings
+    ):
         action_items = {}
-        for identifier, action in self._get_action_objects().items():
+        for identifier, action in actions.items():
             # Backwards compatibility from 0.3.3 (24/06/10)
             # TODO: Remove in future releases
             if hasattr(action, "project_settings"):
@@ -648,5 +676,4 @@ class ActionsModel:
                 config_fields=[],
             )
             action_items[identifier] = item
-        self._action_items[project_name] = action_items
         return action_items

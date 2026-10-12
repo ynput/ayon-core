@@ -121,6 +121,7 @@ class TreeViewTest(WidgetTest):
             model = LazyTreeModel(fetch_children=_fetch, no_async=True)
             self._models.append(model)
             view = AYTreeView(variant=variant)
+            view.setHeaderHidden(True)
             view.setModel(model)
             view.expandAll()
             self._views.append(view)

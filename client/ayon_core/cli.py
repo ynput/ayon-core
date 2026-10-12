@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Package for handling AYON command line arguments."""
+
 import os
 import sys
 import logging
@@ -195,14 +196,23 @@ def interactive():
     code.interact(banner)
 
 
-@main_cli.command()
+@main_cli.command(context_settings={"ignore_unknown_options": True})
 def browser():
     """Show Browser tool."""
-    from ayon_core.tools.loader.ui import LoaderWindow
     from ayon_core.tools.utils import get_ayon_qt_app
+    from ayon_core.tools.utils.host_tools import use_legacy_loader
+
+    if use_legacy_loader():
+        from ayon_core.tools.loader.ui import LoaderWindow
+
+        window_class = LoaderWindow
+    else:
+        from ayon_core.tools.browser.ui import BrowserWindow
+
+        window_class = BrowserWindow
 
     app = get_ayon_qt_app()
-    browser_window = LoaderWindow()
+    browser_window = window_class()
     browser_window.setWindowTitle("AYON Browser")
     browser_window.show()
     app.exec_()
