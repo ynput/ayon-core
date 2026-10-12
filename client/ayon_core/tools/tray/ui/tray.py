@@ -722,6 +722,12 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         menu.adjustSize()
 
     def _get_menu_pos(self, pos):
+        # Custom placement is needed only on Windows. On Linux 'popup'
+        #   places the menu correctly on its own (panels can be on any
+        #   side of the screen) and the window manager may move it anyway.
+        if platform.system().lower() != "windows":
+            return pos
+
         menu = self.contextMenu()
         screen = QtGui.QGuiApplication.screenAt(pos)
         if screen is None:
