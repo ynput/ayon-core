@@ -5,15 +5,16 @@ Centralises all business logic and data fetching for the reviews UI.
 
 from __future__ import annotations
 
+import collections
 import json
 import math
 import re
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
-from typing import Any
+from typing import Any, Callable
 
 import arrow
 import ayon_api
@@ -32,7 +33,7 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.abstract import ActionItem, ProductGroupsInfo
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
     BrowserColumnManager,
@@ -59,16 +60,24 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     build_attribute_groups,
     parse_attribute_group_key,
 )
+from ayon_core.tools.browser.server_capabilities import (
+    server_supports_folder_filter,
+    server_supports_latest_per_folder,
+    server_supports_representation_filter,
+    server_supports_version_statistics,
+)
 from ayon_core.tools.browser.ui.browser_queries import (
     EMPTY_ROW,
-    GET_PRODUCTS_QUERY,
     get_product_sort_by,
+    get_products_query,
     get_sort_by,
     get_version_group_counts_query,
-    server_supports_representation_filter,
     get_versions_query,
 )
-from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.browser.ui.browser_types import (
+    ENTITY_LIST_CATEGORIES,
+    BrowserSlicerCategory,
+)
 
 log = Logger.get_logger(__name__)
 
@@ -76,6 +85,85 @@ log = Logger.get_logger(__name__)
 # Each page contains up to 1 000 products, so this caps the total at
 # 50 000 products before a warning is logged.
 _MAX_GROUP_PAGES: int = 50
+
+# Columns queried for the grid, whose cards show the thumbnail, status and
+# product type (along with names that are always queried). The product
+# type's icon and color resolve through its base type.
+_GRID_COLUMN_KEYS: frozenset[str] = frozenset({
+    "thumb",
+    "status",
+    "productType",
+    "productBaseType",
+})
+
+# Server filter operators and their negation, used to exclude values.
+# 'like' and 're' have no negated counterpart on the server.
+_NEGATED_OPERATORS: dict[str, str] = {
+    "eq": "ne",
+    "ne": "eq",
+    "lt": "gte",
+    "gte": "lt",
+    "gt": "lte",
+    "lte": "gt",
+    "isnull": "notnull",
+    "notnull": "isnull",
+    "in": "notin",
+    "notin": "in",
+    "includes": "excludes",
+    "excludes": "includes",
+    "includesany": "excludesany",
+    "excludesany": "includesany",
+    "includesall": "excludesall",
+    "excludesall": "includesall",
+}
+# Operators that never match a null value in SQL, so their negation must
+# explicitly accept nulls as well.
+_NULL_UNAWARE_OPERATORS = {"eq", "ne", "lt", "gte", "gt", "lte", "in", "notin"}
+_QUERY_CONDITION_KEYS = (
+    "version_conditions",
+    "product_conditions",
+    "task_conditions",
+    "folder_conditions",
+    "representation_conditions",
+)
+
+
+#: Icon of an entity list by the entity type it holds, matching the
+#: AYON frontend.
+_ENTITY_LIST_TYPE_ICONS = {
+    "folder": "folder",
+    "task": "check_circle",
+    "product": "inventory_2",
+    "version": "layers",
+    "representation": "view_in_ar",
+    "workfile": "home_repair_service",
+}
+_REVIEW_SESSION_ICON = "subscriptions"
+_ENTITY_LIST_FALLBACK_ICON = "list_alt"
+_ENTITY_LIST_FOLDER_ICON = "snippet_folder"
+_ENTITY_LIST_FOLDER_ID_PREFIX = "folder-"
+
+
+@dataclass
+class _ListEntityIds:
+    """Entities of the entity lists selected in the slicer.
+
+    Lists of different entity types narrow the versions together, each
+    by its own entity type.
+    """
+
+    folder_ids: list[str] = field(default_factory=list)
+    task_ids: list[str] = field(default_factory=list)
+    product_ids: list[str] = field(default_factory=list)
+    version_ids: list[str] = field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return bool(
+            self.folder_ids
+            or self.task_ids
+            or self.product_ids
+            or self.version_ids
+        )
 
 
 @dataclass
@@ -214,6 +302,7 @@ class BrowserWidgetController(QtCore.QObject):
     selection_changed = QtCore.Signal(list)  # type: ignore
     group_by_options_changed = QtCore.Signal(dict)  # type: ignore
     my_tasks_filter_changed = QtCore.Signal(bool)  # type: ignore
+    products_group_changed = QtCore.Signal()  # type: ignore
 
     def __init__(
         self,
@@ -230,8 +319,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._appearance_defaults: dict[str, dict[str, Any]] = {}
         self._boolean_attr_defaults: dict[str, dict[str, bool]] = {}
         self._user_full_names: dict[str, str] = {}
-        self._review_sessions_cache: list[dict[str, Any]] = []
-        self._review_sessions_loaded: bool = False
+        self._entity_lists_cache: list[dict[str, Any]] = []
+        self._entity_list_folders_cache: list[dict[str, Any]] = []
+        self._entity_lists_loaded: bool = False
         # Cursor of every page that can be fetched next, keyed by
         # ``_page_key()`` + page number.
         self._page_cursors: dict[tuple[Any, ...], str] = {}
@@ -245,7 +335,7 @@ class BrowserWidgetController(QtCore.QObject):
         )
         self._selected_folder_ids: list[str] = []
         self._selected_task_ids: list[str] = []
-        self._review_session_version_ids: list[str] | None = None
+        self._list_entity_ids = _ListEntityIds()
         self._version_attributes: dict[str, Any] = {}
         self._attributes_by_scope: dict[
             str, dict[str, dict[str, Any]]
@@ -267,8 +357,12 @@ class BrowserWidgetController(QtCore.QObject):
         self._my_tasks_filter_enabled: bool = False
         self._folder_id_scope: set[str] | None = None
         self._task_id_scope: set[str] | None = None
-        self._query_filter_criteria: list[tuple[str, list[str], bool]] = []
+        self._query_filter_criteria: list[
+            tuple[str, list[str], bool, bool]
+        ] = []
         self._display_type: str = BROWSER_VIEW_DEFAULTS.display_type
+        # Columns visible in the table, queried while it is displayed.
+        self._table_column_keys: set[str] = set()
         self._ungroup_empty_values: bool = (
             BROWSER_VIEW_DEFAULTS.ungroup_empty_values
         )
@@ -281,6 +375,10 @@ class BrowserWidgetController(QtCore.QObject):
         loader_controller.register_event_callback(
             "controller.reset.finished",
             self._on_loader_controller_reset,
+        )
+        loader_controller.register_event_callback(
+            "products.group.changed",
+            self._on_products_group_changed,
         )
         column_services = BrowserColumnServices(loader_controller)
         self._column_manager = BrowserColumnManager(
@@ -306,7 +404,11 @@ class BrowserWidgetController(QtCore.QObject):
         return self._include_folder_children
 
     def set_include_folder_children(self, enabled: bool) -> None:
-        """Set descendant-folder querying for the hierarchy slicer."""
+        """Set descendant-folder querying for the selected folders.
+
+        Applies to the folders of the Hierarchy slicer and to those of
+        the folder lists of the Lists slicer.
+        """
         enabled = bool(enabled)
         if self._include_folder_children == enabled:
             return
@@ -314,13 +416,13 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
 
     def set_requested_columns(self, column_keys: set[str]) -> bool:
-        """Set visible query columns and return whether they changed."""
-        normalized = set(column_keys)
-        if self._requested_column_keys == normalized:
-            return False
-        self._requested_column_keys = normalized
-        self._reset_pagination()
-        return True
+        """Set visible table columns and return whether the query changed.
+
+        The columns are queried only while the table is displayed, the
+        grid queries just what its cards show.
+        """
+        self._table_column_keys = set(column_keys)
+        return self._update_requested_columns()
 
     @property
     def display_type(self) -> str:
@@ -335,14 +437,31 @@ class BrowserWidgetController(QtCore.QObject):
 
         Returns:
             Whether the loaded rows are outdated and must be fetched
-            again, because the grouping changed.
+            again, because the queried fields or the grouping changed.
         """
         if display_type == self._display_type:
             return False
         ungrouped = self.ungroups_empty_values
         self._display_type = display_type
+        columns_changed = self._update_requested_columns()
         if self.ungroups_empty_values == ungrouped:
+            return columns_changed
+        self._reset_pagination()
+        return True
+
+    def _update_requested_columns(self) -> bool:
+        """Update the query columns for the displayed view.
+
+        Returns:
+            Whether the query columns changed.
+        """
+        if self._display_type == "grid":
+            column_keys = set(_GRID_COLUMN_KEYS)
+        else:
+            column_keys = set(self._table_column_keys)
+        if self._requested_column_keys == column_keys:
             return False
+        self._requested_column_keys = column_keys
         self._reset_pagination()
         return True
 
@@ -429,6 +548,28 @@ class BrowserWidgetController(QtCore.QObject):
         """Return custom attribute definitions grouped by entity scope."""
         return self._attributes_by_scope
 
+    def _server_supports(
+        self, capability: Callable[[], bool], label: str
+    ) -> bool:
+        """Return a server capability, ``False`` when it can't be checked.
+
+        Args:
+            capability: Capability check of
+                :mod:`ayon_core.tools.browser.server_capabilities`.
+            label: What the capability is, for the log.
+        """
+        try:
+            return capability()
+        except Exception:
+            # Not cached, so a temporary connection problem is retried
+            # the next time this is asked.
+            self.log.debug(
+                "Failed to check for %s support", label, exc_info=True
+            )
+            return False
+
+    # TODO: Backwards compatibility for AYON server < 1.16.7.
+    #   Remove this once 1.16.7 is the minimum supported server.
     @property
     def supports_representation_filter(self) -> bool:
         """Whether the server can filter versions by representations.
@@ -436,16 +577,35 @@ class BrowserWidgetController(QtCore.QObject):
         Servers up to 1.16.6 have no ``representationFilter`` argument
         on the versions resolver.
         """
-        try:
-            return server_supports_representation_filter()
-        except Exception:
-            # Not cached, so a temporary connection problem is retried
-            # the next time this is asked.
-            self.log.debug(
-                "Failed to check for representation filter support",
-                exc_info=True,
-            )
-            return False
+        return self._server_supports(
+            server_supports_representation_filter, "representation filter"
+        )
+
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    @property
+    def supports_folder_filter(self) -> bool:
+        """Whether the server can filter versions by their folders.
+
+        Servers up to 1.16.0 have no ``folderFilter`` argument on the
+        versions and products resolvers.
+        """
+        return self._server_supports(
+            server_supports_folder_filter, "folder filter"
+        )
+
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    @property
+    def supports_latest_per_folder(self) -> bool:
+        """Whether the server can list the latest version per folder.
+
+        Servers up to 1.16.0 have no ``latestPerFolder`` argument on the
+        versions resolver.
+        """
+        return self._server_supports(
+            server_supports_latest_per_folder, "latest per folder"
+        )
 
     @property
     def has_selection(self) -> bool:
@@ -541,11 +701,13 @@ class BrowserWidgetController(QtCore.QObject):
         if self._current_project == project_name:
             return
         self._current_project = project_name
-        self._review_sessions_cache = []
-        self._review_sessions_loaded = False
+        self._entity_lists_cache = []
+        self._entity_list_folders_cache = []
+        self._entity_lists_loaded = False
         self._reset_pagination()
         self._selected_folder_ids = []
         self._selected_task_ids = []
+        self._list_entity_ids = _ListEntityIds()
         # Keep the "My Tasks" filter sticky across a project switch,
         # just re-resolved against the new project.
         self._recompute_my_tasks_scope()
@@ -557,10 +719,10 @@ class BrowserWidgetController(QtCore.QObject):
             self._request_project_info(project_name)
         else:
             self._apply_project_info(project_info_data)
-        # Only the Reviews category reads the list, so a project switch
-        # while Hierarchy is showing leaves it for later.
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
-            self._ensure_review_session_list()
+        # Only the Reviews and Lists categories read the lists, so a
+        # project switch while Hierarchy is showing leaves it for later.
+        if self._is_entity_list_category():
+            self._ensure_entity_lists()
         self.project_changed.emit(project_name)
         if project_info_data is not None:
             self.project_info_changed.emit()
@@ -569,29 +731,30 @@ class BrowserWidgetController(QtCore.QObject):
         """Set the active slicer category.
 
         Resets per-category state so switching back and forth between
-        ``Hierarchy`` and ``Reviews`` never leaves stale group-by or
-        tree-mode flags behind.  Reviews are always a flat version list,
-        while Hierarchy restores the group-by / tree-mode combination
-        derived from the current ``group_by_key``.
+        ``Hierarchy`` and ``Reviews`` or ``Lists`` never leaves stale
+        group-by or tree-mode flags behind.  Reviews and Lists are always
+        a flat version list, while Hierarchy restores the group-by /
+        tree-mode combination derived from the current ``group_by_key``.
 
         Args:
-            category: Category name, e.g. ``"Hierarchy"`` or ``"Reviews"``.
+            category: Category name, e.g. ``"Hierarchy"``, ``"Reviews"``
+                or ``"Lists"``.
         """
         if self._current_category == category:
             return
         self._current_category = category
         self._selected_folder_ids = []
         self._selected_task_ids = []
-        self._review_session_version_ids = None
+        self._list_entity_ids = _ListEntityIds()
 
-        if category == BrowserSlicerCategory.REVIEWS.value:
-            # Entering Reviews is the first point the session list is
-            # actually needed, and this runs on the main thread - which
-            # :meth:`_ensure_review_session_list` requires.
-            self._ensure_review_session_list()
-            # Reviews are always flat — drop any grouping/tree state that
-            # was active in the Hierarchy view so the table fetch path
-            # takes the plain flat-version branch.
+        if self._is_entity_list_category():
+            # Entering Reviews or Lists is the first point the entity
+            # lists are actually needed, and this runs on the main
+            # thread - which :meth:`_ensure_entity_lists` requires.
+            self._ensure_entity_lists()
+            # Reviews and Lists are always flat — drop any grouping/tree
+            # state that was active in the Hierarchy view so the table
+            # fetch path takes the plain flat-version branch.
             self._group_by_key = GROUP_BY_NONE_KEY
             self._tree_mode = False
         else:
@@ -676,25 +839,16 @@ class BrowserWidgetController(QtCore.QObject):
                 the selection is cleared.
         """
         previous_folder_ids = self._selected_folder_ids
-        previous_review_version_ids = self._review_session_version_ids
+        previous_list_entity_ids = self._list_entity_ids
         self._selected_folder_ids = list(ids)
-        self._review_session_version_ids = None  # always clear first
+        self._list_entity_ids = _ListEntityIds()  # always clear first
 
-        if (
-            self._current_category == BrowserSlicerCategory.REVIEWS.value
-            and ids
-        ):
-            ids_set: set[str] = set()
-            for sid in ids:
-                ids_set.update(self._get_review_session_version_ids(sid))
-            self._review_session_version_ids = (
-                list(ids_set) if ids_set else None
-            )
+        if self._is_entity_list_category() and ids:
+            self._list_entity_ids = self._get_entity_list_entity_ids(ids)
 
         if (
             self._selected_folder_ids == previous_folder_ids
-            and self._review_session_version_ids
-            == previous_review_version_ids
+            and self._list_entity_ids == previous_list_entity_ids
         ):
             return
 
@@ -757,6 +911,7 @@ class BrowserWidgetController(QtCore.QObject):
                 key_aliases.get(str(item.key), str(item.key)),
                 [str(value) for value in item.values],
                 bool(item.use_substring),
+                bool(getattr(item, "exclude", False)),
             )
             for item in criteria
             if item.values
@@ -764,12 +919,132 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
 
     def _get_query_filters(self) -> dict[str, Any]:
+        included = [
+            criterion
+            for criterion in self._query_filter_criteria
+            if not criterion[3]
+        ]
+        parts = self._build_query_filter_parts(included)
+        for criterion in self._query_filter_criteria:
+            if criterion[3]:
+                self._add_excluded_query_filter_parts(parts, criterion)
+
+        def encode(conditions: list[dict[str, Any]]) -> str:
+            if not conditions:
+                return ""
+            return json.dumps({"conditions": conditions})
+
+        return {
+            "version_filter": encode(parts["version_conditions"]),
+            "product_filter": encode(parts["product_conditions"]),
+            "task_filter": encode(parts["task_conditions"]),
+            "folder_filter": encode(parts["folder_conditions"]),
+            "representation_filter": encode(
+                parts["representation_conditions"]
+            ),
+            "featured_only": parts["featured_only"] or None,
+            "featured_types": parts["featured_types"] or None,
+            "search": parts["search"],
+            "version_ids": parts["version_ids"],
+            "has_reviewables": parts["has_reviewables"],
+        }
+
+    def _add_excluded_query_filter_parts(
+        self,
+        parts: dict[str, Any],
+        criterion: tuple[str, list[str], bool, bool],
+    ) -> None:
+        """Add the server-side negation of an excluding criterion.
+
+        The criterion is built like an including one and then negated.
+        What cannot be negated on the server - a 'like' text match, a
+        featured version or the product/version search - is left out of
+        the query, so the rows come back unfiltered by it and the table's
+        own filter excludes them locally instead.
+        """
+        excluded = self._build_query_filter_parts([criterion])
+        if excluded["has_reviewables"] is not None:
+            parts["has_reviewables"] = not excluded["has_reviewables"]
+
+        condition_keys = [
+            key for key in _QUERY_CONDITION_KEYS if excluded[key]
+        ]
+        # Conditions on different entities can't be negated as a whole.
+        if len(condition_keys) != 1:
+            return
+        key = condition_keys[0]
+        negated = self._negate_condition(
+            {"operator": "and", "conditions": excluded[key]}
+        )
+        if negated is not None:
+            parts[key].append(negated)
+
+    @classmethod
+    def _negate_condition(
+        cls,
+        condition: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Return a server filter condition matching the inverse.
+
+        The server has no 'not' operator, so groups are negated using
+        De Morgan's laws and each condition by its opposite operator.
+
+        Args:
+            condition: A condition or a group of conditions.
+
+        Returns:
+            The negated condition, or ``None`` when it contains an
+            operator without an opposite, e.g. 'like'.
+        """
+        operator = condition.get("operator", "and")
+        if "conditions" in condition:
+            negated_conditions = []
+            for child in condition["conditions"]:
+                negated_child = cls._negate_condition(child)
+                if negated_child is None:
+                    return None
+                negated_conditions.append(negated_child)
+            if len(negated_conditions) == 1:
+                return negated_conditions[0]
+            return {
+                "operator": "or" if operator == "and" else "and",
+                "conditions": negated_conditions,
+            }
+
+        negated_operator = _NEGATED_OPERATORS.get(operator)
+        if negated_operator is None:
+            return None
+        negated = {**condition, "operator": negated_operator}
+        key = condition["key"]
+        if (
+            key.startswith("attrib.")
+            and operator in _NULL_UNAWARE_OPERATORS
+        ):
+            # An unset attribute is null, which the original condition
+            # never matched - so the negation has to.
+            return {
+                "operator": "or",
+                "conditions": [
+                    negated, {"key": key, "operator": "isnull"}
+                ],
+            }
+        return negated
+
+    def _build_query_filter_parts(
+        self,
+        criteria: list[tuple[str, list[str], bool, bool]],
+    ) -> dict[str, Any]:
+        """Build server query conditions matching the criteria's values.
+
+        The exclude flag of each criterion is ignored here.
+        """
         version_conditions: list[dict[str, Any]] = []
         product_conditions: list[dict[str, Any]] = []
         task_conditions: list[dict[str, Any]] = []
         folder_conditions: list[dict[str, Any]] = []
         representation_conditions: list[dict[str, Any]] = []
         featured_only: list[str] = []
+        featured_types: list[str] = []
         search: str | None = None
         version_ids: list[str] | None = None
         has_reviewables: bool | None = None
@@ -777,7 +1052,7 @@ class BrowserWidgetController(QtCore.QObject):
         extension_filter_keys = self._column_manager.get_filter_keys(
             self._get_column_context()
         )
-        for key, values, use_substring in self._query_filter_criteria:
+        for key, values, use_substring, _exclude in criteria:
             if key in extension_filter_keys:
                 continue
             # "No/Has value" may be picked next to regular values; the
@@ -858,14 +1133,37 @@ class BrowserWidgetController(QtCore.QObject):
                     "Hero": "hero",
                 }
                 version_values = []
+                featured_values = []
                 for value in values:
                     featured_value = mapping.get(value)
                     if featured_value is not None:
-                        featured_only.append(featured_value)
+                        featured_values.append(featured_value)
                     elif key == "version":
                         version_values.append(value)
+                # 'featuredOnly' resolves "hero" to the regular version the
+                # hero version was made from. Hero versions themselves are
+                # the ones with a negative version number, so filter by
+                # that to list the actual hero version entities.
+                # NOTE: Combined with other featured types the server picks
+                #   one version per product by priority, which can only be
+                #   expressed using 'featuredOnly'.
+                # The product group headers show the featured version of
+                # these types, like the frontend does, so the header
+                # matches the versions listed below it.
+                featured_types.extend(featured_values)
+                hero_only = featured_values == ["hero"]
+                if hero_only:
+                    featured_values = []
+                featured_only.extend(featured_values)
+                conditions = []
+                if hero_only:
+                    conditions.append({
+                        "key": "version",
+                        "value": 0,
+                        "operator": "lt",
+                    })
                 if version_values:
-                    version_conditions.append({
+                    conditions.append({
                         "key": "version",
                         "value": (
                             version_values[0]
@@ -876,6 +1174,13 @@ class BrowserWidgetController(QtCore.QObject):
                             "like" if use_substring else "in"
                         ),
                     })
+                if len(conditions) > 1:
+                    version_conditions.append({
+                        "operator": "or",
+                        "conditions": conditions,
+                    })
+                else:
+                    version_conditions.extend(conditions)
                 continue
             if key == "hasReviewables":
                 selected = {value.lower() for value in values}
@@ -1022,18 +1327,14 @@ class BrowserWidgetController(QtCore.QObject):
             else:
                 version_conditions.append(condition)
 
-        def encode(conditions: list[dict[str, Any]]) -> str:
-            if not conditions:
-                return ""
-            return json.dumps({"conditions": conditions})
-
         return {
-            "version_filter": encode(version_conditions),
-            "product_filter": encode(product_conditions),
-            "task_filter": encode(task_conditions),
-            "folder_filter": encode(folder_conditions),
-            "representation_filter": encode(representation_conditions),
-            "featured_only": featured_only or None,
+            "version_conditions": version_conditions,
+            "product_conditions": product_conditions,
+            "task_conditions": task_conditions,
+            "folder_conditions": folder_conditions,
+            "representation_conditions": representation_conditions,
+            "featured_only": featured_only,
+            "featured_types": featured_types,
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
@@ -1202,21 +1503,6 @@ class BrowserWidgetController(QtCore.QObject):
             if value:
                 conditions.extend(json.loads(value).get("conditions", []))
         return json.dumps({"conditions": conditions}) if conditions else ""
-
-    def fetch_reviews(self) -> dict[str | None, list[TreeNode]]:
-        """Return the whole slicer tree in one shot for the active category.
-
-        Used as :class:`BulkTreeModel`'s ``fetch_all`` callback: runs on
-        a background thread via the shared task queue. Dispatches to
-        :meth:`_fetch_reviews` (a single bulk hierarchy query) for
-        the flat review-session list for Reviews.
-
-        Returns:
-            Mapping of parent entity ID (``None`` for root) to its
-            children as :class:`TreeNode` instances, covering the
-            whole tree for the active category.
-        """
-        return {None: self._fetch_reviews(None)}
 
     def _version_query_kwargs(
         self,
@@ -1647,14 +1933,23 @@ class BrowserWidgetController(QtCore.QObject):
 
         # Flat mode.
         folder_ids: list[str] | None = None
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
-            version_ids = self._review_session_version_ids  # None = no filter
-            if not version_ids:
-                # No review session selected yet — show nothing
+        product_ids: list[str] | None = None
+        version_ids: list[str] | None = None
+        query_kwargs = self._version_query_kwargs(query_filters)
+        if self._is_entity_list_category():
+            list_entity_ids = self._list_entity_ids
+            if not list_entity_ids:
+                # No list selected yet, or only empty ones — show nothing
                 return []
+            folder_ids = list_entity_ids.folder_ids or None
+            product_ids = list_entity_ids.product_ids or None
+            version_ids = list_entity_ids.version_ids or None
+            query_kwargs["task_filter"] = self._merge_query_filters(
+                query_kwargs["task_filter"],
+                self._task_ids_filter(list_entity_ids.task_ids),
+            )
         else:
             folder_ids = self._selected_folder_ids or None
-            version_ids = None
 
         if cursor is None:
             return []
@@ -1668,8 +1963,9 @@ class BrowserWidgetController(QtCore.QObject):
             descending=descending,
             version_ids=version_ids,
             folder_ids=folder_ids,
+            product_ids=product_ids,
             include_folder_children=self._include_folder_children,
-            **self._version_query_kwargs(query_filters),
+            **query_kwargs,
         )
         self.log.debug(
             "Received %d edges, page info: %s", len(edges), page_info
@@ -1888,6 +2184,56 @@ class BrowserWidgetController(QtCore.QObject):
             project_name, version_ids
         )
 
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        """Return product group names related to the given products.
+
+        Args:
+            project_name: AYON project name.
+            product_ids: Selected product ids.
+
+        Returns:
+            Group names of the products and group names available in
+            their folders.
+        """
+        return self._loader_controller.get_product_groups_info(
+            project_name, product_ids
+        )
+
+    def can_change_products_group(self, project_name: str) -> bool:
+        """Return whether the user may write the product group attribute.
+
+        Args:
+            project_name: AYON project name.
+        """
+        return self._loader_controller.can_change_products_group(
+            project_name
+        )
+
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        """Change the product group of the given products.
+
+        :attr:`products_group_changed` is emitted once it changed.
+
+        Args:
+            project_name: AYON project name.
+            product_ids: Product ids to change the group for.
+            group_name: Group name to set, empty string to ungroup.
+        """
+        self._loader_controller.change_products_group(
+            project_name, product_ids, group_name
+        )
+
+    def _on_products_group_changed(self, event: Any) -> None:
+        """Mark loaded rows outdated when a product group changed."""
+        if event["project_name"] != self._current_project:
+            return
+        self._reset_pagination()
+        self.products_group_changed.emit()
+
     def _get_column_context(self) -> BrowserColumnContext:
         """Return an immutable state snapshot for column providers."""
         filters = tuple(
@@ -1895,8 +2241,11 @@ class BrowserWidgetController(QtCore.QObject):
                 key=key,
                 values=tuple(values),
                 use_substring=use_substring,
+                exclude=exclude,
             )
-            for key, values, use_substring in self._query_filter_criteria
+            for key, values, use_substring, exclude in (
+                self._query_filter_criteria
+            )
         )
         return BrowserColumnContext(
             project_name=self._current_project or None,
@@ -2147,6 +2496,12 @@ class BrowserWidgetController(QtCore.QObject):
             )
             row["thumbnailId"] = featured_version.get("thumbnailId", "")
             row["_version_id"] = featured_version.get("id", "")
+            # The featured "hero" is the regular version the hero version
+            # was made from, but acting on it must use the hero version.
+            if featured_version.get("featuredVersionType") == "hero":
+                hero_version_id = featured_version.get("heroVersionId")
+                if hero_version_id:
+                    row["_action_version_id"] = hero_version_id
             row["status"] = featured_version.get("status", "")
             row["status__icon"] = self._pinfo(
                 "statuses", row["status"], "icon", ""
@@ -2318,17 +2673,18 @@ class BrowserWidgetController(QtCore.QObject):
         if not target_field:
             return _GroupCounts({})
 
+        # TODO: Backwards compatibility for AYON server < 1.15.5.
+        #   Remove this once 1.15.5 is the minimum supported server.
+        # Servers up to 1.15.4 can't calculate statistics, the groups
+        # then show the grouping metadata instead.
+        if not self._server_supports(
+            server_supports_version_statistics, "version statistics"
+        ):
+            return None
+
         query_filters = self._get_query_filters()
         version_ids = query_filters["version_ids"]
         folder_ids: list[str] | None = self._selected_folder_ids or None
-        if self._current_category == BrowserSlicerCategory.REVIEWS.value:
-            if not self._review_session_version_ids:
-                return _GroupCounts({}, 0)
-            review_ids = set(self._review_session_version_ids or ())
-            if version_ids:
-                review_ids.intersection_update(version_ids)
-            version_ids = list(review_ids)
-            folder_ids = None
 
         con = ayon_api.get_server_api_connection()
         if not con:
@@ -2623,6 +2979,7 @@ class BrowserWidgetController(QtCore.QObject):
         folder_filter: str = "",
         search: str | None = None,
         include_folder_children: bool = False,
+        featured_version_order: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of products via GraphQL.
 
@@ -2642,6 +2999,11 @@ class BrowserWidgetController(QtCore.QObject):
             task_filter: JSON-encoded task filter string.
             folder_filter: JSON-encoded folder filter string.
             search: Full-text product search string.
+            include_folder_children: Whether to include products of
+                the child folders of *folder_ids*.
+            featured_version_order: Priority order used to pick the
+                featured version of each product. Defaults to the
+                featured version customization.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -2671,7 +3033,9 @@ class BrowserWidgetController(QtCore.QObject):
             "includeFolderChildren": include_folder_children,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
-            "featuredVersionOrder": self._featured_version_order,
+            "featuredVersionOrder": (
+                featured_version_order or self._featured_version_order
+            ),
         }
         if descending:
             variables["last"] = page_size
@@ -2680,7 +3044,7 @@ class BrowserWidgetController(QtCore.QObject):
             variables["first"] = page_size
             variables["after"] = cursor or None
 
-        resp = con.query_graphql(GET_PRODUCTS_QUERY, variables)
+        resp = con.query_graphql(get_products_query(), variables)
         if resp.errors:
             raise RuntimeError(resp.errors)
         payload = resp.data["data"]
@@ -2778,6 +3142,7 @@ class BrowserWidgetController(QtCore.QObject):
                 folder_filter=query_filters["folder_filter"],
                 search=query_filters["search"],
                 include_folder_children=self._include_folder_children,
+                featured_version_order=query_filters["featured_types"],
             )
             all_edges.extend(edges)
 
@@ -3008,89 +3373,218 @@ class BrowserWidgetController(QtCore.QObject):
             return "", empty_filter
         return empty_filter, ""
 
-    def _fetch_reviews(self, parent_id: str | None) -> list[TreeNode]:
-        """Return tree nodes for review sessions.
+    def _is_entity_list_category(self) -> bool:
+        """Return whether the slicer tree currently holds entity lists."""
+        return self._current_category in ENTITY_LIST_CATEGORIES
 
-        Read-only: builds :class:`TreeNode` objects from the pre-populated
-        :attr:`_review_sessions_cache`.  The cache is populated exclusively
-        from the main thread by :meth:`_ensure_review_session_list`, which
-        runs when the Reviews category is entered - always before this
-        method can be reached.  Pool worker threads that call it therefore
-        only perform read access on an already-complete list, eliminating
-        any generator re-entrancy race.
+    @staticmethod
+    def _task_ids_filter(task_ids: list[str]) -> str:
+        """Return a task filter keeping only the given tasks."""
+        if not task_ids:
+            return ""
+        return json.dumps({
+            "conditions": [
+                {"key": "id", "operator": "in", "value": task_ids}
+            ]
+        })
 
-        Args:
-            parent_id: Parent entity ID. Only root (``None``) returns
-                review session nodes; children are always empty.
+    def fetch_entity_lists(self) -> dict[str | None, list[TreeNode]]:
+        """Return the whole entity list tree of the active category.
+
+        Used as :class:`BulkTreeModel`'s ``fetch_all`` callback: runs on
+        a background thread via the shared task queue. The Lists
+        category holds every entity list, Reviews only the review
+        sessions - they are otherwise the same tree.
+
+        Read-only: builds :class:`TreeNode` objects from the caches
+        filled by :meth:`_ensure_entity_lists`, which runs on the main
+        thread when either category is entered - always before this
+        method can be reached. Worker threads therefore only read
+        already-complete lists.
+
+        Mirrors the Lists slicer of the AYON frontend: lists are nested
+        in their entity list folders, folders that hold no list at any
+        depth are left out, folders keep the server's order and come
+        before the lists, which are sorted newest first with the
+        archived ones last.
+
+        Folder nodes use a prefixed id and can't be selected, they only
+        group the lists.
 
         Returns:
-            List of :class:`TreeNode` instances.
+            Mapping of parent node id (``None`` for root) to its
+            children.
         """
-        self.log.debug("Fetching review children for %s", parent_id)
-        if parent_id is not None:
-            return []
-        return [
-            TreeNode(
-                id=r.get("id", "no id"),
-                label=r.get("label", "no label"),
-                has_children=False,
-                icon="subscriptions",
-                data=r,
-            )
-            for r in self._review_sessions_cache
-            if r.get("entityListType") == "review-session"
-        ]
+        folders_by_id = {
+            folder["id"]: folder
+            for folder in self._entity_list_folders_cache
+        }
 
-    def _ensure_review_session_list(self) -> None:
-        """Fetch review sessions once per project, on first use.
+        def folder_node_id(folder_id: str) -> str:
+            return f"{_ENTITY_LIST_FOLDER_ID_PREFIX}{folder_id}"
+
+        def parent_node_id(folder_id: str | None) -> str | None:
+            if folder_id and folder_id in folders_by_id:
+                return folder_node_id(folder_id)
+            return None
+
+        lists_by_parent: dict[str | None, list[dict[str, Any]]] = {}
+        used_folder_ids: set[str] = set()
+        reviews_only = (
+            self._current_category == BrowserSlicerCategory.REVIEWS.value
+        )
+        for entity_list in self._entity_lists_cache:
+            if (
+                reviews_only
+                and entity_list.get("entityListType") != "review-session"
+            ):
+                continue
+            folder_id = entity_list.get("entityListFolderId")
+            lists_by_parent.setdefault(
+                parent_node_id(folder_id), []
+            ).append(entity_list)
+            # Mark the folder of the list and all folders above it as used
+            while (
+                folder_id in folders_by_id
+                and folder_id not in used_folder_ids
+            ):
+                used_folder_ids.add(folder_id)
+                folder_id = folders_by_id[folder_id].get("parentId")
+
+        output: dict[str | None, list[TreeNode]] = {}
+        for folder in self._entity_list_folders_cache:
+            if folder["id"] not in used_folder_ids:
+                continue
+            data = folder.get("data") or {}
+            node = TreeNode(
+                id=folder_node_id(folder["id"]),
+                label=folder.get("label") or "no label",
+                has_children=True,
+                icon=data.get("icon") or _ENTITY_LIST_FOLDER_ICON,
+                icon_fill=True,
+                selectable=False,
+            )
+            if data.get("color"):
+                node.icon_color = data["color"]
+            output.setdefault(
+                parent_node_id(folder.get("parentId")), []
+            ).append(node)
+
+        for parent_id, entity_lists in lists_by_parent.items():
+            entity_lists.sort(
+                key=lambda item: (
+                    bool(item.get("active", True)),
+                    str(item.get("createdAt") or ""),
+                ),
+                reverse=True,
+            )
+            output.setdefault(parent_id, []).extend(
+                TreeNode(
+                    id=entity_list["id"],
+                    label=entity_list.get("label") or "no label",
+                    has_children=False,
+                    icon=self._get_entity_list_icon(entity_list),
+                    data=entity_list,
+                )
+                for entity_list in entity_lists
+            )
+        return output
+
+    @staticmethod
+    def _get_entity_list_icon(entity_list: dict[str, Any]) -> str:
+        """Return the icon for an entity list by its type."""
+        if entity_list.get("entityListType") == "review-session":
+            return _REVIEW_SESSION_ICON
+        return _ENTITY_LIST_TYPE_ICONS.get(
+            entity_list.get("entityType") or "",
+            _ENTITY_LIST_FALLBACK_ICON,
+        )
+
+    def _ensure_entity_lists(self) -> None:
+        """Fetch entity lists and their folders once per project.
 
         Materialises the generator returned by
         :func:`ayon_api.get_entity_lists` into a plain Python list so that
         the result can be read safely by pool worker threads without the
         generator re-entrancy issue.  Must only be called from the main
         thread - :meth:`set_category` and :meth:`set_project` are the two
-        entry points into the Reviews category, and both qualify.
+        entry points into the Reviews and Lists categories, and both
+        qualify.
         """
-        if self._review_sessions_loaded:
+        if self._entity_lists_loaded:
             return
         project = self._current_project
-        self._review_sessions_cache = list(
-            ayon_api.get_entity_lists(project_name=project)
+        fields = ayon_api.get_default_fields_for_type("entityList")
+        self._entity_lists_cache = list(
+            ayon_api.get_entity_lists(
+                project, fields={*fields, "entityListFolderId"}
+            )
         )
-        self._review_sessions_loaded = True
+        self._entity_list_folders_cache = (
+            self._get_entity_list_folders(project)
+        )
+        self._entity_lists_loaded = True
         self.log.debug(
-            "Review sessions cached for project %s (%d items)",
+            "Entity lists cached for project %s (%d lists, %d folders)",
             project,
-            len(self._review_sessions_cache),
+            len(self._entity_lists_cache),
+            len(self._entity_list_folders_cache),
         )
 
-    def _get_review_session_version_ids(self, session_id: str) -> list[str]:
-        """Return version IDs contained in the given review session.
-
-        Args:
-            session_id: Entity list ID of the review session.
+    def _get_entity_list_folders(
+        self, project_name: str
+    ) -> list[dict[str, Any]]:
+        """Return the entity list folders of a project in server order.
 
         Returns:
-            List of version IDs.
+            Folders with ``id``, ``label``, ``parentId`` and ``data``
+            (``icon`` and ``color``).
         """
-        con = ayon_api.get_server_api_connection()
-        if not con:
-            return []
-        versions_gen = ayon_api.get_entity_lists(
-            project_name=self._current_project,
-            list_ids=[session_id],
-            fields={"items"},
+        response = ayon_api.get(
+            f"projects/{project_name}/entityListFolders"
         )
+        response.raise_for_status()
+        return list(response.data.get("folders") or [])
+
+    def _get_entity_list_entity_ids(
+        self, list_ids: list[str]
+    ) -> _ListEntityIds:
+        """Return the entities contained in the given entity lists.
+
+        Args:
+            list_ids: Entity list ids, e.g. of review sessions.
+
+        Returns:
+            Ids of the listed entities by entity type.
+        """
+        entity_ids: dict[str, set[str]] = collections.defaultdict(set)
+        # Items of lists with a different entity type can't be fetched
+        #   in one call
         try:
-            entity_list = next(versions_gen)
-        except StopIteration:
-            return []
-        items = entity_list.get("items", [])
-        return [
-            item["entityId"]
-            for item in items
-            if item.get("entityType") == "version"
-        ]
+            for list_id in list_ids:
+                for entity_list in ayon_api.get_entity_lists(
+                    self._current_project,
+                    list_ids=[list_id],
+                    fields={"items"},
+                ):
+                    for item in entity_list.get("items", []):
+                        entity_ids[item["entityType"]].add(
+                            item["entityId"]
+                        )
+        except Exception:  # noqa: BLE001
+            # Runs in the slicer's selection callback, where e.g. an
+            # unavailable server must not break the selection update.
+            self.log.warning(
+                "Failed to fetch the items of the selected entity lists",
+                exc_info=True,
+            )
+            return _ListEntityIds()
+        return _ListEntityIds(
+            folder_ids=sorted(entity_ids["folder"]),
+            task_ids=sorted(entity_ids["task"]),
+            product_ids=sorted(entity_ids["product"]),
+            version_ids=sorted(entity_ids["version"]),
+        )
 
     #: Seconds for which fetched project info is reused
     _PROJECT_INFO_LIFETIME = 60
@@ -3576,7 +4070,7 @@ class BrowserWidgetController(QtCore.QObject):
         )
         requested_keys.update(
             key
-            for key, _, _ in self._query_filter_criteria
+            for key, _, _, _ in self._query_filter_criteria
             if key.startswith("attr:")
         )
         resp = con.query_graphql(

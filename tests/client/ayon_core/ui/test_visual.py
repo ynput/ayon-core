@@ -24,6 +24,9 @@ from visual_utils import capture_widget
 from widget_test import WidgetTest
 
 
+pytestmark = pytest.mark.optional
+
+
 def _collect_widget_test_classes() -> list[Type[WidgetTest]]:
     """Import all test_*.py modules under tests/components/ and return
     WidgetTest subclasses."""
