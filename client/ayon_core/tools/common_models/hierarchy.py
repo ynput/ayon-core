@@ -688,11 +688,9 @@ class HierarchyModel:
 
     def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
         folders = ayon_api.get_rest_folders(project_name, include_attrib=False)
-        folders_by_parent_id = {}
+        folders_by_parent_id = collections.defaultdict(list)
         for folder in folders:
-            folders_by_parent_id.setdefault(
-                folder["parentId"], []
-            ).append(folder)
+            folders_by_parent_id[folder["parentId"]].append(folder)
 
         # REST endpoint does not filter inactive folders, skip them
         #   and their descendants
@@ -701,7 +699,7 @@ class HierarchyModel:
         hierarchy_queue.append(None)
         while hierarchy_queue:
             parent_id = hierarchy_queue.popleft()
-            for folder in folders_by_parent_id.get(parent_id, []):
+            for folder in folders_by_parent_id[parent_id]:
                 if not folder.get("active", True):
                     continue
                 folder_id = folder["id"]
