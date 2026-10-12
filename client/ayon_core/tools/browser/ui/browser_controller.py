@@ -14,7 +14,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any
+from typing import Any, Callable
 
 import arrow
 import ayon_api
@@ -60,13 +60,18 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     build_attribute_groups,
     parse_attribute_group_key,
 )
+from ayon_core.tools.browser.server_capabilities import (
+    server_supports_folder_filter,
+    server_supports_latest_per_folder,
+    server_supports_representation_filter,
+    server_supports_version_statistics,
+)
 from ayon_core.tools.browser.ui.browser_queries import (
     EMPTY_ROW,
-    GET_PRODUCTS_QUERY,
     get_product_sort_by,
+    get_products_query,
     get_sort_by,
     get_version_group_counts_query,
-    server_supports_representation_filter,
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import (
@@ -543,6 +548,28 @@ class BrowserWidgetController(QtCore.QObject):
         """Return custom attribute definitions grouped by entity scope."""
         return self._attributes_by_scope
 
+    def _server_supports(
+        self, capability: Callable[[], bool], label: str
+    ) -> bool:
+        """Return a server capability, ``False`` when it can't be checked.
+
+        Args:
+            capability: Capability check of
+                :mod:`ayon_core.tools.browser.server_capabilities`.
+            label: What the capability is, for the log.
+        """
+        try:
+            return capability()
+        except Exception:
+            # Not cached, so a temporary connection problem is retried
+            # the next time this is asked.
+            self.log.debug(
+                "Failed to check for %s support", label, exc_info=True
+            )
+            return False
+
+    # TODO: Backwards compatibility for AYON server < 1.16.7.
+    #   Remove this once 1.16.7 is the minimum supported server.
     @property
     def supports_representation_filter(self) -> bool:
         """Whether the server can filter versions by representations.
@@ -550,16 +577,35 @@ class BrowserWidgetController(QtCore.QObject):
         Servers up to 1.16.6 have no ``representationFilter`` argument
         on the versions resolver.
         """
-        try:
-            return server_supports_representation_filter()
-        except Exception:
-            # Not cached, so a temporary connection problem is retried
-            # the next time this is asked.
-            self.log.debug(
-                "Failed to check for representation filter support",
-                exc_info=True,
-            )
-            return False
+        return self._server_supports(
+            server_supports_representation_filter, "representation filter"
+        )
+
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    @property
+    def supports_folder_filter(self) -> bool:
+        """Whether the server can filter versions by their folders.
+
+        Servers up to 1.16.0 have no ``folderFilter`` argument on the
+        versions and products resolvers.
+        """
+        return self._server_supports(
+            server_supports_folder_filter, "folder filter"
+        )
+
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    @property
+    def supports_latest_per_folder(self) -> bool:
+        """Whether the server can list the latest version per folder.
+
+        Servers up to 1.16.0 have no ``latestPerFolder`` argument on the
+        versions resolver.
+        """
+        return self._server_supports(
+            server_supports_latest_per_folder, "latest per folder"
+        )
 
     @property
     def has_selection(self) -> bool:
@@ -2627,6 +2673,15 @@ class BrowserWidgetController(QtCore.QObject):
         if not target_field:
             return _GroupCounts({})
 
+        # TODO: Backwards compatibility for AYON server < 1.15.5.
+        #   Remove this once 1.15.5 is the minimum supported server.
+        # Servers up to 1.15.4 can't calculate statistics, the groups
+        # then show the grouping metadata instead.
+        if not self._server_supports(
+            server_supports_version_statistics, "version statistics"
+        ):
+            return None
+
         query_filters = self._get_query_filters()
         version_ids = query_filters["version_ids"]
         folder_ids: list[str] | None = self._selected_folder_ids or None
@@ -2989,7 +3044,7 @@ class BrowserWidgetController(QtCore.QObject):
             variables["first"] = page_size
             variables["after"] = cursor or None
 
-        resp = con.query_graphql(GET_PRODUCTS_QUERY, variables)
+        resp = con.query_graphql(get_products_query(), variables)
         if resp.errors:
             raise RuntimeError(resp.errors)
         payload = resp.data["data"]
@@ -3460,21 +3515,11 @@ class BrowserWidgetController(QtCore.QObject):
             return
         project = self._current_project
         fields = ayon_api.get_default_fields_for_type("entityList")
-        try:
-            entity_lists = list(
-                ayon_api.get_entity_lists(
-                    project, fields={*fields, "entityListFolderId"}
-                )
+        self._entity_lists_cache = list(
+            ayon_api.get_entity_lists(
+                project, fields={*fields, "entityListFolderId"}
             )
-        except Exception:  # noqa: BLE001
-            # Servers without entity list folders reject the field.
-            self.log.debug(
-                "Failed to fetch entity lists with their folder,"
-                " fetching them without.",
-                exc_info=True,
-            )
-            entity_lists = list(ayon_api.get_entity_lists(project))
-        self._entity_lists_cache = entity_lists
+        )
         self._entity_list_folders_cache = (
             self._get_entity_list_folders(project)
         )
@@ -3493,22 +3538,13 @@ class BrowserWidgetController(QtCore.QObject):
 
         Returns:
             Folders with ``id``, ``label``, ``parentId`` and ``data``
-            (``icon`` and ``color``). Empty when the server does not
-            support entity list folders.
+            (``icon`` and ``color``).
         """
-        try:
-            response = ayon_api.get(
-                f"projects/{project_name}/entityListFolders"
-            )
-            response.raise_for_status()
-            return list(response.data.get("folders") or [])
-        except Exception:  # noqa: BLE001
-            self.log.debug(
-                "Failed to fetch entity list folders of project %s",
-                project_name,
-                exc_info=True,
-            )
-            return []
+        response = ayon_api.get(
+            f"projects/{project_name}/entityListFolders"
+        )
+        response.raise_for_status()
+        return list(response.data.get("folders") or [])
 
     def _get_entity_list_entity_ids(
         self, list_ids: list[str]
