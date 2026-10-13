@@ -328,7 +328,7 @@ class LoaderActionsModel(BaseSettingsModel):
         title="Copy file",
         description="Show the action for copying a published file.",
     )
-    open_file_action: bool = SettingsField(
+    open_file: bool = SettingsField(
         True,
         title="Open file action",
         description="Show the action for opening a published file.",
@@ -719,7 +719,7 @@ DEFAULT_TOOLS_VALUES = {
         "actions": {
             "copy_file_path": True,
             "copy_file": True,
-            "open_file_action": True,
+            "open_file": True,
             "delete_old_versions": True,
             "create_hero_version": True
         },
