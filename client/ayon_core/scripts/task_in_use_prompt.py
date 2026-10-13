@@ -20,6 +20,7 @@ from ayon_core.tools.utils import get_ayon_qt_app
 from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
     TaskInUseDialog,
 )
+from ayon_core.ui.components.task_queue import shutdown_task_queue
 
 
 def main() -> None:
@@ -52,6 +53,12 @@ def main() -> None:
             },
             stream,
         )
+
+    # Avatars of users are loaded by threads of the shared task queue. It
+    #   is stopped when Qt application quits, but the event loop of the
+    #   application is not used here. The process would crash on exit
+    #   with the threads still running.
+    shutdown_task_queue()
 
 
 if __name__ == "__main__":

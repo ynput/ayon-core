@@ -29,6 +29,7 @@ from ayon_core.pipeline.workfile.task_usage import (
     TaskUsageItem,
     get_task_usage_settings,
     get_other_users_task_usage_items,
+    parse_task_in_use_prompt_answer,
 )
 
 
@@ -114,7 +115,7 @@ class TaskInUsePrompt(PreLaunchHook):
     ) -> tuple[bool, bool]:
         """Ask user in a subprocess with the dialog.
 
-        The launch is not blocked if the dialog fails for any reason.
+        The launch is not blocked if the dialog could not be shown.
 
         Returns:
             tuple[bool, bool]: User wants to launch the application, and
@@ -147,21 +148,33 @@ class TaskInUsePrompt(PreLaunchHook):
                 add_sys_paths=True,
                 creationflags=0,
             )
+        except Exception:
+            # Answer of the user is used if it was stored, even if
+            #   the process did not end correctly
+            self.log.warning(
+                "Task in-use prompt did not end correctly.", exc_info=True
+            )
+
+        result = None
+        try:
             with open(tmp_path, "r") as stream:
                 result = json.load(stream)
-            return (
-                bool(result.get("confirmed", True)),
-                bool(result.get("version_up", False)),
-            )
-
         except Exception:
             self.log.warning(
-                "Failed to show task in-use prompt.", exc_info=True
+                "Failed to read answer of task in-use prompt.",
+                exc_info=True,
             )
-            return True, False
-
         finally:
             os.remove(tmp_path)
+
+        answer = parse_task_in_use_prompt_answer(result)
+        if answer is None:
+            self.log.warning(
+                "Task in-use prompt was not answered."
+                " Launching without the confirmation."
+            )
+            return True, False
+        return answer
 
     def _version_up_workfile(self, workfile_path: str) -> None:
         """Copy workfile to next version and open the copy instead.

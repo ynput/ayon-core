@@ -378,6 +378,29 @@ def get_same_workfile_items(
     ]
 
 
+def parse_task_in_use_prompt_answer(
+    data: Any
+) -> Optional[tuple[bool, bool]]:
+    """Answer of the user from data stored by task in-use prompt.
+
+    The prompt is shown by a subprocess before an application is
+    launched, see 'ayon_core/scripts/task_in_use_prompt.py'.
+
+    Args:
+        data (Any): Content of the file passed to the prompt.
+
+    Returns:
+        Optional[tuple[bool, bool]]: User wants to continue, and user
+            wants to work in next version of the workfile. None if the
+            prompt was not answered, e.g. it could not be shown.
+
+    """
+    if not isinstance(data, dict) or "confirmed" not in data:
+        return None
+    confirmed = bool(data["confirmed"])
+    return confirmed, confirmed and bool(data.get("version_up"))
+
+
 def acknowledge_task_usage_items(items: list[TaskUsageItem]) -> None:
     """Mark sessions as known to the user of current process.
 
