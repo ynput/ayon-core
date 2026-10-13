@@ -7,6 +7,7 @@ import qtawesome
 
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
+    get_loader_identifier,
     switch_container,
     get_repres_contexts,
     loaders_from_repre_context,
@@ -449,14 +450,32 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if not loaders:
             return
 
-        # Build new action group
-        group = QtWidgets.QActionGroup(self._accept_btn)
+        # Loaders currently used by the containers, those are used when
+        #   the accept button is clicked without choosing a loader
+        current_loader_names = {
+            container.get("loader")
+            for container in self._items
+        }
 
+        loader_items = []
         for loader in loaders:
-            # Label
             label = getattr(loader, "label", None)
             if label is None:
                 label = loader.__name__
+            is_current = get_loader_identifier(loader) in current_loader_names
+            loader_items.append((not is_current, label, loader))
+
+        # Show current loaders first and keep the order stable
+        loader_items.sort(
+            key=lambda item: (item[0], item[1].lower(), item[2].__name__)
+        )
+
+        # Build new action group
+        group = QtWidgets.QActionGroup(self._accept_btn)
+
+        for not_current, label, loader in loader_items:
+            if not not_current:
+                label = "{} (current)".format(label)
 
             action = group.addAction(label)
             # action = QtWidgets.QAction(label)
