@@ -982,7 +982,10 @@ class FoldersWidget(QtWidgets.QWidget):
 
         # Card with folder information is shown when a folder is hovered
         hover_card_handler = EntityHoverCardHandler(
-            folders_view, FOLDER_ID_ROLE, self._get_hover_info
+            folders_view,
+            FOLDER_ID_ROLE,
+            self._get_hover_info,
+            self._get_hover_thumbnail_path,
         )
         folders_model.refreshed.connect(hover_card_handler.clear_cache)
 
@@ -1211,20 +1214,23 @@ class FoldersWidget(QtWidgets.QWidget):
         if not folder_entity:
             return None
 
-        thumbnail_path = None
-        if hasattr(controller, "get_thumbnail_paths"):
-            thumbnail_path = controller.get_thumbnail_paths(
-                project_name, "folder", {folder_id}
-            ).get(folder_id)
         return get_folder_hover_info(
-            project_name,
             folder_entity,
             self._folders_model.get_folder_type_item(
                 folder_entity["folderType"]
             ),
             self._folders_model.get_status_item(folder_entity["status"]),
-            thumbnail_path,
         )
+
+    def _get_hover_thumbnail_path(self, folder_id: str) -> str | None:
+        """Thumbnail for hover card of a folder. Is called in a thread."""
+        controller = self._controller
+        project_name = self._folders_model.get_project_name()
+        if not project_name or not hasattr(controller, "get_thumbnail_paths"):
+            return None
+        return controller.get_thumbnail_paths(
+            project_name, "folder", {folder_id}
+        ).get(folder_id)
 
     def _on_model_refresh(self):
         if self._expected_selection:

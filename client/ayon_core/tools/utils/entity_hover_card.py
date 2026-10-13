@@ -1,8 +1,8 @@
 """Hover card with basic information about a folder or a task.
 
 The card is a small popup shown next to an item view when the mouse stays
-on an item for a moment. It shows the entity as a card with thumbnail,
-its description and a few facts that help to recognize the entity.
+on an item for a moment. It shows thumbnail of the entity, its description
+and a few facts that help to recognize the entity.
 
 The card never takes focus and is transparent for mouse events, so it
 can't get in the way of interaction with the view.
@@ -15,17 +15,21 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 import ayon_api
+from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib import Logger
-from ayon_core.ui.components.entity_card import AYEntityCard
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.user_avatars import UserAvatarCache
 from ayon_core.ui.style_types import get_ayon_style_data
 
+from .entity_thumbnails import _ImagesLoading, _load_image
+
 log = Logger.get_logger(__name__)
 
-CARD_WIDTH = 164
+THUMBNAIL_SIZE = QtCore.QSize(160, 90)
+THUMBNAIL_RADIUS = 8
+THUMBNAIL_FADE_DURATION = 150
 CONTENT_WIDTH = 272
 MARGIN = 8
 SPACING = 12
@@ -36,6 +40,8 @@ MAX_FACT_ROWS = 3
 # Less facts are shown if entity has a description, to keep the card small
 MAX_FACT_ROWS_WITH_DESCRIPTION = 2
 FACT_ICON_SIZE = 16
+# Icons with darker color would not be readable on the dark background
+MIN_ICON_LIGHTNESS = 0.4
 # Avatar of a user is shown at the place of fact icon
 AVATAR_SIZE = FACT_ICON_SIZE
 # Delay of data loading after the mouse entered an item
@@ -74,9 +80,7 @@ class EntityHoverInfo:
         label (str): Entity label.
         type_name (str): Folder type or task type name.
         type_icon (str): Material symbol name of the type icon.
-        parents (list[str]): Labels of parents shown as breadcrumb.
         description (str): Entity description.
-        thumbnail_path (str): Path to thumbnail file.
         facts (list[EntityHoverFact]): Facts about the entity ordered by
             importance, only first few are shown.
 
@@ -84,10 +88,41 @@ class EntityHoverInfo:
     label: str
     type_name: str
     type_icon: str
-    parents: list[str] = field(default_factory=list)
     description: str = ""
-    thumbnail_path: str = ""
     facts: list[EntityHoverFact] = field(default_factory=list)
+
+
+def _get_icon_pixmap(
+    icon_name: str, color: str, size: int, pixel_ratio: float
+) -> QtGui.QPixmap:
+    """Pixmap of material symbol icon for a size in logical pixels.
+
+    Glyphs rendered directly at a small size are not antialiased well and
+    some of them are cut at the edges. The icon is rendered bigger and
+    scaled down, which also makes it sharp on screens with scaling.
+    """
+    key = (icon_name, color, size, pixel_ratio)
+    pixmap = _IconsCache.pixmaps.get(key)
+    if pixmap is None:
+        render_size = max(size * 4, 64)
+        # Outlined icons, same as icons of the labels
+        pixmap = get_icon(icon_name, color=color, fill=False).pixmap(
+            QtCore.QSize(render_size, render_size)
+        )
+        pixel_size = max(int(round(size * pixel_ratio)), 1)
+        pixmap = pixmap.scaled(
+            pixel_size,
+            pixel_size,
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation,
+        )
+        pixmap.setDevicePixelRatio(pixel_ratio)
+        _IconsCache.pixmaps[key] = pixmap
+    return pixmap
+
+
+class _IconsCache:
+    pixmaps: dict[tuple[str, str, int, float], QtGui.QPixmap] = {}
 
 
 class _FullNamesCache:
@@ -149,20 +184,16 @@ def _status_facts(status_item) -> list[EntityHoverFact]:
 
 
 def get_folder_hover_info(
-    project_name: str,
     folder_entity: dict[str, Any],
     folder_type_item=None,
     status_item=None,
-    thumbnail_path: str | None = None,
 ) -> EntityHoverInfo:
     """Prepare hover card information of a folder.
 
     Args:
-        project_name (str): Project name.
         folder_entity (dict[str, Any]): Folder entity.
         folder_type_item (FolderTypeItem | None): Folder type item.
         status_item (StatusItem | None): Status item.
-        thumbnail_path (str | None): Path to folder thumbnail.
 
     Returns:
         EntityHoverInfo: Hover card information.
@@ -180,37 +211,28 @@ def get_folder_hover_info(
     type_icon = "folder"
     if folder_type_item is not None and folder_type_item.icon:
         type_icon = folder_type_item.icon
-    parents = folder_entity["path"].strip("/").split("/")[:-1]
     return EntityHoverInfo(
         label=folder_entity.get("label") or folder_entity["name"],
         type_name=folder_entity["folderType"],
         type_icon=type_icon,
-        parents=parents or [project_name],
         description=attrib.get("description") or "",
-        thumbnail_path=thumbnail_path or "",
         facts=facts,
     )
 
 
 def get_task_hover_info(
-    project_name: str,
     task_entity: dict[str, Any],
-    folder_path: str | None = None,
     task_type_item=None,
     status_item=None,
-    thumbnail_path: str | None = None,
 ) -> EntityHoverInfo:
     """Prepare hover card information of a task.
 
     Function is querying users, should be called in a thread.
 
     Args:
-        project_name (str): Project name.
         task_entity (dict[str, Any]): Task entity.
-        folder_path (str | None): Path of task's folder.
         task_type_item (TaskTypeItem | None): Task type item.
         status_item (StatusItem | None): Status item.
-        thumbnail_path (str | None): Path to task thumbnail.
 
     Returns:
         EntityHoverInfo: Hover card information.
@@ -242,16 +264,11 @@ def get_task_hover_info(
     type_icon = "task_alt"
     if task_type_item is not None and task_type_item.icon:
         type_icon = task_type_item.icon
-    parents = [project_name]
-    if folder_path:
-        parents = folder_path.strip("/").split("/")
     return EntityHoverInfo(
         label=task_entity.get("label") or task_entity["name"],
         type_name=task_entity["taskType"],
         type_icon=type_icon,
-        parents=parents,
         description=attrib.get("description") or "",
-        thumbnail_path=thumbnail_path or "",
         facts=facts,
     )
 
@@ -341,14 +358,121 @@ class _ClampedText(QtWidgets.QWidget):
         painter.end()
 
 
+class _ThumbnailWidget(QtWidgets.QWidget):
+    """Thumbnail with rounded corners.
+
+    Icon of the entity type on a slightly visible background is shown
+    until the thumbnail is set, and for entities without thumbnail.
+    """
+
+    def __init__(self, parent: QtWidgets.QWidget):
+        super().__init__(parent)
+        self.setFixedSize(THUMBNAIL_SIZE)
+
+        style_data = get_ayon_style_data("QFrame", "entity-card")
+        fade_anim = QtCore.QVariantAnimation(self)
+        fade_anim.setStartValue(0.0)
+        fade_anim.setEndValue(1.0)
+        fade_anim.setDuration(THUMBNAIL_FADE_DURATION)
+        fade_anim.valueChanged.connect(self._on_fade_change)
+
+        self._bg_color = QtGui.QColor(
+            get_ayon_style_data("QPushButton", "entity-card")[
+                "background-color"
+            ]
+        )
+        self._icon_color = QtGui.QColor(style_data["placeholder-icon-color"])
+        self._fade_anim = fade_anim
+        self._icon_name = ""
+        self._icon_pixmap: QtGui.QPixmap | None = None
+        self._pixmap: QtGui.QPixmap | None = None
+        self._opacity = 1.0
+
+    def get_image_size(self) -> QtCore.QSize:
+        """Size of image, in pixels of the screen, filling the widget."""
+        return THUMBNAIL_SIZE * self.devicePixelRatioF()
+
+    def set_placeholder_icon(self, icon_name: str) -> None:
+        if icon_name == self._icon_name:
+            return
+        self._icon_name = icon_name
+        self._icon_pixmap = None
+        self.update()
+
+    def set_image(
+        self, image: QtGui.QImage | None, animated: bool = False
+    ) -> None:
+        """Change the thumbnail.
+
+        Args:
+            image (QtGui.QImage | None): Image of size from
+                'get_image_size', placeholder is shown without it.
+            animated (bool): Fade the image in over the placeholder.
+
+        """
+        self._fade_anim.stop()
+        self._opacity = 1.0
+        self._pixmap = None
+        if image is not None and not image.isNull():
+            pixmap = QtGui.QPixmap.fromImage(image)
+            pixmap.setDevicePixelRatio(
+                image.width() / THUMBNAIL_SIZE.width()
+            )
+            self._pixmap = pixmap
+            if animated:
+                self._opacity = 0.0
+                self._fade_anim.start()
+        self.update()
+
+    def _on_fade_change(self, value: float) -> None:
+        self._opacity = value
+        self.update()
+
+    def _get_icon_pixmap(self) -> QtGui.QPixmap | None:
+        if self._icon_pixmap is None and self._icon_name:
+            self._icon_pixmap = _get_icon_pixmap(
+                self._icon_name,
+                self._icon_color.name(),
+                int(self.height() * 0.4),
+                self.devicePixelRatioF(),
+            )
+        return self._icon_pixmap
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        painter = QtGui.QPainter(self)
+        painter.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(
+            QtCore.QRectF(self.rect()), THUMBNAIL_RADIUS, THUMBNAIL_RADIUS
+        )
+        painter.setClipPath(path)
+        if self._pixmap is None or self._opacity < 1.0:
+            painter.fillRect(self.rect(), self._bg_color)
+            icon_pixmap = self._get_icon_pixmap()
+            if icon_pixmap is not None:
+                icon_size = icon_pixmap.size() / icon_pixmap.devicePixelRatio()
+                painter.drawPixmap(
+                    (self.width() - icon_size.width()) // 2,
+                    (self.height() - icon_size.height()) // 2,
+                    icon_pixmap,
+                )
+        if self._pixmap is not None:
+            painter.setOpacity(self._opacity)
+            painter.drawPixmap(self.rect(), self._pixmap)
+        painter.end()
+
+
 class EntityHoverCard(QtWidgets.QWidget):
     """Popup showing information about an entity.
 
-    Left side of the popup is a card with thumbnail and entity type,
-    without status so more of the thumbnail is visible. Right side shows
-    parents of the entity, its description and a grid of facts, including
-    the status, right under it. The description takes only as many
-    lines as it needs, the popup grows a little if all of them are used.
+    Left side of the popup is thumbnail of the entity, or icon of its type
+    if it does not have any. Right side shows label and type of the
+    entity, its description and a grid of facts right under it.
+    The description takes only as many lines as it needs, the popup grows
+    a little if all of them are used.
 
     Args:
         parent (QtWidgets.QWidget): Parent widget, the popup is a window
@@ -368,19 +492,33 @@ class EntityHoverCard(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
         self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
 
-        card = AYEntityCard(width=CARD_WIDTH, parent=self)
+        thumbnail_widget = _ThumbnailWidget(self)
 
         content_widget = QtWidgets.QWidget(self)
         content_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         content_widget.setFixedWidth(CONTENT_WIDTH)
 
-        path_label = AYLabel(
+        title_widget = QtWidgets.QWidget(content_widget)
+        title_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        label_label = AYLabel(
+            "",
+            bold=True,
+            elide_mode=QtCore.Qt.ElideRight,
+            parent=title_widget,
+        )
+        type_label = AYLabel(
             "",
             dim=True,
             rel_text_size=-1,
-            elide_mode=QtCore.Qt.ElideLeft,
-            parent=content_widget,
+            parent=title_widget,
         )
+        title_layout = QtWidgets.QHBoxLayout(title_widget)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.setSpacing(8)
+        title_layout.addWidget(label_label, 0)
+        title_layout.addWidget(type_label, 0)
+        title_layout.addStretch(1)
+
         description_widget = _ClampedText(DESCRIPTION_LINES, content_widget)
         description_widget.setFixedWidth(CONTENT_WIDTH)
 
@@ -410,9 +548,9 @@ class EntityHoverCard(QtWidgets.QWidget):
             facts_layout.setColumnStretch(column, 1)
 
         content_layout = QtWidgets.QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(0, 3, 0, 3)
+        content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(6)
-        content_layout.addWidget(path_label, 0)
+        content_layout.addWidget(title_widget, 0)
         content_layout.addWidget(description_widget, 0)
         content_layout.addWidget(facts_widget, 0)
         content_layout.addStretch(1)
@@ -420,7 +558,7 @@ class EntityHoverCard(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(MARGIN, MARGIN, MARGIN, MARGIN)
         layout.setSpacing(SPACING)
-        layout.addWidget(card, 0, QtCore.Qt.AlignTop)
+        layout.addWidget(thumbnail_widget, 0, QtCore.Qt.AlignTop)
         layout.addWidget(content_widget, 1)
 
         # Same colors as menus, the popup should look like part of the UI
@@ -441,8 +579,12 @@ class EntityHoverCard(QtWidgets.QWidget):
         avatar_cache = UserAvatarCache(self)
         avatar_cache.avatar_updated.connect(self._on_avatar_updated)
 
-        self._card = card
-        self._path_label = path_label
+        # Label of the entity is the most visible text
+        label_label.set_text_color(self._text_color.name())
+
+        self._thumbnail_widget = thumbnail_widget
+        self._label_label = label_label
+        self._type_label = type_label
         self._description_widget = description_widget
         self._content_widget = content_widget
         self._facts_widget = facts_widget
@@ -457,14 +599,12 @@ class EntityHoverCard(QtWidgets.QWidget):
             info (EntityHoverInfo): Information about the entity.
 
         """
-        card = self._card
-        card.header = info.label
-        card.title = info.type_name
-        card.title_icon = info.type_icon
-        card.placeholder_icon = info.type_icon
-        card.image_src = info.thumbnail_path
+        # Thumbnail is set separately, see 'set_thumbnail'
+        self._thumbnail_widget.set_placeholder_icon(info.type_icon)
+        self._thumbnail_widget.set_image(None)
 
-        self._path_label.setText(" / ".join(info.parents))
+        self._label_label.setText(info.label)
+        self._type_label.setText(info.type_name)
 
         # Empty lines would waste the limited space
         description = re.sub(r"\n\s*\n", "\n", info.description.strip())
@@ -487,23 +627,56 @@ class EntityHoverCard(QtWidgets.QWidget):
             widget.updateGeometry()
         self.setFixedSize(self.layout().sizeHint())
 
+    def get_thumbnail_size(self) -> QtCore.QSize:
+        """Size of image expected by 'set_thumbnail'."""
+        return self._thumbnail_widget.get_image_size()
+
+    def set_thumbnail(
+        self, image: QtGui.QImage | None, animated: bool = False
+    ) -> None:
+        """Change thumbnail of the entity.
+
+        Args:
+            image (QtGui.QImage | None): Thumbnail image, icon of entity
+                type is shown without it.
+            animated (bool): Fade the thumbnail in, used when the
+                thumbnail is loaded after the card was shown.
+
+        """
+        self._thumbnail_widget.set_image(image, animated)
+
     def _update_facts(self) -> None:
         for idx, fact_label in enumerate(self._fact_labels):
             if idx >= len(self._facts):
                 fact_label.setVisible(False)
                 continue
             fact = self._facts[idx]
-            icon = fact.icon
+            pixmap = None
             if fact.username:
                 # Avatar of the user is shown instead of the icon
                 pixmap = self._avatar_cache.pixmap(
                     fact.username, fact.user_full_name, AVATAR_SIZE
                 )
-                if pixmap is not None and not pixmap.isNull():
-                    icon = QtGui.QIcon(pixmap)
+            if pixmap is None or pixmap.isNull():
+                # Color of the dim text is used for icons without color,
+                #   and for colors too dark to be visible on the card
+                color = fact.color
+                if (
+                    not color
+                    or QtGui.QColor(color).lightnessF() < MIN_ICON_LIGHTNESS
+                ):
+                    color = fact_label.palette().color(
+                        QtGui.QPalette.Active,
+                        QtGui.QPalette.PlaceholderText,
+                    ).name()
+                pixmap = _get_icon_pixmap(
+                    fact.icon,
+                    color,
+                    FACT_ICON_SIZE,
+                    self.devicePixelRatioF(),
+                )
             fact_label.setText(fact.text)
-            fact_label.set_icon_color(fact.color)
-            fact_label.set_icon(icon)
+            fact_label.set_icon(QtGui.QIcon(pixmap))
             fact_label.setVisible(True)
 
     def _on_avatar_updated(self, username: str) -> None:
@@ -546,8 +719,10 @@ class _FetchTask(QtCore.QObject, QtCore.QRunnable):
 class EntityHoverCardHandler(QtCore.QObject):
     """Show hover card for items of an item view.
 
-    Information for the card is loaded in a thread shortly after the mouse
-    enters an item, which is earlier than the card is shown. The card is
+    Information and thumbnail for the card are loaded in threads shortly
+    after the mouse enters an item, which is earlier than the card is
+    shown. The card does not wait for the thumbnail, if it is not loaded
+    yet it is filled in when it is ready. The card is
     shown when the mouse stays on the item for tooltip wake up delay and
     is hidden when the mouse leaves the item or user interacts with
     the view.
@@ -559,6 +734,9 @@ class EntityHoverCardHandler(QtCore.QObject):
         id_role (int): Item role with entity id.
         info_getter (Callable[[str], EntityHoverInfo | None]): Function to
             receive information for entity id. Is called in a thread.
+        thumbnail_getter (Callable[[str], str | None] | None): Function to
+            receive path to thumbnail for entity id. Is called in
+            a thread.
 
     """
 
@@ -567,8 +745,11 @@ class EntityHoverCardHandler(QtCore.QObject):
         view: QtWidgets.QAbstractItemView,
         id_role: int,
         info_getter: Callable[[str], Optional[EntityHoverInfo]],
+        thumbnail_getter: Optional[Callable[[str], Optional[str]]] = None,
     ):
         super().__init__(view)
+        # Images are loaded in threads
+        _ImagesLoading.warm_up()
 
         fetch_timer = QtCore.QTimer(self)
         fetch_timer.setSingleShot(True)
@@ -590,12 +771,14 @@ class EntityHoverCardHandler(QtCore.QObject):
         self._view = view
         self._id_role = id_role
         self._info_getter = info_getter
+        self._thumbnail_getter = thumbnail_getter
 
         self._fetch_timer = fetch_timer
         self._show_timer = show_timer
         self._threadpool = threadpool
 
         self._card: EntityHoverCard | None = None
+        self._card_entity_id: str | None = None
         self._hover_id: str | None = None
         self._hover_index = QtCore.QPersistentModelIndex()
         self._show_requested = False
@@ -603,6 +786,8 @@ class EntityHoverCardHandler(QtCore.QObject):
 
         self._generation = 0
         self._info_by_id: dict[str, EntityHoverInfo | None] = {}
+        self._images_by_id: dict[str, QtGui.QImage | None] = {}
+        # Task ids of running tasks
         self._fetching: set[str] = set()
         self._tasks: dict[str, _FetchTask] = {}
 
@@ -610,6 +795,7 @@ class EntityHoverCardHandler(QtCore.QObject):
         """Forget loaded information, e.g. when the view was refreshed."""
         self._generation += 1
         self._info_by_id = {}
+        self._images_by_id = {}
         self._fetching = set()
         self.reset_hover()
 
@@ -632,12 +818,15 @@ class EntityHoverCardHandler(QtCore.QObject):
             bool: Card is shown.
 
         """
-        info = self._info_by_id.get(index.data(self._id_role))
+        entity_id = index.data(self._id_role)
+        info = self._info_by_id.get(entity_id)
         if info is None:
             return False
         if self._card is None:
             self._card = EntityHoverCard(self._view.window())
+        self._card_entity_id = entity_id
         self._card.set_info(info)
+        self._card.set_thumbnail(self._images_by_id.get(entity_id))
         self._card.move(self._get_card_pos(index, self._card.size()))
         self._card.show()
         return True
@@ -704,30 +893,67 @@ class EntityHoverCardHandler(QtCore.QObject):
 
     def _on_fetch_timeout(self) -> None:
         entity_id = self._hover_id
-        if (
-            not entity_id
-            or entity_id in self._info_by_id
-            or entity_id in self._fetching
-        ):
+        if not entity_id:
             return
-        self._fetching.add(entity_id)
-        task = _FetchTask(
-            f"{self._generation}|{entity_id}",
-            lambda: self._info_getter(entity_id),
-        )
-        self._tasks[task.id] = task
+        if entity_id not in self._info_by_id:
+            self._start_task(
+                "info", entity_id, lambda: self._info_getter(entity_id)
+            )
+        if (
+            self._thumbnail_getter is not None
+            and entity_id not in self._images_by_id
+        ):
+            self._start_task(
+                "thumbnail", entity_id, self._get_thumbnail_loader(entity_id)
+            )
+
+    def _get_thumbnail_loader(
+        self, entity_id: str
+    ) -> Callable[[], Optional[QtGui.QImage]]:
+        size = QtCore.QSize(THUMBNAIL_SIZE)
+        size *= self._view.devicePixelRatioF()
+        thumbnail_getter = self._thumbnail_getter
+
+        def _load_thumbnail() -> Optional[QtGui.QImage]:
+            path = thumbnail_getter(entity_id)
+            if not path:
+                return None
+            return _load_image(path, size)
+
+        return _load_thumbnail
+
+    def _start_task(
+        self, kind: str, entity_id: str, func: Callable[[], Any]
+    ) -> None:
+        task_id = f"{self._generation}|{kind}|{entity_id}"
+        if task_id in self._fetching:
+            return
+        self._fetching.add(task_id)
+        task = _FetchTask(task_id, func)
+        self._tasks[task_id] = task
         task.finished.connect(self._on_task_finished)
         self._threadpool.start(task)
 
     def _on_task_finished(self, task_id: str) -> None:
         task = self._tasks.pop(task_id)
-        generation, entity_id = task_id.split("|", 1)
+        generation, kind, entity_id = task_id.split("|", 2)
         if int(generation) != self._generation:
             return
-        self._fetching.discard(entity_id)
-        self._info_by_id[entity_id] = task.result
-        if entity_id == self._hover_id and self._show_requested:
-            self._show_hovered()
+        self._fetching.discard(task_id)
+        if kind == "info":
+            self._info_by_id[entity_id] = task.result
+            if entity_id == self._hover_id and self._show_requested:
+                self._show_hovered()
+            return
+
+        self._images_by_id[entity_id] = task.result
+        # Thumbnail was loaded after the card was shown
+        if (
+            self._card is not None
+            and self._card.isVisible()
+            and self._card_entity_id == entity_id
+        ):
+            self._card.set_thumbnail(task.result, animated=True)
 
     def _on_show_timeout(self) -> None:
         self._show_requested = True

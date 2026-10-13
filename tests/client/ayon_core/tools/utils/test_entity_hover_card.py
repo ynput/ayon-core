@@ -77,7 +77,6 @@ def _info(description="", facts_count=8):
         label="sh010",
         type_name="Shot",
         type_icon="movie",
-        parents=["shots", "sq01"],
         description=description,
         facts=[
             EntityHoverFact("timer", f"Fact {idx}")
@@ -88,7 +87,6 @@ def _info(description="", facts_count=8):
 
 def test_folder_info_starts_with_frames_and_fps():
     info = get_folder_hover_info(
-        "demo",
         _folder_entity(
             frameStart=1001,
             frameEnd=1050,
@@ -99,14 +97,11 @@ def test_folder_info_starts_with_frames_and_fps():
         ),
         _TypeItem("Shot", "movie"),
         _StatusItem("In progress", "PRG", "play_arrow", "#5bb8f5"),
-        "/path/to/thumbnail.jpg",
     )
 
     assert info.label == "sh010"
     assert info.type_icon == "movie"
-    assert info.parents == ["shots", "sq01"]
     assert info.description == "Hero shot"
-    assert info.thumbnail_path == "/path/to/thumbnail.jpg"
     assert [fact.text for fact in info.facts] == [
         "1001-1050 (50f)",
         "24 fps",
@@ -124,12 +119,9 @@ def test_folder_info_of_top_folder_without_items():
     folder_entity["path"] = "/assets"
     folder_entity["tags"] = []
 
-    info = get_folder_hover_info("demo", folder_entity)
+    info = get_folder_hover_info(folder_entity)
 
-    # Project is used when the folder does not have parents
-    assert info.parents == ["demo"]
     assert info.type_icon == "folder"
-    assert info.thumbnail_path == ""
     assert info.facts == []
 
 
@@ -141,7 +133,6 @@ def test_task_info_has_assignee_with_avatar(monkeypatch):
     )
 
     info = get_task_hover_info(
-        "demo",
         _task_entity(
             ["john", "jane"],
             frameStart=1001,
@@ -149,13 +140,11 @@ def test_task_info_has_assignee_with_avatar(monkeypatch):
             fps=25.0,
             priority="urgent",
         ),
-        "/shots/sq01/sh010",
         _TypeItem("Animation", "directions_run"),
         _StatusItem("In progress", "PRG", "play_arrow", "#5bb8f5"),
     )
 
     assert info.label == "Animation"
-    assert info.parents == ["shots", "sq01", "sh010"]
     assert [fact.text for fact in info.facts] == [
         "1001-1010 (10f)",
         "25 fps",
@@ -236,6 +225,85 @@ def test_card_shows_avatar_of_user(qtbot, task_queue):
     assert len(requested) == 1
     card._on_avatar_updated("john")
     assert len(requested) == 2
+
+
+@pytest.fixture
+def thumbnail_path(tmp_path, qapp):
+    image = QtGui.QImage(64, 64, QtGui.QImage.Format_ARGB32)
+    image.fill(QtGui.QColor("red"))
+    path = str(tmp_path / "thumbnail.png")
+    assert image.save(path)
+    return path
+
+
+def test_handler_loads_thumbnail_separately(
+    qtbot, task_queue, thumbnail_path
+):
+    _window, view, model = _create_view(qtbot)
+    blocker = threading.Event()
+    thread_ids = []
+
+    def _thumbnail_getter(entity_id):
+        thread_ids.append(threading.get_ident())
+        blocker.wait(10)
+        return thumbnail_path if entity_id == "a" else None
+
+    handler = EntityHoverCardHandler(
+        view, ENTITY_ID_ROLE, lambda _: _info(), _thumbnail_getter
+    )
+    index = model.index(0, 0)
+    view.entered.emit(index)
+    qtbot.waitUntil(lambda: "a" in handler._info_by_id, timeout=5000)
+
+    # Card is shown with placeholder while the thumbnail is loading
+    assert handler.show_for_index(index)
+    thumbnail_widget = handler._card._thumbnail_widget
+    assert thumbnail_widget._pixmap is None
+    assert thumbnail_widget._icon_name == "movie"
+
+    blocker.set()
+    qtbot.waitUntil(lambda: "a" in handler._images_by_id, timeout=5000)
+    assert thread_ids == [thread_ids[0]]
+    assert thread_ids[0] != threading.get_ident()
+    image = handler._images_by_id["a"]
+    assert image.size() == handler._card.get_thumbnail_size()
+    assert thumbnail_widget._pixmap is not None
+
+    # Loaded thumbnail is used right away for the next show
+    handler.reset_hover()
+    assert handler.show_for_index(index)
+    assert thumbnail_widget._pixmap is not None
+    assert thumbnail_widget._opacity == 1.0
+
+    # Entity without thumbnail keeps the placeholder
+    other_index = model.index(1, 0)
+    view.entered.emit(other_index)
+    qtbot.waitUntil(lambda: "b" in handler._images_by_id, timeout=5000)
+    assert handler._images_by_id["b"] is None
+    assert handler.show_for_index(other_index)
+    assert thumbnail_widget._pixmap is None
+
+
+def test_small_icons_are_not_cut(qapp):
+    # Icons that touch the edges when rendered directly at the small size
+    for icon_name in ("fiber_new", "timer", "task_alt"):
+        pixmap = entity_hover_card._get_icon_pixmap(
+            icon_name, "#ffffff", entity_hover_card.FACT_ICON_SIZE, 2.0
+        )
+        assert pixmap.devicePixelRatio() == 2.0
+        image = pixmap.toImage()
+        size = entity_hover_card.FACT_ICON_SIZE * 2
+        assert image.width() == image.height() == size
+        edge_alphas = [
+            QtGui.qAlpha(image.pixel(pos_x, pos_y))
+            for pos_x in range(size)
+            for pos_y in (0, size - 1)
+        ] + [
+            QtGui.qAlpha(image.pixel(pos_x, pos_y))
+            for pos_y in range(size)
+            for pos_x in (0, size - 1)
+        ]
+        assert max(edge_alphas) < 128, icon_name
 
 
 def _create_view(qtbot):

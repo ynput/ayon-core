@@ -567,7 +567,10 @@ class TasksWidget(QtWidgets.QWidget):
 
         # Card with task information is shown when a task is hovered
         hover_card_handler = EntityHoverCardHandler(
-            tasks_view, ITEM_ID_ROLE, self._get_hover_info
+            tasks_view,
+            ITEM_ID_ROLE,
+            self._get_hover_info,
+            self._get_hover_thumbnail_path,
         )
         tasks_model.refreshed.connect(hover_card_handler.clear_cache)
 
@@ -729,27 +732,21 @@ class TasksWidget(QtWidgets.QWidget):
         if not task_entity:
             return None
 
-        folder_path = None
-        if hasattr(controller, "get_folder_entity"):
-            folder_entity = controller.get_folder_entity(
-                project_name, task_entity["folderId"]
-            )
-            if folder_entity:
-                folder_path = folder_entity["path"]
-
-        thumbnail_path = None
-        if hasattr(controller, "get_thumbnail_paths"):
-            thumbnail_path = controller.get_thumbnail_paths(
-                project_name, "task", {task_id}
-            ).get(task_id)
         return get_task_hover_info(
-            project_name,
             task_entity,
-            folder_path,
             self._tasks_model.get_task_type_item(task_entity["taskType"]),
             self._tasks_model.get_status_item(task_entity["status"]),
-            thumbnail_path,
         )
+
+    def _get_hover_thumbnail_path(self, task_id: str) -> Optional[str]:
+        """Thumbnail for hover card of a task. Is called in a thread."""
+        controller = self._controller
+        project_name = self._tasks_model.get_last_project_name()
+        if not project_name or not hasattr(controller, "get_thumbnail_paths"):
+            return None
+        return controller.get_thumbnail_paths(
+            project_name, "task", {task_id}
+        ).get(task_id)
 
     def _on_tasks_model_refresh(self):
         if not self._set_expected_selection():
