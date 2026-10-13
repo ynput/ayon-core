@@ -14,6 +14,10 @@ from .style_mixin import StyleMixin
 
 log = logging.getLogger(__name__)
 
+# Maximum width of initials relative to the diameter of the avatar, wider
+#   initials would be drawn out of the circle
+INITIALS_MAX_WIDTH_RATIO = 0.85
+
 
 class AYUserImage(StyleMixin, QtWidgets.QLabel):
     Variants = AYUserImageVariants
@@ -144,15 +148,25 @@ class AYUserImage(StyleMixin, QtWidgets.QLabel):
 
             # Draw white initials
             painter.setPen(QtGui.QPen(fg_color))
+            initials = initials.upper()
             font = painter.font()
             pt_size = max(8, self._size // 2 - 3)
             font.setPointSizeF(pt_size)
+            # Use smaller font if the initials would not fit into the
+            #   circle, e.g. wide letters, more than 2 initials or a small
+            #   avatar
+            max_width = self._size * INITIALS_MAX_WIDTH_RATIO
+            text_width = QtGui.QFontMetricsF(font, self.pxm).horizontalAdvance(
+                initials
+            )
+            if text_width > max_width:
+                font.setPointSizeF(max(1.0, pt_size * max_width / text_width))
             painter.setFont(font)
 
             painter.drawText(
                 QtCore.QRect(0, 0, self._size, self._size),
                 QtCore.Qt.AlignmentFlag.AlignCenter,
-                initials.upper(),
+                initials,
             )
 
         # Draw outline

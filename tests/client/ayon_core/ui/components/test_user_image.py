@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+from qtpy.QtGui import QColor
 from qtpy.QtWidgets import QWidget
 
 from widget_test import WidgetTest
@@ -145,3 +147,36 @@ class UserImageMainTest(WidgetTest):
 
     def steps(self):
         return []
+
+
+def _color_distance(color: QColor, other: QColor) -> int:
+    return (
+        abs(color.red() - other.red())
+        + abs(color.green() - other.green())
+        + abs(color.blue() - other.blue())
+    )
+
+
+@pytest.mark.parametrize(
+    "full_name", ["Mia Wong", "William Wallace", "Jean Luc Picard"]
+)
+@pytest.mark.parametrize("size", [18, 24, 40])
+def test_initials_fit_into_avatar(qapp, full_name, size):
+    """Initials are not cut by the edge of the avatar image.
+
+    Wide initials used to be wider than the avatar, so the letters were
+    cut by left and right edge of the image.
+    """
+    widget = AYUserImage(full_name=full_name, size=size, outline=False)
+    fg_color, bg_color, _, _ = widget._get_colors()
+    image = widget.pxm.toImage()
+
+    for x in (0, image.width() - 1):
+        for y in range(image.height()):
+            color = image.pixelColor(x, y)
+            if color.alpha() < 128:
+                continue
+            assert (
+                _color_distance(color, bg_color)
+                <= _color_distance(color, fg_color)
+            ), f"Initials are drawn on the edge of the image at {x}x{y}"
