@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import datetime
+import re
 import threading
 from dataclasses import replace
 from typing import Any, Optional
 
 import pytest
 
+from ayon_core.host import IWorkfileHost, WorkfileInUse
 from ayon_core.pipeline.workfile import task_usage
 from ayon_core.pipeline.workfile.task_usage import (
     TaskUsageItem,
@@ -972,7 +974,7 @@ def test_tracker_skips_queries_if_not_used_in_project(monkeypatch):
     tracker = TaskUsageTracker(_MockHost())
     tracker.sync()
     tracker._process()
-    assert tracker._claimed is None
+    assert tracker._sessions == {}
 
 
 def _prepare_install(monkeypatch):
@@ -1090,3 +1092,187 @@ def test_endpoint():
     assert task_usage._get_endpoint(
         "my_project", "task-id", "session-id"
     ) == f"{base}/task-id/session-id"
+
+
+class _MultiWorkfilesHost(_MockHost):
+    """Host integration with more workfiles opened at the same time."""
+
+    def __init__(self):
+        super().__init__()
+        self.workfiles_in_use = []
+
+    def add(self, key, task_name, filename):
+        self.workfiles_in_use.append(WorkfileInUse(
+            "project", "/shots/sh010", task_name, f"/path/{filename}", key
+        ))
+
+    def get_workfiles_in_use(self):
+        return list(self.workfiles_in_use)
+
+
+@pytest.fixture
+def multi_tracker(tracker_calls, monkeypatch):
+    """Tracker of host with more opened workfiles.
+
+    Calls contain session id instead of the workfile.
+    """
+    _, _, calls, notices = tracker_calls
+    host = _MultiWorkfilesHost()
+    tracker = TaskUsageTracker(host)
+    _mock_task_context(tracker, monkeypatch)
+
+    def _claim_task(project_name, task_id, item, ttl):
+        calls.append(("claim", task_id, item.session_id, item.workfile))
+        if task_id == "in-use":
+            return [_item("other-user", username="artist2")]
+        return []
+
+    def _update_task_session(
+        project_name, task_id, item, ttl, heartbeat=False
+    ):
+        name = "heartbeat" if heartbeat else "update"
+        calls.append((name, task_id, item.session_id, item.workfile))
+
+    monkeypatch.setattr(task_usage, "claim_task", _claim_task)
+    monkeypatch.setattr(
+        task_usage, "update_task_session", _update_task_session
+    )
+    return host, tracker, calls, notices
+
+
+def test_workfile_session_id():
+    process_id = task_usage._get_session_id()
+    assert task_usage.get_workfile_session_id() == process_id
+    session_id = task_usage.get_workfile_session_id("document 1 / ž")
+    assert session_id != task_usage.get_workfile_session_id("document 2")
+    assert session_id == task_usage.get_workfile_session_id("document 1 / ž")
+    # Session id is valid for the server
+    assert re.match(r"^[a-zA-Z0-9_-]{1,64}$", session_id)
+
+    assert task_usage.is_current_process_session_id(process_id)
+    assert task_usage.is_current_process_session_id(session_id)
+    assert not task_usage.is_current_process_session_id("other-process")
+
+
+def test_default_workfiles_in_use():
+    """Default implementation is current workfile in current context."""
+    host = _MockHost()
+    assert IWorkfileHost.get_workfiles_in_use(host) == [
+        WorkfileInUse(
+            "project", "/shots/sh010", "anim", "/path/sh010_anim_v001.ma"
+        )
+    ]
+    host.workfile = None
+    (workfile_in_use,) = IWorkfileHost.get_workfiles_in_use(host)
+    assert workfile_in_use.filepath is None
+    assert workfile_in_use.key == ""
+
+
+def test_tracker_host_with_more_workfiles(multi_tracker, monkeypatch):
+    host, tracker, calls, _ = multi_tracker
+    monkeypatch.setattr(task_usage, "_get_session_id", lambda: "mine")
+    doc_1 = task_usage.get_workfile_session_id("doc-1")
+    doc_2 = task_usage.get_workfile_session_id("doc-2")
+    doc_3 = task_usage.get_workfile_session_id("doc-3")
+
+    # Two workfiles of the same task and one of a different task
+    host.add("doc-1", "anim", "sh010_anim_v001.ma")
+    host.add("doc-2", "anim", "sh010_anim_v002.ma")
+    host.add("doc-3", "layout", "sh010_layout_v001.ma")
+    _sync(tracker)
+    assert calls == [
+        ("claim", "anim", doc_1, "sh010_anim_v001.ma"),
+        ("claim", "anim", doc_2, "sh010_anim_v002.ma"),
+        ("claim", "layout", doc_3, "sh010_layout_v001.ma"),
+    ]
+
+    # A workfile is saved under a different name, its session is kept
+    host.workfiles_in_use[1] = WorkfileInUse(
+        "project", "/shots/sh010", "anim", "/path/sh010_anim_v003.ma", "doc-2"
+    )
+    _sync(tracker)
+    assert calls[3:] == [("update", "anim", doc_2, "sh010_anim_v003.ma")]
+
+    # A workfile is closed, the other workfile of the task stays
+    del host.workfiles_in_use[0]
+    _sync(tracker)
+    assert calls[4:] == [("release", "anim", doc_1)]
+
+    # A workfile is saved to a different task
+    host.workfiles_in_use[0] = WorkfileInUse(
+        "project", "/shots/sh010", "comp", "/path/sh010_comp_v001.ma", "doc-2"
+    )
+    _sync(tracker)
+    assert calls[5:] == [
+        ("release", "anim", doc_2),
+        ("claim", "comp", doc_2, "sh010_comp_v001.ma"),
+    ]
+
+    # All workfiles are released when the application is closed
+    tracker.stop()
+    assert sorted(calls[7:]) == [
+        ("release", "comp", doc_2),
+        ("release", "layout", doc_3),
+    ]
+    assert tracker._sessions == {}
+
+
+def test_tracker_host_without_workfiles(multi_tracker):
+    """Host integration can disable the tracking."""
+    host, tracker, calls, _ = multi_tracker
+
+    _sync(tracker)
+    assert calls == []
+
+    host.add("doc-1", "anim", "sh010_anim_v001.ma")
+    _sync(tracker)
+    host.workfiles_in_use = []
+    _sync(tracker)
+    assert [call[0] for call in calls] == ["claim", "release"]
+
+
+def test_tracker_heartbeat_of_more_workfiles(multi_tracker, current_time):
+    host, tracker, calls, _ = multi_tracker
+    interval = TaskUsageSettings(True).heartbeat_interval
+
+    host.add("doc-1", "anim", "sh010_anim_v001.ma")
+    _sync(tracker)
+    current_time[0] += interval / 2
+    host.add("doc-2", "layout", "sh010_layout_v001.ma")
+    _sync(tracker)
+    assert [call[0] for call in calls] == ["claim", "claim"]
+    # First workfile needs a heartbeat sooner
+    assert tracker._get_wait_seconds() == interval / 2
+
+    current_time[0] += interval / 2
+    tracker.process()
+    assert [call[:2] for call in calls[2:]] == [("heartbeat", "anim")]
+    assert tracker._get_wait_seconds() == interval / 2
+
+    current_time[0] += interval / 2
+    tracker.process()
+    assert [call[:2] for call in calls[3:]] == [("heartbeat", "layout")]
+
+
+def test_tracker_notifies_once_about_other_users(multi_tracker):
+    """Two workfiles of a task in use are claimed at the same time."""
+    host, tracker, calls, notices = multi_tracker
+
+    host.add("doc-1", "in-use", "sh010_anim_v001.ma")
+    host.add("doc-2", "in-use", "sh010_anim_v002.ma")
+    _sync(tracker)
+    assert [call[0] for call in calls] == ["claim", "claim"]
+    assert len(notices) == 1
+
+
+def test_sync_task_usage(monkeypatch):
+    calls = []
+    monkeypatch.setattr(task_usage, "_tracker", None)
+    # Tracking is not installed
+    task_usage.sync_task_usage()
+
+    tracker = TaskUsageTracker(_MockHost())
+    monkeypatch.setattr(tracker, "sync", lambda: calls.append(1))
+    monkeypatch.setattr(task_usage, "_tracker", tracker)
+    task_usage.sync_task_usage()
+    assert calls == [1]
