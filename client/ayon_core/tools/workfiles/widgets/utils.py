@@ -29,6 +29,16 @@ class WorkfilesDelegate(TreeViewItemDelegate):
     def __init__(self, avatar_cache, parent=None, style_model=None):
         super().__init__(parent=parent, style_model=style_model)
         self._avatar_cache = avatar_cache
+        self._in_use_indicator = None
+
+    def set_in_use_indicator(self, in_use_indicator):
+        """Show which workfiles are in use on the avatars.
+
+        Args:
+            in_use_indicator (TaskInUseIndicator): Object that knows which
+                workfiles are opened in a running application.
+        """
+        self._in_use_indicator = in_use_indicator
 
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
@@ -43,6 +53,8 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                 index.data(USERNAME_ROLE),
                 option.text,
             )
+            if self._in_use_indicator is not None:
+                self._in_use_indicator.decorate_avatar(option, index)
 
         elif index.column() == 2:
             # Column 2 exposes timestamp through DisplayRole in WorkfilesModel.

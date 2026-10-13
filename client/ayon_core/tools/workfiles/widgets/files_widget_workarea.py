@@ -7,6 +7,7 @@ from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
+from ayon_core.tools.utils.task_in_use_indicator import TaskInUseIndicator
 from ayon_core.ui.components import AYContainer, AYTreeView
 from ayon_core.ui.style_types import get_ayon_style
 
@@ -332,6 +333,12 @@ class WorkAreaFilesWidget(AYContainer):
         )
         view.setItemDelegate(work_files_delegate)
 
+        # Session of this application is not shown, the user knows about it
+        in_use_indicator = TaskInUseIndicator(
+            view, 1, USERNAME_ROLE, AUTHOR_ROLE, skip_current_session=True
+        )
+        work_files_delegate.set_in_use_indicator(in_use_indicator)
+
         # Default to a wider first filename column it is what we mostly care
         # about and the date modified is relatively small anyway.
         view.setColumnWidth(0, 330)
@@ -343,6 +350,7 @@ class WorkAreaFilesWidget(AYContainer):
         view.double_clicked.connect(self._on_mouse_double_click)
         view.customContextMenuRequested.connect(self._on_context_menu)
         model.refreshed.connect(self._on_model_refresh)
+        model.refreshed.connect(self._update_in_use_context)
 
         controller.register_event_callback(
             "expected_selection_changed",
@@ -353,6 +361,7 @@ class WorkAreaFilesWidget(AYContainer):
         self._model = model
         self._proxy_model = proxy_model
         self._work_files_delegate = work_files_delegate
+        self._in_use_indicator = in_use_indicator
         self._controller = controller
 
         self._published_mode = False
@@ -463,6 +472,14 @@ class WorkAreaFilesWidget(AYContainer):
         self._controller.expected_workfile_selected(
             event["folder"]["id"], event["task"]["name"], workfile_name
         )
+
+    def _update_in_use_context(self):
+        """Request sessions of selected task after workfiles are shown."""
+        project_name = task_id = None
+        if not self._published_mode:
+            project_name = self._controller.get_current_project_name()
+            task_id = self._controller.get_selected_task_id()
+        self._in_use_indicator.set_context(project_name, task_id)
 
     def _on_model_refresh(self):
         if not self._change_selection_on_refresh:
