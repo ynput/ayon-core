@@ -7,6 +7,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.common_models import ProjectItem
+from ayon_core.tools.utils import projects_widget
 from ayon_core.tools.utils.projects_widget import (
     PROJECT_NAME_ROLE,
     ProjectsCombobox,
@@ -198,15 +199,42 @@ def test_projects_combobox_shows_thumbnails_in_popup(
         combobox.hidePopup()
 
 
-def test_projects_widget_with_controller_without_thumbnails(qtbot, qapp):
+def test_controller_without_thumbnails_uses_own_model(
+    qtbot, task_queue, thumbnail_path, monkeypatch
+):
+    """Controller does not implement 'get_thumbnail_paths'.
+
+    That is the case for tools of other addons, e.g. tray publisher.
+    """
+    models = []
+
+    class _ThumbnailsModel(_Controller):
+        def __init__(self):
+            super().__init__([], thumbnail_path)
+            self.reset_count = 0
+            models.append(self)
+
+        def reset(self):
+            self.reset_count += 1
+
+    monkeypatch.setattr(projects_widget, "ThumbnailsModel", _ThumbnailsModel)
+
     controller = _ControllerWithoutThumbnails(_project_items())
     widget = ProjectsWidget(controller)
     qtbot.addWidget(widget)
+    widget.resize(300, 300)
     widget.show()
     qtbot.waitExposed(widget)
     with qtbot.waitSignal(widget.refreshed):
         widget.refresh()
+    _wait_for_thumbnails(qtbot, widget)
 
-    assert not widget._thumbnails_painter.is_enabled()
-    widget.set_thumbnails_visible(True)
+    assert len(models) == 1
+    assert {entity_type for _, entity_type, _ in models[0].calls} == {
+        "project"
+    }
+    # Changed thumbnails are received on refresh
+    assert models[0].reset_count == 1
+
+    widget.set_thumbnails_visible(False)
     assert not widget._thumbnails_painter.is_enabled()

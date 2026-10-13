@@ -9,6 +9,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.common_models import (
     ProjectItem,
+    ThumbnailsModel,
     PROJECTS_MODEL_SENDER,
 )
 from ayon_core.ui.components import AYComboBox, AYTreeView
@@ -51,9 +52,10 @@ class ProjectItemType:
 class AbstractProjectController(ABC):
     """Controller of projects widgets.
 
-    Thumbnails of projects are shown if the controller also implements
-    'get_thumbnail_paths' (see 'ThumbnailsModel' in
-    'ayon_core.tools.common_models').
+    Thumbnails of projects are received using 'get_thumbnail_paths' if
+    the controller implements it (see 'ThumbnailsModel' in
+    'ayon_core.tools.common_models'), otherwise the widgets receive them
+    on their own.
     """
 
     @abstractmethod
@@ -78,6 +80,50 @@ class AbstractProjectController(ABC):
     @abstractmethod
     def get_expected_selection_data(self) -> "ExpectedSelectionData":
         pass
+
+
+class _ProjectThumbnails:
+    """Project thumbnails for controllers that do not provide them.
+
+    Thumbnails of projects do not depend on a state of a tool, so projects
+    widgets can show them even in tools whose controller does not implement
+    'get_thumbnail_paths', e.g. in tools of other addons.
+    """
+
+    def __init__(self) -> None:
+        self._thumbnails_model = ThumbnailsModel()
+
+    def get_thumbnail_paths(
+        self,
+        project_name: Optional[str],
+        entity_type: str,
+        entity_ids: set[str],
+    ) -> dict[str, Optional[str]]:
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids
+        )
+
+    def reset(self) -> None:
+        self._thumbnails_model.reset()
+
+
+def _create_thumbnails_painter(
+    view: QtWidgets.QAbstractItemView,
+    controller: AbstractProjectController,
+) -> tuple[EntityThumbnailsPainter, Optional[_ProjectThumbnails]]:
+    """Create painter of project thumbnails for a view.
+
+    Returns:
+        Thumbnails painter and object providing the thumbnails, if they
+            are not provided by the controller.
+    """
+    project_thumbnails = None
+    if not hasattr(controller, "get_thumbnail_paths"):
+        project_thumbnails = controller = _ProjectThumbnails()
+    thumbnails_painter = EntityThumbnailsPainter(
+        view, controller, "project", PROJECT_NAME_ROLE
+    )
+    return thumbnails_painter, project_thumbnails
 
 
 class ProjectsQtModel(QtGui.QStandardItemModel):
@@ -695,11 +741,8 @@ class ProjectsCombobox(QtWidgets.QWidget):
 
         # Thumbnails are painted in the popup on the left side of pin icon,
         #   they are requested when the popup is shown for the first time
-        thumbnails_painter = EntityThumbnailsPainter(
-            projects_combobox.view(),
-            controller,
-            "project",
-            PROJECT_NAME_ROLE,
+        thumbnails_painter, project_thumbnails = _create_thumbnails_painter(
+            projects_combobox.view(), controller
         )
         combobox_delegate.set_thumbnails_painter(thumbnails_painter)
 
@@ -738,6 +781,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._projects_model = projects_model
         self._projects_proxy_model = projects_proxy_model
         self._thumbnails_painter = thumbnails_painter
+        self._project_thumbnails = project_thumbnails
 
     def refresh(self):
         self._projects_model.refresh()
@@ -745,8 +789,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
     def set_thumbnails_visible(self, visible: bool):
         """Show or hide project thumbnails in the popup.
 
-        Thumbnails are visible by default, if the controller implements
-        'get_thumbnail_paths'.
+        Thumbnails are visible by default.
         """
         self._thumbnails_painter.set_enabled(visible)
 
@@ -846,6 +889,9 @@ class ProjectsCombobox(QtWidgets.QWidget):
         self._combobox_delegate.set_pin_space_reserved(
             self._projects_model.has_pinned_projects()
         )
+        if self._project_thumbnails is not None:
+            # Controller would reset its thumbnails on refresh
+            self._project_thumbnails.reset()
         self._thumbnails_painter.set_outdated()
         if self._expected_selection:
             self._set_expected_selection()
@@ -931,8 +977,8 @@ class ProjectsWidget(QtWidgets.QWidget):
         projects_view.setItemDelegate(projects_delegate)
 
         # Thumbnails are painted on the left side of pin icon
-        thumbnails_painter = EntityThumbnailsPainter(
-            projects_view, controller, "project", PROJECT_NAME_ROLE
+        thumbnails_painter, project_thumbnails = _create_thumbnails_painter(
+            projects_view, controller
         )
         projects_delegate.set_thumbnails_painter(thumbnails_painter)
 
@@ -963,6 +1009,7 @@ class ProjectsWidget(QtWidgets.QWidget):
         self._projects_proxy_model = projects_proxy_model
         self._projects_delegate = projects_delegate
         self._thumbnails_painter = thumbnails_painter
+        self._project_thumbnails = project_thumbnails
 
     def refresh(self):
         self._projects_model.refresh()
@@ -970,8 +1017,7 @@ class ProjectsWidget(QtWidgets.QWidget):
     def set_thumbnails_visible(self, visible: bool):
         """Show or hide project thumbnails.
 
-        Thumbnails are visible by default, if the controller implements
-        'get_thumbnail_paths'.
+        Thumbnails are visible by default.
         """
         self._thumbnails_painter.set_enabled(visible)
 
@@ -1018,6 +1064,9 @@ class ProjectsWidget(QtWidgets.QWidget):
         self._projects_delegate.set_pin_space_reserved(
             self._projects_model.has_pinned_projects()
         )
+        if self._project_thumbnails is not None:
+            # Controller would reset its thumbnails on refresh
+            self._project_thumbnails.reset()
         self._thumbnails_painter.set_outdated()
         self.refreshed.emit()
 
