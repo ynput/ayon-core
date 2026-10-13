@@ -262,7 +262,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
             version_up_widget, margin=0, spacing=2
         )
         for text in (
-            "The same workfile is opened by the other user.",
+            "This file is currently open by another user.",
             "Version up to work in a new version of the workfile.",
         ):
             version_up_layout.addWidget(
