@@ -349,7 +349,7 @@ class ReviewInspector(AYContainer):
             pname = d.get("project_name", "")
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
-            version_ids.append(vid)
+            version_ids.append(d.get("_action_version_id") or vid)
 
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses

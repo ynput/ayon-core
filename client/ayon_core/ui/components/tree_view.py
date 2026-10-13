@@ -460,6 +460,25 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         h = int(self._tv_styles()["base"].get("item-height", 28))
         return QSize(option.rect.width(), h)
 
+    def _get_reserved_right_width(
+        self,
+        option: QStyleOptionViewItem,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> int:
+        """Width on the right side of the item kept free of icon and text.
+
+        Allows subclasses to paint additional content on the far right of
+        the item without overlapping the text, which is elided earlier.
+
+        Args:
+            option: The initialized style option for the item.
+            index: The model index of the item.
+
+        Returns:
+            Reserved width in pixels.
+        """
+        return 0
+
     def paint(
         self,
         painter: QPainter,
@@ -475,6 +494,7 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
         """
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
@@ -529,6 +549,9 @@ class TreeViewItemDelegate(StyleMixin, QStyledItemDelegate):
             item_padding[0],
             -item_padding[1],
             -item_padding[0],
+        )
+        content_rect.setRight(
+            content_rect.right() - self._get_reserved_right_width(opt, index)
         )
 
         icon = opt.icon
