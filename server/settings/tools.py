@@ -333,10 +333,20 @@ class LoaderActionsModel(BaseSettingsModel):
         title="Open file action",
         description="Show the action for opening a published file.",
     )
-    DeleteOldVersions: bool = SettingsField(
+    delete_old_versions: bool = SettingsField(
         True,
         title="Delete old versions",
         description="Show the action for deleting old versions.",
+    )
+    delete_selected_versions: bool = SettingsField(
+        True,
+        title="Delete selected versions",
+        description="Show the action for deleting selected versions.",
+    )
+    calculate_versions_size: bool = SettingsField(
+        True,
+        title="Calculate versions size",
+        description="Show the action for calculating versions size.",
     )
     create_hero_version: bool = SettingsField(
         True,
@@ -721,6 +731,8 @@ DEFAULT_TOOLS_VALUES = {
             "copy_file": True,
             "open_file": True,
             "delete_old_versions": True,
+            "delete_selected_versions": True,
+            "calculate_versions_size": True,
             "create_hero_version": True
         },
         "product_type_filter_profiles": []
