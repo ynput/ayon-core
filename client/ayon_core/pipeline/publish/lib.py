@@ -1443,8 +1443,8 @@ def get_file_collections(
         patterns=[pattern]
     )
 
-    # Return if collection was found or there is only a single file
-    if collections or len(files) == 1:
+    # Return a complete custom-pattern result, or the single-file result.
+    if len(files) == 1 or (collections and not remainders):
         return collections, remainders
 
     # If custom pattern yields no collections,
