@@ -677,10 +677,12 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
         self._click_timer = None
 
-        # Catch activate event for left click if not on MacOS
+        # Catch activate event for left click only on Windows
         #   - MacOS has this ability by design and is harder to modify this
         #       behavior
-        if platform.system().lower() == "darwin":
+        #   - On Linux the tray is handled by the desktop environment, which
+        #       may show the menu on its own and Qt can't place it reliably
+        if platform.system().lower() != "windows":
             return
 
         self.activated.connect(self.on_systray_activated)
@@ -722,12 +724,6 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         menu.adjustSize()
 
     def _get_menu_pos(self, pos):
-        # Custom placement is needed only on Windows. On Linux 'popup'
-        #   places the menu correctly on its own (panels can be on any
-        #   side of the screen) and the window manager may move it anyway.
-        if platform.system().lower() != "windows":
-            return pos
-
         menu = self.contextMenu()
         screen = QtGui.QGuiApplication.screenAt(pos)
         if screen is None:
