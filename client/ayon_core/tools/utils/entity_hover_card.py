@@ -513,7 +513,7 @@ class EntityHoverCard(QtWidgets.QWidget):
         label_label = AYLabel(
             "",
             bold=True,
-            rel_text_size=1,
+            rel_text_size=3,
             elide_mode=QtCore.Qt.ElideRight,
             parent=title_widget,
         )
