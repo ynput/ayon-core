@@ -17,7 +17,10 @@ from ayon_core.ui.components import (
 from ayon_core.ui.components.user_image import AYUserImage
 
 if typing.TYPE_CHECKING:
-    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
+    from ayon_core.pipeline.workfile.task_usage import (
+        TaskInUseNotice,
+        TaskUsageItem,
+    )
 
 log = logging.getLogger(__name__)
 
@@ -187,14 +190,14 @@ class _SessionWidget(QtWidgets.QWidget):
         if opened_at is not None:
             labels.append(f"Opened {get_time_ago_label(opened_at, now)}")
 
-        # Session reports itself when a workfile is opened or saved,
-        #   but not more often than once per refresh interval
+        # Time of last activity is changed when a workfile is opened
+        #   or saved, heartbeats of the session do not change it
         updated_at = item.get_updated_at()
         if updated_at is not None and (
             opened_at is None
             or updated_at - opened_at >= MIN_SEEN_DIFFERENCE
         ):
-            labels.append(f"Last seen {get_time_ago_label(updated_at, now)}")
+            labels.append(f"Last active {get_time_ago_label(updated_at, now)}")
         return labels
 
 
@@ -395,3 +398,74 @@ def show_task_in_use_notice(
 
     QtCore.QTimer.singleShot(delay, _show)
     return True
+
+
+class TaskInUseNotifier(QtCore.QObject):
+    """Show notices about task in use requested from other threads.
+
+    Task in-use tracking does requests to the server in a background
+    thread, where UI can't be shown. The notice is passed with a queued
+    signal to the thread of this object, which should be the thread of Qt
+    application. The notice is shown when the event loop of the
+    application is processed.
+    """
+    _notice_requested = QtCore.Signal(object)
+
+    def __init__(self, parent: QtCore.QObject | None = None):
+        super().__init__(parent)
+        self._notice_requested.connect(
+            self._on_notice_request, QtCore.Qt.QueuedConnection
+        )
+
+    def request_notice(self, notice: TaskInUseNotice) -> None:
+        """Request to show a notice, can be called from any thread."""
+        self._notice_requested.emit(notice)
+
+    def _on_notice_request(self, notice: TaskInUseNotice) -> None:
+        from ayon_core.pipeline.workfile.task_usage import (
+            acknowledge_task_usage_items,
+        )
+
+        try:
+            # User is asked in the Workfiles tool if the notice can't be
+            #   shown
+            if show_task_in_use_notice(
+                notice.items,
+                notice.user_full_names,
+                version_up_callback=notice.version_up_callback,
+            ):
+                acknowledge_task_usage_items(notice.items)
+        except Exception:
+            log.warning("Failed to show task in-use notice.", exc_info=True)
+
+
+_notifier = None
+
+
+def install_task_in_use_notifier() -> TaskInUseNotifier:
+    """Show notices of task in-use tracking in the application.
+
+    Must be called from the main thread of the application, the notices
+    are shown in the thread of Qt application.
+
+    Returns:
+        TaskInUseNotifier: Object that is showing the notices.
+
+    """
+    global _notifier
+
+    if _notifier is not None:
+        return _notifier
+
+    from ayon_core.pipeline.workfile.task_usage import (
+        register_task_in_use_notice_callback,
+    )
+
+    notifier = TaskInUseNotifier()
+    app = QtCore.QCoreApplication.instance()
+    if app is not None and notifier.thread() is not app.thread():
+        notifier.moveToThread(app.thread())
+
+    register_task_in_use_notice_callback(notifier.request_notice)
+    _notifier = notifier
+    return notifier

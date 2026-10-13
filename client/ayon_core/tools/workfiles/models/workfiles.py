@@ -138,7 +138,7 @@ class WorkfilesModel:
             if not settings.enabled:
                 return []
             return get_other_users_task_usage_items(
-                project_name, task_id, settings.stale_timeout_hours
+                project_name, task_id
             )
         except Exception:
             self._log.warning(
