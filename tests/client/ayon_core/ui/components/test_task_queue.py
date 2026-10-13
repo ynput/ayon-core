@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import pytest
@@ -11,6 +12,41 @@ from ayon_core.ui.components.task_queue import AsyncTask, AsyncTaskQueue
 
 def _failing_function() -> None:
     raise ValueError("boom")
+
+
+class _SlowStartQueue(AsyncTaskQueue):
+    """Queue with dispatch loop that begins after the stop was requested.
+
+    Simulates a thread that did not get to run before 'stop' is called.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._stop_called = threading.Event()
+
+    def run(self) -> None:
+        self._stop_called.wait(5)
+        super().run()
+
+    def wait(self, *args: Any) -> bool:
+        self._stop_called.set()
+        return super().wait(*args)
+
+
+def test_stop_right_after_start_stops_dispatch_loop(qtbot) -> None:
+    """A stop requested before the dispatch loop begins is not lost.
+
+    The dispatch loop ran forever when it began after 'stop' was called,
+    and the thread left running crashed the interpreter on its exit.
+    """
+    queue = _SlowStartQueue()
+    queue.start()
+    try:
+        queue.stop()
+        assert not queue.isRunning()
+    finally:
+        # Do not leave the thread running if the test fails
+        queue.stop()
 
 
 def test_failed_task_delivers_callback(qtbot) -> None:
