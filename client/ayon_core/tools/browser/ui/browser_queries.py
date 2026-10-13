@@ -7,8 +7,8 @@ from typing import Any
 
 from ayon_core.tools.browser.server_capabilities import (
     get_server_products_sort_options,
+    get_server_query_arguments,
     get_server_versions_sort_options,
-    server_supports_representation_filter,
 )
 
 
@@ -20,10 +20,8 @@ query GetVersions(
   $versionFilter: String,
   $productFilter: String,
   $taskFilter: String,
-  $folderFilter: String,
-  __REPRESENTATION_FILTER_VARIABLE__
+  __OPTIONAL_VARIABLES__
   $featuredOnly: [String!],
-  $latestPerFolder: Boolean,
   $hasReviewables: Boolean,
   $folderIds: [String!],
   $includeFolderChildren: Boolean,
@@ -41,10 +39,8 @@ query GetVersions(
       filter: $versionFilter
       productFilter: $productFilter
       taskFilter: $taskFilter
-      folderFilter: $folderFilter
-      __REPRESENTATION_FILTER_ARGUMENT__
+      __OPTIONAL_ARGUMENTS__
       featuredOnly: $featuredOnly
-      latestPerFolder: $latestPerFolder
       hasReviewables: $hasReviewables
       folderIds: $folderIds
       includeFolderChildren: $includeFolderChildren
@@ -87,13 +83,11 @@ query GetVersionGroupCounts(
   $versionFilter: String,
   $productFilter: String,
   $taskFilter: String,
-  $folderFilter: String,
-  __REPRESENTATION_FILTER_VARIABLE__
+  __OPTIONAL_VARIABLES__
   $folderIds: [String!],
   $versionIds: [String!],
   $includeFolderChildren: Boolean,
   $featuredOnly: [String!],
-  $latestPerFolder: Boolean,
   $hasReviewables: Boolean,
   $search: String,
   $targets: [MetricTargetInput!]
@@ -105,12 +99,10 @@ query GetVersionGroupCounts(
       filter: $versionFilter
       productFilter: $productFilter
       taskFilter: $taskFilter
-      folderFilter: $folderFilter
-      __REPRESENTATION_FILTER_ARGUMENT__
+      __OPTIONAL_ARGUMENTS__
       folderIds: $folderIds
       includeFolderChildren: $includeFolderChildren
       featuredOnly: $featuredOnly
-      latestPerFolder: $latestPerFolder
       hasReviewables: $hasReviewables
       search: $search
     ) {
@@ -139,30 +131,65 @@ _GROUP_COUNTS_PRODUCT_SELECTION = """\
 """
 
 
-def _resolve_representation_filter(query: str) -> str:
-    """Add or strip the ``representationFilter`` query argument.
+#: Arguments of the versions resolver that only newer servers accept,
+#: with the type of the variable passed to them. A server rejects a
+#: query using an argument it does not know, even with an empty value.
+_OPTIONAL_VERSIONS_ARGUMENTS: dict[str, str] = {
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    #   Move these into the query templates.
+    "folderFilter": "String",
+    "latestPerFolder": "Boolean",
+    # TODO: Backwards compatibility for AYON server < 1.16.7.
+    #   Remove this once 1.16.7 is the minimum supported server.
+    #   Move this into the query templates.
+    "representationFilter": "String",
+}
 
-    Servers up to 1.16.6 reject the argument outright, even when its
-    value is empty, so it is only part of the query on servers whose
-    versions resolver has it. A ``representationFilter`` variable sent
-    along with a query that does not declare it is ignored.
+#: Same as `_OPTIONAL_VERSIONS_ARGUMENTS`, for the products resolver.
+_OPTIONAL_PRODUCTS_ARGUMENTS: dict[str, str] = {
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    #   Move this into the query template.
+    "folderFilter": "String",
+}
+
+
+def _resolve_optional_arguments(
+    query: str,
+    optional_arguments: dict[str, str],
+    server_arguments: frozenset[str],
+) -> str:
+    """Add the optional query arguments the server accepts.
+
+    Arguments the server does not have are left out of the query. A
+    variable sent along with a query that does not declare it is
+    ignored, so the variables don't have to match.
 
     Args:
-        query: Query template containing the representation markers.
+        query: Query template containing the optional markers.
+        optional_arguments: Variable type by optional argument name.
+        server_arguments: Arguments the server's resolver accepts.
 
     Returns:
         The query with the markers resolved.
     """
-    if server_supports_representation_filter():
-        variable = "  $representationFilter: String,\n"
-        argument = "      representationFilter: $representationFilter\n"
-    else:
-        variable = argument = ""
-    query = query.replace(
-        "  __REPRESENTATION_FILTER_VARIABLE__\n", variable
-    )
-    return query.replace(
-        "      __REPRESENTATION_FILTER_ARGUMENT__\n", argument
+    variables = arguments = ""
+    for name, variable_type in optional_arguments.items():
+        if name not in server_arguments:
+            continue
+        variables += f"  ${name}: {variable_type},\n"
+        arguments += f"      {name}: ${name}\n"
+    query = query.replace("  __OPTIONAL_VARIABLES__\n", variables)
+    return query.replace("      __OPTIONAL_ARGUMENTS__\n", arguments)
+
+
+def _resolve_optional_versions_arguments(query: str) -> str:
+    """Add the optional versions arguments the server accepts."""
+    return _resolve_optional_arguments(
+        query,
+        _OPTIONAL_VERSIONS_ARGUMENTS,
+        get_server_query_arguments("versions"),
     )
 
 
@@ -178,7 +205,7 @@ def get_version_group_counts_query(include_product: bool = False) -> str:
         "__PRODUCT_SELECTION__",
         _GROUP_COUNTS_PRODUCT_SELECTION if include_product else "",
     )
-    return _resolve_representation_filter(query)
+    return _resolve_optional_versions_arguments(query)
 
 
 def get_versions_query(column_keys: set[str] | None = None) -> str:
@@ -279,7 +306,7 @@ def get_versions_query(column_keys: set[str] | None = None) -> str:
     query = GET_VERSIONS_QUERY
     for marker, value in replacements.items():
         query = query.replace(marker, value)
-    return _resolve_representation_filter(query)
+    return _resolve_optional_versions_arguments(query)
 
 
 GET_PRODUCTS_QUERY = """
@@ -289,7 +316,7 @@ query GetProducts(
   $productFilter: String,
   $versionFilter: String,
   $taskFilter: String,
-  $folderFilter: String,
+  __OPTIONAL_VARIABLES__
   $search: String,
   $includeFolderChildren: Boolean,
   $featuredVersionOrder: [String!],
@@ -305,7 +332,7 @@ query GetProducts(
       filter: $productFilter,
       versionFilter: $versionFilter,
       taskFilter: $taskFilter,
-      folderFilter: $folderFilter,
+      __OPTIONAL_ARGUMENTS__
       search: $search,
       includeFolderChildren: $includeFolderChildren,
       after: $after,
@@ -338,6 +365,7 @@ query GetProducts(
             updatedAt
             version
             featuredVersionType
+            heroVersionId
           }
         }
         cursor
@@ -346,6 +374,16 @@ query GetProducts(
   }
 }
 """
+
+
+def get_products_query() -> str:
+    """Build the products query for the arguments the server accepts."""
+    return _resolve_optional_arguments(
+        GET_PRODUCTS_QUERY,
+        _OPTIONAL_PRODUCTS_ARGUMENTS,
+        get_server_query_arguments("products"),
+    )
+
 
 #: Maps table column keys to valid GraphQL ``sortBy`` values accepted by
 #: the AYON versions resolver. The combined Product/Version column is
@@ -367,6 +405,9 @@ COLUMN_TO_SORT_BY: dict[str, str] = {
     "comment": "attrib.comment",
 }
 
+# TODO: Backwards compatibility for AYON server < 1.15.5.
+#   Remove this once 1.15.5 is the minimum supported server.
+#   'productBaseType' is the only one of these it does not have.
 #: Maps table column keys to ``sortBy`` values that only newer servers
 #: accept (the server rejects unknown values), matching the frontend's
 #: mapping. They are used only when the server lists them, see
