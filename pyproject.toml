@@ -46,6 +46,7 @@ test = [
     "pytest-timeout",
     "pytest-qt",
     "pytest-regressions[image]",
+    "usd-core",
     "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
 ]
 
@@ -85,4 +86,5 @@ markers = [
     "slow: Slow tests",
     "server: Tests that require a running AYON server",
     "optional: Tests excluded from the default test run",
+    "server_compat(version): Tests of a fallback for AYON servers up to the given version, to remove once those servers are not supported anymore",
 ]
