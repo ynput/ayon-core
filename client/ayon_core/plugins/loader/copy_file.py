@@ -22,6 +22,11 @@ class CopyFileActionPlugin(LoaderActionPlugin):
     ) -> list[LoaderActionItem]:
         actions = selection.get_project_settings().get("core", {}).get(
             "tools", {}).get("loader", {}).get("actions", {})
+        if not any(actions.get(key, True) for key in (
+            "copy_file_path",
+            "copy_file",
+        )):
+            return []
         repres = []
         if selection.selected_type == "representation":
             repres = selection.entities.get_representations(

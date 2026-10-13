@@ -41,6 +41,13 @@ class DeleteOldVersions(LoaderActionPlugin):
     ) -> list[LoaderActionItem]:
         actions = selection.get_project_settings().get("core", {}).get(
             "tools", {}).get("loader", {}).get("actions", {})
+
+        if not any(actions.get(key, True) for key in (
+            "delete_old_versions",
+            "delete_selected_versions",
+            "calculate_versions_size",
+        )):
+            return []
         # Do not show in hosts
         if self.host_name is not None:
             return []
