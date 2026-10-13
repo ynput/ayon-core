@@ -1050,6 +1050,48 @@ def _ffmpeg_h264_codec_args(stream_data, source_ffmpeg_cmd):
     return output
 
 
+_DNXHD_VALID_BITRATES = {
+    (1920, 1080, False, "yuv422p10le"): (175, 185, 365, 440),
+    (1920, 1080, False, "yuv422p"): (
+        36, 45, 75, 90, 115, 120, 145, 175, 185, 220, 240, 290, 365, 440
+    ),
+    (1920, 1080, True, "yuv422p10le"): (185, 220),
+    (1920, 1080, True, "yuv422p"): (120, 145, 185, 220),
+    (1280, 720, False, "yuv422p10le"): (90, 180, 220),
+    (1280, 720, False, "yuv422p"): (60, 75, 90, 110, 120, 145, 180, 220),
+    (960, 720, False, "yuv422p"): (42, 60, 75, 115),
+    (1440, 1080, False, "yuv422p"): (63, 84, 100, 110),
+    (1440, 1080, True, "yuv422p"): (80, 90, 100, 110, 120, 145),
+}
+
+
+def _find_closest_dnxhd_bitrate(
+    src_bit_rate: str,
+    width: int,
+    height: int,
+    interlaced: bool,
+    pix_fmt: str,
+) -> str:
+    """Return the nearest valid DNxHD bitrate (in bits/sec) to src_bit_rate.
+
+    Falls back to returning src_bit_rate unmodified if no matching
+    resolution/pix_fmt entry is found in the table (encoder will then
+    raise its own error, same as before this fix).
+    """
+    key = (width, height, interlaced, pix_fmt)
+    valid_mbps = _DNXHD_VALID_BITRATES.get(key)
+    if not valid_mbps:
+        return src_bit_rate
+
+    try:
+        src_mbps = float(src_bit_rate) / 1_000_000
+    except (TypeError, ValueError):
+        return src_bit_rate
+
+    closest_mbps = min(valid_mbps, key=lambda v: abs(v - src_mbps))
+    return str(int(closest_mbps * 1_000_000))
+
+
 def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
     output = ["-codec:v", "dnxhd"]
 
@@ -1069,7 +1111,7 @@ def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
         "dnxhr_sq",
         "dnxhr_hq",
         "dnxhr_hqx",
-        "dnxhr_444"
+        "dnxhr_444",
     }
     if cleaned_profile in dnx_profiles:
         if cleaned_profile != "dnxhd":
@@ -1098,10 +1140,20 @@ def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
                 output.extend([arg, args[idx + 1]])
 
     # Add bitrate if needed
-    if bit_rate_must_be_defined and not bit_rate_defined:
-        src_bit_rate = stream_data.get("bit_rate")
-        if src_bit_rate:
-            output.extend(["-b:v", src_bit_rate])
+    src_bit_rate = stream_data.get("bit_rate")
+    width = stream_data.get("width")
+    height = stream_data.get("height")
+    if (
+        bit_rate_must_be_defined
+        and not bit_rate_defined
+        and all((pix_fmt, src_bit_rate, width, height))
+    ):
+        field_order = stream_data.get("field_order", "progressive")
+        interlaced = field_order not in ("progressive", "unknown", "")
+        fixed_bit_rate = _find_closest_dnxhd_bitrate(
+            src_bit_rate, width, height, interlaced, pix_fmt
+        )
+        output.extend(["-b:v", fixed_bit_rate])
 
     output.extend(["-g", "1"])
     return output

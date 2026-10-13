@@ -863,8 +863,9 @@ class PublishLogic:
             blocking_crashed_paths,
         )
 
+        plugins_by_targets_set = set(plugins_by_targets)
         for plugin in discovered_publish_plugins:
-            if plugin not in plugins_by_targets:
+            if plugin not in plugins_by_targets_set:
                 self._publish_report.set_plugin_skipped(
                     self.get_publish_plugin_id(plugin)
                 )

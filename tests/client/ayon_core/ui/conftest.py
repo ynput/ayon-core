@@ -4,6 +4,7 @@ Sets QT_QPA_PLATFORM=offscreen before any Qt import so tests run headless.
 """
 from __future__ import annotations
 
+import gc
 import json
 import logging
 import os
@@ -65,6 +66,28 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 @pytest.fixture
 def tmp_path(tmp_path_factory, request):
     return tmp_path_factory.mktemp(request.node.name)
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_call(item):
+    """Collect garbage right after the test body, at a safe point.
+
+    Widgets a test hands to ``qtbot.addWidget`` are only weakly
+    referenced by pytest-qt, so they become garbage as soon as the test
+    function returns. They usually sit in reference cycles (signal
+    connections, closures), which leaves their destruction to Python's
+    cyclic garbage collector - at whatever moment it happens to run.
+
+    pytest-qt processes Qt events right after the test body. If the
+    collector runs during that, it deletes widgets while Qt is in the
+    middle of delivering events to them (e.g. polishing them), which
+    crashes the interpreter. Collecting here destroys them before any
+    event is processed instead.
+    """
+    try:
+        return (yield)
+    finally:
+        gc.collect()
 
 
 @pytest.fixture(autouse=True)

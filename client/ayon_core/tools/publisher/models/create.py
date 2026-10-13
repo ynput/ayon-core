@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import copy
+from dataclasses import dataclass
 import logging
 import re
-import copy
 from typing import (
     Union,
     List,
@@ -15,8 +16,6 @@ from typing import (
 )
 
 from ayon_core.lib.attribute_definitions import (
-    serialize_attr_defs,
-    deserialize_attr_defs,
     AbstractAttrDef,
     EnumDef,
     UIDef,
@@ -114,55 +113,46 @@ class CreatorUIItem:
         )
 
 
+@dataclass
 class CreatorItem:
     """Wrapper around Creator plugin.
 
     Object can be serialized and recreated.
     """
+    __slots__ = (
+        "identifier",
+        "creator_type",
+        "product_base_type",
+        "label",
+        "group_label",
+        "icon",
+        "description",
+        "detailed_description",
+        "default_variant",
+        "default_variants",
+        "create_allow_context_change",
+        "create_allow_thumbnail",
+        "show_order",
+        "ui_items",
+    )
 
-    def __init__(
-        self,
-        identifier: str,
-        creator_type: CreatorType,
-        product_base_type: str,
-        label: str,
-        group_label: str,
-        icon: IconBase | dict[str, Any] | str | None,
-        description: Union[str, None],
-        detailed_description: Union[str, None],
-        default_variant: Union[str, None],
-        default_variants: Union[List[str], None],
-        create_allow_context_change: Union[bool, None],
-        create_allow_thumbnail: Union[bool, None],
-        show_order: int,
-        pre_create_attributes_defs: List[AbstractAttrDef],
-        ui_items: list[CreatorUIItem],
-    ):
-        self.identifier: str = identifier
-        self.creator_type: CreatorType = creator_type
-        self.product_base_type: str = product_base_type
-        self.label: str = label
-        self.group_label: str = group_label
-        self.icon: IconBase | dict[str, Any] | str | None = icon
-        self.description: Union[str, None] = description
-        self.detailed_description: Union[bool, None] = detailed_description
-        self.default_variant: Union[bool, None] = default_variant
-        self.default_variants: Union[List[str], None] = default_variants
-        self.create_allow_context_change: Union[bool, None] = (
-            create_allow_context_change
-        )
-        self.create_allow_thumbnail: Union[bool, None] = create_allow_thumbnail
-        self.show_order: int = show_order
-        self.pre_create_attributes_defs: List[AbstractAttrDef] = (
-            pre_create_attributes_defs
-        )
-        self.ui_items: list[CreatorUIItem] = ui_items
-
-    def get_group_label(self) -> str:
-        return self.group_label
+    identifier: str
+    creator_type: CreatorType
+    product_base_type: str
+    label: str
+    group_label: str
+    icon: IconBase | dict[str, Any] | str | None
+    description: str | None
+    detailed_description: str | None
+    default_variant: str | None
+    default_variants: list[str] | None
+    create_allow_context_change: bool | None
+    create_allow_thumbnail: bool | None
+    show_order: int
+    ui_items: list[CreatorUIItem]
 
     @classmethod
-    def from_creator(cls, creator: BaseCreator) -> "CreatorItem":
+    def from_creator(cls, creator: BaseCreator) -> CreatorItem:
         creator_type: CreatorType = CreatorTypes.base
         if isinstance(creator, AutoCreator):
             creator_type = CreatorTypes.auto
@@ -175,7 +165,6 @@ class CreatorItem:
         detail_description = None
         default_variant = None
         default_variants = None
-        pre_create_attr_defs = None
         create_allow_context_change = None
         create_allow_thumbnail = None
         show_order = creator.order
@@ -184,7 +173,6 @@ class CreatorItem:
             detail_description = creator.get_detail_description()
             default_variant = creator.get_default_variant()
             default_variants = creator.get_default_variants()
-            pre_create_attr_defs = creator.get_pre_create_attr_defs()
             create_allow_context_change = creator.create_allow_context_change
             create_allow_thumbnail = creator.create_allow_thumbnail
             show_order = creator.show_order
@@ -221,16 +209,10 @@ class CreatorItem:
             create_allow_context_change,
             create_allow_thumbnail,
             show_order,
-            pre_create_attr_defs,
             ui_items,
         )
 
     def to_data(self) -> Dict[str, Any]:
-        pre_create_attributes_defs = None
-        if self.pre_create_attributes_defs is not None:
-            pre_create_attributes_defs = serialize_attr_defs(
-                self.pre_create_attributes_defs
-            )
         icon = self.icon
         if isinstance(icon, IconBase):
             icon = icon.to_data()
@@ -250,7 +232,6 @@ class CreatorItem:
             "create_allow_context_change": self.create_allow_context_change,
             "create_allow_thumbnail": self.create_allow_thumbnail,
             "show_order": self.show_order,
-            "pre_create_attributes_defs": pre_create_attributes_defs,
             "ui_items": [item.to_data() for item in self.ui_items],
         }
 
@@ -259,12 +240,6 @@ class CreatorItem:
         icon = data["icon"]
         if isinstance(icon, dict) and icon.pop("__iconBase__", False):
             data["icon"] = get_icon_def_from_data(icon)
-
-        pre_create_attributes_defs = data["pre_create_attributes_defs"]
-        if pre_create_attributes_defs is not None:
-            data["pre_create_attributes_defs"] = deserialize_attr_defs(
-                pre_create_attributes_defs
-            )
 
         data["creator_type"] = CreatorTypes.from_str(data["creator_type"])
         data["ui_items"] = [
@@ -611,6 +586,14 @@ class CreateModel:
         if self._creator_items is None:
             self._refresh_creator_items()
         return self._creator_items
+
+    def get_pre_create_attribute_defs(
+        self, identifier: str
+    ) -> list[AbstractAttrDef]:
+        creator = self._create_context.creators.get(identifier)
+        if creator is None:
+            return []
+        return creator.get_pre_create_attr_defs() or []
 
     def get_creator_item_by_id(
         self, identifier: str

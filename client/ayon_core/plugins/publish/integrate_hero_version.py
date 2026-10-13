@@ -1,8 +1,14 @@
+"""Integrate hero version of published product."""
+from __future__ import annotations
+
 import os
 import sys
 import copy
+import json
 import itertools
 import shutil
+import contextlib
+from typing import TYPE_CHECKING, Any, Generator, Iterable, Optional
 
 import clique
 import pyblish.api
@@ -20,17 +26,36 @@ from ayon_core.lib.file_transaction import (
 )
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
+    get_trait_representations,
+    has_trait_representations,
     OptionalPyblishPluginMixin,
     PublishError,
 )
+from ayon_core.pipeline.traits import (
+    Persistent,
+    Representation,
+    get_transfers_from_representations,
+    get_legacy_files_for_representation,
+    replace_paths_in_representation,
+)
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
+    from ayon_core.pipeline.anatomy.templates import (
+        TemplateItem as AnatomyTemplateItem,
+        AnatomyStringTemplate
+    )
 
 
-def prepare_changes(old_entity, new_entity):
+def prepare_changes(
+    old_entity: dict[str, Any],
+    new_entity: dict[str, Any],
+) -> dict[str, Any]:
     """Prepare changes for entity update.
 
     Args:
-        old_entity: Existing entity.
-        new_entity: New entity.
+        old_entity (dict[str, Any]): Existing entity.
+        new_entity (dict[str, Any]): New entity.
 
     Returns:
         dict[str, Any]: Changes that have new entity.
@@ -58,6 +83,11 @@ def prepare_changes(old_entity, new_entity):
 class IntegrateHeroVersion(
     OptionalPyblishPluginMixin, pyblish.api.InstancePlugin
 ):
+    """Integrate hero version of the published version.
+
+    Instances with representations with traits are integrated using the
+    traits workflow, all other instances use the legacy representations.
+    """
     label = "Integrate Hero Version"
     # Must happen after IntegrateNew
     order = pyblish.api.IntegratorOrder + 0.1
@@ -95,17 +125,54 @@ class IntegrateHeroVersion(
 
     use_hardlinks = False
 
-    def process(self, instance):
+    def process(self, instance: pyblish.api.Instance) -> None:
         if not self.is_active(instance.data):
             return
 
         self.log.debug(
-            "--- Integration of Hero version for product `{}` begins.".format(
+            "Integrating Hero version for product `{}`.".format(
                 instance.data["productName"]
             )
         )
-        published_repres = instance.data.get("published_representations")
-        if not published_repres:
+        use_traits = has_trait_representations(instance)
+        if use_traits:
+            # Skip instances that 'IntegrateTraits' did not integrate.
+            # NOTE: 'published_representations' is set only by legacy
+            #   'IntegrateAsset' so it can't be used to check that.
+            if instance.data.get("integrate", True) is False:
+                self.log.debug(
+                    "*** Instance is marked to skip integrating."
+                )
+                return
+
+            if instance.data.get("farm"):
+                self.log.debug(
+                    "*** Instance is marked to be processed on farm."
+                )
+                return
+
+            # 'IntegrateTraits' only integrates persistent representations
+            if not any(
+                representation.contains_trait(Persistent)
+                for representation in get_trait_representations(instance)
+            ):
+                self.log.debug(
+                    "*** Instance has no persistent representations with "
+                    "traits."
+                )
+                return
+
+            # Don't allow both representations with traits and standard
+            #   representations
+            if instance.data.get("representations"):
+                raise PublishError(
+                    f"Instance '{instance.name}' has representations with "
+                    "traits but also has standard representations. This is "
+                    "not allowed. Please use either representations with "
+                    "traits or standard representations, not both."
+                )
+
+        elif not instance.data.get("published_representations"):
             self.log.debug(
                 "*** There are no published representations on the instance."
             )
@@ -130,13 +197,23 @@ class IntegrateHeroVersion(
             hero_template
         ))
 
-        self.integrate_instance(
-            instance, project_name, template_key, hero_template
-        )
+        if use_traits:
+            self.integrate_instance_with_traits(
+                instance, project_name, template_key
+            )
+        else:
+            self.integrate_instance(
+                instance, project_name, template_key, hero_template
+            )
 
     def integrate_instance(
-        self, instance, project_name, template_key, hero_template
-    ):
+        self,
+        instance: pyblish.api.Instance,
+        project_name: str,
+        template_key: str,
+        hero_template: AnatomyStringTemplate,
+    ) -> None:
+        """Integrate hero version using legacy representations."""
         anatomy = instance.context.data["anatomy"]
         # Copy to not remove filtered representations from instance data
         published_repres = dict(instance.data["published_representations"])
@@ -146,7 +223,7 @@ class IntegrateHeroVersion(
         filtered_repre_ids = []
         for repre_id, repre_info in published_repres.items():
             repre = repre_info["representation"]
-            if repre["name"].lower() in self.ignored_representation_names:
+            if self._is_ignored_representation(repre["name"]):
                 self.log.debug(
                     "Filtering representation with name: `{}`".format(
                         repre["name"].lower()
@@ -226,59 +303,17 @@ class IntegrateHeroVersion(
             other_file_paths_mapping.append((file_path, dst_filepath))
 
         # Current version
-        old_version, old_repres = self.current_hero_ents(
+        old_version, old_repres = self.current_hero_entities(
             project_name, src_version_entity
         )
-        inactive_old_repres_by_name = {}
-        old_repres_by_name = {}
-        for repre in old_repres:
-            low_name = repre["name"].lower()
-            if repre["active"]:
-                old_repres_by_name[low_name] = repre
-            else:
-                inactive_old_repres_by_name[low_name] = repre
-
-        op_session = OperationsSession()
-
-        entity_id = None
-        if old_version:
-            entity_id = old_version["id"]
-
-        tags = instance.data.get("versionTags")
-        if tags is not None:
-            # Tags contents are checked at earlier step "IntegrateAsset"
-            # Force the type to be list for the new_version_entity call.
-            tags = list(tags)
-
-        new_hero_version = new_version_entity(
-            - src_version_entity["version"],
-            src_version_entity["productId"],
-            task_id=src_version_entity.get("taskId"),
-            data=copy.deepcopy(src_version_entity["data"]),
-            attribs=copy.deepcopy(src_version_entity["attrib"]),
-            entity_id=entity_id,
-            tags=tags,
+        old_repres_by_name, inactive_old_repres_by_name = (
+            self._split_repres_by_active(old_repres)
         )
 
-        if old_version:
-            self.log.debug("Replacing old hero version.")
-            update_data = prepare_changes(
-                old_version, new_hero_version
-            )
-            op_session.update_entity(
-                project_name,
-                "version",
-                old_version["id"],
-                update_data
-            )
-        else:
-            self.log.debug("Creating first hero version.")
-            op_session.create_entity(
-                project_name, "version", new_hero_version
-            )
-
-        # Store hero entity to 'instance.data'
-        instance.data["heroVersionEntity"] = new_hero_version
+        op_session = OperationsSession()
+        new_hero_version = self._prepare_hero_version(
+            instance, project_name, op_session, src_version_entity, old_version
+        )
 
         # Separate old representations into `to replace` and `to delete`
         old_repres_to_replace = {}
@@ -294,55 +329,7 @@ class IntegrateHeroVersion(
         if old_repres_by_name:
             old_repres_to_delete = old_repres_by_name
 
-        backup_hero_publish_dir = None
-        if os.path.exists(hero_publish_dir):
-            backup_hero_publish_dir = hero_publish_dir + ".BACKUP"
-            max_idx = 10
-            idx = 0
-            _backup_hero_publish_dir = backup_hero_publish_dir
-            while os.path.exists(_backup_hero_publish_dir):
-                self.log.debug((
-                    "Backup folder already exists."
-                    " Trying to remove \"{}\""
-                ).format(_backup_hero_publish_dir))
-
-                try:
-                    shutil.rmtree(_backup_hero_publish_dir)
-                    backup_hero_publish_dir = _backup_hero_publish_dir
-                    break
-                except Exception:
-                    self.log.info(
-                        "Could not remove previous backup folder."
-                        " Trying to add index to folder name."
-                    )
-
-                _backup_hero_publish_dir = (
-                    backup_hero_publish_dir + str(idx)
-                )
-                if not os.path.exists(_backup_hero_publish_dir):
-                    backup_hero_publish_dir = _backup_hero_publish_dir
-                    break
-
-                if idx > max_idx:
-                    raise AssertionError((
-                        "Backup folders are fully occupied to max index \"{}\""
-                    ).format(max_idx))
-                    break
-
-                idx += 1
-
-            self.log.debug("Backup folder path is \"{}\"".format(
-                backup_hero_publish_dir
-            ))
-            try:
-                os.rename(hero_publish_dir, backup_hero_publish_dir)
-            except PermissionError:
-                raise AssertionError((
-                    "Could not create hero version because it is not"
-                    " possible to replace current hero files."
-                ))
-
-        try:
+        with self._backup_hero_publish_dir(hero_publish_dir):
             src_to_dst_file_paths = []
             repre_integrate_data = []
             path_template_obj = anatomy.get_template_item(
@@ -434,40 +421,12 @@ class IntegrateHeroVersion(
                     (repre_entity, dst_paths)
                 )
 
-            file_transactions = FileTransaction(
-                log=self.log,
-                # Enforce unique transfers
-                allow_queue_replacements=False
-            )
-            mode = FileTransaction.MODE_COPY
-            if self.use_hardlinks:
-                mode = FileTransaction.MODE_HARDLINK
-
-            try:
-                for src_path, dst_path in itertools.chain(
+            self._transfer_files(
+                itertools.chain(
                     src_to_dst_file_paths,
                     other_file_paths_mapping
-                ):
-                    file_transactions.add(src_path, dst_path, mode=mode)
-
-                self.log.debug("Integrating source files to destination ...")
-                file_transactions.process()
-
-            except DuplicateDestinationError as exc:
-                # Raise DuplicateDestinationError as PublishError
-                # and rollback the transactions
-                file_transactions.rollback()
-                raise PublishError(str(exc)).with_traceback(sys.exc_info()[2])
-
-            except Exception as exc:
-                # Rollback the transactions
-                file_transactions.rollback()
-                self.log.critical("Error when copying files", exc_info=True)
-                raise exc
-
-            # Finalizing can't rollback safely so no use for moving it to
-            # the try, except.
-            file_transactions.finalize()
+                )
+            )
 
             # Update prepared representation etity data with files
             #   and integrate it to server.
@@ -527,12 +486,263 @@ class IntegrateHeroVersion(
 
             op_session.commit()
 
-            # Remove backuped previous hero
-            if (
-                backup_hero_publish_dir is not None and
-                os.path.exists(backup_hero_publish_dir)
-            ):
-                shutil.rmtree(backup_hero_publish_dir)
+        self.log.debug((
+            "Hero version integration for product `{}` finished."
+        ).format(
+            instance.data["productName"]
+        ))
+
+    def integrate_instance_with_traits(
+        self,
+        instance: pyblish.api.Instance,
+        project_name: str,
+        template_key: str,
+    ) -> None:
+        """Integrate hero version using representations with traits."""
+        anatomy: Anatomy = instance.context.data["anatomy"]
+        hero_template: AnatomyTemplateItem = anatomy.get_template_item(
+            "hero", template_key)
+        hero_publish_dir = self.get_publish_dir(instance, template_key)
+
+        src_version_entity = instance.data.get("versionEntity")
+        if src_version_entity is None:
+            msg = (
+                f"Instance '{instance.name}' does not have 'versionEntity' "
+                "data. It has to go first through product integrator."
+            )
+            self.log.error(msg)
+            raise PublishError(msg)
+
+        if src_version_entity["version"] == 0:
+            self.log.warning("Version 0 cannot have hero version. Skipping.")
+            return
+
+        # Current hero version data
+        # - old representations are coming from already existing hero version
+        # - new representations are coming from current version that is
+        #   being published
+        old_version, old_repres = self.current_hero_entities(
+            project_name, src_version_entity
+        )
+
+        op_session = OperationsSession()
+        new_hero_version = self._prepare_hero_version(
+            instance, project_name, op_session, src_version_entity, old_version
+        )
+
+        # get published representations with traits for the version
+        repre_entities = list(ayon_api.get_representations(
+            project_name=project_name,
+            version_ids={src_version_entity["id"]}))
+
+        self.log.debug(
+            f"Found {len(repre_entities)} representations for hero version."
+        )
+
+        if not repre_entities:
+            msg = (
+                f"Version '{src_version_entity['id']}' does not have any "
+                "representations. At least one representation with traits "
+                "has to be published to create hero version."
+            )
+            self.log.error(msg)
+            raise PublishError(msg)
+
+        # Deactivate old representations that are to be replaced
+        old_repres_by_name, _ = self._split_repres_by_active(old_repres)
+        for repre in repre_entities:
+            old_repre = old_repres_by_name.pop(repre["name"].lower(), None)
+            if old_repre is not None:
+                op_session.update_representation(
+                    project_name=project_name,
+                    representation_id=old_repre["id"],
+                    active=False
+                )
+
+        with self._backup_hero_publish_dir(hero_publish_dir):
+            # prepare new representation entities for hero version
+            new_repre_entities = []
+            representations: list[Representation] = []
+            repre_id_map = {}
+
+            for repre in repre_entities:
+                if (
+                    repre["active"] is False
+                    or self._is_ignored_representation(repre["name"])
+                    or not repre["traits"]
+                ):
+                    continue
+
+                representation = Representation.from_dict(
+                    name=repre["name"],
+                    representation_id=None,
+                    trait_data=json.loads(repre["traits"])
+                )
+                repre_id_map[representation.representation_id] = (
+                    representation
+                )
+                representations.append(representation)
+                new_repre = copy.deepcopy(repre)
+                new_repre["versionId"] = new_hero_version["id"]
+                new_repre["id"] = representation.representation_id
+                new_repre["traits"] = representation.traits_as_dict()
+                new_repre_entities.append(new_repre)
+
+            self.log.debug(
+                "Prepared representations for hero version: %s",
+                [repre.name for repre in representations]
+            )
+            self.log.debug(f"Hero template: {hero_template['path']}")
+
+            transfers = get_transfers_from_representations(
+                instance,
+                template=hero_template,
+                representations=representations)
+
+            self.log.debug(f"got {len(transfers)} file transfers to "
+                           "process for hero version.")
+            self._transfer_files(
+                (
+                    transfer.source.as_posix(),
+                    transfer.destination.as_posix(),
+                )
+                for transfer in transfers
+            )
+
+            # create new representation entities and prepare legacy file
+            #   attrib
+            for new_repre in new_repre_entities:
+                representation = repre_id_map[new_repre["id"]]
+                transfer_items = [
+                    transfer
+                    for transfer in transfers
+                    if getattr(
+                        transfer, "representation", None
+                    ) is representation
+                ]
+                files = get_legacy_files_for_representation(
+                    transfer_items=transfer_items,
+                    representation=representation,
+                    anatomy=anatomy,
+                )
+                new_repre["files"] = files
+
+                # replace original paths with the destination
+                # in representation entity
+                replace_paths_in_representation(new_repre, transfers)
+
+                op_session.create_entity(
+                    project_name, "representation", new_repre
+                )
+            op_session.commit()
+
+        self.log.debug(
+            "Hero version integration with representations traits for product"
+            f" `{instance.data['productName']}` finished."
+        )
+
+    def _is_ignored_representation(self, repre_name: str) -> bool:
+        return repre_name.lower() in self.ignored_representation_names
+
+    @staticmethod
+    def _split_repres_by_active(
+        repres: list[dict[str, Any]],
+    ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+        """Split representations by active state, keyed by lower name.
+
+        Returns:
+            tuple[dict[str, dict], dict[str, dict]]: Active and inactive
+                representations by lowered representation name.
+
+        """
+        active_repres_by_name = {}
+        inactive_repres_by_name = {}
+        for repre in repres:
+            low_name = repre["name"].lower()
+            if repre["active"]:
+                active_repres_by_name[low_name] = repre
+            else:
+                inactive_repres_by_name[low_name] = repre
+        return active_repres_by_name, inactive_repres_by_name
+
+    def _prepare_hero_version(
+        self,
+        instance: pyblish.api.Instance,
+        project_name: str,
+        op_session: OperationsSession,
+        src_version_entity: dict[str, Any],
+        old_version: Optional[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Prepare hero version entity and add create/update operation.
+
+        The hero version entity is also stored to
+        `instance.data["heroVersionEntity"]`.
+
+        Returns:
+            dict[str, Any]: New hero version entity.
+
+        """
+        entity_id = old_version["id"] if old_version else None
+
+        tags = instance.data.get("versionTags")
+        if tags is not None:
+            # Tags contents are checked at earlier step "IntegrateAsset"
+            # Force the type to be list for the new_version_entity call.
+            tags = list(tags)
+
+        new_hero_version = new_version_entity(
+            - src_version_entity["version"],
+            src_version_entity["productId"],
+            task_id=src_version_entity.get("taskId"),
+            data=copy.deepcopy(src_version_entity["data"]),
+            attribs=copy.deepcopy(src_version_entity["attrib"]),
+            entity_id=entity_id,
+            tags=tags,
+        )
+
+        if old_version:
+            self.log.debug("Replacing old hero version.")
+            update_data = prepare_changes(
+                old_version, new_hero_version
+            )
+            op_session.update_entity(
+                project_name,
+                "version",
+                old_version["id"],
+                update_data
+            )
+        else:
+            self.log.debug("Creating first hero version.")
+            op_session.create_entity(
+                project_name, "version", new_hero_version
+            )
+
+        # Store hero entity to 'instance.data'
+        instance.data["heroVersionEntity"] = new_hero_version
+        return new_hero_version
+
+    @contextlib.contextmanager
+    def _backup_hero_publish_dir(
+        self, hero_publish_dir: str
+    ) -> Generator[None, None, None]:
+        """Backup current hero publish directory during integration.
+
+        If the wrapped code fails the backup is restored, otherwise the
+        backup is removed.
+
+        Args:
+            hero_publish_dir (str): The path to current hero
+                version publish directory.
+
+        """
+        backup_hero_publish_dir = None
+        if os.path.exists(hero_publish_dir):
+            backup_hero_publish_dir = self._backup_hero_version_dir(
+                hero_publish_dir
+            )
+
+        try:
+            yield
 
         except Exception:
             if (
@@ -548,14 +758,117 @@ class IntegrateHeroVersion(
             ))
             raise
 
-        self.log.debug((
-            "--- hero version integration for product `{}`"
-            " seems to be successful."
-        ).format(
-            instance.data["productName"]
-        ))
+        # Remove backuped previous hero
+        if (
+            backup_hero_publish_dir is not None and
+            os.path.exists(backup_hero_publish_dir)
+        ):
+            shutil.rmtree(backup_hero_publish_dir)
 
-    def get_files_info(self, filepaths, anatomy):
+    def _backup_hero_version_dir(self, hero_publish_dir: str) -> str:
+        """Move current hero version publish directory to backup location.
+
+        Args:
+            hero_publish_dir (str): The path to current hero
+                version publish directory.
+
+        Returns:
+            str: The path to backup directory.
+
+        """
+        backup_hero_publish_dir = f"{hero_publish_dir}.BACKUP"
+        # max backup dirs present
+        max_idx = 10
+        idx = 0
+        _backup_hero_publish_dir = backup_hero_publish_dir
+        while os.path.exists(_backup_hero_publish_dir):
+            self.log.debug(
+                "Backup folder already exists. "
+                f'Trying to remove "{_backup_hero_publish_dir}"'
+            )
+
+            try:
+                shutil.rmtree(_backup_hero_publish_dir)
+                backup_hero_publish_dir = _backup_hero_publish_dir
+                break
+            except Exception:
+                self.log.info(
+                    "Could not remove previous backup folder. "
+                    "Trying to add index to folder name."
+                )
+
+            _backup_hero_publish_dir = (
+                backup_hero_publish_dir + str(idx)
+            )
+            if not os.path.exists(_backup_hero_publish_dir):
+                backup_hero_publish_dir = _backup_hero_publish_dir
+                break
+
+            if idx > max_idx:
+                raise AssertionError(
+                    "Backup folders are fully occupied "
+                    f'to max index "{max_idx}"'
+                )
+            idx += 1
+
+        self.log.debug(f'Backup folder path is "{backup_hero_publish_dir}"')
+        try:
+            os.rename(hero_publish_dir, backup_hero_publish_dir)
+        except PermissionError as exc:
+            raise AssertionError(
+                "Could not create hero version because it is not "
+                "possible to replace current hero files."
+            ) from exc
+
+        return backup_hero_publish_dir
+
+    def _transfer_files(
+        self, src_dst_pairs: Iterable[tuple[str, str]]
+    ) -> None:
+        """Copy (or hardlink) files to their hero destinations.
+
+        Transfers are rolled back if any of them fails.
+
+        Args:
+            src_dst_pairs (Iterable[tuple[str, str]]): Source and
+                destination paths.
+
+        """
+        file_transactions = FileTransaction(
+            log=self.log,
+            # Enforce unique transfers
+            allow_queue_replacements=False
+        )
+        mode = FileTransaction.MODE_COPY
+        if self.use_hardlinks:
+            mode = FileTransaction.MODE_HARDLINK
+
+        try:
+            for src_path, dst_path in src_dst_pairs:
+                file_transactions.add(src_path, dst_path, mode=mode)
+
+            self.log.debug("Integrating source files to destination ...")
+            file_transactions.process()
+
+        except DuplicateDestinationError as exc:
+            # Raise DuplicateDestinationError as PublishError
+            # and rollback the transactions
+            file_transactions.rollback()
+            raise PublishError(str(exc)).with_traceback(sys.exc_info()[2])
+
+        except Exception as exc:
+            # Rollback the transactions
+            file_transactions.rollback()
+            self.log.critical("Error when copying files", exc_info=True)
+            raise exc
+
+        # Finalizing can't rollback safely so no use for moving it to
+        # the try, except.
+        file_transactions.finalize()
+
+    def get_files_info(
+        self, filepaths: Iterable[str], anatomy: Anatomy
+    ) -> list[dict[str, Any]]:
         """Prepare 'files' info portion for representations.
 
         Arguments:
@@ -572,7 +885,9 @@ class IntegrateHeroVersion(
             file_infos.append(file_info)
         return file_infos
 
-    def prepare_file_info(self, path, anatomy):
+    def prepare_file_info(
+        self, path: str, anatomy: Anatomy
+    ) -> dict[str, Any]:
         """ Prepare information for one file (asset or resource)
 
         Arguments:
@@ -592,7 +907,21 @@ class IntegrateHeroVersion(
             "hash_type": "op3",
         }
 
-    def get_publish_dir(self, instance, template_key):
+    def get_publish_dir(
+        self,
+        instance: pyblish.api.Instance,
+        template_key: str,
+    ) -> str:
+        """Get publish directory for hero version.
+
+        Args:
+            instance (pyblish.api.Instance): The instance to get data from.
+            template_key (str): The template key to use for hero template.
+
+        Returns:
+            str: The path to publish directory for hero version.
+
+        """
         anatomy = instance.context.data["anatomy"]
         template_data = copy.deepcopy(instance.data["anatomyData"])
 
@@ -601,24 +930,39 @@ class IntegrateHeroVersion(
                 "originalBasename": instance.data.get("originalBasename")
             })
 
-        template_obj = anatomy.get_template_item(
+        template_obj: AnatomyStringTemplate = anatomy.get_template_item(
             "hero", template_key, "directory"
         )
         publish_folder = os.path.normpath(
             template_obj.format_strict(template_data)
         )
 
-        self.log.debug("hero publish dir: \"{}\"".format(publish_folder))
+        self.log.debug(f'hero publish dir: "{publish_folder}"')
 
         return publish_folder
 
-    def _get_template_key(self, project_name, instance):
+    def _get_template_key(
+        self,
+        project_name: str,
+        instance: pyblish.api.Instance,
+    ) -> str:
+        """Get template key for hero template.
+
+        Args:
+            project_name (str): The name of the project.
+            instance (pyblish.api.Instance): The instance to get data from.
+
+        Returns:
+            str: The template key to use for hero template.
+
+        """
         anatomy_data = instance.data["anatomyData"]
         task_info = anatomy_data.get("task") or {}
         host_name = instance.context.data["hostName"]
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = instance.data["productType"]
+        product_base_type = (
+            instance.data.get("productBaseType")
+            or instance.data["productType"]
+        )
 
         return get_publish_template_name(
             project_name,
@@ -631,7 +975,7 @@ class IntegrateHeroVersion(
             logger=self.log
         )
 
-    def get_rootless_path(self, anatomy, path):
+    def get_rootless_path(self, anatomy: Anatomy, path: str) -> str:
         """Returns, if possible, path without absolute portion from root
             (eg. 'c:\' or '/opt/..')
 
@@ -658,28 +1002,57 @@ class IntegrateHeroVersion(
             ).format(path))
         return path
 
-    def version_from_representations(self, project_name, repres):
-        for repre in repres:
+    @staticmethod
+    def version_from_representations(
+        project_name: str,
+        published_repres: dict[str, dict[str, Any]],
+    ) -> Optional[dict[str, Any]]:
+        """Get source version entity from published representations.
+
+        Args:
+            project_name (str): The name of the project.
+            published_repres (dict[str, dict[str, Any]]): Published
+                representations info by representation id, as stored in
+                `instance.data["published_representations"]`.
+
+        Returns:
+            Optional[dict[str, Any]]: The version entity if found,
+                otherwise None.
+
+        """
+        for repre_info in published_repres.values():
             version = ayon_api.get_version_by_id(
-                project_name, repre["versionId"]
+                project_name, repre_info["representation"]["versionId"]
             )
             if version:
                 return version
+        return None
 
-    def current_hero_ents(self, project_name, version):
+    @staticmethod
+    def current_hero_entities(
+        project_name: str,
+        version: dict[str, Any],
+    ) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]]]:
+        """Get current hero version and representations.
+
+        Args:
+            project_name (str): The name of the project.
+            version (dict): The version entity to find hero version for.
+
+        Returns:
+            tuple[Optional[dict], list[dict]]: The hero version entity and list
+                of its representations. If hero version is not found, returns
+                (None, []).
+
+        """
         hero_version = ayon_api.get_hero_version_by_product_id(
             project_name, version["productId"]
         )
 
         if not hero_version:
-            return (None, [])
+            return None, []
 
         hero_repres = list(ayon_api.get_representations(
             project_name, version_ids={hero_version["id"]}
         ))
-        return (hero_version, hero_repres)
-
-    def _get_name_without_ext(self, value):
-        file_name = os.path.basename(value)
-        file_name, _ = os.path.splitext(file_name)
-        return file_name
+        return hero_version, hero_repres

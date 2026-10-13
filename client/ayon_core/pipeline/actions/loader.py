@@ -700,6 +700,14 @@ class LoaderActionsContext:
             self._studio_settings = get_studio_settings()
         return copy.deepcopy(self._studio_settings)
 
+    def prepare_plugins(self) -> None:
+        """Discover and initialize plugins if not done yet.
+
+        Can be used to warm up the context before action items are needed.
+
+        """
+        self._get_plugins()
+
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
