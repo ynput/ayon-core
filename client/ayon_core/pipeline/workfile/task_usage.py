@@ -16,6 +16,11 @@ A session must report itself to the server (heartbeat) to stay alive.
 The heartbeat is sent a few times per the time to live, so sessions of
 crashed applications expire on their own.
 
+Which workfiles are opened in the application is defined by the host
+integration, see 'IWorkfileHost.get_workfiles_in_use'. By default it is
+the current workfile in the current context. Each opened workfile has its
+own session, all of them are released when the application is closed.
+
 Callbacks of the application do not wait for the server. Session of the
 application is handled by 'TaskUsageTracker' in a background thread, the
 main thread only passes current context to it. A notice about other users
@@ -29,6 +34,7 @@ from __future__ import annotations
 
 import atexit
 import datetime
+import hashlib
 import logging
 import os
 import socket
@@ -40,6 +46,7 @@ from typing import Any, Callable, Iterable, Optional
 
 import ayon_api
 
+from ayon_core.host import WorkfileInUse
 from ayon_core.lib import (
     filter_profiles,
     get_ayon_username,
@@ -424,6 +431,34 @@ def _get_session_id() -> str:
     return get_process_id()
 
 
+def get_workfile_session_id(key: str = "") -> str:
+    """Session id of a workfile opened in current process.
+
+    Args:
+        key (str): Identifier of the opened workfile in the application,
+            see 'WorkfileInUse'. Empty string is used by applications
+            that have opened only one workfile.
+
+    Returns:
+        str: Session id.
+
+    """
+    session_id = _get_session_id()
+    if not key:
+        return session_id
+    key_hash = hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+    return f"{session_id}-{key_hash}"
+
+
+def is_current_process_session_id(session_id: str) -> bool:
+    """Session is a session of a workfile opened in current process."""
+    process_session_id = _get_session_id()
+    return (
+        session_id == process_session_id
+        or session_id.startswith(f"{process_session_id}-")
+    )
+
+
 # 'False' when the server does not have the endpoints
 _endpoints_supported: Optional[bool] = None
 
@@ -577,12 +612,16 @@ def get_other_users_task_usage_items(
 def create_session_item(
     workfile: Optional[str] = None,
     host_name: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> TaskUsageItem:
     """Create session item of current process.
 
     Args:
         workfile (Optional[str]): Filename of the opened workfile.
         host_name (Optional[str]): Name of host integration.
+        session_id (Optional[str]): Session id, see
+            'get_workfile_session_id'. Session id of the process is used
+            if is not passed.
 
     Returns:
         TaskUsageItem: Session of current process.
@@ -590,8 +629,10 @@ def create_session_item(
     """
     # Times are only informative, the server does fill its own
     now = _get_now().isoformat()
+    if session_id is None:
+        session_id = _get_session_id()
     return TaskUsageItem(
-        session_id=_get_session_id(),
+        session_id=session_id,
         username=get_ayon_username(),
         machine=socket.gethostname(),
         site_id=get_local_site_id(),
@@ -699,12 +740,22 @@ class _TaskContext:
 
 
 @dataclass(frozen=True)
-class _HostState:
-    """Context of the host integration captured in the main thread."""
+class _HostWorkfile:
+    """Workfile opened in the application, captured in the main thread."""
     project_name: Optional[str]
     folder_path: Optional[str]
     task_name: Optional[str]
     workfile: Optional[str]
+    key: str = ""
+
+
+@dataclass
+class _ClaimedSession:
+    """Session of an opened workfile registered on the server."""
+    context: _TaskContext
+    item: TaskUsageItem
+    last_update: float
+    last_activity: float
 
 
 @dataclass
@@ -768,18 +819,23 @@ def deregister_task_in_use_notice_callback(
 
 
 class TaskUsageTracker:
-    """Keep current process registered on the task of current context.
+    """Keep workfiles opened in the application registered on their tasks.
 
-    The tracker follows current context of the host integration. The task is
-    claimed when context changes or a workfile is opened or saved, and is
-    released when context changes to a different task or the process ends.
-    Claimed task is kept alive on the server with heartbeats.
+    The tracker follows workfiles opened in the application, which are
+    received from the host integration, see
+    'IWorkfileHost.get_workfiles_in_use'. By default it is the current
+    workfile in the current context.
+
+    Task of a workfile is claimed when the workfile appears, e.g. when
+    context changes or a workfile is opened, and is released when the
+    workfile is not opened anymore or the process ends. Claimed tasks are
+    kept alive on the server with heartbeats.
 
     Callbacks of the application must not wait for the server, so the work
     is split to 2 parts:
         - 'sync' is called from the callbacks in the main thread. It only
-            reads current context from the host integration and schedules
-            it, without any request to the server.
+            reads opened workfiles from the host integration and schedules
+            them, without any request to the server.
         - 'process' does all requests to the server. It is called from
             a background thread, see 'start'. The thread sleeps most of
             the time and never touches the host integration.
@@ -803,7 +859,7 @@ class TaskUsageTracker:
 
         # Context scheduled in main thread for the background thread
         self._lock = threading.Lock()
-        self._scheduled: Optional[_HostState] = None
+        self._scheduled: Optional[tuple[_HostWorkfile, ...]] = None
         self._is_scheduled: bool = False
         self._scheduled_at: float = 0.0
 
@@ -814,11 +870,9 @@ class TaskUsageTracker:
         # Only one thread can talk to the server at a time
         self._process_lock = threading.Lock()
         # Attributes below are changed only during the processing
-        self._state: Optional[_HostState] = None
-        self._claimed: Optional[_TaskContext] = None
-        self._item: Optional[TaskUsageItem] = None
-        self._last_update: float = 0.0
-        self._last_activity: float = 0.0
+        self._state: Optional[tuple[_HostWorkfile, ...]] = None
+        # Claimed sessions by key of opened workfile
+        self._sessions: dict[str, _ClaimedSession] = {}
         self._failed: bool = False
         self._disabled: bool = False
         self._context_cache: dict[tuple, Optional[_TaskContext]] = {}
@@ -848,10 +902,10 @@ class TaskUsageTracker:
         self._schedule(state)
 
     def release(self) -> None:
-        """Schedule release of the claimed task.
+        """Schedule release of all claimed tasks.
 
-        Does not wait for the server. The task is claimed again with next
-        'sync' call.
+        Does not wait for the server. The tasks are claimed again with
+        next 'sync' call.
         """
         self._schedule(None)
 
@@ -894,13 +948,13 @@ class TaskUsageTracker:
         thread.start()
 
     def stop(self, timeout: Optional[float] = None) -> None:
-        """Release the claimed task and stop the background thread.
+        """Release all claimed tasks and stop the background thread.
 
-        The task is released by the thread. It is released in current
+        The tasks are released by the thread. They are released in current
         thread if the thread was not started.
 
         Args:
-            timeout (Optional[float]): Seconds to wait until the task is
+            timeout (Optional[float]): Seconds to wait until the tasks are
                 released by the thread, e.g. on exit of the application.
                 Does not wait if is not passed.
 
@@ -918,7 +972,9 @@ class TaskUsageTracker:
         elif timeout and thread is not threading.current_thread():
             thread.join(timeout)
 
-    def _schedule(self, state: Optional[_HostState]) -> None:
+    def _schedule(
+        self, state: Optional[tuple[_HostWorkfile, ...]]
+    ) -> None:
         now = time.monotonic()
         with self._lock:
             # Background threads are not processed in some applications
@@ -953,19 +1009,26 @@ class TaskUsageTracker:
 
     def _get_wait_seconds(self) -> float:
         """Seconds until the next heartbeat or next try after a failure."""
-        claimed = self._claimed
-        if claimed is None:
+        sessions = list(self._sessions.values())
+        if not sessions:
             return TaskUsageSettings().heartbeat_interval
-        interval = claimed.settings.heartbeat_interval
-        if self._failed:
-            return interval
-        elapsed = time.monotonic() - self._last_update
-        return max(1.0, interval - elapsed)
+        now = time.monotonic()
+        return min(
+            (
+                session.context.settings.heartbeat_interval
+                if self._failed
+                else max(
+                    1.0,
+                    session.context.settings.heartbeat_interval
+                    - (now - session.last_update),
+                )
+            )
+            for session in sessions
+        )
 
     def _disable(self) -> None:
         self._disabled = True
-        self._claimed = None
-        self._item = None
+        self._sessions = {}
         self._thread = None
         self._stop_event.set()
         self._wake_event.set()
@@ -977,89 +1040,113 @@ class TaskUsageTracker:
         is_activity = False
         with self._lock:
             if self._is_scheduled:
+                # Callback of the application without a change of opened
+                #   workfiles is an activity, e.g. a saved workfile. It is
+                #   not known which workfile it was, if there are more.
+                is_activity = self._scheduled == self._state
                 self._state = self._scheduled
                 self._scheduled = None
                 self._is_scheduled = False
-                is_activity = True
 
-        state = self._state
-        context = None
-        if state is not None:
-            context = self._get_task_context(state)
+        # Opened workfiles with enabled tracking by their key
+        workfiles: dict[str, tuple[_TaskContext, Optional[str]]] = {}
+        for host_workfile in self._state or ():
+            context = self._get_task_context(host_workfile)
+            if context is not None:
+                workfiles[host_workfile.key] = (
+                    context, host_workfile.workfile
+                )
 
-        claimed = self._claimed
-        if claimed is not None and (
-            context is None
-            or context.project_name != claimed.project_name
-            or context.task_id != claimed.task_id
-        ):
-            self._release_claimed()
-            claimed = None
+        # Release workfiles that are not opened anymore or changed task
+        for key, session in list(self._sessions.items()):
+            context = workfiles.get(key, (None, None))[0]
+            if (
+                context is None
+                or context.project_name != session.context.project_name
+                or context.task_id != session.context.task_id
+            ):
+                self._release_session(key)
 
-        if context is None:
-            return
+        # Sessions of other users the user was told about in this run
+        notified_session_ids: set[str] = set()
+        for key, (context, workfile) in workfiles.items():
+            session = self._sessions.get(key)
+            if session is None:
+                self._claim(key, context, workfile, notified_session_ids)
+                continue
 
-        now = time.monotonic()
-        if claimed is None:
-            self._claim(context, state.workfile)
-            return
+            now = time.monotonic()
+            item = session.item
+            ttl = context.settings.ttl_seconds
+            if workfile != item.workfile or (
+                # Workfile was opened or saved, but do not report each save
+                is_activity
+                and now - session.last_activity >= ACTIVITY_INTERVAL_SECONDS
+            ):
+                item = replace(item, workfile=workfile)
+                update_task_session(
+                    context.project_name, context.task_id, item, ttl
+                )
+                session.item = item
+                session.last_update = session.last_activity = now
 
-        item = self._item
-        ttl = context.settings.ttl_seconds
-        if state.workfile != item.workfile or (
-            # Workfile was opened or saved, but do not report each save
-            is_activity
-            and now - self._last_activity >= ACTIVITY_INTERVAL_SECONDS
-        ):
-            item = replace(item, workfile=state.workfile)
-            update_task_session(
-                context.project_name, context.task_id, item, ttl
-            )
-            self._item = item
-            self._last_update = self._last_activity = now
+            elif (
+                now - session.last_update
+                >= context.settings.heartbeat_interval - 1.0
+            ):
+                update_task_session(
+                    context.project_name,
+                    context.task_id,
+                    item,
+                    ttl,
+                    heartbeat=True,
+                )
+                session.last_update = now
 
-        elif (
-            now - self._last_update
-            >= context.settings.heartbeat_interval - 1.0
-        ):
-            update_task_session(
-                context.project_name,
-                context.task_id,
-                item,
-                ttl,
-                heartbeat=True,
-            )
-            self._last_update = now
-
-    def _release_claimed(self) -> None:
-        claimed, self._claimed = self._claimed, None
-        item, self._item = self._item, None
-        if claimed is None or item is None:
+    def _release_session(self, key: str) -> None:
+        session = self._sessions.pop(key, None)
+        if session is None:
             return
         try:
             release_task(
-                claimed.project_name, claimed.task_id, item.session_id
+                session.context.project_name,
+                session.context.task_id,
+                session.item.session_id,
             )
         except Exception:
             # The session does expire on the server
             log.warning("Failed to release task in-use data.", exc_info=True)
 
-    def _claim(self, context: _TaskContext, workfile: Optional[str]) -> None:
-        item = create_session_item(workfile, self._host_name)
+    def _claim(
+        self,
+        key: str,
+        context: _TaskContext,
+        workfile: Optional[str],
+        notified_session_ids: set[str],
+    ) -> None:
+        item = create_session_item(
+            workfile, self._host_name, get_workfile_session_id(key)
+        )
         other_items = claim_task(
             context.project_name,
             context.task_id,
             item,
             context.settings.ttl_seconds,
         )
-        self._claimed = context
-        self._item = item
-        self._last_update = self._last_activity = time.monotonic()
+        now = time.monotonic()
+        self._sessions[key] = _ClaimedSession(context, item, now, now)
 
-        other_items = filter_other_users_items(
-            other_items, item.username, _acknowledged_session_ids
-        )
+        other_items = [
+            other_item
+            for other_item in filter_other_users_items(
+                other_items, item.username, _acknowledged_session_ids
+            )
+            if other_item.session_id not in notified_session_ids
+        ]
         if other_items:
+            notified_session_ids.update(
+                other_item.session_id for other_item in other_items
+            )
             self._notify(other_items, workfile)
 
     def _notify(
@@ -1120,32 +1207,65 @@ class TaskUsageTracker:
 
         save_next_version()
 
-    def _get_workfile_name(self) -> Optional[str]:
+    def _get_workfile_filepath(self) -> Optional[str]:
         get_current_workfile = getattr(
             self._host, "get_current_workfile", None
         )
         if get_current_workfile is None:
             return None
-        filepath = get_current_workfile()
+        return get_current_workfile() or None
+
+    def _get_workfile_name(self) -> Optional[str]:
+        filepath = self._get_workfile_filepath()
         if not filepath:
             return None
         return os.path.basename(filepath)
 
-    def _get_host_state(self) -> _HostState:
-        """Current context of the host, is called from the main thread."""
-        context = self._host.get_current_context()
-        return _HostState(
-            context.get("project_name"),
-            context.get("folder_path"),
-            context.get("task_name"),
-            self._get_workfile_name(),
-        )
+    def _get_host_state(self) -> tuple[_HostWorkfile, ...]:
+        """Workfiles opened in the application.
 
-    def _get_task_context(self, state: _HostState) -> Optional[_TaskContext]:
-        """Task of host context with enabled in-use tracking."""
-        project_name = state.project_name
-        folder_path = state.folder_path
-        task_name = state.task_name
+        Is called from the main thread.
+        """
+        get_workfiles_in_use = getattr(
+            self._host, "get_workfiles_in_use", None
+        )
+        if get_workfiles_in_use is not None:
+            workfiles_in_use = get_workfiles_in_use()
+        else:
+            # Host integration without workfiles interface
+            context = self._host.get_current_context()
+            workfiles_in_use = [
+                WorkfileInUse(
+                    context.get("project_name"),
+                    context.get("folder_path"),
+                    context.get("task_name"),
+                    self._get_workfile_filepath(),
+                )
+            ]
+
+        # Each key can be used only once
+        workfiles_by_key = {}
+        for workfile_in_use in workfiles_in_use or []:
+            workfile = None
+            if workfile_in_use.filepath:
+                workfile = os.path.basename(workfile_in_use.filepath)
+            key = str(workfile_in_use.key or "")
+            workfiles_by_key[key] = _HostWorkfile(
+                workfile_in_use.project_name,
+                workfile_in_use.folder_path,
+                workfile_in_use.task_name,
+                workfile,
+                key,
+            )
+        return tuple(workfiles_by_key.values())
+
+    def _get_task_context(
+        self, host_workfile: _HostWorkfile
+    ) -> Optional[_TaskContext]:
+        """Task of opened workfile with enabled in-use tracking."""
+        project_name = host_workfile.project_name
+        folder_path = host_workfile.folder_path
+        task_name = host_workfile.task_name
         if not project_name or not folder_path or not task_name:
             return None
 
@@ -1234,6 +1354,19 @@ def _install_notice_frontend() -> None:
         )
 
 
+def sync_task_usage() -> None:
+    """Tell task in-use tracking that opened workfiles did change.
+
+    Can be called by a host integration when workfiles opened in the
+    application change in a way that is not known to AYON, e.g. when
+    a document is closed. Should be called from the main thread of
+    the application. Does not wait for the server.
+    """
+    tracker = _tracker
+    if tracker is not None:
+        tracker.sync()
+
+
 def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     """Start tracking of task in-use for the host integration.
 
@@ -1273,6 +1406,9 @@ def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
         "taskChanged",
         "workfile.opened",
         "workfile.saved",
+        # Can be emitted by host integrations with custom
+        #   'get_workfiles_in_use' when a workfile is closed
+        "workfile.closed",
         # Topics emitted by host integrations from native callbacks of
         #   the application
         "open",
