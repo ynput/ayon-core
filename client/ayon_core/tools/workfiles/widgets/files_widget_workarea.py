@@ -333,9 +333,8 @@ class WorkAreaFilesWidget(AYContainer):
         )
         view.setItemDelegate(work_files_delegate)
 
-        # Session of this application is not shown, the user knows about it
         in_use_indicator = TaskInUseIndicator(
-            view, 1, USERNAME_ROLE, AUTHOR_ROLE, skip_current_session=True
+            view, 1, USERNAME_ROLE, AUTHOR_ROLE
         )
         work_files_delegate.set_in_use_indicator(in_use_indicator)
 
@@ -475,11 +474,29 @@ class WorkAreaFilesWidget(AYContainer):
 
     def _update_in_use_context(self):
         """Request sessions of selected task after workfiles are shown."""
-        project_name = task_id = None
+        task_id = None
         if not self._published_mode:
-            project_name = self._controller.get_current_project_name()
             task_id = self._controller.get_selected_task_id()
-        self._in_use_indicator.set_context(project_name, task_id)
+        if not task_id:
+            self._in_use_indicator.set_context(None)
+            return
+        self._in_use_indicator.set_context(
+            task_id, lambda: self._fetch_in_use_sessions(task_id)
+        )
+
+    def _fetch_in_use_sessions(self, task_id):
+        """Called in a worker thread, must not touch the widgets."""
+        sessions = self._controller.get_task_in_use_sessions(task_id)
+        full_names = {}
+        if sessions:
+            full_names = {
+                username: user_item.full_name
+                for username, user_item in (
+                    self._controller.get_user_items_by_name().items()
+                )
+                if user_item.full_name
+            }
+        return sessions, full_names
 
     def _on_model_refresh(self):
         if not self._change_selection_on_refresh:

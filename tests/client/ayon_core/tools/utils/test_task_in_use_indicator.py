@@ -42,10 +42,9 @@ def test_group_items_by_workfile():
     same_file = _item("b", "artist2", "SH010_anim_v001.ma")
     other_file = _item("c", "artist3", "sh010_anim_v002.ma")
     no_file = _item("d", "artist4", None)
-    mine = _item("mine", "artist5", "sh010_anim_v003.ma")
 
     assert group_items_by_workfile(
-        [first, same_file, other_file, no_file, mine], "mine"
+        [first, same_file, other_file, no_file]
     ) == {
         "sh010_anim_v001.ma": [first, same_file],
         "sh010_anim_v002.ma": [other_file],
@@ -75,9 +74,6 @@ def indicator(qtbot, monkeypatch):
     monkeypatch.setattr(
         task_in_use_indicator, "get_task_queue", lambda: _TaskQueue()
     )
-    monkeypatch.setattr(
-        task_in_use_indicator, "is_task_usage_supported", lambda: True
-    )
 
     view = QtWidgets.QTreeView()
     qtbot.addWidget(view)
@@ -96,16 +92,24 @@ def indicator(qtbot, monkeypatch):
 def test_indicator_requests_in_background(indicator, qtbot):
     indicator, model, requests = indicator
 
-    indicator.set_context("project", "task-1")
-    # Nothing is requested in the call that changes the context
-    assert requests == []
-    qtbot.waitUntil(lambda: len(requests) == 1, timeout=2000)
-
     session = _item("a", "artist2", "SH010_anim_v002.ma")
+    fetched = []
+
+    def _fetch():
+        fetched.append(1)
+        return [session], {"artist2": "Artist Two"}
+
+    indicator.set_context("task-1", _fetch)
+    # Nothing is requested in the call that changes the context
+    assert requests == [] and fetched == []
+    qtbot.waitUntil(lambda: len(requests) == 1, timeout=2000)
+    # The function is called by the task queue in a worker thread
+    assert fetched == []
+    result = requests[0].function()
+    assert fetched == [1]
+
     with qtbot.waitSignal(indicator.sessions_changed, timeout=1000):
-        requests[0].callback(
-            ({"sh010_anim_v002.ma": [session]}, {"artist2": "Artist Two"})
-        )
+        requests[0].callback(result)
     assert indicator.get_sessions(model.index(0, 1)) == []
     assert indicator.get_sessions(model.index(1, 1)) == [session]
     assert indicator.get_sessions(model.index(1, 0)) == [session]
@@ -114,12 +118,15 @@ def test_indicator_requests_in_background(indicator, qtbot):
 def test_indicator_ignores_outdated_and_failed_requests(indicator, qtbot):
     indicator, model, requests = indicator
     session = _item("a", "artist2", "sh010_anim_v001.ma")
-    result = ({"sh010_anim_v001.ma": [session]}, {})
+    result = ([session], {})
 
-    indicator.set_context("project", "task-1")
+    def _fetch():
+        return result
+
+    indicator.set_context("task-1", _fetch)
     qtbot.waitUntil(lambda: len(requests) == 1, timeout=2000)
     # Task did change before the sessions were received
-    indicator.set_context("project", "task-2")
+    indicator.set_context("task-2", _fetch)
     requests[0].callback(result)
     assert indicator.get_sessions(model.index(0, 1)) == []
 
@@ -133,8 +140,22 @@ def test_indicator_ignores_outdated_and_failed_requests(indicator, qtbot):
     assert indicator.get_sessions(model.index(0, 1)) == [session]
 
     # Sessions are dropped when the task changes
-    indicator.set_context("project", None)
+    indicator.set_context(None)
     assert indicator.get_sessions(model.index(0, 1)) == []
+    # Nothing is requested without a task
+    qtbot.wait(150)
+    assert len(requests) == 3
+
+
+def test_indicator_failed_fetch_function(indicator, qtbot):
+    indicator, model, requests = indicator
+
+    def _failing():
+        raise RuntimeError("Server is not available")
+
+    indicator.set_context("task-1", _failing)
+    qtbot.waitUntil(lambda: len(requests) == 1, timeout=2000)
+    assert requests[0].function() is None
 
 
 def test_indicator_ring_color(indicator):

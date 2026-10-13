@@ -568,9 +568,32 @@ class WorkfilesPage(AYContainer):
         The request has the lowest priority in the task queue, so it does
         not delay workfiles that are being fetched.
         """
+        project_name, task_id = self._workfiles_model.get_selected_context()
+        if not project_name or not task_id:
+            self._in_use_indicator.set_context(None)
+            return
         self._in_use_indicator.set_context(
-            *self._workfiles_model.get_selected_context()
+            (project_name, task_id),
+            lambda: self._fetch_in_use_sessions(project_name, task_id),
         )
+
+    def _fetch_in_use_sessions(self, project_name: str, task_id: str):
+        """Called in a worker thread, must not touch the widgets."""
+        sessions = self._controller.get_task_in_use_sessions(
+            project_name, task_id
+        )
+        full_names = {}
+        if sessions:
+            full_names = {
+                username: user_item.full_name
+                for username, user_item in (
+                    self._controller.get_user_items_by_name(
+                        project_name
+                    ).items()
+                )
+                if user_item.full_name
+            }
+        return sessions, full_names
 
     def _on_avatar_updated(self, _username: str) -> None:
         self._workfiles_view.viewport().update()

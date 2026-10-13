@@ -8,26 +8,32 @@ shown when the avatar is hovered.
 The information is not needed to show the workfiles, so it never delays
 them. Sessions are requested in the shared task queue after the view was
 filled, and the view is only repainted when they arrive.
+
+The indicator is UI only. It does not know where the sessions come from,
+a tool passes it a function that receives them from its controller.
 """
 from __future__ import annotations
 
 import datetime
 import logging
 import os
-from typing import Any, Optional
+import typing
+from typing import Any, Callable, Hashable, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core.pipeline.workfile.task_usage import (
-    TaskUsageItem,
-    get_task_usage_items,
-    get_task_usage_user_full_names,
-    is_task_usage_enabled_in_project,
-    is_task_usage_supported,
-)
 from ayon_core.style import load_stylesheet
 from ayon_core.ui.components import AYLabel, AYVBoxLayout
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
+
+    # Function called in a worker thread that returns sessions working on
+    #   a task and full names of their users by username
+    FetchSessions = Callable[
+        [], tuple[list[TaskUsageItem], dict[str, str]]
+    ]
 
 log = logging.getLogger(__name__)
 
@@ -44,14 +50,11 @@ _MAX_CACHED_PIXMAPS = 256
 
 def group_items_by_workfile(
     items: list[TaskUsageItem],
-    skip_session_id: Optional[str] = None,
 ) -> dict[str, list[TaskUsageItem]]:
     """Group sessions by filename of the workfile they have opened.
 
     Args:
         items (list[TaskUsageItem]): Sessions working on a task.
-        skip_session_id (Optional[str]): Session to skip, e.g. session of
-            current process.
 
     Returns:
         dict[str, list[TaskUsageItem]]: Sessions by lowered filename.
@@ -60,7 +63,7 @@ def group_items_by_workfile(
     """
     output: dict[str, list[TaskUsageItem]] = {}
     for item in items:
-        if not item.workfile or item.session_id == skip_session_id:
+        if not item.workfile:
             continue
         filename = os.path.basename(item.workfile).lower()
         output.setdefault(filename, []).append(item)
@@ -148,7 +151,7 @@ class TaskInUseToolTip(QtWidgets.QFrame):
 class TaskInUseIndicator(QtCore.QObject):
     """Know which workfiles shown in a view are in use.
 
-    The indicator requests sessions of a task in the background and tells
+    The indicator receives sessions of a task in the background and tells
     a delegate of the view which workfiles are opened in a running
     application. The view is repainted when the sessions change.
 
@@ -159,8 +162,6 @@ class TaskInUseIndicator(QtCore.QObject):
         username_role (int): Role with username of the user shown by the
             avatar, received from the first column.
         user_label_role (Optional[int]): Role with label of the user.
-        skip_current_session (bool): Do not show session of current
-            process, e.g. in the Workfiles tool of an application.
 
     """
     sessions_changed = QtCore.Signal()
@@ -171,17 +172,15 @@ class TaskInUseIndicator(QtCore.QObject):
         avatar_column: int,
         username_role: int,
         user_label_role: Optional[int] = None,
-        skip_current_session: bool = False,
     ):
         super().__init__(view)
         self._view = view
         self._avatar_column = avatar_column
         self._username_role = username_role
         self._user_label_role = user_label_role
-        self._skip_current_session = skip_current_session
 
-        self._project_name: Optional[str] = None
-        self._task_id: Optional[str] = None
+        self._context: Optional[Hashable] = None
+        self._fetch_sessions: Optional[FetchSessions] = None
         self._request_id = 0
         self._context_id = f"task_in_use_indicator_{id(self)}"
         self._items_by_filename: dict[str, list[TaskUsageItem]] = {}
@@ -208,22 +207,34 @@ class TaskInUseIndicator(QtCore.QObject):
         view.viewport().setMouseTracking(True)
 
     def set_context(
-        self, project_name: Optional[str], task_id: Optional[str]
+        self,
+        context: Optional[Hashable],
+        fetch_sessions: Optional[FetchSessions] = None,
     ) -> None:
         """Change task of workfiles shown in the view.
 
         Should be called when the view was filled with workfiles. Known
-        sessions are dropped if the task did change. Sessions of the task
-        are requested in the background.
+        sessions are dropped if the context did change. Sessions are
+        received in the background.
+
+        Args:
+            context (Optional[Hashable]): Identifier of the task, e.g. task
+                id. Nothing is shown if is not passed.
+            fetch_sessions (Optional[FetchSessions]): Function that returns
+                sessions working on the task and full names of their
+                users. Is called in a worker thread.
+
         """
-        if (project_name, task_id) != (self._project_name, self._task_id):
-            self._project_name = project_name
-            self._task_id = task_id
+        if context is None:
+            fetch_sessions = None
+        if context != self._context:
+            self._context = context
             self._set_sessions({}, {})
+        self._fetch_sessions = fetch_sessions
         self.refresh()
 
     def refresh(self) -> None:
-        """Request sessions of current task in the background."""
+        """Receive sessions of current task in the background."""
         self._request_id += 1
         self._request_timer.start()
 
@@ -316,30 +327,21 @@ class TaskInUseIndicator(QtCore.QObject):
             self._tooltip.hide()
 
     def _on_refresh_timer(self) -> None:
-        if self._task_id and self._view.isVisible():
+        if self._fetch_sessions is not None and self._view.isVisible():
             self.refresh()
 
     def _request(self) -> None:
-        project_name = self._project_name
-        task_id = self._task_id
-        if not project_name or not task_id or not is_task_usage_supported():
+        fetch_sessions = self._fetch_sessions
+        if fetch_sessions is None:
             return
 
         request_id = self._request_id
-        skip_session_id = None
-        if self._skip_current_session:
-            from ayon_core.pipeline.context_tools import get_process_id
-
-            skip_session_id = get_process_id()
-
         task_queue = get_task_queue()
         # Drop pending requests of previous task
         task_queue.clear_context_tasks(self._context_id)
         task_queue.enqueue(AsyncTask(
             name="fetch_task_in_use",
-            function=lambda: _fetch_sessions(
-                project_name, task_id, skip_session_id
-            ),
+            function=lambda: _call_fetch_sessions(fetch_sessions),
             callback=lambda result: self._on_fetched(request_id, result),
             # Less important than anything else in the queue
             priority=10,
@@ -351,8 +353,8 @@ class TaskInUseIndicator(QtCore.QObject):
         # Task did change meanwhile or the request failed
         if request_id != self._request_id or result is None:
             return
-        items_by_filename, full_names = result
-        self._set_sessions(items_by_filename, full_names)
+        items, full_names = result
+        self._set_sessions(group_items_by_workfile(items), full_names)
 
     def _set_sessions(
         self,
@@ -399,24 +401,10 @@ class TaskInUseIndicator(QtCore.QObject):
         return pixmap
 
 
-def _fetch_sessions(
-    project_name: str, task_id: str, skip_session_id: Optional[str]
-) -> Optional[tuple[dict[str, list[TaskUsageItem]], dict[str, str]]]:
+def _call_fetch_sessions(fetch_sessions: FetchSessions) -> Any:
     """Called in a worker thread."""
     try:
-        if not is_task_usage_enabled_in_project(project_name):
-            return {}, {}
-        items_by_filename = group_items_by_workfile(
-            get_task_usage_items(project_name, task_id), skip_session_id
-        )
-        full_names = {}
-        if items_by_filename:
-            full_names = get_task_usage_user_full_names([
-                item
-                for items in items_by_filename.values()
-                for item in items
-            ])
-        return items_by_filename, full_names
+        return fetch_sessions()
     except Exception:
         log.debug("Failed to receive task in-use sessions.", exc_info=True)
         return None

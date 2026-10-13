@@ -11,6 +11,12 @@ from ayon_core.lib import (
     NestedCacheItem,
 )
 from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.workfile.task_usage import (
+    TaskUsageItem,
+    get_task_usage_items,
+    is_task_usage_enabled_in_project,
+    is_task_usage_supported,
+)
 from ayon_core.tools.launcher.abstract import (
     WorkfileItem,
     AbstractLauncherBackend,
@@ -30,6 +36,35 @@ class WorkfilesModel:
 
     def reset(self) -> None:
         self._workfile_items.reset()
+
+    def get_task_in_use_sessions(
+        self,
+        project_name: str,
+        task_id: str,
+    ) -> list[TaskUsageItem]:
+        """Sessions of running applications working on a task.
+
+        Args:
+            project_name (str): Project name.
+            task_id (str): Task id.
+
+        Returns:
+            list[TaskUsageItem]: Sessions working on the task. Empty list
+                if task in-use tracking is not used in the project or is
+                not supported by the server.
+
+        """
+        try:
+            if not is_task_usage_supported() or not (
+                is_task_usage_enabled_in_project(project_name)
+            ):
+                return []
+            return get_task_usage_items(project_name, task_id)
+        except Exception:
+            self._log.debug(
+                "Failed to receive task in-use sessions.", exc_info=True
+            )
+        return []
 
     def get_workfile_items(
         self,

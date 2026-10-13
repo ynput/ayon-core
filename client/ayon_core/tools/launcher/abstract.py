@@ -16,6 +16,7 @@ from ayon_core.tools.common_models import (
 )
 
 if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 
@@ -567,6 +568,30 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             list[WorkfileItem]: List of workfile items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_in_use_sessions(
+        self,
+        project_name: str,
+        task_id: str,
+    ) -> list[TaskUsageItem]:
+        """Sessions of running applications working on a task.
+
+        Used to show which workfiles of the task are in use. Does a request
+        to the server, so the method should not be called from the main
+        thread.
+
+        Args:
+            project_name (str): Project name.
+            task_id (str): Task id.
+
+        Returns:
+            list[TaskUsageItem]: Sessions working on the task. Empty list
+                if task in-use tracking is not used in the project or is
+                not supported by the server.
 
         """
         pass

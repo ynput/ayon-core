@@ -28,6 +28,7 @@ from .models import (
 )
 
 if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
     from ayon_core.tools.common_models.settings import TaskSortMode
 
 NOT_SET = object()
@@ -209,6 +210,15 @@ class BaseLauncherController(
         return self._workfiles_model.get_workfile_items(
             project_name,
             task_id,
+        )
+
+    def get_task_in_use_sessions(
+        self,
+        project_name: str,
+        task_id: str,
+    ) -> list[TaskUsageItem]:
+        return self._workfiles_model.get_task_in_use_sessions(
+            project_name, task_id
         )
 
     def get_user_items_by_name(
