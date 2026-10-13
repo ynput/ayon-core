@@ -80,6 +80,8 @@ class EntityHoverInfo:
         label (str): Entity label.
         type_name (str): Folder type or task type name.
         type_icon (str): Material symbol name of the type icon.
+        type_color (str): Color of the type icon, color of dim text is
+            used if empty.
         description (str): Entity description.
         facts (list[EntityHoverFact]): Facts about the entity ordered by
             importance, only first few are shown.
@@ -88,6 +90,7 @@ class EntityHoverInfo:
     label: str
     type_name: str
     type_icon: str
+    type_color: str = ""
     description: str = ""
     facts: list[EntityHoverFact] = field(default_factory=list)
 
@@ -209,12 +212,15 @@ def get_folder_hover_info(
         facts.append(EntityHoverFact("aspect_ratio", f"{width}x{height}"))
 
     type_icon = "folder"
-    if folder_type_item is not None and folder_type_item.icon:
-        type_icon = folder_type_item.icon
+    type_color = ""
+    if folder_type_item is not None:
+        type_icon = folder_type_item.icon or type_icon
+        type_color = folder_type_item.color or ""
     return EntityHoverInfo(
         label=folder_entity.get("label") or folder_entity["name"],
         type_name=folder_entity["folderType"],
         type_icon=type_icon,
+        type_color=type_color,
         description=attrib.get("description") or "",
         facts=facts,
     )
@@ -262,12 +268,15 @@ def get_task_hover_info(
         facts.append(EntityHoverFact("flag", priority.capitalize()))
 
     type_icon = "task_alt"
-    if task_type_item is not None and task_type_item.icon:
-        type_icon = task_type_item.icon
+    type_color = ""
+    if task_type_item is not None:
+        type_icon = task_type_item.icon or type_icon
+        type_color = task_type_item.color or ""
     return EntityHoverInfo(
         label=task_entity.get("label") or task_entity["name"],
         type_name=task_entity["taskType"],
         type_icon=type_icon,
+        type_color=type_color,
         description=attrib.get("description") or "",
         facts=facts,
     )
@@ -500,21 +509,25 @@ class EntityHoverCard(QtWidgets.QWidget):
 
         title_widget = QtWidgets.QWidget(content_widget)
         title_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        # Label is the most visible text, type is recognizable by its icon
         label_label = AYLabel(
             "",
             bold=True,
+            rel_text_size=1,
             elide_mode=QtCore.Qt.ElideRight,
             parent=title_widget,
         )
         type_label = AYLabel(
             "",
             dim=True,
+            icon_size=FACT_ICON_SIZE,
+            icon_text_spacing=4,
             rel_text_size=-1,
             parent=title_widget,
         )
         title_layout = QtWidgets.QHBoxLayout(title_widget)
         title_layout.setContentsMargins(0, 0, 0, 0)
-        title_layout.setSpacing(8)
+        title_layout.setSpacing(10)
         title_layout.addWidget(label_label, 0)
         title_layout.addWidget(type_label, 0)
         title_layout.addStretch(1)
@@ -605,6 +618,12 @@ class EntityHoverCard(QtWidgets.QWidget):
 
         self._label_label.setText(info.label)
         self._type_label.setText(info.type_name)
+        self._type_label.set_icon(QtGui.QIcon(_get_icon_pixmap(
+            info.type_icon,
+            self._get_icon_color(info.type_color, self._type_label),
+            FACT_ICON_SIZE,
+            self.devicePixelRatioF(),
+        )))
 
         # Empty lines would waste the limited space
         description = re.sub(r"\n\s*\n", "\n", info.description.strip())
@@ -658,26 +677,28 @@ class EntityHoverCard(QtWidgets.QWidget):
                     fact.username, fact.user_full_name, AVATAR_SIZE
                 )
             if pixmap is None or pixmap.isNull():
-                # Color of the dim text is used for icons without color,
-                #   and for colors too dark to be visible on the card
-                color = fact.color
-                if (
-                    not color
-                    or QtGui.QColor(color).lightnessF() < MIN_ICON_LIGHTNESS
-                ):
-                    color = fact_label.palette().color(
-                        QtGui.QPalette.Active,
-                        QtGui.QPalette.PlaceholderText,
-                    ).name()
                 pixmap = _get_icon_pixmap(
                     fact.icon,
-                    color,
+                    self._get_icon_color(fact.color, fact_label),
                     FACT_ICON_SIZE,
                     self.devicePixelRatioF(),
                 )
             fact_label.setText(fact.text)
             fact_label.set_icon(QtGui.QIcon(pixmap))
             fact_label.setVisible(True)
+
+    @staticmethod
+    def _get_icon_color(color: str, label: AYLabel) -> str:
+        """Color of an icon shown in a label.
+
+        Color of the dim text is used for icons without color, and for
+        colors too dark to be visible on the card.
+        """
+        if color and QtGui.QColor(color).lightnessF() >= MIN_ICON_LIGHTNESS:
+            return color
+        return label.palette().color(
+            QtGui.QPalette.Active, QtGui.QPalette.PlaceholderText
+        ).name()
 
     def _on_avatar_updated(self, username: str) -> None:
         if any(fact.username == username for fact in self._facts):

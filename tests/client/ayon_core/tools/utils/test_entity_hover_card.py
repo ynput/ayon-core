@@ -29,6 +29,7 @@ ENTITY_ID_ROLE = QtCore.Qt.UserRole + 1
 class _TypeItem:
     name: str
     icon: str
+    color: str = ""
 
 
 @dataclass
@@ -95,12 +96,13 @@ def test_folder_info_starts_with_frames_and_fps():
             resolutionHeight=1080,
             description="Hero shot",
         ),
-        _TypeItem("Shot", "movie"),
+        _TypeItem("Shot", "movie", "#cccccc"),
         _StatusItem("In progress", "PRG", "play_arrow", "#5bb8f5"),
     )
 
     assert info.label == "sh010"
     assert info.type_icon == "movie"
+    assert info.type_color == "#cccccc"
     assert info.description == "Hero shot"
     assert [fact.text for fact in info.facts] == [
         "1001-1050 (50f)",
