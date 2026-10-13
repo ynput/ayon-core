@@ -4,6 +4,22 @@ Kept separate from `ui.browser_queries` (and anything else under `ui`)
 so a Qt-free module - such as a column provider - can import this
 without pulling in `ayon_core.tools.browser.ui`'s package `__init__`,
 which imports the whole Qt window stack.
+
+The Browser supports AYON server 1.15.0 and newer. What older supported
+servers lack, and the Browser does without on them:
+
+- Up to 1.15.4: version statistics, so group headers show the counts of
+  the grouping metadata instead of the counts matching the filters.
+- Up to 1.16.0: the ``folderFilter`` and ``latestPerFolder`` arguments,
+  so there are no Folder filters and no "Latest per folder" option.
+- Up to 1.16.6: the ``representationFilter`` argument, so there are no
+  Representation filters.
+- Any: ``sortBy`` values the server does not list.
+
+Server 1.14 and older can't be supported the same way: they lack more
+than optional arguments, e.g. filtering by product base type (1.15.0),
+hero versions (1.14.4) and featured versions (1.13.0). The legacy Loader
+is shown on those servers instead, see `server_supports_browser`.
 """
 
 from __future__ import annotations
@@ -17,6 +33,25 @@ import ayon_api
 #: connection resolvers, followed by a comma-separated list of the
 #: accepted values.
 _SORT_BY_DESCRIPTION_PREFIX = "Sort by one of "
+
+#: Oldest AYON server version the Browser works with.
+BROWSER_MINIMUM_SERVER_VERSION = (1, 15, 0)
+
+
+# TODO: Backwards compatibility for AYON server < 1.15.0.
+#   Remove this once 1.15.0 is the minimum supported server.
+def server_supports_browser() -> bool:
+    """Return whether the server is new enough for the Browser.
+
+    Unlike the other checks this one compares the server version: what
+    older servers lack, e.g. the filter keys they accept, is not part of
+    the GraphQL schema.
+
+    Returns:
+        ``True`` when the server is 1.15.0 or newer.
+    """
+    server_version = ayon_api.get_server_version_tuple()
+    return tuple(server_version[:3]) >= BROWSER_MINIMUM_SERVER_VERSION
 
 
 @functools.cache
@@ -80,6 +115,77 @@ def _get_versions_field_args() -> dict[str, str]:
     return _get_project_fields_args().get("versions", {})
 
 
+def get_server_query_arguments(field_name: str) -> frozenset[str]:
+    """Return the argument names of a ``ProjectNode`` GraphQL field.
+
+    Args:
+        field_name: Field of the project node, e.g. ``"versions"``.
+
+    Returns:
+        The argument names. Empty when the server refuses the
+        introspection query.
+
+    Raises:
+        RuntimeError: If there is no server connection.
+    """
+    return frozenset(_get_project_fields_args().get(field_name, {}))
+
+
+# TODO: Backwards compatibility for AYON server < 1.16.1.
+#   Remove this once 1.16.1 is the minimum supported server.
+def server_supports_folder_filter() -> bool:
+    """Return whether the versions resolver takes ``folderFilter``.
+
+    The argument was added in server 1.16.1, to both the versions and
+    the products resolver.
+
+    Returns:
+        ``True`` when the argument exists. ``False`` when it does not,
+        or when the server refuses the introspection query.
+
+    Raises:
+        RuntimeError: If there is no server connection.
+    """
+    return "folderFilter" in _get_versions_field_args()
+
+
+# TODO: Backwards compatibility for AYON server < 1.16.1.
+#   Remove this once 1.16.1 is the minimum supported server.
+def server_supports_latest_per_folder() -> bool:
+    """Return whether the versions resolver takes ``latestPerFolder``.
+
+    The argument was added in server 1.16.1.
+
+    Returns:
+        ``True`` when the argument exists. ``False`` when it does not,
+        or when the server refuses the introspection query.
+
+    Raises:
+        RuntimeError: If there is no server connection.
+    """
+    return "latestPerFolder" in _get_versions_field_args()
+
+
+# TODO: Backwards compatibility for AYON server < 1.15.5.
+#   Remove this once 1.15.5 is the minimum supported server.
+def server_supports_version_statistics() -> bool:
+    """Return whether the versions resolver calculates statistics.
+
+    Statistics (``calculateSpecificStatistics`` and the ``fieldStats``
+    they return) were added in server 1.15.5.
+
+    Returns:
+        ``True`` when the argument exists. ``False`` when it does not,
+        or when the server refuses the introspection query.
+
+    Raises:
+        RuntimeError: If there is no server connection.
+    """
+    return "calculateSpecificStatistics" in _get_versions_field_args()
+
+
+# TODO: Backwards compatibility for AYON server < 1.16.7.
+#   Remove this once 1.16.7 is the minimum supported server.
 def server_supports_representation_filter() -> bool:
     """Return whether the versions resolver takes ``representationFilter``.
 

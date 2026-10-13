@@ -41,7 +41,10 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     GroupByOption,
     get_attribute_icon,
 )
-from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.browser.ui.browser_types import (
+    FOLDER_SLICER_CATEGORIES,
+    BrowserSlicerCategory,
+)
 from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 
 from ._browser_cell_delegates import (
@@ -316,12 +319,13 @@ class BrowserTable(AYContainer):
             self._controller.include_folder_children,
             disabled=(
                 self._controller.current_category
-                != BrowserSlicerCategory.HIERARCHY.value
+                not in FOLDER_SLICER_CATEGORIES
             ),
         )
         self._customize.set_latest_per_folder(
             self._controller.latest_per_folder,
             disabled=self._controller.group_by_key == GROUP_BY_PRODUCT_KEY,
+            supported=self._controller.supports_latest_per_folder,
         )
         self._customize.latest_per_folder_changed.connect(
             self._on_latest_per_folder_changed
@@ -509,9 +513,9 @@ class BrowserTable(AYContainer):
             self._on_viewport_resize()
         elif obj is self._table.header():
             if event.type() == QtCore.QEvent.Type.Enter:
-                self._add_column_btn.show()
+                self._add_column_btn.set_revealed(True)
             elif event.type() == QtCore.QEvent.Type.Leave:
-                self._add_column_btn.hide()
+                self._add_column_btn.set_revealed(False)
         return False
 
     def _on_viewport_resize(self) -> None:
@@ -855,7 +859,7 @@ class BrowserTable(AYContainer):
         )
         self._customize.set_include_children(
             self._controller.include_folder_children,
-            disabled=category != BrowserSlicerCategory.HIERARCHY.value,
+            disabled=category not in FOLDER_SLICER_CATEGORIES,
         )
         self._view_selector.set_view_type(BROWSER_VIEW_TYPE)
         self._update_empty_state()
@@ -904,7 +908,7 @@ class BrowserTable(AYContainer):
         self.display_type_changed.emit(active)
 
     def _on_include_children_changed(self, enabled: bool) -> None:
-        """Update descendant-folder querying for the hierarchy slicer."""
+        """Update descendant-folder querying for the slicer's folders."""
         self._controller.set_include_folder_children(enabled)
         self._model.reset_data()
         self._update_empty_state()
@@ -1019,6 +1023,7 @@ class BrowserTable(AYContainer):
         self._customize.set_latest_per_folder(
             self._controller.latest_per_folder,
             disabled=group_by_key == GROUP_BY_PRODUCT_KEY,
+            supported=self._controller.supports_latest_per_folder,
         )
         self._model.set_tree_mode(tree_mode)
         self._reset_expansion_state()
@@ -1124,6 +1129,7 @@ class BrowserTable(AYContainer):
                 disabled=(
                     self._controller.group_by_key == GROUP_BY_PRODUCT_KEY
                 ),
+                supported=self._controller.supports_latest_per_folder,
             )
             self._controller.set_latest_per_folder(latest_per_folder)
             self._model.reset_data()
@@ -1133,7 +1139,7 @@ class BrowserTable(AYContainer):
                 include_children,
                 disabled=(
                     self._controller.current_category
-                    != BrowserSlicerCategory.HIERARCHY.value
+                    not in FOLDER_SLICER_CATEGORIES
                 ),
             )
             self._controller.set_include_folder_children(include_children)
@@ -1999,12 +2005,21 @@ class BrowserTable(AYContainer):
                 icon="local_offer", entity="Task", show_has_value_filters=True,
             ),
         ]
-        # Older servers cannot filter versions by their representations,
-        # so the whole Representation scope is left out for them.
-        supports_representation_filter = (
-            self._controller.supports_representation_filter
-        )
-        if supports_representation_filter:
+        # Older servers cannot filter versions by their folders or
+        # representations, so those whole scopes are left out for them.
+        unsupported_scopes = set()
+        # TODO: Backwards compatibility for AYON server < 1.16.1.
+        #   Remove this once 1.16.1 is the minimum supported server.
+        if not self._controller.supports_folder_filter:
+            unsupported_scopes.add("folder")
+            filters = [
+                item for item in filters if item.entity != "Folder"
+            ]
+        # TODO: Backwards compatibility for AYON server < 1.16.7.
+        #   Remove this once 1.16.7 is the minimum supported server.
+        if not self._controller.supports_representation_filter:
+            unsupported_scopes.add("representation")
+        else:
             filters.extend([
                 FilterEntry(
                     "representationName", "Name",
@@ -2032,10 +2047,7 @@ class BrowserTable(AYContainer):
         for scope, definitions in (
             self._controller.attributes_by_scope.items()
         ):
-            if (
-                scope == "representation"
-                and not supports_representation_filter
-            ):
+            if scope in unsupported_scopes:
                 continue
             entity = scope.capitalize()
             for name, data in definitions.items():
