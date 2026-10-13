@@ -633,18 +633,12 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         - Double click: execute double-click callback (e.g. launcher).
         - Right click: show tray menu (handled by Qt).
 
-    Menu opened by a click ignores mouse clicks for a short time after
-        it is shown. Without that the second click of a (slow) double-click
-        lands on the menu item under the cursor, which is usually 'Exit'.
-
     :param parent: Main widget that cares about all GUIs
     :type parent: QtWidgets.QMainWindow
     """
 
     # Fallback values (in ms) if the system value is not available
     default_doubleclick_time_ms = 400
-    # How long after the menu is shown mouse clicks are ignored
-    menu_click_guard_ms = 400
 
     def __init__(self, parent):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
@@ -656,7 +650,6 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._click_pos = None
         self._initializing_addons = False
         # Timestamps used to filter out unwanted clicks
-        self._menu_shown_at = 0.0
         self._menu_hidden_at = 0.0
         self._ignore_trigger_until = 0.0
 
@@ -671,9 +664,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Setup menu in Tray
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
-        self.menu.aboutToShow.connect(self._on_menu_about_to_show)
         self.menu.aboutToHide.connect(self._on_menu_about_to_hide)
-        self.menu.installEventFilter(self)
 
         # Set addons
         self._tray_manager = TrayManager(self, parent)
@@ -686,10 +677,18 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
         self._click_timer = None
 
-        # Catch activate event for left click if not on MacOS
+        # Catch activate event for left click if not on MacOS or Wayland
         #   - MacOS has this ability by design and is harder to modify this
         #       behavior
         if platform.system().lower() == "darwin":
+            return
+
+        #   - On Wayland the menu can't be placed at the cursor position,
+        #       so it would show up at a random place. The menu is shown by
+        #       the desktop environment, which sends 'Trigger' on
+        #       double-click (e.g. GNOME with AppIndicator extension).
+        if self._is_wayland():
+            self.activated.connect(self._on_wayland_activated)
             return
 
         self.activated.connect(self.on_systray_activated)
@@ -704,6 +703,17 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     def is_closing(self) -> bool:
         return self._tray_manager.is_closing()
 
+    @staticmethod
+    def _is_wayland() -> bool:
+        if platform.system().lower() != "linux":
+            return False
+        platform_name = QtGui.QGuiApplication.platformName().lower()
+        if platform_name.startswith("wayland"):
+            return True
+        # Application can run through XWayland ('xcb') in Wayland session,
+        #   cursor position is still not available above the panel
+        return os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+
     @property
     def initializing_addons(self):
         return self._initializing_addons
@@ -715,23 +725,6 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         finally:
             self._initializing_addons = False
         self._prepare_menu_size()
-
-    def eventFilter(self, obj, event):
-        # Ignore mouse clicks on menu right after it was shown. That prevents
-        #   to trigger an action (usually 'Exit' as it is under cursor)
-        #   by the second click of double-click.
-        if obj is self.menu and event.type() in (
-            QtCore.QEvent.MouseButtonPress,
-            QtCore.QEvent.MouseButtonRelease,
-            QtCore.QEvent.MouseButtonDblClick,
-        ):
-            elapsed_ms = (time.monotonic() - self._menu_shown_at) * 1000
-            if elapsed_ms < self.menu_click_guard_ms:
-                return True
-        return super().eventFilter(obj, event)
-
-    def _on_menu_about_to_show(self):
-        self._menu_shown_at = time.monotonic()
 
     def _on_menu_about_to_hide(self):
         self._menu_hidden_at = time.monotonic()
@@ -747,7 +740,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         menu.ensurePolished()
         menu.adjustSize()
 
-    def _get_menu_pos(self, pos):
+    def _get_windows_menu_pos(self, pos):
         menu = self.contextMenu()
         screen = QtGui.QGuiApplication.screenAt(pos)
         if screen is None:
@@ -778,7 +771,9 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         if pos is None:
             pos = QtGui.QCursor().pos()
         self._prepare_menu_size()
-        self.contextMenu().popup(self._get_menu_pos(pos))
+        if platform.system().lower() == "windows":
+            pos = self._get_windows_menu_pos(pos)
+        self.contextMenu().popup(pos)
 
     def _on_trigger(self):
         now = time.monotonic()
@@ -812,6 +807,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         if self.contextMenu().isVisible():
             self.contextMenu().hide()
         self._tray_manager.execute_doubleclick()
+
+    def _on_wayland_activated(self, reason):
+        if reason == QtWidgets.QSystemTrayIcon.Trigger:
+            self._tray_manager.execute_doubleclick()
 
     def on_systray_activated(self, reason):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
@@ -853,6 +852,11 @@ class TrayStarter(QtCore.QObject):
         self._tray_widget = tray_widget
         self._timer_counter = 0
         self._start_timer = start_timer
+        # On Linux the tray menu is sent to the desktop environment over
+        #   DBus when the tray is shown. Some of them (e.g. GNOME with
+        #   AppIndicator extension) don't refresh the menu when it changes,
+        #   so the tray is shown after addons fill the menu.
+        self._show_tray_after_init = platform.system().lower() == "linux"
 
     def _on_start_timer(self):
         if self._tray_widget.is_closing():
@@ -864,7 +868,8 @@ class TrayStarter(QtCore.QObject):
             self._timer_counter += 1
             splash = self._get_splash()
             splash.show()
-            self._tray_widget.show()
+            if not self._show_tray_after_init:
+                self._tray_widget.show()
             # Make sure tray and splash are painted out
             QtWidgets.QApplication.processEvents()
 
@@ -873,6 +878,8 @@ class TrayStarter(QtCore.QObject):
             QtWidgets.QApplication.processEvents()
             self._timer_counter += 1
             self._tray_widget.initialize_addons()
+            if self._show_tray_after_init:
+                self._tray_widget.show()
 
         elif not self._tray_widget.initializing_addons:
             splash = self._get_splash()
