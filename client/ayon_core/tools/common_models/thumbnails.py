@@ -7,18 +7,20 @@ import typing
 from typing import Callable
 
 import ayon_api
+from ayon_api.graphql_queries import projects_graphql_query
 
 from ayon_core.lib import Logger, NestedCacheItem
 from ayon_core.lib.cache import CacheItem
 from ayon_core.pipeline.thumbnails import (
     get_thumbnail_path,
     get_entity_thumbnail_path,
+    get_project_thumbnail_path,
 )
 
 if typing.TYPE_CHECKING:
     from typing import Literal
 
-    ThumbnailEntityType = Literal["folder", "task", "version"]
+    ThumbnailEntityType = Literal["folder", "task", "version", "project"]
 
 
 class ThumbnailsModel:
@@ -35,6 +37,9 @@ class ThumbnailsModel:
         #   if the model was reset in the meantime the items are not part
         #   of the caches anymore and the outdated result is not cached.
         self._lock = threading.Lock()
+        # All projects are queried at once, more threads asking at the same
+        #   time should wait for the result of a single query
+        self._projects_query_lock = threading.Lock()
         # Paths are cached only for a while. A failed download is tried
         #   again and a file removed from disk is downloaded again.
         self._paths_cache = NestedCacheItem(
@@ -46,12 +51,20 @@ class ThumbnailsModel:
         self._fallback_paths_cache = NestedCacheItem(
             levels=3, lifetime=self.entity_cache_lifetime
         )
+        # 'updatedAt' of projects, changes with thumbnail of a project
+        self._projects_updated_at_cache = CacheItem(
+            default_factory=dict, lifetime=self.entity_cache_lifetime
+        )
 
     def reset(self) -> None:
         with self._lock:
             self._paths_cache.reset()
             self._thumbnail_ids_cache.reset()
             self._fallback_paths_cache.reset()
+            # New object, a running query must not fill the new cache
+            self._projects_updated_at_cache = CacheItem(
+                default_factory=dict, lifetime=self.entity_cache_lifetime
+            )
 
     def get_thumbnail_paths(
         self,
@@ -61,6 +74,10 @@ class ThumbnailsModel:
         use_server_fallback: bool = True,
     ) -> dict[str, str | None]:
         """Get paths to thumbnails of entities.
+
+        Thumbnails of projects are received using entity type 'project',
+        in that case entity ids are project names and 'project_name' is
+        ignored.
 
         Args:
             project_name (str | None): Project name.
@@ -80,6 +97,9 @@ class ThumbnailsModel:
             entity_id: None
             for entity_id in entity_ids
         }
+        if entity_type == "project":
+            return self._get_project_thumbnail_paths(output)
+
         if (
             not project_name
             or not entity_ids
@@ -107,6 +127,62 @@ class ThumbnailsModel:
                 output[entity_id] = thumbnail_path
 
         return output
+
+    def _get_project_thumbnail_paths(
+        self, output: dict[str, str | None]
+    ) -> dict[str, str | None]:
+        updated_at_by_name = self._get_projects_updated_at()
+        for project_name in output:
+            updated_at = updated_at_by_name.get(project_name)
+            if not updated_at:
+                continue
+            with self._lock:
+                item = self._paths_cache[project_name][updated_at]
+            output[project_name] = self._get_cached_path(
+                item,
+                self._receive_project_thumbnail_path,
+                project_name,
+                "project",
+                project_name,
+                updated_at,
+            )
+        return output
+
+    def _receive_project_thumbnail_path(
+        self,
+        project_name: str,
+        _entity_type: ThumbnailEntityType,
+        _entity_id: str,
+        updated_at: str,
+    ) -> str | None:
+        return get_project_thumbnail_path(project_name, updated_at)
+
+    def _get_projects_updated_at(self) -> dict[str, str]:
+        with self._projects_query_lock:
+            with self._lock:
+                item = self._projects_updated_at_cache
+                if item.is_valid:
+                    return item.get_data()
+
+            updated_at_by_name = {}
+            try:
+                updated_at_by_name = self._query_projects_updated_at()
+            except Exception as exc:
+                self.log.warning(
+                    "Failed to receive projects for thumbnails: %s", exc
+                )
+            with self._lock:
+                item.update_data(updated_at_by_name)
+            return updated_at_by_name
+
+    def _query_projects_updated_at(self) -> dict[str, str]:
+        con = ayon_api.get_server_api_connection()
+        query = projects_graphql_query({"name", "updatedAt"})
+        return {
+            project["name"]: project["updatedAt"]
+            for parsed_data in query.continuous_query(con)
+            for project in parsed_data["projects"]
+        }
 
     def get_folder_thumbnail_ids(
         self, project_name: str, folder_ids: set[str]
