@@ -1,28 +1,26 @@
 """Task in-use sessions (advisory task locking).
 
-A session of a user working on a task is stored in Redis with a time to
-live. The session must be refreshed (heartbeat) to stay alive, so sessions
-of crashed applications expire on their own.
+A session of a user working on a task is stored in Redis. The session must
+be refreshed (heartbeat) to stay alive, so sessions of crashed applications
+expire on their own.
 
 Nothing is stored on the task entity, so the sessions do not change the
 task, do not create events and a user does not need permissions to write
 to the task. Any user with access to the project can use the endpoints.
 
-Redis keys:
-    Session key (string with JSON): Each session has its own key with the
-        time to live. A session writes only its own key, so sessions of
-        different users can't override each other.
-    Task key (sorted set): Ids of sessions of a task, used to find the
-        sessions without scanning of all keys. Score of a session id is
-        the time when the session expires. An id is removed only when its
-        own expiration time passed, so listing of sessions can't remove
-        a session that was refreshed in the meantime.
+Redis:
+    Sessions of a task are stored in one hash. Field of the hash is
+    a session id and the value is JSON with the session and the time when
+    the session expires.
 
-    Session key and its id in the sorted set are written and removed in
-    a single Redis transaction, and adding, updating and removing of
-    an id in a sorted set are atomic commands that do not affect other ids.
-    Multiple users can claim, refresh, release and list sessions of the
-    same task at the same time without losing any of the sessions.
+    A session writes and removes only its own field with atomic commands,
+    which do not affect other fields. Multiple users can claim, refresh,
+    release and list sessions of the same task at the same time without
+    losing any of the sessions.
+
+    Expired sessions are skipped when the sessions are listed. They are not
+    removed from the hash, the whole hash is removed by Redis when none of
+    the sessions was refreshed for 'REDIS_KEY_TTL'.
 """
 import time
 from datetime import datetime, timezone
@@ -41,16 +39,18 @@ from ayon_server.utils import json_dumps, json_loads
 if TYPE_CHECKING:
     from ayon_server.addons import BaseServerAddon
 
-# None of the namespaces can be a prefix of the other one
-REDIS_SESSION_NAMESPACE = "core-task-in-use-session"
-REDIS_TASK_NAMESPACE = "core-task-in-use-task"
+REDIS_NAMESPACE = "core-entity-lock"
 
 DEFAULT_TTL = 5 * 60
 MIN_TTL = 30
 MAX_TTL = 60 * 60
+# The hash must live at least as long as any of its sessions
+REDIS_KEY_TTL = MAX_TTL
 MAX_TASKS_PER_QUERY = 500
 
 SESSION_ID_REGEX = r"^[a-zA-Z0-9_-]{1,64}$"
+# Key of session data in Redis that is not part of the session model
+EXPIRES_AT_KEY = "expiresAt"
 
 
 class TaskSessionModel(OPModel):
@@ -126,31 +126,9 @@ class TasksSessionsModel(OPModel):
 SessionID = Path(..., title="Session ID", regex=SESSION_ID_REGEX)
 
 
-def _full_key(namespace: str, key: str) -> str:
-    """Key as is stored by 'Redis' helper."""
-    return f"{Redis.prefix}{namespace}-{key}"
-
-
-def _session_key(project_name: str, task_id: str, session_id: str) -> str:
-    """Key of a session.
-
-    Project name can't contain '-' and task id has fixed length, so keys
-    of different sessions can't be the same.
-    """
-    return _full_key(
-        REDIS_SESSION_NAMESPACE, f"{project_name}-{task_id}-{session_id}"
-    )
-
-
 def _task_key(project_name: str, task_id: str) -> str:
-    """Key of sorted set with ids of sessions of a task."""
-    return _full_key(REDIS_TASK_NAMESPACE, f"{project_name}-{task_id}")
-
-
-def _decode(value: Any) -> str:
-    if isinstance(value, bytes):
-        return value.decode("utf-8")
-    return str(value)
+    """Key of hash with sessions of a task, as 'Redis' helper stores it."""
+    return f"{Redis.prefix}{REDIS_NAMESPACE}-{project_name}-task-{task_id}"
 
 
 async def _get_redis_pool():
@@ -159,19 +137,28 @@ async def _get_redis_pool():
     return Redis.redis_pool
 
 
-async def _get_session_data(session_key: str) -> dict[str, Any] | None:
-    """Data of a session, None if the session does not exist."""
-    pool = await _get_redis_pool()
-    payload = await pool.get(session_key)
+def _parse_session(payload: Any) -> TaskSessionModel | None:
+    """Session from a value of the hash, None if the session did expire."""
     if payload is None:
         return None
     try:
         data = json_loads(payload)
+        if data.pop(EXPIRES_AT_KEY) <= time.time():
+            return None
+        return TaskSessionModel(**data)
     except Exception:
         return None
-    if not isinstance(data, dict):
-        return None
-    return data
+
+
+def _parse_sessions(payloads: dict[Any, Any]) -> list[TaskSessionModel]:
+    """Sessions that did not expire from content of the hash."""
+    sessions = [
+        session
+        for session in map(_parse_session, payloads.values())
+        if session is not None
+    ]
+    sessions.sort(key=lambda session: (session.opened_at, session.session_id))
+    return sessions
 
 
 async def _get_sessions(
@@ -179,36 +166,9 @@ async def _get_sessions(
 ) -> list[TaskSessionModel]:
     """Sessions of a task that did not expire."""
     pool = await _get_redis_pool()
-    task_key = _task_key(project_name, task_id)
-    # Remove ids of expired sessions and get the rest in one transaction.
-    # Only ids with passed expiration time are removed. Refresh of
-    #   a session does change the time with an atomic command, so
-    #   a session that is alive is never removed here.
-    async with pool.pipeline(transaction=True) as pipe:
-        pipe.zremrangebyscore(task_key, "-inf", time.time())
-        pipe.zrange(task_key, 0, -1)
-        _, session_ids = await pipe.execute()
-
-    session_ids = [_decode(session_id) for session_id in session_ids]
-    if not session_ids:
-        return []
-
-    payloads = await pool.mget([
-        _session_key(project_name, task_id, session_id)
-        for session_id in session_ids
-    ])
-    sessions = []
-    for payload in payloads:
-        # Session did expire or was released after the ids were received
-        if payload is None:
-            continue
-        try:
-            sessions.append(TaskSessionModel(**json_loads(payload)))
-        except Exception:
-            continue
-
-    sessions.sort(key=lambda session: (session.opened_at, session.session_id))
-    return sessions
+    return _parse_sessions(
+        await pool.hgetall(_task_key(project_name, task_id))
+    )
 
 
 async def _ensure_task_exists(project_name: str, task_id: str) -> None:
@@ -235,23 +195,23 @@ async def claim_task(
     all sessions working on the task, including the claimed one.
     """
     pool = await _get_redis_pool()
-    session_key = _session_key(project_name, task_id, session_id)
-    # The key is written only by requests of the session itself, which are
-    #   sent one by one, so nobody can change it between the read and
+    task_key = _task_key(project_name, task_id)
+    # The field is written only by requests of the session itself, which
+    #   are sent one by one, so it does not change between the read and
     #   the write below
-    existing = await _get_session_data(session_key)
+    existing = _parse_session(await pool.hget(task_key, session_id))
     if existing is None:
         await _ensure_task_exists(project_name, task_id)
-    elif existing.get("username") != user.name:
+    elif existing.username != user.name:
         raise ForbiddenException("Session is owned by a different user")
 
     ttl = max(MIN_TTL, min(MAX_TTL, payload.ttl))
     now = datetime.now(timezone.utc).isoformat()
     opened_at = updated_at = now
     if existing is not None:
-        opened_at = existing.get("openedAt") or now
+        opened_at = existing.opened_at
         if payload.heartbeat:
-            updated_at = existing.get("updatedAt") or now
+            updated_at = existing.updated_at
 
     session = TaskSessionModel(
         session_id=session_id,
@@ -263,19 +223,15 @@ async def claim_task(
         opened_at=opened_at,
         updated_at=updated_at,
     )
-    task_key = _task_key(project_name, task_id)
-    # The session and its id in the sorted set are written together
+    data = session.dict(by_alias=True)
+    data[EXPIRES_AT_KEY] = time.time() + ttl
     async with pool.pipeline(transaction=True) as pipe:
-        pipe.set(session_key, json_dumps(session.dict(by_alias=True)), ex=ttl)
-        pipe.zadd(task_key, {session_id: time.time() + ttl})
-        # The sorted set must live at least as long as any of the sessions
-        pipe.expire(task_key, MAX_TTL)
-        await pipe.execute()
+        pipe.hset(task_key, session_id, json_dumps(data))
+        pipe.expire(task_key, REDIS_KEY_TTL)
+        pipe.hgetall(task_key)
+        _, _, payloads = await pipe.execute()
 
-    return ClaimTaskResponseModel(
-        sessions=await _get_sessions(project_name, task_id),
-        ttl=ttl,
-    )
+    return ClaimTaskResponseModel(sessions=_parse_sessions(payloads), ttl=ttl)
 
 
 async def release_task(
@@ -290,19 +246,16 @@ async def release_task(
     a manager. Session that does not exist is ignored.
     """
     pool = await _get_redis_pool()
-    session_key = _session_key(project_name, task_id, session_id)
-    existing = await _get_session_data(session_key)
+    task_key = _task_key(project_name, task_id)
+    existing = _parse_session(await pool.hget(task_key, session_id))
     if (
         existing is not None
-        and existing.get("username") != user.name
+        and existing.username != user.name
         and not user.is_manager
     ):
         raise ForbiddenException("Session is owned by a different user")
 
-    async with pool.pipeline(transaction=True) as pipe:
-        pipe.delete(session_key)
-        pipe.zrem(_task_key(project_name, task_id), session_id)
-        await pipe.execute()
+    await pool.hdel(task_key, session_id)
     return EmptyResponse()
 
 
@@ -323,9 +276,19 @@ async def query_tasks_sessions(
     payload: TasksQueryModel,
 ) -> TasksSessionsModel:
     """Get sessions working on multiple tasks."""
+    task_ids = sorted(set(payload.task_ids))
+    if not task_ids:
+        return TasksSessionsModel()
+
+    pool = await _get_redis_pool()
+    async with pool.pipeline(transaction=False) as pipe:
+        for task_id in task_ids:
+            pipe.hgetall(_task_key(project_name, task_id))
+        results = await pipe.execute()
+
     tasks = {}
-    for task_id in set(payload.task_ids):
-        sessions = await _get_sessions(project_name, task_id)
+    for task_id, payloads in zip(task_ids, results):
+        sessions = _parse_sessions(payloads)
         if sessions:
             tasks[task_id] = sessions
     return TasksSessionsModel(tasks=tasks)
