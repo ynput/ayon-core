@@ -846,6 +846,11 @@ class TrayStarter(QtCore.QObject):
         self._tray_widget = tray_widget
         self._timer_counter = 0
         self._start_timer = start_timer
+        # On Linux the tray menu is sent to the desktop environment over
+        #   DBus when the tray is shown. Some of them (e.g. GNOME with
+        #   AppIndicator extension) don't refresh the menu when it changes,
+        #   so the tray is shown after addons fill the menu.
+        self._show_tray_after_init = platform.system().lower() == "linux"
 
     def _on_start_timer(self):
         if self._tray_widget.is_closing():
@@ -857,7 +862,8 @@ class TrayStarter(QtCore.QObject):
             self._timer_counter += 1
             splash = self._get_splash()
             splash.show()
-            self._tray_widget.show()
+            if not self._show_tray_after_init:
+                self._tray_widget.show()
             # Make sure tray and splash are painted out
             QtWidgets.QApplication.processEvents()
 
@@ -866,6 +872,8 @@ class TrayStarter(QtCore.QObject):
             QtWidgets.QApplication.processEvents()
             self._timer_counter += 1
             self._tray_widget.initialize_addons()
+            if self._show_tray_after_init:
+                self._tray_widget.show()
 
         elif not self._tray_widget.initializing_addons:
             splash = self._get_splash()
