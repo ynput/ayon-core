@@ -680,9 +680,15 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Catch activate event for left click if not on MacOS or Wayland
         #   - MacOS has this ability by design and is harder to modify this
         #       behavior
+        if platform.system().lower() == "darwin":
+            return
+
         #   - On Wayland the menu can't be placed at the cursor position,
-        #       so it would show up at a random place
-        if platform.system().lower() == "darwin" or self._is_wayland():
+        #       so it would show up at a random place. The menu is shown by
+        #       the desktop environment, which sends 'Trigger' on
+        #       double-click (e.g. GNOME with AppIndicator extension).
+        if self._is_wayland():
+            self.activated.connect(self._on_wayland_activated)
             return
 
         self.activated.connect(self.on_systray_activated)
@@ -805,6 +811,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         if self.contextMenu().isVisible():
             self.contextMenu().hide()
         self._tray_manager.execute_doubleclick()
+
+    def _on_wayland_activated(self, reason):
+        if reason == QtWidgets.QSystemTrayIcon.Trigger:
+            self._tray_manager.execute_doubleclick()
 
     def on_systray_activated(self, reason):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
