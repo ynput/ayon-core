@@ -272,12 +272,20 @@ class TaskInUseDialog(QtWidgets.QDialog):
 
         btns_widget = QtWidgets.QWidget(self)
 
-        cancel_btn = AYButton(
-            "Cancel", variant=AYButton.Variants.Tertiary,
-            parent=btns_widget,
-        )
+        # The button to continue is the only one with a warning color and
+        #   is always on the left side, the button that closes the dialog
+        #   without any action is always the last one on the right side
         confirm_btn = AYButton(
             confirm_label, variant=AYButton.Variants.Danger,
+            parent=btns_widget,
+        )
+        version_up_btn = AYButton(
+            "Version up", variant=AYButton.Variants.Filled,
+            parent=btns_widget,
+        )
+        version_up_btn.setVisible(version_up)
+        cancel_btn = AYButton(
+            "Cancel", variant=AYButton.Variants.Surface,
             parent=btns_widget,
         )
         if notice_only:
@@ -287,18 +295,13 @@ class TaskInUseDialog(QtWidgets.QDialog):
             "OK", variant=AYButton.Variants.Surface, parent=btns_widget
         )
         ok_btn.setVisible(notice_only)
-        version_up_btn = AYButton(
-            "Version up", variant=AYButton.Variants.Filled,
-            parent=btns_widget,
-        )
-        version_up_btn.setVisible(version_up)
 
         btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=10)
-        btns_layout.addStretch(1)
-        btns_layout.addWidget(cancel_btn, 0)
         btns_layout.addWidget(confirm_btn, 0)
-        btns_layout.addWidget(ok_btn, 0)
+        btns_layout.addStretch(1)
         btns_layout.addWidget(version_up_btn, 0)
+        btns_layout.addWidget(cancel_btn, 0)
+        btns_layout.addWidget(ok_btn, 0)
 
         main_layout = AYVBoxLayout(self, margin=15, spacing=14)
         main_layout.addWidget(header_label, 0)
