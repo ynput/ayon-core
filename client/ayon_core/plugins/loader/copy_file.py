@@ -10,16 +10,21 @@ from ayon_core.pipeline.actions import (
     LoaderActionSelection,
     LoaderActionResult,
 )
-from ayon_core.pipeline.actions.loader import CoreLoaderActionPlugin
+from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
-class CopyFileAction(CoreLoaderActionPlugin):
+class CopyFileActionPlugin(LoaderActionPlugin):
     """Copy published file path to clipboard"""
     identifier = "core.copy-action"
+    settings_key = "copy_file_action"
 
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        actions = selection.get_project_settings().get("core", {}).get(
+            "tools", {}).get("loader", {}).get("actions", {})
+        if not actions.get(self.settings_key, True):
+            return []
         repres = []
         if selection.selected_type == "representation":
             repres = selection.entities.get_representations(

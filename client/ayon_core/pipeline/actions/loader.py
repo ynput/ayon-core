@@ -561,88 +561,12 @@ class LoaderActionPlugin(ABC):
 
     def __init__(self, context: "LoaderActionsContext") -> None:
         self._context = context
-        self.apply_settings(context.get_studio_settings())
-
-    def apply_settings(self, studio_settings: dict[str, Any]) -> None:
-        """Apply studio settings to the plugin.
-
-        Args:
-            studio_settings (dict[str, Any]): Studio settings.
-
-        """
-        pass
 
     @property
     def log(self) -> logging.Logger:
         if self._log is None:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
-
-    @property
-    def identifier(self) -> str:
-        """Identifier of the plugin.
-
-        Returns:
-            str: Plugin identifier.
-
-        """
-        return self.__class__.__name__
-
-    @property
-    def host_name(self) -> Optional[str]:
-        """Name of the current host."""
-        return self._context.get_host_name()
-
-    @abstractmethod
-    def get_action_items(
-        self, selection: LoaderActionSelection
-    ) -> list[LoaderActionItem]:
-        """Action items for the selection.
-
-        Args:
-            selection (LoaderActionSelection): Selection.
-
-        Returns:
-            list[LoaderActionItem]: Action items.
-
-        """
-        pass
-
-    @abstractmethod
-    def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: Optional[DataType],
-        form_values: dict[str, Any],
-    ) -> Optional[LoaderActionResult]:
-        """Execute an action.
-
-        Args:
-            selection (LoaderActionSelection): Selection wrapper. Can be used
-                to get entities or get context of original selection.
-            data (Optional[DataType]): Additional action item data.
-            form_values (dict[str, Any]): Attribute values.
-
-        Returns:
-            Optional[LoaderActionResult]: Result of the action execution.
-
-        """
-        pass
-
-
-class CoreLoaderActionPlugin(LoaderActionPlugin):
-    """Base class for configurable core loader actions."""
-
-    def apply_settings(self, studio_settings: dict[str, Any]) -> None:
-        """Apply settings controlling whether the action is available."""
-        loader_settings = (
-            studio_settings
-            .get("core", {})
-            .get("tools", {})
-            .get("loader", {})
-        )
-        actions_settings = loader_settings.get("actions", {})
-        self.enabled = actions_settings.get(self.__class__.__name__, True)
 
     @property
     def identifier(self) -> str:

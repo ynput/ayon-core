@@ -24,7 +24,7 @@ from ayon_core.pipeline.actions import (
     LoaderActionSelection,
     LoaderActionResult,
 )
-from ayon_core.pipeline.actions.loader import CoreLoaderActionPlugin
+from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
 class HeroCreationError(Exception):
@@ -59,9 +59,10 @@ def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
     return changes
 
 
-class CreateHeroVersion(CoreLoaderActionPlugin):
+class CreateHeroVersion(LoaderActionPlugin):
     """Create hero version from selected context."""
 
+    settings_key = "create_hero_version"
     is_multiple_contexts_compatible = False
     ignored_representation_names: list[str] = []
     db_representation_context_keys = [
@@ -80,6 +81,10 @@ class CreateHeroVersion(CoreLoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        actions = selection.get_project_settings().get("core", {}).get(
+            "tools", {}).get("loader", {}).get("actions", {})
+        if not actions.get(self.settings_key, True):
+            return []
         # Do not show in hosts
         if self.host_name is not None:
             return []

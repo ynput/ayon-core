@@ -25,12 +25,13 @@ from ayon_core.pipeline.actions import (
     LoaderActionSelection,
     LoaderActionResult,
 )
-from ayon_core.pipeline.actions.loader import CoreLoaderActionPlugin
+from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
-class DeleteOldVersions(CoreLoaderActionPlugin):
+class DeleteOldVersions(LoaderActionPlugin):
     """Deletes specific number of old version"""
 
+    settings_key = "delete_old_versions"
     is_multiple_contexts_compatible = True
     sequence_splitter = "__sequence_splitter__"
 
@@ -39,6 +40,10 @@ class DeleteOldVersions(CoreLoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        actions = selection.get_project_settings().get("core", {}).get(
+            "tools", {}).get("loader", {}).get("actions", {})
+        if not actions.get(self.settings_key, True):
+            return []
         # Do not show in hosts
         if self.host_name is not None:
             return []

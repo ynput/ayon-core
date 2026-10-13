@@ -13,7 +13,7 @@ from ayon_core.pipeline.actions import (
     LoaderActionSelection,
     LoaderActionResult,
 )
-from ayon_core.pipeline.actions.loader import CoreLoaderActionPlugin
+from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
 WINDOWS_USER_REG_PATH = (
@@ -260,13 +260,18 @@ def open_file(filepath: str) -> None:
         subprocess.call(("xdg-open", filepath))
 
 
-class OpenFileAction(CoreLoaderActionPlugin):
+class OpenFileAction(LoaderActionPlugin):
     """Open Image Sequence or Video with system default"""
     identifier = "core.open-file"
+    settings_key = "open_file_action"
 
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        actions = selection.get_project_settings().get("core", {}).get(
+            "tools", {}).get("loader", {}).get("actions", {})
+        if not actions.get(self.settings_key, True):
+            return []
         repres = []
         if selection.selected_type == "representation":
             repres = selection.entities.get_representations(
