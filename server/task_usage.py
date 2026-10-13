@@ -9,11 +9,22 @@ task, do not create events and a user does not need permissions to write
 to the task. Any user with access to the project can use the endpoints.
 
 Redis keys:
-    Each session has its own key with the time to live. Ids of sessions of
-    a task are stored in a set, which is used to find the sessions without
-    scanning of all keys. Ids of expired sessions are removed from the set
-    when the sessions of the task are listed.
+    Session key (string with JSON): Each session has its own key with the
+        time to live. A session writes only its own key, so sessions of
+        different users can't override each other.
+    Task key (sorted set): Ids of sessions of a task, used to find the
+        sessions without scanning of all keys. Score of a session id is
+        the time when the session expires. An id is removed only when its
+        own expiration time passed, so listing of sessions can't remove
+        a session that was refreshed in the meantime.
+
+    Session key and its id in the sorted set are written and removed in
+    a single Redis transaction, and adding, updating and removing of
+    an id in a sorted set are atomic commands that do not affect other ids.
+    Multiple users can claim, refresh, release and list sessions of the
+    same task at the same time without losing any of the sessions.
 """
+import time
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
@@ -25,13 +36,14 @@ from ayon_server.exceptions import BadRequestException, ForbiddenException
 from ayon_server.lib.postgres import Postgres
 from ayon_server.lib.redis import Redis
 from ayon_server.types import Field, OPModel
-from ayon_server.utils import json_loads
+from ayon_server.utils import json_dumps, json_loads
 
 if TYPE_CHECKING:
     from ayon_server.addons import BaseServerAddon
 
-REDIS_NAMESPACE = "core-task-in-use"
-REDIS_INDEX_NAMESPACE = "core-task-in-use-index"
+# None of the namespaces can be a prefix of the other one
+REDIS_SESSION_NAMESPACE = "core-task-in-use-session"
+REDIS_TASK_NAMESPACE = "core-task-in-use-task"
 
 DEFAULT_TTL = 5 * 60
 MIN_TTL = 30
@@ -114,17 +126,25 @@ class TasksSessionsModel(OPModel):
 SessionID = Path(..., title="Session ID", regex=SESSION_ID_REGEX)
 
 
-def _session_key(project_name: str, task_id: str, session_id: str) -> str:
-    return f"{project_name}-{task_id}-{session_id}"
-
-
 def _full_key(namespace: str, key: str) -> str:
     """Key as is stored by 'Redis' helper."""
     return f"{Redis.prefix}{namespace}-{key}"
 
 
-def _index_key(project_name: str, task_id: str) -> str:
-    return _full_key(REDIS_INDEX_NAMESPACE, f"{project_name}-{task_id}")
+def _session_key(project_name: str, task_id: str, session_id: str) -> str:
+    """Key of a session.
+
+    Project name can't contain '-' and task id has fixed length, so keys
+    of different sessions can't be the same.
+    """
+    return _full_key(
+        REDIS_SESSION_NAMESPACE, f"{project_name}-{task_id}-{session_id}"
+    )
+
+
+def _task_key(project_name: str, task_id: str) -> str:
+    """Key of sorted set with ids of sessions of a task."""
+    return _full_key(REDIS_TASK_NAMESPACE, f"{project_name}-{task_id}")
 
 
 def _decode(value: Any) -> str:
@@ -139,41 +159,55 @@ async def _get_redis_pool():
     return Redis.redis_pool
 
 
+async def _get_session_data(session_key: str) -> dict[str, Any] | None:
+    """Data of a session, None if the session does not exist."""
+    pool = await _get_redis_pool()
+    payload = await pool.get(session_key)
+    if payload is None:
+        return None
+    try:
+        data = json_loads(payload)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
 async def _get_sessions(
     project_name: str, task_id: str
 ) -> list[TaskSessionModel]:
     """Sessions of a task that did not expire."""
     pool = await _get_redis_pool()
-    index_key = _index_key(project_name, task_id)
-    session_ids = sorted(
-        _decode(session_id)
-        for session_id in await pool.smembers(index_key)
-    )
+    task_key = _task_key(project_name, task_id)
+    # Remove ids of expired sessions and get the rest in one transaction.
+    # Only ids with passed expiration time are removed. Refresh of
+    #   a session does change the time with an atomic command, so
+    #   a session that is alive is never removed here.
+    async with pool.pipeline(transaction=True) as pipe:
+        pipe.zremrangebyscore(task_key, "-inf", time.time())
+        pipe.zrange(task_key, 0, -1)
+        _, session_ids = await pipe.execute()
+
+    session_ids = [_decode(session_id) for session_id in session_ids]
     if not session_ids:
         return []
 
     payloads = await pool.mget([
-        _full_key(
-            REDIS_NAMESPACE,
-            _session_key(project_name, task_id, session_id),
-        )
+        _session_key(project_name, task_id, session_id)
         for session_id in session_ids
     ])
     sessions = []
-    expired_ids = []
-    for session_id, payload in zip(session_ids, payloads):
+    for payload in payloads:
+        # Session did expire or was released after the ids were received
         if payload is None:
-            expired_ids.append(session_id)
             continue
         try:
             sessions.append(TaskSessionModel(**json_loads(payload)))
         except Exception:
-            expired_ids.append(session_id)
+            continue
 
-    if expired_ids:
-        await pool.srem(index_key, *expired_ids)
-
-    sessions.sort(key=lambda session: session.opened_at)
+    sessions.sort(key=lambda session: (session.opened_at, session.session_id))
     return sessions
 
 
@@ -200,11 +234,12 @@ async def claim_task(
     The session expires if is not refreshed in the time to live. Returns
     all sessions working on the task, including the claimed one.
     """
-    key = _session_key(project_name, task_id, session_id)
-    existing = await Redis.get_json(REDIS_NAMESPACE, key)
-    if not isinstance(existing, dict):
-        existing = None
-
+    pool = await _get_redis_pool()
+    session_key = _session_key(project_name, task_id, session_id)
+    # The key is written only by requests of the session itself, which are
+    #   sent one by one, so nobody can change it between the read and
+    #   the write below
+    existing = await _get_session_data(session_key)
     if existing is None:
         await _ensure_task_exists(project_name, task_id)
     elif existing.get("username") != user.name:
@@ -228,15 +263,14 @@ async def claim_task(
         opened_at=opened_at,
         updated_at=updated_at,
     )
-    await Redis.set_json(
-        REDIS_NAMESPACE, key, session.dict(by_alias=True), ttl=ttl
-    )
-
-    pool = await _get_redis_pool()
-    index_key = _index_key(project_name, task_id)
-    await pool.sadd(index_key, session_id)
-    # The set must live at least as long as any of the sessions
-    await pool.expire(index_key, MAX_TTL)
+    task_key = _task_key(project_name, task_id)
+    # The session and its id in the sorted set are written together
+    async with pool.pipeline(transaction=True) as pipe:
+        pipe.set(session_key, json_dumps(session.dict(by_alias=True)), ex=ttl)
+        pipe.zadd(task_key, {session_id: time.time() + ttl})
+        # The sorted set must live at least as long as any of the sessions
+        pipe.expire(task_key, MAX_TTL)
+        await pipe.execute()
 
     return ClaimTaskResponseModel(
         sessions=await _get_sessions(project_name, task_id),
@@ -255,18 +289,20 @@ async def release_task(
     A session can be released by the user who did claim it or by
     a manager. Session that does not exist is ignored.
     """
-    key = _session_key(project_name, task_id, session_id)
-    existing = await Redis.get_json(REDIS_NAMESPACE, key)
+    pool = await _get_redis_pool()
+    session_key = _session_key(project_name, task_id, session_id)
+    existing = await _get_session_data(session_key)
     if (
-        isinstance(existing, dict)
+        existing is not None
         and existing.get("username") != user.name
         and not user.is_manager
     ):
         raise ForbiddenException("Session is owned by a different user")
 
-    await Redis.delete(REDIS_NAMESPACE, key)
-    pool = await _get_redis_pool()
-    await pool.srem(_index_key(project_name, task_id), session_id)
+    async with pool.pipeline(transaction=True) as pipe:
+        pipe.delete(session_key)
+        pipe.zrem(_task_key(project_name, task_id), session_id)
+        await pipe.execute()
     return EmptyResponse()
 
 
