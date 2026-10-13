@@ -1086,3 +1086,14 @@ def test_tracker_version_up_only_for_opened_workfile(monkeypatch):
 
     tracker._version_up("sh010_anim_v001.ma")
     assert calls == [1]
+
+
+def test_endpoint():
+    from ayon_core.version import __version__
+
+    base = f"addons/core/{__version__}/projects/my_project/taskInUse"
+    assert task_usage._get_endpoint("my_project") == base
+    assert task_usage._get_endpoint("my_project", "query") == f"{base}/query"
+    assert task_usage._get_endpoint(
+        "my_project", "task-id", "session-id"
+    ) == f"{base}/task-id/session-id"

@@ -434,10 +434,13 @@ def is_task_usage_supported() -> bool:
 
 
 def _get_endpoint(project_name: str, *subpaths: str) -> str:
-    return ayon_api.get_addon_endpoint(
-        ADDON_NAME, __version__, "projects", project_name, "taskInUse",
+    # NOTE 'ayon_api.get_addon_endpoint' can't be used, it fails when
+    #   subpaths are passed
+    return "/".join((
+        "addons", ADDON_NAME, __version__,
+        "projects", project_name, "taskInUse",
         *subpaths
-    )
+    ))
 
 
 def _request(
