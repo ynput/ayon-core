@@ -37,9 +37,9 @@ from ayon_core.pipeline.workfile import (
     save_workfile_info,
     save_next_version,
 )
-from ayon_core.pipeline.context_tools import get_process_id
 from ayon_core.pipeline.workfile.task_usage import (
     get_task_usage_items,
+    is_current_process_session_id,
     is_task_usage_enabled_in_project,
     is_task_usage_supported,
     acknowledge_task_usage_items,
@@ -153,7 +153,7 @@ class WorkfilesModel:
     def get_task_in_use_sessions(self, task_id: str) -> list[TaskUsageItem]:
         """Sessions of other running applications working on a task.
 
-        Session of current process is skipped.
+        Sessions of current process are skipped.
 
         Args:
             task_id (str): Task id.
@@ -172,11 +172,10 @@ class WorkfilesModel:
                 )
             ):
                 return []
-            session_id = get_process_id()
             return [
                 item
                 for item in get_task_usage_items(project_name, task_id)
-                if item.session_id != session_id
+                if not is_current_process_session_id(item.session_id)
             ]
         except Exception:
             self._log.debug(
