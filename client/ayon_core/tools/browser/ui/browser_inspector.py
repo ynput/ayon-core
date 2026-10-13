@@ -13,7 +13,7 @@ from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
-from ayon_core.tools.browser.abstract import RepreItem
+from ayon_core.tools.browser.abstract import LoadersGrouping, RepreItem
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
@@ -349,7 +349,7 @@ class ReviewInspector(AYContainer):
             pname = d.get("project_name", "")
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
-            version_ids.append(vid)
+            version_ids.append(d.get("_action_version_id") or vid)
 
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses
@@ -567,8 +567,13 @@ class Representations(AYContainer):
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         selected_ids = self._get_selected_ids()
+        # The representations are already picked, so there is nothing to
+        #   list in a submenu per loader
         action_items = self._controller.get_action_items(
-            self._current_project_name, selected_ids, "representation"
+            self._current_project_name,
+            selected_ids,
+            "representation",
+            LoadersGrouping.UNGROUPED,
         )
         global_point = self._table.mapToGlobal(pos)
         result = show_actions_menu(

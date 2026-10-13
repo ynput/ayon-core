@@ -69,24 +69,35 @@ def construct_ayon_entity_uri(
 ) -> str:
     """Construct AYON entity URI from its components
 
+    The folder path may be provided with or without leading slash.
+
     Returns:
         str: AYON Entity URI to query entity path.
     """
+    if isinstance(version, str):
+        if version not in {"latest", "latestDone", "hero"}:
+            # Allow digits as string, e.g. coming from settings
+            try:
+                version = int(version)
+            except ValueError:
+                raise ValueError(
+                    "Version must either be integer, 'latest', 'latestDone'"
+                    f" or 'hero'. Got: '{version}'"
+                ) from None
+    elif not isinstance(version, int):
+        raise TypeError(
+            "Version must either be integer, 'latest', 'latestDone' or "
+            f"'hero'. Got: {version} ({type(version)})"
+        )
+
     if isinstance(version, int) and version < 0:
         version = "hero"
-    if not (
-        isinstance(version, int)
-        or version in {"latest", "latestDone", "hero"}
-    ):
-        raise ValueError(
-            "Version must either be integer, 'latest', 'latestDone' or "
-            f"'hero'. Got: {version}"
-        )
+
     return (
         "ayon://{project}/{folder_path}?product={product}&version={version}"
         "&representation={representation}".format(
             project=project_name,
-            folder_path=folder_path,
+            folder_path=folder_path.strip("/"),
             product=product,
             version=version,
             representation=representation_name
