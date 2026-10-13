@@ -322,13 +322,6 @@ def server(monkeypatch):
     monkeypatch.setattr(task_usage, "get_ayon_username", lambda: "artist1")
     monkeypatch.setattr(task_usage, "get_local_site_id", lambda: "site-1")
     monkeypatch.setattr(task_usage, "_acknowledged_session_ids", set())
-    monkeypatch.setattr(
-        task_usage.ayon_api,
-        "get_addon_endpoint",
-        lambda name, version, *subpaths: "/".join(
-            ("addons", name, version) + subpaths
-        ),
-    )
 
     def _raw_request(method):
         def _request(endpoint, json=None, timeout=None):
