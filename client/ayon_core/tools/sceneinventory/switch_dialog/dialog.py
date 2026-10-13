@@ -465,10 +465,12 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             is_current = get_loader_identifier(loader) in current_loader_names
             loader_items.append((is_current, label, loader))
 
-        # Show current loaders first and keep the order stable
+        # Show current loaders first, then sort by loader order and label
+        #   like the Loader tool does. Class name is used to keep the order
+        #   stable for loaders with the same order and label.
         loader_items.sort(
             key=lambda item: (
-                not item[0], item[1].lower(), item[2].__name__
+                not item[0], item[2].order, item[1], item[2].__name__
             )
         )
 
