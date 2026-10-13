@@ -315,13 +315,18 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
 
 
 class LoaderActionsModel(BaseSettingsModel):
-    copy_file_action: bool = SettingsField(
+    copy_file_path: bool = SettingsField(
         True,
-        title="Copy file action",
+        title="Copy file path",
         description=(
-            "Show the action for copying a published file to the clipboard "
-            "in the loader."
+            "Show the action for copying a published file path to the "
+            "clipboard in the loader."
         ),
+    )
+    copy_file: bool = SettingsField(
+        True,
+        title="Copy file",
+        description="Show the action for copying a published file.",
     )
     open_file_action: bool = SettingsField(
         True,
@@ -712,7 +717,8 @@ DEFAULT_TOOLS_VALUES = {
     "loader": {
         "use_legacy_loader": False,
         "actions": {
-            "copy_file_action": True,
+            "copy_file_path": True,
+            "copy_file": True,
             "open_file_action": True,
             "delete_old_versions": True,
             "create_hero_version": True

@@ -7,24 +7,21 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.actions import (
     LoaderActionItem,
+    LoaderActionPlugin,
     LoaderActionSelection,
     LoaderActionResult,
 )
-from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
 class CopyFileActionPlugin(LoaderActionPlugin):
     """Copy published file path to clipboard"""
     identifier = "core.copy-action"
-    settings_key = "copy_file_action"
 
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         actions = selection.get_project_settings().get("core", {}).get(
             "tools", {}).get("loader", {}).get("actions", {})
-        if not actions.get(self.settings_key, True):
-            return []
         repres = []
         if selection.selected_type == "representation":
             repres = selection.entities.get_representations(
@@ -48,36 +45,38 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             repre_id = next(iter(repre_ids), None)
             if not repre_id:
                 continue
-            output.append(
-                LoaderActionItem(
-                    label=repre_name,
-                    order=32,
-                    group_label="Copy file path",
-                    data={
-                        "representation_id": repre_id,
-                        "action": "copy-path",
-                    },
-                    icon=MaterialSymbolsIcon(
-                        "content_copy",
-                        color="#999999",
+            if actions.get("copy_file_path", True):
+                output.append(
+                    LoaderActionItem(
+                        label=repre_name,
+                        order=32,
+                        group_label="Copy file path",
+                        data={
+                            "representation_id": repre_id,
+                            "action": "copy-path",
+                        },
+                        icon=MaterialSymbolsIcon(
+                            "content_copy",
+                            color="#999999",
+                        )
                     )
                 )
-            )
-            output.append(
-                LoaderActionItem(
-                    label=repre_name,
-                    order=33,
-                    group_label="Copy file",
-                    data={
-                        "representation_id": repre_id,
-                        "action": "copy-file",
-                    },
-                    icon=MaterialSymbolsIcon(
-                        "file_copy",
-                        color="#999999",
+            if actions.get("copy_file", True):
+                output.append(
+                    LoaderActionItem(
+                        label=repre_name,
+                        order=33,
+                        group_label="Copy file",
+                        data={
+                            "representation_id": repre_id,
+                            "action": "copy-file",
+                        },
+                        icon=MaterialSymbolsIcon(
+                            "file_copy",
+                            color="#999999",
+                        )
                     )
                 )
-            )
         return output
 
     def execute_action(
