@@ -17,6 +17,7 @@ from ayon_core.tools.utils.delegates import (
     pretty_timestamp,
     file_size_to_string,
 )
+from ayon_core.tools.utils.task_in_use_indicator import TaskInUseIndicator
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
@@ -92,6 +93,10 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             bool: True if workfiles are being fetched.
         """
         return self._is_loading
+
+    def get_selected_context(self) -> tuple[Optional[str], Optional[str]]:
+        """Project name and task id of shown workfiles."""
+        return self._selected_project_name, self._selected_task_id
 
     def refresh(self, clear: bool = False) -> None:
         """Refresh workfiles of current selection.
@@ -403,6 +408,13 @@ class WorkfilesDelegate(TreeViewItemDelegate):
     ) -> None:
         super().__init__(parent=parent, style_model=style_model)
         self._avatar_cache = avatar_cache
+        self._in_use_indicator: Optional[TaskInUseIndicator] = None
+
+    def set_in_use_indicator(
+        self, in_use_indicator: TaskInUseIndicator
+    ) -> None:
+        """Show which workfiles are in use on the avatars."""
+        self._in_use_indicator = in_use_indicator
 
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
@@ -425,6 +437,8 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                 index.data(UPDATED_BY_ROLE),
                 index.data(UPDATED_BY_LABEL_ROLE),
             )
+            if self._in_use_indicator is not None:
+                self._in_use_indicator.decorate_avatar(option, index)
 
 
 class WorkfilesPage(AYContainer):
@@ -465,6 +479,11 @@ class WorkfilesPage(AYContainer):
         )
         workfiles_view.setItemDelegate(workfiles_delegate)
 
+        in_use_indicator = TaskInUseIndicator(
+            workfiles_view, 1, UPDATED_BY_ROLE, UPDATED_BY_LABEL_ROLE
+        )
+        workfiles_delegate.set_in_use_indicator(in_use_indicator)
+
         self.add_widget(workfiles_view, stretch=1)
 
         resize_timer = QtCore.QTimer()
@@ -477,8 +496,10 @@ class WorkfilesPage(AYContainer):
             self._on_custom_menu_request
         )
         resize_timer.timeout.connect(self._on_resize_timer)
+        workfiles_model.refreshed.connect(self._update_in_use_context)
 
         self._controller = controller
+        self._in_use_indicator = in_use_indicator
         self._workfiles_view = workfiles_view
         self._workfiles_delegate = workfiles_delegate
         self._workfiles_model = workfiles_model
@@ -540,6 +561,39 @@ class WorkfilesPage(AYContainer):
         view_header.resizeSection(0, col_0_width)
         view_header.resizeSection(1, col_1_width)
         view_header.resizeSection(2, col_2_width)
+
+    def _update_in_use_context(self) -> None:
+        """Request sessions of selected task.
+
+        The request has the lowest priority in the task queue, so it does
+        not delay workfiles that are being fetched.
+        """
+        project_name, task_id = self._workfiles_model.get_selected_context()
+        if not project_name or not task_id:
+            self._in_use_indicator.set_context(None)
+            return
+        self._in_use_indicator.set_context(
+            (project_name, task_id),
+            lambda: self._fetch_in_use_sessions(project_name, task_id),
+        )
+
+    def _fetch_in_use_sessions(self, project_name: str, task_id: str):
+        """Called in a worker thread, must not touch the widgets."""
+        sessions = self._controller.get_task_in_use_sessions(
+            project_name, task_id
+        )
+        full_names = {}
+        if sessions:
+            full_names = {
+                username: user_item.full_name
+                for username, user_item in (
+                    self._controller.get_user_items_by_name(
+                        project_name
+                    ).items()
+                )
+                if user_item.full_name
+            }
+        return sessions, full_names
 
     def _on_avatar_updated(self, _username: str) -> None:
         self._workfiles_view.viewport().update()

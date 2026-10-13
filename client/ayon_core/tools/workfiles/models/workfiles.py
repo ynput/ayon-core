@@ -38,6 +38,10 @@ from ayon_core.pipeline.workfile import (
     save_next_version,
 )
 from ayon_core.pipeline.workfile.task_usage import (
+    get_task_usage_items,
+    is_current_process_session_id,
+    is_task_usage_enabled_in_project,
+    is_task_usage_supported,
     acknowledge_task_usage_items,
     get_task_usage_settings,
     get_other_users_task_usage_items,
@@ -143,6 +147,39 @@ class WorkfilesModel:
         except Exception:
             self._log.warning(
                 "Failed to receive task in-use information.", exc_info=True
+            )
+        return []
+
+    def get_task_in_use_sessions(self, task_id: str) -> list[TaskUsageItem]:
+        """Sessions of other running applications working on a task.
+
+        Sessions of current process are skipped.
+
+        Args:
+            task_id (str): Task id.
+
+        Returns:
+            list[TaskUsageItem]: Sessions working on the task. Empty list
+                if task in-use tracking is not used in the project or is
+                not supported by the server.
+
+        """
+        project_name = self._controller.get_current_project_name()
+        try:
+            if not is_task_usage_supported() or not (
+                is_task_usage_enabled_in_project(
+                    project_name, self._controller.project_settings
+                )
+            ):
+                return []
+            return [
+                item
+                for item in get_task_usage_items(project_name, task_id)
+                if not is_current_process_session_id(item.session_id)
+            ]
+        except Exception:
+            self._log.debug(
+                "Failed to receive task in-use sessions.", exc_info=True
             )
         return []
 

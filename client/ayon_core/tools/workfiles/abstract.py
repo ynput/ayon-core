@@ -900,6 +900,25 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
+    def get_task_in_use_sessions(self, task_id: str) -> list[TaskUsageItem]:
+        """Sessions of other running applications working on a task.
+
+        Used to show which workfiles of the task are in use. Does a request
+        to the server, so the method should not be called from the main
+        thread.
+
+        Args:
+            task_id (str): Task id.
+
+        Returns:
+            list[TaskUsageItem]: Sessions working on the task. Empty list
+                if task in-use tracking is not used in the project or is
+                not supported by the server.
+
+        """
+        pass
+
+    @abstractmethod
     def confirm_task_usage_items(self, items: list[TaskUsageItem]) -> None:
         """User wants to work on a task that is in use by other users.
 

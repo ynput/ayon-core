@@ -125,7 +125,7 @@ class _UserAvatarLabel(QtWidgets.QLabel):
             self.setPixmap(pixmap)
 
 
-class _SessionWidget(QtWidgets.QWidget):
+class SessionWidget(QtWidgets.QWidget):
     """Session of a user working on the task."""
 
     def __init__(
@@ -246,7 +246,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         items_layout = AYVBoxLayout(items_widget, margin=0, spacing=14)
         for item in items:
             items_layout.addWidget(
-                _SessionWidget(
+                SessionWidget(
                     item, full_names.get(item.username), now, items_widget
                 ),
                 0,

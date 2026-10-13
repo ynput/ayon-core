@@ -614,6 +614,9 @@ class BaseWorkfileController(
     def get_task_usage_items(self, task_id: str) -> list[TaskUsageItem]:
         return self._workfiles_model.get_task_usage_items(task_id)
 
+    def get_task_in_use_sessions(self, task_id: str) -> list[TaskUsageItem]:
+        return self._workfiles_model.get_task_in_use_sessions(task_id)
+
     def confirm_task_usage_items(self, items: list[TaskUsageItem]) -> None:
         self._workfiles_model.confirm_task_usage_items(items)
 
