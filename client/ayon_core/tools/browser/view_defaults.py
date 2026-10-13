@@ -106,5 +106,5 @@ BROWSER_VIEW_DEFAULTS = BrowserViewDefaults(
     featured_version_order=("latestDone", "latest", "hero"),
     latest_per_folder=False,
     include_children=False,
-    loaders_grouping=LoadersGrouping.UNGROUPED,
+    loaders_grouping=LoadersGrouping.GROUPED_IF_MULTIPLE,
 )

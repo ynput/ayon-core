@@ -387,14 +387,14 @@ def test_apply_view_extras_defaults_ungroup_empty_values():
     ("extra", "expected"),
     [
         # Views saved before the setting existed get the default
-        ({}, LoadersGrouping.UNGROUPED),
+        ({}, LoadersGrouping.GROUPED_IF_MULTIPLE),
         ({"loadersGrouping": "grouped"}, LoadersGrouping.GROUPED),
         (
             {"loadersGrouping": "grouped_if_multiple"},
             LoadersGrouping.GROUPED_IF_MULTIPLE,
         ),
-        ({"loadersGrouping": "unknown"}, LoadersGrouping.UNGROUPED),
-        ({"loadersGrouping": None}, LoadersGrouping.UNGROUPED),
+        ({"loadersGrouping": "unknown"}, LoadersGrouping.GROUPED_IF_MULTIPLE),
+        ({"loadersGrouping": None}, LoadersGrouping.GROUPED_IF_MULTIPLE),
     ],
 )
 def test_apply_view_extras_loaders_grouping(extra, expected):
@@ -419,7 +419,7 @@ def test_loaders_grouping_is_passed_to_action_items(monkeypatch):
         controller._loader_controller, "get_action_items", get_action_items
     )
 
-    assert controller.loaders_grouping is LoadersGrouping.UNGROUPED
+    assert controller.loaders_grouping is LoadersGrouping.GROUPED_IF_MULTIPLE
     controller.set_loaders_grouping(LoadersGrouping.GROUPED)
     assert controller.loaders_grouping is LoadersGrouping.GROUPED
 

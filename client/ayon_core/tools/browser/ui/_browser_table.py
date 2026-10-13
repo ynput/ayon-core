@@ -1076,7 +1076,7 @@ class BrowserTable(AYContainer):
             to ``True`` for views saved before it existed),
             ``loadersGrouping`` (how the actions menu groups the
             representations of a loader in a submenu, defaults to
-            ungrouped for views saved before it existed),
+            "group if multiple" for views saved before it existed),
             ``myTasksFilter`` (whether the "My Tasks" slicer filter
             is active).
 
