@@ -677,10 +677,12 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
         self._click_timer = None
 
-        # Catch activate event for left click if not on MacOS
+        # Catch activate event for left click if not on MacOS or Wayland
         #   - MacOS has this ability by design and is harder to modify this
         #       behavior
-        if platform.system().lower() == "darwin":
+        #   - On Wayland the menu can't be placed at the cursor position,
+        #       so it would show up at a random place
+        if platform.system().lower() == "darwin" or self._is_wayland():
             return
 
         self.activated.connect(self.on_systray_activated)
@@ -694,6 +696,17 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def is_closing(self) -> bool:
         return self._tray_manager.is_closing()
+
+    @staticmethod
+    def _is_wayland() -> bool:
+        if platform.system().lower() != "linux":
+            return False
+        platform_name = QtGui.QGuiApplication.platformName().lower()
+        if platform_name.startswith("wayland"):
+            return True
+        # Application can run through XWayland ('xcb') in Wayland session,
+        #   cursor position is still not available above the panel
+        return os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
 
     @property
     def initializing_addons(self):
