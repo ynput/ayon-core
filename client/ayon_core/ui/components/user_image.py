@@ -14,9 +14,9 @@ from .style_mixin import StyleMixin
 
 log = logging.getLogger(__name__)
 
-# Maximum width of initials relative to the diameter of the avatar, wider
-#   initials would be drawn out of the circle
-INITIALS_MAX_WIDTH_RATIO = 0.85
+# Maximum number of initials shown in the avatar, the same as in the
+#   web UI
+MAX_INITIALS = 2
 
 
 class AYUserImage(StyleMixin, QtWidgets.QLabel):
@@ -135,7 +135,9 @@ class AYUserImage(StyleMixin, QtWidgets.QLabel):
         else:
             initials = "?"
             if self._full_name:
-                initials = "".join([p[0] for p in self._full_name.split()])
+                initials = "".join(
+                    [p[0] for p in self._full_name.split()[:MAX_INITIALS]]
+                )
             elif self._name:
                 initials = self._name[0]
 
@@ -146,28 +148,24 @@ class AYUserImage(StyleMixin, QtWidgets.QLabel):
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.drawEllipse(0, 0, self._size, self._size)
 
-            # Draw white initials
+            # Draw white initials. The font size depends only on the size
+            #   of the avatar, so all avatars look the same. Initials which
+            #   are too wide are cut by the circle.
             painter.setPen(QtGui.QPen(fg_color))
-            initials = initials.upper()
             font = painter.font()
             pt_size = max(8, self._size // 2 - 3)
             font.setPointSizeF(pt_size)
-            # Use smaller font if the initials would not fit into the
-            #   circle, e.g. wide letters, more than 2 initials or a small
-            #   avatar
-            max_width = self._size * INITIALS_MAX_WIDTH_RATIO
-            text_width = QtGui.QFontMetricsF(font, self.pxm).horizontalAdvance(
-                initials
-            )
-            if text_width > max_width:
-                font.setPointSizeF(max(1.0, pt_size * max_width / text_width))
             painter.setFont(font)
 
+            clip_path = QtGui.QPainterPath()
+            clip_path.addEllipse(0, 0, self._size, self._size)
+            painter.setClipPath(clip_path)
             painter.drawText(
                 QtCore.QRect(0, 0, self._size, self._size),
                 QtCore.Qt.AlignmentFlag.AlignCenter,
-                initials,
+                initials.upper(),
             )
+            painter.setClipping(False)
 
         # Draw outline
         if has_outline:

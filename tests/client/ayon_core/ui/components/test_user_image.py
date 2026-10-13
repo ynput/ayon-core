@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pytest
-from qtpy.QtGui import QColor
+from qtpy.QtGui import QImage
 from qtpy.QtWidgets import QWidget
 
 from widget_test import WidgetTest
@@ -149,34 +150,31 @@ class UserImageMainTest(WidgetTest):
         return []
 
 
-def _color_distance(color: QColor, other: QColor) -> int:
-    return (
-        abs(color.red() - other.red())
-        + abs(color.green() - other.green())
-        + abs(color.blue() - other.blue())
-    )
-
-
-@pytest.mark.parametrize(
-    "full_name", ["Mia Wong", "William Wallace", "Jean Luc Picard"]
-)
-@pytest.mark.parametrize("size", [18, 24, 40])
-def test_initials_fit_into_avatar(qapp, full_name, size):
-    """Initials are not cut by the edge of the avatar image.
-
-    Wide initials used to be wider than the avatar, so the letters were
-    cut by left and right edge of the image.
-    """
+def _render(full_name: str, size: int) -> QImage:
     widget = AYUserImage(full_name=full_name, size=size, outline=False)
-    fg_color, bg_color, _, _ = widget._get_colors()
-    image = widget.pxm.toImage()
+    return widget.pxm.toImage()
 
-    for x in (0, image.width() - 1):
-        for y in range(image.height()):
-            color = image.pixelColor(x, y)
-            if color.alpha() < 128:
+
+@pytest.mark.parametrize("size", [18, 24, 40])
+def test_initials_are_limited_to_two(qapp, size):
+    """Only the first two initials are shown, the same as in the web UI."""
+    assert _render("Jean Luc Picard", size) == _render("Jean Luc", size)
+
+
+@pytest.mark.parametrize("full_name", ["Mia Wong", "William Wallace"])
+@pytest.mark.parametrize("size", [18, 24, 40])
+def test_initials_are_cut_by_circle(qapp, full_name, size):
+    """Initials wider than the avatar are not drawn out of the circle."""
+    image = _render(full_name, size)
+    dpr = image.devicePixelRatio()
+    center = size / 2
+    for y in range(image.height()):
+        for x in range(image.width()):
+            distance = math.hypot(
+                (x + 0.5) / dpr - center, (y + 0.5) / dpr - center
+            )
+            if distance <= center + 1:
                 continue
-            assert (
-                _color_distance(color, bg_color)
-                <= _color_distance(color, fg_color)
-            ), f"Initials are drawn on the edge of the image at {x}x{y}"
+            assert image.pixelColor(x, y).alpha() == 0, (
+                f"Initials are drawn out of the circle at {x}x{y}"
+            )
