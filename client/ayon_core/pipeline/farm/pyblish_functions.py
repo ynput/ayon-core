@@ -964,11 +964,9 @@ def _create_instances_for_aov(
             and isinstance(collected_files, (list, tuple))  # not single file
         ):
             aov_frames_to_render = convert_frames_str_to_list(frames_to_render)
-            collections, _ = clique.assemble(collected_files)
+            collections, _ = get_file_collections(collected_files)
             collected_files = _get_real_files_to_render(
                 collections[0], aov_frames_to_render)
-            if len(collected_files) == 1:
-                collected_files = collected_files[0]
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
             frame_end = int(skeleton.get("frameEndHandle"))
@@ -1157,6 +1155,9 @@ def _create_instances_for_aov(
 def _collect_expected_files_for_aov(files):
     """Collect expected files.
 
+    Frame sequences remain lists even when they contain only one file.
+    Non-sequence single files are returned as strings.
+
     Args:
         files (list): List of files.
 
@@ -1167,7 +1168,7 @@ def _collect_expected_files_for_aov(files):
         ValueError: If there are multiple collections.
 
     """
-    cols, rem = clique.assemble(files)
+    cols, rem = get_file_collections(files)
     # we shouldn't have any reminders. And if we do, it should
     # be just one item for single frame renders.
     if not cols and rem:
