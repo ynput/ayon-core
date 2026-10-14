@@ -424,6 +424,21 @@ class TestPlaceholderValues:
         data["key"] = value
         assert str(StringTemplate(template).format_strict(data)) == expected
 
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    def test_nested_keys(self):
+        """Nested template key and nested placeholder value."""
+        result = StringTemplate("{hello[world]:upper}").format_strict(
+            {"hello": {"world": "{composition[name]}"}}
+        )
+        assert str(result) == "{composition[name]:upper}"
+
+        fill_data = {"composition": {"name": "shotA"}}
+        assert (
+            str(StringTemplate(str(result)).format_strict(fill_data))
+            == str(result).format(**prepare_template_data(fill_data))
+            == "SHOTA"
+        )
+
     def test_used_values(self):
         result = StringTemplate("{key:upper}").format_strict({"key": "{aaa}"})
         assert result.used_values == {"key": "{aaa}"}
