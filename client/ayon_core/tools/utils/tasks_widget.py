@@ -748,6 +748,12 @@ class TasksWidget(QtWidgets.QWidget):
             if index.isValid():
                 proxy_index = self._tasks_proxy_model.mapFromSource(index)
                 self._tasks_view.setCurrentIndex(proxy_index)
+                # The view does not report a change when a task of the same
+                #   name was already selected in the previous folder - the
+                #   item is reused. Tell the controller in any case, and
+                #   before confirming, as the confirmation moves on to what
+                #   depends on the selected task.
+                self._on_selection_change()
         self._controller.expected_task_selected(folder_id, task_name)
         return True
 

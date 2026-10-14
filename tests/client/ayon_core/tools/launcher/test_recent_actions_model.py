@@ -1,0 +1,334 @@
+"""Tests for the model persisting the recent actions of the launcher."""
+
+from __future__ import annotations
+
+import copy
+import time
+from typing import Any, Optional
+
+import pytest
+
+import ayon_api
+
+from ayon_core.tools.launcher.abstract import (
+    RECENT_ACTIONS_MAX,
+    WorkfileItem,
+)
+from ayon_core.tools.launcher.models import recent_actions
+from ayon_core.tools.launcher.models.recent_actions import (
+    RecentActionsModel,
+)
+
+PREFERENCES_ENDPOINT = "users/tester/frontendPreferences"
+
+
+class TypeItem:
+    def __init__(self, name, icon, color=None) -> None:
+        self.name = name
+        self.icon = icon
+        self.color = color
+
+
+class FakeController:
+    """Just what the model asks of the launcher controller."""
+
+    def __init__(self) -> None:
+        self.callbacks: dict[str, Any] = {}
+
+    def register_event_callback(self, topic, callback) -> None:
+        self.callbacks[topic] = callback
+
+    def emit(self, topic: str, event: dict[str, Any]) -> None:
+        self.callbacks[topic](event)
+
+    def get_action_item(self, *args, **kwargs) -> Optional[Any]:
+        return None
+
+    def get_local_action_label_icon(self, identifier) -> Optional[Any]:
+        return None
+
+    def get_project_entity(self, project_name) -> dict[str, Any]:
+        return {"name": project_name, "code": "PRJ"}
+
+    def get_folder_entity(self, project_name, folder_id):
+        return {"path": f"/{folder_id}", "folderType": "Asset"}
+
+    def get_task_entity(self, project_name, task_id):
+        return {"name": f"name_{task_id}", "taskType": "Modeling"}
+
+    def get_folder_type_items(self, project_name):
+        return [TypeItem("Asset", "category")]
+
+    def get_task_type_items(self, project_name):
+        return [TypeItem("Modeling", "language", "#ff0000")]
+
+    def get_workfile_items(self, project_name, task_id):
+        return [
+            WorkfileItem(
+                workfile_id="wf1",
+                filename="scene_v001.ma",
+                exists=True,
+                host_name="maya",
+                icon=None,
+                version=1,
+                updated_at_time=0.0,
+            )
+        ]
+
+
+@pytest.fixture
+def user_data(monkeypatch) -> dict[str, Any]:
+    """In memory stand-in for the current AYON user on the server.
+
+    Behaves like the server does for a user without manager rights - the
+    user may change own frontend preferences, but changes of user data
+    sent to the user itself are ignored.
+    """
+    user = {"name": "tester", "data": {}}
+
+    class Response:
+        def raise_for_status(self) -> None:
+            pass
+
+    def raw_patch(endpoint, **kwargs):
+        if endpoint == PREFERENCES_ENDPOINT:
+            preferences = user["data"].setdefault("frontendPreferences", {})
+            preferences.update(copy.deepcopy(kwargs["json"]))
+        return Response()
+
+    def get_user():
+        return copy.deepcopy(user)
+
+    monkeypatch.setattr(ayon_api, "get_user", get_user)
+    monkeypatch.setattr(ayon_api, "raw_patch", raw_patch)
+    monkeypatch.setattr(recent_actions, "get_ayon_user_entity", get_user)
+    monkeypatch.setattr(
+        recent_actions, "get_ayon_username", lambda: user["name"]
+    )
+    return user
+
+
+def stored_items(user_data) -> list[dict[str, Any]]:
+    return user_data["data"]["frontendPreferences"]["launcherRecentActions"]
+
+
+@pytest.fixture
+def controller() -> FakeController:
+    return FakeController()
+
+
+@pytest.fixture
+def model(controller, user_data) -> RecentActionsModel:
+    return RecentActionsModel(controller)
+
+
+def wait_idle(model: RecentActionsModel, timeout: float = 5.0) -> None:
+    """Wait for the recording worker to have nothing left to do."""
+    end = time.time() + timeout
+    while time.time() < end:
+        worker = model._worker
+        if (
+            not model._queued_triggers
+            and not model._save_requested
+            and (worker is None or not worker.is_alive())
+        ):
+            return
+        time.sleep(0.005)
+    raise AssertionError("Recent actions worker did not finish.")
+
+
+def trigger(controller, model, folder_id="f1", identifier="maya", **kwargs):
+    event = {
+        "identifier": identifier,
+        "failed": False,
+        "full_label": "Maya",
+        "project_name": "project",
+        "folder_id": folder_id,
+        "task_id": None,
+        "workfile_id": None,
+        "addon_name": None,
+    }
+    event.update(kwargs)
+    controller.emit("action.trigger.finished", event)
+    wait_idle(model)
+
+
+def test_triggered_action_is_recorded_and_stored(
+    controller, model, user_data
+):
+    trigger(controller, model)
+
+    (item,) = model.get_recent_action_items()
+    assert item.identifier == "maya"
+    assert item.folder_path == "/f1"
+    # Stored on the server as well, not just kept in memory.
+    stored = stored_items(user_data)
+    assert [entry["record_id"] for entry in stored] == [item.record_id]
+
+
+def test_history_is_loaded_from_where_it_is_stored(
+    controller, model, user_data
+):
+    trigger(controller, model, folder_id="a")
+    trigger(controller, model, folder_id="b")
+
+    other_session = RecentActionsModel(FakeController())
+    assert not other_session.is_loaded()
+    other_session.refresh()
+
+    assert other_session.is_loaded()
+    folders = [i.folder_id for i in other_session.get_recent_action_items()]
+    assert folders == ["b", "a"]
+
+
+def test_unknown_stored_keys_do_not_break_loading(
+    controller, model, user_data
+):
+    trigger(controller, model)
+    stored_items(user_data)[0]["added_by_newer_version"] = True
+    stored_items(user_data).append("not an entry")
+
+    model.refresh()
+
+    assert len(model.get_recent_action_items()) == 1
+
+
+def test_action_triggered_before_the_history_was_loaded_keeps_it(
+    controller, model, user_data
+):
+    trigger(controller, model, folder_id="a")
+    trigger(controller, model, folder_id="b")
+
+    # A new session that records an action before anything asked for the
+    # history must add to what is stored, not replace it.
+    other_controller = FakeController()
+    other_session = RecentActionsModel(other_controller)
+    trigger(other_controller, other_session, folder_id="c")
+
+    assert [entry["folder_id"] for entry in stored_items(user_data)] == [
+        "c", "b", "a"
+    ]
+
+
+def test_action_is_not_recorded_if_the_history_cannot_be_loaded(
+    controller, model, user_data, monkeypatch
+):
+    trigger(controller, model, folder_id="a")
+    stored = copy.deepcopy(stored_items(user_data))
+
+    def no_server():
+        raise ConnectionError("No server")
+
+    monkeypatch.setattr(ayon_api, "get_user", no_server)
+    other_controller = FakeController()
+    other_session = RecentActionsModel(other_controller)
+    trigger(other_controller, other_session, folder_id="b")
+
+    assert stored_items(user_data) == stored
+    assert not other_session.is_loaded()
+
+
+def test_refresh_does_not_undo_a_change_made_while_it_was_loading(
+    controller, model, user_data, monkeypatch
+):
+    trigger(controller, model)
+    (item,) = model.get_recent_action_items()
+    get_user = ayon_api.get_user
+
+    def slow_get_user():
+        # What the server returns here does not have the change yet
+        user = get_user()
+        model.set_favorite(item.record_id, True)
+        return user
+
+    monkeypatch.setattr(ayon_api, "get_user", slow_get_user)
+    model.refresh()
+    wait_idle(model)
+
+    (item,) = model.get_recent_action_items()
+    assert item.favorite
+
+
+def test_context_is_stored_with_names_and_type_icons(controller, model):
+    trigger(controller, model, task_id="t1", workfile_id="wf1")
+
+    (item,) = model.get_recent_action_items()
+    assert item.project_code == "PRJ"
+    assert item.folder_path == "/f1"
+    assert item.folder_icon == "category"
+    assert item.task_name == "name_t1"
+    assert item.task_icon == "language"
+    assert item.task_color == "#ff0000"
+    assert item.workfile_name == "scene_v001.ma"
+
+
+def test_failed_action_is_not_recorded(controller, model):
+    trigger(controller, model, failed=True)
+
+    assert model.get_recent_action_items() == []
+
+
+def test_same_action_in_same_context_is_listed_once(controller, model):
+    trigger(controller, model)
+    (first,) = model.get_recent_action_items()
+    model.set_favorite(first.record_id, True)
+    wait_idle(model)
+
+    trigger(controller, model)
+
+    (item,) = model.get_recent_action_items()
+    assert item.record_id != first.record_id
+    # Running a favorite again must not quietly unpin it.
+    assert item.favorite
+
+
+def test_favorites_are_not_pushed_out_by_newer_actions(controller, model):
+    trigger(controller, model, folder_id="pinned")
+    (pinned,) = model.get_recent_action_items()
+    model.set_favorite(pinned.record_id, True)
+    wait_idle(model)
+
+    for index in range(RECENT_ACTIONS_MAX + 3):
+        trigger(controller, model, folder_id=f"folder_{index}")
+
+    items = model.get_recent_action_items()
+    assert len(items) == RECENT_ACTIONS_MAX + 1
+    # Favorites come first, the rest from newest to oldest.
+    assert items[0].record_id == pinned.record_id
+    assert items[1].folder_id == f"folder_{RECENT_ACTIONS_MAX + 2}"
+
+
+def test_removed_entry_stays_removed_after_reload(controller, model):
+    trigger(controller, model, folder_id="a")
+    trigger(controller, model, folder_id="b")
+    item = model.get_recent_action_items()[0]
+
+    model.remove_recent_action(item.record_id)
+    wait_idle(model)
+    model.refresh()
+
+    folders = [i.folder_id for i in model.get_recent_action_items()]
+    assert item.folder_id not in folders
+    assert len(folders) == 1
+
+
+def test_worker_is_forgotten_when_it_runs_out_of_work(model):
+    # The thread only finishes exiting after its last look at the queue. If
+    # it is still remembered until then, work queued in between finds it
+    # alive, starts no new worker and stays queued.
+    model._worker = object()
+
+    model._worker_loop()
+
+    assert model._worker is None
+
+
+def test_work_is_picked_up_again_after_the_worker_went_idle(
+    controller, model
+):
+    trigger(controller, model, folder_id="a")
+    assert model._worker is None
+
+    trigger(controller, model, folder_id="b")
+
+    assert len(model.get_recent_action_items()) == 2
