@@ -196,7 +196,7 @@ class FilesWidget(AYContainer):
         self._workarea_widget.set_text_filter(text_filter)
         self._published_widget.set_text_filter(text_filter)
 
-    def _exec_save_as_dialog(self, extension=None):
+    def _exec_save_as_dialog(self, extension=None, copied_from=None):
         """Show SaveAs dialog using currently selected context.
 
         Returns:
@@ -207,6 +207,7 @@ class FilesWidget(AYContainer):
             self._controller,
             self,
             extension=extension,
+            copied_from=copied_from,
         )
         dialog.update_context()
         dialog.exec_()
@@ -244,7 +245,7 @@ class FilesWidget(AYContainer):
         if filepath is None:
             return
 
-        result = self._exec_save_as_dialog()
+        result = self._exec_save_as_dialog(copied_from=filepath)
         if result is None:
             return
         folder_id = self._selected_folder_id
@@ -353,6 +354,7 @@ class FilesWidget(AYContainer):
         extension = os.path.splitext(repre_info["filepath"])[1].lower()
         result = self._exec_save_as_dialog(
             extension=extension,
+            copied_from=repre_info["filepath"],
         )
         if result is None:
             return
