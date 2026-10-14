@@ -46,7 +46,6 @@ MIN_TTL = 30
 MAX_TTL = 60 * 60
 # The hash must live at least as long as any of its sessions
 REDIS_KEY_TTL = MAX_TTL
-MAX_TASKS_PER_QUERY = 500
 
 SESSION_ID_REGEX = r"^[a-zA-Z0-9_-]{1,64}$"
 # Key of session data in Redis that is not part of the session model
@@ -105,22 +104,6 @@ class TaskSessionsModel(OPModel):
 
 class ClaimTaskResponseModel(TaskSessionsModel):
     ttl: int = Field(..., title="Time to live of the session in seconds")
-
-
-class TasksQueryModel(OPModel):
-    task_ids: list[str] = Field(
-        default_factory=list,
-        title="Task IDs",
-        max_items=MAX_TASKS_PER_QUERY,
-    )
-
-
-class TasksSessionsModel(OPModel):
-    tasks: dict[str, list[TaskSessionModel]] = Field(
-        default_factory=dict,
-        title="Sessions by task ID",
-        description="Tasks without sessions are not included",
-    )
 
 
 SessionID = Path(..., title="Session ID", regex=SESSION_ID_REGEX)
@@ -270,39 +253,9 @@ async def get_task_sessions(
     )
 
 
-async def query_tasks_sessions(
-    user: CurrentUser,
-    project_name: ProjectName,
-    payload: TasksQueryModel,
-) -> TasksSessionsModel:
-    """Get sessions working on multiple tasks."""
-    task_ids = sorted(set(payload.task_ids))
-    if not task_ids:
-        return TasksSessionsModel()
-
-    pool = await _get_redis_pool()
-    async with pool.pipeline(transaction=False) as pipe:
-        for task_id in task_ids:
-            pipe.hgetall(_task_key(project_name, task_id))
-        results = await pipe.execute()
-
-    tasks = {}
-    for task_id, payloads in zip(task_ids, results):
-        sessions = _parse_sessions(payloads)
-        if sessions:
-            tasks[task_id] = sessions
-    return TasksSessionsModel(tasks=tasks)
-
-
 def register_task_usage_endpoints(addon: "BaseServerAddon") -> None:
     """Add task in-use endpoints to the addon."""
     base = "/projects/{project_name}/taskInUse"
-    addon.add_endpoint(
-        f"{base}/query",
-        query_tasks_sessions,
-        method="POST",
-        name="query_tasks_in_use",
-    )
     addon.add_endpoint(
         f"{base}/{{task_id}}",
         get_task_sessions,

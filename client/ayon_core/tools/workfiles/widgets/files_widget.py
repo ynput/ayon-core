@@ -10,10 +10,6 @@ from ayon_core.ui.components import (
     AYButton
 )
 
-from ayon_core.pipeline.workfile.task_usage import (
-    get_same_workfile_items,
-)
-
 from .save_as_dialog import SaveAsDialog
 from .task_in_use_dialog import TaskInUseDialog
 from .files_widget_workarea import WorkAreaFilesWidget
@@ -252,7 +248,7 @@ class FilesWidget(AYContainer):
             full_names,
             parent=self,
             confirm_label=confirm_label,
-            version_up=bool(get_same_workfile_items(items, workfile)),
+            version_up=any(item.is_workfile(workfile) for item in items),
         )
         confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
         version_up = dialog.is_version_up_requested()

@@ -17,7 +17,7 @@ from ayon_core.ui.components import (
     AYHBoxLayout,
     AYVBoxLayout
 )
-from ayon_core.ui.components.user_image import AYUserImage
+from ayon_core.ui.components.user_avatars import UserAvatarCache
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline.workfile.task_usage import (
@@ -31,27 +31,16 @@ AVATAR_SIZE = 36
 # Shorter difference of opened and last update time is not shown
 MIN_SEEN_DIFFERENCE = datetime.timedelta(minutes=1)
 
-_avatar_cache = None
+_avatar_cache: UserAvatarCache | None = None
 
 
-def _get_avatar_cache():
-    """Shared cache of user avatars.
-
-    Returns:
-        Optional[UserAvatarCache]: Cache or None if the cache is not
-            available in current Qt binding.
-
-    """
+def _get_avatar_cache() -> UserAvatarCache:
+    """Cache of user avatars shared by the dialogs."""
     global _avatar_cache
 
     if _avatar_cache is None:
-        try:
-            from ayon_core.ui.components.user_avatars import UserAvatarCache
-
-            _avatar_cache = UserAvatarCache()
-        except Exception:
-            _avatar_cache = False
-    return _avatar_cache or None
+        _avatar_cache = UserAvatarCache()
+    return _avatar_cache
 
 
 def get_time_ago_label(
@@ -99,9 +88,7 @@ class _UserAvatarLabel(QtWidgets.QLabel):
         self._username = username
         self._full_name = full_name
 
-        cache = _get_avatar_cache()
-        if cache is not None:
-            cache.avatar_updated.connect(self._on_avatar_update)
+        _get_avatar_cache().avatar_updated.connect(self._on_avatar_update)
         self._update_pixmap()
 
     def _on_avatar_update(self, username: str) -> None:
@@ -109,21 +96,9 @@ class _UserAvatarLabel(QtWidgets.QLabel):
             self._update_pixmap()
 
     def _update_pixmap(self) -> None:
-        cache = _get_avatar_cache()
-        if cache is not None:
-            pixmap = cache.pixmap(
-                self._username, self._full_name, AVATAR_SIZE
-            )
-        else:
-            widget = AYUserImage(
-                name=self._username,
-                full_name=self._full_name,
-                size=AVATAR_SIZE,
-                outline=False,
-            )
-            pixmap = widget.pxm
-            widget.deleteLater()
-
+        pixmap = _get_avatar_cache().pixmap(
+            self._username, self._full_name, AVATAR_SIZE
+        )
         if pixmap is not None:
             self.setPixmap(pixmap)
 
@@ -344,7 +319,7 @@ def _can_show_dialog() -> bool:
         # 'QCoreApplication' is used in applications without UI
         return (
             isinstance(app, QtWidgets.QApplication)
-            and app.thread() is QtCore.QThread.currentThread()
+            and app.thread() == QtCore.QThread.currentThread()
         )
 
     # Qt application will be created
@@ -382,7 +357,6 @@ def ask_to_launch_on_task_in_use(
 
     """
     from ayon_core.pipeline.workfile.task_usage import (
-        get_same_workfile_items,
         get_task_usage_user_full_names,
     )
     from ayon_core.tools.utils import get_ayon_qt_app
@@ -399,8 +373,11 @@ def ask_to_launch_on_task_in_use(
             items,
             get_task_usage_user_full_names(items),
             confirm_label="Launch anyway",
-            version_up=bool(get_same_workfile_items(items, workfile)),
+            version_up=any(item.is_workfile(workfile) for item in items),
         )
+        # The dialog does not have a parent window, make sure it is not
+        #   hidden behind other windows while the launch waits for it
+        dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
         confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
         return confirmed, confirmed and dialog.is_version_up_requested()
 
@@ -448,9 +425,13 @@ def show_task_in_use_notice(
     if not isinstance(app, QtWidgets.QApplication):
         return False
 
-    def _on_finished(*_args):
-        dialog = _notice_dialog
-        if dialog is None or not dialog.is_version_up_requested():
+    def _on_finished(dialog):
+        global _notice_dialog
+
+        if _notice_dialog is dialog:
+            _notice_dialog = None
+        dialog.deleteLater()
+        if not dialog.is_version_up_requested():
             return
         try:
             version_up_callback()
@@ -472,7 +453,7 @@ def show_task_in_use_notice(
             version_up=version_up_callback is not None,
         )
         dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
-        dialog.finished.connect(_on_finished)
+        dialog.finished.connect(lambda *_: _on_finished(dialog))
         _notice_dialog = dialog
         dialog.show()
         dialog.raise_()

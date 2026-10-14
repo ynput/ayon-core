@@ -40,9 +40,9 @@ import os
 import socket
 import threading
 import time
-from dataclasses import dataclass, asdict, field, fields, replace
+from dataclasses import dataclass, field, replace
 from functools import partial
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Optional
 
 import ayon_api
 
@@ -154,35 +154,6 @@ class TaskUsageItem:
     opened_at: str
     updated_at: str
 
-    def to_data(self) -> dict[str, Any]:
-        return asdict(self)
-
-    @classmethod
-    def from_data(cls, data: Any) -> Optional[TaskUsageItem]:
-        """Create item from data created with 'to_data'.
-
-        Returns:
-            Optional[TaskUsageItem]: Item or None if data are not valid.
-
-        """
-        if not isinstance(data, dict):
-            return None
-        try:
-            item = cls(**{
-                field.name: data.get(field.name)
-                for field in fields(cls)
-            })
-        except TypeError:
-            return None
-
-        if (
-            not item.session_id
-            or not item.username
-            or item.get_updated_at() is None
-        ):
-            return None
-        return item
-
     @classmethod
     def from_server_data(cls, data: Any) -> Optional[TaskUsageItem]:
         """Create item from session data received from the server.
@@ -193,16 +164,23 @@ class TaskUsageItem:
         """
         if not isinstance(data, dict):
             return None
-        return cls.from_data({
-            "session_id": data.get("sessionId"),
-            "username": data.get("username"),
-            "machine": data.get("machine"),
-            "site_id": data.get("siteId"),
-            "host_name": data.get("hostName"),
-            "workfile": data.get("workfile"),
-            "opened_at": data.get("openedAt"),
-            "updated_at": data.get("updatedAt"),
-        })
+        item = cls(
+            session_id=data.get("sessionId"),
+            username=data.get("username"),
+            machine=data.get("machine"),
+            site_id=data.get("siteId"),
+            host_name=data.get("hostName"),
+            workfile=data.get("workfile"),
+            opened_at=data.get("openedAt"),
+            updated_at=data.get("updatedAt"),
+        )
+        if (
+            not item.session_id
+            or not item.username
+            or item.get_updated_at() is None
+        ):
+            return None
+        return item
 
     def to_server_data(self) -> dict[str, Any]:
         """Data of the session sent to the server.
@@ -215,6 +193,17 @@ class TaskUsageItem:
             "hostName": self.host_name,
             "workfile": self.workfile,
         }
+
+    def is_workfile(self, workfile: Optional[str]) -> bool:
+        """The session has opened workfile with the same filename.
+
+        Args:
+            workfile (Optional[str]): Path or filename of a workfile.
+
+        """
+        if not workfile or not self.workfile:
+            return False
+        return self.workfile.lower() == os.path.basename(workfile).lower()
 
     def get_opened_at(self) -> Optional[datetime.datetime]:
         return _parse_time(self.opened_at)
@@ -368,14 +357,7 @@ def get_same_workfile_items(
         list[TaskUsageItem]: Sessions working in the same workfile.
 
     """
-    if not workfile:
-        return []
-    filename = os.path.basename(workfile).lower()
-    return [
-        item
-        for item in items
-        if item.workfile and item.workfile.lower() == filename
-    ]
+    return [item for item in items if item.is_workfile(workfile)]
 
 
 def acknowledge_task_usage_items(items: list[TaskUsageItem]) -> None:
@@ -547,43 +529,6 @@ def get_task_usage_items(
     except TaskUsageNotSupportedError:
         return []
     return _parse_server_items((data or {}).get("sessions"))
-
-
-def get_tasks_usage_items(
-    project_name: str,
-    task_ids: Iterable[str],
-) -> dict[str, list[TaskUsageItem]]:
-    """Get active sessions working on multiple tasks.
-
-    Args:
-        project_name (str): Project name.
-        task_ids (Iterable[str]): Task ids.
-
-    Returns:
-        dict[str, list[TaskUsageItem]]: Active sessions by task id. Each
-            passed task id is in the output.
-
-    """
-    output: dict[str, list[TaskUsageItem]] = {
-        task_id: [] for task_id in task_ids
-    }
-    if not output:
-        return output
-    try:
-        data = _request(
-            "post",
-            _get_endpoint(project_name, "query"),
-            {"taskIds": list(output)},
-        )
-    except TaskUsageNotSupportedError:
-        return output
-
-    tasks = (data or {}).get("tasks")
-    if isinstance(tasks, dict):
-        for task_id, sessions in tasks.items():
-            if task_id in output:
-                output[task_id] = _parse_server_items(sessions)
-    return output
 
 
 def get_other_users_task_usage_items(
@@ -1367,11 +1312,30 @@ def sync_task_usage() -> None:
         tracker.sync()
 
 
+def _is_used_in_host_project(host) -> bool:
+    """Project of the host integration has an enabled profile."""
+    try:
+        project_name = host.get_current_context().get("project_name")
+        return bool(project_name) and is_task_usage_enabled_in_project(
+            project_name
+        )
+    except Exception:
+        log.debug(
+            "Failed to find out if task in-use tracking is used.",
+            exc_info=True,
+        )
+    return False
+
+
 def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
     """Start tracking of task in-use for the host integration.
 
     Should be called from the main thread of the application. Tracking is
     skipped in headless mode, in farm jobs and in automated tests.
+
+    Nothing is started if project of the host integration does not have
+    any enabled profile of task in-use notification, so the feature does
+    not cost anything when it is not used.
 
     Args:
         host (AbstractHost): Installed host integration.
@@ -1389,6 +1353,7 @@ def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
         is_headless_mode_enabled()
         or is_in_tests()
         or any(os.environ.get(key) == "1" for key in FARM_JOB_ENV_KEYS)
+        or not _is_used_in_host_project(host)
     ):
         return None
 

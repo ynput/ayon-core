@@ -68,7 +68,6 @@ def _server_data(item: TaskUsageItem) -> dict[str, Any]:
 
 def test_item_data_roundtrip():
     item = _item()
-    assert TaskUsageItem.from_data(item.to_data()) == item
     assert TaskUsageItem.from_server_data(_server_data(item)) == item
 
 
@@ -80,21 +79,6 @@ def test_item_to_server_data():
         "hostName": "maya",
         "workfile": "sh010_anim_v001.ma",
     }
-
-
-@pytest.mark.parametrize(
-    "data",
-    [
-        None,
-        "invalid",
-        {},
-        {"session_id": "a", "username": "b"},
-        {"session_id": "a", "username": "b", "updated_at": "invalid"},
-        {"session_id": "", "username": "b", "updated_at": NOW.isoformat()},
-    ]
-)
-def test_item_from_invalid_data(data):
-    assert TaskUsageItem.from_data(data) is None
 
 
 @pytest.mark.parametrize(
@@ -267,17 +251,6 @@ class _MockServer:
             return _Response(self.status_code)
         return _Response(data={"sessions": self._task_sessions(task_id)})
 
-    def post(self, endpoint, **kwargs):
-        (subpath,) = self._subpaths("post", endpoint, kwargs)
-        assert subpath == "query"
-        if self.status_code != 200:
-            return _Response(self.status_code)
-        return _Response(data={"tasks": {
-            task_id: self._task_sessions(task_id)
-            for task_id in kwargs["taskIds"]
-            if self._task_sessions(task_id)
-        }})
-
     def put(self, endpoint, **kwargs):
         task_id, session_id = self._subpaths("put", endpoint, kwargs)
         if self.status_code != 200:
@@ -332,7 +305,7 @@ def server(monkeypatch):
             return getattr(mock_server, method)(endpoint, **(json or {}))
         return _request
 
-    for method in ("get", "post", "put", "delete"):
+    for method in ("get", "put", "delete"):
         monkeypatch.setattr(
             task_usage.ayon_api, f"raw_{method}", _raw_request(method)
         )
@@ -392,26 +365,6 @@ def test_get_task_usage_items(server):
     assert task_usage.get_task_usage_items("project", "unused") == []
 
 
-def test_get_tasks_usage_items(server):
-    mine = _item("mine")
-    other = _item("other", username="artist2")
-    server.add("task-1", mine)
-    server.add("task-2", other)
-    server.add("task-3", other)
-
-    assert task_usage.get_tasks_usage_items(
-        "project", ["task-1", "task-2", "unused"]
-    ) == {
-        "task-1": [mine],
-        "task-2": [other],
-        "unused": [],
-    }
-    # Server is not asked without tasks
-    requests_count = len(server.requests)
-    assert task_usage.get_tasks_usage_items("project", []) == {}
-    assert len(server.requests) == requests_count
-
-
 def test_other_users_task_usage_items(server):
     mine = _item("mine")
     other = _item("other", username="artist2")
@@ -441,9 +394,6 @@ def test_server_without_endpoints(server):
     assert task_usage.get_other_users_task_usage_items(
         "project", "task-id"
     ) == []
-    assert task_usage.get_tasks_usage_items("project", ["task-id"]) == {
-        "task-id": []
-    }
     task_usage.release_task("project", "task-id")
     with pytest.raises(TaskUsageNotSupportedError):
         task_usage.claim_task("project", "task-id", item)
@@ -983,6 +933,9 @@ def _prepare_install(monkeypatch):
     monkeypatch.setattr(task_usage, "_acknowledged_session_ids", set())
     monkeypatch.setattr(task_usage, "is_headless_mode_enabled", lambda: False)
     monkeypatch.setattr(task_usage, "is_in_tests", lambda: False)
+    monkeypatch.setattr(
+        task_usage, "is_task_usage_enabled_in_project", lambda *args: True
+    )
     for key in task_usage.FARM_JOB_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(task_usage, "register_event_callback", lambda *a: None)
@@ -1066,6 +1019,9 @@ def test_same_workfile_items():
         items, "/work/SH010_anim_v001.ma"
     ) == [same]
     assert get_same_workfile_items(items, "sh010_anim_v003.ma") == []
+    assert same.is_workfile("C:/work/SH010_ANIM_v001.ma")
+    assert not same.is_workfile(None)
+    assert not no_file.is_workfile("sh010_anim_v001.ma")
 
 
 def test_tracker_version_up_only_for_opened_workfile(monkeypatch):
@@ -1276,3 +1232,37 @@ def test_sync_task_usage(monkeypatch):
     monkeypatch.setattr(task_usage, "_tracker", tracker)
     task_usage.sync_task_usage()
     assert calls == [1]
+
+
+def test_tracker_install_skipped_if_not_used_in_project(monkeypatch):
+    """Nothing is started if the project does not have enabled profile."""
+    _prepare_install(monkeypatch)
+    projects = []
+
+    def _is_enabled(project_name, *args):
+        projects.append(project_name)
+        return False
+
+    monkeypatch.setattr(
+        task_usage, "is_task_usage_enabled_in_project", _is_enabled
+    )
+    monkeypatch.setattr(
+        task_usage,
+        "_install_notice_frontend",
+        lambda: pytest.fail("Frontend must not be installed"),
+    )
+    assert task_usage.install_task_usage_tracker(_MockHost()) is None
+    assert projects == ["project"]
+
+    # Host integration without a project
+    host = _MockHost()
+    host.get_current_context = lambda: {"project_name": None}
+    assert task_usage.install_task_usage_tracker(host) is None
+    assert projects == ["project"]
+
+    # Failing host integration or settings
+    def _failing():
+        raise KeyError("AYON_PROJECT_NAME")
+
+    host.get_current_context = _failing
+    assert task_usage.install_task_usage_tracker(host) is None
