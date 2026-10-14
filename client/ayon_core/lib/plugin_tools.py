@@ -5,6 +5,8 @@ import re
 import collections
 import warnings
 
+from .path_templates import FormatSpecStr
+
 
 CAPITALIZE_REGEX = re.compile(r"[a-zA-Z0-9]")
 
@@ -107,8 +109,11 @@ def prepare_template_data(fill_pairs):
         keys, value = item
         # Convert only string values
         if isinstance(value, str):
-            upper_value = value.upper()
-            capitalized_value = _capitalize_value(value)
+            # Values support named format specs in python formatting
+            #   e.g. '"{key:upper}".format(**output)'
+            upper_value = FormatSpecStr(value.upper())
+            capitalized_value = FormatSpecStr(_capitalize_value(value))
+            value = FormatSpecStr(value)
         else:
             upper_value = capitalized_value = value
 

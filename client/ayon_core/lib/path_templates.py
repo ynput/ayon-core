@@ -13,7 +13,10 @@ SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
 _IS_WINDOWS = platform.system().lower() == "windows"
 _FORMATTER = Formatter()
-_FIRST_CHAR_REGEX = re.compile(r"[a-zA-Z0-9]")
+# Value that is a single template key without format spec, e.g. '{layer}'
+_PLACEHOLDER_REGEX = re.compile(r"\{([^{}!:]+)\}")
+# Value that is a single template key with format spec or conversion
+_PLACEHOLDER_WITH_SPEC_REGEX = re.compile(r"\{[^{}]+\}")
 _FORMAT_SPEC_NAME_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]+$")
 # Named format specs that can be used in templates, e.g. '{key:upper}'
 _FORMAT_SPECS: dict[str, Callable[[str], str]] = {}
@@ -63,32 +66,32 @@ def get_template_format_specs() -> dict[str, Callable[[str], str]]:
 
 
 def _upper_first(value: str) -> str:
-    """Uppercase first letter or digit, the rest is not changed.
+    """Uppercase first letter, the rest is not changed.
 
-    Leading symbols are skipped, 'str.capitalize' is not used because it
-        does lowercase the rest of the string.
+    Leading digits and symbols are skipped, 'str.capitalize' is not used
+        because it does lowercase the rest of the string.
 
     Example:
         >>> _upper_first("mainBeauty")
         'MainBeauty'
-        >>> _upper_first("_shot")
-        '_Shot'
+        >>> _upper_first("01_shot")
+        '01_Shot'
+        >>> _upper_first("{layer}")
+        '{Layer}'
 
     """
-    match = _FIRST_CHAR_REGEX.search(value)
-    if match is None:
-        return value
-    idx = match.start()
-    return f"{value[:idx]}{value[idx].upper()}{value[idx + 1:]}"
+    for idx, char in enumerate(value):
+        if char.isalpha():
+            return f"{value[:idx]}{char.upper()}{value[idx + 1:]}"
+    return value
 
 
 def _lower_first(value: str) -> str:
-    """Lowercase first letter or digit, the rest is not changed."""
-    match = _FIRST_CHAR_REGEX.search(value)
-    if match is None:
-        return value
-    idx = match.start()
-    return f"{value[:idx]}{value[idx].lower()}{value[idx + 1:]}"
+    """Lowercase first letter, the rest is not changed."""
+    for idx, char in enumerate(value):
+        if char.isalpha():
+            return f"{value[:idx]}{char.lower()}{value[idx + 1:]}"
+    return value
 
 
 def _split_words(value: str) -> list[str]:
@@ -720,6 +723,25 @@ class TemplatePartResult:
             self._invalid_types[key] = type(value)
 
 
+class FormatSpecStr(str):
+    """String that supports named format specs in python formatting.
+
+    Python formatting does not know named format specs used in templates,
+        this string applies them when used in 'str.format'.
+        >>> "{name:upperfirst}".format(name=FormatSpecStr("main"))
+        'Main'
+
+    """
+    __slots__ = ()
+
+    def __format__(self, format_spec: str) -> str:
+        if format_spec:
+            format_func = _FORMAT_SPECS.get(format_spec)
+            if format_func is not None:
+                return format_func(str(self))
+        return super().__format__(format_spec)
+
+
 class FormatObject:
     """Object that can be used for formatting.
 
@@ -1026,8 +1048,40 @@ class FormattingPart:
                 used_value = str_value
         result.add_really_used_value(self._field_name, used_value)
         result.add_used_value(used_key, used_value)
-        result.add_output(format_func(str_value))
+        result.add_output(
+            self._apply_named_spec(str_value, format_func)
+        )
         return result
+
+    def _apply_named_spec(
+        self, value: str, format_func: Callable[[str], str]
+    ) -> str:
+        """Apply named format spec on string value.
+
+        Value that is a template key, e.g. '{layer}', is kept as template
+            key with the format spec, e.g. '{layer:upper}'. Some integrations
+            fill the key later and the spec should be applied then.
+
+        Args:
+            value (str): String value.
+            format_func (Callable[[str], str]): Function of the format spec.
+
+        Returns:
+            str: Formatted value.
+
+        """
+        if (
+            self._conversion_char is None
+            and value.startswith("{")
+            and value.endswith("}")
+        ):
+            match = _PLACEHOLDER_REGEX.fullmatch(value)
+            if match is not None:
+                return f"{{{match.group(1)}:{self._format_spec_name}}}"
+            # Key already has format spec or conversion, keep it as it is
+            if _PLACEHOLDER_WITH_SPEC_REGEX.fullmatch(value):
+                return value
+        return format_func(value)
 
 
 class OptionalPart:

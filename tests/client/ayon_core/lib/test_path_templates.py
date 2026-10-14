@@ -270,7 +270,7 @@ class TestNamedFormatSpecs:
             ("char_SuperHero", "pascal", "CharSuperHero"),
             ("char_SuperHero", "snake", "char_super_hero"),
             ("_shot", "upperfirst", "_Shot"),
-            ("01_shot", "upperfirst", "01_shot"),
+            ("01_shot", "upperfirst", "01_Shot"),
             ("", "upperfirst", ""),
             ("__", "upperfirst", "__"),
             ("renderHTTPServer", "snake", "render_http_server"),
@@ -328,6 +328,193 @@ class TestNamedFormatSpecs:
         src_data = copy.deepcopy(data)
         StringTemplate("{task[name]:upper}{tags[0]:camel}").format(data)
         assert data == src_data
+
+
+class TestFirstLetterSpecs:
+    """'upperfirst' and 'lowerfirst' change the first alphabetical character.
+    """
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("main", "Main"),
+            ("mainBeauty", "MainBeauty"),
+            ("_shot", "_Shot"),
+            ("01_shot", "01_Shot"),
+            ("{aa}", "{Aa}"),
+            ("{aa}_bb", "{Aa}_bb"),
+            ("\u00e9cole", "\u00c9cole"),
+            ("123", "123"),
+            ("__", "__"),
+            ("", ""),
+        ],
+    )
+    def test_upperfirst(self, value: str, expected: str):
+        assert get_template_format_specs()["upperfirst"](value) == expected
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("Main", "main"),
+            ("MainBeauty", "mainBeauty"),
+            ("_Shot", "_shot"),
+            ("01_Shot", "01_shot"),
+            ("{Aa}", "{aa}"),
+            ("123", "123"),
+            ("", ""),
+        ],
+    )
+    def test_lowerfirst(self, value: str, expected: str):
+        assert get_template_format_specs()["lowerfirst"](value) == expected
+
+
+class TestPlaceholderValues:
+    """Value that is a template key keeps it, the spec is transferred.
+
+    Some integrations pass e.g. '{composition}' as a value to fill it later,
+    the named format spec must be applied on the later formatting.
+    """
+
+    @pytest.mark.parametrize(
+        "spec",
+        [
+            "upper",
+            "lower",
+            "upperfirst",
+            "lowerfirst",
+            "title",
+            "camel",
+            "pascal",
+            "snake",
+        ],
+    )
+    def test_spec_is_transferred(self, spec: str):
+        result = StringTemplate(f"{{key:{spec}}}").format_strict(
+            {"key": "{aaa}"}
+        )
+        assert str(result) == f"{{aaa:{spec}}}"
+
+    @pytest.mark.parametrize(
+        "template, value, expected",
+        [
+            ("{key:upper}", "{aaa}", "{aaa:upper}"),
+            ("{key:upper}", "{folder[name]}", "{folder[name]:upper}"),
+            (
+                "{product[type]}{key:upperfirst}{variant:upperfirst}",
+                "{composition}",
+                "render{composition:upperfirst}Main",
+            ),
+            ("<_{key:upper}>", "{aaa}", "_{aaa:upper}"),
+            # Placeholder that already has format spec is kept
+            ("{key:upper}", "{aaa:lower}", "{aaa:lower}"),
+            ("{key:upper}", "{aaa:0>3}", "{aaa:0>3}"),
+            ("{key:upper}", "{aaa!r}", "{aaa!r}"),
+            # Not only a placeholder, spec is applied on the value
+            ("{key:upper}", "{aaa}_bbb", "{AAA}_BBB"),
+            ("{key:upper}", "{aaa}{bbb}", "{AAA}{BBB}"),
+            ("{key:upper}", "{{aaa}}", "{{AAA}}"),
+            # Conversion is applied first, the result is not a placeholder
+            ("{key!r:upper}", "{aaa}", "'{AAA}'"),
+        ],
+    )
+    def test_placeholder(self, template: str, value: str, expected: str):
+        data = _get_data()
+        data["key"] = value
+        assert str(StringTemplate(template).format_strict(data)) == expected
+
+    def test_used_values(self):
+        result = StringTemplate("{key:upper}").format_strict({"key": "{aaa}"})
+        assert result.used_values == {"key": "{aaa}"}
+
+    @pytest.mark.parametrize(
+        "spec, expected",
+        [
+            ("upper", "MAINCOMP"),
+            ("lower", "maincomp"),
+            ("upperfirst", "MainComp"),
+            ("camel", "mainComp"),
+            ("snake", "main_comp"),
+        ],
+    )
+    def test_format_later(self, spec: str, expected: str):
+        """Placeholder is filled with the spec applied in second step."""
+        first = StringTemplate(f"render_{{key:{spec}}}").format_strict(
+            {"key": "{composition}"}
+        )
+        second = StringTemplate(str(first)).format_strict(
+            {"composition": "mainComp"}
+        )
+        assert str(second) == f"render_{expected}"
+
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    @pytest.mark.parametrize(
+        "spec, expected",
+        [
+            ("upper", "MAINCOMP"),
+            ("upperfirst", "MainComp"),
+            ("pascal", "MainComp"),
+        ],
+    )
+    def test_format_later_with_python_formatting(
+        self, spec: str, expected: str
+    ):
+        """Integrations fill the placeholder with python formatting.
+
+        Values from 'prepare_template_data' support named format specs in
+        python formatting.
+        """
+        first = StringTemplate(f"render_{{key:{spec}}}").format_strict(
+            {"key": "{composition}"}
+        )
+        fill_data = prepare_template_data({"composition": "mainComp"})
+
+        assert str(first).format(**fill_data) == f"render_{expected}"
+        assert str(first).format_map(fill_data) == f"render_{expected}"
+
+
+class TestPreparedTemplateData:
+    """Values of 'prepare_template_data' in python formatting."""
+
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    @pytest.mark.parametrize(
+        "template, expected",
+        [
+            ("{composition}", "mainComp"),
+            ("{Composition}", "MainComp"),
+            ("{COMPOSITION}", "MAINCOMP"),
+            ("{composition:upperfirst}", "MainComp"),
+            ("{composition:snake}", "main_comp"),
+            ("{Composition:lower}", "maincomp"),
+            ("{composition:>10}", "  mainComp"),
+            ("{composition!r}", "'mainComp'"),
+            ("{task[name]:upper}", "ANIMATION"),
+            ("{version:0>3}", "003"),
+        ],
+    )
+    def test_python_format(self, template: str, expected: str):
+        data = prepare_template_data({
+            "composition": "mainComp",
+            "task": {"name": "animation"},
+            "version": 3,
+        })
+        assert template.format(**data) == expected
+        assert template.format_map(data) == expected
+
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    def test_unknown_spec_fails_as_before(self):
+        data = prepare_template_data({"composition": "mainComp"})
+        with pytest.raises(ValueError):
+            "{composition:unknown}".format(**data)
+
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+    def test_values_are_strings(self):
+        data = prepare_template_data({"composition": "mainComp"})
+        assert data == {
+            "composition": "mainComp",
+            "Composition": "MainComp",
+            "COMPOSITION": "MAINCOMP",
+        }
+        assert all(isinstance(value, str) for value in data.values())
 
 
 class TestOptionalParts:

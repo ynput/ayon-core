@@ -116,10 +116,8 @@ def test_convert_invalid_value(value):
         "{product[type]}{Task[name]}_{Renderlayer}_{RENDERLAYER}",
         # Not string values are not changed
         "v{Version}_{VERSION}_{Frame}",
-        # First letter or digit is uppercased, the rest is kept
+        # First letter is uppercased, the rest is kept
         "{Symbol}_{SYMBOL}",
-        "{Number}_{NUMBER}",
-        "{Unicode}_{UNICODE}",
         "{Empty}_{EMPTY}",
         "{X}",
         # Optional parts
@@ -158,12 +156,38 @@ def test_converted_template_result(template: str):
     assert data == src_data
 
 
+@pytest.mark.parametrize(
+    "template, data, expected, expected_legacy",
+    [
+        # 'upperfirst' uppercases first letter, legacy first letter or digit
+        ("{Number}", {"number": "01_shot"}, "01_Shot", "01_shot"),
+        # 'upperfirst' handles any letter, legacy only ascii letters
+        ("{Unicode}", {"unicode": "\u00e9cole"}, "\u00c9cole", "\u00e9Cole"),
+        ("{UNICODE}", {"unicode": "\u00e9cole"}, "\u00c9COLE", "\u00c9COLE"),
+    ],
+)
+def test_converted_template_difference(
+    template: str, data: dict, expected: str, expected_legacy: str
+):
+    """Known differences between converted and legacy template."""
+    with pytest.deprecated_call():
+        legacy = StringTemplate(template).format_strict(
+            prepare_template_data(data)
+        )
+    result = StringTemplate(
+        convert_legacy_template_keys(template)
+    ).format_strict(data)
+
+    assert str(result) == expected
+    assert str(legacy) == expected_legacy
+
+
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_converted_placeholder_in_value():
-    """Value that is a placeholder is converted the same way.
+    """Creators that fill product name in 2 steps get the same result.
 
-    Some creators fill product name in 2 steps, they pass '{key}' as a value
-    and fill the placeholder in the result later with prepared data.
+    They pass '{key}' as a value and fill the placeholder in the result
+    later with python formatting and data from 'prepare_template_data'.
     """
     template = "{product[type]}{Composition}{LAYER}"
     data = {
@@ -171,11 +195,21 @@ def test_converted_placeholder_in_value():
         "composition": "{composition}",
         "layer": "{layer}",
     }
-    expected = StringTemplate(template).format_strict(
+    fill_data = prepare_template_data(
+        {"composition": "mainComp", "layer": "bg"}
+    )
+
+    legacy = StringTemplate(template).format_strict(
         prepare_template_data(data)
     )
     result = StringTemplate(
         convert_legacy_template_keys(template)
     ).format_strict(data)
 
-    assert str(result) == str(expected) == "render{Composition}{LAYER}"
+    assert str(legacy) == "render{Composition}{LAYER}"
+    assert str(result) == "render{composition:upperfirst}{layer:upper}"
+    assert (
+        str(result).format(**fill_data)
+        == str(legacy).format(**fill_data)
+        == "renderMainCompBG"
+    )
