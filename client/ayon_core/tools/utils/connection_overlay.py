@@ -9,37 +9,37 @@ from qtpy import QtWidgets, QtCore, QtGui
 class AYONLogoAnimation(QtWidgets.QWidget):
     """Animated AYON 'Y' symbol (three bars and a dot).
 
-    The dot bounces and while it is in the air the bars rotate by
-        120 degrees, so on landing the symbol looks the same as at
-        the start. Symbol is scaled to fit the widget size.
+    Mimics loader animation of AYON web ('LoadingPage' in ayon-frontend).
+        The dot bounces while the whole symbol pulses and once per two
+        bounces does a full turn. Symbol is scaled to fit the widget size.
 
     Animation runs only while the widget is visible and active.
 
     """
     # Proportions of the 'Y' symbol relative to the bar length,
-    #   taken from the AYON logo
-    _bar_width_ratio: float = 0.277
+    #   taken from the AYON logo svg
+    _bar_width_ratio: float = 0.2727
     # Gap between center of the symbol and the inner end of a bar
-    _bar_gap_ratio: float = 0.315
-    _dot_radius_ratio: float = 0.273
-    _dot_distance_ratio: float = 1.05
+    _bar_gap_ratio: float = 0.3121
+    _dot_radius_ratio: float = 0.2727
+    _dot_distance_ratio: float = 1.0469
     # How high the dot jumps
-    _jump_ratio: float = 1.0
-    # Extents of the animated symbol from its center
-    _top_extent_ratio: float = (
-        _dot_distance_ratio + _dot_radius_ratio + _jump_ratio
-    )
-    _bottom_extent_ratio: float = _bar_gap_ratio + 1.0
-    # Width of the symbol (rotated bars)
-    _width_ratio: float = (_bar_gap_ratio + 1.0) * 2
+    _jump_ratio: float = 0.716
+    _opacity: float = 0.8
 
-    _anim_duration: int = 700
-    # Animation timeline (normalized 0.0 - 1.0)
-    _jump_start: float = 0.1
-    _jump_peak: float = 0.5
-    _jump_end: float = 0.85
-    _rotation_start: float = 0.15
-    _rotation_end: float = 0.75
+    # Duration of symbol pulse, the dot bounces twice per pulse
+    _anim_duration: int = 1400
+    # Animation does not start from the beginning (normalized 0.0 - 1.0)
+    _anim_offset: float = 1.0 / 1.4
+    # Keyframes as (progress, value) of the pulse
+    _scale_keyframes = (
+        (0.0, 1.0), (0.25, 0.9), (0.5, 1.0), (0.75, 0.7), (1.0, 1.0)
+    )
+    _rotation_keyframes = (
+        (0.0, 0.0), (0.65, 0.0), (0.95, 360.0), (1.0, 360.0)
+    )
+    # Keyframes of one bounce, value is jump height ratio
+    _jump_keyframes = ((0.0, 1.0), (0.5, 0.0), (1.0, 1.0))
 
     _bars_color = QtGui.QColor(255, 255, 255)
     _dot_color = QtGui.QColor(0, 215, 160)
@@ -55,15 +55,29 @@ class AYONLogoAnimation(QtWidgets.QWidget):
         anim.setLoopCount(-1)
         anim.valueChanged.connect(self._on_anim_value)
 
+        # Easing curves used in web
+        ease_in_out = QtCore.QEasingCurve(QtCore.QEasingCurve.BezierSpline)
+        ease_in_out.addCubicBezierSegment(
+            QtCore.QPointF(0.42, 0.0),
+            QtCore.QPointF(0.58, 1.0),
+            QtCore.QPointF(1.0, 1.0),
+        )
+        bounce_ease = QtCore.QEasingCurve(QtCore.QEasingCurve.BezierSpline)
+        bounce_ease.addCubicBezierSegment(
+            QtCore.QPointF(0.58, 0.01),
+            QtCore.QPointF(0.44, 0.97),
+            QtCore.QPointF(1.0, 1.0),
+        )
+
         self._anim = anim
         self._progress: float = 0.0
-        self._ease_out = QtCore.QEasingCurve(QtCore.QEasingCurve.OutQuad)
-        self._ease_in = QtCore.QEasingCurve(QtCore.QEasingCurve.InQuad)
-        self._ease_in_out = QtCore.QEasingCurve(
-            QtCore.QEasingCurve.InOutCubic
-        )
+        self._ease_in_out = ease_in_out
+        self._bounce_ease = bounce_ease
         self._bar_length: int = bar_length
         self._active: bool = True
+        # Bounds of the symbol during whole animation relative to
+        #   the symbol center in bar length units
+        self._bounds: QtCore.QRectF = self._calculate_bounds()
 
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Preferred,
@@ -71,10 +85,9 @@ class AYONLogoAnimation(QtWidgets.QWidget):
         )
 
     def sizeHint(self):
-        height_ratio = self._top_extent_ratio + self._bottom_extent_ratio
         return QtCore.QSize(
-            math.ceil(self._bar_length * self._width_ratio),
-            math.ceil(self._bar_length * height_ratio),
+            math.ceil(self._bar_length * self._bounds.width()),
+            math.ceil(self._bar_length * self._bounds.height()),
         )
 
     def minimumSizeHint(self):
@@ -103,106 +116,140 @@ class AYONLogoAnimation(QtWidgets.QWidget):
         )
         if should_run:
             if not is_running:
+                self._progress = 0.0
                 self._anim.start()
             return
 
         if is_running:
             self._anim.stop()
-        # Show the symbol in its rest pose
-        self._progress = 0.0
 
     def _on_anim_value(self, value):
         self._progress = float(value)
         self.update()
 
-    def _get_anim_values(self) -> tuple[float, float, float, float]:
-        """Values of animation for current progress.
+    def _get_keyframe_value(
+        self,
+        keyframes: tuple[tuple[float, float], ...],
+        progress: float,
+        easing: QtCore.QEasingCurve,
+    ) -> float:
+        """Interpolate keyframes, easing is applied to each segment."""
+        prev_pos, prev_value = keyframes[0]
+        for pos, value in keyframes[1:]:
+            if progress <= pos:
+                ratio = (progress - prev_pos) / (pos - prev_pos)
+                ratio = easing.valueForProgress(ratio)
+                return prev_value + (value - prev_value) * ratio
+            prev_pos, prev_value = pos, value
+        return prev_value
+
+    def _get_anim_values(
+        self, progress: float
+    ) -> tuple[float, float, float]:
+        """Values of animation for passed progress.
+
+        Args:
+            progress (float): Animation progress (0.0-1.0).
 
         Returns:
-            tuple[float, float, float, float]: Jump height ratio (0.0-1.0),
-                bars rotation in degrees, symbol scale and dot squash.
+            tuple[float, float, float]: Jump height ratio (0.0-1.0),
+                symbol rotation in degrees and symbol scale.
 
         """
-        progress = self._progress
+        progress = (progress + self._anim_offset) % 1.0
+        bounce_progress = (progress * 2.0) % 1.0
+        jump = self._get_keyframe_value(
+            self._jump_keyframes, bounce_progress, self._bounce_ease
+        )
+        rotation = self._get_keyframe_value(
+            self._rotation_keyframes, progress, self._ease_in_out
+        )
+        scale = self._get_keyframe_value(
+            self._scale_keyframes, progress, self._ease_in_out
+        )
+        return jump, rotation, scale
 
-        # Dot jump
-        jump = 0.0
-        if self._jump_start <= progress < self._jump_peak:
-            value = (
-                (progress - self._jump_start)
-                / (self._jump_peak - self._jump_start)
+    def _calculate_bounds(self) -> QtCore.QRectF:
+        """Bounds of the symbol during whole animation.
+
+        The symbol does not stay in the same area during the animation,
+            so the bounds are found by sampling the animation.
+
+        """
+        bar_rect = QtCore.QRectF(
+            -self._bar_width_ratio * 0.5,
+            self._bar_gap_ratio,
+            self._bar_width_ratio,
+            1.0,
+        )
+        bounds = QtCore.QRectF()
+        samples = 200
+        for idx in range(samples):
+            jump, rotation, scale = self._get_anim_values(idx / samples)
+            transform = QtGui.QTransform()
+            transform.rotate(rotation)
+            transform.scale(scale, scale)
+            for bar_idx in range(3):
+                bar_transform = QtGui.QTransform()
+                bar_transform.rotate(120 * bar_idx)
+                bounds |= (bar_transform * transform).mapRect(bar_rect)
+            dot_center = transform.map(QtCore.QPointF(
+                0.0,
+                -(self._dot_distance_ratio + self._jump_ratio * jump),
+            ))
+            radius = self._dot_radius_ratio * scale
+            bounds |= QtCore.QRectF(
+                dot_center.x() - radius,
+                dot_center.y() - radius,
+                radius * 2,
+                radius * 2,
             )
-            jump = self._ease_out.valueForProgress(value)
-        elif self._jump_peak <= progress < self._jump_end:
-            value = (
-                (progress - self._jump_peak)
-                / (self._jump_end - self._jump_peak)
-            )
-            jump = 1.0 - self._ease_in.valueForProgress(value)
-
-        # Bars rotation, rotation by 120 degrees looks the same as
-        #   no rotation
-        rotation = 0.0
-        if self._rotation_start < progress < self._rotation_end:
-            value = (
-                (progress - self._rotation_start)
-                / (self._rotation_end - self._rotation_start)
-            )
-            rotation = 120.0 * self._ease_in_out.valueForProgress(value)
-
-        # Symbol squashes before jump (takeoff) and after landing
-        squash = 0.0
-        if progress < self._jump_start:
-            squash = math.sin(progress / self._jump_start * math.pi)
-        elif progress >= self._jump_end:
-            value = (progress - self._jump_end) / (1.0 - self._jump_end)
-            squash = math.sin(value * math.pi)
-        scale = 1.0 - (0.08 * squash)
-
-        return jump, rotation, scale, squash
+        return bounds
 
     def paintEvent(self, event):
         rect = self.rect()
-        height_ratio = self._top_extent_ratio + self._bottom_extent_ratio
+        bounds = self._bounds
         bar_length = min(
             float(self._bar_length),
-            rect.height() / height_ratio,
-            rect.width() / self._width_ratio,
+            rect.height() / bounds.height(),
+            rect.width() / bounds.width(),
         )
         if bar_length < 4:
             return
 
-        jump, rotation, scale, squash = self._get_anim_values()
+        jump, rotation, scale = 0.0, 0.0, 1.0
+        if self._active:
+            jump, rotation, scale = self._get_anim_values(self._progress)
 
         bar_width = bar_length * self._bar_width_ratio
         bar_gap = bar_length * self._bar_gap_ratio
         dot_radius = bar_length * self._dot_radius_ratio
-        bottom_offset = bar_length * self._bottom_extent_ratio
 
-        # Center the symbol in the widget
-        content_height = bar_length * height_ratio
+        # Center the animation bounds in the widget
         center = QtCore.QPointF(
-            rect.center().x(),
+            (
+                rect.x()
+                + (rect.width() - bar_length * bounds.width()) * 0.5
+                - bar_length * bounds.x()
+            ),
             (
                 rect.y()
-                + (rect.height() - content_height) * 0.5
-                + bar_length * self._top_extent_ratio
+                + (rect.height() - bar_length * bounds.height()) * 0.5
+                - bar_length * bounds.y()
             ),
         )
 
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         painter.setPen(QtCore.Qt.NoPen)
+        painter.setOpacity(self._opacity)
         painter.translate(center)
-
-        # Bars, squash is anchored to the bottom of the symbol
-        painter.save()
-        painter.translate(0, bottom_offset)
-        painter.scale(1.0 + (1.0 - scale), scale)
-        painter.translate(0, -bottom_offset)
         painter.rotate(rotation)
-        painter.setBrush(self._bars_color)
+        painter.scale(scale, scale)
+
         # Bar pointing down, other two are rotated by 120 degrees
+        painter.save()
+        painter.setBrush(self._bars_color)
         bar_rect = QtCore.QRectF(
             -bar_width * 0.5, bar_gap, bar_width, bar_length
         )
@@ -216,18 +263,11 @@ class AYONLogoAnimation(QtWidgets.QWidget):
             bar_length * self._dot_distance_ratio
             + bar_length * self._jump_ratio * jump
         )
-        # Follow the bars when they are squashed
-        dot_y += bottom_offset * (1.0 - scale)
         dot_color = self._dot_color
         if not self._active:
             dot_color = self._dot_inactive_color
         painter.setBrush(dot_color)
-        dot_squash = 0.15 * squash
-        painter.drawEllipse(
-            QtCore.QPointF(0, dot_y + dot_radius * dot_squash),
-            dot_radius * (1.0 + dot_squash),
-            dot_radius * (1.0 - dot_squash),
-        )
+        painter.drawEllipse(QtCore.QPointF(0, dot_y), dot_radius, dot_radius)
         painter.end()
 
 
