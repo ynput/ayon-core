@@ -270,7 +270,7 @@ class TestNamedFormatSpecs:
             ("char_SuperHero", "pascal", "CharSuperHero"),
             ("char_SuperHero", "snake", "char_super_hero"),
             ("_shot", "upperfirst", "_Shot"),
-            ("01_shot", "upperfirst", "01_Shot"),
+            ("01_shot", "upperfirst", "01_shot"),
             ("", "upperfirst", ""),
             ("__", "upperfirst", "__"),
             ("renderHTTPServer", "snake", "render_http_server"),
@@ -331,7 +331,9 @@ class TestNamedFormatSpecs:
 
 
 class TestFirstLetterSpecs:
-    """'upperfirst' and 'lowerfirst' change the first alphabetical character.
+    """'upperfirst' and 'lowerfirst' change the first ascii letter or digit.
+
+    Same as legacy '{Key}' did with 'prepare_template_data'.
     """
 
     @pytest.mark.parametrize(
@@ -340,10 +342,10 @@ class TestFirstLetterSpecs:
             ("main", "Main"),
             ("mainBeauty", "MainBeauty"),
             ("_shot", "_Shot"),
-            ("01_shot", "01_Shot"),
+            ("01_shot", "01_shot"),
             ("{aa}", "{Aa}"),
             ("{aa}_bb", "{Aa}_bb"),
-            ("\u00e9cole", "\u00c9cole"),
+            ("\u00e9cole", "\u00e9Cole"),
             ("123", "123"),
             ("__", "__"),
             ("", ""),
@@ -358,7 +360,7 @@ class TestFirstLetterSpecs:
             ("Main", "main"),
             ("MainBeauty", "mainBeauty"),
             ("_Shot", "_shot"),
-            ("01_Shot", "01_shot"),
+            ("01_Shot", "01_Shot"),
             ("{Aa}", "{aa}"),
             ("123", "123"),
             ("", ""),

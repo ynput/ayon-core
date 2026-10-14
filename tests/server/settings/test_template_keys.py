@@ -116,8 +116,10 @@ def test_convert_invalid_value(value):
         "{product[type]}{Task[name]}_{Renderlayer}_{RENDERLAYER}",
         # Not string values are not changed
         "v{Version}_{VERSION}_{Frame}",
-        # First letter is uppercased, the rest is kept
+        # First ascii letter or digit is uppercased, the rest is kept
         "{Symbol}_{SYMBOL}",
+        "{Number}_{NUMBER}",
+        "{Unicode}_{UNICODE}",
         "{Empty}_{EMPTY}",
         "{X}",
         # Optional parts
@@ -154,32 +156,6 @@ def test_converted_template_result(template: str):
     assert str(result) == str(expected).replace(template, converted)
     assert result.solved == expected.solved
     assert data == src_data
-
-
-@pytest.mark.parametrize(
-    "template, data, expected, expected_legacy",
-    [
-        # 'upperfirst' uppercases first letter, legacy first letter or digit
-        ("{Number}", {"number": "01_shot"}, "01_Shot", "01_shot"),
-        # 'upperfirst' handles any letter, legacy only ascii letters
-        ("{Unicode}", {"unicode": "\u00e9cole"}, "\u00c9cole", "\u00e9Cole"),
-        ("{UNICODE}", {"unicode": "\u00e9cole"}, "\u00c9COLE", "\u00c9COLE"),
-    ],
-)
-def test_converted_template_difference(
-    template: str, data: dict, expected: str, expected_legacy: str
-):
-    """Known differences between converted and legacy template."""
-    with pytest.deprecated_call():
-        legacy = StringTemplate(template).format_strict(
-            prepare_template_data(data)
-        )
-    result = StringTemplate(
-        convert_legacy_template_keys(template)
-    ).format_strict(data)
-
-    assert str(result) == expected
-    assert str(legacy) == expected_legacy
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")

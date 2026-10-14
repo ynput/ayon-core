@@ -13,6 +13,7 @@ SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
 _IS_WINDOWS = platform.system().lower() == "windows"
 _FORMATTER = Formatter()
+_FIRST_CHAR_REGEX = re.compile(r"[a-zA-Z0-9]")
 # Value that is a single template key without format spec, e.g. '{layer}'
 _PLACEHOLDER_REGEX = re.compile(r"\{([^{}!:]+)\}")
 # Value that is a single template key with format spec or conversion
@@ -66,32 +67,38 @@ def get_template_format_specs() -> dict[str, Callable[[str], str]]:
 
 
 def _upper_first(value: str) -> str:
-    """Uppercase first letter, the rest is not changed.
+    """Uppercase first ascii letter or digit, the rest is not changed.
 
-    Leading digits and symbols are skipped, 'str.capitalize' is not used
-        because it does lowercase the rest of the string.
+    Same as legacy '{Key}' did. Leading symbols are skipped, a leading digit
+        is the first character so the value does not change.
+        'str.capitalize' is not used because it does lowercase the rest
+        of the string.
 
     Example:
         >>> _upper_first("mainBeauty")
         'MainBeauty'
-        >>> _upper_first("01_shot")
-        '01_Shot'
+        >>> _upper_first("_shot")
+        '_Shot'
         >>> _upper_first("{layer}")
         '{Layer}'
+        >>> _upper_first("01_shot")
+        '01_shot'
 
     """
-    for idx, char in enumerate(value):
-        if char.isalpha():
-            return f"{value[:idx]}{char.upper()}{value[idx + 1:]}"
-    return value
+    match = _FIRST_CHAR_REGEX.search(value)
+    if match is None:
+        return value
+    idx = match.start()
+    return f"{value[:idx]}{value[idx].upper()}{value[idx + 1:]}"
 
 
 def _lower_first(value: str) -> str:
-    """Lowercase first letter, the rest is not changed."""
-    for idx, char in enumerate(value):
-        if char.isalpha():
-            return f"{value[:idx]}{char.lower()}{value[idx + 1:]}"
-    return value
+    """Lowercase first ascii letter or digit, the rest is not changed."""
+    match = _FIRST_CHAR_REGEX.search(value)
+    if match is None:
+        return value
+    idx = match.start()
+    return f"{value[:idx]}{value[idx].lower()}{value[idx + 1:]}"
 
 
 def _split_words(value: str) -> list[str]:
