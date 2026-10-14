@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import re
 import time
 from pathlib import Path
@@ -45,6 +46,11 @@ from ayon_core.pipeline.version_start import get_versioning_start
 
 # Tagged,
 # TemplatePath,
+from ayon_core.pipeline.load import get_representation_traits
+from ayon_core.pipeline.publish.trait_conversion import (
+    sequence_traits_from_files,
+)
+from ayon_core.pipeline.traits import get_representation_context
 from ayon_core.plugins.publish.integrate_traits import (
     IntegrateTraits,
 )
@@ -188,7 +194,7 @@ def mock_context(
                 frame_end=SEQUENCE_LENGTH,
                 frame_in=0,
                 frame_out=SEQUENCE_LENGTH - 1,
-                frames_per_second="25",
+                frame_rate_numerator=25,
             ),
             Sequence(
                 frame_padding=4,
@@ -223,7 +229,7 @@ def mock_context(
                             frame_end=SEQUENCE_LENGTH,
                             frame_in=0,
                             frame_out=SEQUENCE_LENGTH - 1,
-                            frames_per_second="25",
+                            frame_rate_numerator=25,
                         ),
                         Sequence(
                             frame_padding=4,
@@ -554,3 +560,115 @@ def test_get_transfers_from_representation_preserves_hierarchy(
 
     template_path = representation.get_trait(TemplatePath)
     assert template_path.template == template_item.template_object["path"]
+
+
+def test_get_representation_context(
+        mock_context: pyblish.api.Context, tmp_path: Path) -> None:
+    """Context resolves the published files with the template.
+
+    Same keys as from legacy integration - "output" and the first frame
+    of a sequence (padded like the file names).
+    """
+    instance = mock_context[0]
+    paths = [tmp_path / f"render_v001_h264.{frame:04d}.png"
+             for frame in range(999, 1004)]
+    frame_ranged, sequence = sequence_traits_from_files(paths)
+    representation = Representation(name="png", traits=[
+        FileLocations(file_paths=[
+            FileLocation(file_path=path) for path in paths]),
+        frame_ranged,
+        sequence,
+        # template data hold values of the last transferred file
+        TemplatePath(
+            template="{root[work]}/file<_{output}>.{frame}.{ext}",
+            data={"output": "h264", "frame": 1003, "ext": "png"},
+        ),
+    ])
+
+    context = get_representation_context(representation, instance)
+
+    assert context["output"] == "h264"
+    assert context["frame"] == "0999"
+    assert context["ext"] == "png"
+    assert context["representation"] == "png"
+
+
+def test_get_representation_traits(tmp_path: Path) -> None:
+    """Traits are restored from representation entity."""
+    representation = Representation(name="png", traits=[
+        FileLocation(file_path=tmp_path / "file.png"),
+        Persistent(),
+    ])
+    traits = representation.traits_as_dict()
+
+    for traits_value in (traits, json.dumps(traits, default=str)):
+        restored = get_representation_traits(
+            {"name": "png", "id": "1" * 32, "traits": traits_value})
+        assert restored is not None
+        assert restored.contains_trait(FileLocation)
+
+    assert get_representation_traits(
+        {"name": "png", "id": "1" * 32, "traits": None}) is None
+
+    # unknown trait (e.g. from unavailable addon) is skipped
+    traits["ayon.unknown.Missing.v1"] = {"value": 1}
+    restored = get_representation_traits(
+        {"name": "png", "id": "1" * 32, "traits": traits})
+    assert restored is not None
+    assert restored.contains_trait(FileLocation)
+    assert restored.contains_trait(Persistent)
+
+
+class _StubAnatomy:
+    """Anatomy with single root, published on another platform."""
+
+    publish_root = "C:/projects"
+    current_root = "/mnt/projects"
+
+    def find_root_template_from_path(self, path: str) -> tuple[bool, str]:
+        if not path.startswith(self.publish_root):
+            return False, path
+        return True, "{root[work]}" + path[len(self.publish_root):]
+
+    def fill_root(self, path: str) -> str:
+        return path.replace("{root[work]}", self.current_root)
+
+
+def test_rootless_location() -> None:
+    """Rootless location resolves files with roots of current platform."""
+    from ayon_core.pipeline.load import get_representation_file_paths
+    from ayon_core.pipeline.traits import RootlessLocation
+    from ayon_core.pipeline.traits.publishing import set_rootless_location
+
+    anatomy = _StubAnatomy()
+    single = Representation(name="mov", traits=[
+        FileLocation(file_path=Path("C:/projects/sh010/v001/file.mov")),
+    ])
+    sequence = Representation(name="exr", traits=[
+        FileLocations(file_paths=[
+            FileLocation(file_path=Path(
+                f"C:/projects/sh010/v001/exr/file.{frame}.exr"))
+            for frame in (1001, 1002)
+        ]),
+    ])
+    outside = Representation(name="png", traits=[
+        FileLocation(file_path=Path("D:/temp/file.png")),
+    ])
+    for representation in (single, sequence, outside):
+        set_rootless_location(representation, anatomy)
+
+    assert single.get_trait(RootlessLocation).rootless_path == (
+        "{root[work]}/sh010/v001/file.mov")
+    assert sequence.get_trait(RootlessLocation).rootless_path == (
+        "{root[work]}/sh010/v001/exr")
+    assert not outside.contains_trait(RootlessLocation)
+
+    assert get_representation_file_paths(single, anatomy) == [
+        "/mnt/projects/sh010/v001/file.mov"]
+    assert get_representation_file_paths(sequence, anatomy) == [
+        "/mnt/projects/sh010/v001/exr/file.1001.exr",
+        "/mnt/projects/sh010/v001/exr/file.1002.exr",
+    ]
+    # absolute paths without rootless location
+    assert get_representation_file_paths(outside, anatomy) == [
+        "D:/temp/file.png"]

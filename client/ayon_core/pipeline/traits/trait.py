@@ -101,6 +101,18 @@ class TraitBase(ABC):
         """
         return asdict(self)
 
+    def as_persistent_dict(self) -> dict:
+        """Return data of the trait stored with the representation.
+
+        Traits can leave out data that only control publishing (e.g.
+        processing tags). Data are the same as `as_dict()` by default.
+
+        Returns:
+            dict: Trait as dictionary.
+
+        """
+        return self.as_dict()
+
     @classmethod
     def from_dict(cls: type[T], data: dict) -> T:
         """Create a trait from a dictionary.

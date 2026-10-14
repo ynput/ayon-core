@@ -1,17 +1,17 @@
 """Conversion helpers between trait `Representation` and legacy
 representation dicts.
 
-Used by the trait-based extractors to feed shared pipeline code that still
-works on the dict shape (`ReviewRenderer`, `TranscodeRenderer`), and by host
-integrations that build trait representations from data they already
-resolve for legacy dicts (e.g. colorspace data).
+Used by host integrations that build trait representations from data they
+already resolve for legacy dicts (e.g. colorspace data or representations
+created by host exporters). Trait-based extractors work with traits
+directly, see `trait_utils.py`.
 """
 from __future__ import annotations
 
 import mimetypes
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import clique
 
@@ -27,13 +27,28 @@ from ayon_core.pipeline.traits import (
     Persistent,
     PixelBased,
     Representation,
+    ReviewOutput,
     Sequence,
+    Slate,
+    StagingDirectory,
     Tagged,
     TraitBase,
     Variant,
 )
 from ayon_core.pipeline.publish.review_utils import (
     DEFAULT_IMAGE_EXTS,
+)
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
+
+
+# legacy representation keys set by review extractor, used by burnins
+#   and slate
+REVIEW_OUTPUT_KEYS = (
+    "ffmpeg_cmd",
+    "source_resolution_width",
+    "source_resolution_height",
 )
 
 
@@ -71,7 +86,7 @@ def sequence_traits_from_files(
         frame_end=frames[-1],
     )
     if fps:
-        frame_ranged.frames_per_second = str(fps)
+        frame_ranged.frame_rate = fps
 
     # e.g. "1001-1010" or "1001-1005,1007-1010"
     frame_spec = collection.format("{ranges}").replace(" ", "")
@@ -117,13 +132,19 @@ def color_managed_from_colorspace_data(
 
 
 def representation_to_legacy_dict(representation: Representation) -> dict:
-    """Convert a trait Representation into the internal repre-dict shape
-    the shared renderers expect (name/ext/files/stagingDir/tags/
-    custom_tags, plus colorspaceData when ColorManaged is present).
+    """Convert a trait Representation into the legacy repre-dict shape
+    (name/ext/files/stagingDir/tags/custom_tags, plus colorspaceData,
+    resolution, fps, slate "data" and review output keys when the matching
+    traits are present).
 
-    This dict is an internal DTO only - it is never appended to
-    `instance.data["representations"]`, just fed into shared pipeline code
-    that still speaks the legacy dict shape.
+    Inverse of `legacy_dict_to_representation`, for code that still
+    speaks the legacy dict shape.
+
+    Args:
+        representation (Representation): The representation to convert.
+
+    Returns:
+        dict: The legacy dictionary representation of the representation.
 
     Raises:
         PublishError: If the representation has neither FileLocation nor
@@ -141,28 +162,49 @@ def representation_to_legacy_dict(representation: Representation) -> dict:
                 f"Representation '{representation.name}' has an empty "
                 "FileLocations trait."
             )
-        staging_dir = str(file_locs.get_common_root())
-        files = [Path(f.file_path).name for f in file_locs.file_paths]
-        ext = Path(file_locs.file_paths[0].file_path).suffix.lstrip(".")
+        file_paths = [Path(f.file_path) for f in file_locs.file_paths]
+        staging_dir = file_locs.get_common_root()
     elif representation.contains_trait(FileLocation):
-        file_loc = representation.get_trait(FileLocation)
-        file_path = Path(file_loc.file_path)
-        staging_dir = str(file_path.parent)
-        files = file_path.name
-        ext = file_path.suffix.lstrip(".")
+        file_paths = [
+            Path(representation.get_trait(FileLocation).file_path)]
+        staging_dir = file_paths[0].parent
     else:
         raise PublishError(
             f"Representation '{representation.name}' has neither "
             "FileLocation nor FileLocations trait."
         )
 
+    staging_persistent = False
+    if representation.contains_trait(StagingDirectory):
+        staging_directory = representation.get_trait(StagingDirectory)
+        staging_dir = Path(staging_directory.path)
+        staging_persistent = staging_directory.is_persistent
+
+    # file names are relative to the staging directory, they can contain
+    #   subdirectories
+    try:
+        filenames = [
+            path.relative_to(staging_dir).as_posix() for path in file_paths
+        ]
+    except ValueError as exc:
+        raise PublishError(
+            f"Files of representation '{representation.name}' are not"
+            f" in its staging directory '{staging_dir}'."
+        ) from exc
+
+    files: Any = filenames
+    if not representation.contains_trait(FileLocations):
+        files = filenames[0]
+
     result: dict[str, Any] = {
         "name": representation.name,
-        "ext": ext.lower(),
+        "ext": file_paths[0].suffix.lstrip(".").lower(),
         "files": files,
-        "stagingDir": staging_dir,
+        "stagingDir": str(staging_dir),
         "tags": tags,
     }
+    if staging_persistent:
+        result["stagingDir_persistent"] = True
     if representation.contains_trait(CustomTags):
         result["custom_tags"] = list(
             representation.get_trait(CustomTags).tags
@@ -171,6 +213,31 @@ def representation_to_legacy_dict(representation: Representation) -> dict:
     # `Variant` is used for it on trait representations
     if representation.contains_trait(Variant):
         result["outputName"] = representation.get_trait(Variant).variant
+
+    if representation.contains_trait(PixelBased):
+        pixel_based = representation.get_trait(PixelBased)
+        result["resolutionWidth"] = pixel_based.display_window_width
+        result["resolutionHeight"] = pixel_based.display_window_height
+
+    if representation.contains_trait(FrameRanged):
+        frame_rate = representation.get_trait(FrameRanged).frame_rate
+        if frame_rate is not None:
+            result["fps"] = float(frame_rate)
+
+    if representation.contains_trait(Slate):
+        result["data"] = {
+            "slateFrames": representation.get_trait(Slate).frames
+        }
+
+    if representation.contains_trait(ReviewOutput):
+        review_output = representation.get_trait(ReviewOutput)
+        result["burnins"] = list(review_output.burnins)
+        for key in REVIEW_OUTPUT_KEYS:
+            value = getattr(review_output, key)
+            if value is not None:
+                result[key] = value
+        if review_output.output_def is not None:
+            result["outputDef"] = review_output.output_def
 
     if representation.contains_trait(ColorManaged):
         cm = representation.get_trait(ColorManaged)
@@ -194,26 +261,68 @@ def representation_to_legacy_dict(representation: Representation) -> dict:
 def legacy_dict_to_representation(
     new_repre: dict[str, Any],
     source: Optional[Representation] = None,
+    *,
+    default_staging_dir: Optional[str] = None,
+    anatomy: Optional[Anatomy] = None,
 ) -> Representation:
     """Convert one renderer-output dict back into a Representation.
 
     If `new_repre` carries `colorspaceData` (set or updated by the shared
     renderer, e.g. `TranscodeRenderer` changing the target colorspace),
     that becomes the result's `ColorManaged` trait. Otherwise `ColorManaged`
-    is carried over unchanged from `source` (the common case - most
-    renderers, e.g. `ReviewRenderer`, never touch color).
+    is carried over unchanged from `source`.
 
     `source` can be omitted when the dict was not derived from another
     trait representation (e.g. a host converting its own legacy dicts).
 
+    Slate frames (`data["slateFrames"]`) become the `Slate` trait and
+    the keys set by the review extractor for burnins and slate
+    (`burnins`, `ffmpeg_cmd`, `outputDef`, ...) become the non-persistent
+    `ReviewOutput` trait.
+
     Marks the result `Persistent` unless it carries the legacy "delete"
     tag (mirrors `ExtractReview.process`'s cleanup pass, which removes
     "delete"-tagged representations rather than integrating them).
+
+    "stagingDir" (with "stagingDir_persistent") becomes the
+    `StagingDirectory` trait. Representation dicts can rely on the staging
+    directory of their instance - pass it as `default_staging_dir` (see
+    `convert_legacy_representations` for conversion with instance data).
+    Root templates in the staging directory (e.g. "{root[work]}") are
+    filled when `anatomy` is passed.
+
+    Args:
+        new_repre (dict[str, Any]): The legacy representation dictionary.
+        source (Optional[Representation]): The source representation
+            to inherit traits from.
+        default_staging_dir (Optional[str]): Staging directory used if
+            the dict does not have "stagingDir".
+        anatomy (Optional[Anatomy]): Project anatomy to fill roots in
+            the staging directory.
+
+    Raises:
+        PublishError: If the staging directory is not set.
+
+    Returns:
+        Representation: The converted representation instance.
+
     """
     traits: list[TraitBase] = []
 
     files = new_repre["files"]
-    staging_dir = Path(new_repre["stagingDir"])
+    staging_dir_value = new_repre.get("stagingDir") or default_staging_dir
+    if not staging_dir_value:
+        raise PublishError(
+            "No staging directory set for representation"
+            f" '{new_repre['name']}'."
+        )
+    if anatomy is not None:
+        staging_dir_value = anatomy.fill_root(staging_dir_value)
+    staging_dir = Path(staging_dir_value)
+    traits.append(StagingDirectory(
+        path=staging_dir,
+        is_persistent=bool(new_repre.get("stagingDir_persistent")),
+    ))
     if isinstance(files, (list, tuple)):
         file_paths = [
             FileLocation(file_path=staging_dir / filename)
@@ -253,6 +362,24 @@ def legacy_dict_to_representation(
     output_name = new_repre.get("outputName")
     if output_name:
         traits.append(Variant(variant=output_name))
+
+    slate_frames = (new_repre.get("data") or {}).get("slateFrames")
+    if slate_frames:
+        traits.append(Slate(frames=slate_frames))
+
+    review_output_data = {
+        key: new_repre[key]
+        for key in REVIEW_OUTPUT_KEYS
+        if new_repre.get(key) is not None
+    }
+    burnins = new_repre.get("burnins")
+    output_def = new_repre.get("outputDef")
+    if review_output_data or burnins or output_def:
+        traits.append(ReviewOutput(
+            burnins=list(burnins or []),
+            output_def=output_def,
+            **review_output_data,
+        ))
 
     color_managed = color_managed_from_colorspace_data(
         new_repre.get("colorspaceData")

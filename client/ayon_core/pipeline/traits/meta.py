@@ -1,10 +1,36 @@
 """Metadata traits."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import ClassVar, List, Optional
+from dataclasses import dataclass, field
+from typing import Any, ClassVar, Dict, List, Optional
 
 from .trait import TraitBase
+
+
+# Tags that only control publish plugins - what to create from
+#   a representation and what to do with it, they don't describe it.
+PROCESSING_TAGS = frozenset({
+    # remove representation after processing
+    "delete",
+    # use representation as source of thumbnail
+    "need_thumbnail",
+    # create burnins on the representation
+    "burnin",
+    # representation is published by farm job
+    "publish_on_farm",
+    # skip representation in review extraction
+    "passing",
+    # review output options
+    "no-handles",
+    "no-audio",
+    "reformat",
+    "reformated",
+    "reformatted",
+    "bake-lut",
+    "clean_name",
+    # add slate to the review (`Slate` trait describes slate frames)
+    "slate-frame",
+})
 
 
 @dataclass
@@ -12,6 +38,9 @@ class Tagged(TraitBase):
     """Tagged trait model.
 
     This trait can hold a list of tags.
+
+    Tags in `PROCESSING_TAGS` only control publish plugins (e.g. "delete",
+    "burnin"), they are not stored with the representation.
 
     Example::
 
@@ -29,6 +58,21 @@ class Tagged(TraitBase):
     id: ClassVar[str] = "ayon.meta.Tagged.v1"
     persistent: ClassVar[bool] = True
     tags: List[str]
+
+    def as_persistent_dict(self) -> dict:
+        """Return data stored with the representation.
+
+        Processing tags are left out.
+
+        Returns:
+            dict: Trait as dictionary.
+
+        """
+        return {
+            "tags": [
+                tag for tag in self.tags if tag not in PROCESSING_TAGS
+            ]
+        }
 
 
 @dataclass
@@ -187,3 +231,36 @@ class IntendedUse(TraitBase):
     id: ClassVar[str] = "ayon.meta.IntendedUse.v1"
     persistent: ClassVar[bool] = True
     use: str
+
+
+@dataclass
+class ReviewOutput(TraitBase):
+    """Data of a review output needed by the following publish plugins.
+
+    Review extractor stores how the output was created, so burnins and
+    slate can be added with the same encoding settings. Frame rate is
+    in `FrameRanged` and sequence files are described by `Sequence`.
+
+    Note:
+        This is not a persistent trait. Might be useful to persist it
+        in the future if needed.
+
+    Attributes:
+        burnins (list[str]): Names of burnin definitions linked to the
+            output.
+        ffmpeg_cmd (Optional[str]): Command used to create the output.
+        source_resolution_width (Optional[int]): Width of the source.
+        source_resolution_height (Optional[int]): Height of the source.
+        output_def (Optional[dict[str, Any]]): Output definition from
+            review settings used to create the output.
+
+    """
+    name: ClassVar[str] = "ReviewOutput"
+    description: ClassVar[str] = "Review Output Trait Model"
+    id: ClassVar[str] = "ayon.meta.ReviewOutput.v1"
+    persistent: ClassVar[bool] = False
+    burnins: List[str] = field(default_factory=list)
+    ffmpeg_cmd: Optional[str] = None
+    source_resolution_width: Optional[int] = None
+    source_resolution_height: Optional[int] = None
+    output_def: Optional[Dict[str, Any]] = None

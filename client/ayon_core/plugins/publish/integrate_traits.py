@@ -1,10 +1,6 @@
 """Integrate representations with traits."""
 from __future__ import annotations
 
-import json
-import re
-from enum import Enum
-from pathlib import Path
 from pprint import pformat
 from typing import TYPE_CHECKING, Any
 
@@ -35,19 +31,16 @@ from ayon_core.pipeline.publish import (
     get_version_data_from_instance,
     get_instance_template_name,
 )
-from ayon_core.pipeline.publish.trait_conversion import (
-    sequence_traits_from_files,
-)
 from ayon_core.pipeline.traits import (
-    Bundle,
-    FileLocations,
     Persistent,
     Representation,
-    Sequence,
+    Slate,
     TraitValidationError,
 
+    apply_transfers,
+    get_representation_context,
+    prepare_for_json,
     get_transfers_from_representations,
-    get_template_data_from_representation,
     get_legacy_files_for_representation,
     replace_paths_in_representation,
 )
@@ -136,81 +129,6 @@ def get_changed_attributes(
     return changes
 
 
-def prepare_for_json(data: dict[str, Any]) -> dict[str, Any]:
-    """Prepare data for JSON serialization.
-
-    If there are values that json cannot serialize, this function will
-    convert them to strings - paths to posix paths, regex patterns to the
-    pattern string and enums to their name.
-
-    Args:
-        data (dict[str, Any]): Data to prepare.
-
-    Returns:
-        dict[str, Any]: Prepared data.
-
-    Raises:
-        TypeError: If the data cannot be converted to JSON.
-
-    """
-    return {key: _prepare_value_for_json(value) for key, value in data.items()}
-
-
-def _prepare_value_for_json(value: Any) -> Any:
-    """Convert value to JSON serializable value, recursively."""
-    if isinstance(value, dict):
-        return prepare_for_json(value)
-    if isinstance(value, (list, tuple)):
-        return [_prepare_value_for_json(item) for item in value]
-    try:
-        json.dumps(value)
-    except TypeError:
-        if isinstance(value, Path):
-            return value.as_posix()
-        if isinstance(value, re.Pattern):
-            return value.pattern
-        if isinstance(value, Enum):
-            return value.name
-        return str(value)
-    return value
-
-
-def update_sequence_traits(representation: Representation) -> None:
-    """Update `Sequence` traits to match published file names.
-
-    Publish template renames the files, but not the frames, so the frame
-    regex and padding are updated from the new file names while the frame
-    spec stays valid. Sequences in `Bundle` items are updated too.
-
-    Args:
-        representation (Representation): Representation with file paths
-            already replaced by the published ones.
-
-    """
-    trait_groups = [list(representation.get_traits().values())]
-    if representation.contains_trait(Bundle):
-        trait_groups.extend(representation.get_trait(Bundle).items)
-
-    for traits in trait_groups:
-        sequence = next(
-            (trait for trait in traits if isinstance(trait, Sequence)), None)
-        file_locations = next(
-            (trait for trait in traits if isinstance(trait, FileLocations)),
-            None)
-        if sequence is None or file_locations is None:
-            continue
-
-        sequence_traits = sequence_traits_from_files([
-            Path(file_location.file_path)
-            for file_location in file_locations.file_paths
-        ])
-        if sequence_traits is None:
-            continue
-        _, published_sequence = sequence_traits
-        sequence.frame_regex = published_sequence.frame_regex
-        sequence.frame_padding = published_sequence.frame_padding
-
-
 class IntegrateTraits(pyblish.api.InstancePlugin):
     """Integrate representations with traits."""
 
@@ -295,17 +213,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         self.log.debug(
             "Transferred files %s", [file_transactions.transferred])
 
-        # replace original paths with the destination in traits and store
-        # size and checksum computed for the transfer (content is the same)
-        for transfer in transfers:
-            transfer.related_trait.file_path = transfer.destination
-            transfer.related_trait.file_size = transfer.size
-            transfer.related_trait.file_hash = transfer.checksum
-
-        # file names changed by the publish template, sequence traits
-        # describing them must match the published files
-        for representation in representations:
-            update_sequence_traits(representation)
+        # traits describe the published files - paths, size and checksum
+        #   (content is the same) and sequences renamed by the template
+        apply_transfers(transfers, anatomy)
         try:
             self.validate_representations(instance, representations)
         except PublishError:
@@ -314,13 +224,24 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         # 9) Create representation entities
         for representation in representations:
+            representation_transfers = [
+                transfer
+                for transfer in transfers
+                if transfer.representation is representation
+            ]
+            # transfers of Bundle items reference the item representations
+            if not representation_transfers:
+                representation_transfers = transfers
             attributes = {
-                "path": transfers[0].destination,
-                "template": transfers[0].template,
+                "path": representation_transfers[0].destination,
+                "template": representation_transfers[0].template,
             }
 
-            data = {"context": get_template_data_from_representation(
+            data = {"context": get_representation_context(
                 representation, instance)}
+            # loaders read slate frames from representation data
+            if representation.contains_trait(Slate):
+                data["slateFrames"] = representation.get_trait(Slate).frames
 
             # Original integrator at this moment took all additional data
             # on the representation and added them into either attribs or data.
@@ -346,7 +267,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             replace_paths_in_representation(representation_entity, transfers)
 
             # add traits to representation entity
-            representation_entity["traits"] = representation.traits_as_dict()
+            representation_entity["traits"] = representation.traits_as_dict(
+                persistent_only=True)
             op_session.create_entity(
                 project_name=instance.context.data["projectName"],
                 entity_type="representation",

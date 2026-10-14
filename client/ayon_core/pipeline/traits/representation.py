@@ -321,11 +321,13 @@ class Representation(Generic[T]):  # noqa: PLR0904
                 msg = f"Trait with ID {trait_id} not found."
                 raise MissingTraitError(msg) from e
 
+        # versionless id - match any version of the trait
         result = next(
             (
-                self._data.get(trait_id)
-                for trait_id in self._data
-                if trait_id.startswith(trait_id)
+                trait
+                for data_trait_id, trait in self._data.items()
+                if data_trait_id == trait_id
+                or data_trait_id.startswith(f"{trait_id}.v")
             ),
             None,
         )
@@ -375,18 +377,29 @@ class Representation(Generic[T]):  # noqa: PLR0904
             for trait_id in trait_ids
         }
 
-    def traits_as_dict(self) -> dict:
+    def traits_as_dict(self, *, persistent_only: bool = False) -> dict:
         """Return the traits from Representation data as a dictionary.
+
+        Args:
+            persistent_only (bool): Get data stored with the
+                representation - skip traits that are not persistent
+                (`TraitBase.persistent` is False) and use
+                `TraitBase.as_persistent_dict()`, which leaves out data
+                that only control publishing (e.g. processing tags).
 
         Returns:
             dict: Traits data dictionary.
 
         """
-        return {
-            trait_id: trait.as_dict()
-            for trait_id, trait in self._data.items()
-            if trait and trait_id
-        }
+        result = {}
+        for trait_id, trait in self._data.items():
+            if not trait or not trait_id:
+                continue
+            if not persistent_only:
+                result[trait_id] = trait.as_dict()
+            elif trait.persistent:
+                result[trait_id] = trait.as_persistent_dict()
+        return result
 
     def __len__(self):
         """Return the length of the data."""

@@ -1415,6 +1415,71 @@ def get_trait_representations(
     return instance.data.get(TRAIT_INSTANCE_KEY, [])
 
 
+def add_trait_representation_files_for_cleanup(
+    instance: pyblish.api.Instance,
+    representation: Representation,
+) -> None:
+    """Mark files of intermediate trait representation to be deleted.
+
+    Same as `add_repre_files_for_cleanup` for trait representations. Files
+    are kept if staging directory of the representation (`StagingDirectory`
+    trait) or of the instance is persistent.
+
+    Args:
+        instance (pyblish.api.Instance): Publish instance.
+        representation (Representation): Representation with
+            intermediate files.
+
+    """
+    from ayon_core.pipeline.publish.trait_utils import (  # noqa: PLC0415
+        get_file_paths,
+        is_staging_persistent,
+    )
+
+    if is_staging_persistent(representation):
+        return
+    if instance.data.get("stagingDir_persistent"):
+        return
+    cleanup_paths = instance.context.data["cleanupFullPaths"]
+    for path in get_file_paths(representation):
+        cleanup_paths.append(str(path))
+
+
+def convert_legacy_representations(
+    instance: pyblish.api.Instance,
+    representations: list[dict[str, Any]],
+) -> list[Representation]:
+    """Convert legacy representation dicts of instance to traits.
+
+    Representations without "stagingDir" use the staging directory of
+    the instance and root templates in staging directories are filled,
+    same as on integration of legacy representations.
+
+    Args:
+        instance (pyblish.api.Instance): Publish instance of
+            the representations.
+        representations (list[dict[str, Any]]): Legacy representations.
+
+    Returns:
+        list[Representation]: Trait representations.
+
+    """
+    from ayon_core.pipeline.publish.trait_conversion import (  # noqa: PLC0415
+        legacy_dict_to_representation,
+    )
+
+    anatomy = instance.context.data["anatomy"]
+    default_staging_dir = instance.data.get("stagingDir")
+    return [
+        legacy_dict_to_representation(
+            representation,
+            default_staging_dir=default_staging_dir,
+            anatomy=anatomy,
+        )
+        for representation in representations
+    ]
+
+
 def fill_sequence_gaps_with_previous_version(
     collection: str,
     staging_dir: str,

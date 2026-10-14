@@ -6,7 +6,8 @@ import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from re import Pattern
-from typing import TYPE_CHECKING, ClassVar, Optional
+from fractions import Fraction
+from typing import TYPE_CHECKING, ClassVar, Optional, Union
 
 import clique
 
@@ -36,11 +37,74 @@ class GapPolicy(Enum):
     black = auto()
 
 
+# NTSC frame rates are N * 1000 / 1001 (23.976, 29.97, 59.94, ...)
+_NTSC_DENOMINATOR = 1001
+# tolerance to recognize NTSC frame rate written as decimal number
+_NTSC_TOLERANCE = 0.005
+
+
+def parse_frame_rate(
+        value: Union[str, float, int, Fraction, None]) -> Optional[Fraction]:
+    """Convert frame rate to exact fraction.
+
+    Accepts fractions ("24000/1001", `Fraction`), integers and decimal
+    numbers (23.976, "29.97", "25"). Decimal numbers close to an NTSC
+    frame rate (N * 1000 / 1001) are converted to it, so 23.976 becomes
+    24000/1001.
+
+    Args:
+        value (Union[str, float, int, Fraction, None]): Frame rate.
+
+    Returns:
+        Optional[Fraction]: Frame rate or None if value is empty.
+
+    Raises:
+        ValueError: If value is not a valid positive frame rate.
+
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+
+    if isinstance(value, Fraction):
+        rate = value
+    elif isinstance(value, int):
+        rate = Fraction(value)
+    elif isinstance(value, str) and "/" in value:
+        rate = Fraction(value.strip())
+    else:
+        decimal_value = float(value)
+        rate = Fraction(str(value).strip()) if isinstance(
+            value, str) else Fraction(decimal_value)
+        if rate.denominator != 1:
+            ntsc_base = round(decimal_value * _NTSC_DENOMINATOR / 1000)
+            ntsc_rate = Fraction(ntsc_base * 1000, _NTSC_DENOMINATOR)
+            if abs(decimal_value - float(ntsc_rate)) < _NTSC_TOLERANCE:
+                rate = ntsc_rate
+            else:
+                rate = rate.limit_denominator(_NTSC_DENOMINATOR)
+
+    if rate <= 0:
+        msg = f"Invalid frame rate: {value}"
+        raise ValueError(msg)
+    return rate
+
+
 @dataclass
 class FrameRanged(TraitBase):
     """Frame ranged trait model.
 
     Model representing a frame-ranged trait.
+
+    `frame_start` and `frame_end` are the first and the last frame of the
+    content stored in the files - they include slate frames (`Slate`)
+    and handle frames if `Handles.inclusive` is set. Use
+    `get_frame_range_data()` to get the frame range of the content
+    without them.
+
+    Frame rate is stored as exact fraction (numerator and denominator)
+    to support NTSC frame rates (24000/1001) without precision loss.
+    The fraction is reduced, so the same frame rates have the same
+    values. Use `frame_rate` property to get and set it.
 
     Sync with OpenAssetIO MediaCreation Traits. For compatibility with
     OpenAssetIO, we'll need to handle different names of attributes:
@@ -49,12 +113,8 @@ class FrameRanged(TraitBase):
         * frame_end -> end_frame
         ...
 
-    Note: frames_per_second is a string to allow various precision
-        formats. FPS is a floating point number, but it can be also
-        represented as a fraction (e.g. "30000/1001") or as a decimal
-        or even as an irrational number. We need to support all these
-        formats. To work with FPS, we'll need some helper function
-        to convert FPS to Decimal from string.
+    Version 2 replaced string `frames_per_second` with
+    `frame_rate_numerator` and `frame_rate_denominator`.
 
     Attributes:
         name (str): Trait name.
@@ -64,20 +124,81 @@ class FrameRanged(TraitBase):
         frame_end (int): Frame end.
         frame_in (int): Frame in.
         frame_out (int): Frame out.
-        frames_per_second (str): Frames per second.
         step (int): Step.
+        frame_rate_numerator (Optional[int]): Frame rate numerator.
+        frame_rate_denominator (int): Frame rate denominator.
     """
 
     name: ClassVar[str] = "FrameRanged"
     description: ClassVar[str] = "Frame Ranged Trait"
-    id: ClassVar[str] = "ayon.time.FrameRanged.v1"
+    id: ClassVar[str] = "ayon.time.FrameRanged.v2"
     persistent: ClassVar[bool] = True
     frame_start: int
     frame_end: int
     frame_in: Optional[int] = None
     frame_out: Optional[int] = None
-    frames_per_second: str = None
     step: Optional[int] = None
+    frame_rate_numerator: Optional[int] = None
+    frame_rate_denominator: int = 1
+
+    @property
+    def frame_rate(self) -> Optional[Fraction]:
+        """Frame rate as exact fraction or None if not set."""
+        if self.frame_rate_numerator is None:
+            return None
+        return Fraction(
+            self.frame_rate_numerator, self.frame_rate_denominator)
+
+    @frame_rate.setter
+    def frame_rate(
+            self, value: Union[str, float, int, Fraction, None]) -> None:
+        rate = parse_frame_rate(value)
+        if rate is None:
+            self.frame_rate_numerator = None
+            self.frame_rate_denominator = 1
+            return
+        self.frame_rate_numerator = rate.numerator
+        self.frame_rate_denominator = rate.denominator
+
+    def get_fps_string(self, precision: Optional[int] = None) -> str:
+        """Get frame rate as a decimal string.
+
+        Args:
+            precision (Optional[int]): Number of decimal places. If None,
+                use the default numeric string representation.
+
+        Returns:
+            str: Frame rate, or an empty string if not set.
+
+        """
+        rate = self.frame_rate
+        if rate is None:
+            return ""
+        if precision is not None:
+            return f"{float(rate):.{precision}f}"
+        if rate.denominator == 1:
+            return str(rate.numerator)
+        return str(float(rate))
+
+    @classmethod
+    def upgrade(cls, data: dict) -> FrameRanged:
+        """Upgrade data of previous version of the trait.
+
+        Version 1 stored frame rate as string `frames_per_second`
+        (e.g. "25", "23.976" or "24000/1001").
+
+        Args:
+            data (dict): Data of version 1.
+
+        Returns:
+            FrameRanged: Upgraded trait.
+
+        """
+        data = dict(data)
+        frames_per_second = data.pop("frames_per_second", None)
+        trait = cls.from_dict(data)
+        trait.frame_rate = frames_per_second
+        return trait
 
 
 @dataclass
@@ -91,7 +212,8 @@ class Handles(TraitBase):
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be a namespaced trait name with a version
-        inclusive (bool): Handles are inclusive.
+        inclusive (bool): Handle frames are part of the files - they are
+            included in the `FrameRanged` frame range.
         frame_start_handle (int): Frame start handle.
         frame_end_handle (int): Frame end handle.
     """
@@ -153,7 +275,7 @@ class Sequence(TraitBase):
         """
         if v is None:
             return v
-        if v and any(s not in v.pattern for s in ["?P<index>", "?P<padding>"]):
+        if any(s not in v.pattern for s in ["?P<index>", "?P<padding>"]):
             msg = "Frame regex must include 'index' and `padding named groups"
             raise ValueError(msg)
         return v
@@ -455,3 +577,95 @@ class Static(TraitBase):
     description: ClassVar[str] = "Static Time Trait"
     id: ClassVar[str] = "ayon.time.Static.v1"
     persistent: ClassVar[bool] = True
+
+
+@dataclass
+class Slate(TraitBase):
+    """Slate trait model.
+
+    Marks that the first frames of the content are slate frames,
+    not part of the frame range of the content. Slate frames are
+    included in the `FrameRanged` frame range (they are part of the
+    files) and they are before the start handle frames.
+
+    Attributes:
+        frames (int): Number of slate frames at the start.
+
+    """
+
+    name: ClassVar[str] = "Slate"
+    description: ClassVar[str] = "Slate Trait"
+    id: ClassVar[str] = "ayon.time.Slate.v1"
+    persistent: ClassVar[bool] = True
+    frames: int = 1
+
+
+@dataclass
+class FrameRangeData:
+    """Frame range of representation content resolved from traits.
+
+    Attributes:
+        frame_start (int): First frame in the files (`FrameRanged`).
+        frame_end (int): Last frame in the files (`FrameRanged`).
+        handle_start (int): Handle frames at the start.
+        handle_end (int): Handle frames at the end.
+        handles_in_files (bool): Handle frames are in the files.
+        slate_frames (int): Slate frames at the start of the files.
+        frame_rate (Optional[Fraction]): Frame rate.
+
+    """
+    frame_start: int
+    frame_end: int
+    handle_start: int = 0
+    handle_end: int = 0
+    handles_in_files: bool = False
+    slate_frames: int = 0
+    frame_rate: Optional[Fraction] = None
+
+    @property
+    def content_frame_start(self) -> int:
+        """First frame of the content without slate and handles."""
+        frame_start = self.frame_start + self.slate_frames
+        if self.handles_in_files:
+            frame_start += self.handle_start
+        return frame_start
+
+    @property
+    def content_frame_end(self) -> int:
+        """Last frame of the content without handles."""
+        if self.handles_in_files:
+            return self.frame_end - self.handle_end
+        return self.frame_end
+
+
+def get_frame_range_data(
+        representation: Representation) -> Optional[FrameRangeData]:
+    """Get frame range of representation content from its traits.
+
+    Combines `FrameRanged`, `Handles` and `Slate` traits.
+
+    Args:
+        representation (Representation): Representation to process.
+
+    Returns:
+        Optional[FrameRangeData]: Frame range data or None if
+            representation does not have `FrameRanged` trait.
+
+    """
+    if not representation.contains_trait(FrameRanged):
+        return None
+
+    frame_ranged = representation.get_trait(FrameRanged)
+    data = FrameRangeData(
+        frame_start=frame_ranged.frame_start,
+        frame_end=frame_ranged.frame_end,
+        frame_rate=frame_ranged.frame_rate,
+    )
+    if representation.contains_trait(Handles):
+        handles = representation.get_trait(Handles)
+        data.handle_start = handles.frame_start_handle or 0
+        data.handle_end = handles.frame_end_handle or 0
+        data.handles_in_files = bool(handles.inclusive)
+    if representation.contains_trait(Slate):
+        data.slate_frames = representation.get_trait(Slate).frames
+    return data

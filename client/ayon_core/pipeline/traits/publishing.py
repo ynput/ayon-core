@@ -4,8 +4,11 @@ from __future__ import annotations
 import contextlib
 import copy
 import hashlib
+import json
+import re
+from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from ayon_api.utils import create_entity_id
 from ayon_core.lib import source_hash
@@ -22,6 +25,7 @@ from ayon_core.pipeline.traits import (
     PixelBased,
     Bundle,
     Representation,
+    RootlessLocation,
     Sequence,
     TemplatePath,
     Transient,
@@ -92,6 +96,8 @@ class TransferItem:
     template_data: dict[str, Any]
     representation: Representation
     related_trait: FileLocation
+    # algorithm used by `get_file_checksum()`
+    checksum_type: str = "sha256"
 
     def __init__(self,
         source: Path,
@@ -141,6 +147,43 @@ class TransferItem:
         ).hexdigest()
 
 
+# template keys with different value for each file of a representation
+PER_FILE_TEMPLATE_KEYS = ("frame", "udim")
+
+
+def set_template_path(
+        representation: Representation,
+        template_item: IntegrationTemplateItem,
+        used_values: dict[str, Any],
+        multiple_files: bool = False) -> None:
+    """Set `TemplatePath` trait describing the published files.
+
+    Only values used by the template are stored. Roots are left out,
+    they are resolved by anatomy where the path is used. Values that
+    differ per file (frame, udim) are left out for multiple files.
+
+    Args:
+        representation (Representation): Representation to update.
+        template_item (IntegrationTemplateItem): Template item.
+        used_values (dict[str, Any]): Values used to fill the template
+            for the (first) file of the representation.
+        multiple_files (bool): Representation has multiple files.
+
+    """
+    data = copy.deepcopy(used_values)
+    data.pop("root", None)
+    if multiple_files:
+        for key in PER_FILE_TEMPLATE_KEYS:
+            data.pop(key, None)
+
+    with contextlib.suppress(ValueError):
+        representation.remove_trait(TemplatePath)
+    representation.add_trait(TemplatePath(
+        template=template_item.template_object["path"],
+        data=data,
+    ))
+
+
 def get_transfers_from_sequence(
         representation: Representation,
         template_item: IntegrationTemplateItem,
@@ -169,6 +212,7 @@ def get_transfers_from_sequence(
     # Go through all frames in the sequence and
     # find their corresponding file locations, then
     # format their template and add them to transfers.
+    first_used_values = None
     for frame in frames:
         file_loc: FileLocation = representation.get_trait(
             FileLocations).get_file_location_for_frame(
@@ -184,6 +228,8 @@ def get_transfers_from_sequence(
         # add used values to the template data
         used_values: dict = template_filled.used_values
         template_item.template_data.update(used_values)
+        if first_used_values is None:
+            first_used_values = used_values
 
         transfers.append(
             TransferItem(
@@ -194,18 +240,17 @@ def get_transfers_from_sequence(
                 checksum=file_loc.file_hash or TransferItem.get_file_checksum(
                     file_loc.file_path),
                 template=template_item.template_object["path"],
-                template_data=template_item.template_data,
+                template_data=copy.deepcopy(template_item.template_data),
                 representation=representation,
                 related_trait=file_loc
             )
         )
 
     # add template path and the data to resolve it
-    if not representation.contains_trait(TemplatePath):
-        representation.add_trait(TemplatePath(
-            template=template_item.template_object["path"],
-            data=template_item.template_data
-        ))
+    set_template_path(
+        representation, template_item, first_used_values or {},
+        multiple_files=True,
+    )
 
 
 def get_transfers_from_udim(
@@ -229,6 +274,7 @@ def get_transfers_from_udim(
     path_template_object: "AnatomyStringTemplate" = (
         template_item.template_object["path"]
     )
+    first_used_values = None
     for file_loc in representation.get_trait(
             FileLocations).file_paths:
         template_item.template_data["udim"] = (
@@ -242,6 +288,8 @@ def get_transfers_from_udim(
         # add used values to the template data
         used_values: dict = template_filled.used_values
         template_item.template_data.update(used_values)
+        if first_used_values is None:
+            first_used_values = used_values
 
         transfers.append(
             TransferItem(
@@ -252,16 +300,16 @@ def get_transfers_from_udim(
                 checksum=file_loc.file_hash or TransferItem.get_file_checksum(
                     file_loc.file_path),
                 template=template_item.template_object["path"],
-                template_data=template_item.template_data,
+                template_data=copy.deepcopy(template_item.template_data),
                 representation=representation,
                 related_trait=file_loc
             )
         )
     # add template path and the data to resolve it
-    representation.add_trait(TemplatePath(
-        template=template_item.template_object["path"],
-        data=template_item.template_data
-    ))
+    set_template_path(
+        representation, template_item, first_used_values or {},
+        multiple_files=True,
+    )
 
 
 def get_transfers_from_file_locations(
@@ -352,20 +400,13 @@ def get_transfers_from_file_location(
             checksum=file_loc.file_hash or TransferItem.get_file_checksum(
                 file_path),
             template=template_item.template_object["path"],
-            template_data=template_item.template_data,
+            template_data=copy.deepcopy(template_item.template_data),
             representation=representation,
             related_trait=file_loc
         )
     )
     # add template path and the data to resolve it
-    # remove template if already exists
-    with contextlib.suppress(ValueError):
-        representation.remove_trait(TemplatePath)
-
-    representation.add_trait(TemplatePath(
-        template=template_item.template_object["path"],
-        data=template_item.template_data
-    ))
+    set_template_path(representation, template_item, used_values)
 
 
 def get_transfers_from_bundle(
@@ -468,19 +509,13 @@ def get_transfers_from_file_locations_common_root(
                     or TransferItem.get_file_checksum(source)
                 ),
                 template=template_item.template_object["path"],
-                template_data=template_item.template_data,
+                template_data=copy.deepcopy(template_item.template_data),
                 representation=representation,
                 related_trait=file_loc
             )
         )
 
-    if not representation.contains_trait(TemplatePath):
-        representation.add_trait(
-            TemplatePath(
-                template=template_item.template_object["path"],
-                data=template_item.template_data,
-            )
-        )
+    set_template_path(representation, template_item, used_values)
 
 
 def get_transfers_from_representations(
@@ -609,8 +644,9 @@ def get_template_data_from_representation(
 
     with contextlib.suppress(MissingTraitError):
         # get fps from representation traits
-        template_data["fps"] = representation.get_trait(
-            FrameRanged).frames_per_second
+        frame_rate = representation.get_trait(FrameRanged).frame_rate
+        if frame_rate is not None:
+            template_data["fps"] = float(frame_rate)
 
     with contextlib.suppress(MissingTraitError):
         file_path = representation.get_trait(FileLocation).file_path
@@ -731,3 +767,189 @@ def replace_paths_in_representation(
                         fl_trait.file_paths[idx].file_path = (
                             transfer.destination
                         )
+
+
+def get_representation_context(
+        representation: Representation,
+        instance: pyblish.api.Instance) -> dict[str, Any]:
+    """Get context of representation entity.
+
+    Context is used with the representation template to resolve
+    the representation path (e.g. by loaders), so it has the same keys
+    as from legacy integration - template data used for the published
+    files ("output", ...) and the first frame of a sequence or the first
+    UDIM tile.
+
+    Args:
+        representation (Representation): Published representation.
+        instance (pyblish.api.Instance): Published instance.
+
+    Returns:
+        dict[str, Any]: Representation context.
+
+    """
+    context = get_template_data_from_representation(representation, instance)
+    if representation.contains_trait(TemplatePath):
+        context.update(representation.get_trait(TemplatePath).data)
+
+    # values of the first file - as legacy representation context
+    context.pop("frame", None)
+    if representation.contains_trait(UDIM):
+        context["udim"] = representation.get_trait(UDIM).udim[0]
+    elif (
+        representation.contains_trait(Sequence)
+        and representation.contains_trait(FileLocations)
+    ):
+        sequence = representation.get_trait(Sequence)
+        frames = sequence.get_frame_list(
+            representation.get_trait(FileLocations),
+            regex=sequence.frame_regex,
+        )
+        context["frame"] = (
+            f"{min(frames):0{sequence.frame_padding}d}"
+        )
+    return context
+
+
+def update_sequence_traits(representation: Representation) -> None:
+    """Update `Sequence` traits to match published file names.
+
+    Publish template renames the files, but not the frames, so the frame
+    regex and padding are updated from the new file names while the frame
+    spec stays valid. Sequences in `Bundle` items are updated too.
+
+    Args:
+        representation (Representation): Representation with file paths
+            already replaced by the published ones.
+
+    """
+    from ayon_core.pipeline.publish.trait_conversion import (  # noqa: PLC0415
+        sequence_traits_from_files,
+    )
+
+    trait_groups = [list(representation.get_traits().values())]
+    if representation.contains_trait(Bundle):
+        trait_groups.extend(representation.get_trait(Bundle).items)
+
+    for traits in trait_groups:
+        sequence = next(
+            (trait for trait in traits if isinstance(trait, Sequence)), None)
+        file_locations = next(
+            (trait for trait in traits if isinstance(trait, FileLocations)),
+            None)
+        if sequence is None or file_locations is None:
+            continue
+
+        sequence_traits = sequence_traits_from_files([
+            Path(file_location.file_path)
+            for file_location in file_locations.file_paths
+        ])
+        if sequence_traits is None:
+            continue
+        _, published_sequence = sequence_traits
+        sequence.frame_regex = published_sequence.frame_regex
+        sequence.frame_padding = published_sequence.frame_padding
+
+
+def apply_transfers(
+        transfers: list[TransferItem],
+        anatomy: Optional[Anatomy] = None) -> None:
+    """Point representations to the transferred (published) files.
+
+    File traits get the destination path with size and checksum of the
+    transfer and `Sequence` traits are updated to match the published
+    file names. With anatomy, `RootlessLocation` trait is set so the files
+    can be found with roots of any platform.
+
+    Args:
+        transfers (list[TransferItem]): Processed transfers.
+        anatomy (Optional[Anatomy]): Project anatomy to find roots.
+
+    """
+    representations = []
+    for transfer in transfers:
+        file_location = transfer.related_trait
+        if not file_location.file_hash:
+            # checksum was computed for the transfer
+            file_location.file_hash_type = TransferItem.checksum_type
+        file_location.file_path = transfer.destination
+        file_location.file_size = transfer.size
+        file_location.file_hash = transfer.checksum
+        if not any(
+            transfer.representation is representation
+            for representation in representations
+        ):
+            representations.append(transfer.representation)
+
+    for representation in representations:
+        update_sequence_traits(representation)
+        if anatomy is not None:
+            set_rootless_location(representation, anatomy)
+
+
+def set_rootless_location(
+        representation: Representation, anatomy: Anatomy) -> None:
+    """Set `RootlessLocation` trait for files of the representation.
+
+    Rootless path of the file or of the common root directory of multiple
+    files. Trait is not set if files are not in any root of the project.
+
+    Args:
+        representation (Representation): Representation with published
+            files.
+        anatomy (Anatomy): Project anatomy.
+
+    """
+    if representation.contains_trait(FileLocation):
+        path = Path(representation.get_trait(FileLocation).file_path)
+    elif representation.contains_trait(FileLocations):
+        path = representation.get_trait(FileLocations).get_common_root()
+    else:
+        return
+
+    success, rootless_path = anatomy.find_root_template_from_path(
+        path.as_posix())
+    with contextlib.suppress(ValueError):
+        representation.remove_trait(RootlessLocation)
+    if success:
+        representation.add_trait(
+            RootlessLocation(rootless_path=rootless_path))
+
+
+def prepare_for_json(data: dict[str, Any]) -> dict[str, Any]:
+    """Prepare data for JSON serialization.
+
+    If there are values that json cannot serialize, this function will
+    convert them to strings - paths to posix paths, regex patterns to the
+    pattern string and enums to their name.
+
+    Args:
+        data (dict[str, Any]): Data to prepare.
+
+    Returns:
+        dict[str, Any]: Prepared data.
+
+    Raises:
+        TypeError: If the data cannot be converted to JSON.
+
+    """
+    return {key: _prepare_value_for_json(value) for key, value in data.items()}
+
+
+def _prepare_value_for_json(value: Any) -> Any:
+    """Convert value to JSON serializable value, recursively."""
+    if isinstance(value, dict):
+        return prepare_for_json(value)
+    if isinstance(value, (list, tuple)):
+        return [_prepare_value_for_json(item) for item in value]
+    try:
+        json.dumps(value)
+    except TypeError:
+        if isinstance(value, Path):
+            return value.as_posix()
+        if isinstance(value, re.Pattern):
+            return value.pattern
+        if isinstance(value, Enum):
+            return value.name
+        return str(value)
+    return value

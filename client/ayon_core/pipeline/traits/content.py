@@ -85,6 +85,8 @@ class FileLocation(TraitBase):
     LocatableContent trait. It is adding optional file size and file hash
     for easy access to file information.
 
+    Version 2 added `file_hash_type`.
+
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
@@ -92,17 +94,35 @@ class FileLocation(TraitBase):
         file_path (str): File path.
         file_size (Optional[int]): File size in bytes.
         file_hash (Optional[str]): File hash.
+        file_hash_type (Optional[str]): Algorithm used for `file_hash`
+            (e.g. "sha256"), None if unknown.
         persistent (bool): Should the mime type be stored with the
             representation on the server or not.
     """
 
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
-    id: ClassVar[str] = "ayon.content.FileLocation.v1"
+    id: ClassVar[str] = "ayon.content.FileLocation.v2"
     persistent: ClassVar[bool] = True
     file_path: Path
     file_size: Optional[int] = None
     file_hash: Optional[str] = None
+    file_hash_type: Optional[str] = None
+
+    @classmethod
+    def upgrade(cls, data: dict) -> FileLocation:
+        """Upgrade data of version 1 of the trait.
+
+        Algorithm of the hash in version 1 data is unknown.
+
+        Args:
+            data (dict): Data of version 1.
+
+        Returns:
+            FileLocation: Upgraded trait.
+
+        """
+        return cls.from_dict(data)
 
     def validate_trait(self, representation: Representation) -> None:
         """Validate the trait.
@@ -134,6 +154,8 @@ class FileLocations(TraitBase):
     This model defines list of FileLocation traits. It can be
     used for file sequences or more complex hierarchies.
 
+    Version 2 contains `FileLocation` items of version 2.
+
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
@@ -145,9 +167,25 @@ class FileLocations(TraitBase):
 
     name: ClassVar[str] = "FileLocations"
     description: ClassVar[str] = "FileLocations Trait Model"
-    id: ClassVar[str] = "ayon.content.FileLocations.v1"
+    id: ClassVar[str] = "ayon.content.FileLocations.v2"
     persistent: ClassVar[bool] = True
     file_paths: list[FileLocation]
+
+    @classmethod
+    def upgrade(cls, data: dict) -> FileLocations:
+        """Upgrade data of version 1 of the trait.
+
+        Items of version 1 are upgraded the same way as
+        `FileLocation.upgrade()`.
+
+        Args:
+            data (dict): Data of version 1.
+
+        Returns:
+            FileLocations: Upgraded trait.
+
+        """
+        return cls.from_dict(data)
 
     def get_files(self) -> Generator[Path, None, None]:
         """Get all file paths from the trait.
@@ -472,10 +510,7 @@ class FileLocations(TraitBase):
         # Use padding from a collection of the last frame lengths as string
         # padding = max(col.padding, len(str(last_frame)))
 
-        return FrameRanged(
-            frame_start=first_frame, frame_end=last_frame,
-            frames_per_second="25.0"
-        )
+        return FrameRanged(frame_start=first_frame, frame_end=last_frame)
 
 
 @dataclass
@@ -485,6 +520,13 @@ class RootlessLocation(TraitBase):
     RootlessLocation trait is a trait that represents a file path that is
     without a specific root. To get the absolute path, the root needs to be
     resolved by AYON. Rootless path can be used on multiple platforms.
+
+    For representation with `FileLocation` it is the rootless path of
+    the file. For representation with `FileLocations` it is the rootless
+    path of their common root directory
+    (`FileLocations.get_common_root()`) - path of each file is
+    the directory joined with the file path relative to the common root.
+    Use `get_representation_file_paths()` to resolve paths of the files.
 
     Example::
 
@@ -589,9 +631,25 @@ class Bundle(TraitBase):
             dict: Trait as dictionary.
 
         """
+        return self._items_as_dict(persistent_only=False)
+
+    def as_persistent_dict(self) -> dict:
+        """Return data stored with the representation.
+
+        Items contain only data of their traits stored with
+        the representation.
+
+        Returns:
+            dict: Trait as dictionary.
+
+        """
+        return self._items_as_dict(persistent_only=True)
+
+    def _items_as_dict(self, persistent_only: bool) -> dict:
         return {
             "items": [
-                {trait.id: trait.as_dict() for trait in item}
+                Representation(name=self.name, traits=item).traits_as_dict(
+                    persistent_only=persistent_only)
                 for item in self.items
             ]
         }
