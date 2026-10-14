@@ -772,3 +772,107 @@ class TestListSlices:
             data
         )
         assert data == src_data
+
+
+class TestListJoin:
+    """Join list items with '.join', e.g. '{items[-2:].join(/)}'."""
+
+    @staticmethod
+    def _get_data() -> dict:
+        return {
+            "items": ["a", "b", "c"],
+            "numbers": [1, 2, 3],
+            "folder": {"name": "sh010", "parents": ["shots", "sq01"]},
+            "dicts": [{"name": "a"}, {"name": "b"}],
+            "empty": [],
+            "text": "abc",
+        }
+
+    @pytest.mark.parametrize(
+        "template, expected",
+        [
+            # Default separator is space
+            ("{items.join}", "a b c"),
+            ("{items[0:2].join}", "a b"),
+            # Separator
+            ("{items[-2:].join(/)}", "b/c"),
+            ("{items.join(/)}", "a/b/c"),
+            ("{items.join(_)}", "a_b_c"),
+            ("{items.join()}", "abc"),
+            ("{items.join(, )}", "a, b, c"),
+            ("{items.join( - )}", "a - b - c"),
+            ("{items.join(__)}", "a__b__c"),
+            # Quoted separator
+            ('{items.join("/")}', "a/b/c"),
+            ("{items.join('/')}", "a/b/c"),
+            ('{items.join(" ")}', "a b c"),
+            # Not string items
+            ("{numbers.join(+)}", "1+2+3"),
+            # Nested list
+            ("{folder[parents].join(/)}/{folder[name]}", "shots/sq01/sh010"),
+            ("{folder[parents][::-1].join(.)}", "sq01.shots"),
+            # Format spec and conversion
+            ("{items[1:].join(_):upper}", "B_C"),
+            ("{folder[parents].join(_):pascal}", "ShotsSq01"),
+            ("{items.join(/):>7}", "  a/b/c"),
+            ("{items.join(/)!r}", "'a/b/c'"),
+            # Optional parts
+            ("x<_{items[1:].join(/)}>", "x_b/c"),
+            ("x<_{items[5:].join(/)}>", "x"),
+            ("x<_{empty.join(/)}>", "x"),
+            ("x<_{missing.join(/)}>", "x"),
+        ],
+    )
+    def test_format(self, template: str, expected: str):
+        result = StringTemplate(template).format_strict(self._get_data())
+        assert str(result) == expected
+
+    def test_used_values(self):
+        result = StringTemplate(
+            "{items.join(/)}_{folder[parents][1:].join(-)}"
+        ).format_strict(self._get_data())
+        assert str(result) == "a/b/c_sq01"
+        assert result.used_values == {
+            "items": ["a", "b", "c"],
+            "folder": {"parents": ["shots", "sq01"]},
+        }
+
+    @pytest.mark.parametrize(
+        "template, missing_key",
+        [
+            ("{empty.join(/)}", "empty"),
+            ("{items[5:].join(/)}", "items[5:]"),
+            ("{missing.join(/)}", "missing"),
+            ("{folder[missing].join(/)}", "folder[missing]"),
+        ],
+    )
+    def test_missing(self, template: str, missing_key: str):
+        result = StringTemplate(template).format(self._get_data())
+        assert str(result) == template
+        assert not result.solved
+        assert result.missing_keys == [missing_key]
+
+    @pytest.mark.parametrize(
+        "template",
+        [
+            # Join of value that is not a list
+            "{text.join(/)}",
+            "{items[0].join(/)}",
+            "{folder.join(/)}",
+            # Items that cannot be formatted
+            "{dicts.join(/)}",
+        ],
+    )
+    def test_invalid(self, template: str):
+        result = StringTemplate(template).format(self._get_data())
+        assert str(result) == template
+        assert not result.solved
+        assert result.invalid_types
+
+    def test_key_named_join(self):
+        """Keys that contain 'join' are not affected."""
+        data = {"join": "a", "joined": {"join": "b"}, "x": {"y.join": "c"}}
+        result = StringTemplate(
+            "{join}_{joined[join]}_{x[y.join]}"
+        ).format_strict(data)
+        assert str(result) == "a_b_c"

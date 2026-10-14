@@ -18,6 +18,8 @@ _FIRST_CHAR_REGEX = re.compile(r"[a-zA-Z0-9]")
 _SLICE_REGEX = re.compile(r"(-?\d+)?:(-?\d+)?(?::(-?\d+)?)?")
 # Separator used to join sliced list
 _SLICE_SEPARATOR = " "
+# Join list at the end of key, e.g. '{items.join}', '{items.join(/)}'
+_JOIN_REGEX = re.compile(r"\.join(?:\((?P<separator>[^()]*)\))?$")
 # Value that is a single template key without format spec, e.g. '{layer}'
 _PLACEHOLDER_REGEX = re.compile(r"\{([^{}!:]+)\}")
 # Value that is a single template key with format spec or conversion
@@ -764,6 +766,37 @@ def _get_list_slice(key: str) -> Optional[slice]:
     return slice(start, stop, step)
 
 
+def _get_join_separator(separator: Optional[str]) -> str:
+    """Separator from '.join' in template key.
+
+    Example:
+        >>> _get_join_separator(None)
+        ' '
+        >>> _get_join_separator("/")
+        '/'
+        >>> _get_join_separator('"/"')
+        '/'
+
+    Args:
+        separator (Optional[str]): Content of brackets, None if join
+            does not have brackets.
+
+    Returns:
+        str: Separator, space is used by default.
+
+    """
+    if separator is None:
+        return _SLICE_SEPARATOR
+    # Quotes are optional
+    if (
+        len(separator) >= 2
+        and separator[0] == separator[-1]
+        and separator[0] in ("'", '"')
+    ):
+        return separator[1:-1]
+    return separator
+
+
 class FormatSpecStr(str):
     """String that supports named format specs in python formatting.
 
@@ -836,9 +869,19 @@ class FormattingPart:
         self._template_base: str = template_base
         self._template: str = f"{{{template_base}}}"
 
+        # Separator to join list, e.g. '/' from '{items.join(/)}'
+        self._join_separator: Optional[str] = None
+        keys_field_name = field_name
+        join_match = _JOIN_REGEX.search(field_name)
+        if join_match is not None:
+            keys_field_name = field_name[:join_match.start()]
+            self._join_separator = _get_join_separator(
+                join_match.group("separator")
+            )
+
         # Template is parsed once and can be formatted many times
         self._keys: tuple[str, ...] = tuple(
-            SUB_DICT_PATTERN.findall(field_name)
+            SUB_DICT_PATTERN.findall(keys_field_name)
         )
         # Validated on first formatting
         self._key_is_matched: Optional[bool] = None
@@ -1021,6 +1064,24 @@ class FormattingPart:
                 value = value.get_default_value()
             except KeyError:
                 pass
+
+        if self._join_separator is not None:
+            if not isinstance(value, list):
+                result.add_invalid_type(field_name, value)
+                result.add_output(self.template)
+                return result
+
+            if keys_to_value is None:
+                keys_to_value = list(used_keys)
+                used_value = copy.deepcopy(value)
+            return self._format_list(
+                value,
+                self._join_separator,
+                field_name,
+                keys_to_value,
+                used_value,
+                result,
+            )
 
         if join_list and isinstance(value, list):
             return self._format_list(
