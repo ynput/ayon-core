@@ -770,7 +770,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     # Duration of one fade in/out cycle
     blink_cycle_ms = 800
     # Lowest opacity of the icon during blinking
-    blink_min_opacity = 0.3
+    blink_min_opacity = 0.5
     # Number of icon frames per cycle (icon is updated for each frame)
     blink_frames = 20
 
