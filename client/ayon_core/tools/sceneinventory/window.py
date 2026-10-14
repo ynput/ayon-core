@@ -2,7 +2,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils import PlaceholderLineEdit, ConnectionOverlay
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
@@ -66,6 +66,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         main_layout.addWidget(headers_widget, 0)
         main_layout.addWidget(view, 1)
 
+        connection_overlay = ConnectionOverlay(controller, self)
+
         show_timer = QtCore.QTimer()
         show_timer.setInterval(0)
         show_timer.setSingleShot(False)
@@ -82,6 +84,10 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         view.data_changed.connect(self._on_refresh_request)
         refresh_button.clicked.connect(self._on_refresh_request)
         update_all_button.clicked.connect(self._on_update_all)
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
 
         self._show_timer = show_timer
         self._show_counter = 0
@@ -89,6 +95,9 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._update_all_button = update_all_button
         self._outdated_only_checkbox = outdated_only_checkbox
         self._view = view
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
 
         self._first_show = True
 
@@ -126,7 +135,16 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             self._show_counter += 1
             return
         self._show_timer.stop()
-        self.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self.refresh()
+        else:
+            self._refresh_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self.refresh()
 
     def _on_hierarchy_view_change(self, enabled):
         self._view.set_hierarchy_view(enabled)

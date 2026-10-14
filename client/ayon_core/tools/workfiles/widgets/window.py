@@ -8,6 +8,7 @@ from ayon_core.tools.utils import (
     MessageOverlayObject,
     TasksWidget,
     FoldersFiltersWidget,
+    ConnectionOverlay,
 )
 from ayon_core.tools.workfiles.control import BaseWorkfileController
 from ayon_core.ui.components import (
@@ -131,6 +132,7 @@ class WorkfilesToolWindow(AYContainer):
         overlay_messages_widget = MessageOverlayObject(self)
         overlay_invalid_host = InvalidHostOverlay(self)
         overlay_invalid_host.setVisible(False)
+        connection_overlay = ConnectionOverlay(controller, self)
 
         show_timer = QtCore.QTimer()
         show_timer.setSingleShot(True)
@@ -162,9 +164,16 @@ class WorkfilesToolWindow(AYContainer):
             "controller.reset.finished",
             self._on_controller_refresh_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
 
         self._overlay_messages_widget = overlay_messages_widget
         self._overlay_invalid_host = overlay_invalid_host
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
         self._home_page_widget = home_page_widget
         self._pages_widget = pages_widget
         self._home_body_widget = home_body_widget
@@ -333,7 +342,16 @@ class WorkfilesToolWindow(AYContainer):
         pass
 
     def _on_show(self):
-        self.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self.refresh()
+        else:
+            self._refresh_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self.refresh()
 
     def _on_file_text_filter_change(self, text):
         self._files_widget.set_text_filter(text)
