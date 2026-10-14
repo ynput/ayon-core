@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import logging
-import platform
 import uuid
 import warnings
 from typing import Optional, Any
@@ -218,33 +217,10 @@ def install_ayon_plugins(project_name=None, host_name=None):
     if project_name is None:
         project_name = os.environ.get("AYON_PROJECT_NAME")
 
-    # Register studio specific plugins
     if project_name:
         anatomy = Anatomy(project_name)
         anatomy.set_root_environments()
         register_root(anatomy.roots)
-
-        project_settings = get_project_settings(project_name)
-        platform_name = platform.system().lower()
-        project_plugins = (
-            project_settings
-            ["core"]
-            ["project_plugins"]
-            .get(platform_name)
-        ) or []
-        for path in project_plugins:
-            try:
-                path = str(path.format_map(os.environ))
-            except KeyError:
-                pass
-
-            if not path or not os.path.exists(path):
-                continue
-
-            pyblish.api.register_plugin_path(path)
-            register_loader_plugin_path(path)
-            register_creator_plugin_path(path)
-            register_inventory_action_path(path)
 
 
 def uninstall_host():
