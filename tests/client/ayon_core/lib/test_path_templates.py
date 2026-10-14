@@ -668,3 +668,107 @@ class TestRegisterFormatSpec:
     def test_returned_specs_are_copy(self):
         get_template_format_specs().clear()
         assert get_template_format_specs()
+
+
+class TestListSlices:
+    """List slice in template key, e.g. '{items[0:2]}'.
+
+    Items of sliced list are joined with space.
+    """
+
+    @staticmethod
+    def _get_data() -> dict:
+        return {
+            "items": ["a", "b", "c"],
+            "numbers": [1, 2, 3],
+            "folder": {"name": "sh010", "parents": ["shots", "sq01"]},
+            "dicts": [{"name": "a"}, {"name": "b"}],
+            "mapping": {"0:2": "value"},
+            "text": "abc",
+        }
+
+    @pytest.mark.parametrize(
+        "template, expected",
+        [
+            ("{items[0:2]}", "a b"),
+            ("{items[-2:]}", "b c"),
+            ("{items[:2]}", "a b"),
+            ("{items[:]}", "a b c"),
+            ("{items[1:-1]}", "b"),
+            ("{items[::2]}", "a c"),
+            ("{items[::-1]}", "c b a"),
+            # Out of range is handled as python slice
+            ("{items[0:10]}", "a b c"),
+            ("{items[-10:1]}", "a"),
+            # Index of sliced list
+            ("{items[1:][0]}", "b"),
+            ("{items[1:][-1]}", "c"),
+            # Slice of sliced list
+            ("{items[1:][1:]}", "c"),
+            # Not string items
+            ("{numbers[0:2]}", "1 2"),
+            # Nested list
+            ("{folder[parents][0:]}", "shots sq01"),
+            ("{folder[parents][1:]}/{folder[name]}", "sq01/sh010"),
+            # Format spec and conversion
+            ("{items[0:2]:upper}", "A B"),
+            ("{items[0:2]:snake}", "a_b"),
+            ("{items[0:2]:>5}", "  a b"),
+            ("{items[0:2]!r}", "'a b'"),
+            # Optional parts
+            ("x<_{items[1:]}>", "x_b c"),
+            ("x<_{items[5:]}>", "x"),
+            ("x<_{missing[0:2]}>", "x"),
+            # Key with colon in dictionary is not a slice
+            ("{mapping[0:2]}", "value"),
+        ],
+    )
+    def test_format(self, template: str, expected: str):
+        result = StringTemplate(template).format_strict(self._get_data())
+        assert str(result) == expected
+
+    def test_used_values(self):
+        result = StringTemplate(
+            "{items[0:2]}_{folder[parents][1:]}_{numbers[1:]:upper}"
+        ).format_strict(self._get_data())
+        assert str(result) == "a b_sq01_2 3"
+        assert result.used_values == {
+            "items": ["a", "b", "c"],
+            "folder": {"parents": ["shots", "sq01"]},
+            "numbers": [1, 2, 3],
+        }
+
+    def test_empty_slice_is_missing(self):
+        result = StringTemplate("{items[5:]}").format(self._get_data())
+        assert str(result) == "{items[5:]}"
+        assert not result.solved
+        assert result.missing_keys == ["items[5:]"]
+
+    @pytest.mark.parametrize(
+        "template",
+        [
+            # Whole list without slice is not supported
+            "{items}",
+            # Invalid slices
+            "{items[a:b]}",
+            "{items[::0]}",
+            "{items[0:1:2:3]}",
+            # Items that cannot be formatted
+            "{dicts[0:2]}",
+            # Slice of string
+            "{text[0:2]}",
+        ],
+    )
+    def test_invalid(self, template: str):
+        result = StringTemplate(template).format(self._get_data())
+        assert str(result) == template
+        assert not result.solved
+        assert result.invalid_types
+
+    def test_data_are_not_modified(self):
+        data = self._get_data()
+        src_data = copy.deepcopy(data)
+        StringTemplate("{items[0:2]}{folder[parents][::-1]:upper}").format(
+            data
+        )
+        assert data == src_data

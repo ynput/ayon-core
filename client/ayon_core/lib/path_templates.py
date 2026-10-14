@@ -14,6 +14,10 @@ OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
 _IS_WINDOWS = platform.system().lower() == "windows"
 _FORMATTER = Formatter()
 _FIRST_CHAR_REGEX = re.compile(r"[a-zA-Z0-9]")
+# List slice key, e.g. '0:2', '-2:' or '::2'
+_SLICE_REGEX = re.compile(r"(-?\d+)?:(-?\d+)?(?::(-?\d+)?)?")
+# Separator used to join sliced list
+_SLICE_SEPARATOR = " "
 # Value that is a single template key without format spec, e.g. '{layer}'
 _PLACEHOLDER_REGEX = re.compile(r"\{([^{}!:]+)\}")
 # Value that is a single template key with format spec or conversion
@@ -730,6 +734,36 @@ class TemplatePartResult:
             self._invalid_types[key] = type(value)
 
 
+def _get_list_slice(key: str) -> Optional[slice]:
+    """Convert template key to list slice.
+
+    Example:
+        >>> _get_list_slice("0:2")
+        slice(0, 2, None)
+        >>> _get_list_slice("-2:")
+        slice(-2, None, None)
+        >>> _get_list_slice("name") is None
+        True
+
+    Args:
+        key (str): Key from template, e.g. '0:2' from '{items[0:2]}'.
+
+    Returns:
+        Optional[slice]: Slice or None if key is not a valid slice.
+
+    """
+    match = _SLICE_REGEX.fullmatch(key)
+    if match is None:
+        return None
+    start, stop, step = (
+        None if value is None else int(value)
+        for value in match.groups()
+    )
+    if step == 0:
+        return None
+    return slice(start, stop, step)
+
+
 class FormatSpecStr(str):
     """String that supports named format specs in python formatting.
 
@@ -910,7 +944,27 @@ class FormattingPart:
         keys_to_value = None
         used_value = None
 
+        # Sliced list is joined to string, e.g. '{items[0:2]}'
+        join_list = False
+        # Value from sliced list cannot be formatted with 'str.format_map'
+        used_slice = False
         for sub_key in key_subdict:
+            if isinstance(value, list) and ":" in sub_key:
+                list_slice = _get_list_slice(sub_key)
+                if list_slice is None:
+                    invalid_type = True
+                    break
+
+                used_keys.append(sub_key)
+                if keys_to_value is None:
+                    keys_to_value = list(used_keys)
+                    keys_to_value.pop(-1)
+                    used_value = copy.deepcopy(value)
+                value = value[list_slice]
+                join_list = used_slice = True
+                continue
+
+            join_list = False
             if isinstance(value, list):
                 if not sub_key.lstrip("-").isdigit():
                     invalid_type = True
@@ -968,6 +1022,16 @@ class FormattingPart:
             except KeyError:
                 pass
 
+        if join_list and isinstance(value, list):
+            return self._format_list(
+                value,
+                _SLICE_SEPARATOR,
+                field_name,
+                keys_to_value,
+                used_value,
+                result,
+            )
+
         if not self.validate_value_type(value):
             result.add_invalid_type(key, value)
             result.add_output(self.template)
@@ -980,6 +1044,11 @@ class FormattingPart:
         if format_func is not None:
             return self._format_named_spec(
                 value, format_func, keys_to_value, used_value, result
+            )
+
+        if used_slice:
+            return self._format_value(
+                value, keys_to_value, used_value, result
             )
 
         fill_data = root_fill_data = {}
@@ -1011,6 +1080,86 @@ class FormattingPart:
                 used_value = value
             else:
                 used_value = formatted_value
+        result.add_really_used_value(self._field_name, used_value)
+        result.add_used_value(used_key, used_value)
+        result.add_output(formatted_value)
+        return result
+
+    def _format_list(
+        self,
+        value: list,
+        separator: str,
+        field_name: str,
+        keys_to_value: Optional[list[Any]],
+        used_value: Any,
+        result: TemplatePartResult,
+    ) -> TemplatePartResult:
+        """Join list items and format the joined string.
+
+        Empty list is handled as missing key so optional parts are skipped.
+
+        Args:
+            value (list): List to join.
+            separator (str): Separator of items.
+            field_name (str): Field name used to the list.
+            keys_to_value (Optional[list[Any]]): Keys to the source list.
+            used_value (Any): Copy of the source list.
+            result (TemplatePartResult): Object where result is stored.
+
+        """
+        if not value:
+            result.add_missing_key(field_name)
+            result.add_output(self.template)
+            return result
+
+        items = []
+        for item in value:
+            if isinstance(item, DefaultKeysDict):
+                try:
+                    item = item.get_default_value()
+                except KeyError:
+                    pass
+            if not self.validate_value_type(item):
+                result.add_invalid_type(self._template_base, item)
+                result.add_output(self.template)
+                return result
+            items.append(item if isinstance(item, str) else str(item))
+        joined_value = separator.join(items)
+
+        format_func = None
+        if self._format_spec_name is not None:
+            format_func = _FORMAT_SPECS.get(self._format_spec_name)
+
+        if format_func is not None:
+            return self._format_named_spec(
+                joined_value, format_func, keys_to_value, used_value, result
+            )
+
+        return self._format_value(
+            joined_value, keys_to_value, used_value, result
+        )
+
+    def _format_value(
+        self,
+        value: Any,
+        keys_to_value: list[Any],
+        used_value: Any,
+        result: TemplatePartResult,
+    ) -> TemplatePartResult:
+        """Format value from list with conversion and format spec.
+
+        Args:
+            value (Any): Value to format.
+            keys_to_value (list[Any]): Keys to the source list.
+            used_value (Any): Copy of the source list.
+            result (TemplatePartResult): Object where result is stored.
+
+        """
+        if self._conversion_char is not None:
+            value = _FORMATTER.convert_field(value, self._conversion_char)
+        formatted_value = format(value, self._format_spec[1:])
+
+        used_key = self.keys_to_template_base(keys_to_value)
         result.add_really_used_value(self._field_name, used_value)
         result.add_used_value(used_key, used_value)
         result.add_output(formatted_value)
