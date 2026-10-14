@@ -17,6 +17,8 @@ from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
 from ayon_server.helpers.anatomy import get_project_anatomy
 
+from .template_keys import convert_legacy_template_keys
+
 try:
     # Available since AYON server 1.15.13 or 1.16.0 (not released yet)
     from ayon_server.enum.resolvers import StatusesEnumResolver
@@ -1789,6 +1791,11 @@ class IntegrateProductGroupProfile(BaseSettingsModel):
         title="Task names",
     )
     template: str = SettingsField("", title="Template")
+
+    @validator("template")
+    def convert_legacy_keys(cls, value):
+        """Convert '{Key}' and '{KEY}' to '{key:upperfirst}' '{key:upper}'."""
+        return convert_legacy_template_keys(value)
 
 
 class CollectStatusModel(BaseSettingsModel):

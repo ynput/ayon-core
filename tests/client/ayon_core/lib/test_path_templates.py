@@ -169,6 +169,7 @@ class TestBackwardsCompatibility:
             ("{Version:0>3}/{VERSION}", "003/3"),
         ],
     )
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_prepared_template_data(self, template: str, expected: str):
         """Data prepared with 'prepare_template_data' work as before."""
         data = _get_data()
@@ -178,6 +179,7 @@ class TestBackwardsCompatibility:
         )
         assert str(result) == expected
 
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_prepared_template_data_used_values(self):
         data = _get_data()
         data.pop("root")
@@ -190,118 +192,29 @@ class TestBackwardsCompatibility:
         }
 
 
-class TestLegacyCaseKeys:
-    """Keys '{Key}' and '{KEY}' filled from data that contain only 'key'.
-
-    Result must be the same as with data prepared using
-    'prepare_template_data', which is used as reference.
-    """
+class TestLegacyKeys:
+    """'StringTemplate' does not resolve legacy '{Key}' and '{KEY}' keys."""
 
     @pytest.mark.parametrize(
-        "template",
+        "template, missing_key",
         [
-            "{task[name]}",
-            "{Task[name]}",
-            "{TASK[NAME]}",
-            "{Task}",
-            "{TASK}",
-            "{family}{Task[name]}{Variant}",
-            "{FAMILY}_{Family}_{family}",
-            "{product[type]}{Task[short]}<_{Output}>{Variant}",
-            "{PRODUCT[TYPE]}_{Product[type]}_{HOST[NAME]}",
-            "{Folder[name]}_{FOLDER[NAME]}_{Folder[type]}",
-            # Format spec and conversion are applied on changed value
-            "{Task[name]:>10}",
-            "{VARIANT!r}",
-            "{Variant:_<8}",
-            # Not string values are not changed
-            "{Version:0>3}/{VERSION}/{Frame}",
-            # First letter or digit is uppercased, the rest is kept
-            "{Camelkey}_{CAMELKEY}_{camelKey}",
-            "{Symbol}_{SYMBOL}",
-            "{Number}_{NUMBER}",
-            "{Unicode}_{UNICODE}",
-            "{Empty}_{EMPTY}",
-            # Single character key
-            "{X}",
-            # Invalid combinations of key cases stay unsolved
-            "{TASK[name]}",
-            "{Task[Name]}",
-            "{tASK[name]}",
-            "{TaSk}",
-            # Missing and invalid values
-            "{Missing}_{MISSING}",
-            "<{Missing}>{variant}",
-            "<{Nothing}>{variant}",
-            "{Nothing}",
-            "{Nested[value]}_{NESTED[VALUE]}",
+            ("{Task[name]}", "Task"),
+            ("{TASK[NAME]}", "TASK"),
+            ("{Variant}", "Variant"),
         ],
     )
-    def test_same_as_prepared_template_data(self, template: str):
-        data = _get_data()
-        data.pop("root")
-        data.update({
-            "camelKey": "someValue",
-            "symbol": "_shot",
-            "number": "01_shot",
-            "unicode": "\u00e9cole",
-            "empty": "",
-            "nothing": None,
-            "nested": {"value": "a", "nothing": None},
-            "x": "single",
-        })
-        src_data = copy.deepcopy(data)
+    def test_not_resolved_from_lowercase_key(
+        self, template: str, missing_key: str
+    ):
+        result = StringTemplate(template).format(_get_data())
+        assert str(result) == template
+        assert not result.solved
+        assert result.missing_keys == [missing_key]
 
-        expected = StringTemplate(template).format(
-            prepare_template_data(data)
-        )
-        result = StringTemplate(template).format(data)
-
-        assert str(result) == str(expected)
-        assert result.solved == expected.solved
-        assert result.used_values == expected.used_values
-        # Data were not modified
-        assert data == src_data
-
-    @pytest.mark.parametrize(
-        "template, expected",
-        [
-            ("{Task[name]}", "Animation"),
-            ("{TASK[NAME]}", "ANIMATION"),
-            ("{family}{Task[name]}{Variant}", "renderAnimationMain"),
-            ("{FAMILY}_{Family}_{family}", "RENDER_Render_render"),
-            (
-                "{product[type]}{Task[short]}<_{Output}>{Variant}",
-                "renderAnimMain"
-            ),
-            ("{Task[name]:>10}", " Animation"),
-            ("{VARIANT!r}", "'MAIN'"),
-            ("{Version:0>3}/{VERSION}", "003/3"),
-        ],
-    )
-    def test_format(self, template: str, expected: str):
-        result = StringTemplate(template).format_strict(_get_data())
-        assert str(result) == expected
-
-    def test_exact_key_has_priority(self):
-        """Value of 'Task' is used if is available in data."""
-        data = {"task": "animation", "Task": "exact", "TASK": "eXact"}
-        result = StringTemplate("{task}_{Task}_{TASK}").format_strict(data)
-        assert str(result) == "animation_exact_eXact"
-
-    def test_missing_key(self):
-        result = StringTemplate("{Missing}_{MISSING[NAME]}").format({})
-        assert str(result) == "{Missing}_{MISSING[NAME]}"
-        assert sorted(result.missing_keys) == ["MISSING", "Missing"]
-
-    def test_default_keys_dict(self):
-        data = {"folder": DefaultKeysDict("name", {"name": "sh010"})}
-        assert StringTemplate("{Folder}").format(data) == "Sh010"
-        assert StringTemplate("{FOLDER}").format(data) == "SH010"
-
-    def test_format_object_is_not_changed(self):
-        result = StringTemplate("{ROOT[WORK]}").format_strict(_get_data())
-        assert str(result) == "P:/projects"
+    def test_prepare_template_data_is_deprecated(self):
+        with pytest.deprecated_call():
+            output = prepare_template_data({"host": "maya"})
+        assert output == {"host": "maya", "Host": "Maya", "HOST": "MAYA"}
 
 
 class TestNamedFormatSpecs:
@@ -335,8 +248,6 @@ class TestNamedFormatSpecs:
             ("{root[work]:lower}", "p:/projects"),
             # Conversion is applied before the format spec
             ("{variant!r:upper}", "'MAIN'"),
-            # Legacy key with named format spec
-            ("{Task[name]:lower}", "animation"),
         ],
     )
     def test_format(self, template: str, expected: str):
@@ -491,43 +402,6 @@ class TestOptionalParts:
         assert result.used_values == used_values
         assert result.missing_keys == []
         assert result.invalid_types == {}
-
-    @pytest.mark.parametrize(
-        "template, expected",
-        [
-            ("{ext}<_{Output}>", "exr"),
-            ("{ext}<_{OUTPUT}>", "exr"),
-            ("{ext}<_{Variant}>", "exr_Main"),
-            ("{ext}<_{VARIANT}>", "exr_MAIN"),
-            ("{ext}<_{VARIANT}_{Output}>", "exr"),
-            ("{ext}<_{Output}_{VARIANT}>", "exr"),
-            ("{ext}<_{Variant}<_{OUTPUT}>>", "exr_Main"),
-            ("{ext}<_{Output}<_{Variant}>>", "exr"),
-            (
-                "{ext}<_{Task[name]}<_{TASK[NAME]}<_{Output}>>>",
-                "exr_Animation_ANIMATION"
-            ),
-            ("<{Nothing}_>{ext}", "exr"),
-            ("<{Task[short]}_>{ext}", "exr"),
-            ("<{TASK[SHORT]}_>{ext}", "exr"),
-            ("<{Project}_>{ext}", "exr"),
-            ("<v{Version:0>3}_{Variant:camel}>", "v003_main"),
-            ("<{Variant:upper}><_{Output:upper}>", "MAIN"),
-        ],
-    )
-    def test_legacy_keys(self, template: str, expected: str):
-        """Result is the same as with prepared template data."""
-        data = self._get_data()
-        result = StringTemplate(template).format_strict(data)
-        prepared_result = StringTemplate(template).format_strict(
-            prepare_template_data(data)
-        )
-
-        assert str(result) == expected
-        assert str(prepared_result) == expected
-        assert result.used_values == prepared_result.used_values
-        assert result.missing_keys == prepared_result.missing_keys == []
-        assert result.invalid_types == prepared_result.invalid_types == {}
 
     @pytest.mark.parametrize(
         "template, missing_keys",

@@ -6,8 +6,6 @@ import copy
 import numbers
 import warnings
 import platform
-from dataclasses import dataclass
-from functools import lru_cache
 from string import Formatter
 from typing import Any, Callable, Union, Iterable, Optional
 
@@ -260,12 +258,6 @@ class StringTemplate:
         'LIGHTRIG'
         >>> str(StringTemplate("{task[name]:snake}").format(data))
         'light_rig'
-
-    Legacy keys '{Key}' and '{KEY}' are resolved as '{key:upperfirst}' and
-        '{key:upper}' if the data does not contain 'Key' or 'KEY', so
-        the data does not have to contain all 3 variants of each key.
-        >>> str(StringTemplate("{Task[name]}_{TASK[NAME]}").format(data))
-        'LightRig_LIGHTRIG'
 
     """
     def __init__(self, template: str):
@@ -746,65 +738,6 @@ class FormatObject:
         return self.__str__()
 
 
-@dataclass
-class _LegacyCase:
-    """Definition of legacy key variant, '{Key}' or '{KEY}'.
-
-    Data used to contain all variants of each key, e.g. 'task', 'Task'
-        and 'TASK'. The variants are resolved from the lowercase key
-        during formatting instead.
-
-    Attributes:
-        keys (tuple[str, ...]): Lowercase keys used for lookup in data.
-        only_first_key (bool): Only first key has changed case.
-        key_func (Callable[[str], str]): Function to convert key in data
-            to the variant.
-        value_func (Callable[[str], str]): Function to convert the value.
-
-    """
-    keys: tuple[str, ...]
-    only_first_key: bool
-    key_func: Callable[[str], str]
-    value_func: Callable[[str], str]
-
-
-@lru_cache(maxsize=1024)
-def _get_legacy_cases(keys: tuple[str, ...]) -> tuple[_LegacyCase, ...]:
-    """Legacy variants that template keys can be.
-
-    Example:
-        'Task[name]' -> first letter of 'task[name]' value is uppercased
-        'TASK[NAME]' -> value of 'task[name]' is uppercased
-        'task[name]' -> not a legacy variant
-
-    Args:
-        keys (tuple[str, ...]): Keys of the template, e.g. ('Task', 'name').
-
-    Returns:
-        tuple[_LegacyCase, ...]: Possible variants of the keys.
-
-    """
-    if not keys:
-        return ()
-
-    first_key = keys[0]
-    lower_first_key = first_key.lower()
-    if first_key == lower_first_key:
-        return ()
-
-    output = []
-    if first_key == first_key.capitalize():
-        output.append(_LegacyCase(
-            (lower_first_key, ) + keys[1:], True, str.capitalize, _upper_first
-        ))
-
-    if all(key == key.upper() for key in keys):
-        output.append(_LegacyCase(
-            tuple(key.lower() for key in keys), False, str.upper, str.upper
-        ))
-    return tuple(output)
-
-
 class FormattingPart:
     """String with formatting template.
 
@@ -915,50 +848,6 @@ class FormattingPart:
         """
         return self._keys
 
-    def _find_legacy_case_value(
-        self, data: dict[str, Any]
-    ) -> Optional[tuple[list[str], Any, Callable[[str], str]]]:
-        """Find value of legacy '{Key}' or '{KEY}' key in data.
-
-        Args:
-            data (dict[str, Any]): Data that should be used for formatting.
-
-        Returns:
-            Optional[tuple[list[str], Any, Callable[[str], str]]]: Real
-                keys to the value in data, the value and function that
-                should be used to modify the value if is string.
-
-        """
-        for legacy_case in _get_legacy_cases(self._keys):
-            value = data
-            used_keys = []
-            for idx, key in enumerate(self._keys):
-                if not hasattr(value, "items"):
-                    break
-
-                if idx > 0 and legacy_case.only_first_key:
-                    if key not in value:
-                        break
-                    data_key = key
-                else:
-                    data_key = legacy_case.keys[idx]
-                    if data_key not in value:
-                        # Key in data may not be lowercase
-                        for data_key in value:
-                            if (
-                                isinstance(data_key, str)
-                                and legacy_case.key_func(data_key) == key
-                            ):
-                                break
-                        else:
-                            break
-
-                used_keys.append(data_key)
-                value = value[data_key]
-            else:
-                return used_keys, value, legacy_case.value_func
-        return None
-
     def format(
         self, data: dict[str, Any], result: TemplatePartResult
     ) -> TemplatePartResult:
@@ -1034,16 +923,6 @@ class FormattingPart:
         if used_keys:
             field_name = self.keys_to_template_base(used_keys)
 
-        # Legacy '{Key}' and '{KEY}' are filled with value of 'key'
-        #   if data do not contain them
-        legacy_value_func = None
-        if missing_key and len(used_keys) == 1:
-            legacy_item = self._find_legacy_case_value(data)
-            if legacy_item is not None:
-                used_keys, value, legacy_value_func = legacy_item
-                field_name = self.keys_to_template_base(used_keys)
-                missing_key = False
-
         if missing_key or invalid_type:
             if missing_key:
                 result.add_missing_key(field_name)
@@ -1059,9 +938,6 @@ class FormattingPart:
                 value = value.get_default_value()
             except KeyError:
                 pass
-
-        if legacy_value_func is not None and isinstance(value, str):
-            value = legacy_value_func(value)
 
         if not self.validate_value_type(value):
             result.add_invalid_type(key, value)

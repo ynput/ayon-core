@@ -22,14 +22,16 @@ class TestGetProductNameTemplate:
         mock_filter_profiles,
         mock_get_settings,
     ):
-        """Matching profile applies legacy replacement tokens."""
+        """Matching profile replaces deprecated keys."""
         mock_get_settings.return_value = {
             "core": {"tools": {"creator": {"product_name_profiles": []}}}
         }
         # The function should replace {task}/{family}/{asset} variants
         mock_filter_profiles.return_value = {
-            "template": ("{task}-{Task}-{TASK}-{family}-{Family}"
-                        "-{FAMILY}-{asset}-{Asset}-{ASSET}")
+            "template": (
+                "{task}-{task:upper}-{family}-{family:upperfirst}"
+                "-{asset}-{asset!r}-{task[name]}-{taskname}"
+            )
         }
 
         result = get_product_name_template(
@@ -40,9 +42,9 @@ class TestGetProductNameTemplate:
             host_name="maya",
         )
         assert result == (
-            "{task[name]}-{Task[name]}-{TASK[NAME]}-"
-            "{product[type]}-{Product[type]}-{PRODUCT[TYPE]}-"
-            "{folder[name]}-{Folder[name]}-{FOLDER[NAME]}"
+            "{task[name]}-{task[name]:upper}"
+            "-{product[type]}-{product[type]:upperfirst}"
+            "-{folder[name]}-{folder[name]!r}-{task[name]}-{taskname}"
         )
 
     @patch("ayon_core.pipeline.create.product_name.get_project_settings")
@@ -330,24 +332,24 @@ class TestGetProductNameFormatting:
             # Default template
             ("{product[type]}{variant}", "modelmain"),
             (DEFAULT_PRODUCT_TEMPLATE, "modelMain"),
-            # Legacy keys
-            ("{product[type]}{Task[name]}{Variant}", "modelModelingMain"),
-            ("{family}{Task}{Variant}", "modelModelingMain"),
-            ("{Family}_{FAMILY}_{family}", "Model_MODEL_model"),
+            # Named format specs
+            ("{family}{task:upperfirst}{variant:upperfirst}",
+             "modelModelingMain"),
             (
-                "{PRODUCT[TYPE]}_{TASK[NAME]}_{VARIANT}",
-                "MODEL_MODELING_MAIN"
+                "{family:upperfirst}_{family:upper}_{family}",
+                "Model_MODEL_model"
             ),
             (
-                "{Product[basetype]}{Task[short]}{Host[name]}",
+                "{product[basetype]:upperfirst}{task[short]:upperfirst}"
+                "{host[name]:upperfirst}",
                 "ModelMdlMaya"
             ),
             (
-                "{Folder[name]}_{FOLDER[NAME]}_{Folder[type]}",
+                "{folder[name]:upperfirst}_{folder[name]:upper}"
+                "_{folder[type]:upperfirst}",
                 "Char_superHero_CHAR_SUPERHERO_Asset"
             ),
-            ("{product[type]}<_{Missing}>{Variant}", "modelMain"),
-            # Named format specs
+            ("{product[type]}<_{missing}>{variant:upperfirst}", "modelMain"),
             (
                 "{product[type]}{task[name]:upperfirst}{variant:upperfirst}",
                 "modelModelingMain"
@@ -370,9 +372,19 @@ class TestGetProductNameFormatting:
     @pytest.mark.parametrize(
         "template, expected",
         [
-            ("{family}{Task[name]}{Variant}", "modelModelingMain"),
-            ("{FAMILY}_{TASK}_{VARIANT}", "MODEL_MODELING_MAIN"),
-            ("{Product[type]}{Task[short]}{Host[name]}", "ModelMdlMaya"),
+            (
+                "{family}{task[name]:upperfirst}{variant:upperfirst}",
+                "modelModelingMain"
+            ),
+            (
+                "{family:upper}_{task:upper}_{variant:upper}",
+                "MODEL_MODELING_MAIN"
+            ),
+            (
+                "{product[type]:upperfirst}{task[short]:upperfirst}"
+                "{host[name]:upperfirst}",
+                "ModelMdlMaya"
+            ),
             (
                 "{product[type]:upper}{task[name]:upperfirst}",
                 "MODELModeling"
@@ -398,11 +410,16 @@ class TestGetProductNameFormatting:
     @pytest.mark.parametrize(
         "template, expected",
         [
-            ("{family}{Renderlayer}_{Aov}", "modelBeautyMain_DiffuseDirect"),
-            ("{family}_{RENDERLAYER}_{AOV}", "model_BEAUTYMAIN_DIFFUSEDIRECT"),
+            (
+                "{family}{renderlayer:upperfirst}_{aov:upperfirst}",
+                "modelBeautyMain_DiffuseDirect"
+            ),
+            (
+                "{family}_{renderlayer:upper}_{aov:upper}",
+                "model_BEAUTYMAIN_DIFFUSEDIRECT"
+            ),
             ("{family}_{renderLayer}", "model_shotLayer"),
-            ("{family}_{Renderlayer2}", "model_ShotLayer"),
-            ("{family}_{RENDERLAYER2}", "model_SHOTLAYER"),
+            ("{family}_{renderLayer2:upperfirst}", "model_ShotLayer"),
             ("{family}_{renderlayer:snake}", "model_beauty_main"),
         ],
     )
@@ -418,7 +435,13 @@ class TestGetProductNameFormatting:
         assert result == expected
 
     @pytest.mark.parametrize(
-        "template", ["{Missing}_{variant}", "{missing:upper}_{variant}"]
+        "template",
+        [
+            "{missing}_{variant}",
+            "{missing:upper}_{variant}",
+            # Legacy keys are not filled, settings convert them
+            "{product[type]}{Task[name]}{Variant}",
+        ],
     )
     def test_missing_key(self, mock_get_tmpl, template):
         mock_get_tmpl.return_value = template
