@@ -22,6 +22,7 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractBrowserController,
     ActionItem,
+    LoadersGrouping,
     ProductGroupsInfo,
 )
 from .models import ProductsModel, LoaderActionsModel
@@ -221,9 +222,10 @@ class BrowserController(AbstractBrowserController):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         return self._loader_actions_model.get_action_items(
-            project_name, entity_ids, entity_type
+            project_name, entity_ids, entity_type, loaders_grouping
         )
 
     def warm_up_action_items(self, project_name: str) -> None:

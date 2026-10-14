@@ -823,10 +823,18 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
         self._click_timer = None
 
-        # Catch activate event for left click if not on MacOS
+        # Catch activate event for left click if not on MacOS or Wayland
         #   - MacOS has this ability by design and is harder to modify this
         #       behavior
         if platform.system().lower() == "darwin":
+            return
+
+        #   - On Wayland the menu can't be placed at the cursor position,
+        #       so it would show up at a random place. The menu is shown by
+        #       the desktop environment, which sends 'Trigger' on
+        #       double-click (e.g. GNOME with AppIndicator extension).
+        if self._is_wayland():
+            self.activated.connect(self._on_wayland_activated)
             return
 
         self.activated.connect(self.on_systray_activated)
@@ -974,6 +982,17 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._dot_icons[color] = icon
         return icon
 
+    @staticmethod
+    def _is_wayland() -> bool:
+        if platform.system().lower() != "linux":
+            return False
+        platform_name = QtGui.QGuiApplication.platformName().lower()
+        if platform_name.startswith("wayland"):
+            return True
+        # Application can run through XWayland ('xcb') in Wayland session,
+        #   cursor position is still not available above the panel
+        return os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
+
     @property
     def initializing_addons(self):
         return self._initializing_addons
@@ -1000,7 +1019,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         menu.ensurePolished()
         menu.adjustSize()
 
-    def _get_menu_pos(self, pos):
+    def _get_windows_menu_pos(self, pos):
         menu = self.contextMenu()
         screen = QtGui.QGuiApplication.screenAt(pos)
         if screen is None:
@@ -1031,7 +1050,9 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         if pos is None:
             pos = QtGui.QCursor().pos()
         self._prepare_menu_size()
-        self.contextMenu().popup(self._get_menu_pos(pos))
+        if platform.system().lower() == "windows":
+            pos = self._get_windows_menu_pos(pos)
+        self.contextMenu().popup(pos)
 
     def _on_trigger(self):
         now = time.monotonic()
@@ -1065,6 +1086,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         if self.contextMenu().isVisible():
             self.contextMenu().hide()
         self._tray_manager.execute_doubleclick()
+
+    def _on_wayland_activated(self, reason):
+        if reason == QtWidgets.QSystemTrayIcon.Trigger:
+            self._tray_manager.execute_doubleclick()
 
     def on_systray_activated(self, reason):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
@@ -1107,6 +1132,11 @@ class TrayStarter(QtCore.QObject):
         self._tray_widget = tray_widget
         self._timer_counter = 0
         self._start_timer = start_timer
+        # On Linux the tray menu is sent to the desktop environment over
+        #   DBus when the tray is shown. Some of them (e.g. GNOME with
+        #   AppIndicator extension) don't refresh the menu when it changes,
+        #   so the tray is shown after addons fill the menu.
+        self._show_tray_after_init = platform.system().lower() == "linux"
 
     def _on_start_timer(self):
         if self._tray_widget.is_closing():
@@ -1118,7 +1148,8 @@ class TrayStarter(QtCore.QObject):
             self._timer_counter += 1
             splash = self._get_splash()
             splash.show()
-            self._tray_widget.show()
+            if not self._show_tray_after_init:
+                self._tray_widget.show()
             # Make sure tray and splash are painted out
             QtWidgets.QApplication.processEvents()
 
@@ -1127,6 +1158,8 @@ class TrayStarter(QtCore.QObject):
             QtWidgets.QApplication.processEvents()
             self._timer_counter += 1
             self._tray_widget.initialize_addons()
+            if self._show_tray_after_init:
+                self._tray_widget.show()
 
         elif not self._tray_widget.initializing_addons:
             splash = self._get_splash()
