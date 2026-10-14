@@ -17,6 +17,7 @@ from ayon_core.lib.attribute_definitions import (
     UISeparatorDef,
     UILabelDef,
     ButtonDef,
+    get_attr_defs_visibility,
 )
 from ayon_core.lib.icon_definitions import TransparentIcon
 from ayon_core.tools.utils import (
@@ -162,6 +163,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         self._widgets_by_id = {}
         self._labels_by_id = {}
         self._current_keys = set()
+        self._has_visibility_rules = False
 
         self.set_attr_defs(attr_defs)
 
@@ -170,6 +172,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         self._widgets_by_id = {}
         self._labels_by_id = {}
         self._current_keys = set()
+        self._has_visibility_rules = False
 
         layout = self.layout()
         if layout is not None:
@@ -211,6 +214,8 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                 self._current_keys.add(attr_def.key)
             widget = create_widget_for_attr_def(attr_def, self)
             self._widgets_by_id[attr_def.id] = widget
+            if attr_def.visibility_rules:
+                self._has_visibility_rules = True
 
             if not attr_def.visible:
                 continue
@@ -257,6 +262,8 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             )
             row += 1
 
+        self._update_visibility()
+
     def set_value(self, value):
         new_value = copy.deepcopy(value)
         for widget in self._widgets_by_id.values():
@@ -268,6 +275,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             if widget_value is None:
                 widget_value = copy.deepcopy(attr_def.default)
             widget.set_value(widget_value)
+        self._update_visibility()
 
     def current_value(self):
         output = {}
@@ -290,6 +298,23 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         label = self._labels_by_id.get(attr_id)
         if label is not None:
             label.set_overridden(value != widget.attr_def.default)
+
+        if widget.attr_def.visibility_rules:
+            self._update_visibility()
+
+    def _update_visibility(self):
+        if not self._has_visibility_rules:
+            return
+
+        visibility_by_id = get_attr_defs_visibility(
+            [widget.attr_def for widget in self._widgets_by_id.values()],
+            self.current_value(),
+        )
+        for attr_id, visible in visibility_by_id.items():
+            self._widgets_by_id[attr_id].setVisible(visible)
+            label = self._labels_by_id.get(attr_id)
+            if label is not None:
+                label.setVisible(visible)
 
 
 class BaseAttrDefWidget(QtWidgets.QWidget):

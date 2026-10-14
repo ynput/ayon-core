@@ -411,6 +411,9 @@ def _merge_attr_defs(
         attr_def_src.enabled = True
     if not attr_def_src.visible and attr_def_new.visible:
         attr_def_src.visible = True
+    for rule in attr_def_new.visibility_rules:
+        if rule not in attr_def_src.visibility_rules:
+            attr_def_src.visibility_rules.append(rule)
 
     if not isinstance(attr_def_src, EnumDef):
         return None

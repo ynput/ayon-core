@@ -4,7 +4,12 @@ from typing import Any
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib import AbstractAttrDef, ButtonDef, UILabelDef
+from ayon_core.lib import (
+    AbstractAttrDef,
+    ButtonDef,
+    UILabelDef,
+    get_attr_defs_visibility,
+)
 from ayon_core.tools.attribute_defs import (
     BaseAttrDefWidget,
     create_widget_for_attr_def,
@@ -153,6 +158,7 @@ class AttributesWidget(QtWidgets.QWidget):
         self._controller: AbstractPublisherFrontend = controller
         self._layout: QtWidgets.QGridLayout = layout
         self._widgets: list[BaseAttrDefWidget] = []
+        self._labels_by_id: dict[str, QtWidgets.QLabel] = {}
 
     def current_value(self) -> dict[str, Any]:
         output = {}
@@ -171,6 +177,7 @@ class AttributesWidget(QtWidgets.QWidget):
                 widget.deleteLater()
 
         self._widgets = []
+        self._labels_by_id = {}
 
     def set_attr_defs(
         self,
@@ -209,6 +216,7 @@ class AttributesWidget(QtWidgets.QWidget):
             if label:
                 label_widget = QtWidgets.QLabel(label, self)
                 label_widget.setVisible(attr_def.visible)
+                self._labels_by_id[attr_def.id] = label_widget
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
@@ -227,5 +235,33 @@ class AttributesWidget(QtWidgets.QWidget):
                 widget, row, col_num, 1, expand_cols
             )
             self._widgets.append(widget)
+            if attr_def.visibility_rules:
+                widget.value_changed.connect(self._on_value_change)
 
             row += 1
+
+        self._update_visibility()
+
+    def _on_value_change(self, value: Any, attr_id: str) -> None:
+        self._update_visibility()
+
+    def _update_visibility(self) -> None:
+        if not any(
+            widget.attr_def.visibility_rules
+            for widget in self._widgets
+        ):
+            return
+
+        widgets_by_id = {
+            widget.attr_def.id: widget
+            for widget in self._widgets
+        }
+        visibility_by_id = get_attr_defs_visibility(
+            [widget.attr_def for widget in self._widgets],
+            self.current_value(),
+        )
+        for attr_id, visible in visibility_by_id.items():
+            widgets_by_id[attr_id].setVisible(visible)
+            label_widget = self._labels_by_id.get(attr_id)
+            if label_widget is not None:
+                label_widget.setVisible(visible)

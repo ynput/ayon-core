@@ -8,6 +8,7 @@ import json
 import copy
 import warnings
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 import typing
 from typing import (
     Any,
@@ -50,6 +51,10 @@ if typing.TYPE_CHECKING:
         frames: Optional[List[int]]
         template: Optional[str]
         is_sequence: Optional[bool]
+
+    class VisibilityRuleDict(TypedDict):
+        values: List[Any]
+        keys: List[str]
 
 
 # Global variable which store attribute definitions by type
@@ -104,6 +109,56 @@ def _convert_reversed_attr(
     return main_value
 
 
+@dataclass
+class VisibilityRule:
+    """Rule controlling visibility of other attribute definitions.
+
+    Attribute definitions with key in 'keys' are visible only if value of
+    the attribute definition holding the rule matches one of 'values'.
+
+    Args:
+        values (list[Any]): Values for which are 'keys' visible.
+        keys (list[str]): Keys of controlled attribute definitions.
+
+    """
+    values: List[Any]
+    keys: List[str]
+
+    def __post_init__(self):
+        if isinstance(self.keys, str):
+            self.keys = [self.keys]
+        self.values = list(self.values)
+        self.keys = list(self.keys)
+
+    def to_data(self) -> "VisibilityRuleDict":
+        return {
+            "values": copy.deepcopy(self.values),
+            "keys": list(self.keys),
+        }
+
+    @classmethod
+    def from_data(cls, data: "VisibilityRuleDict") -> "VisibilityRule":
+        return cls(values=data["values"], keys=data["keys"])
+
+
+def _prepare_visibility_rules(
+    visibility_rules: Optional[
+        Iterable[Union[VisibilityRule, "VisibilityRuleDict"]]
+    ],
+) -> List[VisibilityRule]:
+    output = []
+    for rule in visibility_rules or []:
+        if isinstance(rule, dict):
+            rule = VisibilityRule.from_data(rule)
+        elif not isinstance(rule, VisibilityRule):
+            raise TypeError(
+                "Visibility rule must be 'VisibilityRule' or 'dict',"
+                f" got '{type(rule)}'."
+            )
+        output.append(rule)
+    return output
+
+
 class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     """Abstraction of attribute definition.
 
@@ -126,8 +181,31 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             if label is next to value input or ahead.
         visible (Optional[bool]): Item is shown to user (for UI purposes).
         enabled (Optional[bool]): Item is enabled (for UI purposes).
+        visibility_rules (Optional[list[VisibilityRule]]): Rules controlling
+            visibility of other attribute definitions based on value of
+            this attribute definition (for UI purposes). Rules can be passed
+            also as dictionaries with 'values' and 'keys'. Attribute
+            definitions not mentioned in any rule are not affected.
         hidden (Optional[bool]): DEPRECATED: Use 'visible' instead.
         disabled (Optional[bool]): DEPRECATED: Use 'enabled' instead.
+
+    Example:
+        ```python
+        attr_defs = [
+            BoolDef(
+                "use_custom_range",
+                default=False,
+                visibility_rules=[
+                    VisibilityRule(
+                        values=[True],
+                        keys=["frame_start", "frame_end"],
+                    ),
+                ],
+            ),
+            NumberDef("frame_start"),
+            NumberDef("frame_end"),
+        ]
+        ```
 
     """
     type_attributes = []
@@ -143,6 +221,9 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         is_label_horizontal: Optional[bool] = None,
         visible: Optional[bool] = None,
         enabled: Optional[bool] = None,
+        visibility_rules: Optional[
+            Iterable[Union[VisibilityRule, "VisibilityRuleDict"]]
+        ] = None,
         hidden: Optional[bool] = None,
         disabled: Optional[bool] = None,
     ):
@@ -163,6 +244,9 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         self.is_label_horizontal: bool = is_label_horizontal
         self.visible: bool = visible
         self.enabled: bool = enabled
+        self.visibility_rules: List[VisibilityRule] = (
+            _prepare_visibility_rules(visibility_rules)
+        )
         self._id: str = uuid.uuid4().hex
 
         self.__init__class__ = AbstractAttrDef
@@ -212,9 +296,48 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             return False
         return (
             (ignore_default or self.default == other.default)
-            and (ignore_visible or self.visible == other.visible)
+            and (ignore_visible or (
+                self.visible == other.visible
+                and self.visibility_rules == other.visibility_rules
+            ))
             and (ignore_enabled or self.enabled == other.enabled)
         )
+
+    def get_visibility_controlled_keys(self) -> Set[str]:
+        """Keys of attribute definitions controlled by visibility rules.
+
+        Returns:
+            Set[str]: Keys of controlled attribute definitions.
+
+        """
+        return {
+            key
+            for rule in self.visibility_rules
+            for key in rule.keys
+        }
+
+    def get_visible_keys_for_value(self, value: Any) -> Set[str]:
+        """Keys of controlled attribute definitions visible for a value.
+
+        Args:
+            value (Any): Value of this attribute definition.
+
+        Returns:
+            Set[str]: Keys of controlled attribute definitions that should
+                be visible for the value.
+
+        """
+        return {
+            key
+            for rule in self.visibility_rules
+            if self._is_visibility_value_matching(value, rule.values)
+            for key in rule.keys
+        }
+
+    def _is_visibility_value_matching(
+        self, value: Any, rule_values: List[Any]
+    ) -> bool:
+        return value in rule_values
 
     @abstractmethod
     def is_value_valid(self, value: Any) -> bool:
@@ -269,7 +392,11 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             "default": self.default,
             "is_label_horizontal": self.is_label_horizontal,
             "visible": self.visible,
-            "enabled": self.enabled
+            "enabled": self.enabled,
+            "visibility_rules": [
+                rule.to_data()
+                for rule in self.visibility_rules
+            ],
         }
         for attr in self.type_attributes:
             data[attr] = getattr(self, attr)
@@ -789,6 +916,13 @@ class EnumDef(AbstractAttrDef):
             and self.multiselection == other.multiselection
         )
 
+    def _is_visibility_value_matching(
+        self, value: Any, rule_values: List[Any]
+    ) -> bool:
+        if self.multiselection and isinstance(value, (list, tuple, set)):
+            return any(item in rule_values for item in value)
+        return super()._is_visibility_value_matching(value, rule_values)
+
 
 class BoolDef(AbstractAttrDef):
     """Boolean representation.
@@ -1274,6 +1408,64 @@ def get_default_values(
         if not isinstance(attr_def, UIDef):
             output[attr_def.key] = attr_def.default
     return output
+
+
+def get_attr_defs_visibility(
+    attr_defs: Iterable[AttrDefType],
+    values: Dict[str, Any],
+) -> Dict[str, bool]:
+    """Resolve visibility of attribute definitions.
+
+    Takes into account 'visible' of each attribute definition and
+    'visibility_rules' of controlling attribute definitions. Attribute
+    definition controlled by a hidden attribute definition is hidden too.
+
+    Args:
+        attr_defs (Iterable[AttrDefType]): Attribute definitions.
+        values (Dict[str, Any]): Current values by attribute definition key.
+            Default value of attribute definition is used if key is missing.
+
+    Returns:
+        Dict[str, bool]: Visibility by attribute definition id.
+
+    """
+    attr_defs = list(attr_defs)
+    controllers_by_key = collections.defaultdict(list)
+    for attr_def in attr_defs:
+        if not attr_def.is_value_def:
+            continue
+        for key in attr_def.get_visibility_controlled_keys():
+            controllers_by_key[key].append(attr_def)
+
+    visibility_by_id = {}
+
+    def _is_visible(attr_def: AttrDefType, processing: Set[str]) -> bool:
+        if attr_def.id in visibility_by_id:
+            return visibility_by_id[attr_def.id]
+
+        visible = attr_def.visible
+        # Skip controllers already being resolved to avoid cycles
+        processing = processing | {attr_def.id}
+        for controller in controllers_by_key.get(attr_def.key, []):
+            if not visible:
+                break
+            if controller.id in processing:
+                continue
+            if not _is_visible(controller, processing):
+                visible = False
+                break
+
+            value = values.get(controller.key, controller.default)
+            visible = (
+                attr_def.key in controller.get_visible_keys_for_value(value)
+            )
+
+        visibility_by_id[attr_def.id] = visible
+        return visible
+
+    for attr_def in attr_defs:
+        _is_visible(attr_def, set())
+    return visibility_by_id
 
 
 def serialize_attr_def(attr_def: AttrDefType) -> Dict[str, Any]:
