@@ -14,11 +14,13 @@ if typing.TYPE_CHECKING:
     from ayon_core.host import WorkfileInfo
     from ayon_core.tools.common_models import (
         UserItem,
+        StatusItem,
         FolderTypeItem,
         TaskTypeItem,
         TaskSortMode,
         FolderItem,
         TaskItem,
+        ActivityItem,
     )
 
 
@@ -336,6 +338,87 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Returns:
             dict[str, UserItem]: User items by username.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
+        """User items for a project.
+
+        Args:
+            project_name (str | None): Project name.
+
+        Returns:
+            list[UserItem]: Users with access to the project.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_activity_items(
+        self,
+        project_name: str,
+        entity_ids: list[str] | set[str],
+        limit: int = 50,
+    ) -> list[ActivityItem]:
+        """Latest activities of entities.
+
+        Activities are comments, publishes and status changes. They are
+        queried from the server on each call, so it should not be called
+        from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_ids (list[str] | set[str]): Entity ids, e.g. of a task.
+            limit (int): Maximum number of activities.
+
+        Returns:
+            list[ActivityItem]: Activities sorted from the newest to
+                the oldest.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_version_thumbnail_path(
+        self, project_name: str, version_id: str, thumbnail_id: str
+    ) -> str | None:
+        """Path to a thumbnail of a version.
+
+        The thumbnail is downloaded if it is not cached yet, so it should
+        not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            version_id (str): Version id.
+            thumbnail_id (str): Thumbnail id of the version.
+
+        Returns:
+            str | None: Path to the thumbnail, or None if it is not
+                available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_project_status_items(
+        self, project_name: str, sender: str | None = None
+    ) -> list[StatusItem]:
+        """Status items for a project.
+
+        This function may trigger events with topics
+        'projects.statuses.refresh.started' and
+        'projects.statuses.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested status items.
+
+        Returns:
+            list[StatusItem]: Status information.
 
         """
         pass

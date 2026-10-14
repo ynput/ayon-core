@@ -22,6 +22,12 @@ from .hierarchy import (
 from .thumbnails import ThumbnailsModel
 from .selection import HierarchyExpectedSelection
 from .users import UsersModel, UserItem
+from .activities import (
+    ActivitiesModel,
+    ActivityItem,
+    ActivityFileItem,
+    ActivityAnnotationItem,
+)
 
 
 __all__ = (
@@ -51,4 +57,9 @@ __all__ = (
 
     "UsersModel",
     "UserItem",
+
+    "ActivitiesModel",
+    "ActivityItem",
+    "ActivityFileItem",
+    "ActivityAnnotationItem",
 )
