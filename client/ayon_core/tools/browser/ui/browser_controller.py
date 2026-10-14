@@ -14,7 +14,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any
+from typing import Any, Callable
 
 import arrow
 import ayon_api
@@ -33,7 +33,11 @@ from ayon_core.ui.components.tree_model import TreeNode
 from qtpy import QtCore
 
 from ayon_core.lib import Logger
-from ayon_core.tools.browser.abstract import ActionItem, ProductGroupsInfo
+from ayon_core.tools.browser.abstract import (
+    ActionItem,
+    LoadersGrouping,
+    ProductGroupsInfo,
+)
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
     BrowserColumnManager,
@@ -60,13 +64,18 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     build_attribute_groups,
     parse_attribute_group_key,
 )
+from ayon_core.tools.browser.server_capabilities import (
+    server_supports_folder_filter,
+    server_supports_latest_per_folder,
+    server_supports_representation_filter,
+    server_supports_version_statistics,
+)
 from ayon_core.tools.browser.ui.browser_queries import (
     EMPTY_ROW,
-    GET_PRODUCTS_QUERY,
     get_product_sort_by,
+    get_products_query,
     get_sort_by,
     get_version_group_counts_query,
-    server_supports_representation_filter,
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import (
@@ -361,6 +370,9 @@ class BrowserWidgetController(QtCore.QObject):
         self._ungroup_empty_values: bool = (
             BROWSER_VIEW_DEFAULTS.ungroup_empty_values
         )
+        self._loaders_grouping: LoadersGrouping = (
+            BROWSER_VIEW_DEFAULTS.loaders_grouping
+        )
         self._requested_column_keys: set[str] | None = None
         # Project info by project name, '(fetch time, data)'
         self._project_info_cache: dict[str, tuple[float, dict]] = {}
@@ -499,6 +511,20 @@ class BrowserWidgetController(QtCore.QObject):
         self._reset_pagination()
         return True
 
+    @property
+    def loaders_grouping(self) -> LoadersGrouping:
+        """Return how the actions menu groups loaders in submenus.
+
+        A grouped loader that loads per representation gets a single
+        submenu listing the representations, instead of an entry for each
+        of them.
+        """
+        return self._loaders_grouping
+
+    def set_loaders_grouping(self, grouping: LoadersGrouping) -> None:
+        """Set how the actions menu groups loaders in submenus."""
+        self._loaders_grouping = grouping
+
     def get_extension_columns(self) -> list[TableColumn]:
         """Return columns contributed by enabled addons."""
         return self._column_manager.get_columns(self._get_column_context())
@@ -543,6 +569,28 @@ class BrowserWidgetController(QtCore.QObject):
         """Return custom attribute definitions grouped by entity scope."""
         return self._attributes_by_scope
 
+    def _server_supports(
+        self, capability: Callable[[], bool], label: str
+    ) -> bool:
+        """Return a server capability, ``False`` when it can't be checked.
+
+        Args:
+            capability: Capability check of
+                :mod:`ayon_core.tools.browser.server_capabilities`.
+            label: What the capability is, for the log.
+        """
+        try:
+            return capability()
+        except Exception:
+            # Not cached, so a temporary connection problem is retried
+            # the next time this is asked.
+            self.log.debug(
+                "Failed to check for %s support", label, exc_info=True
+            )
+            return False
+
+    # TODO: Backwards compatibility for AYON server < 1.16.7.
+    #   Remove this once 1.16.7 is the minimum supported server.
     @property
     def supports_representation_filter(self) -> bool:
         """Whether the server can filter versions by representations.
@@ -550,16 +598,35 @@ class BrowserWidgetController(QtCore.QObject):
         Servers up to 1.16.6 have no ``representationFilter`` argument
         on the versions resolver.
         """
-        try:
-            return server_supports_representation_filter()
-        except Exception:
-            # Not cached, so a temporary connection problem is retried
-            # the next time this is asked.
-            self.log.debug(
-                "Failed to check for representation filter support",
-                exc_info=True,
-            )
-            return False
+        return self._server_supports(
+            server_supports_representation_filter, "representation filter"
+        )
+
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    @property
+    def supports_folder_filter(self) -> bool:
+        """Whether the server can filter versions by their folders.
+
+        Servers up to 1.16.0 have no ``folderFilter`` argument on the
+        versions and products resolvers.
+        """
+        return self._server_supports(
+            server_supports_folder_filter, "folder filter"
+        )
+
+    # TODO: Backwards compatibility for AYON server < 1.16.1.
+    #   Remove this once 1.16.1 is the minimum supported server.
+    @property
+    def supports_latest_per_folder(self) -> bool:
+        """Whether the server can list the latest version per folder.
+
+        Servers up to 1.16.0 have no ``latestPerFolder`` argument on the
+        versions resolver.
+        """
+        return self._server_supports(
+            server_supports_latest_per_folder, "latest per folder"
+        )
 
     @property
     def has_selection(self) -> bool:
@@ -897,6 +964,7 @@ class BrowserWidgetController(QtCore.QObject):
                 parts["representation_conditions"]
             ),
             "featured_only": parts["featured_only"] or None,
+            "featured_types": parts["featured_types"] or None,
             "search": parts["search"],
             "version_ids": parts["version_ids"],
             "has_reviewables": parts["has_reviewables"],
@@ -997,6 +1065,7 @@ class BrowserWidgetController(QtCore.QObject):
         folder_conditions: list[dict[str, Any]] = []
         representation_conditions: list[dict[str, Any]] = []
         featured_only: list[str] = []
+        featured_types: list[str] = []
         search: str | None = None
         version_ids: list[str] | None = None
         has_reviewables: bool | None = None
@@ -1099,6 +1168,10 @@ class BrowserWidgetController(QtCore.QObject):
                 # NOTE: Combined with other featured types the server picks
                 #   one version per product by priority, which can only be
                 #   expressed using 'featuredOnly'.
+                # The product group headers show the featured version of
+                # these types, like the frontend does, so the header
+                # matches the versions listed below it.
+                featured_types.extend(featured_values)
                 hero_only = featured_values == ["hero"]
                 if hero_only:
                     featured_values = []
@@ -1282,6 +1355,7 @@ class BrowserWidgetController(QtCore.QObject):
             "folder_conditions": folder_conditions,
             "representation_conditions": representation_conditions,
             "featured_only": featured_only,
+            "featured_types": featured_types,
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
@@ -2068,6 +2142,7 @@ class BrowserWidgetController(QtCore.QObject):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         """Return action items for the given entity selection.
 
@@ -2079,12 +2154,15 @@ class BrowserWidgetController(QtCore.QObject):
             project_name: AYON project name.
             entity_ids: Set of selected entity IDs.
             entity_type: Entity type string (e.g. ``"version"``).
+            loaders_grouping: Whether the items of a loader that loads
+                per representation are grouped under the loader label,
+                with the representation name as item label.
 
         Returns:
             List of :class:`ActionItem` objects.
         """
         return self._loader_controller.get_action_items(
-            project_name, entity_ids, entity_type
+            project_name, entity_ids, entity_type, loaders_grouping
         )
 
     def warm_up_action_items(self, project_name: str) -> None:
@@ -2443,6 +2521,12 @@ class BrowserWidgetController(QtCore.QObject):
             )
             row["thumbnailId"] = featured_version.get("thumbnailId", "")
             row["_version_id"] = featured_version.get("id", "")
+            # The featured "hero" is the regular version the hero version
+            # was made from, but acting on it must use the hero version.
+            if featured_version.get("featuredVersionType") == "hero":
+                hero_version_id = featured_version.get("heroVersionId")
+                if hero_version_id:
+                    row["_action_version_id"] = hero_version_id
             row["status"] = featured_version.get("status", "")
             row["status__icon"] = self._pinfo(
                 "statuses", row["status"], "icon", ""
@@ -2613,6 +2697,15 @@ class BrowserWidgetController(QtCore.QObject):
             target_field = f"attrib.{group_option.attribute_name}"
         if not target_field:
             return _GroupCounts({})
+
+        # TODO: Backwards compatibility for AYON server < 1.15.5.
+        #   Remove this once 1.15.5 is the minimum supported server.
+        # Servers up to 1.15.4 can't calculate statistics, the groups
+        # then show the grouping metadata instead.
+        if not self._server_supports(
+            server_supports_version_statistics, "version statistics"
+        ):
+            return None
 
         query_filters = self._get_query_filters()
         version_ids = query_filters["version_ids"]
@@ -2911,6 +3004,7 @@ class BrowserWidgetController(QtCore.QObject):
         folder_filter: str = "",
         search: str | None = None,
         include_folder_children: bool = False,
+        featured_version_order: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Fetch a single page of products via GraphQL.
 
@@ -2930,6 +3024,11 @@ class BrowserWidgetController(QtCore.QObject):
             task_filter: JSON-encoded task filter string.
             folder_filter: JSON-encoded folder filter string.
             search: Full-text product search string.
+            include_folder_children: Whether to include products of
+                the child folders of *folder_ids*.
+            featured_version_order: Priority order used to pick the
+                featured version of each product. Defaults to the
+                featured version customization.
 
         Returns:
             Tuple of (edges list, pageInfo dict).
@@ -2959,7 +3058,9 @@ class BrowserWidgetController(QtCore.QObject):
             "includeFolderChildren": include_folder_children,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
-            "featuredVersionOrder": self._featured_version_order,
+            "featuredVersionOrder": (
+                featured_version_order or self._featured_version_order
+            ),
         }
         if descending:
             variables["last"] = page_size
@@ -2968,7 +3069,7 @@ class BrowserWidgetController(QtCore.QObject):
             variables["first"] = page_size
             variables["after"] = cursor or None
 
-        resp = con.query_graphql(GET_PRODUCTS_QUERY, variables)
+        resp = con.query_graphql(get_products_query(), variables)
         if resp.errors:
             raise RuntimeError(resp.errors)
         payload = resp.data["data"]
@@ -3066,6 +3167,7 @@ class BrowserWidgetController(QtCore.QObject):
                 folder_filter=query_filters["folder_filter"],
                 search=query_filters["search"],
                 include_folder_children=self._include_folder_children,
+                featured_version_order=query_filters["featured_types"],
             )
             all_edges.extend(edges)
 
@@ -3438,21 +3540,11 @@ class BrowserWidgetController(QtCore.QObject):
             return
         project = self._current_project
         fields = ayon_api.get_default_fields_for_type("entityList")
-        try:
-            entity_lists = list(
-                ayon_api.get_entity_lists(
-                    project, fields={*fields, "entityListFolderId"}
-                )
+        self._entity_lists_cache = list(
+            ayon_api.get_entity_lists(
+                project, fields={*fields, "entityListFolderId"}
             )
-        except Exception:  # noqa: BLE001
-            # Servers without entity list folders reject the field.
-            self.log.debug(
-                "Failed to fetch entity lists with their folder,"
-                " fetching them without.",
-                exc_info=True,
-            )
-            entity_lists = list(ayon_api.get_entity_lists(project))
-        self._entity_lists_cache = entity_lists
+        )
         self._entity_list_folders_cache = (
             self._get_entity_list_folders(project)
         )
@@ -3471,22 +3563,13 @@ class BrowserWidgetController(QtCore.QObject):
 
         Returns:
             Folders with ``id``, ``label``, ``parentId`` and ``data``
-            (``icon`` and ``color``). Empty when the server does not
-            support entity list folders.
+            (``icon`` and ``color``).
         """
-        try:
-            response = ayon_api.get(
-                f"projects/{project_name}/entityListFolders"
-            )
-            response.raise_for_status()
-            return list(response.data.get("folders") or [])
-        except Exception:  # noqa: BLE001
-            self.log.debug(
-                "Failed to fetch entity list folders of project %s",
-                project_name,
-                exc_info=True,
-            )
-            return []
+        response = ayon_api.get(
+            f"projects/{project_name}/entityListFolders"
+        )
+        response.raise_for_status()
+        return list(response.data.get("folders") or [])
 
     def _get_entity_list_entity_ids(
         self, list_ids: list[str]

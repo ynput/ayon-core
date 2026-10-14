@@ -295,7 +295,7 @@ class SelectContextOverlay(BaseOverlayFrame):
         super(SelectContextOverlay, self).__init__(parent)
 
         label_widget = AYLabel(
-            "Please choose context on the left<br/>&lt",
+            "Please choose context on the left.",
             self
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)

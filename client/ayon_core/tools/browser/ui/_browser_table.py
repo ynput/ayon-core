@@ -33,6 +33,7 @@ from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, get_ayon_username
+from ayon_core.tools.browser.abstract import LoadersGrouping
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
@@ -269,6 +270,7 @@ class BrowserTable(AYContainer):
             initial_include_children=(
                 BROWSER_VIEW_DEFAULTS.include_children
             ),
+            initial_loaders_grouping=self._controller.loaders_grouping,
         )
         self._add_column_btn = AddColumnButton(self._table.header())
         self._add_column_btn.set_columns(self._model.columns)
@@ -325,9 +327,13 @@ class BrowserTable(AYContainer):
         self._customize.set_latest_per_folder(
             self._controller.latest_per_folder,
             disabled=self._controller.group_by_key == GROUP_BY_PRODUCT_KEY,
+            supported=self._controller.supports_latest_per_folder,
         )
         self._customize.latest_per_folder_changed.connect(
             self._on_latest_per_folder_changed
+        )
+        self._customize.loaders_grouping_changed.connect(
+            self._controller.set_loaders_grouping
         )
 
         self._view_manager = ServerViewManager(
@@ -394,6 +400,9 @@ class BrowserTable(AYContainer):
             self._view_selector.notify_view_modified
         )
         self._customize.latest_per_folder_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.loaders_grouping_changed.connect(
             self._view_selector.notify_view_modified
         )
         self._controller.my_tasks_filter_changed.connect(
@@ -1022,6 +1031,7 @@ class BrowserTable(AYContainer):
         self._customize.set_latest_per_folder(
             self._controller.latest_per_folder,
             disabled=group_by_key == GROUP_BY_PRODUCT_KEY,
+            supported=self._controller.supports_latest_per_folder,
         )
         self._model.set_tree_mode(tree_mode)
         self._reset_expansion_state()
@@ -1064,6 +1074,9 @@ class BrowserTable(AYContainer):
             ``ungroupEmptyValues`` (whether versions without a value
             for the grouped field are listed below the groups, defaults
             to ``True`` for views saved before it existed),
+            ``loadersGrouping`` (how the actions menu groups the
+            representations of a loader in a submenu, defaults to
+            "group if multiple" for views saved before it existed),
             ``myTasksFilter`` (whether the "My Tasks" slicer filter
             is active).
 
@@ -1117,6 +1130,12 @@ class BrowserTable(AYContainer):
         self._customize.set_ungroup_empty_values(ungroup_empty_values)
         if self._controller.set_ungroup_empty_values(ungroup_empty_values):
             self._model.reset_data()
+        try:
+            loaders_grouping = LoadersGrouping(extra["loadersGrouping"])
+        except (KeyError, ValueError):
+            loaders_grouping = BROWSER_VIEW_DEFAULTS.loaders_grouping
+        self._customize.set_loaders_grouping(loaders_grouping)
+        self._controller.set_loaders_grouping(loaders_grouping)
         if "displayType" in extra:
             display_type: Literal["table", "grid"] = extra["displayType"]
             self._display_type.set_display_type(display_type)
@@ -1127,6 +1146,7 @@ class BrowserTable(AYContainer):
                 disabled=(
                     self._controller.group_by_key == GROUP_BY_PRODUCT_KEY
                 ),
+                supported=self._controller.supports_latest_per_folder,
             )
             self._controller.set_latest_per_folder(latest_per_folder)
             self._model.reset_data()
@@ -1154,8 +1174,9 @@ class BrowserTable(AYContainer):
         drops known keys from ``extra``).
 
         Captured loader-specific extras include card width, featured
-        version order, current display type (table or grid), and
-        whether the "My Tasks" slicer filter is active.
+        version order, current display type (table or grid), how the
+        actions menu groups loaders in submenus, and whether the
+        "My Tasks" slicer filter is active.
 
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
@@ -1169,6 +1190,7 @@ class BrowserTable(AYContainer):
             "latestPerFolder": self._controller.latest_per_folder,
             "includeChildren": self._controller.include_folder_children,
             "ungroupEmptyValues": self._controller.ungroup_empty_values,
+            "loadersGrouping": self._controller.loaders_grouping.value,
             "myTasksFilter": self._controller.my_tasks_filter_enabled,
         }
         return extra
@@ -2002,12 +2024,21 @@ class BrowserTable(AYContainer):
                 icon="local_offer", entity="Task", show_has_value_filters=True,
             ),
         ]
-        # Older servers cannot filter versions by their representations,
-        # so the whole Representation scope is left out for them.
-        supports_representation_filter = (
-            self._controller.supports_representation_filter
-        )
-        if supports_representation_filter:
+        # Older servers cannot filter versions by their folders or
+        # representations, so those whole scopes are left out for them.
+        unsupported_scopes = set()
+        # TODO: Backwards compatibility for AYON server < 1.16.1.
+        #   Remove this once 1.16.1 is the minimum supported server.
+        if not self._controller.supports_folder_filter:
+            unsupported_scopes.add("folder")
+            filters = [
+                item for item in filters if item.entity != "Folder"
+            ]
+        # TODO: Backwards compatibility for AYON server < 1.16.7.
+        #   Remove this once 1.16.7 is the minimum supported server.
+        if not self._controller.supports_representation_filter:
+            unsupported_scopes.add("representation")
+        else:
             filters.extend([
                 FilterEntry(
                     "representationName", "Name",
@@ -2035,10 +2066,7 @@ class BrowserTable(AYContainer):
         for scope, definitions in (
             self._controller.attributes_by_scope.items()
         ):
-            if (
-                scope == "representation"
-                and not supports_representation_filter
-            ):
+            if scope in unsupported_scopes:
                 continue
             entity = scope.capitalize()
             for name, data in definitions.items():
