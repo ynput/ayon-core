@@ -21,6 +21,5 @@ opencolorio = "^2.5.1,<2.6.0"
 Pillow = "9.5.0"
 fontTools = "*"
 
-
 [ayon.runtimeDependencies.darwin]
 pyobjc-core = "^11.1"
