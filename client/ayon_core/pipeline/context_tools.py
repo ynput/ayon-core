@@ -192,7 +192,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
         log.debug(
             "Host name is not set. Skipping registering host specific plugins."
         )
-        return
     else:
         # Load host specific plugins
         addons_manager = _get_addons_manager()
