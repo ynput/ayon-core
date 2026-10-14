@@ -420,7 +420,7 @@ class ConnectionOverlay(QtWidgets.QWidget):
                 " and restart all applications."
             )
         elif self._server_restarting:
-            text = "AYON server is restarting.."
+            text = "AYON server is restarting..."
         else:
-            text = "Connection to AYON server lost.."
+            text = "Connection to AYON server lost..."
         self._message_label.setText(text)
