@@ -91,7 +91,7 @@ class TrayManager:
         #   via websocket, processed in '_main_thread_execution'
         self._event_system = QueuedEventSystem()
         self._ws_events_model = WSEventsModel(self)
-        # Connection was lost (icon shows orange dot)
+        # Connection was lost (icon is blinking)
         self._connection_lost = False
         # User was notified about lost connection with tray message
         self._connection_lost_notified = False
@@ -762,13 +762,15 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     # Connection status shown in icon
     # - connected: no dot
-    # - lost: orange dot fading in/out (connection may be restored soon)
+    # - lost: icon fading in/out (connection may be restored soon)
     # - lost long: solid red dot
     CONNECTION_OK = "ok"
     CONNECTION_LOST = "lost"
     CONNECTION_LOST_LONG = "lost_long"
     # Duration of one fade in/out cycle
     blink_cycle_ms = 800
+    # Lowest opacity of the icon during blinking
+    blink_min_opacity = 0.3
     # Number of icon frames per cycle (icon is updated for each frame)
     blink_frames = 20
 
@@ -779,6 +781,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
         self._icon = icon
         self._dot_icons = {}
+        self._faded_icons = {}
         self._connection_status = self.CONNECTION_OK
         self._blink_frame = 0
 
@@ -858,7 +861,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self.setToolTip("AYON - Connection to server lost")
         if status == self.CONNECTION_LOST:
             self._blink_frame = 0
-            self.setIcon(self._get_dot_icon("#ff8c00"))
+            self.setIcon(self._icon)
             self._blink_timer.start()
         else:
             self.setIcon(self._get_dot_icon("#e53935"))
@@ -870,23 +873,54 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._blink_frame = (self._blink_frame + 1) % self.blink_frames
         # Cosine curve - starts fully visible, fades out and in again
         progress = self._blink_frame / self.blink_frames
-        opacity = (math.cos(progress * 2 * math.pi) + 1) * 0.5
-        self.setIcon(self._get_dot_icon("#ff8c00", opacity))
+        fade = (math.cos(progress * 2 * math.pi) + 1) * 0.5
+        min_opacity = self.blink_min_opacity
+        opacity = min_opacity + (1.0 - min_opacity) * fade
+        self.setIcon(self._get_faded_icon(opacity))
 
-    def _get_dot_icon(
-        self, color: str, opacity: float = 1.0
-    ) -> QtGui.QIcon:
-        """Tray icon with a colored dot in bottom right corner.
+    def _get_faded_icon(self, opacity: float) -> QtGui.QIcon:
+        """Tray icon with lowered opacity.
 
         Args:
-            color (str): Color of the dot.
-            opacity (float): Opacity of the dot (0.0 - 1.0).
+            opacity (float): Opacity of the icon (0.0 - 1.0).
 
         """
         # Round opacity so the cache does not grow
         opacity = round(opacity, 2)
-        key = (color, opacity)
-        icon = self._dot_icons.get(key)
+        if opacity >= 1.0:
+            return self._icon
+        icon = self._faded_icons.get(opacity)
+        if icon is not None:
+            return icon
+
+        size = 128
+        # Paint to own pixmap with device pixel ratio 1 (see
+        #   '_get_dot_icon')
+        pix = QtGui.QPixmap(size, size)
+        pix.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(pix)
+        painter.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        painter.setOpacity(opacity)
+        painter.drawPixmap(
+            QtCore.QRect(0, 0, size, size),
+            self._icon.pixmap(size, size),
+        )
+        painter.end()
+        icon = QtGui.QIcon(pix)
+        self._faded_icons[opacity] = icon
+        return icon
+
+    def _get_dot_icon(self, color: str) -> QtGui.QIcon:
+        """Tray icon with a colored dot in bottom right corner.
+
+        Args:
+            color (str): Color of the dot.
+
+        """
+        icon = self._dot_icons.get(color)
         if icon is not None:
             return icon
 
@@ -919,16 +953,12 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             -pen_width * 0.5,
         )
         # Dark backing (also outline separating the dot from the logo)
-        #   fades faster than the color, so half-transparent color is
-        #   blended with the backing instead of with the logo
-        painter.setOpacity(min(1.0, opacity * 2))
         pen = QtGui.QPen(outline_color)
         pen.setWidthF(pen_width)
         painter.setPen(pen)
         painter.setBrush(outline_color)
         painter.drawEllipse(ellipse_rect)
 
-        painter.setOpacity(opacity)
         painter.setPen(QtCore.Qt.NoPen)
         painter.setBrush(QtGui.QColor(color))
         painter.drawEllipse(
@@ -941,7 +971,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         )
         painter.end()
         icon = QtGui.QIcon(pix)
-        self._dot_icons[key] = icon
+        self._dot_icons[color] = icon
         return icon
 
     @property
