@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import os
 import copy
-import json
 import shutil
-import tempfile
 from typing import Optional
 
 from ayon_applications import (
@@ -13,8 +11,7 @@ from ayon_applications import (
     ApplicationLaunchFailed,
 )
 
-from ayon_core import AYON_CORE_ROOT
-from ayon_core.lib import is_headless_mode_enabled, run_ayon_launcher_process
+from ayon_core.lib import is_headless_mode_enabled
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.workfile import (
     get_workfile_template_key,
@@ -29,7 +26,6 @@ from ayon_core.pipeline.workfile.task_usage import (
     TaskUsageItem,
     get_task_usage_settings,
     get_other_users_task_usage_items,
-    parse_task_in_use_prompt_answer,
 )
 
 
@@ -85,7 +81,7 @@ class TaskInUsePrompt(PreLaunchHook):
             return
 
         workfile_path = self._get_workfile_to_open()
-        confirmed, version_up = self._confirm(items, workfile_path)
+        asked, confirmed, version_up = self._confirm(items, workfile_path)
         if not confirmed:
             usernames = ", ".join(sorted({item.username for item in items}))
             raise ApplicationLaunchFailed(
@@ -96,9 +92,11 @@ class TaskInUsePrompt(PreLaunchHook):
         if version_up and workfile_path:
             self._version_up_workfile(workfile_path)
 
-        self.launch_context.env[ACKNOWLEDGED_SESSIONS_ENV_KEY] = ",".join(
-            item.session_id for item in items
-        )
+        # Sessions are confirmed only if the user was asked
+        if asked:
+            self.launch_context.env[ACKNOWLEDGED_SESSIONS_ENV_KEY] = (
+                ",".join(item.session_id for item in items)
+            )
 
     def _get_workfile_to_open(self) -> Optional[str]:
         """Existing workfile that will be opened in the application."""
@@ -112,69 +110,39 @@ class TaskInUsePrompt(PreLaunchHook):
 
     def _confirm(
         self, items: list[TaskUsageItem], workfile_path: Optional[str]
-    ) -> tuple[bool, bool]:
-        """Ask user in a subprocess with the dialog.
+    ) -> tuple[bool, bool, bool]:
+        """Ask user with a dialog shown in current process.
 
-        The launch is not blocked if the dialog could not be shown.
+        The launch is not blocked if the dialog can't be shown, e.g. if
+        the application is not launched from the main thread. The user is
+        notified inside the launched application in that case.
 
         Returns:
-            tuple[bool, bool]: User wants to launch the application, and
-                user wants to work in next version of the workfile.
+            tuple[bool, bool, bool]: User was asked, user wants to launch
+                the application, and user wants to work in next version
+                of the workfile.
 
         """
-        script_path = os.path.join(
-            AYON_CORE_ROOT, "scripts", "task_in_use_prompt.py"
-        )
-        workfile = None
-        if workfile_path:
-            workfile = os.path.basename(workfile_path)
-        with tempfile.NamedTemporaryFile(
-            "w", suffix=".json", delete=False
-        ) as tmp:
-            tmp_path = tmp.name
-            json.dump(
-                {
-                    "items": [item.to_data() for item in items],
-                    "workfile": workfile,
-                },
-                tmp,
+        answer = None
+        try:
+            # Qt is imported only if the user has to be asked
+            from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
+                ask_to_launch_on_task_in_use,
             )
 
-        try:
-            run_ayon_launcher_process(
-                "--skip-bootstrap",
-                script_path,
-                tmp_path,
-                add_sys_paths=True,
-                creationflags=0,
-            )
-        except Exception:
-            # Answer of the user is used if it was stored, even if
-            #   the process did not end correctly
-            self.log.warning(
-                "Task in-use prompt did not end correctly.", exc_info=True
-            )
-
-        result = None
-        try:
-            with open(tmp_path, "r") as stream:
-                result = json.load(stream)
+            answer = ask_to_launch_on_task_in_use(items, workfile_path)
         except Exception:
             self.log.warning(
-                "Failed to read answer of task in-use prompt.",
-                exc_info=True,
+                "Failed to show task in-use prompt.", exc_info=True
             )
-        finally:
-            os.remove(tmp_path)
 
-        answer = parse_task_in_use_prompt_answer(result)
         if answer is None:
-            self.log.warning(
-                "Task in-use prompt was not answered."
+            self.log.info(
+                "Task in-use prompt was not shown."
                 " Launching without the confirmation."
             )
-            return True, False
-        return answer
+            return False, True, False
+        return (True, *answer)
 
     def _version_up_workfile(self, workfile_path: str) -> None:
         """Copy workfile to next version and open the copy instead.

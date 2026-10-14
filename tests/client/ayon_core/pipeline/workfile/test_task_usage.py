@@ -1276,22 +1276,3 @@ def test_sync_task_usage(monkeypatch):
     monkeypatch.setattr(task_usage, "_tracker", tracker)
     task_usage.sync_task_usage()
     assert calls == [1]
-
-
-@pytest.mark.parametrize(
-    "data, expected",
-    [
-        ({"confirmed": True, "version_up": True}, (True, True)),
-        ({"confirmed": True, "version_up": False}, (True, False)),
-        ({"confirmed": True}, (True, False)),
-        ({"confirmed": False, "version_up": False}, (False, False)),
-        # Version up without confirmation does not make sense
-        ({"confirmed": False, "version_up": True}, (False, False)),
-        # Data passed to the prompt, the prompt was not answered
-        ({"items": [], "workfile": "sh010_anim_v001.ma"}, None),
-        (None, None),
-        ([], None),
-    ]
-)
-def test_parse_task_in_use_prompt_answer(data, expected):
-    assert task_usage.parse_task_in_use_prompt_answer(data) == expected
