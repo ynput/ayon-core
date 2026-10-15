@@ -32,7 +32,7 @@ from .env_tools import env_value_to_bool
 
 
 # Oldest 'structlog' version this module works with, it uses some of its
-#   non-public names, e.g. 'structlog.dev._colorful_styles'
+#   non-public names, e.g. 'structlog.dev._plain_styles'
 MIN_STRUCTLOG_VERSION = (25, 5)
 
 
@@ -896,7 +896,10 @@ def _get_console_exception_formatter(colors: bool) -> ExceptionRenderer:
 
 if structlog is not None:
     class _LevelColumnFormatter(structlog.dev.LogLevelColumnFormatter):
-        """Format a log level without padding, e.g. '[debug]'."""
+        """Format a log level with styled brackets, e.g. '[debug]'.
+
+        Unlike structlog the brackets have the style of the level too.
+        """
 
         def __call__(self, key: str, value: object) -> str:
             level = str(value)
@@ -905,7 +908,8 @@ if structlog is not None:
                 if self.level_styles is None
                 else self.level_styles.get(level, "")
             )
-            return f"[{style}{level}{self.reset_style}]"
+            reset = self.reset_style if style else ""
+            return f"{style}[{level:<{self.width}}]{reset}"
 
     def _hide_column(key: str, value: object) -> str:
         """Column formatter hiding the value, see '_ConsoleRenderer'."""
@@ -946,20 +950,39 @@ if structlog is not None:
             self._show_logger_name = show_logger_name
             super().__init__(*args, **kwargs)
 
-        _COLORFUL_STYLES = structlog.dev._colorful_styles
         _PLAIN_STYLES = structlog.dev._plain_styles
         # ANSI 256-color styles of log levels, 'exception' is logged
-        #   as error
+        #   as error. Muted colors matching the terminal output of AYON
+        #   before structlog, readable on dark backgrounds
         _LEVEL_STYLES = {
-            "critical": "\x1b[38;5;196m",  # red
-            "exception": "\x1b[38;5;208m",  # orange
-            "error": "\x1b[38;5;208m",  # orange
-            "warn": "\x1b[38;5;220m",  # yellow
-            "warning": "\x1b[38;5;220m",  # yellow
-            "info": "\x1b[38;5;33m",  # blue
-            "debug": "\x1b[38;5;245m",  # grey
+            "critical": "\x1b[38;5;202m",  # orangered2
+            "exception": "\x1b[38;5;209m",  # salmon1
+            "error": "\x1b[38;5;209m",  # salmon1
+            "warn": "\x1b[38;5;178m",  # goldenrod
+            "warning": "\x1b[38;5;178m",  # goldenrod
+            "info": "\x1b[38;5;110m",  # lightskyblue3
+            "debug": "\x1b[38;5;244m",  # grey
             "notset": "",
         }
+
+        # Muted colors replacing structlog's default blue and magenta
+        #   which are harsh on dark backgrounds, keys keep cyan of the
+        #   terminal theme
+        _COLORFUL_STYLES = structlog.dev.ColumnStyles(
+            reset="\x1b[0m",
+            bright="\x1b[1m",
+            level_critical=_LEVEL_STYLES["critical"],
+            level_exception=_LEVEL_STYLES["exception"],
+            level_error=_LEVEL_STYLES["error"],
+            level_warn=_LEVEL_STYLES["warning"],
+            level_info=_LEVEL_STYLES["info"],
+            level_debug=_LEVEL_STYLES["debug"],
+            level_notset="",
+            timestamp="\x1b[38;5;242m",  # dark grey
+            logger_name="\x1b[38;5;79m",  # aquamarine3
+            kv_key="\x1b[36m",  # cyan of the terminal theme
+            kv_value="\x1b[38;5;222m",  # lightgoldenrod2
+        )
 
         @classmethod
         def get_default_column_styles(cls, colors, force_colors=False):
@@ -991,8 +1014,7 @@ if structlog is not None:
                 ):
                     column = structlog.dev.Column(column.key, _hide_column)
                 elif (
-                    self._compact_level
-                    and column.key == "level"
+                    column.key == "level"
                     and isinstance(
                         formatter, structlog.dev.LogLevelColumnFormatter
                     )
@@ -1002,7 +1024,7 @@ if structlog is not None:
                         _LevelColumnFormatter(
                             formatter.level_styles,
                             reset_style=formatter.reset_style,
-                            width=0,
+                            width=0 if self._compact_level else None,
                         ),
                     )
                 columns.append(column)
