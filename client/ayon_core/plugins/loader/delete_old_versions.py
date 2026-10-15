@@ -89,7 +89,8 @@ class DeleteOldVersions(LoaderActionPlugin):
                 },
                 icon=MaterialSymbolsIcon("delete_sweep", color="#d8d8d8"),
             ))
-        if actions.get("calculate_versions_size", True):
+
+        if actions["calculate_versions_size"]:
             output.append(LoaderActionItem(
                 label="Calculate Versions size",
                 order=34,
