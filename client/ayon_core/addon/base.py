@@ -929,6 +929,7 @@ class AddonsManager:
                     f" Got 'str' expected 'list[str]'."
                 )
 
+            # TODO remove when the addons stop using LoaderPlugin for actions
             if method_name == "get_load_plugin_paths":
                 host_name = next(iter(args))
                 if not host_name:
