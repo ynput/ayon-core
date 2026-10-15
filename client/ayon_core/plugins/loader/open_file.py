@@ -268,7 +268,8 @@ class OpenFileAction(LoaderActionPlugin):
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         settings = selection.get_project_settings()
-        actions_settings = settings["core"]["tools"]["loader"].get("actions", {})
+        actions_settings = settings["core"]["tools"]["loader"].get(
+            "actions", {})
         if not actions_settings.get("open_file", True):
             return []
         repres = []

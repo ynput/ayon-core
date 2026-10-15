@@ -40,7 +40,8 @@ class DeleteOldVersions(LoaderActionPlugin):
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         settings = selection.get_project_settings()
-        actions_settings = settings["core"]["tools"]["loader"].get("actions", {})
+        actions_settings = settings["core"]["tools"]["loader"].get(
+            "actions", {})
 
         if not any(
             actions_settings.setdefault(key, True)
@@ -66,7 +67,7 @@ class DeleteOldVersions(LoaderActionPlugin):
         }
 
         output = []
-        if actions["delete_old_versions"]:
+        if actions_settings["delete_old_versions"]:
             output.append(LoaderActionItem(
                 group_label="Delete Versions",
                 label="Old versions",
@@ -78,7 +79,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                 icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
             ))
 
-        if actions["delete_selected_versions"]:
+        if actions_settings["delete_selected_versions"]:
             output.append(LoaderActionItem(
                 group_label="Delete Versions",
                 label="Selected versions",
@@ -90,7 +91,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                 icon=MaterialSymbolsIcon("delete_sweep", color="#d8d8d8"),
             ))
 
-        if actions["calculate_versions_size"]:
+        if actions_settings["calculate_versions_size"]:
             output.append(LoaderActionItem(
                 label="Calculate Versions size",
                 order=34,

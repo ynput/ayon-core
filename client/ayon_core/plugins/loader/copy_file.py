@@ -21,7 +21,8 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         settings = selection.get_project_settings()
-        actions_settings = settings["core"]["tools"]["loader"].get("actions", {})
+        actions_settings = settings["core"]["tools"]["loader"].get(
+            "actions", {})
 
         if not any(
             actions_settings.setdefault(key, True)
@@ -67,7 +68,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                         )
                     )
                 )
-             if actions_settings["copy_file"]:
+            if actions_settings["copy_file"]:
                 output.append(
                     LoaderActionItem(
                         label=repre_name,

@@ -21,10 +21,10 @@ from ayon_core.pipeline.template_data import get_template_data
 
 from ayon_core.pipeline.actions import (
     LoaderActionItem,
-    LoaderActionSelection,
+    LoaderActionPlugin,
     LoaderActionResult,
+    LoaderActionSelection,
 )
-from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
 class HeroCreationError(Exception):
@@ -81,7 +81,8 @@ class CreateHeroVersion(LoaderActionPlugin):
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         settings = selection.get_project_settings()
-        actions_settings = settings["core"]["tools"]["loader"].get("actions", {})
+        actions_settings = settings["core"]["tools"]["loader"].get(
+            "actions", {})
         if not actions_settings.get("create_hero_version", True):
             return []
         # Do not show in hosts
