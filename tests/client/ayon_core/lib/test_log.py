@@ -237,8 +237,8 @@ def test_console_formatter_ignores_mutated_record_msg(
     log_module, monkeypatch, foreign_handler
 ):
     """Other handlers may replace 'record.msg', e.g. pyblish does."""
-    # Key values are shown only with DEBUG level
-    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    # Key values are shown only by structlog layout
+    monkeypatch.setenv("AYON_LOG_CONSOLE_STYLE", "structlog")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.mutated")
     handler = next(
@@ -352,22 +352,29 @@ def test_console_level_colors(log_module, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "env, info, warning, key_values",
+    "env, info, warning, logger_shown, key_values",
     [
-        # Key values are shown only with DEBUG level
-        ({}, r"\[info\]", r"\[warning\]", ""),
-        ({"AYON_LOG_LEVEL": "DEBUG"}, r"\[info\]", r"\[warning\]", " key=1"),
+        # Key values are never shown, logger name only with DEBUG level
+        ({}, r"\[info\]", r"\[warning\]", False, ""),
+        (
+            {"AYON_LOG_LEVEL": "DEBUG"},
+            r"\[info\]",
+            r"\[warning\]",
+            True,
+            "",
+        ),
         # Default structlog layout
         (
             {"AYON_LOG_CONSOLE_STYLE": "structlog"},
             r"\[info {5}\]",
             r"\[warning {2}\]",
+            True,
             " key=1",
         ),
     ],
 )
 def test_console_layout(
-    log_module, monkeypatch, env, info, warning, key_values
+    log_module, monkeypatch, env, info, warning, logger_shown, key_values
 ):
     monkeypatch.setenv("NO_COLOR", "1")
     for key, value in env.items():
@@ -380,14 +387,99 @@ def test_console_layout(
     logging.getLogger("ayon_core.tests.layout_foreign").warning("Foreign")
 
     structlog_line, foreign_line = stream.getvalue().splitlines()
+    structlog_logger = r" +\[\S*ayon_core\.tests\.layout\]"
+    foreign_logger = r" +\[ayon_core\.tests\.layout_foreign\]"
+    if not logger_shown:
+        structlog_logger = foreign_logger = ""
     assert re.search(
-        rf"{info} Message +\[\S*ayon_core\.tests\.layout\]{key_values}$",
+        rf"{info} Message{structlog_logger}{key_values}$",
         structlog_line,
     ), structlog_line
     assert re.search(
-        rf"{warning} Foreign +\[ayon_core\.tests\.layout_foreign\]$",
+        rf"{warning} Foreign{foreign_logger}$",
         foreign_line,
     ), foreign_line
+
+
+@pytest.mark.parametrize(
+    "template, fields, expected",
+    [
+        ("Loaded {product}", {"product": "modelMain"}, "Loaded modelMain"),
+        # Tokens without a field are kept
+        ("Loaded {product} {missing}", {"product": "a"}, "Loaded a {missing}"),
+        # Fields not used in the template are ignored
+        ("Done", {"unused": 1}, "Done"),
+        ("{version:03d}", {"version": 3}, "003"),
+        # Value not matching format spec is rendered by 'str'
+        ("{version:03d} {name}", {"version": "v3", "name": "a"}, "v3 a"),
+        # Missing field is kept with its conversion and format spec
+        ("{missing!r:>5} {name}", {"name": "a"}, "{missing!r:>5} a"),
+        ("[{name:>5}][{name:<5}]", {"name": "ab"}, "[   ab][ab   ]"),
+        ("{name!r} {name!s} {name!a}", {"name": "é"}, "'é' é '\\xe9'"),
+        ("{{name}} {name}", {"name": "ab"}, "{name} ab"),
+        # Only fields looked up by name are rendered
+        (
+            "{0} {} {name.upper} {data[key]} {name}",
+            {"name": "ab", "data": {"key": 1}},
+            "{0} {} {name.upper} {data[key]} ab",
+        ),
+        # Not valid format strings, kept as they are
+        ("Unclosed {name", {"name": "ab"}, "Unclosed {name"),
+        ("Single } {name}", {"name": "ab"}, "Single } {name}"),
+        # Without fields escaped braces are kept
+        ("{{literal}}", {}, "{{literal}}"),
+    ],
+)
+def test_render_message_template(log_module, template, fields, expected):
+    module = log_module(initialize=False)
+
+    assert module.render_message_template(template, fields) == expected
+
+
+def test_message_template(log_module, monkeypatch, foreign_handler):
+    """Message is rendered from template, JSON keeps the template."""
+    monkeypatch.setenv("NO_COLOR", "1")
+    module = log_module()
+    stream = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", stream)
+    log = module.Logger.get_logger("ayon_core.tests.template")
+
+    log.info(
+        "Published {product} v{version:03d} {missing}",
+        product="modelMain",
+        version=3,
+    )
+    # Not templates
+    log.info("Plain {{braces}}")
+    log.info("Loaded %s {product}", "a", product="b")
+
+    assert foreign_handler.messages == [
+        "Published modelMain v003 {missing}",
+        "Plain {{braces}}",
+        "Loaded a {product}",
+    ]
+    lines = stream.getvalue().splitlines()
+    assert lines[0].endswith("[info] Published modelMain v003 {missing}")
+    assert "message_template" not in stream.getvalue()
+
+    json_formatter = module._EventDictProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.processors.JSONRenderer(),
+        ],
+    )
+    payloads = [
+        json.loads(json_formatter.format(record))
+        for record in foreign_handler.records
+    ]
+    assert payloads[0]["event"] == "Published modelMain v003 {missing}"
+    assert payloads[0]["message_template"] == (
+        "Published {product} v{version:03d} {missing}"
+    )
+    assert payloads[0]["product"] == "modelMain"
+    assert payloads[0]["version"] == 3
+    assert "message_template" not in payloads[1]
+    assert "message_template" not in payloads[2]
 
 
 def test_console_span_message_has_duration(
@@ -973,6 +1065,8 @@ def test_span_decorator(log_module, monkeypatch, foreign_handler):
 
 
 def test_span_ids_hidden_in_console(log_module, monkeypatch):
+    # Key values are shown only by structlog layout
+    monkeypatch.setenv("AYON_LOG_CONSOLE_STYLE", "structlog")
     monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
     module = log_module()
     stream = io.StringIO()
@@ -1038,8 +1132,8 @@ def test_process_context_in_records_of_all_threads(
 
 
 def test_process_context_not_in_console(log_module, monkeypatch):
-    # Other key values are shown only with DEBUG level
-    monkeypatch.setenv("AYON_LOG_LEVEL", "DEBUG")
+    # Other key values are shown only by structlog layout
+    monkeypatch.setenv("AYON_LOG_CONSOLE_STYLE", "structlog")
     module = log_module()
     log = module.Logger.get_logger("ayon_core.tests.process_console")
     stream = _capture_stderr(monkeypatch)

@@ -29,9 +29,14 @@ from ayon_core.lib import Logger, log_span
 
 log = Logger.get_logger(__name__)
 
-# Variable data belong to fields, message stays the same
-log.info("Product published", product=product_name, version=version)
-# '%s' style arguments are supported too
+# Message template, fields are rendered into the message
+#   'Published modelMain v003', template is kept in 'message_template' field
+log.info(
+    "Published {product} v{version:03d}",
+    product=product_name,
+    version=version,
+)
+# '%s' style arguments are supported too, the message is not a template then
 log.info("Loaded %s", product_name)
 
 # Measure a block of code, logged as one record when the block ends
@@ -46,6 +51,21 @@ def load_activities():
 ```
 - Records of plain `logging` loggers are handled as well, without additional fields.
 
+### Message templates
+Message is a [Python format string](https://docs.python.org/3/library/string.html#format-string-syntax) with named fields, rendered with fields of the record. Log file and Vector contain the rendered message in `event`, the template in `message_template` and all fields, so records of the same message can be grouped (similar to [Serilog message templates](https://messagetemplates.org)).
+- `{name}` - value of field `name`. Any field of the record can be used, also context fields.
+- `{name:spec}` - value formatted by [format spec](https://docs.python.org/3/library/string.html#formatspec), e.g. `{duration:.2f}`, `{name:>10}`.
+- `{name!r}`, `{name!s}`, `{name!a}` - `repr`, `str` or `ascii` of the value.
+- `{{` and `}}` - literal braces.
+
+Unlike `str.format`, rendering never raises and each field is handled on its own:
+- Field without a value is kept as written, e.g. `{missing:03d}`. Fields not used by the template are only in log file and Vector.
+- Value not matching its format spec is rendered by `str`.
+- Only fields looked up by name are rendered, positional (`{}`, `{0}`), attribute (`{obj.name}`) and index (`{data[key]}`) fields are kept as written.
+- Message without any field, or not valid format string (e.g. `Unclosed {`), is not a template and is kept as it is.
+
+Templates are parsed once and cached. Prefer templates (or `%s` arguments) over f-strings: a disabled log level skips the call before formatting, while an f-string is always formatted, e.g. `log.debug(f"Data {anatomy_data}")` formats the whole dictionary even when DEBUG is disabled. An f-string message also has no `message_template` and no fields for grouping.
+
 
 ### Outputs
 There are three outputs, additive to each other:
@@ -54,7 +74,8 @@ There are three outputs, additive to each other:
 3. **Vector** - JSON records sent to a [Vector](https://vector.dev) HTTP source, enabled by setting `AYON_VECTOR_LOG_URL`.
 
 
-- Additional fields (`key=value`) are shown only with `DEBUG` log level. Log file and Vector always contain all fields.
+- Only the message is shown, additional fields (`key=value`) are not. Use message template to show them. Log file and Vector always contain all fields.
+- Logger name is shown only with `DEBUG` log level.
 - Message of spans contains their duration, e.g. `launcher.bootstrap (duration 3.65s)`. Log file and Vector keep the span name as `event` and the duration in `duration_ms`.
 - Context fields (`site_id`, `session_id`, `trace_id`, `span_id`, `parent_span_id` and process context) are never shown in console.
 - Timestamps are in local time. Log file and Vector use ISO 8601 in UTC.
@@ -64,7 +85,7 @@ There are three outputs, additive to each other:
 | --- | --- | --- |
 | `AYON_LOG_LEVEL` | Log level of all outputs, a name (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) or a number (`10`). | `INFO`, or `DEBUG` when `AYON_DEBUG` is `1` |
 | `AYON_LOG_CONSOLE` | `1` always adds console handler, `0` never adds it. | added when root logger has no handlers |
-| `AYON_LOG_CONSOLE_STYLE` | `ayon` - compact layout `structlog` - default structlog layout with padded log level and all fields always shown. | `ayon` |
+| `AYON_LOG_CONSOLE_STYLE` | `ayon` - compact layout, `structlog` - default structlog layout with padded log level, logger name and all fields always shown. | `ayon` |
 | `AYON_LOG_CONSOLE_TIME_FORMAT` | [strftime](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes) format of console timestamps, e.g. `%H:%M:%S.%f`. Invalid format falls back to the default. | `%Y/%m/%d %H:%M:%S` |
 | `AYON_LOG_TO_FILE` | Write logs to a file when set to `1`. | - |
 | `AYON_LOG_RETENTION_DAYS` | Days after which old log files are removed, at least `1`. | `3` |

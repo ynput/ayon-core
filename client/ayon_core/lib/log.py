@@ -17,6 +17,7 @@ import os
 import platform
 import secrets
 import socket
+import string
 import sys
 import time
 import threading
@@ -119,6 +120,133 @@ def _render_for_stdlib(
         # Let foreign handlers show the traceback too
         kwargs["exc_info"] = exc_info
     return (str(event_dict.get("event", "")),), kwargs
+
+
+# Field of JSON records holding the message template, see
+#   'render_message_template'
+MESSAGE_TEMPLATE_KEY = "message_template"
+# Parser of Python format strings, used for message templates
+_TEMPLATE_PARSER = string.Formatter()
+
+
+@functools.lru_cache(maxsize=1024)
+def _parse_message_template(
+    message: str,
+) -> tuple[tuple[str, str | None, str | None, str | None], ...] | None:
+    """Parse message as Python format string.
+
+    Parsed templates are cached, messages logged repeatedly are parsed
+    only once.
+
+    Args:
+        message (str): Message of a log record.
+
+    Returns:
+        Optional[tuple]: Items of 'string.Formatter.parse', 'None' when
+            the message is not a template, i.e. has no replacement
+            field or is not a valid format string, e.g. 'Unclosed {'.
+
+    """
+    try:
+        parsed = tuple(_TEMPLATE_PARSER.parse(message))
+    except ValueError:
+        return None
+    if all(field_name is None for _, field_name, _, _ in parsed):
+        return None
+    return parsed
+
+
+def _get_message_template(
+    message: Any,
+) -> tuple[tuple[str, str | None, str | None, str | None], ...] | None:
+    """Parsed message template, 'None' if 'message' is not a template."""
+    if not isinstance(message, str) or "{" not in message:
+        return None
+    return _parse_message_template(message)
+
+
+def render_message_template(
+    template: str, fields: Mapping[str, Any]
+) -> str:
+    """Render a message template with values of fields.
+
+    Template uses Python format string syntax with named fields, e.g.
+    'Published {product} v{version:03d}'. Conversions ('{name!r}') and
+    format specs ('{name:>10}') are supported, '{{' and '}}' are literal
+    braces.
+
+    Unlike 'str.format', rendering never raises and each field is handled
+    on its own:
+        - Field without a value is kept as written, e.g. '{missing:03d}'.
+        - Positional ('{}', '{0}'), attribute ('{obj.name}') and index
+            ('{data[key]}') fields are kept as written, values are only
+            looked up by name.
+        - Value not matching its format spec is rendered by 'str'.
+        - Message which is not a valid format string, e.g. 'Unclosed {',
+            is returned unchanged.
+
+    Args:
+        template (str): Message template, e.g. 'Loaded {product}'.
+        fields (Mapping[str, Any]): Values of fields.
+
+    Returns:
+        str: Rendered message.
+
+    """
+    parsed = _get_message_template(template)
+    if parsed is None:
+        return template
+
+    parts = []
+    for literal, field_name, format_spec, conversion in parsed:
+        parts.append(literal)
+        if field_name is None:
+            continue
+        if field_name not in fields:
+            token = "{" + field_name
+            if conversion:
+                token += "!" + conversion
+            if format_spec:
+                token += ":" + format_spec
+            parts.append(token + "}")
+            continue
+        value = fields[field_name]
+        try:
+            if conversion == "r":
+                value = repr(value)
+            elif conversion == "s":
+                value = str(value)
+            elif conversion == "a":
+                value = ascii(value)
+            parts.append(format(value, format_spec or ""))
+        except Exception:
+            try:
+                parts.append(str(value))
+            except Exception:
+                parts.append("{" + field_name + "}")
+    return "".join(parts)
+
+
+def _render_message(logger, method_name, event_dict):
+    """Processor rendering the message template of the event.
+
+    E.g. 'log.info("Loaded {product}", product="modelMain")' has message
+    'Loaded modelMain', field 'product' and the template in field
+    'MESSAGE_TEMPLATE_KEY', so records of the same message can be grouped.
+    Message which is not a template is kept as it is, also its escaped
+    braces.
+
+    Messages with '%s' style arguments are not handled as templates.
+    """
+    template = event_dict.get("event")
+    if (
+        event_dict.get("positional_args")
+        or _get_message_template(template) is None
+    ):
+        return event_dict
+    event_dict["event"] = render_message_template(template, event_dict)
+    event_dict[MESSAGE_TEMPLATE_KEY] = template
+    return event_dict
 
 
 # Levels of logging methods of structlog loggers, see
@@ -341,10 +469,11 @@ def get_console_style_from_env() -> str:
     """Resolve console layout from environment variables.
 
     'AYON_LOG_CONSOLE_STYLE' accepts:
-        - 'ayon' (default) - log level without padding, e.g. '[info]', and
-            'key=value' fields of records shown only with DEBUG log level.
-        - 'structlog' - default structlog layout, padded log level and
-            'key=value' fields always shown.
+        - 'ayon' (default) - log level without padding, e.g. '[info]',
+            'key=value' fields of records never shown and logger name
+            shown only with DEBUG log level.
+        - 'structlog' - default structlog layout, padded log level,
+            logger name and 'key=value' fields always shown.
 
     Invalid value is handled as 'ayon'.
 
@@ -778,7 +907,7 @@ if structlog is not None:
             )
             return f"[{style}{level}{self.reset_style}]"
 
-    def _hide_key_value(key: str, value: object) -> str:
+    def _hide_column(key: str, value: object) -> str:
         """Column formatter hiding the value, see '_ConsoleRenderer'."""
         return ""
 
@@ -796,6 +925,7 @@ if structlog is not None:
                 instead of '[info     ]'.
             show_key_values (bool): Show additional fields of the event
                 as 'key=value' pairs.
+            show_logger_name (bool): Show name of the logger.
             *args (Any): Arguments of 'ConsoleRenderer'.
             **kwargs (Any): Keyword arguments of 'ConsoleRenderer'.
 
@@ -806,12 +936,14 @@ if structlog is not None:
             *args: Any,
             compact_level: bool = False,
             show_key_values: bool = True,
+            show_logger_name: bool = True,
             **kwargs: Any,
         ) -> None:
             # Used by '_configure_columns' called in '__init__' of base
             #   class
             self._compact_level = compact_level
             self._show_key_values = show_key_values
+            self._show_logger_name = show_logger_name
             super().__init__(*args, **kwargs)
 
         _COLORFUL_STYLES = structlog.dev._colorful_styles
@@ -848,15 +980,22 @@ if structlog is not None:
             if not self._show_key_values:
                 # Fields without own column, exceptions are rendered
                 #   separately
-                self._default_column_formatter = _hide_key_value
-            if not self._compact_level:
-                return
+                self._default_column_formatter = _hide_column
 
             columns = []
             for column in self._columns:
                 formatter = column.formatter
-                if column.key == "level" and isinstance(
-                    formatter, structlog.dev.LogLevelColumnFormatter
+                if (
+                    not self._show_logger_name
+                    and column.key in ("logger", "logger_name")
+                ):
+                    column = structlog.dev.Column(column.key, _hide_column)
+                elif (
+                    self._compact_level
+                    and column.key == "level"
+                    and isinstance(
+                        formatter, structlog.dev.LogLevelColumnFormatter
+                    )
                 ):
                     column = structlog.dev.Column(
                         column.key,
@@ -1396,6 +1535,7 @@ class Logger:
                 "trace_id",
                 "span_id",
                 "parent_span_id",
+                MESSAGE_TEMPLATE_KEY,
             ):
                 event_dict.pop(key, None)
             # Same for each record of the process, values passed
@@ -1445,6 +1585,11 @@ class Logger:
                 )
                 return event_dict
 
+        def _format_message(logger, method_name, event_dict):
+            # Message template, or '%s' style arguments
+            event_dict = _render_message(logger, method_name, event_dict)
+            return _format_positional_args(logger, method_name, event_dict)
+
         shared_processors: list[Callable] = [
             structlog.contextvars.merge_contextvars,
             _add_process_context,
@@ -1458,11 +1603,12 @@ class Logger:
 
         structlog.configure(
             processors=shared_processors + [
-                # Support '%s' style arguments, e.g.
-                #   'log.info("Loaded %s", name)'. Records from plain
-                #   stdlib loggers are already formatted by
+                # Support message templates, e.g.
+                #   'log.info("Loaded {name}", name=name)', and '%s' style
+                #   arguments, e.g. 'log.info("Loaded %s", name)'. Records
+                #   from plain stdlib loggers are already formatted by
                 #   'ProcessorFormatter' via 'record.getMessage()'.
-                _format_positional_args,
+                _format_message,
                 # Hand over to standard logging, rendered by formatters
                 _render_for_stdlib,
             ],
@@ -1481,7 +1627,10 @@ class Logger:
         ayon_console_style = (
             get_console_style_from_env() == CONSOLE_STYLE_AYON
         )
-        show_key_values = (
+        # AYON layout shows only the message, fields are in log file and
+        #   Vector. Logger name is shown only for debugging.
+        show_key_values = not ayon_console_style
+        show_logger_name = (
             not ayon_console_style
             or get_log_level_from_env() <= logging.DEBUG
         )
@@ -1501,6 +1650,7 @@ class Logger:
                         ),
                         compact_level=ayon_console_style,
                         show_key_values=show_key_values,
+                        show_logger_name=show_logger_name,
                     ),
                 ],
             )
