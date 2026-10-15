@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import time
 import collections
 import atexit
@@ -19,6 +20,7 @@ from ayon_core.lib import (
     is_staging_enabled,
     is_running_from_build,
 )
+from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
     ITrayAddon,
@@ -29,6 +31,7 @@ from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
 )
+from ayon_core.tools.common_models import WSEventsModel
 from ayon_core.tools.tray.lib import (
     set_tray_server_url,
     remove_tray_server_url,
@@ -52,6 +55,9 @@ class TrayManager:
 
     Load submenus, actions, separators and addons into tray's context.
     """
+    # Delay of notification about lost connection to server (in ms)
+    connection_lost_notification_delay = 60 * 1000
+
     def __init__(self, tray_widget, main_window):
         self.tray_widget = tray_widget
         self.main_window = main_window
@@ -80,6 +86,32 @@ class TrayManager:
 
         main_thread_timer.timeout.connect(self._main_thread_execution)
         update_check_timer.timeout.connect(self._on_update_check_timer)
+
+        # Server events (connection state, bundle changes) received
+        #   via websocket, processed in '_main_thread_execution'
+        self._event_system = QueuedEventSystem()
+        self._ws_events_model = WSEventsModel(self)
+        # Connection was lost (icon is blinking)
+        self._connection_lost = False
+        # User was notified about lost connection with tray message
+        self._connection_lost_notified = False
+        # Show notification only if connection is not restored in time,
+        #   short outages (e.g. server restart) only change the icon
+        connection_lost_timer = QtCore.QTimer()
+        connection_lost_timer.setSingleShot(True)
+        connection_lost_timer.setInterval(
+            self.connection_lost_notification_delay
+        )
+        connection_lost_timer.timeout.connect(
+            self._on_connection_lost_timer
+        )
+        self._connection_lost_timer = connection_lost_timer
+        # Single bundle change can trigger multiple events in short time
+        bundle_validation_timer = QtCore.QTimer()
+        bundle_validation_timer.setSingleShot(True)
+        bundle_validation_timer.setInterval(1000)
+        bundle_validation_timer.timeout.connect(self._validate_bundle)
+        self._bundle_validation_timer = bundle_validation_timer
 
         self._addons_manager = TrayAddonsManager(self)
         self._host_listener = HostListener(self._addons_manager, self)
@@ -116,6 +148,15 @@ class TrayManager:
 
     def is_closing(self):
         return self._closing
+
+    def emit_event(self, topic, data=None, source=None):
+        """Emit event, used by 'WSEventsModel' for connection events."""
+        if data is None:
+            data = {}
+        self._event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback):
+        self._event_system.add_callback(topic, callback)
 
     @property
     def doubleclick_callback(self):
@@ -225,6 +266,7 @@ class TrayManager:
         # Print time report
         self._addons_manager.print_report()
 
+        self._init_server_events()
         self._main_thread_timer.start()
 
         if self._update_check_interval > 0:
@@ -373,9 +415,9 @@ class TrayManager:
             )
 
         if icon == "information":
-            icon = QtWidgets.QSystemTrayIconInformation
+            icon = QtWidgets.QSystemTrayIcon.Information
         elif icon == "warning":
-            icon = QtWidgets.QSystemTrayIconWarning
+            icon = QtWidgets.QSystemTrayIcon.Warning
         elif icon == "critical":
             icon = QtWidgets.QSystemTrayIcon.Critical
         else:
@@ -386,24 +428,96 @@ class TrayManager:
         )
         return json_response({"success": True})
 
+    def _init_server_events(self):
+        """Listen to AYON server events.
+
+        Connection state and authentication are watched by event hub, so
+            the tray does not have to poll the server. Bundle events
+            trigger validation of the bundle used by the tray.
+        """
+        self.register_event_callback(
+            "ayon.connection.opened", self._on_server_connection_opened
+        )
+        self.register_event_callback(
+            "ayon.connection.closed", self._on_server_connection_closed
+        )
+        self.register_event_callback(
+            "ayon.auth.failed", self._on_server_auth_failed
+        )
+        # - 'bundle.created', 'bundle.updated', 'bundle.status_changed'
+        self._ws_events_model.register_ayon_event_callback(
+            "bundle.*", self._on_bundle_event
+        )
+        self._ws_events_model.process_events()
+
+    def _on_server_connection_opened(self):
+        if not self._connection_lost:
+            return
+        self._connection_lost = False
+        self._connection_lost_timer.stop()
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_OK
+        )
+        # Tell user about restored connection only if was told it was lost
+        if self._connection_lost_notified:
+            self._connection_lost_notified = False
+            self.show_tray_message(
+                "AYON server connection restored",
+                "Connection to AYON server was restored.",
+            )
+        # Bundles might have changed while the server was not available
+        self._bundle_validation_timer.start()
+
+    def _on_server_connection_closed(self):
+        if self._connection_lost:
+            return
+        self._connection_lost = True
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_LOST
+        )
+        self._connection_lost_timer.start()
+
+    def _on_connection_lost_timer(self):
+        if not self._connection_lost or self._closing:
+            return
+        self.tray_widget.set_connection_status(
+            SystemTrayIcon.CONNECTION_LOST_LONG
+        )
+        self._connection_lost_notified = True
+        self.show_tray_message(
+            "AYON server connection lost",
+            "Connection to AYON server was lost. Waiting for reconnection.",
+            QtWidgets.QSystemTrayIcon.Warning,
+        )
+
+    def _on_server_auth_failed(self):
+        self._revalidate_ayon_auth()
+
+    def _on_bundle_event(self, event):
+        self.log.debug(
+            f"Bundle event '{event.topic}' received, validating bundle."
+        )
+        self._bundle_validation_timer.start()
+
     def _on_update_check_timer(self):
+        self._validate_bundle()
+
+    def _validate_bundle(self):
+        """Check if bundle used by tray is still production/staging bundle.
+
+        Connection and authentication issues are handled by server events,
+            so the validation is skipped when server is not available.
+        """
+        if self._closing or is_dev_mode_enabled():
+            return
+
+        if self._ws_events_model.get_connection_state() is False:
+            return
+
         try:
             bundles = ayon_api.get_bundles()
-            user = ayon_api.get_user()
-            # This is a workaround for bug in ayon-python-api
-            if user.get("code") == 401:
-                raise Exception("Unauthorized")
         except Exception:
-            self._revalidate_ayon_auth()
-            if self._closing:
-                return
-
-            try:
-                bundles = ayon_api.get_bundles()
-            except Exception:
-                return
-
-        if is_dev_mode_enabled():
+            self.log.debug("Failed to get bundles.", exc_info=True)
             return
 
         bundle_type = (
@@ -466,13 +580,19 @@ class TrayManager:
             if self._execution_in_progress:
                 return
             self._execution_in_progress = True
+            try:
+                self._ws_events_model.process_events()
+            except Exception:
+                self.log.error(
+                    "Failed to process server events", exc_info=True
+                )
             for _ in range(len(self._main_thread_callbacks)):
                 if self._main_thread_callbacks:
                     item = self._main_thread_callbacks.popleft()
                     try:
                         item.execute()
                     except BaseException:
-                        self.log.erorr(
+                        self.log.error(
                             "Main thread execution failed", exc_info=True
                         )
 
@@ -627,22 +747,62 @@ class TrayManager:
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     """Tray widget.
 
+    Mouse behavior (Windows and Linux):
+        - Left click: show tray menu (delayed by system double-click
+            interval so it can be distinguished from double-click).
+        - Double click: execute double-click callback (e.g. launcher).
+        - Right click: show tray menu (handled by Qt).
+
     :param parent: Main widget that cares about all GUIs
     :type parent: QtWidgets.QMainWindow
     """
 
-    doubleclick_time_ms = 100
+    # Fallback values (in ms) if the system value is not available
+    default_doubleclick_time_ms = 400
+
+    # Connection status shown in icon
+    # - connected: no dot
+    # - lost: icon fading in/out (connection may be restored soon)
+    # - lost long: solid red dot
+    CONNECTION_OK = "ok"
+    CONNECTION_LOST = "lost"
+    CONNECTION_LOST_LONG = "lost_long"
+    # Duration of one fade in/out cycle
+    blink_cycle_ms = 800
+    # Lowest opacity of the icon during blinking
+    blink_min_opacity = 0.5
+    # Number of icon frames per cycle (icon is updated for each frame)
+    blink_frames = 20
 
     def __init__(self, parent):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
 
         super().__init__(icon, parent)
 
+        self._icon = icon
+        self._dot_icons = {}
+        self._faded_icons = {}
+        self._connection_status = self.CONNECTION_OK
+        self._blink_frame = 0
+
+        blink_timer = QtCore.QTimer()
+        blink_timer.setInterval(
+            max(1, self.blink_cycle_ms // self.blink_frames)
+        )
+        blink_timer.timeout.connect(self._on_blink_timer)
+        self._blink_timer = blink_timer
         self._exited = False
 
-        self._doubleclick = False
         self._click_pos = None
         self._initializing_addons = False
+        # Timestamps used to filter out unwanted clicks
+        self._menu_hidden_at = 0.0
+        self._ignore_trigger_until = 0.0
+
+        doubleclick_time_ms = QtWidgets.QApplication.doubleClickInterval()
+        if not doubleclick_time_ms or doubleclick_time_ms <= 0:
+            doubleclick_time_ms = self.default_doubleclick_time_ms
+        self._doubleclick_time_ms = doubleclick_time_ms
 
         # Store parent - QtWidgets.QMainWindow()
         self._parent = parent
@@ -650,31 +810,188 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Setup menu in Tray
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
+        self.menu.aboutToHide.connect(self._on_menu_about_to_hide)
 
         # Set addons
         self._tray_manager = TrayManager(self, parent)
 
         # Add menu to Context of SystemTrayIcon
+        #   - right click (Context) is handled by Qt itself
         self.setContextMenu(self.menu)
 
         atexit.register(self.exit)
 
-        # Catch activate event for left click if not on MacOS
+        self._click_timer = None
+
+        # Catch activate event for left click if not on MacOS or Wayland
         #   - MacOS has this ability by design and is harder to modify this
         #       behavior
         if platform.system().lower() == "darwin":
             return
 
+        #   - On Wayland the menu can't be placed at the cursor position,
+        #       so it would show up at a random place. The menu is shown by
+        #       the desktop environment, which sends 'Trigger' on
+        #       double-click (e.g. GNOME with AppIndicator extension).
+        if self._is_wayland():
+            self.activated.connect(self._on_wayland_activated)
+            return
+
         self.activated.connect(self.on_systray_activated)
 
-        click_timer = QtCore.QTimer()
-        click_timer.setInterval(self.doubleclick_time_ms)
+        click_timer = QtCore.QTimer(self)
+        click_timer.setSingleShot(True)
+        click_timer.setInterval(self._doubleclick_time_ms)
         click_timer.timeout.connect(self._click_timer_timeout)
 
         self._click_timer = click_timer
 
     def is_closing(self) -> bool:
         return self._tray_manager.is_closing()
+
+    def set_connection_status(self, status: str) -> None:
+        """Show connection status to server in icon.
+
+        Args:
+            status (str): One of 'CONNECTION_OK', 'CONNECTION_LOST' or
+                'CONNECTION_LOST_LONG'.
+
+        """
+        if self._connection_status == status:
+            return
+        self._connection_status = status
+        self._blink_timer.stop()
+        if status == self.CONNECTION_OK:
+            self.setIcon(self._icon)
+            self.setToolTip("")
+            return
+
+        self.setToolTip("AYON - Connection to server lost")
+        if status == self.CONNECTION_LOST:
+            self._blink_frame = 0
+            self.setIcon(self._icon)
+            self._blink_timer.start()
+        else:
+            self.setIcon(self._get_dot_icon("#e53935"))
+
+    def _on_blink_timer(self):
+        if self._connection_status != self.CONNECTION_LOST:
+            self._blink_timer.stop()
+            return
+        self._blink_frame = (self._blink_frame + 1) % self.blink_frames
+        # Cosine curve - starts fully visible, fades out and in again
+        progress = self._blink_frame / self.blink_frames
+        fade = (math.cos(progress * 2 * math.pi) + 1) * 0.5
+        min_opacity = self.blink_min_opacity
+        opacity = min_opacity + (1.0 - min_opacity) * fade
+        self.setIcon(self._get_faded_icon(opacity))
+
+    def _get_faded_icon(self, opacity: float) -> QtGui.QIcon:
+        """Tray icon with lowered opacity.
+
+        Args:
+            opacity (float): Opacity of the icon (0.0 - 1.0).
+
+        """
+        # Round opacity so the cache does not grow
+        opacity = round(opacity, 2)
+        if opacity >= 1.0:
+            return self._icon
+        icon = self._faded_icons.get(opacity)
+        if icon is not None:
+            return icon
+
+        size = 128
+        # Paint to own pixmap with device pixel ratio 1 (see
+        #   '_get_dot_icon')
+        pix = QtGui.QPixmap(size, size)
+        pix.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(pix)
+        painter.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        painter.setOpacity(opacity)
+        painter.drawPixmap(
+            QtCore.QRect(0, 0, size, size),
+            self._icon.pixmap(size, size),
+        )
+        painter.end()
+        icon = QtGui.QIcon(pix)
+        self._faded_icons[opacity] = icon
+        return icon
+
+    def _get_dot_icon(self, color: str) -> QtGui.QIcon:
+        """Tray icon with a colored dot in bottom right corner.
+
+        Args:
+            color (str): Color of the dot.
+
+        """
+        icon = self._dot_icons.get(color)
+        if icon is not None:
+            return icon
+
+        size = 128
+        # Paint to own pixmap with device pixel ratio 1. Pixmap from
+        #   'QIcon.pixmap' has device pixel ratio of the screen (e.g. 1.5
+        #   on Windows with display scaling), so painting coordinates
+        #   would not match its size and the dot would be out of bounds.
+        pix = QtGui.QPixmap(size, size)
+        pix.fill(QtCore.Qt.transparent)
+        dot_size = size * 0.45
+        dot_rect = QtCore.QRectF(
+            size - dot_size, size - dot_size, dot_size, dot_size
+        )
+        painter = QtGui.QPainter(pix)
+        painter.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        painter.drawPixmap(
+            QtCore.QRect(0, 0, size, size),
+            self._icon.pixmap(size, size),
+        )
+        outline_color = QtGui.QColor(33, 37, 43)
+        pen_width = size * 0.05
+        ellipse_rect = dot_rect.adjusted(
+            pen_width * 0.5,
+            pen_width * 0.5,
+            -pen_width * 0.5,
+            -pen_width * 0.5,
+        )
+        # Dark backing (also outline separating the dot from the logo)
+        pen = QtGui.QPen(outline_color)
+        pen.setWidthF(pen_width)
+        painter.setPen(pen)
+        painter.setBrush(outline_color)
+        painter.drawEllipse(ellipse_rect)
+
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(color))
+        painter.drawEllipse(
+            ellipse_rect.adjusted(
+                pen_width * 0.5,
+                pen_width * 0.5,
+                -pen_width * 0.5,
+                -pen_width * 0.5,
+            )
+        )
+        painter.end()
+        icon = QtGui.QIcon(pix)
+        self._dot_icons[color] = icon
+        return icon
+
+    @staticmethod
+    def _is_wayland() -> bool:
+        if platform.system().lower() != "linux":
+            return False
+        platform_name = QtGui.QGuiApplication.platformName().lower()
+        if platform_name.startswith("wayland"):
+            return True
+        # Application can run through XWayland ('xcb') in Wayland session,
+        #   cursor position is still not available above the panel
+        return os.environ.get("XDG_SESSION_TYPE", "").lower() == "wayland"
 
     @property
     def initializing_addons(self):
@@ -686,35 +1003,100 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             self._tray_manager.initialize_addons()
         finally:
             self._initializing_addons = False
+        self._prepare_menu_size()
+
+    def _on_menu_about_to_hide(self):
+        self._menu_hidden_at = time.monotonic()
 
     def _click_timer_timeout(self):
-        self._click_timer.stop()
-        doubleclick = self._doubleclick
-        # Reset bool value
-        self._doubleclick = False
-        if doubleclick:
-            self._tray_manager.execute_doubleclick()
-        else:
-            self._show_context_menu()
+        self._show_context_menu()
+
+    def _prepare_menu_size(self):
+        # Menu is not polished before it is shown for the first time, so its
+        #   size is unknown and 'popup' can't place it correctly (it ends up
+        #   at the very bottom of the screen instead of above the cursor).
+        menu = self.contextMenu()
+        menu.ensurePolished()
+        menu.adjustSize()
+
+    def _get_windows_menu_pos(self, pos):
+        menu = self.contextMenu()
+        screen = QtGui.QGuiApplication.screenAt(pos)
+        if screen is None:
+            screen = QtGui.QGuiApplication.primaryScreen()
+        if screen is None:
+            return pos
+
+        # Use full screen geometry (not available geometry) so the menu
+        #   can overlap the taskbar and opens at the cursor, the same way
+        #   as the context menu on right click.
+        geo = screen.geometry()
+        size = menu.sizeHint()
+        x = pos.x()
+        y = pos.y()
+        # Open menu above/left of the cursor if it does not fit
+        #   (tray is usually at the bottom right corner)
+        if x + size.width() > geo.right():
+            x -= size.width()
+        if y + size.height() > geo.bottom():
+            y -= size.height()
+        x = max(geo.left(), min(x, geo.right() - size.width()))
+        y = max(geo.top(), min(y, geo.bottom() - size.height()))
+        return QtCore.QPoint(x, y)
 
     def _show_context_menu(self):
         pos = self._click_pos
         self._click_pos = None
         if pos is None:
             pos = QtGui.QCursor().pos()
+        self._prepare_menu_size()
+        if platform.system().lower() == "windows":
+            pos = self._get_windows_menu_pos(pos)
         self.contextMenu().popup(pos)
 
-    def on_systray_activated(self, reason):
-        # show contextMenu if left click
+    def _on_trigger(self):
+        now = time.monotonic()
+        # Release of the second click of double-click may also emit
+        #   'Trigger' (depends on Qt version)
+        if now < self._ignore_trigger_until:
+            return
+
+        # Click on tray icon while menu was open closed the menu (on press)
+        #   -> don't open it again on release, behave as toggle
+        if (now - self._menu_hidden_at) * 1000 < self._doubleclick_time_ms:
+            return
+
+        if self.contextMenu().isVisible():
+            self.contextMenu().hide()
+            return
+
+        self._click_pos = QtGui.QCursor().pos()
+        # Wait for possible double-click, then show menu
+        self._click_timer.start()
+
+    def _on_doubleclick(self):
+        # Cancel pending single click
+        self._click_timer.stop()
+        self._click_pos = None
+        self._ignore_trigger_until = (
+            time.monotonic() + (self._doubleclick_time_ms / 1000)
+        )
+        # Menu might be already visible if the timer timed out before
+        #   the second click arrived
+        if self.contextMenu().isVisible():
+            self.contextMenu().hide()
+        self._tray_manager.execute_doubleclick()
+
+    def _on_wayland_activated(self, reason):
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
-            if self._tray_manager.doubleclick_callback:
-                self._click_pos = QtGui.QCursor().pos()
-                self._click_timer.start()
-            else:
-                self._show_context_menu()
+            self._tray_manager.execute_doubleclick()
+
+    def on_systray_activated(self, reason):
+        if reason == QtWidgets.QSystemTrayIcon.Trigger:
+            self._on_trigger()
 
         elif reason == QtWidgets.QSystemTrayIcon.DoubleClick:
-            self._doubleclick = True
+            self._on_doubleclick()
 
     def exit(self):
         """ Exit whole application.
@@ -725,6 +1107,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
             return
         self._exited = True
 
+        self._blink_timer.stop()
         self.hide()
         self._tray_manager.on_exit()
         QtCore.QCoreApplication.exit()
@@ -749,6 +1132,11 @@ class TrayStarter(QtCore.QObject):
         self._tray_widget = tray_widget
         self._timer_counter = 0
         self._start_timer = start_timer
+        # On Linux the tray menu is sent to the desktop environment over
+        #   DBus when the tray is shown. Some of them (e.g. GNOME with
+        #   AppIndicator extension) don't refresh the menu when it changes,
+        #   so the tray is shown after addons fill the menu.
+        self._show_tray_after_init = platform.system().lower() == "linux"
 
     def _on_start_timer(self):
         if self._tray_widget.is_closing():
@@ -760,7 +1148,8 @@ class TrayStarter(QtCore.QObject):
             self._timer_counter += 1
             splash = self._get_splash()
             splash.show()
-            self._tray_widget.show()
+            if not self._show_tray_after_init:
+                self._tray_widget.show()
             # Make sure tray and splash are painted out
             QtWidgets.QApplication.processEvents()
 
@@ -769,6 +1158,8 @@ class TrayStarter(QtCore.QObject):
             QtWidgets.QApplication.processEvents()
             self._timer_counter += 1
             self._tray_widget.initialize_addons()
+            if self._show_tray_after_init:
+                self._tray_widget.show()
 
         elif not self._tray_widget.initializing_addons:
             splash = self._get_splash()

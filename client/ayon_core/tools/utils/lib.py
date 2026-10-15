@@ -318,7 +318,7 @@ def preserve_selection(tree_view, column=0, role=None, current_index=True):
 
         if current_index_value and value == current_index_value:
             selection_model.setCurrentIndex(
-                index, selection_model.NoUpdate
+                index, QtCore.QItemSelectionModel.NoUpdate
             )
 
 

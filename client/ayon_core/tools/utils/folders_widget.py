@@ -20,6 +20,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     HierarchyExpectedSelection,
+    ThumbnailsModel,
 )
 from ayon_core.ui.components import (
     AYButton,
@@ -34,6 +35,10 @@ from ayon_core.ui.components.tree_view import CenteredIconDelegate
 
 from .models import RecursiveSortFilterProxyModel
 from .lib import get_qt_icon
+from .entity_thumbnails import (
+    EntityThumbnailsPainter,
+    EntityThumbnailDelegate,
+)
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.common_models import (
@@ -924,6 +929,19 @@ class FoldersWidget(QtWidgets.QWidget):
                 variant=QTreeViewVariants.Default.value,
             )
         )
+        # Thumbnails are painted on the right side of folder label
+        thumbnails_painter = EntityThumbnailsPainter(
+            folders_view, controller, "folder", FOLDER_ID_ROLE
+        )
+        folders_view.setItemDelegateForColumn(
+            0,
+            EntityThumbnailDelegate(
+                thumbnails_painter,
+                parent=folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Default.value,
+            )
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -951,6 +969,7 @@ class FoldersWidget(QtWidgets.QWidget):
         self._folders_view = folders_view
         self._folders_model = folders_model
         self._folders_proxy_model = folders_proxy_model
+        self._thumbnails_painter = thumbnails_painter
 
         self._handle_expected_selection = handle_expected_selection
         self._expected_selection = None
@@ -1000,6 +1019,14 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def set_status_column_visible(self, visible: bool):
         self._folders_view.setColumnHidden(1, not visible)
+
+    def set_thumbnails_visible(self, visible: bool):
+        """Show or hide folder thumbnails.
+
+        Thumbnails are visible by default, if the controller implements
+        'get_thumbnail_paths'.
+        """
+        self._thumbnails_painter.set_enabled(visible)
 
     def refresh(self):
         """Refresh folders model.
@@ -1156,6 +1183,9 @@ class FoldersWidget(QtWidgets.QWidget):
         if self._expected_selection:
             self._set_expected_selection()
         self._folders_proxy_model.sort(0)
+        self._thumbnails_painter.set_project_name(
+            self._folders_model.get_project_name()
+        )
         self.refreshed.emit()
 
     def _get_selected_item_id(self):
@@ -1256,6 +1286,7 @@ class SimpleFoldersController(object):
         self._event_system = self._create_event_system()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._selection_model = SimpleSelectionModel(self)
         self._expected_selection = HierarchyExpectedSelection(
             self, handle_project=False, handle_folder=True, handle_task=False
@@ -1278,6 +1309,17 @@ class SimpleFoldersController(object):
     def get_folder_type_items(self, project_name, sender=None):
         return self._projects_model.get_folder_type_items(
             project_name, sender
+        )
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     def set_selected_project(self, project_name):
