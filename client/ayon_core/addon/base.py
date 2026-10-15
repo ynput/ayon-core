@@ -25,6 +25,7 @@ from ayon_core.lib import (
     is_dev_mode_enabled,
     get_launcher_storage_dir,
     is_headless_mode_enabled,
+    get_settings_variant,
 )
 from ayon_core.settings import get_studio_settings
 
@@ -173,6 +174,7 @@ def _load_bundle_information() -> BundleInformation:
     key_values = {
         "summary": "true",
         "bundle_name": studio_bundle["name"],
+        "variant": get_settings_variant(),
     }
     if project_bundle:
         key_values["project_bundle_name"] = project_bundle["name"]

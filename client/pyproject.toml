@@ -12,6 +12,7 @@ speedcopy = "^2.2"
 six = "^1.15"
 qtawesome = "0.7.3"
 structlog = "^25.5"  # last version supporting python 3.9
+websocket-client = ">=1.7.0,<2"
 
 [ayon.runtimeDependencies]
 aiohttp-middlewares = "^2.0.0"
@@ -19,9 +20,7 @@ Click = "^8"
 OpenTimelineIO = "0.16.0"
 opencolorio = "^2.5.1,<2.6.0"
 Pillow = "9.5.0"
-websocket-client = ">=0.40.0,<2"
 fontTools = "*"
-
 
 [ayon.runtimeDependencies.darwin]
 pyobjc-core = "^11.1"
