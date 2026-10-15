@@ -214,6 +214,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
     # host-less loader folders for `host_name=None`, e.g. the 'global'
     # folders of the OpenRV, DJV and xStudio addons. An addon that has only
     # host specific loaders simply returns nothing for `None`.
+    # TODO remove when the addons stop using LoaderPlugin for actions
     load_plugin_paths = addons_manager.collect_load_plugin_paths(host_name)
     for path in load_plugin_paths:
         register_loader_plugin_path(path)
