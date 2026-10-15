@@ -22,10 +22,10 @@ from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     ActionForm,
     LoaderActionItem,
-    LoaderActionSelection,
+    LoaderActionPlugin,
     LoaderActionResult,
+    LoaderActionSelection,
 )
-from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
 class DeleteOldVersions(LoaderActionPlugin):

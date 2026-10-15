@@ -10,10 +10,10 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.actions import (
     LoaderActionItem,
-    LoaderActionSelection,
+    LoaderActionPlugin,
     LoaderActionResult,
+    LoaderActionSelection,
 )
-from ayon_core.pipeline.actions import LoaderActionPlugin
 
 
 WINDOWS_USER_REG_PATH = (
