@@ -62,7 +62,6 @@ def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
 class CreateHeroVersion(LoaderActionPlugin):
     """Create hero version from selected context."""
 
-    settings_key = "create_hero_version"
     is_multiple_contexts_compatible = False
     ignored_representation_names: list[str] = []
     db_representation_context_keys = [
