@@ -263,7 +263,6 @@ def open_file(filepath: str) -> None:
 class OpenFileAction(LoaderActionPlugin):
     """Open Image Sequence or Video with system default"""
     identifier = "core.open-file"
-    settings_key = "open_file"
 
     def get_action_items(
         self, selection: LoaderActionSelection
