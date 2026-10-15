@@ -6,7 +6,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from qtpy.QtCore import QRect, QRectF, QSize, Qt
-from qtpy.QtGui import QBrush, QColor, QFontMetrics, QIcon, QPainter, QPen
+from qtpy.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QFontMetrics,
+    QIcon,
+    QPainter,
+    QPen,
+)
 from qtpy.QtWidgets import (
     QMenu,
     QStyle,
@@ -36,6 +44,7 @@ class MenuItemLayout:
     text_h: int
     sc_w: int
     arrow_w: int
+    arrow_pad: int
     row_h: int
     total_w: int
 
@@ -48,6 +57,8 @@ class MenuDrawer:
     """
 
     _WIDGET_CLS = "QMenu"
+    # Horizontal and vertical padding of the box around shortcut text
+    _SHORTCUT_PADDING = (5, 2)
 
     def __init__(self, style_inst: AYONStyle) -> None:
         self.style_inst = style_inst
@@ -116,7 +127,12 @@ class MenuDrawer:
         panel/frame painting, where the state/variant-specific styles are
         not relevant.
         """
-        style = self.model.get_style(self._WIDGET_CLS, "default", "base")
+        variant = (
+            widget.property("variant")
+            if widget is not None
+            else None
+        ) or "default"
+        style = self.model.get_style(self._WIDGET_CLS, variant, "base")
         style.set_context(widget)
         return style
 
@@ -171,17 +187,13 @@ class MenuDrawer:
         item_spacing = int(style.get("item-spacing", 4))
 
         fm = option.fontMetrics
-        text_h = (
-            fm.height()
-            if fm
-            else (
+        text_h = QFontMetrics(self.model.base_font).height()
+        if text_h <= 0:
+            text_h = (
                 contents_size.height()
                 if contents_size
                 else option.rect.height()
             )
-        )
-        if text_h <= 0:
-            text_h = 16
 
         min_h = int(style.get("min-item-height", 0))
         row_h = max(text_h + pad_v * 2, icon_size + pad_v * 2, min_h)
@@ -201,20 +213,27 @@ class MenuDrawer:
         )
         if shortcut and sc_w == 0 and fm:
             sc_w = fm.horizontalAdvance(shortcut)
+        if sc_w:
+            # Shortcut is drawn with smaller font inside a padded box
+            scale = float(style.get("shortcut-font-scale", 0.85))
+            sc_w = int(sc_w * scale) + self._SHORTCUT_PADDING[0] * 2
 
-        icon_gutter = (option.maxIconWidth or icon_size) + item_spacing
+        icon_gutter = icon_size + item_spacing
         is_submenu = (
             option.menuItemType == QStyleOptionMenuItem.MenuItemType.SubMenu
         )
         arrow_w = icon_size if is_submenu else 0
+        # The arrow glyph only covers the middle of its icon, the blank
+        # part of the icon around it already acts as padding. Use less
+        # padding next to it so the arrow is not left far from the edge.
+        arrow_pad = pad_h // 2
 
         total_w = (
             icon_gutter
             + pad_h
             + text_w
             + (pad_h + sc_w if sc_w else 0)
-            + (pad_h + arrow_w if arrow_w else 0)
-            + pad_h
+            + (pad_h + arrow_w + arrow_pad if arrow_w else pad_h)
         )
 
         return MenuItemLayout(
@@ -229,6 +248,7 @@ class MenuDrawer:
             text_h=text_h,
             sc_w=sc_w,
             arrow_w=arrow_w,
+            arrow_pad=arrow_pad,
             row_h=row_h,
             total_w=total_w,
         )
@@ -341,7 +361,11 @@ class MenuDrawer:
         action = None
         if isinstance(widget, QMenu):
             action = widget.actionAt(option.rect.center())
-        variant = (action.property("variant") if action else None) or "default"
+        variant = (
+            (action.property("variant") if action else None)
+            or (widget.property("variant") if widget else None)
+            or "default"
+        )
 
         style = self.model.get_style(
             self._WIDGET_CLS, variant=variant, state=state
@@ -364,26 +388,38 @@ class MenuDrawer:
         # --- Left gutter (icon or check mark) ---
         x = rect.left() + layout.pad_h
         cy = rect.center().y()
+        # Icons are drawn slightly towards the edge, away from the label
+        icon_x = x - 2
 
         check_type = option.checkType
         not_checkable = QStyleOptionMenuItem.CheckType.NotCheckable
         if check_type != not_checkable:
             check_color = QColor(style.get("color", "#f4f5f5"))
-            check_icon = get_icon(
-                "check_box" if option.checked else "check_box_outline_blank",
-                color=check_color,
-                fill=False,
+            check_style = (
+                action.property("check-style") if action else None
             )
-            check_rect = QRect(
-                x,
-                cy - layout.icon_size // 2,
-                layout.icon_size,
-                layout.icon_size,
-            )
-            check_icon.paint(painter, check_rect)
+            if option.checked or check_style != "checkmark":
+                if check_style == "checkmark":
+                    icon_name = "check"
+                elif option.checked:
+                    icon_name = "check_box"
+                else:
+                    icon_name = "check_box_outline_blank"
+                check_icon = get_icon(
+                    icon_name,
+                    color=check_color,
+                    fill=False,
+                )
+                check_rect = QRect(
+                    icon_x,
+                    cy - layout.icon_size // 2,
+                    layout.icon_size,
+                    layout.icon_size,
+                )
+                check_icon.paint(painter, check_rect)
         elif not option.icon.isNull():
             icon_rect = QRect(
-                x,
+                icon_x,
                 cy - layout.icon_size // 2,
                 layout.icon_size,
                 layout.icon_size,
@@ -399,21 +435,32 @@ class MenuDrawer:
         text_color = QColor(style.get("color", "#f4f5f5"))
         painter.setPen(QPen(text_color))
 
-        right_margin = layout.pad_h + (
-            layout.arrow_w + layout.pad_h if layout.arrow_w else 0
+        right_margin = (
+            layout.pad_h + layout.arrow_w + layout.arrow_pad
+            if layout.arrow_w
+            else layout.pad_h
         )
+        # 'rect.right()' is the last pixel inside the rect, one short of
+        # its right edge - without the '+ 1' the label is a pixel narrower
+        # than the width measured for it and loses its last character.
         label_rect = QRect(
             x,
             rect.top(),
             rect.right()
+            + 1
             - x
             - right_margin
             - (layout.sc_w + layout.pad_h if layout.sc_w else 0),
             rect.height(),
         )
+        # Not clipped: with fractional font metrics (display scaling) the
+        # text can still be a pixel wider than measured, the padding next
+        # to it has room for that.
         painter.drawText(
             label_rect,
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+            Qt.AlignmentFlag.AlignVCenter
+            | Qt.AlignmentFlag.AlignLeft
+            | Qt.TextFlag.TextDontClip,
             layout.label_text,
         )
 
@@ -424,19 +471,32 @@ class MenuDrawer:
                     style.get("background-color", "#2b3036"),
                 )
             )
-            text_rect = QFontMetrics(
-                self.style_inst.model.base_font
-            ).boundingRect(layout.shortcut_text)
+            # Shortcut is a hint, draw it smaller than the label inside
+            # a rounded box aligned to the right side of the row.
+            sc_font = QFont(painter.font())
+            scale = float(style.get("shortcut-font-scale", 0.85))
+            if sc_font.pixelSize() > 0:
+                sc_font.setPixelSize(
+                    max(1, round(sc_font.pixelSize() * scale))
+                )
+            else:
+                sc_font.setPointSizeF(sc_font.pointSizeF() * scale)
+            painter.setFont(sc_font)
+
+            sc_fm = QFontMetrics(sc_font)
+            sc_pad_h, sc_pad_v = self._SHORTCUT_PADDING
+            sc_rect = QRect(
+                0,
+                0,
+                sc_fm.horizontalAdvance(layout.shortcut_text)
+                + sc_pad_h * 2,
+                sc_fm.height() + sc_pad_v * 2,
+            )
+            sc_rect.moveCenter(rect.center())
+            sc_rect.moveRight(rect.right() - right_margin)
             painter.setBrush(QBrush(sc_bg_color))
             painter.setPen(Qt.PenStyle.NoPen)
-            sc_rect = QRect(
-                rect.right() - right_margin - layout.sc_w - layout.pad_h,
-                rect.top(),
-                layout.sc_w + layout.pad_h,
-                rect.height(),
-            )
-            text_rect.moveCenter(sc_rect.center())
-            painter.drawRoundedRect(text_rect.adjusted(-4, 0, 4, 0), 4, 4)
+            painter.drawRoundedRect(sc_rect, 4, 4)
 
             sc_color = QColor(
                 style.get(
@@ -457,7 +517,7 @@ class MenuDrawer:
             arrow_color = QColor(style.get("color", "#f4f5f5"))
             arrow_icon = get_icon("chevron_right", color=arrow_color)
             arrow_rect = QRect(
-                rect.right() - layout.pad_h - layout.arrow_w,
+                rect.right() - layout.arrow_pad - layout.arrow_w,
                 cy - layout.icon_size // 2,
                 layout.icon_size,
                 layout.icon_size,

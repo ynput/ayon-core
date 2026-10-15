@@ -6,9 +6,22 @@ from qtpy.QtGui import QColor
 
 
 @lru_cache(maxsize=256)
-def relative_luminance(r: int, g: int, b: int, _) -> float:
+def relative_luminance(
+    r: int, g: int, b: int, *_unused: object
+) -> float:
     """Calculate relative luminance of a color, i.e. sRGB luminance in
     linear space.
+
+    Args:
+        r: Red component (0-255).
+        g: Green component (0-255).
+        b: Blue component (0-255).
+        *_unused: Trailing components (e.g. alpha from
+            ``QColor.toTuple()``) are accepted and ignored so callers
+            can splat a 3- or 4-tuple directly.
+
+    Returns:
+        sRGB relative luminance in [0.0, 1.0].
     """
     comp = [r, g, b]
     for i in range(3):
@@ -36,35 +49,33 @@ def contrast_ratio(lum1: float, lum2: float) -> float:
 
 
 @lru_cache(maxsize=256)
-def compute_color_for_contrast(
+def _compute_color_for_contrast_rgba(
     background: tuple,  # (r, g, b, a)
     foreground: tuple,  # (r, g, b, a)
     min_contrast_ratio: float = 4.5,
-) -> QColor:
-    """Adjust foreground color to achieve minimum contrast with background.
+) -> tuple:
+    """Internal cached implementation returning an immutable RGBA tuple.
 
-    Preserves the hue and saturation of the original foreground color,
-    adjusting only the lightness to achieve the required contrast ratio.
+    Cached separately from :func:`compute_color_for_contrast` so that
+    the public function can always return a fresh :class:`QColor`
+    instance — mutating the result of a cached function would otherwise
+    poison the cache for subsequent identical inputs.
 
     Args:
-        background: The background color to contrast against.
-        foreground: The foreground color to adjust.
-        min_contrast_ratio: Target minimum contrast ratio (default 4.5:1).
+        background: Background color as ``(r, g, b, a)``.
+        foreground: Foreground color as ``(r, g, b, a)``.
+        min_contrast_ratio: Target minimum contrast ratio.
 
     Returns:
-        A QColor with the same hue/saturation but adjusted lightness
-        to meet the contrast requirement. Returns original if already
-        sufficient.
+        Adjusted color as an immutable ``(r, g, b, a)`` tuple.
     """
-
     bg_lum = relative_luminance(*background)
     fg_lum = relative_luminance(*foreground)
 
     # Check if already sufficient
     current_ratio = contrast_ratio(bg_lum, fg_lum)
     if current_ratio >= min_contrast_ratio:
-        # print(f"Final ratio: {current_ratio}: {QColor(*foreground).name()}")
-        return QColor(*foreground)
+        return tuple(foreground)
 
     fg_col = QColor(*foreground)
 
@@ -131,5 +142,35 @@ def compute_color_for_contrast(
             if white_ratio > black_ratio
             else QColor(0, 0, 0, original_alpha)
         )
-    # print(f"Final ratio: {final_ratio}: {result.name()}")
-    return result
+    return tuple(result.toTuple())
+
+
+def compute_color_for_contrast(
+    background: tuple,
+    foreground: tuple,
+    min_contrast_ratio: float = 4.5,
+) -> QColor:
+    """Adjust foreground color to achieve minimum contrast with background.
+
+    Preserves the hue and saturation of the original foreground color,
+    adjusting only the lightness to achieve the required contrast ratio.
+
+    The heavy computation is memoized via
+    :func:`_compute_color_for_contrast_rgba`; this wrapper always
+    returns a fresh :class:`QColor` instance so callers may mutate it
+    safely without poisoning the cache.
+
+    Args:
+        background: The background color as ``(r, g, b, a)``.
+        foreground: The foreground color as ``(r, g, b, a)``.
+        min_contrast_ratio: Target minimum contrast ratio (default 4.5).
+
+    Returns:
+        A new :class:`QColor` with adjusted lightness meeting the
+        requested contrast ratio (or the original colour when contrast
+        was already sufficient).
+    """
+    rgba = _compute_color_for_contrast_rgba(
+        tuple(background), tuple(foreground), min_contrast_ratio
+    )
+    return QColor(*rgba)
