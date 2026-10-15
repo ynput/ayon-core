@@ -196,14 +196,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
     # host specific loaders simply returns nothing for `None`.
     # TODO remove when the addons stop using LoaderPlugin for actions
     load_plugin_paths = addons_manager.collect_load_plugin_paths(host_name)
-    if not host_name and load_plugin_paths:
-        joined_paths = "\n".join(load_plugin_paths)
-        log.warning(
-            "DEV WARNING: Got load plugin paths but host name is not set."
-            " This behavior will be removed in future releases."
-            f"\n{joined_paths}"
-        )
-
     for path in load_plugin_paths:
         register_loader_plugin_path(path)
 
