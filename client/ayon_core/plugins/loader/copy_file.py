@@ -20,12 +20,13 @@ class CopyFileActionPlugin(LoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
-        actions = selection.get_project_settings().get("core", {}).get(
-            "tools", {}).get("loader", {}).get("actions", {})
-        if not any(actions.get(key, True) for key in (
-            "copy_file_path",
-            "copy_file",
-        )):
+        settings = selection.get_project_settings()
+        actions_settings = settings["core"]["tools"]["loader"].get("actions", {})
+
+        if not any(
+            actions_settings.setdefault(key, True)
+            for key in ("copy_file", "copy_file_path")
+        ):
             return []
         repres = []
         if selection.selected_type == "representation":
