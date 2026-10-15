@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Any
+from typing import Any
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.actions import (
@@ -41,6 +41,6 @@ class DuplicateWorkfileAction(WorkfileSimpleActionPlugin):
         self,
         selection: WorkfileActionSelection,
         form_values: dict[str, Any],
-    ) -> Optional[WorkfileActionResult]:
-        self.request_duplicate_workfile(selection.filepath)
-        return None
+    ) -> WorkfileActionResult | None:
+        # Let the tool duplicate the workfile as with any other workfile
+        return WorkfileActionResult(duplicate_workfile=selection.filepath)

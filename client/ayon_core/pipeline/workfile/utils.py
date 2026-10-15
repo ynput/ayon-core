@@ -625,8 +625,6 @@ def copy_workfile_to_context(
 
     host = registered_host()
     project_name = host.get_current_project_name()
-    if prepared_data is None:
-        prepared_data = CopyWorkfileOptionalData()
 
     anatomy = prepared_data.anatomy
     if anatomy is None:

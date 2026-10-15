@@ -47,7 +47,7 @@ class WorkfileActionsModel:
         self._log = Logger.get_logger(self.__class__.__name__)
         self._host = host
         self._controller = controller
-        self._context = WorkfileActionsContext(host=host)
+        self._context = WorkfileActionsContext(host)
         self._lock = threading.RLock()
         self._context_is_reset = False
         self._items_cache: dict[ActionSelectionData, list[ActionItem]] = {}
@@ -67,6 +67,8 @@ class WorkfileActionsModel:
         Does not import any plugin, is safe to call out of the main thread.
 
         """
+        if not self._controller.is_host_valid():
+            return
         self._reset_context()
         self._context.prepare_plugin_paths()
 
@@ -78,6 +80,8 @@ class WorkfileActionsModel:
                 plugin files which may use host APIs.
 
         """
+        if not self._controller.is_host_valid():
+            return
         self._reset_context()
         self._context.prepare_plugins()
 

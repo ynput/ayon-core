@@ -199,15 +199,13 @@ class IPluginPaths(AYONInterface):
         """
         return []
 
-    def get_workfile_action_plugin_paths(
-        self, host_name: Optional[str]
-    ) -> list[str]:
+    def get_workfile_action_plugin_paths(self, host_name: str) -> list[str]:
         """Receive workfile action plugin paths.
 
         Give addons ability to add actions to workfiles tool.
 
         Args:
-            host_name (Optional[str]): Current host name.
+            host_name (str): Current host name.
 
         Returns:
             list[str]: Paths to workfile action plugins.

@@ -1,7 +1,9 @@
 """API for actions of workfiles tool.
 
 Even though the api is meant for the workfiles tool, the api should be
-    possible to use in a standalone way out of the workfiles tool.
+    possible to use in a standalone way out of the workfiles tool. Actions
+    are always related to a host integration with workfiles
+    ('IWorkfileHost') and to its current project.
 
 To add actions, make sure your addon does inherit from 'IPluginPaths' and
     implements 'get_workfile_action_plugin_paths' which returns paths to
@@ -26,12 +28,17 @@ The action is triggered by calling the 'execute_action' method. Which takes
 Using 'WorkfileActionResult' as the output of 'execute_action' can trigger
     to show a message in UI, to show an additional form ('ActionForm') which
     would retrigger the action with the values from the form on submitting,
-    to refresh the tool or to redirect the tool to a different context.
+    to refresh the tool, to redirect the tool to a different context, to
+    let the tool open or duplicate a workfile or to close the tool.
 
-    The plugin also has helper methods 'redirect', 'request_refresh',
-    'request_open_workfile', 'request_duplicate_workfile' and
-    'request_close' that can be called any time during 'execute_action'
-    without the need to return a result object.
+    The result has helper methods 'set_redirect' and 'set_open_workfile'
+    to define the context by entities.
+
+    Example:
+        >>> return (
+        ...     WorkfileActionResult("Workfile was copied")
+        ...     .set_redirect(task_entity=task_entity, workfile_name=name)
+        ... )
 
 It is also recommended that the plugin does override the 'identifier'
     attribute. The identifier has to be unique across all plugins.
@@ -66,7 +73,7 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 import typing
-from typing import Optional, Any
+from typing import Any
 from dataclasses import dataclass
 
 import ayon_api
@@ -75,9 +82,9 @@ from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import StrEnum, Logger
 from ayon_core.lib.attribute_definitions import UILabelDef, BoolDef
 from ayon_core.lib.icon_definitions import IconBase
-from ayon_core.host import AbstractHost, IWorkfileHost
+from ayon_core.host import IWorkfileHost
 from ayon_core.addon import AddonsManager, IPluginPaths
-from ayon_core.settings import get_studio_settings, get_project_settings
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import discover_plugins
 
@@ -116,31 +123,31 @@ class WorkfileActionSelection:
     Args:
         project_name (str): Project name.
         area (WorkfileAreaType): Area the selection comes from.
-        folder_id (Optional[str]): Selected folder id.
-        task_id (Optional[str]): Selected task id.
-        filepath (Optional[str]): Path to the selected workfile.
-        rootless_path (Optional[str]): Rootless path to the selected
+        folder_id (str | None): Selected folder id.
+        task_id (str | None): Selected task id.
+        filepath (str | None): Path to the selected workfile.
+        rootless_path (str | None): Rootless path to the selected
             workfile. Available only for workarea workfiles.
-        workfile_entity_id (Optional[str]): Id of workfile entity of the
+        workfile_entity_id (str | None): Id of workfile entity of the
             selected workarea workfile.
-        representation_id (Optional[str]): Id of selected published workfile
+        representation_id (str | None): Id of selected published workfile
             representation.
-        workdir (Optional[str]): Work directory of the selected task.
-        workfile_info (Union[WorkfileInfo, PublishedWorkfileInfo, None]):
+        workdir (str | None): Work directory of the selected task.
+        workfile_info (WorkfileInfo | PublishedWorkfileInfo | None):
             Information about the selected workfile from the host
             integration.
-        host_name (Optional[str]): Host name used to calculate the work
+        host_name (str | None): Host name used to calculate the work
             directory.
-        project_entity (Optional[dict[str, Any]]): Prepared project entity.
-        folder_entity (Optional[dict[str, Any]]): Prepared folder entity.
-        task_entity (Optional[dict[str, Any]]): Prepared task entity.
-        workfile_entity (Optional[dict[str, Any]]): Prepared workfile
+        project_entity (dict[str, Any] | None): Prepared project entity.
+        folder_entity (dict[str, Any] | None): Prepared folder entity.
+        task_entity (dict[str, Any] | None): Prepared task entity.
+        workfile_entity (dict[str, Any] | None): Prepared workfile
             entity.
-        representation_entity (Optional[dict[str, Any]]): Prepared
+        representation_entity (dict[str, Any] | None): Prepared
             representation entity.
-        version_entity (Optional[dict[str, Any]]): Prepared version entity.
-        project_anatomy (Optional[Anatomy]): Prepared project anatomy.
-        project_settings (Optional[dict[str, Any]]): Prepared project
+        version_entity (dict[str, Any] | None): Prepared version entity.
+        project_anatomy (Anatomy | None): Prepared project anatomy.
+        project_settings (dict[str, Any] | None): Prepared project
             settings.
 
     """
@@ -149,23 +156,23 @@ class WorkfileActionSelection:
         project_name: str,
         area: WorkfileAreaType,
         *,
-        folder_id: Optional[str] = None,
-        task_id: Optional[str] = None,
-        filepath: Optional[str] = None,
-        rootless_path: Optional[str] = None,
-        workfile_entity_id: Optional[str] = None,
-        representation_id: Optional[str] = None,
-        workdir: Optional[str] = None,
-        workfile_info: Union[WorkfileInfo, PublishedWorkfileInfo, None] = None,
-        host_name: Optional[str] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
-        workfile_entity: Optional[dict[str, Any]] = None,
-        representation_entity: Optional[dict[str, Any]] = None,
-        version_entity: Optional[dict[str, Any]] = None,
-        project_anatomy: Optional[Anatomy] = None,
-        project_settings: Optional[dict[str, Any]] = None,
+        folder_id: str | None = None,
+        task_id: str | None = None,
+        filepath: str | None = None,
+        rootless_path: str | None = None,
+        workfile_entity_id: str | None = None,
+        representation_id: str | None = None,
+        workdir: str | None = None,
+        workfile_info: WorkfileInfo | PublishedWorkfileInfo | None = None,
+        host_name: str | None = None,
+        project_entity: dict[str, Any] | None = None,
+        folder_entity: dict[str, Any] | None = None,
+        task_entity: dict[str, Any] | None = None,
+        workfile_entity: dict[str, Any] | None = None,
+        representation_entity: dict[str, Any] | None = None,
+        version_entity: dict[str, Any] | None = None,
+        project_anatomy: Anatomy | None = None,
+        project_settings: dict[str, Any] | None = None,
     ) -> None:
         self._project_name = project_name
         self._area = WorkfileAreaType(area)
@@ -195,27 +202,27 @@ class WorkfileActionSelection:
     def get_area(self) -> WorkfileAreaType:
         return self._area
 
-    def get_folder_id(self) -> Optional[str]:
+    def get_folder_id(self) -> str | None:
         return self._folder_id
 
-    def get_task_id(self) -> Optional[str]:
+    def get_task_id(self) -> str | None:
         return self._task_id
 
-    def get_filepath(self) -> Optional[str]:
+    def get_filepath(self) -> str | None:
         return self._filepath
 
-    def get_rootless_path(self) -> Optional[str]:
+    def get_rootless_path(self) -> str | None:
         return self._rootless_path
 
-    def get_workfile_entity_id(self) -> Optional[str]:
+    def get_workfile_entity_id(self) -> str | None:
         return self._workfile_entity_id
 
-    def get_representation_id(self) -> Optional[str]:
+    def get_representation_id(self) -> str | None:
         return self._representation_id
 
     def get_workfile_info(
         self
-    ) -> Union[WorkfileInfo, PublishedWorkfileInfo, None]:
+    ) -> WorkfileInfo | PublishedWorkfileInfo | None:
         """Information about the selected workfile from host integration.
 
         The information is available only if the tool which created
@@ -225,7 +232,7 @@ class WorkfileActionSelection:
         """
         return self._workfile_info
 
-    def get_filename(self) -> Optional[str]:
+    def get_filename(self) -> str | None:
         """Filename of the selected workfile."""
         if not self._filepath:
             return None
@@ -244,16 +251,16 @@ class WorkfileActionSelection:
             )
         return self._project_anatomy
 
-    def get_project_entity(self) -> Optional[dict[str, Any]]:
+    def get_project_entity(self) -> dict[str, Any] | None:
         if self._project_entity is _PLACEHOLDER:
             self._project_entity = ayon_api.get_project(self._project_name)
         return copy.deepcopy(self._project_entity)
 
-    def get_folder_entity(self) -> Optional[dict[str, Any]]:
+    def get_folder_entity(self) -> dict[str, Any] | None:
         """Selected folder entity.
 
         Returns:
-            Optional[dict[str, Any]]: Folder entity or None if folder is not
+            dict[str, Any] | None: Folder entity or None if folder is not
                 selected.
 
         """
@@ -266,11 +273,11 @@ class WorkfileActionSelection:
             self._folder_entity = folder_entity
         return copy.deepcopy(self._folder_entity)
 
-    def get_task_entity(self) -> Optional[dict[str, Any]]:
+    def get_task_entity(self) -> dict[str, Any] | None:
         """Selected task entity.
 
         Returns:
-            Optional[dict[str, Any]]: Task entity or None if task is not
+            dict[str, Any] | None: Task entity or None if task is not
                 selected.
 
         """
@@ -283,11 +290,11 @@ class WorkfileActionSelection:
             self._task_entity = task_entity
         return copy.deepcopy(self._task_entity)
 
-    def get_workfile_entity(self) -> Optional[dict[str, Any]]:
+    def get_workfile_entity(self) -> dict[str, Any] | None:
         """Workfile entity of selected workarea workfile.
 
         Returns:
-            Optional[dict[str, Any]]: Workfile entity or None if workfile is
+            dict[str, Any] | None: Workfile entity or None if workfile is
                 not selected or does not have entity in the database.
 
         """
@@ -300,11 +307,11 @@ class WorkfileActionSelection:
             self._workfile_entity = workfile_entity
         return copy.deepcopy(self._workfile_entity)
 
-    def get_representation_entity(self) -> Optional[dict[str, Any]]:
+    def get_representation_entity(self) -> dict[str, Any] | None:
         """Representation entity of selected published workfile.
 
         Returns:
-            Optional[dict[str, Any]]: Representation entity or None if
+            dict[str, Any] | None: Representation entity or None if
                 published workfile is not selected.
 
         """
@@ -317,11 +324,11 @@ class WorkfileActionSelection:
             self._representation_entity = repre_entity
         return copy.deepcopy(self._representation_entity)
 
-    def get_version_entity(self) -> Optional[dict[str, Any]]:
+    def get_version_entity(self) -> dict[str, Any] | None:
         """Version entity of selected published workfile.
 
         Returns:
-            Optional[dict[str, Any]]: Version entity or None if published
+            dict[str, Any] | None: Version entity or None if published
                 workfile is not selected.
 
         """
@@ -335,11 +342,11 @@ class WorkfileActionSelection:
             self._version_entity = version_entity
         return copy.deepcopy(self._version_entity)
 
-    def get_workdir(self) -> Optional[str]:
+    def get_workdir(self) -> str | None:
         """Work directory of the selected task.
 
         Returns:
-            Optional[str]: Path to work directory or None if task is not
+            str | None: Path to work directory or None if task is not
                 selected or the directory could not be calculated.
 
         """
@@ -391,7 +398,7 @@ class WorkfileActionSelection:
             return bool(self._representation_id)
         return bool(self._filepath)
 
-    def _calculate_workdir(self) -> Optional[str]:
+    def _calculate_workdir(self) -> str | None:
         # Avoid circular import
         from ayon_core.pipeline.workfile import get_workdir
 
@@ -426,29 +433,29 @@ class WorkfileActionItem:
         order (int): Order of the action in UI. Actions with lower order are
             shown first and have a higher chance to be visible as a quick
             action button.
-        group_label (Optional[str]): Label of the group to which the action
+        group_label (str | None): Label of the group to which the action
             belongs. Grouped actions are shown in a submenu.
-        icon (Union[IconBase, dict[str, Any], None]): Icon definition.
-        tooltip (Optional[str]): Text shown on hover over the action.
-        description (Optional[str]): Longer description of what the action
+        icon (IconBase | dict[str, Any] | None): Icon definition.
+        tooltip (str | None): Text shown on hover over the action.
+        description (str | None): Longer description of what the action
             does. Is shown under the tooltip.
         quick_action (bool): The action can be shown as a quick action
             button next to details of the selected workfile. Use 'False'
             for actions that should be available only in the context menu.
-        data (Optional[DataType]): Action item data.
-        identifier (Optional[str]): Identifier of the plugin which
+        data (DataType | None): Action item data.
+        identifier (str | None): Identifier of the plugin which
             created the action item. Is filled automatically. Is not changed
             if is filled -> can lead to different plugin.
 
     """
     label: str
     order: int = 0
-    group_label: Optional[str] = None
+    group_label: str | None = None
     icon: IconBase | dict[str, Any] | None = None
-    tooltip: Optional[str] = None
-    description: Optional[str] = None
+    tooltip: str | None = None
+    description: str | None = None
     quick_action: bool = True
-    data: Optional[DataType] = None
+    data: DataType | None = None
     # Is filled automatically
     identifier: str = None
 
@@ -458,21 +465,21 @@ class WorkfileActionRedirect:
     """Context to which should be the workfiles tool redirected.
 
     Attributes:
-        folder_id (Optional[str]): Folder id to select.
-        task_name (Optional[str]): Name of the task to select.
-        workfile_name (Optional[str]): Filename of the workarea workfile to
+        folder_id (str | None): Folder id to select.
+        task_name (str | None): Name of the task to select.
+        workfile_name (str | None): Filename of the workarea workfile to
             select.
-        representation_id (Optional[str]): Id of published workfile
+        representation_id (str | None): Id of published workfile
             representation to select.
-        area (Optional[WorkfileAreaType]): Area to show. The area is not
+        area (WorkfileAreaType | None): Area to show. The area is not
             changed if is not filled.
 
     """
-    folder_id: Optional[str] = None
-    task_name: Optional[str] = None
-    workfile_name: Optional[str] = None
-    representation_id: Optional[str] = None
-    area: Optional[WorkfileAreaType] = None
+    folder_id: str | None = None
+    task_name: str | None = None
+    workfile_name: str | None = None
+    representation_id: str | None = None
+    area: WorkfileAreaType | None = None
 
     def to_json_data(self) -> dict[str, Any]:
         area = self.area
@@ -505,15 +512,15 @@ class WorkfileActionOpenWorkfile:
 
     Attributes:
         filepath (str): Path to the workfile to open.
-        folder_id (Optional[str]): Folder id of the workfile context.
+        folder_id (str | None): Folder id of the workfile context.
             Folder of the selection is used if is not filled.
-        task_id (Optional[str]): Task id of the workfile context. Task of
+        task_id (str | None): Task id of the workfile context. Task of
             the selection is used if is not filled.
 
     """
     filepath: str
-    folder_id: Optional[str] = None
-    task_id: Optional[str] = None
+    folder_id: str | None = None
+    task_id: str | None = None
 
     def to_json_data(self) -> dict[str, Any]:
         return {
@@ -534,35 +541,35 @@ class WorkfileActionResult:
     """Result of workfile action execution.
 
     Attributes:
-        message (Optional[str]): Message to show in UI.
+        message (str | None): Message to show in UI.
         success (bool): If the action was successful. Affects color of
             the message.
-        form (Optional[ActionForm]): Form to show in UI.
-        form_values (Optional[dict[str, Any]]): Values for the form. Can be
+        form (ActionForm | None): Form to show in UI.
+        form_values (dict[str, Any] | None): Values for the form. Can be
             used if the same form is re-shown e.g. because a user forgot to
             fill a required field.
         refresh (bool): The tool should refresh its content.
-        redirect (Optional[WorkfileActionRedirect]): Context to which should
+        redirect (WorkfileActionRedirect | None): Context to which should
             be the tool redirected.
-        open_workfile (Optional[WorkfileActionOpenWorkfile]): Workfile that
+        open_workfile (WorkfileActionOpenWorkfile | None): Workfile that
             should be opened by the tool. Refresh and redirect are applied
             only if the workfile was not opened, e.g. because a user
             cancelled it.
-        duplicate_workfile (Optional[str]): Path to a workfile that should
+        duplicate_workfile (str | None): Path to a workfile that should
             be duplicated by the tool. The tool does ask a user for
             the version and comment of the new workfile.
         close_tool (bool): The tool should be closed, e.g. because
             a workfile was opened by the action itself.
 
     """
-    message: Optional[str] = None
+    message: str | None = None
     success: bool = True
-    form: Optional[ActionForm] = None
-    form_values: Optional[dict[str, Any]] = None
+    form: ActionForm | None = None
+    form_values: dict[str, Any] | None = None
     refresh: bool = False
-    redirect: Optional[WorkfileActionRedirect] = None
-    open_workfile: Optional[WorkfileActionOpenWorkfile] = None
-    duplicate_workfile: Optional[str] = None
+    redirect: WorkfileActionRedirect | None = None
+    open_workfile: WorkfileActionOpenWorkfile | None = None
+    duplicate_workfile: str | None = None
     close_tool: bool = False
 
     def to_json_data(self) -> dict[str, Any]:
@@ -603,15 +610,110 @@ class WorkfileActionResult:
             )
         return cls(**data)
 
+    def set_redirect(
+        self,
+        *,
+        folder_id: str | None = None,
+        task_name: str | None = None,
+        folder_entity: dict[str, Any] | None = None,
+        task_entity: dict[str, Any] | None = None,
+        workfile_name: str | None = None,
+        representation_id: str | None = None,
+        area: WorkfileAreaType | None = None,
+    ) -> WorkfileActionResult:
+        """Redirect the tool to a different context.
 
-@dataclass
-class _ExecutionRequests:
-    """Requests made by a plugin during execution of an action."""
-    refresh: bool = False
-    close_tool: bool = False
-    redirect: Optional[WorkfileActionRedirect] = None
-    open_workfile: Optional[WorkfileActionOpenWorkfile] = None
-    duplicate_workfile: Optional[str] = None
+        The context can be defined by entities or by folder id and task
+            name. Passing task entity is enough to define both folder and
+            task. Current context of the tool is used if the context is
+            not defined, e.g. to only select a different workfile.
+
+        The workfiles tool is refreshed before the redirect, so files
+            created by the action can be selected.
+
+        Example:
+            >>> return WorkfileActionResult().set_redirect(
+            ...     task_entity=task_entity,
+            ...     workfile_name="sh010_comp_v003.nk",
+            ... )
+
+        Args:
+            folder_id (str | None): Folder id to select.
+            task_name (str | None): Name of task to select.
+            folder_entity (dict[str, Any] | None): Folder to select.
+            task_entity (dict[str, Any] | None): Task to select.
+            workfile_name (str | None): Filename of workarea workfile to
+                select.
+            representation_id (str | None): Id of published workfile
+                representation to select.
+            area (WorkfileAreaType | None): Area to show.
+
+        Returns:
+            WorkfileActionResult: The result, so calls can be chained.
+
+        """
+        if task_entity is not None:
+            folder_id = task_entity["folderId"]
+            task_name = task_entity["name"]
+        elif folder_entity is not None:
+            folder_id = folder_entity["id"]
+
+        if area is not None:
+            area = WorkfileAreaType(area)
+
+        self.redirect = WorkfileActionRedirect(
+            folder_id=folder_id,
+            task_name=task_name,
+            workfile_name=workfile_name,
+            representation_id=representation_id,
+            area=area,
+        )
+        return self
+
+    def set_open_workfile(
+        self,
+        filepath: str,
+        *,
+        folder_id: str | None = None,
+        task_id: str | None = None,
+        folder_entity: dict[str, Any] | None = None,
+        task_entity: dict[str, Any] | None = None,
+    ) -> WorkfileActionResult:
+        """Let the tool open a workfile.
+
+        The workfile is opened the same way as if a user would open it in
+            the tool, so the tool does ask what to do with unsaved changes
+            and is closed when the workfile is opened. Context of
+            the selection is used if the context is not defined.
+
+        Refresh and redirect of the result are applied only if the workfile
+            was not opened, e.g. because a user cancelled it.
+
+        Args:
+            filepath (str): Path to the workfile to open.
+            folder_id (str | None): Folder id of the workfile context.
+            task_id (str | None): Task id of the workfile context.
+            folder_entity (dict[str, Any] | None): Folder of the workfile
+                context.
+            task_entity (dict[str, Any] | None): Task of the workfile
+                context.
+
+        Returns:
+            WorkfileActionResult: The result, so calls can be chained.
+
+        """
+        if task_entity is not None:
+            folder_id = task_entity["folderId"]
+            task_id = task_entity["id"]
+        elif folder_entity is not None:
+            folder_id = folder_entity["id"]
+
+        self.open_workfile = WorkfileActionOpenWorkfile(
+            filepath=filepath,
+            folder_id=folder_id,
+            task_id=task_id,
+        )
+        return self
 
 
 class WorkfileActionPlugin(ABC):
@@ -621,15 +723,15 @@ class WorkfileActionPlugin(ABC):
 
     Attributes:
         enabled (bool): Plugin is not used if is disabled.
-        settings_category (Optional[str]): Settings category (addon name)
+        settings_category (str | None): Settings category (addon name)
             where to look for settings of the plugin. Settings are expected
             under '<settings_category>/workfile_actions/<class name>'.
 
     """
-    _log: Optional[logging.Logger] = None
+    _log: logging.Logger | None = None
     enabled: bool = True
     skip_discovery: bool = True
-    settings_category: Optional[str] = None
+    settings_category: str | None = None
 
     def __init__(self, context: WorkfileActionsContext) -> None:
         self._context = context
@@ -643,8 +745,7 @@ class WorkfileActionPlugin(ABC):
             values as attributes of the plugin.
 
         Args:
-            project_settings (dict[str, Any]): Project settings. Studio
-                settings if the context is not related to a project.
+            project_settings (dict[str, Any]): Project settings.
 
         """
         if not self.settings_category:
@@ -684,12 +785,17 @@ class WorkfileActionPlugin(ABC):
         return self.__class__.__name__
 
     @property
-    def host(self) -> Optional[AbstractHost]:
+    def host(self) -> IWorkfileHost:
         """Current host integration."""
         return self._context.get_host()
 
     @property
-    def host_name(self) -> Optional[str]:
+    def project_name(self) -> str:
+        """Name of the current project."""
+        return self._context.get_project_name()
+
+    @property
+    def host_name(self) -> str:
         """Name of the current host."""
         return self._context.get_host_name()
 
@@ -715,150 +821,32 @@ class WorkfileActionPlugin(ABC):
     def execute_action(
         self,
         selection: WorkfileActionSelection,
-        data: Optional[DataType],
+        data: DataType | None,
         form_values: dict[str, Any],
-    ) -> Optional[WorkfileActionResult]:
+    ) -> WorkfileActionResult | None:
         """Execute an action.
 
         Args:
             selection (WorkfileActionSelection): Selection wrapper. Can be
                 used to get entities or get context of original selection.
-            data (Optional[DataType]): Additional action item data.
+            data (DataType | None): Additional action item data.
             form_values (dict[str, Any]): Attribute values.
 
         Returns:
-            Optional[WorkfileActionResult]: Result of the action execution.
+            WorkfileActionResult | None: Result of the action execution.
 
         """
         pass
 
-    # --- Helper methods to be used in 'execute_action' ---
-    def redirect(
-        self,
-        *,
-        folder_id: Optional[str] = None,
-        task_name: Optional[str] = None,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
-        workfile_name: Optional[str] = None,
-        representation_id: Optional[str] = None,
-        area: Optional[WorkfileAreaType] = None,
-    ) -> None:
-        """Request the tool to go to a different context.
-
-        The context can be defined by entities or by folder id and task
-            name. Passing task entity is enough to define both folder and
-            task. Current context of the tool is used if the context is
-            not defined, e.g. to only select a different workfile.
-
-        The workfiles tool is refreshed before the redirect, so files
-            created by the action can be selected.
-
-        Example:
-            >>> self.redirect(
-            ...     task_entity=task_entity,
-            ...     workfile_name="sh010_compositing_v003.nk",
-            ... )
-
-        Args:
-            folder_id (Optional[str]): Folder id to select.
-            task_name (Optional[str]): Name of task to select.
-            folder_entity (Optional[dict[str, Any]]): Folder to select.
-            task_entity (Optional[dict[str, Any]]): Task to select.
-            workfile_name (Optional[str]): Filename of workarea workfile to
-                select.
-            representation_id (Optional[str]): Id of published workfile
-                representation to select.
-            area (Optional[WorkfileAreaType]): Area to show.
-
-        """
-        if task_entity is not None:
-            folder_id = task_entity["folderId"]
-            task_name = task_entity["name"]
-        elif folder_entity is not None:
-            folder_id = folder_entity["id"]
-
-        if area is not None:
-            area = WorkfileAreaType(area)
-
-        self._context.request_redirect(WorkfileActionRedirect(
-            folder_id=folder_id,
-            task_name=task_name,
-            workfile_name=workfile_name,
-            representation_id=representation_id,
-            area=area,
-        ))
-
-    def request_refresh(self) -> None:
-        """Request the tool to refresh its content when action finishes."""
-        self._context.request_refresh()
-
-    def request_open_workfile(
-        self,
-        filepath: str,
-        *,
-        folder_id: Optional[str] = None,
-        task_id: Optional[str] = None,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
-    ) -> None:
-        """Request the tool to open a workfile when action finishes.
-
-        The workfile is opened the same way as if a user would open it in
-            the tool, so the tool does ask what to do with unsaved changes
-            and is closed when the workfile is opened. Context of
-            the selection is used if the context is not defined.
-
-        Requested refresh and redirect are applied only if the workfile
-            was not opened, e.g. because a user cancelled it.
-
-        Args:
-            filepath (str): Path to the workfile to open.
-            folder_id (Optional[str]): Folder id of the workfile context.
-            task_id (Optional[str]): Task id of the workfile context.
-            folder_entity (Optional[dict[str, Any]]): Folder of the workfile
-                context.
-            task_entity (Optional[dict[str, Any]]): Task of the workfile
-                context.
-
-        """
-        if task_entity is not None:
-            folder_id = task_entity["folderId"]
-            task_id = task_entity["id"]
-        elif folder_entity is not None:
-            folder_id = folder_entity["id"]
-
-        self._context.request_open_workfile(WorkfileActionOpenWorkfile(
-            filepath=filepath,
-            folder_id=folder_id,
-            task_id=task_id,
-        ))
-
-    def request_duplicate_workfile(self, filepath: str) -> None:
-        """Request the tool to duplicate a workfile when action finishes.
-
-        The workfile is duplicated the same way as if a user would
-            duplicate it in the tool, so the tool does ask for the version
-            and comment of the new workfile.
-
-        Args:
-            filepath (str): Path to the workfile to duplicate.
-
-        """
-        self._context.request_duplicate_workfile(filepath)
-
-    def request_close(self) -> None:
-        """Request the tool to close when action finishes."""
-        self._context.request_close()
-
     def ask_to_save_changes(
         self, form_values: dict[str, Any]
-    ) -> Optional[WorkfileActionResult]:
+    ) -> WorkfileActionResult | None:
         """Make sure a user decided what to do with unsaved changes.
 
         Helper for actions which do open a different workfile on their
-            own. Use 'request_open_workfile' if the workfile can be opened
-            by the tool, which takes care about unsaved changes too.
+            own. Use 'WorkfileActionResult.set_open_workfile' if
+            the workfile can be opened by the tool, which takes care about
+            unsaved changes too.
 
         Returns
             a result with a form if the current workfile has unsaved changes
@@ -878,14 +866,11 @@ class WorkfileActionPlugin(ABC):
                 'execute_action'.
 
         Returns:
-            Optional[WorkfileActionResult]: Result with form to show or None
+            WorkfileActionResult | None: Result with form to show or None
                 if the action can continue.
 
         """
         host = self.host
-        if not isinstance(host, IWorkfileHost):
-            return None
-
         if SAVE_CHANGES_FORM_KEY in form_values:
             if form_values[SAVE_CHANGES_FORM_KEY]:
                 host.save_workfile(host.get_current_workfile())
@@ -920,26 +905,27 @@ class WorkfileActionsContext:
     Takes care about the public api of workfile actions and internal logic
         like discovery and initialization of plugins.
 
-    Project of the host integration is used to get settings for plugins.
-        Studio settings are used if host integration is not available.
+    Actions are related to a host integration with workfiles and to its
+        current project. Project settings of the project are used to set up
+        the plugins.
 
     Args:
-        project_settings (Optional[dict[str, Any]]): Prepared settings.
-        addons_manager (Optional[AddonsManager]): Prepared addons manager.
-        host (Optional[AbstractHost]): Host integration. Registered host is
-            used if is not passed in.
+        host (IWorkfileHost): Host integration.
+        project_settings (dict[str, Any] | None): Prepared settings of
+            the current project.
+        addons_manager (AddonsManager | None): Prepared addons manager.
 
     """
     def __init__(
         self,
-        project_settings: Optional[dict[str, Any]] = None,
-        addons_manager: Optional[AddonsManager] = None,
-        host: Optional[AbstractHost] = _PLACEHOLDER,
+        host: IWorkfileHost,
+        project_settings: dict[str, Any] | None = None,
+        addons_manager: AddonsManager | None = None,
     ) -> None:
         self._log = Logger.get_logger(self.__class__.__name__)
 
-        self._addons_manager = addons_manager
         self._host = host
+        self._addons_manager = addons_manager
         self._lock = threading.RLock()
 
         # Attributes that are re-cached on reset
@@ -947,11 +933,7 @@ class WorkfileActionsContext:
         self._plugin_paths = None
         self._plugins = None
 
-        self._execution_requests: Optional[_ExecutionRequests] = None
-
-    def reset(
-        self, project_settings: Optional[dict[str, Any]] = None
-    ) -> None:
+    def reset(self, project_settings: dict[str, Any] | None = None) -> None:
         """Reset context cache.
 
         Reset plugins and settings to reload them.
@@ -961,7 +943,8 @@ class WorkfileActionsContext:
                 be a reason to do so.
 
         Args:
-            project_settings (Optional[dict[str, Any]]): Prepared settings.
+            project_settings (dict[str, Any] | None): Prepared settings of
+                the current project.
 
         """
         with self._lock:
@@ -972,62 +955,42 @@ class WorkfileActionsContext:
     def get_addons_manager(self) -> AddonsManager:
         with self._lock:
             if self._addons_manager is None:
-                self._addons_manager = AddonsManager(
-                    settings=get_studio_settings()
-                )
+                self._addons_manager = AddonsManager()
             return self._addons_manager
 
-    def get_host(self) -> Optional[AbstractHost]:
-        """Get current host integration.
+    def get_host(self) -> IWorkfileHost:
+        """Host integration of the actions.
 
         Returns:
-            Optional[AbstractHost]: Host integration. Can be None if host
-                integration is not registered -> probably not used in the
-                host integration process.
+            IWorkfileHost: Host integration.
 
         """
-        if self._host is _PLACEHOLDER:
-            from ayon_core.pipeline import registered_host
-
-            self._host = registered_host()
         return self._host
 
-    def get_host_name(self) -> Optional[str]:
-        host = self.get_host()
-        if host is None:
-            return None
-        return host.name
+    def get_host_name(self) -> str:
+        return self._host.name
 
-    def get_project_name(self) -> Optional[str]:
-        """Project name of the host integration.
+    def get_project_name(self) -> str:
+        """Current project name of the host integration.
 
         Returns:
-            Optional[str]: Project name or None if host integration is not
-                available.
+            str: Project name.
 
         """
-        host = self.get_host()
-        if host is None:
-            return None
-        return host.get_current_project_name()
+        return self._host.get_current_project_name()
 
     def get_project_settings(self) -> dict[str, Any]:
-        """Settings used to set up the plugins.
+        """Project settings used to set up the plugins.
 
         Returns:
-            dict[str, Any]: Project settings or studio settings if project
-                name is not available.
+            dict[str, Any]: Project settings.
 
         """
         with self._lock:
             if self._project_settings is None:
-                project_name = self.get_project_name()
-                if project_name:
-                    self._project_settings = get_project_settings(
-                        project_name
-                    )
-                else:
-                    self._project_settings = get_studio_settings()
+                self._project_settings = get_project_settings(
+                    self.get_project_name()
+                )
             return copy.deepcopy(self._project_settings)
 
     def prepare_plugin_paths(self) -> None:
@@ -1086,20 +1049,17 @@ class WorkfileActionsContext:
         self,
         identifier: str,
         selection: WorkfileActionSelection,
-        data: Optional[DataType],
+        data: DataType | None,
         form_values: dict[str, Any],
     ) -> WorkfileActionResult:
         """Trigger action execution.
-
-        Requests made by the plugin during the execution, like redirect or
-            refresh, are added to the result.
 
         Args:
             identifier (str): Identifier of the plugin.
             selection (WorkfileActionSelection): Selection wrapper. Can be
                 used to get what is selected in UI and to get access to
                 entity cache.
-            data (Optional[DataType]): Additional action item data.
+            data (DataType | None): Additional action item data.
             form_values (dict[str, Any]): Form values related to action.
                 Usually filled if action returned response with form.
 
@@ -1109,88 +1069,10 @@ class WorkfileActionsContext:
         """
         plugins_by_id = self._get_plugins()
         plugin = plugins_by_id[identifier]
-        requests = _ExecutionRequests()
-        self._execution_requests = requests
-        try:
-            result = plugin.execute_action(
-                selection,
-                data,
-                form_values,
-            )
-        finally:
-            self._execution_requests = None
-
+        result = plugin.execute_action(selection, data, form_values)
         if result is None:
             result = WorkfileActionResult()
-
-        if requests.refresh:
-            result.refresh = True
-        if requests.close_tool:
-            result.close_tool = True
-        if result.redirect is None:
-            result.redirect = requests.redirect
-        if result.open_workfile is None:
-            result.open_workfile = requests.open_workfile
-        if result.duplicate_workfile is None:
-            result.duplicate_workfile = requests.duplicate_workfile
         return result
-
-    def request_redirect(self, redirect: WorkfileActionRedirect) -> None:
-        """Request redirect of the tool by currently executed action.
-
-        Args:
-            redirect (WorkfileActionRedirect): Where to redirect.
-
-        """
-        requests = self._get_execution_requests("redirect")
-        if requests is not None:
-            requests.redirect = redirect
-
-    def request_open_workfile(
-        self, open_workfile: WorkfileActionOpenWorkfile
-    ) -> None:
-        """Request the tool to open workfile by currently executed action.
-
-        Args:
-            open_workfile (WorkfileActionOpenWorkfile): Workfile to open.
-
-        """
-        requests = self._get_execution_requests("open workfile")
-        if requests is not None:
-            requests.open_workfile = open_workfile
-
-    def request_duplicate_workfile(self, filepath: str) -> None:
-        """Request the tool to duplicate workfile by executed action.
-
-        Args:
-            filepath (str): Path to the workfile to duplicate.
-
-        """
-        requests = self._get_execution_requests("duplicate workfile")
-        if requests is not None:
-            requests.duplicate_workfile = filepath
-
-    def request_refresh(self) -> None:
-        """Request refresh of the tool by currently executed action."""
-        requests = self._get_execution_requests("refresh")
-        if requests is not None:
-            requests.refresh = True
-
-    def request_close(self) -> None:
-        """Request close of the tool by currently executed action."""
-        requests = self._get_execution_requests("close")
-        if requests is not None:
-            requests.close_tool = True
-
-    def _get_execution_requests(
-        self, request_name: str
-    ) -> Optional[_ExecutionRequests]:
-        if self._execution_requests is None:
-            self._log.warning(
-                f"Requested '{request_name}' out of action execution."
-                " The request is ignored."
-            )
-        return self._execution_requests
 
     def _get_plugin_paths(self) -> list[str]:
         with self._lock:
@@ -1285,12 +1167,12 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
 
     """
 
-    label: Optional[str] = None
+    label: str | None = None
     order: int = 0
-    group_label: Optional[str] = None
+    group_label: str | None = None
     icon: IconBase | dict[str, Any] | None = None
-    tooltip: Optional[str] = None
-    description: Optional[str] = None
+    tooltip: str | None = None
+    description: str | None = None
     quick_action: bool = True
     skip_discovery: bool = True
 
@@ -1315,7 +1197,7 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
         self,
         selection: WorkfileActionSelection,
         form_values: dict[str, Any],
-    ) -> Optional[WorkfileActionResult]:
+    ) -> WorkfileActionResult | None:
         """Process action based on selection.
 
         Args:
@@ -1323,7 +1205,7 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
             form_values (dict[str, Any]): Values from a form if there are any.
 
         Returns:
-            Optional[WorkfileActionResult]: Result of the action.
+            WorkfileActionResult | None: Result of the action.
 
         """
         pass
@@ -1349,7 +1231,7 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
     def execute_action(
         self,
         selection: WorkfileActionSelection,
-        data: Optional[DataType],
+        data: DataType | None,
         form_values: dict[str, Any],
-    ) -> Optional[WorkfileActionResult]:
+    ) -> WorkfileActionResult | None:
         return self.execute_simple_action(selection, form_values)

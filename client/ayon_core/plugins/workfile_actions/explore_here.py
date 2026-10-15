@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Optional, Any
+from typing import Any
 
 from ayon_core.lib import open_in_file_browser
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
@@ -12,7 +12,7 @@ from ayon_core.pipeline.actions import (
 )
 
 
-def _find_existing_dir(path: str) -> Optional[str]:
+def _find_existing_dir(path: str) -> str | None:
     """Find the closest existing directory of the path."""
     path = os.path.normpath(path)
     while path:
@@ -56,7 +56,7 @@ class ExploreHereAction(WorkfileSimpleActionPlugin):
         self,
         selection: WorkfileActionSelection,
         form_values: dict[str, Any],
-    ) -> Optional[WorkfileActionResult]:
+    ) -> WorkfileActionResult | None:
         if selection.has_workfile():
             path = selection.filepath
         else:

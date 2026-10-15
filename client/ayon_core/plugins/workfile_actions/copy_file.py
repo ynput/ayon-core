@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Optional, Any
+from typing import Any
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.actions import (
@@ -56,7 +56,7 @@ class CopyFileAction(WorkfileActionPlugin):
         selection: WorkfileActionSelection,
         data: dict[str, Any],
         form_values: dict[str, Any],
-    ) -> Optional[WorkfileActionResult]:
+    ) -> WorkfileActionResult | None:
         from qtpy import QtWidgets, QtCore
 
         path = os.path.normpath(selection.filepath)

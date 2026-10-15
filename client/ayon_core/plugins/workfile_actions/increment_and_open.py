@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Optional, Any
+from typing import Any
 
-from ayon_core.host import IWorkfileHost
 from ayon_core.host.interfaces import CopyWorkfileOptionalData
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.workfile import copy_workfile_to_context
@@ -43,15 +42,13 @@ class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
             return False
 
         workfile_info = selection.workfile_info
-        if workfile_info is not None and not workfile_info.available:
-            return False
-        return isinstance(self.host, IWorkfileHost)
+        return workfile_info is None or workfile_info.available
 
     def execute_simple_action(
         self,
         selection: WorkfileActionSelection,
         form_values: dict[str, Any],
-    ) -> Optional[WorkfileActionResult]:
+    ) -> WorkfileActionResult | None:
         src_path = selection.filepath
         if not src_path or not os.path.exists(src_path):
             return WorkfileActionResult(
@@ -85,11 +82,13 @@ class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
                 project_settings=selection.get_project_settings(),
             ),
         )
-        # Let the tool open the workfile as any other workfile
-        self.request_open_workfile(dst_path, task_entity=task_entity)
-        # Show the new workfile if it was not opened
-        self.redirect(
-            task_entity=task_entity,
-            workfile_name=os.path.basename(dst_path),
+        # Let the tool open the workfile as any other workfile and show
+        #   the new workfile if it was not opened
+        return (
+            WorkfileActionResult()
+            .set_open_workfile(dst_path, task_entity=task_entity)
+            .set_redirect(
+                task_entity=task_entity,
+                workfile_name=os.path.basename(dst_path),
+            )
         )
-        return None

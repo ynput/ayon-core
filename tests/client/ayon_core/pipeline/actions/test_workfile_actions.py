@@ -44,9 +44,9 @@ class RedirectAction(WorkfileActionPlugin):
         ]
 
     def execute_action(self, selection, data, form_values):
-        self.request_refresh()
-        self.request_close()
-        self.redirect(
+        return WorkfileActionResult(
+            refresh=True, close_tool=True
+        ).set_redirect(
             task_entity={"folderId": "folder-2", "name": "comp"},
             workfile_name="file_v002.ma",
         )
@@ -91,14 +91,23 @@ class _FakeAddonsManager:
         self.addons = addons
 
 
+def _create_host():
+    host = mock.MagicMock(spec=IWorkfileHost)
+    host.name = "testhost"
+    host.get_current_project_name.return_value = "test_project"
+    return host
+
+
 def _create_context(tmp_path, project_settings=None, host=None):
     plugins_dir = tmp_path / "workfile_actions"
     plugins_dir.mkdir(exist_ok=True)
     (plugins_dir / "test_actions.py").write_text(PLUGIN_FILE_CONTENT)
+    if host is None:
+        host = _create_host()
     return WorkfileActionsContext(
+        host,
         project_settings=project_settings or {},
         addons_manager=_FakeAddonsManager([_FakeAddon([str(plugins_dir)])]),
-        host=host,
     )
 
 
@@ -130,6 +139,7 @@ def test_discovery_and_sorting(tmp_path):
         "test.save-changes",
         "test.redirect",
         "test.redirect",
+        "core.increment-and-open",
         "core.duplicate-workfile",
         "core.copy-file",
         "core.copy-file",
@@ -152,6 +162,7 @@ def test_settings_can_disable_plugins(tmp_path):
     )
     assert [(item.identifier, item.order) for item in items] == [
         ("test.save-changes", -10),
+        ("core.increment-and-open", 20),
         ("core.duplicate-workfile", 30),
         ("core.copy-file", 40),
         ("core.copy-file", 41),
@@ -160,7 +171,7 @@ def test_settings_can_disable_plugins(tmp_path):
     ]
 
 
-def test_execute_adds_requests_to_result(tmp_path):
+def test_execute_returns_result(tmp_path):
     context = _create_context(tmp_path)
     result = context.execute_action(
         "test.redirect", _create_selection(), None, {}
@@ -174,8 +185,47 @@ def test_execute_adds_requests_to_result(tmp_path):
             workfile_name="file_v002.ma",
         ),
     )
-    # Requests are ignored out of the execution
-    context.request_refresh()
+    # Plugin that does not return a result
+    result = context.execute_action(
+        "test.crashing", _create_selection(), None, {}
+    )
+    assert result == WorkfileActionResult()
+
+
+def test_result_helpers():
+    task_entity = {"id": "task-1", "folderId": "folder-1", "name": "comp"}
+    result = (
+        WorkfileActionResult("Copied")
+        .set_open_workfile("/work/file_v002.ma", task_entity=task_entity)
+        .set_redirect(task_entity=task_entity, workfile_name="file_v002.ma")
+    )
+    assert result.message == "Copied"
+    assert result.open_workfile == WorkfileActionOpenWorkfile(
+        filepath="/work/file_v002.ma",
+        folder_id="folder-1",
+        task_id="task-1",
+    )
+    assert result.redirect == WorkfileActionRedirect(
+        folder_id="folder-1",
+        task_name="comp",
+        workfile_name="file_v002.ma",
+    )
+
+    # Folder entity, published area and context of the selection
+    result = WorkfileActionResult().set_redirect(
+        folder_entity={"id": "folder-2"},
+        representation_id="repre-1",
+        area="published",
+    )
+    assert result.redirect == WorkfileActionRedirect(
+        folder_id="folder-2",
+        representation_id="repre-1",
+        area=WorkfileAreaType.published,
+    )
+    result = WorkfileActionResult().set_open_workfile("/work/file.ma")
+    assert result.open_workfile == WorkfileActionOpenWorkfile(
+        filepath="/work/file.ma"
+    )
 
 
 def test_ask_to_save_changes(tmp_path):
@@ -352,10 +402,7 @@ def test_increment_and_open(tmp_path):
 
 
 def test_project_name_comes_from_host(tmp_path):
-    assert _create_context(tmp_path).get_project_name() is None
-
-    host = mock.MagicMock(spec=IWorkfileHost)
-    host.name = "testhost"
+    host = _create_host()
     host.get_current_project_name.return_value = "host_project"
     context = _create_context(tmp_path, host=host)
     assert context.get_project_name() == "host_project"
