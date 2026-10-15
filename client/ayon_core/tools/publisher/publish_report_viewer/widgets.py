@@ -1062,6 +1062,9 @@ class DetailsWidget(QtWidgets.QWidget):
         )
 
     def _log_matches_level(self, log: ReportLog) -> bool:
+        # print(log.type, log.levelname)
+        # print(log.levelno)
+        normalized_level = log.levelno
         if log.type == "error":
             normalized_level = logging.ERROR
         return normalized_level in self._level_filter
