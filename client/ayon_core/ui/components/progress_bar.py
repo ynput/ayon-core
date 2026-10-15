@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from qtpy.QtCore import QRectF, QSize, Qt, QTimer, Signal
 from qtpy.QtGui import (
@@ -28,7 +28,53 @@ from .style_mixin import StyleMixin
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ...lib.progress import ProgressReporter, ProgressState
+
+class ProgressSnapshot(Protocol):
+    label: str
+    phase: str
+    completed: int
+    total: int | None
+    failed: bool
+    message: str
+    finished: bool
+    overall: float | None
+
+
+@runtime_checkable
+class ProgressSource(Protocol):
+    """Anything the progress view can follow.
+
+    AYON's review-desktop addon implements this with its ``ProgressReporter``
+    (``ayon_review_desktop.progress``); core only depends on the shape.
+    """
+
+    def add_listener(
+        self,
+        callback: "Callable[[ProgressSnapshot], None]",
+        emit_immediately: bool = True,
+    ) -> None:
+        """Register *callback* for future snapshots.
+
+        With *emit_immediately* the callback is invoked synchronously once
+        with the current snapshot before returning -- the view relies on
+        that, it never calls :meth:`snapshot` itself.
+
+        Callbacks fire on every change, may fire on a worker thread (the view
+        marshals to the Qt thread itself), must run outside any internal
+        lock, and must never arrive out of order.
+        """
+
+    def remove_listener(
+        self, callback: "Callable[[ProgressSnapshot], None]"
+    ) -> None:
+        """Unregister *callback*; unknown callbacks are ignored.
+
+        The view calls this defensively (``bind`` unbinds first, and
+        ``unbind`` may run twice), so raising here would break re-binding.
+        """
+
+    def snapshot(self) -> "ProgressSnapshot":
+        """Current immutable state; never notifies. Optional for binding."""
 
 
 class ProgressBarState(Enum):
@@ -408,7 +454,7 @@ class AYProgressView(AYContainer):
         [=================--------]   45%
 
     A reporter that declares a phase plan is shown as one continuous bar
-    driven by ``ProgressState.overall``, so switching phase does not reset
+    driven by ``ProgressSnapshot.overall``, so switching phase does not reset
     the bar to zero.  Without a phase plan the current phase's own
     ``completed`` / ``total`` is shown.
 
@@ -429,7 +475,7 @@ class AYProgressView(AYContainer):
     progress_ping = Signal(int, object)
     completed = Signal()
 
-    #: Denominator used to express ``ProgressState.overall`` on the bar.
+    #: Denominator used to express ``ProgressSnapshot.overall`` on the bar.
     _OVERALL_SCALE = 1000
 
     def __init__(
@@ -481,20 +527,20 @@ class AYProgressView(AYContainer):
         self._bar.completed.connect(self._on_bar_completed)
         self._on_progress_changed()
 
-        self._reporter: ProgressReporter | None = None
+        self._reporter: ProgressSource | None = None
         self._reporter_completed = False
         # Generation of the active binding.  Pings carry the generation
         # they were emitted for, so ones that are already queued when the
         # view is unbound or rebound are discarded instead of applied.
         self._binding = 0
-        self._listener: Callable[[ProgressState], None] | None = None
+        self._listener: Callable[[ProgressSnapshot], None] | None = None
         # Reporter callbacks can arrive on a worker thread; hop to the Qt
         # thread before touching any widget.
         self.progress_ping.connect(
             self._apply, Qt.ConnectionType.QueuedConnection
         )
 
-    def bind(self, reporter: ProgressReporter) -> None:
+    def bind(self, reporter: ProgressSource) -> None:
         """Drive this view from *reporter*.
 
         The view is reset first so a reused view cannot briefly show the
@@ -524,11 +570,11 @@ class AYProgressView(AYContainer):
             self._reporter.remove_listener(self._listener)
             self._reporter = None
 
-    def _on_state(self, binding: int, state: ProgressState) -> None:
+    def _on_state(self, binding: int, state: ProgressSnapshot) -> None:
         """Queue a reporter snapshot for the Qt thread."""
         self.progress_ping.emit(binding, state)
 
-    def _apply(self, binding: int, state: ProgressState) -> None:
+    def _apply(self, binding: int, state: ProgressSnapshot) -> None:
         """Mirror a reporter snapshot onto the bar.
 
         Snapshots queued by a reporter that is no longer bound are

@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import dataclass, replace
 
 import pytest
 
-from ayon_core.lib.progress import ProgressReporter
 from ayon_core.ui.components.progress_bar import (
     AYProgressBar,
     AYProgressDialog,
@@ -13,6 +13,55 @@ from ayon_core.ui.components.progress_bar import (
     ProgressBarState,
 )
 from ayon_core.ui.variants import AYProgressBarVariants
+
+
+@dataclass(frozen=True)
+class _Snapshot:
+    """Structural stand-in for ``ProgressSnapshot``."""
+
+    label: str = ""
+    phase: str = ""
+    completed: int = 0
+    total: int | None = None
+    failed: bool = False
+    message: str = ""
+    finished: bool = False
+    overall: float | None = None
+
+
+class _ProgressSource:
+    """Minimal ``ProgressSource`` used to drive the view.
+
+    The headless reporter lives in the review-desktop addon
+    (``ayon_review_desktop.progress``) now, and its own tests cover
+    coalescing, phase weighting, clamping and thread safety.  These tests
+    only exercise the view, so snapshots are published explicitly instead
+    of replicating that behaviour here.
+    """
+
+    def __init__(self, **state):
+        self._state = _Snapshot(**state)
+        self._listeners = []
+
+    # --- ProgressSource ---
+    def snapshot(self) -> _Snapshot:
+        return self._state
+
+    def add_listener(self, callback, emit_immediately=True):
+        self._listeners.append(callback)
+        if emit_immediately:
+            callback(self._state)
+
+    def remove_listener(self, callback):
+        if callback in self._listeners:
+            self._listeners.remove(callback)
+
+    # --- helper
+    def publish(self, **changes):
+        """Replace state fields and notify listeners."""
+        self._state = replace(self._state, **changes)
+        for callback in list(self._listeners):
+            callback(self._state)
 
 
 def test_defaults(qapp):
@@ -100,26 +149,26 @@ def test_inline_variant_resolves(qapp):
 
 
 def test_view_applies_initial_state(qtbot):
-    reporter = ProgressReporter(total=4, min_interval=0.0)
-    reporter.set_progress(2)
+    source = _ProgressSource(total=4, completed=2)
     view = AYProgressView()
     qtbot.addWidget(view)
-    view.bind(reporter)
+    view.bind(source)
     qtbot.waitUntil(lambda: view.progress_bar.current == 2)
 
 
 def test_view_updates_from_worker_thread(qtbot):
-    reporter = ProgressReporter(total=50, min_interval=0.0)
+    source = _ProgressSource(total=50)
     view = AYProgressView()
     qtbot.addWidget(view)
-    view.bind(reporter)
+    view.bind(source)
     assert view.progress_bar.current == 0
 
     completed = []
     view.progress_bar.completed.connect(lambda: completed.append(True))
 
     worker = threading.Thread(
-        target=lambda: [reporter.step() for _ in range(50)])
+        target=lambda: [source.publish(completed=step)
+                        for step in range(1, 51)])
     worker.start()
     qtbot.waitUntil(lambda: view.progress_bar.current == 50, timeout=3000)
     worker.join()
@@ -129,7 +178,7 @@ def test_view_updates_from_worker_thread(qtbot):
 
 
 def test_view_queues_each_worker_snapshot(qtbot, monkeypatch):
-    reporter = ProgressReporter(total=4, min_interval=0.0)
+    source = _ProgressSource(total=4)
     seen = []
     gui_thread = threading.get_ident()
     original_apply = AYProgressView._apply
@@ -141,12 +190,12 @@ def test_view_queues_each_worker_snapshot(qtbot, monkeypatch):
     monkeypatch.setattr(AYProgressView, "_apply", record_apply)
     view = AYProgressView()
     qtbot.addWidget(view)
-    view.bind(reporter)
+    view.bind(source)
 
     def publish():
-        reporter.set_progress(1)
-        reporter.set_progress(2)
-        reporter.fail("Upload failed")
+        source.publish(completed=1)
+        source.publish(completed=2)
+        source.publish(failed=True, message="Upload failed")
 
     worker = threading.Thread(target=publish)
     worker.start()
@@ -160,58 +209,58 @@ def test_view_queues_each_worker_snapshot(qtbot, monkeypatch):
 
 
 @pytest.mark.parametrize("total", [None, 0, 4])
-def test_view_reporter_finishes_once(qtbot, qapp, total):
-    reporter = ProgressReporter(total=total, min_interval=0.0)
+def test_view_finishes_once(qtbot, qapp, total):
+    source = _ProgressSource(total=total)
     view = AYProgressView()
     qtbot.addWidget(view)
     completed = []
     view.completed.connect(lambda: completed.append(True))
-    view.bind(reporter)
-    reporter.set_progress(4)
+    view.bind(source)
+    source.publish(completed=4)
     qapp.processEvents()
     assert completed == []
 
-    reporter.finish()
-    reporter.flush()
-    reporter.flush()
+    source.publish(finished=True, overall=1.0)
+    source.publish()
+    source.publish()
     qtbot.waitUntil(lambda: bool(completed))
     qapp.processEvents()
     assert completed == [True]
     assert view.progress_bar._state is ProgressBarState.Success
 
-    next_reporter = ProgressReporter(min_interval=0.0)
-    view.bind(next_reporter)
-    next_reporter.finish()
+    next_source = _ProgressSource()
+    view.bind(next_source)
+    next_source.publish(finished=True, overall=1.0)
     qtbot.waitUntil(lambda: len(completed) == 2)
     assert completed == [True, True]
 
 
 def test_view_failed_reporter_does_not_complete(qtbot, qapp):
-    reporter = ProgressReporter(total=1, min_interval=0.0)
+    source = _ProgressSource(total=1)
     view = AYProgressView()
     qtbot.addWidget(view)
     completed = []
     view.completed.connect(lambda: completed.append(True))
-    view.bind(reporter)
-    reporter.set_progress(1)
-    reporter.fail("Upload failed")
-    reporter.finish()
+    view.bind(source)
+    source.publish(completed=1)
+    source.publish(failed=True, message="Upload failed")
+    source.publish(finished=True, overall=1.0)
     qapp.processEvents()
     assert completed == []
     assert view.progress_bar._state is ProgressBarState.Error
 
 
 def test_dialog_closes_when_indeterminate_reporter_finishes(qtbot):
-    reporter = ProgressReporter()
+    source = _ProgressSource()
     dialog = AYProgressDialog(close_on_complete=True)
     qtbot.addWidget(dialog)
-    dialog.progress_view.bind(reporter)
+    dialog.progress_view.bind(source)
     canceled = []
     dialog.canceled.connect(lambda: canceled.append(True))
     dialog.show()
     assert dialog.isVisible()
 
-    reporter.finish()
+    source.publish(finished=True, overall=1.0)
     qtbot.waitUntil(lambda: not dialog.isVisible())
     assert dialog.result() == dialog.DialogCode.Accepted
     assert canceled == []
@@ -219,17 +268,17 @@ def test_dialog_closes_when_indeterminate_reporter_finishes(qtbot):
 
 def test_view_ignores_snapshots_queued_before_unbind(qtbot):
     """The view must not change from pings queued before unbind()."""
-    reporter = ProgressReporter(total=4, min_interval=0.0)
+    source = _ProgressSource(total=4)
     view = AYProgressView()
     qtbot.addWidget(view)
-    view.bind(reporter)
-    reporter.fail("stale failure")  # queued, not applied yet
+    view.bind(source)
+    source.publish(failed=True, message="stale failure")  # queued
     view.unbind()
 
     # A ping from a fresh binding drains the queue in order.
-    other = ProgressReporter(total=4, min_interval=0.0)
+    other = _ProgressSource(total=4)
     view.bind(other)
-    other.set_progress(1)
+    other.publish(completed=1)
     qtbot.waitUntil(lambda: view.progress_bar.current == 1)
 
     assert view._caption is None
@@ -237,28 +286,28 @@ def test_view_ignores_snapshots_queued_before_unbind(qtbot):
 
 
 def test_view_ignores_queued_terminal_state_across_rebind(qtbot):
-    """A rebind drops the previous reporter's queued terminal state.
+    """A rebind drops the previous source's queued terminal state.
 
-    Otherwise it would take the completion latch and the new reporter's
+    Otherwise it would take the completion latch and the new source's
     finish would go unnoticed.
     """
-    first = ProgressReporter(total=1, min_interval=0.0)
-    second = ProgressReporter(total=1, min_interval=0.0)
+    first = _ProgressSource(total=1)
+    second = _ProgressSource(total=1)
     view = AYProgressView()
     qtbot.addWidget(view)
     completed = []
     view.completed.connect(lambda: completed.append(True))
 
     view.bind(first)
-    first.finish()  # its terminal ping is still queued
+    first.publish(finished=True, overall=1.0)  # terminal ping still queued
     view.bind(second)  # rebind before the event loop runs
-    second.set_progress(1)  # drains the queue in order
+    second.publish(completed=1)  # drains the queue in order
     qtbot.waitUntil(lambda: view.progress_bar.current == 1)
 
     assert completed == []
     assert view.progress_bar._state is not ProgressBarState.Success
 
-    second.finish()
+    second.publish(finished=True, overall=1.0)
     qtbot.waitUntil(lambda: bool(completed))
     assert completed == [True]
 
@@ -297,51 +346,46 @@ def test_size_hint_grows_for_overlay_text(qapp):
 
 
 def test_view_follows_overall_progress(qtbot):
-    """A declared phase plan drives the bar through ``overall``."""
-    reporter = ProgressReporter(min_interval=0.0)
-    reporter.set_phases({"export": 0.6, "upload": 0.3, "finalize": 0.1})
-    reporter.set_phase("export")
-    reporter.set_total(10)
-    reporter.set_progress(5)
-
+    """A snapshot's ``overall`` drives the bar; phases do not reset it."""
+    source = _ProgressSource(
+        overall=0.3, phase="export", completed=5, total=10,
+    )
     view = AYProgressView()
     qtbot.addWidget(view)
-    view.bind(reporter)
+    view.bind(source)
     qtbot.waitUntil(lambda: view.progress_bar.current == 300)
     assert view.progress_bar.total == 1000
     assert view.value_label.text() == "30%"
 
     # Switching phase keeps the bar determinate at the overall value
     # instead of dropping back to an empty indeterminate bar.
-    reporter.set_phase("upload")
+    source.publish(phase="upload")
     qtbot.waitUntil(lambda: view.value_label.text() == "30%")
     assert view.progress_bar.is_indeterminate is False
 
-    reporter.set_total(4)
-    reporter.set_progress(2)
+    source.publish(overall=0.45, completed=2, total=4)
     qtbot.waitUntil(lambda: view.progress_bar.current == 450)
     assert view.value_label.text() == "45%"
 
-    reporter.finish()
+    source.publish(finished=True, overall=1.0)
     qtbot.waitUntil(lambda: view.progress_bar.current == 1000)
     assert view.progress_bar._state is ProgressBarState.Success
 
 
 def test_view_resets_previous_run_when_rebound(qtbot):
     """A rebound view must not show the previous run's state."""
-    first = ProgressReporter(total=4, min_interval=0.0)
+    first = _ProgressSource(total=4)
     view = AYProgressView()
     qtbot.addWidget(view)
     view.bind(first)
-    first.set_progress(4)
-    first.fail("Upload failed")
+    first.publish(completed=4, failed=True, message="Upload failed")
     qtbot.waitUntil(
         lambda: view.progress_bar._state is ProgressBarState.Error
     )
     assert view._caption is not None
     assert view._caption.text() == "Upload failed"
 
-    second = ProgressReporter(total=4, min_interval=0.0)
+    second = _ProgressSource(total=4)
     view.bind(second)
 
     # Applied synchronously by bind(), before the queued snapshot.
