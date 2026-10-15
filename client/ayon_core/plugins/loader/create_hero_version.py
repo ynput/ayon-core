@@ -80,9 +80,9 @@ class CreateHeroVersion(LoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
-        actions = selection.get_project_settings().get("core", {}).get(
-            "tools", {}).get("loader", {}).get("actions", {})
-        if not actions.get(self.settings_key, True):
+        settings = selection.get_project_settings()
+        actions_settings = settings["core"]["tools"]["loader"].get("actions", {})
+        if not actions_settings.get("create_hero_version", True):
             return []
         # Do not show in hosts
         if self.host_name is not None:
