@@ -3,7 +3,6 @@ from pydantic import validator
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    MultiplatformPathListModel,
     ensure_unique_names,
     task_types_enum,
 )
@@ -449,17 +448,6 @@ class CoreSettings(BaseSettingsModel):
         title="Workfile actions",
         description="Actions available in the Workfiles tool.",
     )
-    project_plugins: MultiplatformPathListModel = SettingsField(
-        default_factory=MultiplatformPathListModel,
-        title="Additional Project Plugin Paths",
-        description=(
-            "Add paths to custom studio or project plugins.\n\n"
-            "Folders with custom create, publish and load plugins that are"
-            " registered when working in this project. Environment variables"
-            " can be used, e.g. `{STUDIO_ROOT}/plugins`. Paths that do not"
-            " exist are skipped."
-        ),
-    )
     project_folder_structure: str = SettingsField(
         "{}",
         widget="textarea",
@@ -591,11 +579,6 @@ DEFAULT_VALUES = {
         },
         indent=4
     ),
-    "project_plugins": {
-        "windows": [],
-        "darwin": [],
-        "linux": []
-    },
     "project_environments": json.dumps(
         {},
         indent=4
