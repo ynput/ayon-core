@@ -317,6 +317,76 @@ class MyAddon(AYONAddon, ITraits):
             MyTraitBar,
         ]
 ```
+
+## Trait manifest
+
+Traits are defined only on the client side, but the server and the frontend
+need to know them to show traits stored with representations. Each addon
+ships a generated manifest `server/traits.json` with the server part of
+the addon. The AYON server serves definitions from manifests of all installed
+addon versions at `/api/traits`.
+
+The manifest is created by `ayon_core.pipeline.traits.manifest`. For each
+trait version it stores a definition (id, name, description, persistence,
+JSON Schema of the stored data and optional UI hints) and three hashes:
+
+| Hash       | Covers                                                       | Change of a released trait                |
+|------------|--------------------------------------------------------------|-------------------------------------------|
+| `schema`   | Data model - fields, types, required fields, defaults, enums | Error - create a new version of the trait |
+| `behavior` | Code of the class and its bases up to `TraitBase`            | Error, unless acknowledged with a reason  |
+| `meta`     | Name, description, field descriptions, `ui_hints`            | Allowed with a warning                    |
+
+Traits in the manifest on the base branch are released and immutable,
+others can still change. Entries are never removed - published
+representations keep old trait ids. An entry is marked as deprecated when
+a newer version of the trait exists or its class was removed.
+
+Field descriptions come from the `Attributes:` (or `Args:`) section of the
+class docstring, or from `field(metadata={"description": ...})`. Rendering
+hints can be added with `ui_hints` class variable:
+
+```python
+@dataclass
+class MyTraitFoo(TraitBase):
+    """My trait foo.
+
+    Attributes:
+        size (int): Size of foo in bytes.
+    """
+
+    id: ClassVar[str] = "myaddon.mytrait.foo.v1"
+    name: ClassVar[str] = "My Trait Foo"
+    description: ClassVar[str] = "This is my trait foo"
+    persistent: ClassVar[bool] = True
+    ui_hints: ClassVar[dict] = {"group": "Files"}
+    size: int
+```
+
+Update the manifest after changing traits, CI fails if it is not up to date:
+
+```shell
+# ayon-core
+./tools/manage.sh traits-manifest export
+./tools/manage.sh traits-manifest check
+
+# other addons (run from the addon repository root)
+python -m ayon_core.pipeline.traits.manifest export \
+    --module ayon_myaddon.traits --base-ref origin/develop
+```
+
+If the code of a released trait changes and its stored data stay compatible,
+acknowledge it. The reason is recorded in `behaviorChanges` of the entry:
+
+```shell
+./tools/manage.sh traits-manifest export \
+    --accept-behavior-change myaddon.mytrait.foo.v1 --reason "Fix validation"
+```
+
+> [!NOTE]
+> Module level functions called by trait methods are not covered by
+> the behavior hash. Keep logic specific to a trait version inside the
+> trait class.
+
 ## Usage in Loaders
 
 In loaders, you can implement `is_compatible_loader()` method to check if the

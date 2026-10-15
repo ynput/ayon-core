@@ -146,6 +146,8 @@ default_help() {
   echo -e "  ${BWhite}run${RST}             ${BCyan}Run a uv command in the repository environment${RST}"
   echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests (optional tests excluded)${RST}"
   echo -e "  ${BWhite}run-tests --optional${RST} ${BCyan}Run ayon-core tests including optional tests${RST}"
+  echo -e "  ${BWhite}traits-manifest export${RST} ${BCyan}Update trait manifest server/traits.json${RST}"
+  echo -e "  ${BWhite}traits-manifest check${RST}  ${BCyan}Check trait manifest against origin/develop${RST}"
   echo ""
 }
 
@@ -179,6 +181,18 @@ run_tests () {
   fi
   uv sync --extra test
   uv run pytest ./tests -m "$test_marker"
+}
+
+run_traits_manifest () {
+  echo -e "${BIGreen}>>>${RST} Running trait manifest ..."
+  shift;  # will remove first arg ("traits-manifest") from the "$@"
+  local command="${1:-check}"
+  shift
+  case " $* " in
+    *" --base-ref"*) ;;
+    *) set -- "$@" --base-ref origin/develop ;;
+  esac
+  PYTHONPATH="$repo_root/client" uv run python -m ayon_core.pipeline.traits.manifest     "$command" --module ayon_core.pipeline.traits --core-hash "$@"
 }
 
 main () {
@@ -216,6 +230,10 @@ main () {
       ;;
     "runtests")
       run_tests "$@" || return_code=$?
+      exit $return_code
+      ;;
+    "traitsmanifest")
+      run_traits_manifest "$@" || return_code=$?
       exit $return_code
       ;;
   esac

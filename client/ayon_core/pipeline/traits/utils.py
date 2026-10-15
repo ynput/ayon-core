@@ -10,10 +10,22 @@ if TYPE_CHECKING:
     from ayon_core.pipeline.traits.trait import TraitBase
 
 
+def get_core_traits() -> list[type[TraitBase]]:
+    """Get trait classes defined by ayon-core.
+
+    Returns:
+        list[type[TraitBase]]: Core trait classes sorted by trait id.
+
+    """
+    from ayon_core.pipeline.traits.schema import collect_trait_classes
+
+    return collect_trait_classes(["ayon_core.pipeline.traits"])
+
+
 def get_available_traits(
         addons_manager: Optional[AddonsManager] = None
 ) -> Optional[list[TraitBase]]:
-    """Get available traits from active addons.
+    """Get available traits of ayon-core and active addons.
 
     Args:
         addons_manager (Optional[AddonsManager]): Addons manager instance.
@@ -31,7 +43,7 @@ def get_available_traits(
 
     # Get active addons
     enabled_addons = addons_manager.get_enabled_addons()
-    traits = []
+    traits = get_core_traits()
     for addon in enabled_addons:
         if not issubclass(type(addon), ITraits):
             # Skip addons not providing traits

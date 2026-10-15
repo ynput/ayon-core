@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
+    ClassVar,
     Generic,
     Optional,
     TypeVar,
@@ -33,7 +34,14 @@ class TraitBase(ABC):
     This model must be used as a base for all trait models.
     ``id``, ``name``, and ``description`` are abstract attributes that must be
     implemented in the derived classes.
+
+    ``ui_hints`` are optional hints for rendering the trait in
+    the frontend (e.g. ``{"group": "Files", "widget": "files"}``).
+    They are exported with the trait definition
+    (see `ayon_core.pipeline.traits.schema`) and do not affect the data.
     """
+
+    ui_hints: ClassVar[Optional[dict[str, Any]]] = None
 
     @property
     @abstractmethod
