@@ -18,6 +18,7 @@ from ayon_core.ui.style_types import get_ayon_style
 
 from .utils import (
     USERNAME_ROLE,
+    NaturalSortProxyModel,
     BaseOverlayFrame,
     WorkfilesDelegate,
     create_avatar_cache,
@@ -334,9 +335,8 @@ class PublishedFilesWidget(AYContainer):
         view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = PublishedFilesModel(controller)
-        proxy_model = QtCore.QSortFilterProxyModel()
+        proxy_model = NaturalSortProxyModel()
         proxy_model.setSourceModel(model)
-        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         proxy_model.setDynamicSortFilter(True)
 
         view.setModel(proxy_model)
