@@ -51,7 +51,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             repre_id = next(iter(repre_ids), None)
             if not repre_id:
                 continue
-            if actions.get("copy_file_path", True):
+            if actions_settings["copy_file_path"]:
                 output.append(
                     LoaderActionItem(
                         label=repre_name,
