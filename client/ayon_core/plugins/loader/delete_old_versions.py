@@ -66,7 +66,7 @@ class DeleteOldVersions(LoaderActionPlugin):
         }
 
         output = []
-        if actions.get("delete_old_versions", True):
+        if actions["delete_old_versions"]:
             output.append(LoaderActionItem(
                 group_label="Delete Versions",
                 label="Old versions",
