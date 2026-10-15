@@ -67,7 +67,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                         )
                     )
                 )
-            if actions.get("copy_file", True):
+             if actions_settings["copy_file"]:
                 output.append(
                     LoaderActionItem(
                         label=repre_name,
