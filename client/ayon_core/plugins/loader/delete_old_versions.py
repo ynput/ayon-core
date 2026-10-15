@@ -39,6 +39,10 @@ class DeleteOldVersions(LoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        # Do not show in hosts
+        if self.host_name is not None:
+            return []
+
         settings = selection.get_project_settings()
         actions_settings = settings["core"]["tools"]["loader"].get(
             "actions", {})
@@ -51,10 +55,6 @@ class DeleteOldVersions(LoaderActionPlugin):
                 "calculate_versions_size",
             )
         ):
-            return []
-
-        # Do not show in hosts
-        if self.host_name is not None:
             return []
 
         versions = selection.get_selected_version_entities()
