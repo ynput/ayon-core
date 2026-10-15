@@ -77,7 +77,8 @@ class DeleteOldVersions(LoaderActionPlugin):
                 },
                 icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
             ))
-        if actions.get("delete_selected_versions", True):
+
+        if actions["delete_selected_versions"]:
             output.append(LoaderActionItem(
                 group_label="Delete Versions",
                 label="Selected versions",
