@@ -5,7 +5,7 @@
 
 [project]
 name = "ayon-core"
-version = "1.10.0+dev"
+version = "1.10.1+dev"
 description = "AYON core provides the base building blocks for all other AYON addons and integrations and is responsible for discovery and initialization of other addons."
 authors = [
     {name = "Ynput s.r.o.", email = "info@ynput.io"}
@@ -34,6 +34,7 @@ dependencies = [
     "qtpy >=2.4.3",
     "pyside6 >=6.8.3",
     "Pillow ==9.5.0",
+    "websocket-client >= 1.7.0",
     "qtawesome ==0.7.3"
 ]
 
@@ -85,4 +86,5 @@ markers = [
     "slow: Slow tests",
     "server: Tests that require a running AYON server",
     "optional: Tests excluded from the default test run",
+    "server_compat(version): Tests of a fallback for AYON servers up to the given version, to remove once those servers are not supported anymore",
 ]
