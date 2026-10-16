@@ -1883,7 +1883,22 @@ class CleanUpFarmModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class CollectFarmVersionLockModel(BaseSettingsModel):
+    _isGroup = True
+    lock_version_on_farm: bool = SettingsField(
+        True,
+        title="Lock version on farm",
+        description=(
+            "Embed the version number into the farm metadata JSON so the farm "
+            "job publishes that exact version.\n\n"
+            "Disable to let the farm job publish the next available version "
+            "instead (useful when multiple queued jobs race for the same "
+            "product)."
+        )
+    )
+
+
+class PublishPluginsModel(BaseSettingsModel):
     CollectAnatomyInstanceData: CollectAnatomyInstanceDataModel = (
         SettingsField(
             default_factory=CollectAnatomyInstanceDataModel,
@@ -2083,6 +2098,10 @@ class PublishPuginsModel(BaseSettingsModel):
             " rendered files were published from, unless marked as"
             " persistent. Currently only applies to jobs submitted from Maya."
         ),
+    )
+    CollectFarmVersionLock: CollectFarmVersionLockModel = SettingsField(
+        default_factory=CollectFarmVersionLockModel,
+        title="Collect Farm Version Lock"
     )
 
 
@@ -2662,5 +2681,8 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CleanUpFarm": {
         "enabled": False
+    },
+    "CollectFarmVersionLock": {
+        "lock_version_on_farm": True
     }
 }
