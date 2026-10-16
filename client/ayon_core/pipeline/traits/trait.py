@@ -187,8 +187,12 @@ def _convert_value(value: Any, type_hint: Any) -> Any:  # noqa: PLR0911
     if type_hint is re.Pattern and isinstance(value, str):
         return re.compile(value)
     if issubclass(type_hint, Enum):
-        if isinstance(value, str) and value in type_hint.__members__:
-            return type_hint[value]
+        if isinstance(value, str):
+            # Older data stored enums as `str(member)`, for example
+            # "GapPolicy.forbidden", so the class prefix is ignored.
+            name = value.removeprefix(f"{type_hint.__name__}.")
+            if name in type_hint.__members__:
+                return type_hint[name]
         return type_hint(value)
     if (
         issubclass(type_hint, TraitBase)

@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "addon": "core",
-  "coreHash": "sha256:693cd80d85be9b010b175f0890fab7dfe6aef2a4ed23ce4e5525e67374dd2e1d",
+  "coreHash": "sha256:1a5f5d0ba75d0fb585f2783f499b0f73adec7a61900d616bd9a6ddde44e69576",
   "traits": {
     "ayon.2d.Deep.v1": {
       "definition": {
