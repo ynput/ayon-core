@@ -3,6 +3,9 @@
 import os
 import re
 import collections
+import warnings
+
+from .path_templates import FormatSpecStr
 
 
 CAPITALIZE_REGEX = re.compile(r"[a-zA-Z0-9]")
@@ -72,6 +75,11 @@ def prepare_template_data(fill_pairs):
     It produces multiple variants of keys (key, Key, KEY) to control
     format of filled template.
 
+    Deprecated:
+        Use named format specs in templates formatted with
+            'StringTemplate' instead, '{key:upperfirst}' instead of
+            '{Key}' and '{key:upper}' instead of '{KEY}'.
+
     Example:
         >>> src_data = {
         ...    "host": "maya",
@@ -88,14 +96,24 @@ def prepare_template_data(fill_pairs):
         dict[str, str]: Prepared values for template.
     """
 
+    warnings.warn(
+        "Function 'prepare_template_data' is deprecated. Use named"
+        " format specs in templates, e.g. '{key:upperfirst}' or"
+        " '{key:upper}', with 'StringTemplate' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     valid_items = _separate_keys_and_value(fill_pairs)
     output = {}
     for item in valid_items:
         keys, value = item
         # Convert only string values
         if isinstance(value, str):
-            upper_value = value.upper()
-            capitalized_value = _capitalize_value(value)
+            # Values support named format specs in python formatting
+            #   e.g. '"{key:upper}".format(**output)'
+            upper_value = FormatSpecStr(value.upper())
+            capitalized_value = FormatSpecStr(_capitalize_value(value))
+            value = FormatSpecStr(value)
         else:
             upper_value = capitalized_value = value
 
