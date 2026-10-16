@@ -419,7 +419,7 @@ class WorkfilesModel:
                 "ext": None,
                 "workdir": None,
                 "rootless_workdir": None,
-                "comment": None,
+                "comment": "",
                 "comment_hints": None,
                 "last_version": None,
                 "extensions": None,
@@ -456,12 +456,12 @@ class WorkfilesModel:
 
         file_items = self.get_workarea_file_items(folder_id, task_id)
         comment_hints = set()
-        comment = None
+        comment = ""
         for item in file_items:
             filepath = item.filepath
             filename = os.path.basename(filepath)
             if filename == current_filename:
-                comment = item.comment
+                comment = item.comment or ""
 
             if item.comment:
                 comment_hints.add(item.comment)
