@@ -339,15 +339,16 @@ def test_console_level_colors(log_module, monkeypatch):
 
     lines = stream.getvalue().splitlines()
     for line, (level, color) in zip(lines, [
-        ("debug", "245"),
-        ("info", "33"),
-        ("warning", "220"),
-        ("error", "208"),
-        ("critical", "196"),
+        ("debug", "244"),
+        ("info", "110"),
+        ("warning", "178"),
+        ("error", "209"),
+        ("critical", "202"),
     ]):
-        # Level is followed by bold style of structlog
+        # Brackets have the level style, followed by bold style of
+        #   structlog
         assert re.search(
-            rf"\[\x1b\[38;5;{color}m(\x1b\[1m)?{level}\x1b\[0m\]", line
+            rf"\x1b\[38;5;{color}m(\x1b\[1m)?\[{level}\]\x1b\[0m", line
         ), repr(line)
 
 
