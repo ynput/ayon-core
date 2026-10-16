@@ -157,8 +157,14 @@ class ExtractOTIOReview(
                 )
                 processing_range = None
                 self.actual_fps = available_range.duration.rate
-                start = src_range.start_time.rescaled_to(self.actual_fps)
-                duration = src_range.duration.rescaled_to(self.actual_fps)
+                # Hosts export float noise (Resolve native source start
+                # 86399.9977, Hiero float32 fps vs 23.976 media rate) and
+                # the frame conversions below truncate, which shifts the
+                # extract one frame early or drops the last frame.
+                start = self._snap_to_frame(
+                    src_range.start_time.rescaled_to(self.actual_fps))
+                duration = self._snap_to_frame(
+                    src_range.duration.rescaled_to(self.actual_fps))
 
                 # Temporary.
                 # Some AYON custom OTIO exporter were implemented with
@@ -344,6 +350,20 @@ class ExtractOTIOReview(
             "frameEnd": end,
         })
         return representation_data
+
+    @staticmethod
+    def _snap_to_frame(rational_time, tolerance=0.01):
+        """Snap a value within `tolerance` frames of a whole frame to it.
+
+        Genuine sub-frame values (e.g. 25fps clip on 24fps media) are kept.
+        """
+        import opentimelineio as otio
+
+        value = rational_time.value
+        nearest = round(value)
+        if abs(value - nearest) < tolerance:
+            value = float(nearest)
+        return otio.opentime.RationalTime(value, rational_time.rate)
 
     def _trim_available_range(self, avl_range, start, duration):
         """
