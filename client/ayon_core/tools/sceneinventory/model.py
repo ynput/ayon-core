@@ -1,5 +1,4 @@
 import re
-import logging
 
 import collections
 
@@ -10,6 +9,7 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import format_version
+from ayon_core.lib import Logger
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 NAME_COLOR_ROLE = QtCore.Qt.UserRole + 2
@@ -116,7 +116,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         for idx, label in enumerate(self.column_labels):
             self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
-        self.log = logging.getLogger(self.__class__.__name__)
+        self.log = Logger.get_logger(self.__class__.__name__)
 
         self._controller = controller
 
