@@ -91,7 +91,7 @@ def test_file_locations_validation(tmp_path: Path) -> None:
     frameranged_trait = FrameRanged(
         frame_start=1001,
         frame_end=1050,
-        frames_per_second="25"
+        frame_rate_numerator=25
     )
     representation.add_trait(frameranged_trait)
 
@@ -115,7 +115,7 @@ def test_file_locations_validation(tmp_path: Path) -> None:
     invalid_sequence_trait = FrameRanged(
         frame_start=1001,
         frame_end=1051,
-        frames_per_second="25"
+        frame_rate_numerator=25
     )
 
     representation.add_trait(invalid_sequence_trait)
@@ -204,3 +204,36 @@ def test_get_sequence_from_files() -> None:
 
     assert single.frame_start == 1001
     assert single.frame_end == 1001
+
+    # other numbers in published file names must not split the sequence
+    published = [
+        Path(f"TP_7e2_sh010_renderMain_v001.{frame}.exr")
+        for frame in range(1001, 1006)
+    ]
+    seq = FileLocations.get_sequence_from_files(paths=published)
+    assert seq.frame_start == 1001
+    assert seq.frame_end == 1005
+
+
+def test_file_locations_upgrade() -> None:
+    """Version 1 data with nested file locations are upgraded."""
+    representation = Representation.from_dict("test", trait_data={
+        "ayon.content.FileLocations.v1": {
+            "file_paths": [
+                {"file_path": "/path/to/file.1001.exr", "file_size": 1,
+                 "file_hash": "abc"},
+                {"file_path": "/path/to/file.1002.exr", "file_size": 2,
+                 "file_hash": "def"},
+            ],
+        },
+    })
+
+    file_locations = representation.get_trait(FileLocations)
+    assert file_locations.id == "ayon.content.FileLocations.v2"
+    assert [
+        (location.file_path, location.file_hash, location.file_hash_type)
+        for location in file_locations.file_paths
+    ] == [
+        (Path("/path/to/file.1001.exr"), "abc", None),
+        (Path("/path/to/file.1002.exr"), "def", None),
+    ]

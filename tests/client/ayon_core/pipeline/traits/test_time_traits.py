@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from fractions import Fraction
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from ayon_core.pipeline.traits import (
     Handles,
     Representation,
     Sequence,
+    parse_frame_rate,
 )
 from ayon_core.pipeline.traits.trait import TraitValidationError
 
@@ -49,7 +51,7 @@ def test_sequence_validations() -> None:
         FileLocations(file_paths=file_locations_list),
         FrameRanged(
             frame_start=1001,
-            frame_end=1100, frames_per_second="25"),
+            frame_end=1100, frame_rate_numerator=25),
         Sequence(
             frame_padding=4,
             frame_spec="1001-1010,1015-1020,1100")
@@ -74,7 +76,7 @@ def test_sequence_validations() -> None:
         ),
         FrameRanged(
             frame_start=1001,
-            frame_end=1100, frames_per_second="25"),
+            frame_end=1100, frame_rate_numerator=25),
         Sequence(frame_padding=4)
     ])
 
@@ -97,7 +99,7 @@ def test_sequence_validations() -> None:
         ),
         FrameRanged(
             frame_start=1001,
-            frame_end=1100, frames_per_second="25"),
+            frame_end=1100, frame_rate_numerator=25),
         Sequence(frame_padding=4)
     ])
 
@@ -120,7 +122,7 @@ def test_sequence_validations() -> None:
             ),
             FrameRanged(
                 frame_start=1001,
-                frame_end=1050, frames_per_second="25"),
+                frame_end=1050, frame_rate_numerator=25),
             Sequence(frame_padding=4)
         ])
 
@@ -140,7 +142,7 @@ def test_sequence_validations() -> None:
         ]),
         FrameRanged(
             frame_start=1001,
-            frame_end=1050, frames_per_second="25"),
+            frame_end=1050, frame_rate_numerator=25),
         Sequence(frame_padding=4, frame_spec="1001-1010,1012-2000")
     ])
     with pytest.raises(TraitValidationError):
@@ -246,3 +248,76 @@ def test_sequence_get_frame_padding() -> None:
 
     assert Sequence.get_frame_padding(
         file_locations=representation.get_trait(FileLocations)) == 4
+
+
+@pytest.mark.parametrize(("value", "expected"), [
+    (25, Fraction(25)),
+    ("25", Fraction(25)),
+    (25.0, Fraction(25)),
+    ("24000/1001", Fraction(24000, 1001)),
+    (Fraction(48, 2), Fraction(24)),
+    # decimal NTSC frame rates
+    (23.976, Fraction(24000, 1001)),
+    ("29.97", Fraction(30000, 1001)),
+    (59.94, Fraction(60000, 1001)),
+    (12.5, Fraction(25, 2)),
+    (None, None),
+    ("", None),
+])
+def test_parse_frame_rate(value, expected) -> None:
+    """Frame rate is converted to reduced exact fraction."""
+    assert parse_frame_rate(value) == expected
+
+
+def test_frame_rate() -> None:
+    """Frame rate is stored as reduced fraction."""
+    frame_ranged = FrameRanged(frame_start=1001, frame_end=1100)
+    assert frame_ranged.frame_rate is None
+
+    frame_ranged.frame_rate = "48/2"
+    assert frame_ranged.frame_rate_numerator == 24
+    assert frame_ranged.frame_rate_denominator == 1
+
+    frame_ranged.frame_rate = 29.97
+    assert frame_ranged.frame_rate == Fraction(30000, 1001)
+
+    with pytest.raises(ValueError):
+        frame_ranged.frame_rate = 0
+
+
+@pytest.mark.parametrize(("value", "precision", "expected"), [
+    (None, None, ""),
+    (None, 3, ""),
+    (25, None, "25"),
+    (25, 3, "25.000"),
+    (12.5, None, "12.5"),
+    (Fraction(24000, 1001), None, "23.976023976023978"),
+    (Fraction(24000, 1001), 3, "23.976"),
+    (Fraction(24000, 1001), 2, "23.98"),
+    (Fraction(24000, 1001), 0, "24"),
+])
+def test_get_fps_string(value, precision, expected) -> None:
+    """Frame rate strings support optional fixed decimal precision."""
+    frame_ranged = FrameRanged(frame_start=1001, frame_end=1100)
+    frame_ranged.frame_rate = value
+
+    assert frame_ranged.get_fps_string(precision) == expected
+    if precision is None:
+        assert frame_ranged.get_fps_string() == expected
+
+
+def test_frame_ranged_upgrade() -> None:
+    """Version 1 data with string frame rate are upgraded."""
+    representation = Representation.from_dict("test", trait_data={
+        "ayon.time.FrameRanged.v1": {
+            "frame_start": 1001,
+            "frame_end": 1100,
+            "frames_per_second": "23.976",
+        },
+    })
+
+    frame_ranged = representation.get_trait(FrameRanged)
+    assert frame_ranged.id == "ayon.time.FrameRanged.v2"
+    assert (frame_ranged.frame_start, frame_ranged.frame_end) == (1001, 1100)
+    assert frame_ranged.frame_rate == Fraction(24000, 1001)
+    assert "frames_per_second" not in frame_ranged.as_dict()
