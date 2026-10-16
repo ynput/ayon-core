@@ -2085,9 +2085,8 @@ class OverscanCrop:
     e.g. "300p" or "10%+", or more than two values raise 'ValueError'.
     """
 
-    # Optional sign, number and optional suffix "%", "%+" or "%-"
-    # - suffix "px" is removed from string before the regex is used
-    item_regex = re.compile(r"([\+\-])?([0-9]+)(%[\+\-]?)?")
+    # Optional sign, number and optional suffix "px", "%", "%+" or "%-"
+    item_regex = re.compile(r"([\+\-])?([0-9]+)(px|%[\+\-]?)?")
 
     def __init__(
         self, input_width, input_height, string_value, overscan_color=None
@@ -2176,9 +2175,8 @@ class OverscanCrop:
         if not string_value:
             return [PixValueRelative(0), PixValueRelative(0)]
 
-        # Replace "px" (and spaces before) with single space
-        string_value = re.sub(r"([ ]+)?px", " ", string_value)
-        string_value = re.sub(r"([ ]+)%", "%", string_value)
+        # Remove spaces before "px" and "%" suffix
+        string_value = re.sub(r"[ ]+(px|%)", r"\g<1>", string_value)
         # Make sure +/- sign at the beginning of string is next to number
         string_value = re.sub(r"^([\+\-])[ ]+", r"\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
@@ -2207,6 +2205,9 @@ class OverscanCrop:
                 raise ValueError(error_msg)
 
             relative_sign, value, ending = match.groups()
+            # Value without suffix is the same as value with "px"
+            if ending == "px":
+                ending = None
             if not relative_sign:
                 # Value without suffix is explicit pixel size
                 if not ending:

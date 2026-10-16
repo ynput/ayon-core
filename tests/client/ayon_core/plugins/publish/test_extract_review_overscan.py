@@ -53,6 +53,12 @@ def test_overscan_crop_valid_string(
         "3072pix",
         "10percent",
         "10%%",
+        # Malformed "px" suffix
+        "3072pxpx",
+        "3072%px",
+        "3072% px",
+        "3072px1728",
+        "+10px%",
         # Relative source sign without relative value
         "10%+",
         "10%-",
