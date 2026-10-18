@@ -1405,8 +1405,10 @@ def oiio_color_convert(
             "display/view inputs."
         )
 
+    # Representations with display/view also carry the colorspace of the
+    #   display/view pair, so this is expected
     if source_view and source_display and source_colorspace:
-        logger.warning(
+        logger.debug(
             "Both source display/view and source_colorspace provided. "
             "Using source display/view pair and ignoring source_colorspace."
         )
