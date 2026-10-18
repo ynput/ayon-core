@@ -1293,8 +1293,10 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
         default_factory=list,
         title="Input arguments",
         description=(
-            "FFmpeg arguments placed before the input file, e.g."
-            " `-apply_trc gamma22` to convert linear EXR input."
+            "FFmpeg arguments placed before the input file. Color"
+            " changes such as `-apply_trc` are"
+            " not reflected in the output's colorspace data; convert"
+            " colors with *Extract OIIO Transcode* instead."
         ),
     )
     output: list[str] = SettingsField(
@@ -2392,9 +2394,7 @@ DEFAULT_PUBLISH_VALUES = {
                         "ffmpeg_args": {
                             "video_filters": [],
                             "audio_filters": [],
-                            "input": [
-                                "-apply_trc gamma22"
-                            ],
+                            "input": [],
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",
@@ -2495,9 +2495,7 @@ DEFAULT_PUBLISH_VALUES = {
                         "ffmpeg_args": {
                             "video_filters": [],
                             "audio_filters": [],
-                            "input": [
-                                "-apply_trc gamma22"
-                            ],
+                            "input": [],
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",

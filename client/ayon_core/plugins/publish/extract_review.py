@@ -133,6 +133,47 @@ def frame_to_timecode(frame: int, fps: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}:{remaining_frames:02d}"
 
 
+# FFmpeg arguments and filters that change pixel colors. Color conversion
+#   is expected to happen before Extract Review (e.g. Extract OIIO Transcode),
+#   so representation 'colorspaceData' is copied to the review outputs as is.
+_COLOR_CHANGING_FFMPEG_ARG_REGEX = re.compile(r"(?<![\w-])-apply_trc\b")
+_FFMPEG_VIDEO_FILTERS_REGEX = re.compile(
+    r"(?<![\w-])(?:-vf|-filter:v|-filter_complex|-lavfi)\s+"
+    r"(\"[^\"]*\"|'[^']*'|\S+)"
+)
+_COLOR_CHANGING_FFMPEG_FILTER_REGEX = re.compile(
+    r"(?<![\w-])("
+    r"lut3d|lut1d|haldclut|lut|lutrgb|lutyuv|colorspace|colormatrix|zscale"
+    r"|tonemap|curves|eq|colorbalance|colorlevels|colorchannelmixer"
+    r")(?=[=,;\"'\s\]]|$)"
+)
+
+
+def get_color_changing_ffmpeg_args(ffmpeg_cmd: str) -> list[str]:
+    """Find FFmpeg arguments and filters that change pixel colors.
+
+    Filters are searched in the video filter graphs (`-vf`, `-filter:v`,
+    `-filter_complex`, `-lavfi`). Output options like `-colorspace bt709`
+    only tag the output and are not reported.
+
+    Args:
+        ffmpeg_cmd (str): Full FFmpeg command.
+
+    Returns:
+        list[str]: Found argument and filter names, without duplicates.
+    """
+    found = []
+    if _COLOR_CHANGING_FFMPEG_ARG_REGEX.search(ffmpeg_cmd):
+        found.append("-apply_trc")
+    for filters_match in _FFMPEG_VIDEO_FILTERS_REGEX.finditer(ffmpeg_cmd):
+        filters = filters_match.group(1)
+        for match in _COLOR_CHANGING_FFMPEG_FILTER_REGEX.finditer(filters):
+            name = match.group(1)
+            if name not in found:
+                found.append(name)
+    return found
+
+
 class ExtractReview(pyblish.api.InstancePlugin):
     """Extracting Reviewable medias
 
@@ -600,6 +641,25 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 raise NotImplementedError
 
             subprcs_cmd = " ".join(ffmpeg_args)
+
+            # 'colorspaceData' of the source is kept on the output, which is
+            #   only correct when FFmpeg does not change the colors
+            colorspace_data = new_repre.get("colorspaceData")
+            color_args = get_color_changing_ffmpeg_args(subprcs_cmd)
+            if colorspace_data and color_args:
+                source_color = colorspace_data.get("colorspace")
+                if colorspace_data.get("display"):
+                    source_color = "{} / {}".format(
+                        colorspace_data["display"], colorspace_data.get("view")
+                    )
+                self.log.warning(
+                    f"Output '{output_def['filename_suffix']}' changes colors"
+                    f" with FFmpeg ({', '.join(color_args)}), but its"
+                    " colorspace data is copied from the source"
+                    f" representation ('{source_color}'). The published"
+                    " colorspace data may not describe the output. Convert"
+                    " colors with 'Extract OIIO Transcode' instead."
+                )
 
             # run subprocess
             self.log.debug("Executing: {}".format(subprcs_cmd))
