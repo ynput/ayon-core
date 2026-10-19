@@ -31,6 +31,7 @@ from .control_qt import QtPublisherController
 from .widgets import (
     OverviewWidget,
     ReportPageWidget,
+    PublishDebugWidget,
     PublishFrame,
 
     PublisherTabsWidget,
@@ -45,6 +46,7 @@ from .widgets import (
     HelpDialog,
 
     CreateNextPageOverlay,
+    is_publish_debugger_enabled,
 )
 
 if typing.TYPE_CHECKING:
@@ -124,6 +126,9 @@ class PublisherWindow(QtWidgets.QDialog):
         tabs_widget.add_tab("Publish", "publish")
         tabs_widget.add_tab("Report", "report")
         tabs_widget.add_tab("Details", "details")
+        debugger_enabled = is_publish_debugger_enabled()
+        if debugger_enabled:
+            tabs_widget.add_tab("Debug", "debug")
 
         # Widget where is stacked publish overlay and widgets that should be
         #   covered by it
@@ -222,6 +227,14 @@ class PublisherWindow(QtWidgets.QDialog):
         content_stacked_layout.addWidget(overview_widget)
         content_stacked_layout.addWidget(report_widget)
         content_stacked_layout.addWidget(publish_details_widget)
+
+        # Publish debugger
+        debug_widget = None
+        if debugger_enabled:
+            debug_widget = PublishDebugWidget(
+                controller, content_stacked_widget
+            )
+            content_stacked_layout.addWidget(debug_widget)
         content_stacked_layout.setCurrentWidget(overview_widget)
 
         under_publish_layout = QtWidgets.QVBoxLayout(under_publish_widget)
@@ -296,6 +309,13 @@ class PublisherWindow(QtWidgets.QDialog):
         publish_btn.clicked.connect(self._on_publish_clicked)
 
         publish_frame.details_page_requested.connect(self._go_to_details_tab)
+        if debug_widget is not None:
+            debug_widget.step_requested.connect(
+                self._on_debug_step_requested
+            )
+            controller.register_event_callback(
+                "publish.debug.paused", self._on_publish_debug_paused
+            )
         create_overlay_button.clicked.connect(
             self._on_create_overlay_button_click
         )
@@ -391,6 +411,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._overview_widget = overview_widget
         self._report_widget = report_widget
         self._publish_details_widget = publish_details_widget
+        self._debug_widget = debug_widget
 
         self._context_label = context_label
 
@@ -715,6 +736,8 @@ class PublisherWindow(QtWidgets.QDialog):
             self._go_to_report_tab()
         elif tab == "details":
             self._go_to_details_tab()
+        elif tab == "debug":
+            self._go_to_debug_tab()
 
         if not self._window_is_visible:
             self.set_tab_on_reset(tab)
@@ -780,6 +803,11 @@ class PublisherWindow(QtWidgets.QDialog):
                 self._report_widget
             )
 
+        elif new_tab == "debug":
+            self._content_stacked_layout.setCurrentWidget(
+                self._debug_widget
+            )
+
         old_on_overview = old_tab in ("create", "publish")
         if new_tab in ("create", "publish"):
             self._content_stacked_layout.setCurrentWidget(
@@ -841,6 +869,9 @@ class PublisherWindow(QtWidgets.QDialog):
     def _go_to_details_tab(self) -> None:
         self._set_current_tab("details")
 
+    def _go_to_debug_tab(self) -> None:
+        self._set_current_tab("debug")
+
     def _is_on_create_tab(self) -> bool:
         return self._is_current_tab("create")
 
@@ -888,6 +919,18 @@ class PublisherWindow(QtWidgets.QDialog):
         if self._validate_comment() and self._save_changes(False):
             self._set_publish_comment()
             self._controller.publish()
+
+    def _on_debug_step_requested(self, step_type: str) -> None:
+        if not self._controller.publish_has_started():
+            if not self._validate_comment() or not self._save_changes(False):
+                return
+            self._set_publish_comment()
+        self._controller.publish_debug_step(step_type)
+
+    def _on_publish_debug_paused(self) -> None:
+        # Give more space to debug page
+        self._publish_frame.set_shrunk_state(True)
+        self._go_to_debug_tab()
 
     def _validate_comment(self) -> bool:
         # Validate comment length
