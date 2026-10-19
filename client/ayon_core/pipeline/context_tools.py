@@ -187,13 +187,24 @@ def install_ayon_plugins(project_name=None, host_name=None):
     if host_name is None:
         host_name = get_current_host_name()
 
+    addons_manager = _get_addons_manager()
+
+    # Loader plugin paths are registered without a host name too. Tools that
+    # run without a host (the tray Browser) rely on addons returning their
+    # host-less loader folders for `host_name=None`, e.g. the 'global'
+    # folders of the OpenRV, DJV and xStudio addons. An addon that has only
+    # host specific loaders simply returns nothing for `None`.
+    # TODO remove when the addons stop using LoaderPlugin for actions
+    load_plugin_paths = addons_manager.collect_load_plugin_paths(host_name)
+    for path in load_plugin_paths:
+        register_loader_plugin_path(path)
+
     if host_name is None:
         log.debug(
             "Host name is not set. Skipping registering host specific plugins."
         )
     else:
         # Load host specific plugins
-        addons_manager = _get_addons_manager()
         publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
             host_name)
         for path in publish_plugin_dirs:
@@ -203,11 +214,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
             host_name)
         for path in create_plugin_paths:
             register_creator_plugin_path(path)
-
-        load_plugin_paths = addons_manager.collect_load_plugin_paths(
-            host_name)
-        for path in load_plugin_paths:
-            register_loader_plugin_path(path)
 
         inventory_action_paths = addons_manager.collect_inventory_action_paths(
             host_name)
