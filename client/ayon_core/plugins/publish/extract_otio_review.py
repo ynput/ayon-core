@@ -13,8 +13,10 @@ Optional:
 Provides:
     instance -> otioReviewClips
 """
+from __future__ import annotations
 
 import os
+import typing
 
 import clique
 from pyblish import api
@@ -27,6 +29,9 @@ from ayon_core.pipeline import (
     PublishError,
     publish,
 )
+
+if typing.TYPE_CHECKING:
+    from opentimelineio.opentime import RationalTime
 
 
 class ExtractOTIOReview(
@@ -352,7 +357,9 @@ class ExtractOTIOReview(
         return representation_data
 
     @staticmethod
-    def _snap_to_frame(rational_time, tolerance=0.01):
+    def _snap_to_frame(
+        rational_time: RationalTime, tolerance: float = 0.01
+    ) -> RationalTime:
         """Snap a value within `tolerance` frames of a whole frame to it.
 
         Genuine sub-frame values (e.g. 25fps clip on 24fps media) are kept.
