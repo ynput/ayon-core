@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import socket
 import ssl
 import threading
 import typing
@@ -527,6 +528,44 @@ def _abort_ws(ws_con: WebSocket) -> None:
             pass
 
 
+def _disable_websocket_ipv6() -> None:
+    """Skip IPv6 addresses in 'websocket' when python does not support IPv6.
+
+    Some DCC pythons are built without IPv6 support (e.g. Flame's on macOS).
+        'websocket' tries resolved addresses in order and fails on the first
+        IPv6 address with 'connect(): bad family' instead of trying the next
+        one. As 'localhost' resolves to '::1' first, websocket never
+        connected while REST requests (which use only IPv4) did work.
+
+    """
+    if socket.has_ipv6:
+        return
+
+    try:
+        from websocket import _http
+    except ImportError:
+        return
+
+    # Private function of 'websocket', skip if not available
+    get_addrinfo_list = getattr(_http, "_get_addrinfo_list", None)
+    if get_addrinfo_list is None or getattr(
+        get_addrinfo_list, "_ayon_ipv6_disabled", False
+    ):
+        return
+
+    def _get_ipv4_addrinfo_list(*args, **kwargs):
+        addrinfo_list, *other = get_addrinfo_list(*args, **kwargs)
+        ipv4_addrinfo_list = [
+            addrinfo
+            for addrinfo in addrinfo_list
+            if addrinfo[0] != socket.AF_INET6
+        ]
+        return (ipv4_addrinfo_list or addrinfo_list, *other)
+
+    _get_ipv4_addrinfo_list._ayon_ipv6_disabled = True
+    _http._get_addrinfo_list = _get_ipv4_addrinfo_list
+
+
 @dataclass
 class _LoopState:
     stop_event: threading.Event = field(default_factory=threading.Event)
@@ -865,6 +904,7 @@ class EventHub:
         return create_connection(ws_url, **ws_kwargs)
 
     def _create_ws_connection(self) -> WebSocket:
+        _disable_websocket_ipv6()
         if hasattr(self._connection, "create_websocket"):
             ws_con = self._connection.create_websocket("ws")
         else:
