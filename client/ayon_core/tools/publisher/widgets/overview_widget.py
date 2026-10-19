@@ -393,7 +393,8 @@ class OverviewWidget(QtWidgets.QFrame):
         self._refresh_instance_states(event["instance_ids"])
 
     def _on_instance_parent_changed(self, event) -> None:
-        self._refresh_instance_states(event["instance_ids"])
+        # Hierarchy changed, views have to rebuild parent-child relations
+        self._refresh_instances()
 
     def _refresh_instance_states(self, instance_ids: set[str]) -> None:
         current_view = self._get_current_view()
