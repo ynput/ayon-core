@@ -357,3 +357,96 @@ def test_multiple_review_clips_with_gap():
     ]
 
     assert calls == expected
+
+
+def _clip_with_ranges(media_reference, source_range):
+    return otio.schema.Clip(
+        name="shot",
+        source_range=source_range,
+        media_reference=media_reference,
+    )
+
+
+def test_movie_resolve_subframe_source_start():
+    """
+    Qt movie review clip as exported natively by Resolve at 24000/1001.
+    available_range = 86400-86616
+    source_range = 86423.99765 (sub-frame) - 86475.99765
+    Seek must land on frame 14 (24 - 10 handles), not 13.
+    """
+    rate = 24000 / 1001
+    clip = _clip_with_ranges(
+        otio.schema.ExternalReference(
+            target_url="C:\\data\\reference.mov",
+            available_range=otio.opentime.range_from_start_end_time(
+                otio.opentime.RationalTime(86400.0, rate),
+                otio.opentime.RationalTime(86616.0, rate),
+            ),
+        ),
+        otio.opentime.TimeRange(
+            otio.opentime.RationalTime(86423.99765167243, rate),
+            otio.opentime.RationalTime(52.0, rate),
+        ),
+    )
+    calls = run_process(None, instance_data={
+        "otioReviewClips": [clip],
+        "handleStart": 10,
+        "handleEnd": 10,
+        "workfileFrameStart": 1001,
+    })
+
+    expected = [
+        "/path/to/ffmpeg -ss 0.5839166666666666 -t 3.0029999999999997 "
+        "-i C:\\data\\reference.mov -vf scale=1280:720:flags=lanczos "
+        "-compression_level 5 -frames:v 72 -start_number 991 -pix_fmt rgba "
+        "C:/result/output.%04d.png"
+    ]
+
+    assert calls == expected
+
+
+def test_img_sequence_hiero_float32_rate_keeps_last_frame():
+    """
+    Img sequence clip as exported by Hiero: source range at the float32
+    sequence rate, available range at 23.976.
+    available_files = 997-1056 (60 frames, 4 frames handles)
+    source_range = 52 frames @ 23.976024627685547
+    Duration rescales to 51.99995 and must not lose the last frame.
+    """
+    f32_rate = 23.976024627685547
+    media_rate = 23.976
+    clip = _clip_with_ranges(
+        otio.schema.ImageSequenceReference(
+            target_url_base="C:\\exr_hiero",
+            name_prefix="output.",
+            name_suffix=".exr",
+            start_frame=997,
+            frame_zero_padding=4,
+            rate=media_rate,
+            available_range=otio.opentime.TimeRange(
+                otio.opentime.RationalTime(86396.0, media_rate),
+                otio.opentime.RationalTime(60.0, media_rate),
+            ),
+        ),
+        otio.opentime.TimeRange(
+            otio.opentime.RationalTime(86400.0, media_rate).rescaled_to(
+                f32_rate),
+            otio.opentime.RationalTime(52.0, f32_rate),
+        ),
+    )
+    calls = run_process(None, instance_data={
+        "otioReviewClips": [clip],
+        "handleStart": 4,
+        "handleEnd": 4,
+        "workfileFrameStart": 1001,
+    })
+
+    expected = [
+        "/path/to/ffmpeg -start_number 997 -framerate 23.976 -i "
+        f"C:\\exr_hiero{os.sep}output.%04d.exr "
+        "-vf scale=1280:720:flags=lanczos "
+        "-compression_level 5 -frames:v 60 -start_number 997 -pix_fmt rgba "
+        "C:/result/output.%04d.png"
+    ]
+
+    assert calls == expected
