@@ -922,6 +922,8 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _on_debug_step_requested(self, step_type: str) -> None:
         if not self._controller.publish_has_started():
+            if not self._can_start_publish():
+                return
             if not self._validate_comment() or not self._save_changes(False):
                 return
             self._set_publish_comment()
@@ -986,12 +988,17 @@ class PublisherWindow(QtWidgets.QDialog):
             )
         )
 
-    def _update_footer_state(self) -> None:
-        enabled = (
+    def _can_start_publish(self) -> bool:
+        return (
             not self._blocked_by_crashed_paths
             and self._create_context_valid
         )
+
+    def _update_footer_state(self) -> None:
+        enabled = self._can_start_publish()
         save_enabled = not self._blocked_by_crashed_paths
+        if self._debug_widget is not None:
+            self._debug_widget.set_start_allowed(enabled)
 
         self._save_btn.setEnabled(save_enabled)
         self._reset_btn.setEnabled(True)

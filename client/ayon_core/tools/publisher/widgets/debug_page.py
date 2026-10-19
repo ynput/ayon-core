@@ -1073,6 +1073,20 @@ class PublishDebugWidget(QtWidgets.QFrame):
         self._data_items_by_id: dict[str, PublishDebugDataItem] = {}
         self._refresh_needed = True
         self._select_pending = False
+        # Publishing can be started (e.g. instances have valid context)
+        self._start_allowed = True
+
+    def set_start_allowed(self, allowed: bool) -> None:
+        """Set if publishing can be started from the debug page.
+
+        Args:
+            allowed (bool): Publishing can be started.
+
+        """
+        if self._start_allowed == allowed:
+            return
+        self._start_allowed = allowed
+        self._update_state()
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
@@ -1096,8 +1110,11 @@ class PublishDebugWidget(QtWidgets.QFrame):
             self._controller.get_publish_debug_state()
         )
         is_running = self._controller.publish_is_running()
+        has_started = self._controller.publish_has_started()
         can_continue = (
-            not is_running and self._controller.publish_can_continue()
+            not is_running
+            and self._controller.publish_can_continue()
+            and (has_started or self._start_allowed)
         )
         for btn in (
             self._continue_btn,
@@ -1117,7 +1134,9 @@ class PublishDebugWidget(QtWidgets.QFrame):
                 f" <b>{html.escape(state.plugin_label or '')}</b>"
                 f" on <b>{html.escape(state.item_label or '')}</b>"
             )
-        elif not self._controller.publish_has_started():
+        elif not has_started and not self._start_allowed:
+            text = "Publishing can't be started, Publish button is disabled."
+        elif not has_started:
             text = (
                 "Check plugins to add breakpoints,"
                 " then Publish or Step through plugins."
