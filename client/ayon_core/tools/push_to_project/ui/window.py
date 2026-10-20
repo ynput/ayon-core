@@ -85,6 +85,21 @@ def format_source_items(source_items):
 
 
 class ErrorDetailDialog(QtWidgets.QDialog):
+    """Dialog showing the full error of a failed push.
+
+    The dialog has a default size and the details are scrollable, so a long
+    traceback or a long list of failed versions cannot make the dialog grow
+    beyond the screen, and the details always keep a usable scroll area.
+    """
+
+    DEFAULT_WIDTH = 820
+    DEFAULT_HEIGHT = 600
+    MIN_WIDTH = 520
+    MIN_HEIGHT = 380
+    # The title can contain the reason of every failed version, it must not
+    # take the space of the scrollable details.
+    MAX_TITLE_LINES = 3
+
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -92,6 +107,14 @@ class ErrorDetailDialog(QtWidgets.QDialog):
         self.setWindowIcon(QtGui.QIcon(get_app_icon_path()))
 
         title_label = QtWidgets.QLabel(self)
+        title_label.setWordWrap(True)
+        title_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse
+        )
+        title_label.setMaximumHeight(
+            title_label.fontMetrics().lineSpacing() * self.MAX_TITLE_LINES
+            + 8
+        )
 
         sep_1 = SeparatorWidget(parent=self)
 
@@ -99,6 +122,12 @@ class ErrorDetailDialog(QtWidgets.QDialog):
         detail_widget.setReadOnly(True)
         detail_widget.setTextInteractionFlags(
             QtCore.Qt.TextBrowserInteraction
+        )
+        detail_widget.setLineWrapMode(QtWidgets.QTextEdit.WidgetWidth)
+        detail_widget.setMinimumHeight(220)
+        detail_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding,
         )
 
         sep_2 = SeparatorWidget(parent=self)
@@ -128,9 +157,31 @@ class ErrorDetailDialog(QtWidgets.QDialog):
         self._title_label = title_label
         self._detail_widget = detail_widget
 
+        self.resize(self.DEFAULT_WIDTH, self.DEFAULT_HEIGHT)
+        self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._fit_to_screen()
+
+    def _fit_to_screen(self):
+        """Keep the dialog inside the available screen area."""
+        screen = self.screen() or QtWidgets.QApplication.primaryScreen()
+        if screen is None:
+            return
+
+        available = screen.availableGeometry()
+        width = min(self.width(), available.width() - 40)
+        height = min(self.height(), available.height() - 40)
+        width = max(width, self.MIN_WIDTH)
+        height = max(height, self.MIN_HEIGHT)
+        if (width, height) != (self.width(), self.height()):
+            self.resize(width, height)
+
     def set_detail(self, title, detail):
         self._title_label.setText(title)
         self._detail_widget.setText(detail)
+        self._detail_widget.verticalScrollBar().setValue(0)
 
     def _on_copy_click(self):
         clipboard = QtWidgets.QApplication.clipboard()
@@ -776,13 +827,22 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
                 for process_status in failed_pushes
             ]
             if fail_tracebacks:
-                reason = "\n".join(reasons)
                 message = (
                     "Unhandled error happened."
                     " Check error detail for more information."
                 )
+                # the reasons and the tracebacks are shown in the scrollable
+                # detail, the title stays short so the dialog keeps its size
+                detail_parts = []
+                if reasons:
+                    detail_parts.append("\n".join(reasons))
+                detail_parts.append("\n".join(fail_tracebacks))
                 self._error_detail_dialog.set_detail(
-                    reason, "\n".join(fail_tracebacks)
+                    "Push failed for {} version{}".format(
+                        len(failed_pushes),
+                        "" if len(failed_pushes) == 1 else "s",
+                    ),
+                    "\n\n".join(detail_parts),
                 )
             else:
                 message = f"Push Failed:\n{reasons}"
