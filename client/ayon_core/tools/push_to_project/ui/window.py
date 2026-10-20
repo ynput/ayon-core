@@ -256,35 +256,44 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         btns_layout.addWidget(publish_btn, 0)
 
         # --- Sources widget ---
-        # Plain, copyable text listed below the context selection and the
-        # submit options. Text is used instead of a list view: it keeps the
-        # dialog background, stays copyable and does not look like a selection
-        # of items. Versions of the same product are merged into ranges.
+        # Display-only list, listed below the context selection and the submit
+        # options. Versions of the same product are merged into ranges.
+        # Selection, editing and keyboard focus are disabled, and item
+        # backgrounds are transparent, so the list behaves like static text.
         sources_widget = QtWidgets.QWidget(main_context_widget)
 
-        sources_text = QtWidgets.QPlainTextEdit(sources_widget)
-        sources_text.setReadOnly(True)
-        sources_text.setFrameShape(QtWidgets.QFrame.NoFrame)
-        sources_text.setTabChangesFocus(True)
-        sources_text.setLineWrapMode(QtWidgets.QPlainTextEdit.WidgetWidth)
-        sources_text.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
-        sources_text.setHorizontalScrollBarPolicy(
+        sources_list = QtWidgets.QListWidget(sources_widget)
+        sources_list.setUniformItemSizes(True)
+        sources_list.setWordWrap(False)
+        sources_list.setTextElideMode(QtCore.Qt.ElideMiddle)
+        sources_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.NoSelection
+        )
+        sources_list.setEditTriggers(
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
+        sources_list.setFocusPolicy(QtCore.Qt.NoFocus)
+        sources_list.setFrameShape(QtWidgets.QFrame.NoFrame)
+        sources_list.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded
+        )
+        sources_list.setHorizontalScrollBarPolicy(
             QtCore.Qt.ScrollBarAlwaysOff
         )
-        sources_text.setMaximumHeight(SOURCES_MAX_HEIGHT)
-        sources_text.setVisible(False)
-        sources_text.setToolTip(
-            "Products and versions being pushed"
-            " (Ctrl+A, Ctrl+C to copy)"
-        )
-        sources_text.setTextInteractionFlags(
-            QtCore.Qt.TextSelectableByMouse
-            | QtCore.Qt.TextSelectableByKeyboard
+        sources_list.setMaximumHeight(SOURCES_MAX_HEIGHT)
+        sources_list.setVisible(False)
+        sources_list.setToolTip("Products and versions being pushed")
+        # keep the dialog background, no item/hover/selection highlight
+        sources_list.setStyleSheet(
+            "QListWidget { background: transparent; }"
+            "QListWidget::item { background: transparent; }"
+            "QListWidget::item:hover { background: transparent; }"
+            "QListWidget::item:selected { background: transparent; }"
         )
 
         sources_layout = QtWidgets.QVBoxLayout(sources_widget)
         sources_layout.setContentsMargins(0, 0, 0, 0)
-        sources_layout.addWidget(sources_text, 1)
+        sources_layout.addWidget(sources_list, 1)
 
         sep_0 = SeparatorWidget(parent=main_context_widget)
         sep_1 = SeparatorWidget(parent=main_context_widget)
@@ -425,7 +434,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._header_label = header_label
 
         self._sources_widget = sources_widget
-        self._sources_text = sources_text
+        self._sources_list = sources_list
 
         self._update_sources()
 
@@ -613,7 +622,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             self._comment_input.setText(comment)
 
     def _update_sources(self):
-        """Update the header summary and the plain-text sources block.
+        """Update the header summary and the display-only sources list.
 
         The controller provides a single label, one 'Source: <path>' line per
         pushed version. Versions of the same product are merged into ranges,
@@ -627,15 +636,19 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
                 for line in source_label.splitlines()
             ]
 
+        self._sources_list.clear()
         if not source_items:
             # Nothing to show (yet), show the controller's status message
             self._header_label.setText(source_label)
-            self._sources_text.clear()
-            self._sources_text.setVisible(False)
+            self._sources_list.setVisible(False)
             return
 
         source_lines = format_source_items(source_items)
-        self._sources_text.setPlainText("\n".join(source_lines))
+        for source_line in source_lines:
+            item = QtWidgets.QListWidgetItem(source_line)
+            # display only: not selectable, not editable
+            item.setFlags(QtCore.Qt.ItemIsEnabled)
+            self._sources_list.addItem(item)
 
         product_paths = {item.rpartition("/")[0] for item in source_items}
         product_count = len({path for path in product_paths if path})
@@ -646,21 +659,21 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         if product_count > 1:
             header_text += " ({} products)".format(product_count)
         self._header_label.setText(header_text)
-        self._sources_text.setVisible(True)
-        self._resize_sources_text(len(source_lines))
+        self._sources_list.setVisible(True)
+        self._resize_sources_list(len(source_lines))
 
-    def _resize_sources_text(self, line_count):
-        """Grow the sources text with its content, up to SOURCES_MAX_HEIGHT."""
-        document = self._sources_text.document()
-        line_height = self._sources_text.fontMetrics().lineSpacing()
+    def _resize_sources_list(self, line_count):
+        """Grow the list with its content, up to SOURCES_MAX_HEIGHT."""
+        row_height = self._sources_list.sizeHintForRow(0)
+        if row_height <= 0:
+            row_height = self._sources_list.fontMetrics().height() + 6
         content_height = (
-            line_height * line_count
-            + 2 * document.documentMargin()
-            + 2 * self._sources_text.frameWidth()
+            row_height * line_count
+            + 2 * self._sources_list.frameWidth()
             + 4
         )
-        self._sources_text.setFixedHeight(
-            max(line_height + 4, min(content_height, SOURCES_MAX_HEIGHT))
+        self._sources_list.setFixedHeight(
+            max(row_height + 2, min(content_height, SOURCES_MAX_HEIGHT))
         )
 
     def _on_controller_source_change(self):
