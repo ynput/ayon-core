@@ -910,8 +910,11 @@ def get_ffmpeg_format_args(ffprobe_data, source_ffmpeg_cmd=None):
         source_ffmpeg_cmd(str): Command that created input if available.
     """
     input_format = ffprobe_data.get("format") or {}
-    if input_format.get("format_name") == "mxf":
+    format_name = input_format.get("format_name") or ""
+    if format_name == "mxf":
         return _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd)
+    if "mov" in format_name.split(","):
+        return _ffmpeg_mov_format_args(ffprobe_data)
     return []
 
 
@@ -923,6 +926,60 @@ def _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd):
     if operational_pattern_ul == "060e2b34.04010102.0d010201.10030000":
         output.extend(["-f", "mxf_opatom"])
     return output
+
+
+def _ffmpeg_mov_format_args(ffprobe_data: dict) -> list[str]:
+    output = []
+    filepath = ffprobe_data["format"].get("filename")
+    if filepath and _is_mov_moov_before_mdat(filepath):
+        # Keep the file streamable if source was streamable
+        output.extend(["-movflags", "faststart"])
+    return output
+
+
+def _is_mov_moov_before_mdat(filepath: str) -> bool:
+    """Check if 'moov' atom is before 'mdat' atom in mov/mp4 file.
+
+    The 'moov' atom is at the start of file when the file was created
+        with '-movflags faststart'. Only top level atom headers are read.
+
+    Args:
+        filepath (str): Path to mov/mp4 file.
+
+    Returns:
+        bool: True if 'moov' atom is before 'mdat' atom.
+
+    """
+    try:
+        with open(filepath, "rb") as stream:
+            while True:
+                header = stream.read(8)
+                if len(header) < 8:
+                    return False
+
+                size = int.from_bytes(header[:4], "big")
+                atom_type = header[4:]
+                if atom_type == b"moov":
+                    return True
+                if atom_type == b"mdat":
+                    return False
+
+                header_size = 8
+                if size == 1:
+                    # 64-bit size is stored after atom type
+                    large_size = stream.read(8)
+                    if len(large_size) < 8:
+                        return False
+                    size = int.from_bytes(large_size, "big")
+                    header_size = 16
+
+                # Size '0' means the atom goes to the end of file
+                if size < header_size:
+                    return False
+                stream.seek(size - header_size, os.SEEK_CUR)
+
+    except OSError:
+        return False
 
 
 def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
