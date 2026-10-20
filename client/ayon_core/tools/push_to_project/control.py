@@ -42,7 +42,7 @@ class PushToContextController:
         self._src_folder_task_entities = {}
         self._src_version_entities = []
         self._src_product_entities = {}
-        self._src_label = None
+        self._src_items = None
 
         self._submission_enabled = False
         self._process_thread = None
@@ -84,7 +84,7 @@ class PushToContextController:
 
         self._src_project_name = project_name
         self._src_version_ids = version_ids
-        self._src_label = None
+        self._src_items = None
         folder_entity = None
         task_entities = {}
         product_entities = []
@@ -142,16 +142,36 @@ class PushToContextController:
             }
         )
 
+    def get_source_items(self) -> list[str]:
+        """Get source items.
+
+        Returns:
+            list[str]: Source paths, one item per pushed version,
+                e.g. 'project/folder/product/v001'.
+        """
+
+        if self._src_items is None:
+            self._src_items = self._prepare_source_items()
+        return self._src_items
+
     def get_source_label(self):
         """Get source label.
+
+        Kept for backwards compatibility, prefer 'get_source_items'.
 
         Returns:
             str: Label describing source project and version as path.
         """
 
-        if self._src_label is None:
-            self._src_label = self._prepare_source_label()
-        return self._src_label
+        if not self._src_project_name or not self._src_version_ids:
+            return "Source is not defined"
+
+        if not self._src_folder_entity:
+            return "Source is invalid"
+
+        return "\n".join(
+            "Source: {}".format(item) for item in self.get_source_items()
+        )
 
     def get_project_settings(self, project_name):
         return self._settings_model.get_settings(project_name)
@@ -271,22 +291,18 @@ class PushToContextController:
         self._process_thread.join()
         self._process_thread = None
 
-    def _prepare_source_label(self):
-        if not self._src_project_name or not self._src_version_ids:
-            return "Source is not defined"
+    def _prepare_source_items(self) -> list[str]:
+        if not self._src_folder_entity:
+            return []
 
-        folder_entity = self._src_folder_entity
-        if not folder_entity:
-            return "Source is invalid"
-
-        folder_path = folder_entity["path"]
-        src_labels = []
+        folder_path = self._src_folder_entity["path"]
+        src_items = []
         for version_entity in self._src_version_entities:
             product_entity = self._src_product_entities.get(
                 version_entity["productId"]
             )
-            src_labels.append(
-                "Source: {}{}/{}/v{:0>3}".format(
+            src_items.append(
+                "{}{}/{}/v{:0>3}".format(
                     self._src_project_name,
                     folder_path,
                     product_entity["name"],
@@ -294,7 +310,7 @@ class PushToContextController:
                 )
             )
 
-        return "\n".join(src_labels)
+        return src_items
 
     def _get_task_info_from_repre_entities(
         self, task_entities, repre_entities

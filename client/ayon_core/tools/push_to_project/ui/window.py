@@ -14,6 +14,9 @@ from ayon_core.tools.push_to_project.control import (
     PushToContextController,
 )
 
+# Maximum height of the pushed-sources list, it scrolls above that
+SOURCES_MAX_HEIGHT = 140
+
 
 class ErrorDetailDialog(QtWidgets.QDialog):
     def __init__(self, parent):
@@ -83,48 +86,18 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         main_context_widget = QtWidgets.QWidget(self)
 
+        # Compact summary of what is being pushed. The full list of versions
+        # is shown in the sources list at the bottom of the dialog.
         header_widget = QtWidgets.QWidget(main_context_widget)
 
-        library_only_label = QtWidgets.QLabel(
-            "Show only libraries",
-            header_widget
-        )
-        library_only_checkbox = NiceCheckbox(
-            True, parent=header_widget)
-
-        header_label = QtWidgets.QLabel(
-            controller.get_source_label(),
-            header_widget
-        )
-        header_label.setWordWrap(True)
-        header_label.setAlignment(
-            QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
-        )
+        header_label = QtWidgets.QLabel(header_widget)
         header_label.setTextInteractionFlags(
             QtCore.Qt.TextSelectableByMouse
         )
 
-        # There can be many sources (one line per pushed version). Keep the
-        # label inside a scroll area with a bounded height, otherwise its
-        # size hint grows with the number of sources and pushes the rest of
-        # the dialog (buttons) out of the window.
-        header_scroll = QtWidgets.QScrollArea(header_widget)
-        header_scroll.setWidgetResizable(True)
-        header_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        header_scroll.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAlwaysOff
-        )
-        header_scroll.setVerticalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAsNeeded
-        )
-        header_scroll.setMaximumHeight(120)
-        header_scroll.setWidget(header_label)
-
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(header_scroll, 1)
-        header_layout.addWidget(library_only_label, 0, QtCore.Qt.AlignTop)
-        header_layout.addWidget(library_only_checkbox, 0, QtCore.Qt.AlignTop)
+        header_layout.addWidget(header_label, 1)
 
         main_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Horizontal, main_context_widget
@@ -135,6 +108,23 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         projects_combobox = ProjectsCombobox(controller, context_widget)
         projects_combobox.set_select_item_visible(True)
         projects_combobox.set_standard_filter_enabled(True)
+
+        # The library filter belongs with the project selection it filters
+        library_only_label = QtWidgets.QLabel(
+            "Show only libraries",
+            context_widget
+        )
+        library_only_checkbox = NiceCheckbox(
+            True, parent=context_widget)
+
+        library_filter_widget = QtWidgets.QWidget(context_widget)
+        library_filter_layout = QtWidgets.QHBoxLayout(
+            library_filter_widget
+        )
+        library_filter_layout.setContentsMargins(0, 0, 0, 0)
+        library_filter_layout.addWidget(library_only_label, 0)
+        library_filter_layout.addWidget(library_only_checkbox, 0)
+        library_filter_layout.addStretch(1)
 
         context_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Vertical, context_widget
@@ -149,6 +139,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         context_layout = QtWidgets.QVBoxLayout(context_widget)
         context_layout.setContentsMargins(0, 0, 0, 0)
         context_layout.addWidget(projects_combobox, 0)
+        context_layout.addWidget(library_filter_widget, 0)
         context_layout.addWidget(context_splitter, 1)
 
         # --- Inputs widget ---
@@ -198,12 +189,46 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         btns_layout.addWidget(cancel_btn, 0)
         btns_layout.addWidget(publish_btn, 0)
 
+        # --- Sources widget ---
+        # One line per pushed version. Listed below the context selection and
+        # the submit options, so a long list has room and can never push the
+        # buttons out of the dialog.
+        sources_widget = QtWidgets.QWidget(main_context_widget)
+
+        sources_list = QtWidgets.QListWidget(sources_widget)
+        sources_list.setUniformItemSizes(True)
+        sources_list.setWordWrap(False)
+        sources_list.setTextElideMode(QtCore.Qt.ElideMiddle)
+        sources_list.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
+        sources_list.setMaximumHeight(SOURCES_MAX_HEIGHT)
+        sources_list.setVisible(False)
+        sources_list.setToolTip(
+            "Select versions and right-click to copy their paths"
+        )
+        sources_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        sources_list.customContextMenuRequested.connect(
+            self._on_sources_context_menu
+        )
+        copy_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence.Copy, sources_list
+        )
+        copy_shortcut.activated.connect(self._copy_selected_sources)
+
+        sources_layout = QtWidgets.QVBoxLayout(sources_widget)
+        sources_layout.setContentsMargins(0, 0, 0, 0)
+        sources_layout.addWidget(sources_list, 1)
+
+        sep_0 = SeparatorWidget(parent=main_context_widget)
         sep_1 = SeparatorWidget(parent=main_context_widget)
         sep_2 = SeparatorWidget(parent=main_context_widget)
         main_context_layout = QtWidgets.QVBoxLayout(main_context_widget)
         main_context_layout.addWidget(header_widget, 0)
-        main_context_layout.addWidget(sep_1, 0)
+        main_context_layout.addWidget(sep_0, 0)
         main_context_layout.addWidget(main_splitter, 1)
+        main_context_layout.addWidget(sep_1, 0)
+        main_context_layout.addWidget(sources_widget, 0)
         main_context_layout.addWidget(sep_2, 0)
         main_context_layout.addWidget(btns_widget, 0)
 
@@ -329,8 +354,14 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         self._main_context_widget = main_context_widget
 
-        self._header_label = header_label
         self._main_splitter = main_splitter
+
+        self._header_label = header_label
+
+        self._sources_widget = sources_widget
+        self._sources_list = sources_list
+
+        self._update_sources()
 
         self._projects_combobox = projects_combobox
         self._folders_widget = folders_widget
@@ -413,6 +444,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             new_folder_name, user_values["is_new_folder_name_valid"]
         )
         self._projects_combobox.refresh()
+        self._update_sources()
 
     def _on_first_show(self):
         width = 740
@@ -514,8 +546,77 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         ):
             self._comment_input.setText(comment)
 
+    def _update_sources(self):
+        """Update the source summary and the sources list."""
+        source_items = self._controller.get_source_items()
+        self._sources_list.clear()
+        if not source_items:
+            # Nothing to list (yet), show the controller's status message
+            self._header_label.setText(
+                self._controller.get_source_label()
+            )
+            self._sources_list.setVisible(False)
+            return
+
+        self._sources_list.addItems(source_items)
+        for index, item_text in enumerate(source_items):
+            self._sources_list.item(index).setToolTip(item_text)
+        count = len(source_items)
+        self._header_label.setText(
+            "{} version{} selected".format(
+                count, "" if count == 1 else "s"
+            )
+        )
+        self._sources_list.setVisible(True)
+        self._resize_sources_list(count)
+
+    def _on_sources_context_menu(self, pos):
+        """Context menu of the sources list."""
+        menu = QtWidgets.QMenu(self._sources_list)
+        copy_selected_action = menu.addAction("Copy selected paths")
+        copy_all_action = menu.addAction("Copy all paths")
+        menu.addSeparator()
+        select_all_action = menu.addAction("Select all")
+
+        action = menu.exec_(
+            self._sources_list.viewport().mapToGlobal(pos)
+        )
+        if action is copy_selected_action:
+            self._copy_selected_sources()
+        elif action is copy_all_action:
+            self._copy_sources([
+                self._sources_list.item(index)
+                for index in range(self._sources_list.count())
+            ])
+        elif action is select_all_action:
+            self._sources_list.selectAll()
+
+    def _copy_selected_sources(self):
+        self._copy_sources(self._sources_list.selectedItems())
+
+    def _copy_sources(self, items):
+        if not items:
+            return
+        QtWidgets.QApplication.clipboard().setText(
+            "\n".join(item.text() for item in items)
+        )
+
+    def _resize_sources_list(self, count):
+        """Grow the list with its content, up to SOURCES_MAX_HEIGHT."""
+        row_height = self._sources_list.sizeHintForRow(0)
+        if row_height <= 0:
+            row_height = self._sources_list.fontMetrics().height() + 6
+        content_height = (
+            row_height * count
+            + 2 * self._sources_list.frameWidth()
+            + 6
+        )
+        self._sources_list.setFixedHeight(
+            max(row_height + 2, min(content_height, SOURCES_MAX_HEIGHT))
+        )
+
     def _on_controller_source_change(self):
-        self._header_label.setText(self._controller.get_source_label())
+        self._update_sources()
 
     def _invalidate_new_folder_name(self, folder_name, is_valid):
         self._tasks_widget.setVisible(folder_name is None)
