@@ -1,3 +1,6 @@
+import collections
+import re
+
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.style import load_stylesheet, get_app_icon_path
@@ -13,6 +16,72 @@ from ayon_core.tools.utils import (
 from ayon_core.tools.push_to_project.control import (
     PushToContextController,
 )
+
+# Maximum height of the pushed-sources block, it scrolls above that
+SOURCES_MAX_HEIGHT = 140
+# PushToContextController.get_source_label() formats one line per pushed
+# version as "<prefix><project>/<folder>/<product>/<version>", or a single
+# status line when there is nothing to push.
+SOURCE_LABEL_PREFIX = "Source: "
+# Last segment of a source path, e.g. 'v001' in 'project/folder/product/v001'
+SOURCE_VERSION_RE = re.compile(r"^v(\d+)$")
+# Sequences of at least this many consecutive versions are merged into a range
+SOURCE_RANGE_MIN_LENGTH = 3
+
+
+def _format_version_range(start, end):
+    """Format one consecutive run of version numbers."""
+    if end - start + 1 >= SOURCE_RANGE_MIN_LENGTH:
+        return "v[{:03d}-{:03d}]".format(start, end)
+    return ", ".join(
+        "v{:03d}".format(number) for number in range(start, end + 1)
+    )
+
+
+def format_version_ranges(version_numbers):
+    """Compress version numbers into a compact string.
+
+    Consecutive sequences of 3+ versions become a range, shorter sequences and
+    holes are kept explicit, e.g. [1, 2, 3, 10] -> "v[001-003], v010".
+    """
+    numbers = sorted(set(version_numbers))
+    if not numbers:
+        return ""
+
+    parts = []
+    range_start = range_end = numbers[0]
+    for number in numbers[1:]:
+        if number == range_end + 1:
+            range_end = number
+            continue
+        parts.append(_format_version_range(range_start, range_end))
+        range_start = range_end = number
+    parts.append(_format_version_range(range_start, range_end))
+    return ", ".join(parts)
+
+
+def format_source_items(source_items):
+    """Group source paths by product and merge their version numbers.
+
+    'proj/lib/workfile/v001', '.../v002' and '.../v003' become a single
+    'proj/lib/workfile  v[001-003]' line.
+    """
+    grouped = collections.OrderedDict()
+    unparsed = []
+    for item in source_items:
+        product_path, _, version_part = item.rpartition("/")
+        match = SOURCE_VERSION_RE.match(version_part)
+        if not product_path or match is None:
+            unparsed.append(item)
+            continue
+        grouped.setdefault(product_path, []).append(int(match.group(1)))
+
+    lines = list(unparsed)
+    for product_path, versions in grouped.items():
+        lines.append(
+            "{}  {}".format(product_path, format_version_ranges(versions))
+        )
+    return lines
 
 
 class ErrorDetailDialog(QtWidgets.QDialog):
@@ -83,48 +152,18 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         main_context_widget = QtWidgets.QWidget(self)
 
+        # Compact summary of what is being pushed. The full list of versions
+        # is shown in the sources list at the bottom of the dialog.
         header_widget = QtWidgets.QWidget(main_context_widget)
 
-        library_only_label = QtWidgets.QLabel(
-            "Show only libraries",
-            header_widget
-        )
-        library_only_checkbox = NiceCheckbox(
-            True, parent=header_widget)
-
-        header_label = QtWidgets.QLabel(
-            controller.get_source_label(),
-            header_widget
-        )
-        header_label.setWordWrap(True)
-        header_label.setAlignment(
-            QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
-        )
+        header_label = QtWidgets.QLabel(header_widget)
         header_label.setTextInteractionFlags(
             QtCore.Qt.TextSelectableByMouse
         )
 
-        # There can be many sources (one line per pushed version). Keep the
-        # label inside a scroll area with a bounded height, otherwise its
-        # size hint grows with the number of sources and pushes the rest of
-        # the dialog (buttons) out of the window.
-        header_scroll = QtWidgets.QScrollArea(header_widget)
-        header_scroll.setWidgetResizable(True)
-        header_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        header_scroll.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAlwaysOff
-        )
-        header_scroll.setVerticalScrollBarPolicy(
-            QtCore.Qt.ScrollBarAsNeeded
-        )
-        header_scroll.setMaximumHeight(120)
-        header_scroll.setWidget(header_label)
-
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(header_scroll, 1)
-        header_layout.addWidget(library_only_label, 0, QtCore.Qt.AlignTop)
-        header_layout.addWidget(library_only_checkbox, 0, QtCore.Qt.AlignTop)
+        header_layout.addWidget(header_label, 1)
 
         main_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Horizontal, main_context_widget
@@ -135,6 +174,23 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         projects_combobox = ProjectsCombobox(controller, context_widget)
         projects_combobox.set_select_item_visible(True)
         projects_combobox.set_standard_filter_enabled(True)
+
+        # The library filter belongs with the project selection it filters
+        library_only_label = QtWidgets.QLabel(
+            "Show only libraries",
+            context_widget
+        )
+        library_only_checkbox = NiceCheckbox(
+            True, parent=context_widget)
+
+        library_filter_widget = QtWidgets.QWidget(context_widget)
+        library_filter_layout = QtWidgets.QHBoxLayout(
+            library_filter_widget
+        )
+        library_filter_layout.setContentsMargins(0, 0, 0, 0)
+        library_filter_layout.addWidget(library_only_label, 0)
+        library_filter_layout.addWidget(library_only_checkbox, 0)
+        library_filter_layout.addStretch(1)
 
         context_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Vertical, context_widget
@@ -149,6 +205,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         context_layout = QtWidgets.QVBoxLayout(context_widget)
         context_layout.setContentsMargins(0, 0, 0, 0)
         context_layout.addWidget(projects_combobox, 0)
+        context_layout.addWidget(library_filter_widget, 0)
         context_layout.addWidget(context_splitter, 1)
 
         # --- Inputs widget ---
@@ -198,12 +255,46 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         btns_layout.addWidget(cancel_btn, 0)
         btns_layout.addWidget(publish_btn, 0)
 
+        # --- Sources widget ---
+        # Plain, copyable text listed below the context selection and the
+        # submit options. Text is used instead of a list view: it keeps the
+        # dialog background, stays copyable and does not look like a selection
+        # of items. Versions of the same product are merged into ranges.
+        sources_widget = QtWidgets.QWidget(main_context_widget)
+
+        sources_text = QtWidgets.QPlainTextEdit(sources_widget)
+        sources_text.setReadOnly(True)
+        sources_text.setFrameShape(QtWidgets.QFrame.NoFrame)
+        sources_text.setTabChangesFocus(True)
+        sources_text.setLineWrapMode(QtWidgets.QPlainTextEdit.WidgetWidth)
+        sources_text.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
+        sources_text.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        sources_text.setMaximumHeight(SOURCES_MAX_HEIGHT)
+        sources_text.setVisible(False)
+        sources_text.setToolTip(
+            "Products and versions being pushed"
+            " (Ctrl+A, Ctrl+C to copy)"
+        )
+        sources_text.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse
+            | QtCore.Qt.TextSelectableByKeyboard
+        )
+
+        sources_layout = QtWidgets.QVBoxLayout(sources_widget)
+        sources_layout.setContentsMargins(0, 0, 0, 0)
+        sources_layout.addWidget(sources_text, 1)
+
+        sep_0 = SeparatorWidget(parent=main_context_widget)
         sep_1 = SeparatorWidget(parent=main_context_widget)
         sep_2 = SeparatorWidget(parent=main_context_widget)
         main_context_layout = QtWidgets.QVBoxLayout(main_context_widget)
         main_context_layout.addWidget(header_widget, 0)
-        main_context_layout.addWidget(sep_1, 0)
+        main_context_layout.addWidget(sep_0, 0)
         main_context_layout.addWidget(main_splitter, 1)
+        main_context_layout.addWidget(sep_1, 0)
+        main_context_layout.addWidget(sources_widget, 0)
         main_context_layout.addWidget(sep_2, 0)
         main_context_layout.addWidget(btns_widget, 0)
 
@@ -329,8 +420,14 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         self._main_context_widget = main_context_widget
 
-        self._header_label = header_label
         self._main_splitter = main_splitter
+
+        self._header_label = header_label
+
+        self._sources_widget = sources_widget
+        self._sources_text = sources_text
+
+        self._update_sources()
 
         self._projects_combobox = projects_combobox
         self._folders_widget = folders_widget
@@ -413,6 +510,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             new_folder_name, user_values["is_new_folder_name_valid"]
         )
         self._projects_combobox.refresh()
+        self._update_sources()
 
     def _on_first_show(self):
         width = 740
@@ -514,8 +612,72 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         ):
             self._comment_input.setText(comment)
 
+    def _update_sources(self):
+        """Update the header summary and the plain-text sources block.
+
+        The controller provides a single label, one 'Source: <path>' line per
+        pushed version. Versions of the same product are merged into ranges,
+        e.g. 'proj/lib/workfile  v[001-003]'.
+        """
+        source_label = self._controller.get_source_label()
+        source_items = []
+        if source_label.startswith(SOURCE_LABEL_PREFIX):
+            source_items = [
+                line[len(SOURCE_LABEL_PREFIX):]
+                for line in source_label.splitlines()
+            ]
+
+        if not source_items:
+            # Nothing to show (yet), show the controller's status message
+            self._header_label.setText(source_label)
+            self._sources_text.clear()
+            self._sources_text.setVisible(False)
+            return
+
+        source_lines = format_source_items(source_items)
+        self._sources_text.setPlainText("\n".join(source_lines))
+
+        product_paths = {item.rpartition("/")[0] for item in source_items}
+        product_count = len({path for path in product_paths if path})
+        count = len(source_items)
+        header_text = "{} version{} selected".format(
+            count, "" if count == 1 else "s"
+        )
+        if product_count > 1:
+            header_text += " ({} products)".format(product_count)
+        self._header_label.setText(header_text)
+        self._sources_text.setVisible(True)
+        self._resize_sources_text(len(source_lines))
+
+    def _resize_sources_text(self, line_count):
+        """Grow the sources text with its content, up to SOURCES_MAX_HEIGHT."""
+        document = self._sources_text.document()
+        line_height = self._sources_text.fontMetrics().lineSpacing()
+        content_height = (
+            line_height * line_count
+            + 2 * document.documentMargin()
+            + 2 * self._sources_text.frameWidth()
+            + 4
+        )
+        self._sources_text.setFixedHeight(
+            max(line_height + 4, min(content_height, SOURCES_MAX_HEIGHT))
+        )
+
     def _on_controller_source_change(self):
-        self._header_label.setText(self._controller.get_source_label())
+        """React on a new source selection.
+
+        Whether original product names are required (multiple versions) and the
+        variant derived from the source can change with the selection, so the
+        dependent inputs have to be re-evaluated. Otherwise the submit button
+        can stay disabled for a selection of multiple products, because the
+        variant is not derivable from them.
+        """
+        user_values = self._controller.get_user_values()
+        self._variant_input.setText(user_values["variant"] or "")
+        self._invalidate_use_original_names(
+            self._use_original_names_checkbox.isChecked()
+        )
+        self._update_sources()
 
     def _invalidate_new_folder_name(self, folder_name, is_valid):
         self._tasks_widget.setVisible(folder_name is None)
@@ -543,7 +705,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._variant_input.setEnabled(not use_original_names)
         self._invalidate_variant(not use_original_names)
 
-        self._controller._use_original_name = use_original_names
+        self._controller.set_use_original_name(use_original_names)
         self._use_original_names_checkbox.setChecked(use_original_names)
 
     def _on_submission_change(self, event):
