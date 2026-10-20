@@ -96,12 +96,35 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             controller.get_source_label(),
             header_widget
         )
+        header_label.setWordWrap(True)
+        header_label.setAlignment(
+            QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
+        )
+        header_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse
+        )
+
+        # There can be many sources (one line per pushed version). Keep the
+        # label inside a scroll area with a bounded height, otherwise its
+        # size hint grows with the number of sources and pushes the rest of
+        # the dialog (buttons) out of the window.
+        header_scroll = QtWidgets.QScrollArea(header_widget)
+        header_scroll.setWidgetResizable(True)
+        header_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        header_scroll.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        header_scroll.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAsNeeded
+        )
+        header_scroll.setMaximumHeight(120)
+        header_scroll.setWidget(header_label)
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(header_label, 1)
-        header_layout.addWidget(library_only_label, 0)
-        header_layout.addWidget(library_only_checkbox, 0)
+        header_layout.addWidget(header_scroll, 1)
+        header_layout.addWidget(library_only_label, 0, QtCore.Qt.AlignTop)
+        header_layout.addWidget(library_only_checkbox, 0, QtCore.Qt.AlignTop)
 
         main_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Horizontal, main_context_widget
