@@ -99,8 +99,11 @@ class CreatorToolModel(BaseSettingsModel):
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
         title="Filter creator profiles",
-        description="Allowed list of creator labels that will be only shown"
-                    " if profile matches context."
+        description=(
+            "Limit which creators are shown per context.\n\n"
+            "Allowed list of creator labels that will be only shown if the"
+            " profile matches the context."
+        ),
     )
 
     @validator("product_types_smart_select")
@@ -203,6 +206,16 @@ class AYONMenuModel(BaseSettingsModel):
     )
 
 
+class GeneralToolsModel(BaseSettingsModel):
+    use_task_type_sorting: bool = SettingsField(
+        True,
+        title="Use task type sorting",
+        description=(
+            "Sort tasks in UIs based on task types order in Anatomy."
+        )
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -301,7 +314,57 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
     )
 
 
+class LoaderActionsModel(BaseSettingsModel):
+    copy_file_path: bool = SettingsField(
+        True,
+        title="Copy file path",
+        description=(
+            "Show the action for copying a published file path to the "
+            "clipboard in the loader."
+        ),
+    )
+    copy_file: bool = SettingsField(
+        True,
+        title="Copy file",
+        description="Show the action for copying a published file.",
+    )
+    open_file: bool = SettingsField(
+        True,
+        title="Open file action",
+        description="Show the action for opening a published file.",
+    )
+    delete_old_versions: bool = SettingsField(
+        True,
+        title="Delete old versions",
+        description="Show the action for deleting old versions.",
+    )
+    delete_selected_versions: bool = SettingsField(
+        True,
+        title="Delete selected versions",
+        description="Show the action for deleting selected versions.",
+    )
+    calculate_versions_size: bool = SettingsField(
+        True,
+        title="Calculate versions size",
+        description="Show the action for calculating versions size.",
+    )
+    create_hero_version: bool = SettingsField(
+        True,
+        title="Create hero version",
+        description="Show the action for creating a hero version.",
+    )
+
+
 class LoaderToolModel(BaseSettingsModel):
+    use_legacy_loader: bool = SettingsField(
+        False,
+        title="Use legacy loader",
+        description="Use legacy loader UI.",
+    )
+    actions: LoaderActionsModel = SettingsField(
+        default_factory=LoaderActionsModel,
+        title="Actions",
+    )
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
     )
@@ -445,6 +508,10 @@ class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
         title="AYON Menu"
+    )
+    general: GeneralToolsModel = SettingsField(
+        default_factory=GeneralToolsModel,
+        title="General"
     )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
@@ -658,6 +725,16 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
+        "use_legacy_loader": False,
+        "actions": {
+            "copy_file_path": True,
+            "copy_file": True,
+            "open_file": True,
+            "delete_old_versions": True,
+            "delete_selected_versions": True,
+            "calculate_versions_size": True,
+            "create_hero_version": True
+        },
         "product_type_filter_profiles": []
     },
     "publish": {

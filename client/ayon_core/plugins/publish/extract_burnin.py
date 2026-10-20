@@ -39,28 +39,6 @@ class ExtractBurnin(publish.Extractor):
     order = pyblish.api.ExtractorOrder + 0.03
 
     families = ["review", "burnin"]
-    hosts = [
-        "nuke",
-        "maya",
-        "shell",
-        "hiero",
-        "premiere",
-        "traypublisher",
-        "harmony",
-        "fusion",
-        "aftereffects",
-        "tvpaint",
-        "webpublisher",
-        "aftereffects",
-        "photoshop",
-        "flame",
-        "houdini",
-        "max",
-        "blender",
-        "unreal",
-        "batchdelivery",
-        "workflow",
-    ]
     settings_category = "core"
 
     optional = True
@@ -469,7 +447,7 @@ class ExtractBurnin(publish.Extractor):
             font_filepath = font_filepath.get(sys_name)
 
         if font_filepath and isinstance(font_filepath, str):
-            font_filepath = font_filepath.format(**os.environ)
+            font_filepath = font_filepath.format_map(os.environ)
             if not os.path.exists(font_filepath):
                 font_filepath = None
 

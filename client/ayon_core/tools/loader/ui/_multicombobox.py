@@ -5,6 +5,7 @@ from typing import List, Tuple, Optional, Iterable, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import (
     checkstate_int_to_enum,
@@ -161,21 +162,15 @@ class BaseQtModel(QtGui.QStandardItemModel):
         ):
             item.setData(STANDARD_ITEM_TYPE, self._item_type_role)
 
-        select_all_item.setIcon(get_qt_icon({
-            "type": "material-symbols",
-            "name": "done_all",
-            "color": "white"
-        }))
-        deselect_all_item.setIcon(get_qt_icon({
-            "type": "material-symbols",
-            "name": "remove_done",
-            "color": "white"
-        }))
-        swap_states_item.setIcon(get_qt_icon({
-            "type": "material-symbols",
-            "name": "swap_horiz",
-            "color": "white"
-        }))
+        select_all_item.setIcon(get_qt_icon(
+            MaterialSymbolsIcon("done_all", color="white")
+        ))
+        deselect_all_item.setIcon(get_qt_icon(
+            MaterialSymbolsIcon("remove_done", color="white")
+        ))
+        swap_states_item.setIcon(get_qt_icon(
+            MaterialSymbolsIcon("swap_horiz", color="white")
+        ))
 
         for item in (
             empty_values_item,
@@ -830,11 +825,11 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
 
                 content_rect.setLeft(bg_rect.right() + spacing)
 
-        painter.restore()
-
         if total_used_width > available_width:
             ellide_dots = chr(0x2026)
             painter.drawText(origin_rect, QtCore.Qt.AlignRight, ellide_dots)
+
+        painter.restore()
 
     def setItemCheckState(self, index, state):
         self.setItemData(index, state, QtCore.Qt.CheckStateRole)

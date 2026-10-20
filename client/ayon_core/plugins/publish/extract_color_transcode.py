@@ -63,13 +63,17 @@ class ExtractOIIOTranscode(publish.Extractor):
     optional = True
 
     # Supported extensions
-    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
+    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tif", "tiff"}
 
     # Configurable by Settings
     profiles = None
     options = None
 
     def process(self, instance):
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
+            return
+
         if not self.profiles:
             self.log.debug("No profiles present for color transcode")
             return

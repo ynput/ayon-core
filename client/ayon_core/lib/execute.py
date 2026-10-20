@@ -116,9 +116,15 @@ def run_subprocess(*args, **kwargs):
         and isinstance(args[0], str)
     ):
         # Escape parentheses for bash
-        if os.getenv("SHELL") in ("/bin/bash", "/bin/sh"):
+        if platform.system().lower() != "windows":
             new_arg = (
                 args[0]
+                .replace("&", "\\&")
+                .replace(";", "\\;")
+                .replace("|", "\\|")
+                .replace("$", "\\$")
+                .replace(">", "\\>")
+                .replace("<", "\\<")
                 .replace("(", "\\(")
                 .replace(")", "\\)")
             )
@@ -249,9 +255,14 @@ def run_detached_process(args, **kwargs):
 
     low_platform = platform.system().lower()
     if low_platform == "darwin":
-        new_args = ["open", "-na", args.pop(0), "--args"]
-        new_args.extend(args)
-        args = new_args
+        executable = args[0]
+        # If it's a macOS app bundle, use open -na
+        if executable.endswith(".app") or "/Contents/MacOS/" in executable:
+            new_args = ["open", "-na", args.pop(0), "--args"]
+            new_args.extend(args)
+            args = new_args
+        else:
+            kwargs["start_new_session"] = True
 
     elif low_platform == "windows":
         flags = (

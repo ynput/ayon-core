@@ -1,8 +1,11 @@
-import os
-import uuid
+from __future__ import annotations
+
 from dataclasses import dataclass, asdict
+import os
+import threading
+from typing import Any
+import uuid
 from urllib.parse import urlencode, urlparse
-from typing import Any, Optional
 import webbrowser
 
 import ayon_api
@@ -13,6 +16,13 @@ from ayon_core.lib import (
     NestedCacheItem,
     CacheItem,
     get_settings_variant,
+)
+from ayon_core.lib.icon_definitions import (
+    get_icon_def_from_data,
+    IconBase,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    PathIcon,
 )
 from ayon_core.lib.execute import (
     run_detached_ayon_launcher_process,
@@ -31,19 +41,19 @@ class WebactionForm:
     fields: list[dict[str, Any]]
     title: str
     submit_label: str
-    submit_icon: str
+    submit_icon: dict[str, str] | None
     cancel_label: str
-    cancel_icon: str
+    cancel_icon: dict[str, str] | None
 
 
 @dataclass
 class WebactionResponse:
     response_type: str
     success: bool
-    message: Optional[str] = None
-    clipboard_text: Optional[str] = None
-    form: Optional[WebactionForm] = None
-    error_message: Optional[str] = None
+    message: str | None = None
+    clipboard_text: str | None = None
+    form: WebactionForm | None = None
+    error_message: str | None = None
 
 
 def get_action_icon(action):
@@ -57,12 +67,11 @@ def get_action_icon(action):
     """
 
     icon = action.icon
+    if isinstance(icon, IconBase):
+        return icon
+
     if not icon:
-        return {
-            "type": "awesome-font",
-            "name": "fa.cube",
-            "color": "white"
-        }
+        return AwesomeFontIcon("fa.cube", color="white")
 
     if isinstance(icon, dict):
         return icon
@@ -75,10 +84,7 @@ def get_action_icon(action):
             pass
 
     if os.path.exists(icon_path):
-        return {
-            "type": "path",
-            "path": icon_path,
-        }
+        return PathIcon(icon_path)
 
     return {
         "type": "awesome-font",
@@ -99,6 +105,9 @@ class ActionsModel:
 
         self._log = None
 
+        # Action items are also collected from worker threads, discovery
+        #   of actions must happen only once at a time.
+        self._lock = threading.RLock()
         self._discovered_actions = None
         self._actions = None
         self._action_items = {}
@@ -109,7 +118,7 @@ class ActionsModel:
         self._variant = get_settings_variant()
 
     @staticmethod
-    def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
+    def calculate_full_label(label: str, variant_label: str | None) -> str:
         """Calculate full label from label and variant_label."""
         if variant_label:
             return " ".join([label, variant_label])
@@ -122,29 +131,29 @@ class ActionsModel:
         return self._log
 
     def refresh(self):
-        self._discovered_actions = None
-        self._actions = None
-        self._action_items = {}
-        self._webaction_items.reset()
-
         self._controller.emit_event("actions.refresh.started")
-        self._get_action_objects()
+        with self._lock:
+            self._discovered_actions = None
+            self._actions = None
+            self._action_items = {}
+            self._webaction_items.reset()
+            self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
     def get_action_items(
         self,
-        project_name: Optional[str],
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        workfile_id: Optional[str],
+        project_name: str | None,
+        folder_id: str | None,
+        task_id: str | None,
+        workfile_id: str | None,
     ) -> list[ActionItem]:
         """Get actions for project.
 
         Args:
-            project_name (Optional[str]): Project name.
-            folder_id (Optional[str]): Folder id.
-            task_id (Optional[str]): Task id.
-            workfile_id (Optional[str]): Workfile id.
+            project_name (str | None): Project name.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
+            workfile_id (str | None): Workfile id.
 
         Returns:
             list[ActionItem]: List of actions.
@@ -154,8 +163,8 @@ class ActionsModel:
             project_name, folder_id, task_id, workfile_id
         )
         output = []
-        action_items = self._get_action_items(project_name)
-        for identifier, action in self._get_action_objects().items():
+        actions, action_items = self._get_actions_snapshot(project_name)
+        for identifier, action in actions.items():
             if action.is_compatible(selection):
                 output.append(action_items[identifier])
         output.extend(self._get_webactions(selection))
@@ -176,10 +185,10 @@ class ActionsModel:
         failed = False
         error_message = None
         action_label = identifier
-        action_items = self._get_action_items(project_name)
+        actions, action_items = self._get_actions_snapshot(project_name)
         trigger_id = uuid.uuid4().hex
         try:
-            action = self._actions[identifier]
+            action = actions[identifier]
             action_item = action_items[identifier]
             action_label = action_item.full_label
             self._controller.emit_event(
@@ -256,17 +265,7 @@ class ActionsModel:
                 }
             )
 
-            conn = ayon_api.get_server_api_connection()
-            # Add 'referer' header to the request
-            # - ayon-api 1.1.1 adds the value to the header automatically
-            headers = conn.get_headers()
-            if "referer" in headers:
-                headers = None
-            else:
-                headers["referer"] = conn.get_base_url()
-            response = ayon_api.raw_post(
-                url, headers=headers, json=request_data
-            )
+            response = ayon_api.raw_post(url, json=request_data)
             response.raise_for_status()
             handle_response = self._handle_webaction_response(response.data)
 
@@ -436,13 +435,19 @@ class ActionsModel:
             return []
 
         action_items = []
-        for action in response.data["actions"]:
+        for idx, action in enumerate(response.data["actions"]):
             # NOTE Settings variant may be important for triggering?
             # - action["variant"]
             icon = action.get("icon")
             if icon and icon["type"] == "url":
                 if not urlparse(icon["url"]).scheme:
                     icon["type"] = "ayon_url"
+
+            if icon:
+                try:
+                    icon = get_icon_def_from_data(icon)
+                except ValueError:
+                    icon = None
 
             config_fields = action.get("configFields") or []
             variant_label = action["label"]
@@ -454,10 +459,19 @@ class ActionsModel:
             full_label = self.calculate_full_label(
                 group_label, variant_label
             )
+            identifier = action["identifier"]
+            order = action["order"]
+            if order is None:
+                order = 0
+                self.log.warning(
+                    f"Got webaction without order. Identifier: {identifier}"
+                )
+
             action_items.append(ActionItem(
                 action_type="webaction",
                 identifier=action["identifier"],
-                order=action["order"],
+                order=order,
+                suborder=idx,
                 label=group_label,
                 variant_label=variant_label,
                 full_label=full_label,
@@ -507,23 +521,26 @@ class ActionsModel:
         elif response_type == "redirect":
             # NOTE unused 'newTab' key because we always have to
             #   open new tab from desktop app.
-            if not webbrowser.open_new_tab(payload["uri"]):
-                payload.error_message = "Failed to open web browser."
+            uri = payload["uri"]
+            if not urlparse(uri).scheme:
+                ayon_url = ayon_api.get_base_url().rstrip("/")
+                path = uri.lstrip("/")
+                uri = f"{ayon_url}/{path}"
+
+            if not webbrowser.open_new_tab(uri):
+                response.error_message = "Failed to open web browser."
 
         elif response_type == "form":
-            submit_icon = payload["submit_icon"] or None
-            cancel_icon = payload["cancel_icon"] or None
-            if submit_icon:
-                submit_icon = {
-                    "type": "material-symbols",
-                    "name": submit_icon,
-                }
+            p_submit_icon: str | None = payload["submit_icon"] or None
+            p_cancel_icon: str | None = payload["cancel_icon"] or None
 
-            if cancel_icon:
-                cancel_icon = {
-                    "type": "material-symbols",
-                    "name": cancel_icon,
-                }
+            submit_icon: dict[str, str] | None = None
+            if p_submit_icon:
+                submit_icon = MaterialSymbolsIcon(p_submit_icon).to_data()
+
+            cancel_icon: dict[str, str] | None = None
+            if p_cancel_icon:
+                cancel_icon = MaterialSymbolsIcon(p_cancel_icon).to_data()
 
             response.form = WebactionForm(
                 fields=payload["fields"],
@@ -565,6 +582,10 @@ class ActionsModel:
         return response
 
     def _get_discovered_action_classes(self):
+        with self._lock:
+            return self._discover_action_classes()
+
+    def _discover_action_classes(self):
         if self._discovered_actions is None:
             # NOTE We don't need to register the paths, but that would
             #   require to change discovery logic and deprecate all functions
@@ -580,29 +601,49 @@ class ActionsModel:
         return self._discovered_actions
 
     def _get_action_objects(self):
-        if self._actions is None:
-            actions = {}
-            for cls in self._get_discovered_action_classes():
-                obj = cls()
-                identifier = getattr(obj, "identifier", None)
-                if identifier is None:
-                    identifier = cls.__name__
-                actions[identifier] = obj
-            self._actions = actions
-        return self._actions
+        with self._lock:
+            if self._actions is None:
+                actions = {}
+                for cls in self._get_discovered_action_classes():
+                    obj = cls()
+                    identifier = getattr(obj, "identifier", None)
+                    if identifier is None:
+                        identifier = cls.__name__
+                    actions[identifier] = obj
+                self._actions = actions
+            return self._actions
 
-    def _get_action_items(self, project_name):
-        action_items = self._action_items.get(project_name)
-        if action_items is not None:
-            return action_items
+    def _get_actions_snapshot(self, project_name):
+        """Get action objects and their items from one discovery.
 
+        A refresh from another thread must not change actions between
+        getting the objects and their items.
+
+        Returns:
+            tuple[dict[str, LauncherAction], dict[str, ActionItem]]: Action
+                objects and action items by identifier.
+
+        """
+        # Query server outside of the lock, controller caches the results
         project_entity = None
         if project_name:
             project_entity = self._controller.get_project_entity(project_name)
         project_settings = self._controller.get_project_settings(project_name)
+        with self._lock:
+            actions = self._get_action_objects()
+            action_items = self._action_items.get(project_name)
+            if action_items is None:
+                action_items = self._build_action_items(
+                    project_name, actions, project_entity, project_settings
+                )
+                self._action_items[project_name] = action_items
+        return actions, action_items
 
+    def _build_action_items(
+        self, project_name, actions, project_entity, project_settings
+    ):
         action_items = {}
-        for identifier, action in self._get_action_objects().items():
+        for identifier, action in actions.items():
             # Backwards compatibility from 0.3.3 (24/06/10)
             # TODO: Remove in future releases
             if hasattr(action, "project_settings"):
@@ -615,11 +656,19 @@ class ActionsModel:
                 label, variant_label
             )
             icon = get_action_icon(action)
+            order = action.order
+            # Make sure it is not 'None'
+            if order is None:
+                order = 0
+                self.log.warning(
+                    f"Got action without order. Identifier: {identifier}"
+                )
 
             item = ActionItem(
                 action_type="local",
                 identifier=identifier,
-                order=action.order,
+                order=order,
+                suborder=0,
                 label=label,
                 variant_label=variant_label,
                 full_label=full_label,
@@ -627,5 +676,4 @@ class ActionsModel:
                 config_fields=[],
             )
             action_items[identifier] = item
-        self._action_items[project_name] = action_items
         return action_items

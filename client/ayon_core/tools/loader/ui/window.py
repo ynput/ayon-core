@@ -4,6 +4,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
 from ayon_core.pipeline.actions import LoaderActionResult
@@ -16,6 +17,7 @@ from ayon_core.tools.utils import (
     ProjectsCombobox,
     get_qt_icon,
     FoldersFiltersWidget,
+    ConnectionOverlay,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.lib import center_window
@@ -178,6 +180,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         context_top_layout = QtWidgets.QHBoxLayout(context_top_widget)
         context_top_layout.setContentsMargins(0, 0, 0, 0,)
+        context_top_layout.setSpacing(4)
         context_top_layout.addWidget(projects_combobox, 1)
         context_top_layout.addWidget(go_to_current_btn, 0)
         context_top_layout.addWidget(refresh_btn, 0)
@@ -250,6 +253,8 @@ class LoaderWindow(QtWidgets.QWidget):
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.addWidget(main_splitter)
 
+        connection_overlay = ConnectionOverlay(controller, self)
+
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
 
@@ -312,7 +317,14 @@ class LoaderWindow(QtWidgets.QWidget):
             "loader.action.finished",
             self._on_loader_action_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
 
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
         self._overlay_object = overlay_object
 
         self._group_dialog = ProductGroupDialog(controller, self)
@@ -424,6 +436,15 @@ class LoaderWindow(QtWidgets.QWidget):
         self._show_timer.stop()
 
         if self._reset_on_show:
+            # Postpone refresh until server is available
+            if self._controller.check_server_available():
+                self.refresh()
+            else:
+                self._refresh_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
             self.refresh()
 
     def _show_toast_message(
@@ -655,11 +676,9 @@ class LoaderWindow(QtWidgets.QWidget):
         ]
         filter_status_items = [
             {
-                "icon": {
-                    "type": "material-symbols",
-                    "name": status_item.icon,
-                    "color": status_item.color
-                },
+                "icon": MaterialSymbolsIcon(
+                    status_item.icon, color=status_item.color
+                ),
                 "color": status_item.color,
                 "value": status_item.name,
             }
@@ -762,8 +781,10 @@ class LoaderWindow(QtWidgets.QWidget):
             entity_ids = set(self._selected_folder_ids)
             entity_type = "folder"
 
+        # Server fallback needs a request for each entity without own
+        #   thumbnail, which would block the UI as this is the main thread
         thumbnail_path_by_entity_id = self._controller.get_thumbnail_paths(
-            project_name, entity_type, entity_ids
+            project_name, entity_type, entity_ids, use_server_fallback=False
         )
         thumbnail_paths = set(thumbnail_path_by_entity_id.values())
         thumbnail_paths.discard(None)
