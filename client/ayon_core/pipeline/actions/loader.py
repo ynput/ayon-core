@@ -879,16 +879,6 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     options: list[AbstractAttrDef] | None = None
     skip_discovery: bool = True
 
-    @property
-    def alternative_launch(self) -> bool:
-        """Indicates if the action can be launched in an alternative way.
-
-        That is based on 'optins' by default in simple action plugin.
-        """
-        if self.options:
-            return False
-        return True
-
     @abstractmethod
     def is_compatible(self, selection: LoaderActionSelection) -> bool:
         """Check if plugin is compatible with selection.
@@ -927,13 +917,16 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     ) -> list[LoaderActionItem]:
         if self.is_compatible(selection):
             label = self.label or self.__class__.__name__
+            alternative_launch = False
+            if self.options:
+                alternative_launch = True
             return [
                 LoaderActionItem(
                     label=label,
                     order=self.order,
                     group_label=self.group_label,
                     icon=self.icon,
-                    alternative_launch=self.alternative_launch,
+                    alternative_launch=alternative_launch,
                 )
             ]
         return []
