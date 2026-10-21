@@ -59,29 +59,6 @@ def prepare_changes(old_entity: dict, new_entity: dict) -> dict:
     return changes
 
 
-def _get_representation_template_data(
-    template_data: dict[str, Any], representation: dict[str, Any]
-) -> dict[str, Any]:
-    """Add representation-specific values to hero template data.
-
-    Args:
-        template_data: Base template data shared by the source version.
-        representation: Source representation entity.
-
-    Returns:
-        A copy of the template data with representation-specific values.
-
-    """
-    repre_template_data = copy.deepcopy(template_data)
-    repre_context = representation.get("context") or {}
-    for key in ("ext", "output"):
-        value = repre_context.get(key)
-        if value:
-            repre_template_data[key] = value
-
-    return repre_template_data
-
-
 class CreateHeroVersion(LoaderActionPlugin):
     """Create hero version from selected context."""
 
@@ -235,9 +212,12 @@ class CreateHeroVersion(LoaderActionPlugin):
 
             src_representations = {}
             for repre in repres_by_version_id[version_id]:
-                repre_template_data = _get_representation_template_data(
-                    template_data, repre
-                )
+                repre_template_data = copy.deepcopy(template_data)
+                repre_context = repre.get("context") or {}
+                for key in ("ext", "output"):
+                    value = repre_context.get(key)
+                    if value:
+                        repre_template_data[key] = value
 
                 src_representations[repre["id"]] = {
                     "representation": repre,
