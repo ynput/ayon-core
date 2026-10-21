@@ -928,6 +928,17 @@ class AddonsManager:
                     f" from '{method_name}'."
                     f" Got 'str' expected 'list[str]'."
                 )
+
+            # TODO remove when the addons stop using LoaderPlugin for actions
+            if method_name == "get_load_plugin_paths":
+                host_name = next(iter(args))
+                if not host_name:
+                    self.log.warning(
+                        f"DeprecationWarning: Addon {addon.name} returns"
+                        " Loader Plugins when no host is present. These won’t"
+                        " be listed in future core versions and should"
+                        " be Loader Actions instead."
+                    )
             output.extend(paths)
         return output
 

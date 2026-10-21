@@ -696,6 +696,9 @@ class InstanceListView(AbstractInstanceView):
         ids_order = []
         ids_queue = collections.deque()
         ids_queue.extend(instance_ids_by_parent_id[None])
+        # Orphaned instances and their children
+        for parent_id in missing_parent_ids:
+            ids_queue.extend(instance_ids_by_parent_id[parent_id])
         while ids_queue:
             parent_id = ids_queue.popleft()
             ids_order.append(parent_id)
@@ -1024,53 +1027,49 @@ class InstanceListView(AbstractInstanceView):
         instance_items_by_id = self._controller.get_instance_items_by_id(
             instance_ids
         )
-        instance_ids = set(instance_items_by_id)
-        available_ids = set(instance_ids)
 
-        _queue = collections.deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
-
-        discarted_ids = set()
+        # Traverse whole hierarchy, active state of an instance may affect
+        #   all its descendants
+        _queue = collections.deque(self._get_root_ids_with_active())
         while _queue:
-            if not instance_ids:
-                break
-
             children_ids, parent_active = _queue.popleft()
             for instance_id in children_ids:
-                widget = self._widgets_by_id[instance_id]
-                # Parent active state changed -> traverse children too
-                add_children = False
-                if instance_id in instance_ids:
-                    add_children = (
-                        parent_active is not widget.is_parent_active()
-                    )
-                    if instance_id in available_ids:
-                        available_ids.discard(instance_id)
-                        widget.update_instance(
-                            instance_items_by_id[instance_id],
-                            context_info_by_id[instance_id],
-                            parent_active,
-                        )
-
-                    instance_ids.discard(instance_id)
-                    discarted_ids.add(instance_id)
-
-                if parent_active is not widget.is_parent_active():
-                    widget.set_parent_is_active(parent_active)
-                    add_children = True
-
-                if not add_children:
-                    if not instance_ids:
-                        break
+                widget = self._widgets_by_id.get(instance_id)
+                if widget is None:
                     continue
+                instance_item = instance_items_by_id.get(instance_id)
+                if instance_item is not None:
+                    widget.update_instance(
+                        instance_item,
+                        context_info_by_id[instance_id],
+                        parent_active,
+                    )
+                else:
+                    widget.set_parent_is_active(parent_active)
 
-                _children = set(self._instance_ids_by_parent_id[instance_id])
-                if _children:
-                    instance_ids |= _children
-                    _queue.append((_children, widget.is_active()))
+                children = self._instance_ids_by_parent_id.get(instance_id)
+                if children:
+                    _queue.append((set(children), widget.is_active()))
 
-                if not instance_ids:
-                    break
+        for group_name in self._group_items:
+            self._update_group_checkstate(group_name)
+
+    def _get_root_ids_with_active(self) -> list[tuple[set[str], bool]]:
+        """Top level instance ids with their parent active state.
+
+        Orphaned instances, which parent is not available, are considered
+            to have inactive parent.
+
+        Returns:
+            list[tuple[set[str], bool]]: Instance ids with parent active
+                state.
+
+        """
+        output = [(set(self._instance_ids_by_parent_id.get(None, ())), True)]
+        for parent_id, children_ids in self._instance_ids_by_parent_id.items():
+            if parent_id is not None and parent_id not in self._widgets_by_id:
+                output.append((set(children_ids), False))
+        return output
 
     def parent_grouping_enabled(self) -> bool:
         return self._parent_grouping
@@ -1095,15 +1094,21 @@ class InstanceListView(AbstractInstanceView):
             instance_ids = {active_id}
 
         active_by_id = {}
-        _queue = collections.deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        _queue = collections.deque(self._get_root_ids_with_active())
 
         while _queue:
             children_ids, parent_active = _queue.popleft()
             for instance_id in children_ids:
-                widget = self._widgets_by_id[instance_id]
+                widget = self._widgets_by_id.get(instance_id)
+                if widget is None:
+                    continue
                 widget.set_parent_is_active(parent_active)
-                if instance_id in instance_ids:
+                # Skip instances that can't be changed by user (mandatory,
+                #   or disabled by parent)
+                if (
+                    instance_id in instance_ids
+                    and widget.is_checkbox_enabled()
+                ):
                     value = new_value
                     if value is None:
                         value = not widget.is_active()
@@ -1111,7 +1116,7 @@ class InstanceListView(AbstractInstanceView):
                     active_by_id[instance_id] = value
 
                 children = set(
-                    self._instance_ids_by_parent_id[instance_id]
+                    self._instance_ids_by_parent_id.get(instance_id, ())
                 )
                 if children:
                     _queue.append((children, widget.is_active()))
