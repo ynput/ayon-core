@@ -706,7 +706,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             first_index_padded = None
             original_basename = None
             if not is_udim and is_sequence_representation:
-                col = clique.assemble(files)[0][0]
+                # Remove extension and create collection
+                # - that is needed for removement of frame from basename
+                #   and is NOT needed for anything else
+                col = clique.assemble(
+                    [os.path.splitext(file)[0] for file in files]
+                )[0][0]
                 # Remove frame basename for sequences if frame is in template
                 if "{frame" in template:
                     head = col.head.rstrip("._")
