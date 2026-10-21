@@ -95,6 +95,8 @@ from .structures import ActionForm
 if typing.TYPE_CHECKING:
     from typing import Union
 
+    from ayon_core.lib import AbstractAttrDef
+
     DataBaseType = Union[str, int, float, bool]
     DataType = dict[str, Union[DataBaseType, list[DataBaseType]]]
 
@@ -865,18 +867,27 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         order: Order of the action item.
         group_label: Label of the group to which the action belongs.
         icon: Icon definition shown next to label.
-        alternative_launch: Action can be launched in an alternative way.
-            Value is available in 'LoaderActionExecuteInfo' passed to
-            'execute_simple_action'.
+        options: List of options to be shown before the action is executed.
 
     """
 
-    label: Optional[str] = None
+    label: str | None = None
     order: int = 0
-    group_label: Optional[str] = None
-    icon: Optional[dict[str, Any]] = None
-    alternative_launch: bool = False
+    group_label: str | None = None
+    icon: IconBase | dict[str, Any] | None = None
+    # The values of options can be received from 'form_values'
+    options: list[AbstractAttrDef] | None = None
     skip_discovery: bool = True
+
+    @property
+    def alternative_launch(self) -> bool:
+        """Indicates if the action can be launched in an alternative way.
+
+        That is based on 'optins' by default in simple action plugin.
+        """
+        if self.options:
+            return False
+        return True
 
     @abstractmethod
     def is_compatible(self, selection: LoaderActionSelection) -> bool:
@@ -930,6 +941,19 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     def execute_action(
         self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
+        if not info.form_values and self.options:
+            if info.alternative_launch:
+                label = self.label or self.__class__.__name__
+                form = ActionForm(f"{label} Options", fields=self.options)
+                return LoaderActionResult(form=form)
+
+            # Auto-fill form values with defaults from options
+            info.form_values = {
+                attr.key: attr.default
+                for attr in self.options
+                if attr.is_value_def
+            }
+
         # Backwards compatibility for plugins with legacy signature
         if is_func_signature_supported(
             self.execute_simple_action, info.selection, info.form_values
@@ -937,4 +961,5 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
             return self.execute_simple_action(
                 info.selection, info.form_values
             )
+
         return self.execute_simple_action(info)
