@@ -24,6 +24,7 @@ from ayon_core.pipeline.actions import (
     LoaderActionItem,
     LoaderActionPlugin,
     LoaderActionResult,
+    LoaderActionExecuteInfo,
     LoaderActionSelection,
 )
 
@@ -104,11 +105,11 @@ class DeleteOldVersions(LoaderActionPlugin):
         return output
 
     def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: dict[str, Any],
-        form_values: dict[str, Any],
+        self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
+        selection = info.selection
+        data = info.data
+        form_values = info.form_values
         step = form_values.get("step")
         action = data["action"]
         versions_to_keep = form_values.get("versions_to_keep")

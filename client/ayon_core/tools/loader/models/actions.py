@@ -129,6 +129,7 @@ class LoaderActionsModel:
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
+        alternative_launch: bool = False,
     ):
         """Trigger action by identifier.
 
@@ -146,6 +147,8 @@ class LoaderActionsModel:
             data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Loader option values.
             form_values (dict[str, Any]): Form values.
+            alternative_launch (bool): Action was launched in
+                the alternative way.
 
         """
         event_data = {
@@ -154,6 +157,7 @@ class LoaderActionsModel:
             "selected_ids": list(selected_ids),
             "selected_entity_type": selected_entity_type,
             "data": data,
+            "alternative_launch": alternative_launch,
             "id": uuid.uuid4().hex,
         }
         self._controller.emit_event(
@@ -174,6 +178,7 @@ class LoaderActionsModel:
                     ),
                     data=data,
                     form_values=form_values,
+                    alternative_launch=alternative_launch,
                 )
 
             except Exception:
@@ -807,7 +812,8 @@ class LoaderActionsModel:
                 tooltip=None,  # action.tooltip,
                 order=action.order,
                 data=action.data,
-                options=None,  # action.options,
+                options=None,
+                alternative_launch=action.alternative_launch,
             ))
         return items
 

@@ -247,6 +247,7 @@ class BrowserController(AbstractBrowserController):
         data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
+        alternative_launch: bool = False,
     ):
         self._loader_actions_model.trigger_action_item(
             identifier=identifier,
@@ -256,6 +257,7 @@ class BrowserController(AbstractBrowserController):
             data=data,
             options=options,
             form_values=form_values,
+            alternative_launch=alternative_launch,
         )
 
     def set_selected_project(self, project_name):

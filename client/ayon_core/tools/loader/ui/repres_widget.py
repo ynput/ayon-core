@@ -407,7 +407,7 @@ class RepresentationsWidget(QtWidgets.QWidget):
             len(repre_ids) == 1,
             self
         )
-        action_item, options = result
+        action_item, options, alternative_launch = result
         if action_item is None or options is None:
             return
 
@@ -419,4 +419,5 @@ class RepresentationsWidget(QtWidgets.QWidget):
             data=action_item.data,
             options=options,
             form_values={},
+            alternative_launch=alternative_launch,
         )

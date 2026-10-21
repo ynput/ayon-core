@@ -18,8 +18,17 @@ Implementing 'get_action_items' allows the plugin to define what actions
     data for the action (they have to be json-serializable).
 
 The action is triggered by calling the 'execute_action' method. Which takes
-    the action identifier, the selection, the additional data from the action
-    item and form values from the form if any.
+    'LoaderActionExecuteInfo' with the selection, the additional data from
+    the action item, form values from the form if any and information if
+    the action was launched in the alternative way. Plugins implementing
+    the legacy signature '(selection, data, form_values)' are still
+    supported.
+
+Action item can enable 'alternative_launch' which allows the user to launch
+    the action in an alternative way (e.g. using the option box in the menu).
+    The meaning of the alternative launch is fully up to the plugin, it can
+    e.g. return a form with options first, ask for confirmation or do
+    something completely different.
 
 Using 'LoaderActionResult' as the output of 'execute_action' can trigger to
     show a message in UI or to show an additional form ('ActionForm')
@@ -49,23 +58,26 @@ The flow of the logic is (in the loader tool):
     3. Use 'LoaderActionsContext' to collect items using 'get_action_items'.
     4. Show a menu (with submenus) in the UI.
     5. If a user selects an action, the action is triggered using
-        'execute_action'.
+        'execute_action' on the context. If the user used the option box
+        of an item with 'alternative_launch' enabled, the action is
+        triggered with 'alternative_launch' set to 'True'.
     5a. If the action returns 'LoaderActionResult', show a 'message' if it is
         filled and show a form dialog if 'form' is filled.
     5b. If the user submitted the form, trigger the action again with the
-        values from the form and repeat from 5a.
+        values from the form (and the same 'alternative_launch' value)
+        and repeat from 5a.
 
 """
 from __future__ import annotations
 
-import os
+from abc import ABC, abstractmethod
 import collections
 import copy
+from dataclasses import dataclass, field
 import logging
-from abc import ABC, abstractmethod
+import os
 import typing
 from typing import Optional, Any, Callable
-from dataclasses import dataclass
 
 import ayon_api
 
@@ -493,20 +505,24 @@ class LoaderActionItem:
     Attributes:
         label (str): Text shown in UI.
         order (int): Order of the action in UI.
-        group_label (Optional[str]): Label of the group to which the action
+        group_label (str | None): Label of the group to which the action
             belongs.
-        icon (Optional[dict[str, Any]): Icon definition.
-        data (Optional[DataType]): Action item data.
-        identifier (Optional[str]): Identifier of the plugin which
+        icon (IconBase | dict[str, Any] | None): Icon definition.
+        data (DataType | None): Action item data.
+        alternative_launch (bool): Action can be launched in an alternative
+            way. UI shows an option box next to the item which triggers
+            the action with 'alternative_launch' set to 'True'.
+        identifier (str): Identifier of the plugin which
             created the action item. Is filled automatically. Is not changed
             if is filled -> can lead to different plugin.
 
     """
     label: str
     order: int = 0
-    group_label: Optional[str] = None
+    group_label: str | None = None
     icon: IconBase | dict[str, Any] | None = None
-    data: Optional[DataType] = None
+    data: DataType | None = None
+    alternative_launch: bool = False
     # Is filled automatically
     identifier: str = None
 
@@ -547,6 +563,25 @@ class LoaderActionResult:
         if form is not None:
             data["form"] = ActionForm.from_json_data(form)
         return LoaderActionResult(**data)
+
+
+@dataclass
+class LoaderActionExecuteInfo:
+    """Information about action execution.
+
+    Attributes:
+        selection (LoaderActionSelection): Selection wrapper. Can be used
+            to get entities or get context of original selection.
+        data (DataType | None): Additional action item data.
+        form_values (dict[str, Any]): Values from a form if there are any.
+        alternative_launch (bool): Action was launched in the alternative
+            way. Is kept when the action is re-triggered from a form.
+
+    """
+    selection: LoaderActionSelection
+    data: DataType | None = None
+    form_values: dict[str, Any] = field(default_factory=dict)
+    alternative_launch: bool = False
 
 
 class LoaderActionPlugin(ABC):
@@ -600,18 +635,17 @@ class LoaderActionPlugin(ABC):
 
     @abstractmethod
     def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: Optional[DataType],
-        form_values: dict[str, Any],
+        self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
         """Execute an action.
 
+        Notes:
+            Legacy signature '(selection, data, form_values)' is still
+                supported for backwards compatibility, but does not receive
+                all information, e.g. 'alternative_launch'.
+
         Args:
-            selection (LoaderActionSelection): Selection wrapper. Can be used
-                to get entities or get context of original selection.
-            data (Optional[DataType]): Additional action item data.
-            form_values (dict[str, Any]): Attribute values.
+            info (LoaderActionExecuteInfo): Execution information.
 
         Returns:
             Optional[LoaderActionResult]: Result of the action execution.
@@ -729,6 +763,7 @@ class LoaderActionsContext:
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
+        alternative_launch: bool = False,
     ) -> Optional[LoaderActionResult]:
         """Trigger action execution.
 
@@ -740,15 +775,26 @@ class LoaderActionsContext:
             data (Optional[DataType]): Additional action item data.
             form_values (dict[str, Any]): Form values related to action.
                 Usually filled if action returned response with form.
+            alternative_launch (bool): Action was launched in the
+                alternative way.
 
         """
         plugins_by_id = self._get_plugins()
         plugin = plugins_by_id[identifier]
-        return plugin.execute_action(
-            selection,
-            data,
-            form_values,
+        info = LoaderActionExecuteInfo(
+            selection=selection,
+            data=data,
+            form_values=form_values,
+            alternative_launch=alternative_launch,
         )
+        # Backwards compatibility for plugins with legacy signature
+        #   - legacy signature is checked first because it would also accept
+        #       single argument if it has default values
+        if is_func_signature_supported(
+            plugin.execute_action, selection, data, form_values
+        ):
+            return plugin.execute_action(selection, data, form_values)
+        return plugin.execute_action(info)
 
     def _get_plugins(self) -> dict[str, LoaderActionPlugin]:
         if self._plugins is None:
@@ -819,6 +865,9 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         order: Order of the action item.
         group_label: Label of the group to which the action belongs.
         icon: Icon definition shown next to label.
+        alternative_launch: Action can be launched in an alternative way.
+            Value is available in 'LoaderActionExecuteInfo' passed to
+            'execute_simple_action'.
 
     """
 
@@ -826,6 +875,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     order: int = 0
     group_label: Optional[str] = None
     icon: Optional[dict[str, Any]] = None
+    alternative_launch: bool = False
     skip_discovery: bool = True
 
     @abstractmethod
@@ -843,15 +893,17 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
 
     @abstractmethod
     def execute_simple_action(
-        self,
-        selection: LoaderActionSelection,
-        form_values: dict[str, Any],
+        self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
         """Process action based on selection.
 
+        Notes:
+            Legacy signature '(selection, form_values)' is still
+                supported for backwards compatibility, but does not receive
+                all information, e.g. 'alternative_launch'.
+
         Args:
-            selection (LoaderActionSelection): Selection information.
-            form_values (dict[str, Any]): Values from a form if there are any.
+            info (LoaderActionExecuteInfo): Execution information.
 
         Returns:
             Optional[LoaderActionResult]: Result of the action.
@@ -870,14 +922,19 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
                     order=self.order,
                     group_label=self.group_label,
                     icon=self.icon,
+                    alternative_launch=self.alternative_launch,
                 )
             ]
         return []
 
     def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: Optional[DataType],
-        form_values: dict[str, Any],
+        self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
-        return self.execute_simple_action(selection, form_values)
+        # Backwards compatibility for plugins with legacy signature
+        if is_func_signature_supported(
+            self.execute_simple_action, info.selection, info.form_values
+        ):
+            return self.execute_simple_action(
+                info.selection, info.form_values
+            )
+        return self.execute_simple_action(info)

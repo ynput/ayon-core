@@ -294,4 +294,5 @@ class BrowserWindow(AYContainer):
             options={},
             data=event["data"],
             form_values=form_values,
+            alternative_launch=event["alternative_launch"],
         )

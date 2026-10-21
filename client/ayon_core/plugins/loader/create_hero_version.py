@@ -23,6 +23,7 @@ from ayon_core.pipeline.actions import (
     LoaderActionItem,
     LoaderActionPlugin,
     LoaderActionResult,
+    LoaderActionExecuteInfo,
     LoaderActionSelection,
 )
 
@@ -107,11 +108,9 @@ class CreateHeroVersion(LoaderActionPlugin):
         ]
 
     def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: dict[str, Any],
-        form_values: dict[str, Any],
+        self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
+        selection = info.selection
         project_name = selection.project_name
         project_settings = selection.get_project_settings()
         project_entity = ayon_api.get_project(project_name)

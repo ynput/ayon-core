@@ -299,6 +299,9 @@ class ActionItem:
         data (dict[str, Any] | None): Additional action data.
         options (list[AbstractAttrDef] | None):
             Action options. Note: 'qargparse' is considered as deprecated.
+        alternative_launch (bool): Action can be launched in an alternative
+            way. Option box is shown next to the action, which does not
+            show any options dialog.
 
     """
     identifier: str
@@ -309,6 +312,7 @@ class ActionItem:
     order: int
     data: dict[str, Any] | None
     options: list[AbstractAttrDef] | None
+    alternative_launch: bool = False
 
     def _options_to_data(self):
         options = self.options
@@ -336,6 +340,7 @@ class ActionItem:
             order=self.order,
             data=self.data,
             options=options,
+            alternative_launch=self.alternative_launch,
         )
 
     @classmethod
@@ -997,6 +1002,7 @@ class FrontendLoaderController(_BaseLoaderController):
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
+        alternative_launch: bool = False,
     ):
         """Trigger action item.
 
@@ -1021,6 +1027,8 @@ class FrontendLoaderController(_BaseLoaderController):
             data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Action option values from UI.
             form_values (dict[str, Any]): Action form values from UI.
+            alternative_launch (bool): Action was launched in
+                the alternative way.
 
         """
         pass
