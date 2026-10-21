@@ -73,7 +73,7 @@ def show_actions_menu(
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
         icon = get_qt_icon(action_item.icon)
-        use_option = bool(item_options) or action_item.alternative_launch
+        use_option = action_item.alternative_launch
         action = OptionalAction(
             action_item.label,
             icon,

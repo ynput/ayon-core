@@ -247,7 +247,7 @@ class BrowserController(AbstractBrowserController):
         data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: bool = False,
+        alternative_launch: bool,
     ):
         self._loader_actions_model.trigger_action_item(
             identifier=identifier,

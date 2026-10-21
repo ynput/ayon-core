@@ -357,7 +357,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: bool = False,
+        alternative_launch: bool,
     ):
         if self._sitesync_model.is_sitesync_action(identifier):
             self._sitesync_model.trigger_action_item(

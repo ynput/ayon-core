@@ -130,7 +130,7 @@ class ActionItem:
     order: int
     data: dict[str, Any] | None
     options: list[AbstractAttrDef] | None
-    alternative_launch: bool = False
+    alternative_launch: bool
 
     def _options_to_data(self):
         options = self.options
@@ -643,7 +643,7 @@ class AbstractBrowserController(ABC):
         data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: bool = False,
+        alternative_launch: bool,
     ):
         """Trigger action item.
 

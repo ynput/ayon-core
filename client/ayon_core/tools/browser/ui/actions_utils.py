@@ -82,9 +82,8 @@ def show_actions_menu(
         action_item, _, _ = item
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
-        item_options = action_item.options
         icon = get_qt_icon(action_item.icon)
-        if item_options or action_item.alternative_launch:
+        if action_item.alternative_launch:
             action = AYOptionalAction(
                 action_item.label,
                 icon,

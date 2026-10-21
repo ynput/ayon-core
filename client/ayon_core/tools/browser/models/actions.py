@@ -210,7 +210,7 @@ class LoaderActionsModel:
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: bool = False,
+        alternative_launch: bool,
     ):
         """Trigger action by identifier.
 
@@ -427,6 +427,7 @@ class LoaderActionsModel:
             label = repre_name
         elif repre_name:
             label = f"{label} ({repre_name})"
+        options = loader.get_options(contexts)
         return ActionItem(
             LOADER_PLUGIN_ID,
             data={
@@ -439,7 +440,8 @@ class LoaderActionsModel:
             icon=self._get_action_icon(loader),
             tooltip=self._get_action_tooltip(loader),
             order=loader.order,
-            options=loader.get_options(contexts),
+            options=options,
+            alternative_launch=bool(options),
         )
 
     def _get_loaders(self, project_name):
