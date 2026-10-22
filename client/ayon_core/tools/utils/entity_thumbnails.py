@@ -118,7 +118,9 @@ class EntityThumbnailsLoader(QtCore.QObject):
     Args:
         controller: Controller of a tool. Thumbnails are available only
             if the controller has 'get_thumbnail_paths' method.
-        entity_type: Entity type passed to the controller.
+        entity_type: Entity type passed to the controller. Project name
+            does not have to be set for 'project', where entity ids are
+            project names.
         thumbnail_size: Size of thumbnails in device independent pixels.
         radius: Radius of rounded corners in device independent pixels.
         parent: Parent object.
@@ -210,7 +212,10 @@ class EntityThumbnailsLoader(QtCore.QObject):
             device_pixel_ratio: Pixel ratio of the screen thumbnails are
                 painted on.
         """
-        if not self._project_name or not self.is_available():
+        if not self.is_available():
+            return
+        # Projects are not part of a project, their ids are project names
+        if not self._project_name and self._entity_type != "project":
             return
         entity_ids = [
             entity_id
@@ -432,8 +437,15 @@ class EntityThumbnailsPainter(QtCore.QObject):
         Should be called on each refresh of the view, so changed thumbnails
         are updated.
         """
-        self._requested = {}
         self._loader.set_project_name(project_name)
+        self.set_outdated()
+
+    def set_outdated(self) -> None:
+        """Entities in the view were refreshed, validate their thumbnails.
+
+        Already loaded thumbnails stay visible until they are validated.
+        """
+        self._requested = {}
         self._loader.set_outdated()
         self._view.viewport().update()
 
