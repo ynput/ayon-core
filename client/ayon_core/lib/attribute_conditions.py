@@ -38,9 +38,10 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, ClassVar
 
 if typing.TYPE_CHECKING:
-    from typing import Union
+    from typing import Union, Literal
 
     AttrDefConditionInput = Union["AttrDefCondition", dict[str, Any]]
+    AttrDefConditionOperator = Literal["and", "or"]
 
 
 def _contains(container: Any, value: Any) -> bool:
@@ -218,7 +219,7 @@ class GroupCondition(AttrDefCondition):
     type: ClassVar[str] = "group"
 
     conditions: list[AttrDefCondition] = field(default_factory=list)
-    operator: str = "and"
+    operator: AttrDefConditionOperator = "and"
 
     def __post_init__(self):
         if self.operator not in _GROUP_OPERATORS:
