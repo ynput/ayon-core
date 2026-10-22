@@ -174,6 +174,18 @@ def _large_atom(atom_type: bytes, payload: bytes = b"") -> bytes:
     )
 
 
+def _metadata_keys_meta(with_version: bool) -> bytes:
+    """'meta' atom with custom metadata keys."""
+    payload = (
+        _atom(b"hdlr", b"\0" * 8 + b"mdta" + b"\0" * 12)
+        + _atom(b"keys", b"\0" * 4 + (1).to_bytes(4, "big"))
+        + _atom(b"ilst")
+    )
+    if with_version:
+        payload = b"\0\0\0\0" + payload
+    return _atom(b"meta", payload)
+
+
 class GetFFmpegFormatArgs(unittest.TestCase):
     """Test responses from `get_ffmpeg_format_args`"""
     def setUp(self):
@@ -233,6 +245,44 @@ class GetFFmpegFormatArgs(unittest.TestCase):
             }
         })
         self.assertEqual(args, [])
+
+    def test_mov_metadata_keys(self):
+        # ffmpeg with '-movflags use_metadata_tags' stores metadata with
+        #   custom keys in 'moov/udta/meta' with version and flags
+        moov = _atom(b"moov", _atom(b"udta", _metadata_keys_meta(True)))
+        mdat = _atom(b"mdat", b"\0" * 32)
+        self.assertEqual(
+            self._format_args(_atom(b"ftyp", b"isom") + moov + mdat),
+            ["-movflags", "faststart+use_metadata_tags"]
+        )
+        self.assertEqual(
+            self._format_args(_atom(b"ftyp", b"isom") + mdat + moov),
+            ["-movflags", "use_metadata_tags"]
+        )
+
+    def test_mov_quicktime_metadata_keys(self):
+        # QuickTime stores metadata with custom keys in 'moov/meta'
+        #   without version and flags
+        moov = _atom(b"moov", _metadata_keys_meta(False))
+        mdat = _atom(b"mdat", b"\0" * 32)
+        self.assertEqual(
+            self._format_args(_atom(b"ftyp", b"qt  ") + mdat + moov),
+            ["-movflags", "use_metadata_tags"]
+        )
+
+    def test_mov_metadata_without_keys(self):
+        # Standard metadata (e.g. title) don't use custom keys
+        meta = _atom(
+            b"meta",
+            b"\0\0\0\0"
+            + _atom(b"hdlr", b"\0" * 8 + b"mdir" + b"\0" * 12)
+            + _atom(b"ilst", _atom(b"\xa9nam"))
+        )
+        moov = _atom(b"moov", _atom(b"udta", meta))
+        mdat = _atom(b"mdat", b"\0" * 32)
+        self.assertEqual(
+            self._format_args(_atom(b"ftyp", b"isom") + mdat + moov), []
+        )
 
     def test_other_formats(self):
         # Only mov based formats are checked
