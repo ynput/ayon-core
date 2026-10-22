@@ -2194,6 +2194,19 @@ DEFAULT_PUBLISH_VALUES = {
                     "if_not_set",
             },
             {
+                "product_base_types": ["animation"],
+                "task_types": [],
+                "task_names": [],
+                "contribution_enabled": True,
+                "contribution_layer": "animation",
+                "contribution_target_product": "usdShot",
+                "contribution_apply_as_variant": False,
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_default_policy":
+                    "if_not_set",
+            },
+            {
                 "product_base_types": ["usd"],
                 "task_types": [],
                 "task_names": [],
