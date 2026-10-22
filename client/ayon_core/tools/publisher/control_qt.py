@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import collections
+import typing
 
 from qtpy import QtCore
 
 from .control import PublisherController
+
+if typing.TYPE_CHECKING:
+    from .abstract import PublishDebugStepType
 
 
 class MainThreadItem:
@@ -87,11 +91,17 @@ class QtPublisherController(PublisherController):
         self._item_process_in_loop = False
         super().reset()
 
-    def _start_publish(self, stop_after_validation: bool) -> None:
+    def _start_publish(
+        self,
+        stop_after_validation: bool,
+        debug_step_type: PublishDebugStepType | None = None,
+    ) -> None:
         self._publish_model.set_publish_stop_after_validation(
             stop_after_validation
         )
-        self._publish_model.start_publish(wait=False)
+        self._publish_model.start_publish(
+            wait=False, debug_step_type=debug_step_type
+        )
         # Make sure '_next_publish_item_process' is only once in
         #   the '_main_thread_processor' loop
         if not self._item_process_in_loop:

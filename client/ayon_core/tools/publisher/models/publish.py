@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import traceback
 import typing
-from typing import Any
+from typing import Any, Iterable
 
 import pyblish
 
@@ -14,7 +14,14 @@ from ayon_core.pipeline.publish.logic import (
 from ayon_core.tools.publisher.abstract import (
     UIFailInfo,
     UIPublishErrorReport,
+    PublishDebugState,
+    PublishDebugPluginItem,
+    PublishDebugDataItem,
+    PublishDebugExecResult,
+    PublishDebugValue,
 )
+
+from .publish_debug import PublishDebugger
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline.publish.logic import (
@@ -22,7 +29,10 @@ if typing.TYPE_CHECKING:
         PublishActionResult,
     )
     from ayon_core.pipeline.publish.report import PublishReport
-    from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
+    from ayon_core.tools.publisher.abstract import (
+        AbstractPublisherBackend,
+        PublishDebugStepType,
+    )
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 
@@ -45,6 +55,7 @@ class PublishModel:
         self._publish_iter = None
 
         self._publish_state = CurrentPublishState()
+        self._debugger = PublishDebugger()
 
     def reset(self):
         create_context = self._controller.get_create_context()
@@ -57,21 +68,37 @@ class PublishModel:
         )
         self._publish_iter = None
         self._publish_state = CurrentPublishState()
+        self._debugger.reset()
 
         self._emit_event("publish.reset.finished")
 
     def set_publish_stop_after_validation(self, value: bool) -> None:
         self._logic.set_stop_after_validation(value)
 
-    def start_publish(self, wait: bool = True) -> None:
+    def get_publish_stop_after_validation(self) -> bool:
+        return self._logic.get_stop_after_validation()
+
+    def start_publish(
+        self,
+        wait: bool = True,
+        debug_step_type: PublishDebugStepType | None = None,
+    ) -> None:
         """Run publishing.
 
         Make sure all changes are saved before method is called (Call
         'save_changes' and check output).
+
+        Args:
+            wait (bool): Process all plugins before returning. Debugger
+                is not used in that case.
+            debug_step_type (PublishDebugStepType | None): How far
+                should publishing go before debugger pauses it.
+
         """
         if self._logic.is_running():
             return
 
+        self._debugger.resume(debug_step_type)
         self._emit_event("publish.process.started")
         self._publish_iter = self._logic.publish_iter()
         if wait:
@@ -85,8 +112,10 @@ class PublishModel:
             bool: True if publishing is still running, False if finished.
 
         """
-        task: PublishIterTask | None = None
-        if self._publish_iter is not None:
+        # Task held by debugger is processed first
+        task: PublishIterTask | None = self._debugger.pop_pending_task()
+        is_resumed_task = task is not None
+        if task is None and self._publish_iter is not None:
             task = next(self._publish_iter, None)
 
         if task is None:
@@ -120,7 +149,15 @@ class PublishModel:
                 {"instance_label": item_label}
             )
 
+        if not is_resumed_task and self._debugger.should_pause(task):
+            self._debugger.pause(task)
+            self._logic.stop_publish()
+            self._emit_event("publish.process.stopped")
+            self._emit_event("publish.debug.paused")
+            return False
+
         task()
+        self._debugger.task_processed(task)
         if not self._publish_state.validated and self._logic.has_validated():
             self._publish_state.validated = True
             self._emit_event("publish.has_validated")
@@ -207,6 +244,44 @@ class PublishModel:
             )
 
         self._controller.emit_card_message("Action finished.")
+
+    def get_debug_state(self) -> PublishDebugState:
+        return self._debugger.get_state()
+
+    def get_debug_plugin_items(self) -> list[PublishDebugPluginItem]:
+        return self._debugger.get_plugin_items(self._logic)
+
+    def get_breakpoints(self) -> set[str]:
+        return self._debugger.get_breakpoints()
+
+    def set_breakpoints(
+        self, plugin_names: Iterable[str], enabled: bool
+    ) -> None:
+        self._debugger.set_breakpoints(plugin_names, enabled)
+        self._emit_event("publish.debug.breakpoints.changed")
+
+    def clear_breakpoints(self) -> None:
+        self._debugger.clear_breakpoints()
+        self._emit_event("publish.debug.breakpoints.changed")
+
+    def get_debug_data_items(self) -> list[PublishDebugDataItem]:
+        return self._debugger.get_data_items(self._logic.pyblish_context)
+
+    def get_debug_value_children(
+        self, item_id: str, path: tuple[str, ...]
+    ) -> list[PublishDebugValue] | None:
+        return self._debugger.get_value_children(
+            self._logic.pyblish_context, item_id, path
+        )
+
+    def debug_execute(
+        self, code: str, instance_id: str | None
+    ) -> PublishDebugExecResult:
+        result = self._debugger.execute(
+            code, self._logic.pyblish_context, instance_id
+        )
+        self._emit_event("publish.debug.code.executed")
+        return result
 
     def _emit_event(self, topic: str, data: dict[str, Any] | None = None):
         self._controller.emit_event(topic, data, PUBLISH_EVENT_SOURCE)
