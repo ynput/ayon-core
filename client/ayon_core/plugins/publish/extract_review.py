@@ -40,6 +40,36 @@ from ayon_core.pipeline.publish.lib import (
 )
 
 
+def is_sequence_output(
+    repre_files: list[str] | str,
+    input_ext: str,
+    output_ext: str,
+    image_exts: set[str],
+) -> bool:
+    """Whether the output of the review is a frame sequence.
+
+    The output has to be a frame sequence when images are written and the input
+    was a sequence (files stored as a list) or a video (which is split into
+    image frames). A single image file, and any video output, stays a single
+    file.
+
+    Args:
+        repre_files (list[str] | str): `files` of the origin representation.
+        input_ext (str): Extension of the input, without the dot.
+        output_ext (str): Extension of the output, without the dot.
+        image_exts (set[str]): Supported image extensions.
+
+    Returns:
+        bool: True when the output has to be a frame sequence.
+    """
+    input_is_sequence = isinstance(repre_files, (list, tuple))
+    input_is_video = input_ext.lower() not in image_exts
+    output_is_image = output_ext.lower() in image_exts
+    return bool(
+        output_is_image and (input_is_sequence or input_is_video)
+    )
+
+
 class TempData:
     """Temporary data used across extractor's process."""
     def __init__(
@@ -58,7 +88,6 @@ class TempData:
         resolution_height: int,
         origin_repre: dict[str, Any],
         input_is_sequence: bool,
-        input_is_single_file: bool,
         first_sequence_frame: int,
         input_allow_bg: bool,
         with_audio: bool,
@@ -90,7 +119,6 @@ class TempData:
         self.resolution_height = resolution_height
         self.origin_repre = origin_repre
         self.input_is_sequence = input_is_sequence
-        self.input_is_single_file = input_is_single_file
         self.first_sequence_frame = first_sequence_frame
         self.input_allow_bg = input_allow_bg
         self.with_audio = with_audio
@@ -721,12 +749,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"][0])[1].replace(".", "")
             if ext.lower() in self.alpha_exts:
                 input_allow_bg = True
-            # Determine if input is single file or sequence based on extension
-            # If extension is not in image extensions then input is single file
-            input_is_single_file = ext.lower() not in self.image_exts
         else:
             ext = os.path.splitext(repre["files"])[1].replace(".", "")
-            input_is_single_file = True
 
         return TempData(
             fps=float(instance.data["fps"]),
@@ -743,7 +767,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
             resolution_height=instance.data.get("resolutionHeight"),
             origin_repre=repre,
             input_is_sequence=input_is_sequence,
-            input_is_single_file=input_is_single_file,
             first_sequence_frame=first_sequence_frame,
             input_allow_bg=input_allow_bg,
             with_audio=with_audio,
@@ -1243,9 +1266,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         # Output is image file sequence with frames
         output_ext_is_image = bool(output_ext in self.image_exts)
-        output_is_sequence = bool(
-            output_ext_is_image
-            and not temp_data.input_is_single_file
+        output_is_sequence = is_sequence_output(
+            temp_data.origin_repre["files"],
+            temp_data.input_ext,
+            output_ext,
+            self.image_exts,
         )
         if output_is_sequence:
             new_repre_files = []

@@ -120,3 +120,23 @@ def test_get_file_collections_specific_patterns(
         expected_indexes
     )
     assert remainders == expected_remainders
+
+
+def test_get_file_collections_mixed_sequences_fall_back_to_default() -> None:
+    """A partial custom-pattern match must not skip the default parsing.
+
+    The custom pattern only consumes `head.NNNN.ext` paths, so a mixed input
+    (a custom-pattern sequence plus another sequence) has to go through the
+    default Clique parsing to find both collections.
+    """
+    files = [
+        "beauty.1001.exr",
+        "beauty.1002.exr",
+        "render.1001.layer2.exr",
+        "render.1002.layer2.exr",
+    ]
+
+    collections, remainders = get_file_collections(files)
+
+    assert len(collections) == 2, [str(col) for col in collections]
+    assert not remainders
