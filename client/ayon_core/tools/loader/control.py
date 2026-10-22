@@ -357,6 +357,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
+        alternative_launch: bool,
     ):
         if self._sitesync_model.is_sitesync_action(identifier):
             self._sitesync_model.trigger_action_item(
@@ -373,6 +374,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             data=data,
             options=options,
             form_values=form_values,
+            alternative_launch=alternative_launch,
         )
 
     # Selection model wrappers

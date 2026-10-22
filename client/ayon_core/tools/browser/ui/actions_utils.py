@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import uuid
-from typing import Optional, Any
+from typing import Any
 
 from qtpy import QtWidgets, QtGui, QtCore
 import qtawesome
@@ -27,7 +29,7 @@ def _actions_sorter(item: tuple[ActionItem, str, str]):
     return action_item.order, group_label, label
 
 
-def _get_group_key(action_item: ActionItem) -> tuple[str, Optional[str]]:
+def _get_group_key(action_item: ActionItem) -> tuple[str, str | None]:
     """Key of the submenu an action item with a group label belongs to.
 
     Loader plugins sharing a label each get a submenu of their own, at the
@@ -44,16 +46,26 @@ def show_actions_menu(
     global_point: QtCore.QPoint,
     one_item_selected: bool,
     parent: QtWidgets.QWidget,
-) -> tuple[Optional[ActionItem], Optional[dict[str, Any]]]:
+) -> tuple[ActionItem | None, dict[str, Any] | None, bool]:
+    """Show actions menu and let user pick an action.
+
+    Returns:
+        tuple[ActionItem | None, dict[str, Any] | None, bool]: Selected
+            action item, option values ('None' if options dialog was
+            cancelled) and if the action was launched in
+            the alternative way.
+
+    """
     selected_action_item = None
     selected_options = None
+    alternative_launch = False
 
     if not action_items:
         menu = AYOptionalMenu(parent)
         action = _get_no_loader_action(menu, one_item_selected)
         menu.addAction(action)
         menu.exec_(global_point)
-        return selected_action_item, selected_options
+        return selected_action_item, selected_options, alternative_launch
 
     menu = AYOptionalMenu(parent)
 
@@ -70,9 +82,8 @@ def show_actions_menu(
         action_item, _, _ = item
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
-        item_options = action_item.options
         icon = get_qt_icon(action_item.icon)
-        if item_options:
+        if action_item.alternative_launch:
             action = AYOptionalAction(
                 action_item.label,
                 icon,
@@ -117,9 +128,13 @@ def show_actions_menu(
         selected_action_item = action_items_by_id.get(item_id)
 
     if selected_action_item is not None:
+        alternative_launch = (
+            selected_action_item.alternative_launch
+            and bool(action.property("optioned"))
+        )
         selected_options = _get_options(action, selected_action_item, parent)
 
-    return selected_action_item, selected_options
+    return selected_action_item, selected_options, alternative_launch
 
 
 def _select_option_action(action, output: list) -> None:

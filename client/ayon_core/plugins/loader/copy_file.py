@@ -1,7 +1,7 @@
 import os
 import collections
 
-from typing import Optional, Any
+from typing import Optional
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
@@ -10,6 +10,7 @@ from ayon_core.pipeline.actions import (
     LoaderActionPlugin,
     LoaderActionSelection,
     LoaderActionResult,
+    LoaderActionExecuteInfo,
 )
 
 
@@ -87,15 +88,14 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         return output
 
     def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: dict,
-        form_values: dict[str, Any],
+        self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
         from qtpy import QtWidgets, QtCore
 
-        action = data["action"]
-        repre_id = data["representation_id"]
+        selection = info.selection
+
+        action = info.data["action"]
+        repre_id = info.data["representation_id"]
         repre = next(iter(selection.entities.get_representations({repre_id})))
         path = get_representation_path_with_anatomy(
             repre, selection.get_project_anatomy()

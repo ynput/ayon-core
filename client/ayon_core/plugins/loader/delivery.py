@@ -1,10 +1,11 @@
-from typing import Optional, Any
+from typing import Optional
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.actions import (
     LoaderSimpleActionPlugin,
     LoaderActionSelection,
     LoaderActionResult,
+    LoaderActionExecuteInfo,
 )
 from ayon_core.tools.delivery import DeliveryOptionsDialog
 
@@ -28,10 +29,9 @@ class DeliveryAction(LoaderSimpleActionPlugin):
         )
 
     def execute_simple_action(
-        self,
-        selection: LoaderActionSelection,
-        form_values: dict[str, Any],
+        self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
+        selection = info.selection
         version_ids = set()
         if selection.selected_type == "representation":
             versions = selection.entities.get_representations_versions(

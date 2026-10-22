@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import uuid
-from typing import Optional, Any
+from typing import Any
 
 from qtpy import QtWidgets, QtGui, QtCore
 import qtawesome
@@ -34,16 +36,26 @@ def show_actions_menu(
     global_point: QtCore.QPoint,
     one_item_selected: bool,
     parent: QtWidgets.QWidget,
-) -> tuple[Optional[ActionItem], Optional[dict[str, Any]]]:
+) -> tuple[ActionItem | None, dict[str, Any] | None, bool]:
+    """Show actions menu and let user pick an action.
+
+    Returns:
+        tuple[ActionItem | None, dict[str, Any] | None, bool]: Selected
+            action item, option values ('None' if options dialog was
+            cancelled) and if the action was launched in
+            the alternative way.
+
+    """
     selected_action_item = None
     selected_options = None
+    alternative_launch = False
 
     if not action_items:
         menu = QtWidgets.QMenu(parent)
         action = _get_no_loader_action(menu, one_item_selected)
         menu.addAction(action)
         menu.exec_(global_point)
-        return selected_action_item, selected_options
+        return selected_action_item, selected_options, alternative_launch
 
     menu = OptionalMenu(parent)
 
@@ -61,14 +73,14 @@ def show_actions_menu(
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
         icon = get_qt_icon(action_item.icon)
-        use_option = bool(item_options)
+        use_option = action_item.alternative_launch
         action = OptionalAction(
             action_item.label,
             icon,
             use_option,
             menu
         )
-        if use_option:
+        if item_options:
             # Add option box tip
             action.set_option_tip(item_options)
 
@@ -98,9 +110,13 @@ def show_actions_menu(
         selected_action_item = action_items_by_id.get(item_id)
 
     if selected_action_item is not None:
+        alternative_launch = (
+            selected_action_item.alternative_launch
+            and getattr(action, "optioned", False)
+        )
         selected_options = _get_options(action, selected_action_item, parent)
 
-    return selected_action_item, selected_options
+    return selected_action_item, selected_options, alternative_launch
 
 
 def _get_options(action, action_item, parent):

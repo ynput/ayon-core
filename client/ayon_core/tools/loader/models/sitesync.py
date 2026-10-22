@@ -497,6 +497,7 @@ class SiteSyncModel:
                 "action_identifier": action_identifier,
             },
             options=None,
+            alternative_launch=False,
         )
 
     def _add_site(self, project_name, repre_entity, site_name, product_type):
