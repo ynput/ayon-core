@@ -8,14 +8,13 @@ import json
 import copy
 import warnings
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
 import typing
 from typing import (
     Any,
     TypeVar,
     Callable,
 )
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 import clique
 
@@ -24,10 +23,16 @@ from .icon_definitions import (
     MaterialSymbolsIcon,
     get_icon_def_from_data,
 )
+from .attribute_conditions import (
+    AttrDefCondition,
+    prepare_condition,
+)
 
 if typing.TYPE_CHECKING:
     from typing import Self, TypedDict, NotRequired
     from re import Pattern
+
+    from .attribute_conditions import AttrDefConditionInput
 
     class EnumItemDict(TypedDict):
         label: str
@@ -48,10 +53,6 @@ if typing.TYPE_CHECKING:
         frames: list[int] | None
         template: str | None
         is_sequence: bool | None
-
-    class VisibilityRuleDict(TypedDict):
-        values: list[Any]
-        keys: list[str]
 
 
 # Global variable which store attribute definitions by type
@@ -103,54 +104,6 @@ def _convert_reversed_attr(
     return main_value
 
 
-@dataclass
-class VisibilityRule:
-    """Rule controlling visibility of other attribute definitions.
-
-    Attribute definitions with key in 'keys' are visible only if value of
-    the attribute definition holding the rule matches one of 'values'.
-
-    Args:
-        values (list[Any]): Values for which are 'keys' visible.
-        keys (list[str]): Keys of controlled attribute definitions.
-
-    """
-    values: list[Any]
-    keys: list[str]
-
-    def __post_init__(self):
-        if isinstance(self.keys, str):
-            self.keys = [self.keys]
-        self.values = list(self.values)
-        self.keys = list(self.keys)
-
-    def to_data(self) -> VisibilityRuleDict:
-        return {
-            "values": copy.deepcopy(self.values),
-            "keys": list(self.keys),
-        }
-
-    @classmethod
-    def from_data(cls, data: VisibilityRuleDict) -> VisibilityRule:
-        return cls(values=data["values"], keys=data["keys"])
-
-
-def _prepare_visibility_rules(
-    visibility_rules: Iterable[VisibilityRule | VisibilityRuleDict] | None,
-) -> list[VisibilityRule]:
-    output = []
-    for rule in visibility_rules or []:
-        if isinstance(rule, dict):
-            rule = VisibilityRule.from_data(rule)
-        elif not isinstance(rule, VisibilityRule):
-            raise TypeError(
-                "Visibility rule must be 'VisibilityRule' or 'dict',"
-                f" got '{type(rule)}'."
-            )
-        output.append(rule)
-    return output
-
-
 class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     """Abstraction of attribute definition.
 
@@ -173,29 +126,21 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             if label is next to value input or ahead.
         visible (bool | None): Item is shown to user (for UI purposes).
         enabled (bool | None): Item is enabled (for UI purposes).
-        visibility_rules (list[VisibilityRule] | None): Rules controlling
-            visibility of other attribute definitions based on value of
-            this attribute definition (for UI purposes). Rules can be passed
-            also as dictionaries with 'values' and 'keys'. Attribute
-            definitions not mentioned in any rule are not affected.
+        visibility_condition (AttrDefConditionInput | None): Condition
+            based on values of other attribute definitions which must be
+            met to show the item (for UI purposes). Can be passed as
+            serialized data of the condition.
         hidden (bool | None): DEPRECATED: Use 'visible' instead.
         disabled (bool | None): DEPRECATED: Use 'enabled' instead.
 
     Example:
         ```python
         attr_defs = [
-            BoolDef(
-                "use_custom_range",
-                default=False,
-                visibility_rules=[
-                    VisibilityRule(
-                        values=[True],
-                        keys=["frame_start", "frame_end"],
-                    ),
-                ],
+            BoolDef("use_custom_range", default=False),
+            NumberDef(
+                "frame_start",
+                visibility_condition=ValueCondition("use_custom_range", True),
             ),
-            NumberDef("frame_start"),
-            NumberDef("frame_end"),
         ]
         ```
 
@@ -213,9 +158,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         is_label_horizontal: bool | None = None,
         visible: bool | None = None,
         enabled: bool | None = None,
-        visibility_rules: (
-            Iterable[VisibilityRule | VisibilityRuleDict] | None
-        ) = None,
+        visibility_condition: AttrDefConditionInput | None = None,
         hidden: bool | None = None,
         disabled: bool | None = None,
     ):
@@ -236,8 +179,8 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         self.is_label_horizontal: bool = is_label_horizontal
         self.visible: bool = visible
         self.enabled: bool = enabled
-        self.visibility_rules: list[VisibilityRule] = (
-            _prepare_visibility_rules(visibility_rules)
+        self.visibility_condition: AttrDefCondition | None = (
+            prepare_condition(visibility_condition)
         )
         self._id: str = uuid.uuid4().hex
 
@@ -290,46 +233,10 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             (ignore_default or self.default == other.default)
             and (ignore_visible or (
                 self.visible == other.visible
-                and self.visibility_rules == other.visibility_rules
+                and self.visibility_condition == other.visibility_condition
             ))
             and (ignore_enabled or self.enabled == other.enabled)
         )
-
-    def get_visibility_controlled_keys(self) -> set[str]:
-        """Keys of attribute definitions controlled by visibility rules.
-
-        Returns:
-            set[str]: Keys of controlled attribute definitions.
-
-        """
-        return {
-            key
-            for rule in self.visibility_rules
-            for key in rule.keys
-        }
-
-    def get_visible_keys_for_value(self, value: Any) -> set[str]:
-        """Keys of controlled attribute definitions visible for a value.
-
-        Args:
-            value (Any): Value of this attribute definition.
-
-        Returns:
-            set[str]: Keys of controlled attribute definitions that should
-                be visible for the value.
-
-        """
-        return {
-            key
-            for rule in self.visibility_rules
-            if self._is_visibility_value_matching(value, rule.values)
-            for key in rule.keys
-        }
-
-    def _is_visibility_value_matching(
-        self, value: Any, rule_values: list[Any]
-    ) -> bool:
-        return value in rule_values
 
     @abstractmethod
     def is_value_valid(self, value: Any) -> bool:
@@ -385,10 +292,11 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             "is_label_horizontal": self.is_label_horizontal,
             "visible": self.visible,
             "enabled": self.enabled,
-            "visibility_rules": [
-                rule.to_data()
-                for rule in self.visibility_rules
-            ],
+            "visibility_condition": (
+                self.visibility_condition.to_data()
+                if self.visibility_condition is not None
+                else None
+            ),
         }
         for attr in self.type_attributes:
             data[attr] = getattr(self, attr)
@@ -908,13 +816,6 @@ class EnumDef(AbstractAttrDef):
             and self.multiselection == other.multiselection
         )
 
-    def _is_visibility_value_matching(
-        self, value: Any, rule_values: list[Any]
-    ) -> bool:
-        if self.multiselection and isinstance(value, (list, tuple, set)):
-            return any(item in rule_values for item in value)
-        return super()._is_visibility_value_matching(value, rule_values)
-
 
 class BoolDef(AbstractAttrDef):
     """Boolean representation.
@@ -1402,15 +1303,55 @@ def get_default_values(
     return output
 
 
+class _VisibleValues(Mapping):
+    """Values of visible attribute definitions resolved on demand."""
+    def __init__(
+        self,
+        values: dict[str, Any],
+        attr_defs_by_key: dict[str, list[AbstractAttrDef]],
+        is_visible: Callable[[AbstractAttrDef], bool],
+    ):
+        self._values = values
+        self._attr_defs_by_key = attr_defs_by_key
+        self._is_visible = is_visible
+
+    def _get_visible_attr_def(self, key: str) -> AbstractAttrDef | None:
+        for attr_def in self._attr_defs_by_key[key]:
+            if self._is_visible(attr_def):
+                return attr_def
+        return None
+
+    def __getitem__(self, key: str) -> Any:
+        if key not in self._attr_defs_by_key:
+            return self._values[key]
+        attr_def = self._get_visible_attr_def(key)
+        if attr_def is None:
+            raise KeyError(key)
+        return self._values.get(key, attr_def.default)
+
+    def __contains__(self, key: object) -> bool:
+        if key not in self._attr_defs_by_key:
+            return key in self._values
+        return self._get_visible_attr_def(key) is not None
+
+    def __iter__(self):
+        keys = set(self._values) | set(self._attr_defs_by_key)
+        return (key for key in keys if key in self)
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+
 def get_attr_defs_visibility(
     attr_defs: Iterable[AttrDefType],
     values: dict[str, Any],
 ) -> dict[str, bool]:
     """Resolve visibility of attribute definitions.
 
-    Takes into account 'visible' of each attribute definition and
-    'visibility_rules' of controlling attribute definitions. Attribute
-    definition controlled by a hidden attribute definition is hidden too.
+    Takes into account 'visible' and 'visibility_condition' of each
+    attribute definition. Values of hidden attribute definitions are not
+    available to conditions, so a condition comparing value of hidden
+    attribute definition is not met.
 
     Args:
         attr_defs (Iterable[AttrDefType]): Attribute definitions.
@@ -1422,41 +1363,36 @@ def get_attr_defs_visibility(
 
     """
     attr_defs = list(attr_defs)
-    controllers_by_key = collections.defaultdict(list)
+    attr_defs_by_key = {}
     for attr_def in attr_defs:
-        if not attr_def.is_value_def:
-            continue
-        for key in attr_def.get_visibility_controlled_keys():
-            controllers_by_key[key].append(attr_def)
+        if attr_def.is_value_def:
+            attr_defs_by_key.setdefault(attr_def.key, []).append(attr_def)
 
     visibility_by_id = {}
+    processing = set()
 
-    def _is_visible(attr_def: AttrDefType, processing: set[str]) -> bool:
+    def _is_visible(attr_def: AbstractAttrDef) -> bool:
         if attr_def.id in visibility_by_id:
             return visibility_by_id[attr_def.id]
 
-        visible = attr_def.visible
-        # Skip controllers already being resolved to avoid cycles
-        processing = processing | {attr_def.id}
-        for controller in controllers_by_key.get(attr_def.key, []):
-            if not visible:
-                break
-            if controller.id in processing:
-                continue
-            if not _is_visible(controller, processing):
-                visible = False
-                break
+        # Attribute definition depending on itself, directly or through
+        #   other attribute definitions, is considered hidden
+        if attr_def.id in processing:
+            return False
 
-            value = values.get(controller.key, controller.default)
-            visible = (
-                attr_def.key in controller.get_visible_keys_for_value(value)
-            )
+        visible = attr_def.visible
+        condition = attr_def.visibility_condition
+        if visible and condition is not None:
+            processing.add(attr_def.id)
+            visible = condition.evaluate(visible_values)
+            processing.discard(attr_def.id)
 
         visibility_by_id[attr_def.id] = visible
         return visible
 
+    visible_values = _VisibleValues(values, attr_defs_by_key, _is_visible)
     for attr_def in attr_defs:
-        _is_visible(attr_def, set())
+        _is_visible(attr_def)
     return visibility_by_id
 
 

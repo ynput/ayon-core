@@ -163,7 +163,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         self._widgets_by_id = {}
         self._labels_by_id = {}
         self._current_keys = set()
-        self._has_visibility_rules = False
+        self._has_visibility_conditions = False
 
         self.set_attr_defs(attr_defs)
 
@@ -172,7 +172,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         self._widgets_by_id = {}
         self._labels_by_id = {}
         self._current_keys = set()
-        self._has_visibility_rules = False
+        self._has_visibility_conditions = False
 
         layout = self.layout()
         if layout is not None:
@@ -214,8 +214,8 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                 self._current_keys.add(attr_def.key)
             widget = create_widget_for_attr_def(attr_def, self)
             self._widgets_by_id[attr_def.id] = widget
-            if attr_def.visibility_rules:
-                self._has_visibility_rules = True
+            if attr_def.visibility_condition is not None:
+                self._has_visibility_conditions = True
 
             if not attr_def.visible:
                 continue
@@ -299,11 +299,10 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
         if label is not None:
             label.set_overridden(value != widget.attr_def.default)
 
-        if widget.attr_def.visibility_rules:
-            self._update_visibility()
+        self._update_visibility()
 
     def _update_visibility(self):
-        if not self._has_visibility_rules:
+        if not self._has_visibility_conditions:
             return
 
         visibility_by_id = get_attr_defs_visibility(

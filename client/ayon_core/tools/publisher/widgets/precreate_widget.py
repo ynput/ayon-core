@@ -235,7 +235,7 @@ class AttributesWidget(QtWidgets.QWidget):
                 widget, row, col_num, 1, expand_cols
             )
             self._widgets.append(widget)
-            if attr_def.visibility_rules:
+            if attr_def.is_value_def:
                 widget.value_changed.connect(self._on_value_change)
 
             row += 1
@@ -246,8 +246,8 @@ class AttributesWidget(QtWidgets.QWidget):
         self._update_visibility()
 
     def _update_visibility(self) -> None:
-        if not any(
-            widget.attr_def.visibility_rules
+        if all(
+            widget.attr_def.visibility_condition is None
             for widget in self._widgets
         ):
             return
