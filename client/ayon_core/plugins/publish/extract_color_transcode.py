@@ -9,7 +9,10 @@ from ayon_core.pipeline import (
     get_temp_dir
 )
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
-from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
+from ayon_core.pipeline.colorspace import (
+    get_display_view_colorspace_name,
+    get_representation_ocio_config_path,
+)
 from ayon_core.lib import is_oiio_supported
 
 from ayon_core.lib.transcoding import (
@@ -175,15 +178,31 @@ class ExtractOIIOTranscode(publish.Extractor):
                     target_view = display_view["view"] or scene_view
                     target_display = display_view["display"] or scene_display
 
-                # both could be already collected by DCC,
-                # but could be overwritten when transcoding
-                if target_view:
-                    new_repre["colorspaceData"]["view"] = target_view
-                if target_display:
-                    new_repre["colorspaceData"]["display"] = target_display
+                # Colorspace data of the new representation describe only
+                #   the target, keys copied from the source representation
+                #   must not be kept
+                new_colorspace_data = new_repre["colorspaceData"]
                 if target_colorspace:
-                    new_repre["colorspaceData"]["colorspace"] = \
-                        target_colorspace
+                    new_colorspace_data["colorspace"] = target_colorspace
+                    new_colorspace_data.pop("display", None)
+                    new_colorspace_data.pop("view", None)
+                else:
+                    new_colorspace_data["display"] = target_display
+                    new_colorspace_data["view"] = target_view
+                    # Colorspace of the display/view pair for consumers that
+                    #   read only 'colorspace' (loaders, the '{colorspace}'
+                    #   template key)
+                    display_view_colorspace = ""
+                    if target_display and target_view:
+                        display_view_colorspace = (
+                            get_display_view_colorspace_name(
+                                config_path, target_display, target_view
+                            )
+                            or ""
+                        )
+                    new_colorspace_data["colorspace"] = (
+                        display_view_colorspace
+                    )
 
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
