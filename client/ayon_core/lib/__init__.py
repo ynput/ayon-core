@@ -70,8 +70,7 @@ from .attribute_definitions import (
 from .attribute_conditions import (
     AttrDefCondition,
     ValueCondition,
-    AndCondition,
-    OrCondition,
+    GroupCondition,
 )
 
 from .env_tools import (
@@ -237,8 +236,7 @@ __all__ = [
 
     "AttrDefCondition",
     "ValueCondition",
-    "AndCondition",
-    "OrCondition",
+    "GroupCondition",
 
     "import_filepath",
     "modules_from_path",

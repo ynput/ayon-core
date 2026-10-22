@@ -9,7 +9,7 @@ Example:
         BoolDef,
         EnumDef,
         NumberDef,
-        AndCondition,
+        GroupCondition,
         ValueCondition,
     )
 
@@ -18,7 +18,7 @@ Example:
         EnumDef("mode", items=["frames", "seconds"]),
         NumberDef(
             "frame_start",
-            visibility_condition=AndCondition([
+            visibility_condition=GroupCondition([
                 ValueCondition("use_custom_range", True),
                 ValueCondition("mode", "frames"),
             ]),
@@ -33,7 +33,7 @@ import copy
 import operator
 import typing
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Callable, ClassVar
 
@@ -72,6 +72,12 @@ _OPERATORS: dict[str, Callable[[Any, Any], bool]] = {
     "gte": _compare(operator.ge),
     "lt": _compare(operator.lt),
     "lte": _compare(operator.le),
+}
+
+# Group operators by name
+_GROUP_OPERATORS: dict[str, Callable[[Iterable[bool]], bool]] = {
+    "and": all,
+    "or": any,
 }
 
 _condition_classes_by_type: dict[str, type[AttrDefCondition]] = {}
@@ -196,14 +202,40 @@ class ValueCondition(AttrDefCondition):
 
 
 @dataclass
-class _GroupCondition(AttrDefCondition):
+class GroupCondition(AttrDefCondition):
+    """Combine multiple conditions.
+
+    With 'and' operator all conditions must be met, which is also the case
+    when there are no conditions. With 'or' operator at least one condition
+    must be met, so it is not met when there are no conditions.
+
+    Args:
+        conditions (list[AttrDefConditionInput]): Conditions to combine.
+        operator (str): How to combine conditions, 'and' or 'or'.
+            Default 'and'.
+
+    """
+    type: ClassVar[str] = "group"
+
     conditions: list[AttrDefCondition] = field(default_factory=list)
+    operator: str = "and"
 
     def __post_init__(self):
+        if self.operator not in _GROUP_OPERATORS:
+            raise ValueError(
+                f"Unknown group operator '{self.operator}'."
+                f" Available operators: {', '.join(_GROUP_OPERATORS)}"
+            )
         self.conditions = [
             prepare_condition(condition)
             for condition in self.conditions
         ]
+
+    def evaluate(self, values: Mapping[str, Any]) -> bool:
+        return _GROUP_OPERATORS[self.operator](
+            condition.evaluate(values)
+            for condition in self.conditions
+        )
 
     def get_keys(self) -> set[str]:
         return {
@@ -215,6 +247,7 @@ class _GroupCondition(AttrDefCondition):
     def to_data(self) -> dict[str, Any]:
         return {
             "type": self.type,
+            "operator": self.operator,
             "conditions": [
                 condition.to_data()
                 for condition in self.conditions
@@ -222,42 +255,10 @@ class _GroupCondition(AttrDefCondition):
         }
 
     @classmethod
-    def from_data(cls, data: dict[str, Any]) -> _GroupCondition:
-        return cls(conditions=data["conditions"])
-
-
-@dataclass
-class AndCondition(_GroupCondition):
-    """All conditions must be met. Met if there are no conditions.
-
-    Args:
-        conditions (list[AttrDefCondition]): Conditions to combine.
-
-    """
-    type: ClassVar[str] = "and"
-
-    def evaluate(self, values: Mapping[str, Any]) -> bool:
-        return all(
-            condition.evaluate(values)
-            for condition in self.conditions
-        )
-
-
-@dataclass
-class OrCondition(_GroupCondition):
-    """At least one condition must be met. Not met if there are no
-    conditions.
-
-    Args:
-        conditions (list[AttrDefCondition]): Conditions to combine.
-
-    """
-    type: ClassVar[str] = "or"
-
-    def evaluate(self, values: Mapping[str, Any]) -> bool:
-        return any(
-            condition.evaluate(values)
-            for condition in self.conditions
+    def from_data(cls, data: dict[str, Any]) -> GroupCondition:
+        return cls(
+            conditions=data["conditions"],
+            operator=data.get("operator", "and"),
         )
 
 

@@ -6,8 +6,7 @@ import json
 
 import pytest
 from ayon_core.lib.attribute_conditions import (
-    AndCondition,
-    OrCondition,
+    GroupCondition,
     ValueCondition,
     condition_from_data,
 )
@@ -98,20 +97,28 @@ def test_missing_key_is_not_met():
 
 
 def test_and_or_conditions():
-    condition = OrCondition([
-        AndCondition([
-            ValueCondition("a", True),
-            ValueCondition("b", True),
-        ]),
-        ValueCondition("c", 10, "gte"),
-    ])
+    condition = GroupCondition(
+        [
+            GroupCondition([
+                ValueCondition("a", True),
+                ValueCondition("b", True),
+            ]),
+            ValueCondition("c", 10, "gte"),
+        ],
+        operator="or",
+    )
 
     assert condition.evaluate({"a": True, "b": True, "c": 0})
     assert not condition.evaluate({"a": True, "b": False, "c": 0})
     assert condition.evaluate({"a": False, "b": False, "c": 10})
     assert condition.get_keys() == {"a", "b", "c"}
-    assert AndCondition([]).evaluate({})
-    assert not OrCondition([]).evaluate({})
+    assert GroupCondition([]).evaluate({})
+    assert not GroupCondition([], operator="or").evaluate({})
+
+
+def test_unknown_group_operator_raises():
+    with pytest.raises(ValueError):
+        GroupCondition([], operator="xor")
 
 
 def test_multiselection_enum_contains():
@@ -159,10 +166,13 @@ def test_or_keeps_visible_when_other_branch_is_hidden():
         ),
         NumberDef(
             "target",
-            visibility_condition=OrCondition([
-                ValueCondition("second", True),
-                ValueCondition("first", False),
-            ]),
+            visibility_condition=GroupCondition(
+                [
+                    ValueCondition("second", True),
+                    ValueCondition("first", False),
+                ],
+                operator="or",
+            ),
         ),
     ]
 
@@ -213,7 +223,8 @@ def test_condition_from_dict():
     attr_def = TextDef(
         "name",
         visibility_condition={
-            "type": "and",
+            "type": "group",
+            "operator": "or",
             "conditions": [
                 {"type": "value", "key": "a", "value": 1, "operator": "gt"},
                 {"type": "value", "key": "b", "value": "x"},
@@ -221,24 +232,27 @@ def test_condition_from_dict():
         },
     )
 
-    assert attr_def.visibility_condition == AndCondition([
-        ValueCondition("a", 1, "gt"),
-        ValueCondition("b", "x"),
-    ])
+    assert attr_def.visibility_condition == GroupCondition(
+        [ValueCondition("a", 1, "gt"), ValueCondition("b", "x")],
+        operator="or",
+    )
 
 
 def test_unknown_condition_type_raises():
     with pytest.raises(ValueError):
-        condition_from_data({"type": "xor", "conditions": []})
+        condition_from_data({"type": "unknown", "conditions": []})
 
 
 def test_serialization_roundtrip():
     attr_def = NumberDef(
         "start",
-        visibility_condition=OrCondition([
-            ValueCondition("use_range", True),
-            ValueCondition("mode", ["a", "b"], "in"),
-        ]),
+        visibility_condition=GroupCondition(
+            [
+                ValueCondition("use_range", True),
+                ValueCondition("mode", ["a", "b"], "in"),
+            ],
+            operator="or",
+        ),
     )
 
     data = json.loads(json.dumps(serialize_attr_def(attr_def)))

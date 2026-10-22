@@ -20,7 +20,7 @@ from ayon_core.lib.attribute_definitions import (
     EnumDef,
     UIDef,
 )
-from ayon_core.lib.attribute_conditions import OrCondition
+from ayon_core.lib.attribute_conditions import GroupCondition
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib import (
     is_func_signature_supported,
@@ -418,13 +418,16 @@ def _merge_visibility_conditions(
         attr_def_src.visibility_condition = None
         return
 
-    if isinstance(src_condition, OrCondition):
+    if (
+        isinstance(src_condition, GroupCondition)
+        and src_condition.operator == "or"
+    ):
         if new_condition not in src_condition.conditions:
             src_condition.conditions.append(new_condition)
         return
 
-    attr_def_src.visibility_condition = OrCondition(
-        [src_condition, new_condition]
+    attr_def_src.visibility_condition = GroupCondition(
+        [src_condition, new_condition], operator="or"
     )
 
 
