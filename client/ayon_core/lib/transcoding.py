@@ -18,6 +18,7 @@ import clique
 from .execute import run_subprocess
 from .vendor_bin_utils import (
     get_ffmpeg_tool_args,
+    get_ffmpeg_available_encoders,
     get_oiio_tool_args,
     is_oiio_supported,
 )
@@ -969,6 +970,10 @@ def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
     if codec_name == "dnxhd":
         return _ffmpeg_dnxhd_codec_args(video_stream, source_ffmpeg_cmd)
 
+    # Codec "av1"
+    if codec_name == "av1":
+        return _ffmpeg_av1_codec_args(video_stream, source_ffmpeg_cmd)
+
     output = []
     if codec_name:
         output.extend(["-codec:v", codec_name])
@@ -1046,6 +1051,91 @@ def _ffmpeg_h264_codec_args(stream_data, source_ffmpeg_cmd):
     if pix_fmt:
         output.extend(["-pix_fmt", pix_fmt])
 
+    output.extend(["-g", "1"])
+    return output
+
+
+# Preference order of AV1 encoders, best first. ffprobe only tells us the
+# codec is "av1"; which concrete encoder exists is build dependent, so the
+# encoder is resolved at runtime instead of being hardcoded.
+_AV1_ENCODER_PREFERENCE = (
+    "libsvtav1",   # fast, good quality, the usual choice
+    "libaom-av1",  # reference encoder, correct but very slow
+    "av1_nvenc",   # NVIDIA hardware
+    "av1_qsv",     # Intel QuickSync hardware
+)
+
+
+def _pick_av1_encoder():
+    """Return the best available AV1 encoder for this FFmpeg build.
+
+    Falls back to the bare ``av1`` codec (FFmpeg picks its own default)
+    if none of the preferred encoders are compiled in.
+    """
+    available = get_ffmpeg_available_encoders()
+    for encoder in _AV1_ENCODER_PREFERENCE:
+        if encoder in available:
+            return encoder
+    return "av1"
+
+
+def _default_av1_crf(stream_data):
+    """Pick a default CRF from the input resolution.
+
+    CRF is not stored in the source file and cannot be read back, so the
+    only input-derived signal is resolution. Larger frames tolerate a
+    slightly higher CRF for similar perceived quality.
+    """
+    try:
+        width = int(stream_data.get("width") or 0)
+    except (TypeError, ValueError):
+        width = 0
+    if width >= 3840:
+        return "32"
+    return "30"
+
+
+def _ffmpeg_av1_codec_args(stream_data, source_ffmpeg_cmd):
+    encoder = _pick_av1_encoder()
+    output = ["-codec:v", encoder]
+
+    # Quality/speed flag names differ per encoder: '-crf' is understood by
+    # libsvtav1 and libaom-av1; '-preset'/'-svtav1-params' by libsvtav1;
+    # hardware encoders use '-cq' instead of '-crf'.
+    uses_crf = encoder in ("libsvtav1", "libaom-av1")
+    uses_preset = encoder == "libsvtav1"
+
+    # Copy only explicit quality args a studio set in ExtractReview output
+    # args. The source bitrate is intentionally NOT copied: an all-intra
+    # ('-g 1') encode at a low source bitrate produces unusable output.
+    copied = set()
+    if source_ffmpeg_cmd:
+        copy_args = ["-maxrate", "-maxrate:", "-bufsize", "-bufsize:"]
+        if uses_crf:
+            copy_args.append("-crf")
+        if uses_preset:
+            copy_args.extend(["-preset", "-svtav1-params"])
+        args = source_ffmpeg_cmd.split(" ")
+        for idx, arg in enumerate(args):
+            if arg in copy_args:
+                output.extend([arg, args[idx + 1]])
+                copied.add(arg.lstrip("-").split(":")[0])
+
+    # Defaults when the studio did not set them, driven by CRF.
+    if uses_preset and "preset" not in copied:
+        output.extend(["-preset", "8"])
+
+    if "crf" not in copied:
+        if uses_crf:
+            output.extend(["-crf", _default_av1_crf(stream_data)])
+        elif encoder == "av1_nvenc":
+            output.extend(["-cq", _default_av1_crf(stream_data)])
+
+    pix_fmt = stream_data.get("pix_fmt")
+    if pix_fmt:
+        output.extend(["-pix_fmt", pix_fmt])
+
+    # Keep every frame a keyframe for frame-accurate scrubbing in AYON web.
     output.extend(["-g", "1"])
     return output
 
