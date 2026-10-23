@@ -1,8 +1,12 @@
 """Plugins for loading representations and products into host applications."""
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from collections import defaultdict
+import logging
 import os
+import uuid
+import typing
 from typing import Any, Optional, Type
 
 from ayon_core.lib import Logger
@@ -15,7 +19,15 @@ from ayon_core.pipeline.plugin_discover import (
 )
 from ayon_core.settings import get_project_settings
 
-from .utils import get_representation_path_from_context
+from .exceptions import UnsupportedSwitchError
+from .utils import get_representation_path_from_context, get_repres_contexts
+
+if typing.TYPE_CHECKING:
+    from .context import (
+        LoadContext,
+        RepresentationContext,
+        ContainerItem,
+    )
 
 
 class LoaderPlugin(list):
@@ -290,12 +302,7 @@ class LoaderPlugin(list):
 
 
 class ProductLoaderPlugin(LoaderPlugin):
-    """Load product into host application
-    Arguments:
-        context (dict): avalon-core:context-1.0
-        name (str, optional): Use pre-defined name
-        namespace (str, optional): Use pre-defined namespace
-    """
+    """DEPRECATED was used for product actions. Do not use."""
 
 
 class LoaderHookPlugin:
@@ -444,6 +451,367 @@ def add_hooks_to_loader(
             wrap_method(method)
 
 
+class LoadPlugin(ABC):
+    """Base class for load plugins.
+
+    Load plugin is responsible for loading representation into
+        a host application and storing metadata in workfile
+        to be able to manage them.
+
+    Attributes:
+        settings_category (str | None): Settings category (addon name) used to
+            auto-apply settings.
+        settings_name (str | None): Key under 'load' used to
+            auto-apply settings.
+
+    """
+    settings_category: str | None = None
+    settings_name: str | None = None
+    skip_discovery: bool = True
+
+    def __init__(
+        self,
+        load_context: LoadContext,
+        project_settings: dict[str, Any],
+    ) -> None:
+        self.log: logging.Logger = Logger.get_logger(self.__class__.__name__)
+        self._load_context = load_context
+        self.apply_settings(project_settings)
+        self.initialize()
+
+    @property
+    @abstractmethod
+    def identifier(self) -> str:
+        """Plugin identifier."""
+        pass
+
+    @property
+    def load_context(self) -> LoadContext:
+        return self._load_context
+
+    def initialize(self) -> None:
+        """Load plugin custom initialization."""
+        pass
+
+    def post_initialize(self) -> None:
+        """Called when all plugins are discovered and initialized."""
+        pass
+
+    def apply_settings(self, project_settings: dict[str, Any]) -> None:
+        """Apply project settings to the plugin.
+
+        Args:
+            project_settings (dict[str, Any]): Project settings.
+
+        """
+        cls_name = self.__class__.__name__
+        settings_name = self.settings_name or cls_name
+
+        settings = project_settings
+        for key in (
+            self.settings_category,
+            "load",
+            settings_name,
+        ):
+            settings = settings.get(key)
+            if settings is None:
+                self.log.debug(f"No settings found for {cls_name}")
+                return
+
+        for key, value in settings.items():
+            # Log out attributes that are not defined on plugin object
+            # - those may be potential dangerous typos in settings
+            if not hasattr(self, key):
+                self.log.debug(
+                    "Applying settings to unknown attribute"
+                    f" '{key}' on '{cls_name}'."
+                )
+            setattr(self, key, value)
+
+    @abstractmethod
+    def collect_containers(self) -> None:
+        """Collect containers from the current workfile.
+
+        This method is called by LoadContext on initialization and on reset.
+        """
+        pass
+
+    @abstractmethod
+    def is_representation_compatible(
+        self,
+        representation_context: RepresentationContext,
+    ) -> bool:
+        """Check if representation is compatible with the plugin.
+
+        Args:
+            representation_context (RepresentationContext): Representation
+                context.
+
+        Returns:
+            bool: True if compatible, False otherwise.
+
+        """
+        pass
+
+    @abstractmethod
+    def load_representations(
+        self,
+        representation_contexts: list[RepresentationContext],
+    ) -> list[ContainerItem]:
+        """Load representations.
+
+        Method still has to call 'add_containers' method on 'LoadContext'.
+
+        Args:
+            representation_contexts (list[RepresentationContext]): List of
+                representation contexts.
+
+        Returns:
+            list[ContainerItem]: List of loaded containers.
+
+        """
+        pass
+
+    @abstractmethod
+    def change_representations(
+        self,
+        items: list[tuple[ContainerItem, RepresentationContext]],
+    ) -> None:
+        """Change representations of loaded containers.
+
+        Can be used to switch between versions or different representations.
+
+        Args:
+            items (list[tuple[ContainerItem, RepresentationContext]]): List of
+                containers and their new representation contexts.
+
+        """
+        pass
+
+    @abstractmethod
+    def remove_containers(
+        self,
+        containers: list[ContainerItem]
+    ) -> None:
+        """Remove containers from the workfile.
+
+        Args:
+            containers (list[ContainerItem]): Containers to remove.
+
+        """
+
+    # TODO either allow for multiple items or pass in representation context
+    def can_switch_container(self, container: ContainerItem) -> bool:
+        """Check if container can be switched.
+
+        Args:
+            container (ContainerItem): Container to check.
+
+        Returns:
+            bool: True if container can be switched, False otherwise.
+
+        """
+        return False
+
+    def switch_containers(
+        self, containers: list[ContainerItem]
+    ) -> list[ContainerItem]:
+        """Switch containers of other load plugins.
+
+        Args:
+            containers (list[ContainerItem]): Containers to switch.
+
+        Raises:
+            UnsupportedSwitchError: If switching is not supported.
+
+        Returns:
+            list[ContainerItem]: New containers after switching.
+
+        """
+        raise UnsupportedSwitchError()
+
+    def _add_containers_to_context(
+        self,
+        containers: list[ContainerItem],
+    ) -> None:
+        """Helper method to add containers to load context."""
+        self._load_context.add_containers(containers)
+
+    @staticmethod
+    def _is_valid_representation_id(repre_id: Any) -> bool:
+        if not repre_id:
+            return False
+        try:
+            uuid.UUID(repre_id)
+        except (ValueError, TypeError, AttributeError):
+            return False
+        return True
+
+
+class LegacyLoadPlugin(LoadPlugin):
+    """Helper plugin used internally by ayon-core to support LoaderPlugin."""
+    shared_key = "legacy_containers"
+
+    def __init__(
+        self,
+        plugin_cls: Type[LoaderPlugin],
+        load_context: LoadContext,
+        project_settings: dict[str, Any],
+    ) -> None:
+        self._plugin_cls = plugin_cls
+        super().__init__(load_context, project_settings)
+
+    @property
+    def identifier(self) -> str:
+        return self._plugin_cls.__name__
+
+    def apply_settings(self, project_settings: dict[str, Any]) -> None:
+        try:
+            self._plugin_cls.apply_settings(project_settings)
+        except Exception:
+            name = self._plugin_cls.__name__
+            self.log.warning(f"Failed to apply settings for plugin: {name}")
+
+    def is_representation_compatible(
+        self,
+        representation_context: RepresentationContext,
+    ) -> bool:
+        legacy_context = self._to_legacy_context(representation_context)
+        return self._plugin_cls.is_compatible_loader(legacy_context)
+
+    def collect_containers(self) -> None:
+        containers_by_name = self._load_context.shared_data.get(
+            self.shared_key
+        )
+        if containers_by_name is None:
+            containers = []
+            host = self.load_context.host
+            if hasattr(host, "get_containers"):
+                try:
+                    containers = self.load_context.host.get_containers()
+                except Exception:
+                    self.log.error(
+                        "Failed to get containers from host", exc_info=True
+                    )
+
+            containers_by_name = {}
+            for container in containers:
+                loader = container.get("loader")
+                if loader is None:
+                    continue
+                containers_by_name[loader] = container
+
+            self._load_context.shared_data[self.shared_key] = (
+                containers_by_name
+            )
+
+        current_project = self.load_context.get_project_name()
+        items = []
+        for container in containers_by_name.get(self.identifier) or []:
+            repre_id = container["representation"]
+            if not self._is_valid_representation_id(repre_id):
+                continue
+            scene_id = container.get("objectName")
+            if not scene_id:
+                scene_id = uuid.uuid4().hex
+            project_name = container.get("project_name") or current_project
+            namespace = container.get("namespace")
+            label = container.get("name")
+
+            item = ContainerItem(
+                load_plugin_identifier=self.identifier,
+                scene_identifier=scene_id,
+                project_name=project_name,
+                representation_id=repre_id,
+                scene_data=container,
+                label=label,
+                namespace=namespace,
+            )
+            items.append(item)
+
+        self._add_containers_to_context(items)
+
+    def load_representations(
+        self,
+        representation_contexts: list[RepresentationContext],
+        # TODO allow options
+    ) -> list[ContainerItem]:
+        for repre_context in representation_contexts:
+            legacy_context = self._to_legacy_context(repre_context)
+            self._plugin_cls().load(legacy_context)
+
+        # There is no way how to capture which containers were loaded
+        return []
+
+    def change_representations(
+        self,
+        items: list[tuple[ContainerItem, RepresentationContext]],
+    ) -> None:
+        for container, context in items:
+            loader = self._plugin_cls()
+            repre_context = self._to_legacy_context(context)
+            loader.update(container.scene_data, repre_context)
+
+    def remove_containers(
+        self,
+        containers: list[ContainerItem]
+    ) -> None:
+        plugin = self._plugin_cls()
+        for container in containers:
+            plugin.remove(container.scene_data)
+
+    def can_switch_container(self, container: ContainerItem) -> bool:
+        if not hasattr( self._plugin_cls, "switch"):
+            return False
+
+        repre_contexts = get_repres_contexts(
+            project_name=container.project_name,
+            representation_ids={container.representation_id},
+        )
+        repre_context = repre_contexts[container.representation_id]
+        return self.is_representation_compatible(repre_context)
+
+    def switch_containers(
+        self, containers: list[ContainerItem]
+    ) -> list[ContainerItem]:
+        repre_ids_by_project_name = defaultdict(set)
+        containers_by_repre_id = defaultdict(list)
+
+        for container in containers:
+            repre_ids_by_project_name[container.project_name].add(
+                container.representation_id
+            )
+            key = (container.project_name, container.representation_id)
+            containers_by_repre_id[key].append(container)
+
+        for project_name, repre_ids in repre_ids_by_project_name.items():
+            repre_contexts = get_repres_contexts(
+                project_name=project_name,
+                representation_ids=repre_ids,
+            )
+            for repre_id, repre_context in repre_contexts.items():
+                if not self.is_representation_compatible(repre_context):
+                    continue
+
+                containers = containers_by_repre_id[(project_name, repre_id)]
+                for container in containers:
+                    loader = self._plugin_cls()
+                    loader.switch(container.scene_data, repre_context)
+        return []
+
+    @staticmethod
+    def _to_legacy_context(
+        repre_context: RepresentationContext
+    ) -> dict[str, Any]:
+        return {
+            "project": repre_context.project_entity,
+            "folder": repre_context.folder_entity,
+            "product": repre_context.product_entity,
+            "version": repre_context.version_entity,
+            "repre": repre_context.representation_entity,
+        }
+
+
 def register_loader_plugin(plugin):
     return register_plugin(LoaderPlugin, plugin)
 
@@ -453,7 +821,7 @@ def deregister_loader_plugin(plugin):
 
 
 def deregister_loader_plugin_path(path):
-    deregister_plugin_path(LoaderPlugin, path)
+    register_load_plugin_path(path)
 
 
 def register_loader_plugin_path(path):
@@ -474,3 +842,9 @@ def register_loader_hook_plugin_path(path):
 
 def deregister_loader_hook_plugin_path(path):
     deregister_plugin_path(LoaderHookPlugin, path)
+
+
+def register_load_plugin_path(path: str) -> None:
+    """Register load plugin path."""
+    register_plugin_path(LoadPlugin, path)
+    register_plugin_path(LoaderPlugin, path)
