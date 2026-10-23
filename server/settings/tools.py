@@ -8,6 +8,8 @@ from ayon_server.settings import (
     anatomy_template_items_enum
 )
 
+from .template_keys import convert_legacy_template_keys
+
 
 class ProductTypeSmartSelectModel(BaseSettingsModel):
     _layout = "expanded"
@@ -48,8 +50,19 @@ class ProductNameProfile(BaseSettingsModel):
     template: str = SettingsField(
         "",
         title="Template",
-        regex=r"^[<>{}\[\]a-zA-Z0-9_.]+$",
+        description=(
+            "Template keys can change case of the value, e.g."
+            " '{task[name]:upper}'. Available are 'upper', 'lower',"
+            " 'upperfirst', 'lowerfirst', 'title', 'camel', 'pascal'"
+            " and 'snake'."
+        ),
+        regex=r"^[<>{}\[\]a-zA-Z0-9_.:]+$",
     )
+
+    @validator("template")
+    def convert_legacy_keys(cls, value):
+        """Convert '{Key}' and '{KEY}' to '{key:upperfirst}' '{key:upper}'."""
+        return convert_legacy_template_keys(value)
 
 
 class FilterCreatorProfile(BaseSettingsModel):
@@ -587,7 +600,7 @@ DEFAULT_TOOLS_VALUES = {
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
-                "template": "{product[type]}{Task[name]}"
+                "template": "{product[type]}{task[name]:upperfirst}"
             },
             {
                 "product_base_types": [
@@ -597,7 +610,10 @@ DEFAULT_TOOLS_VALUES = {
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
-                "template": "{product[type]}{Task[name]}{Variant}<_{Aov}>"
+                "template": (
+                    "{product[type]}{task[name]:upperfirst}"
+                    "{variant:upperfirst}<_{aov:upperfirst}>"
+                )
             },
             {
                 "product_base_types": [
@@ -611,7 +627,8 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "task_names": [],
                 "template": (
-                    "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
+                    "{product[type]}{task[name]:upperfirst}"
+                    "_{renderlayer:upperfirst}_{renderpass:upperfirst}"
                 )
             },
             {
@@ -626,7 +643,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template": "{product[type]}{Task[name]}"
+                "template": "{product[type]}{task[name]:upperfirst}"
             },
             {
                 "product_base_types": ["render"],
@@ -636,7 +653,10 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template": "{product[type]}{Task[name]}{Composition}{Variant}"
+                "template": (
+                    "{product[type]}{task[name]:upperfirst}"
+                    "{composition:upperfirst}{variant:upperfirst}"
+                )
             },
             {
                 "product_base_types": [

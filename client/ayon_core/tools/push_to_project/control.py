@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
 import threading
 
 import ayon_api
 
-from ayon_core.lib import prepare_template_data
+from ayon_core.lib import StringTemplate
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline.create import get_product_name_template
 from ayon_core.tools.common_models import (
@@ -355,27 +356,27 @@ class PushToContextController:
             project_settings=project_settings
         )
         template_low = template.lower()
-        variant_placeholder = "{variant}"
+        # Variant key can have format spec, e.g. '{variant:upperfirst}'
+        variant_match = re.search(r"\{variant(:[^{}]*)?\}", template_low)
         if (
-            variant_placeholder not in template_low
+            variant_match is None
             or (not task_name and "{task" in template_low)
         ):
             return ""
 
-        idx = template_low.index(variant_placeholder)
-        template_s = template[:idx]
-        template_e = template[idx + len(variant_placeholder):]
-        fill_data = prepare_template_data({
+        template_s = template[:variant_match.start()]
+        template_e = template[variant_match.end():]
+        fill_data = {
             "family": product_base_type,
             "product": {
                 "type": product_type,
                 "basetype": product_base_type,
             },
-            "task": task_name
-        })
+            "task": {"name": task_name, "type": task_type},
+        }
         try:
-            product_s = template_s.format_map(fill_data)
-            product_e = template_e.format_map(fill_data)
+            product_s = StringTemplate(template_s).format_strict(fill_data)
+            product_e = StringTemplate(template_e).format_strict(fill_data)
         except Exception as exc:
             print("Failed format", exc)
             return ""
