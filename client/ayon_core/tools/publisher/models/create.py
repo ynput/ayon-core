@@ -15,11 +15,14 @@ from typing import (
     Pattern,
 )
 
+import ayon_api
+
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     EnumDef,
     UIDef,
 )
+from ayon_core.addon import get_bundle_information
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib import (
     is_func_signature_supported,
@@ -41,11 +44,11 @@ from ayon_core.pipeline.create import (
     ConvertorsOperationFailed,
     ConvertorItem,
 )
-
 from ayon_core.tools.publisher.abstract import (
     PublishAttrDefsInfo,
     AbstractPublisherBackend,
     CardMessageTypes,
+    SubtaskProduct,
 )
 
 CREATE_EVENT_SOURCE = "publisher.create.model"
@@ -497,6 +500,8 @@ class CreateModel:
         )
         # State flags to prevent executing method which is already in progress
         self._creator_items = None
+        self._planner_available: bool | None = None
+        self._subtask_products_cache = {}
 
     @property
     def log(self) -> logging.Logger:
@@ -549,6 +554,8 @@ class CreateModel:
         self._create_context.reset_plugins()
         # Reset creator items
         self._creator_items = None
+        # Links of tasks might have changed on server
+        self._subtask_products_cache = {}
 
         self._reset_instances()
 
@@ -1076,6 +1083,57 @@ class CreateModel:
             }
         )
 
+    def get_subtask_products(
+        self, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        # Subtask features are available only with planner addon
+        if not self._is_planner_available():
+            return []
+
+        project_name = self._controller.get_current_project_name()
+        if project_name is None:
+            return []
+
+        subtask_products = self._get_subtask_products(
+            project_name, folder_id, task_name
+        )
+        if not subtask_products:
+            return subtask_products
+
+        # Filter subtask products based on existing instances
+        # - skip products that are already created in the scene
+        folder_item = self._controller.get_folder_item(
+            project_name, folder_id
+        )
+        if folder_item is None:
+            return subtask_products
+
+        context_instances = [
+            instance
+            for instance in self._create_context.instances
+            if (
+                instance["folderPath"] == folder_item.path
+                and instance["task"] == task_name
+            )
+        ]
+
+        for subtask_product in subtask_products:
+            pn = subtask_product.product_name
+            pt = subtask_product.product_type
+            pbt = subtask_product.product_base_type
+            matching_instance = next((
+                instance
+                for instance in context_instances
+                if (
+                    instance.product_name == pn
+                    and instance.product_type == pt
+                    and instance.product_base_type == pbt
+                )
+            ), None)
+            subtask_product.created = matching_instance is not None
+
+        return subtask_products
+
     def _emit_event(
         self,
         topic: str,
@@ -1091,6 +1149,98 @@ class CreateModel:
         """
 
         return self._create_context.get_current_project_settings()
+
+    def _is_planner_available(self) -> bool:
+        """Check if planner is available for current project.
+
+        Returns:
+            bool
+
+        """
+        if self._planner_available is not None:
+            return self._planner_available
+        available = False
+        bundle_info = get_bundle_information()
+        for addon in bundle_info.addons:
+            if addon.name == "planner":
+                available = True
+                break
+        self._planner_available = available
+        return available
+
+    def _get_subtask_products(
+        self, project_name: str, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        """Get subtask products for passed folder and task.
+
+        Args:
+            folder_id (str): Folder entity id.
+            task_name (str): Task name.
+
+        """
+        # Cache only the queried data. Callers get their own copy, so they
+        #   can change the items (e.g. 'created' state) without affecting
+        #   what is cached.
+        cache_key = (folder_id, task_name)
+        output = self._subtask_products_cache.get(cache_key)
+        if output is None:
+            output = self._query_subtask_products(
+                project_name, folder_id, task_name
+            )
+            self._subtask_products_cache[cache_key] = output
+        return copy.deepcopy(output)
+
+    def _query_subtask_products(
+        self, project_name: str, folder_id: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        """Query subtask products from server.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder entity id.
+            task_name (str): Task name.
+
+        Returns:
+            list[SubtaskProduct]: Subtask products. The 'created' state
+                is not filled.
+
+        """
+        subtask_products = []
+        task_item = self._controller.get_task_item_by_name(
+            project_name, folder_id, task_name
+        )
+        if not task_item:
+            return subtask_products
+
+        product_ids = set()
+        for links in ayon_api.get_entities_links(
+            project_name,
+            "task",
+            {task_item.task_id},
+            link_types={"subtask_product"},
+        ).values():
+            product_ids |= {
+                link["entityId"]
+                for link in links
+                if link["entityType"] == "product"
+            }
+
+        if not product_ids:
+            return subtask_products
+
+        for product in ayon_api.get_products(
+            project_name,
+            product_ids=product_ids,
+            fields={"name", "productType", "productBaseType"},
+        ):
+            subtask_products.append(
+                SubtaskProduct(
+                    product_name=product["name"],
+                    product_base_type=product["productBaseType"],
+                    product_type=product["productType"],
+                )
+            )
+        return subtask_products
 
     @property
     def _creators(self) -> Dict[str, BaseCreator]:
