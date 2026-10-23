@@ -29,11 +29,12 @@ Simple string list usage::
 
 from __future__ import annotations
 
-import logging
 
 from qtpy.QtCore import Qt, Signal
 from qtpy.QtGui import QColor, QFocusEvent, QPainter, QPaintEvent, QShowEvent
 from qtpy.QtWidgets import QApplication, QSizePolicy, QWidget
+
+from ayon_core.lib import Logger
 
 from ..style_types import get_ayon_style
 from .dropdown import AYDropdownPopup
@@ -45,7 +46,7 @@ from .scroll_area import AYScrollArea
 from .style_mixin import StyleMixin
 from .container import AYContainer
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 class _ItemRow(AYContainer):

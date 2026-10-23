@@ -1,4 +1,3 @@
-import logging
 
 from ayon_core.pipeline.plugin_discover import (
     discover,
@@ -8,6 +7,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin_path
 )
 from ayon_core.pipeline.load.utils import get_representation_path_from_context
+from ayon_core.lib import Logger
 
 
 class InventoryAction:
@@ -23,8 +23,7 @@ class InventoryAction:
     color = None
     order = 0
 
-    log = logging.getLogger("InventoryAction")
-    log.propagate = True
+    log = Logger.get_logger("InventoryAction")
 
     @staticmethod
     def is_compatible(container):

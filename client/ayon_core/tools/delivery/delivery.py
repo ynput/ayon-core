@@ -1,6 +1,5 @@
 import os
 import platform
-import logging
 from collections import defaultdict
 
 import ayon_api
@@ -8,6 +7,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import resources, style
 from ayon_core.lib import (
+    Logger,
     format_file_size,
     collect_frames,
     get_datetime_data,
@@ -38,7 +38,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         super().__init__(parent=parent)
 
         if log is None:
-            log = logging.getLogger(__name__)
+            log = Logger.get_logger(__name__)
 
         self.setWindowTitle(f"Deliver {len(version_ids)} versions")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())

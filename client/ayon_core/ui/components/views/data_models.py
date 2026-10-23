@@ -18,12 +18,13 @@ version does not understand are preserved verbatim in
 from __future__ import annotations
 
 import copy
-import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 
 # Default access level used when a payload does not specify one.

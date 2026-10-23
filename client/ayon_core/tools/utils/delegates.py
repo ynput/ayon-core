@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-import logging
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 
 def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):

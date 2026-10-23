@@ -1,4 +1,3 @@
-import logging
 import math
 from typing import Optional, List, Set, Any
 
@@ -18,11 +17,11 @@ from ayon_core.style import (
     get_default_tools_icon_color,
 )
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
-from ayon_core.lib import MaterialSymbolsIcon
+from ayon_core.lib import MaterialSymbolsIcon, Logger
 
 from .lib import get_qt_icon, set_style_property
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 class FocusSpinBox(QtWidgets.QSpinBox):

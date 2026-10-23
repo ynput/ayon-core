@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from functools import cmp_to_key
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -20,6 +19,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 from qtpy.shiboken import isValid
+
+from ayon_core.lib import Logger
 
 from .components.combo_box import ComboBoxItemDelegate
 from .components.table_view import TableItemDelegate
@@ -49,7 +50,7 @@ from .style_types import (
     hsl_to_html_color,  # noqa: F401  (re-exported for backward compatibility)
 )
 
-log = logging.getLogger("AYON Style")
+log = Logger.get_logger("AYON Style")
 
 W_T = {}
 
