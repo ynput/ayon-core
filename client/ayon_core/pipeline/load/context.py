@@ -6,13 +6,21 @@ from typing import Any, Iterable
 
 from ayon_core.lib import TrackDictChangesItem, Logger
 from ayon_core.settings import get_project_settings
+from ayon_core.pipeline.plugin_discover import discover_with_report
 
-from .plugins import discover_load_plugins, LoadPlugin, LoaderPlugin
+from .plugins import (
+    LoadPlugin,
+    LoaderPlugin,
+    ProductLoaderPlugin,
+    LoaderHookPlugin,
+    add_hooks_to_loader,
+    LegacyLoadPlugin,
+)
 
 if typing.TYPE_CHECKING:
     import logging
 
-    from ayon_core.host import ILoadHost
+    from ayon_core.host import AbstractHost
 
 
 class RepresentationContext:
@@ -54,12 +62,12 @@ class ContainerItem:
     """
     def __init__(
         self,
+        load_plugin_identifier: str,
         scene_identifier: str,
         project_name: str,
         representation_id: str,
         label: str,
         namespace: str,
-        load_plugin: LoadPlugin,
         *,
         version_locked: bool = False,
         is_dirty: bool = False,
@@ -67,12 +75,12 @@ class ContainerItem:
         scene_data: dict[str, Any] | None = None,
         transient_data: dict[str, Any] | None = None,
     ) -> None:
+        self._load_plugin_identifier = load_plugin_identifier
         self._scene_identifier = scene_identifier
         self._project_name = project_name
         self._representation_id = representation_id
         self._label = label
         self._namespace = namespace
-        self._load_plugin_identifier = load_plugin.identifier
         self._version_locked = version_locked
         self._is_dirty = is_dirty
         self._parent_scene_identifier = parent_scene_identifier
@@ -97,7 +105,6 @@ class ContainerItem:
         self._scene_data = scene_data
         self._origin_scene_data = copy.deepcopy(scene_data)
         self._transient_data = transient_data
-        self._load_plugin = load_plugin
 
     # --- Dictionary like methods ---
     def __getitem__(self, key: str) -> Any:
@@ -218,25 +225,23 @@ class LoadContext:
     to manage loaded the content, to be able to switch versions or switch to
     different representation (png -> exr), or to remove them from the scene.
     """
-    def __init__(self, host: ILoadHost) -> None:
+    def __init__(self, host: AbstractHost) -> None:
         self._log: logging.Logger = Logger.get_logger(self.__class__.__name__)
-        self._host: ILoadHost = host
+        self._host: AbstractHost = host
         self._shared_data: dict[str, Any] = {}
         self._plugins: dict[str, LoadPlugin] = {}
-        self._legacy_plugins: list[LoaderPlugin] = []
         self._plugins_discovered: bool = False
         self._project_settings: dict[str, Any] | None = {}
         self._containers: dict[str, ContainerItem] = {}
         self._collect_containers()
 
     @property
-    def host(self) -> ILoadHost:
+    def host(self) -> AbstractHost:
         return self._host
 
     def reset(self) -> None:
         self._shared_data = {}
         self._plugins = {}
-        self._legacy_plugins = []
         self._plugins_discovered = False
         self._project_settings = None
         self._containers = {}
@@ -396,20 +401,43 @@ class LoadContext:
         raise plugin.switch_containers(containers)
 
     def _collect_plugins(self) -> None:
-        load_result, loader_result = discover_load_plugins()
-        plugins_by_id = {}
-        legacy_plugins = []
+        result = discover_with_report(
+            (LoadPlugin, LoaderPlugin, LoaderHookPlugin)
+        )
         project_settings = self.get_project_settings()
-        for cls in load_result.plugins:
-            if issubclass(cls, LoaderPlugin):
-                legacy_plugins.append(cls)
-                continue
 
+        plugins_by_id = {}
+        for cls in result[LoadPlugin].plugins:
             try:
                 plugin = cls(self, project_settings)
             except Exception:
-                self.log.warning(f"Failed to load plugin {cls.__name__}")
+                self.log.warning(
+                    f"Failed to initialize plugin {cls.__name__}",
+                    exc_info=True
+                )
                 continue
+            plugins_by_id[plugin.identifier] = plugin
+
+        hooks = result[LoaderHookPlugin].plugins
+        sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
+        for plugin in result[LoaderPlugin].plugins:
+            if issubclass(plugin, ProductLoaderPlugin):
+                continue
+            compatible_hooks = [
+                hook_cls
+                for hook_cls in sorted_hooks
+                if hook_cls.is_compatible(plugin)
+            ]
+            add_hooks_to_loader(plugin, compatible_hooks)
+            try:
+                plugin = LegacyLoadPlugin(plugin, self, project_settings)
+            except Exception:
+                self.log.warning(
+                    f"Failed to initialize plugin {cls.__name__}",
+                    exc_info=True
+                )
+                continue
+
             plugins_by_id[plugin.identifier] = plugin
 
         for plugin in plugins_by_id.values():
@@ -417,7 +445,6 @@ class LoadContext:
 
         self._plugins_discovered = True
         self._plugins = plugins_by_id
-        self._legacy_plugins = legacy_plugins
 
     def _get_plugin_by_identifier(
         self, identifier: str, validate: bool,
