@@ -27,6 +27,7 @@ from .publish_plugins import (
 
 from .lib import (
     get_publish_template_name,
+    get_publish_template_name_for_instance,
 
     publish_plugins_discover,
     filter_crashed_publish_paths,
@@ -98,6 +99,7 @@ __all__ = (
     "ColormanagedPyblishPluginMixin",
 
     "get_publish_template_name",
+    "get_publish_template_name_for_instance",
 
     "publish_plugins_discover",
     "filter_crashed_publish_paths",
