@@ -4,6 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import logging
 import os
+import typing
 from typing import Any, Optional, Type
 
 from ayon_core.lib import Logger
@@ -13,16 +14,21 @@ from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
     register_plugin_path,
+    discover_with_report,
 )
 from ayon_core.settings import get_project_settings
 
 from .exceptions import UnsupportedSwitchError
 from .utils import get_representation_path_from_context
-from .context import (
-    LoadContext,
-    RepresentationContext,
-    ContainerItem,
-)
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.plugin_discover import DiscoverResult
+
+    from .context import (
+        LoadContext,
+        RepresentationContext,
+        ContainerItem,
+    )
 
 
 class LoaderPlugin(list):
@@ -459,17 +465,15 @@ class LoadPlugin(ABC):
         to be able to manage them.
 
     Attributes:
-        order (int): Order of plugins in which will be executed
-            collection and in which will be shown in the load menu.
-        settings_category (str): Settings category (addon name) used to
+        settings_category (str | None): Settings category (addon name) used to
             auto-apply settings.
-        settings_name (str): Key under 'load' used to auto-apply settings.
-        identifier (str): Plugin identifier. Must be unique.
+        settings_name (str | None): Key under 'load' used to
+            auto-apply settings.
 
     """
-    order: int = 100
-    settings_category: str = None
-    settings_name: str = None
+    settings_category: str | None = None
+    settings_name: str | None = None
+    skip_discovery: bool = True
 
     def __init__(
         self,
@@ -492,6 +496,11 @@ class LoadPlugin(ABC):
         return self._load_context
 
     def initialize(self) -> None:
+        """Load plugin custom initialization."""
+        pass
+
+    def post_initialize(self) -> None:
+        """Called when all plugins are discovered and initialized."""
         pass
 
     def apply_settings(self, project_settings: dict[str, Any]) -> None:
@@ -643,7 +652,7 @@ def deregister_loader_plugin(plugin):
 
 
 def deregister_loader_plugin_path(path):
-    deregister_plugin_path(LoaderPlugin, path)
+    register_load_plugin_path(path)
 
 
 def register_loader_plugin_path(path):
@@ -664,3 +673,25 @@ def register_loader_hook_plugin_path(path):
 
 def deregister_loader_hook_plugin_path(path):
     deregister_plugin_path(LoaderHookPlugin, path)
+
+
+def register_load_plugin_path(path: str) -> None:
+    """Register load plugin path."""
+    register_plugin_path(LoadPlugin, path)
+    register_plugin_path(LoaderPlugin, path)
+
+
+def discover_load_plugins() -> tuple[DiscoverResult, DiscoverResult]:
+    """Discover load plugins.
+
+    Creator plugins and convertor plugins are registered using the same paths
+        and are discovered together. This function does import the modules
+        only once and returns both results.
+
+    Returns:
+        tuple[DiscoverResult, DiscoverResult]: Discovery result of load
+            and loader plugins.
+
+    """
+    result = discover_with_report((LoadPlugin, LoaderPlugin))
+    return result[LoadPlugin], result[LoaderPlugin]

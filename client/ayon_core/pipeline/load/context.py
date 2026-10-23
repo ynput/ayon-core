@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import copy
 import typing
-from typing import Any, Optional, Iterable
+from typing import Any, Iterable
 
 from ayon_core.lib import TrackDictChangesItem, Logger
+from ayon_core.settings import get_project_settings
+
+from .plugins import discover_load_plugins, LoadPlugin, LoaderPlugin
 
 if typing.TYPE_CHECKING:
-    from .plugins import LoadPlugin
+    import logging
+
+    from ayon_core.host import ILoadHost
 
 
 class RepresentationContext:
@@ -39,11 +44,11 @@ class ContainerItem:
         namespace (str): Group label of container for UI purposes.
         version_locked (bool): Version is locked to ignore
             the last version checks.
-        parent_scene_identifier (Optional[str]): Parent container id. For visual
+        parent_scene_identifier (str | None): Parent container id. For visual
             purposes.
-        scene_data (Optional[dict[str, Any]]): Additional data stored to the
+        scene_data (dict[str, Any] | None): Additional data stored to the
             scene.
-        transient_data (Optional[dict[str, Any]]): Internal load plugin data
+        transient_data (dict[str, Any] | None): Internal load plugin data
             related to the container. Could be any object e.g. node.
 
     """
@@ -58,9 +63,9 @@ class ContainerItem:
         *,
         version_locked: bool = False,
         is_dirty: bool = False,
-        parent_scene_identifier: Optional[str] = None,
-        scene_data: Optional[dict[str, Any]] = None,
-        transient_data: Optional[dict[str, Any]] = None,
+        parent_scene_identifier: str | None = None,
+        scene_data: dict[str, Any] | None = None,
+        transient_data: dict[str, Any] | None = None,
     ) -> None:
         self._scene_identifier = scene_identifier
         self._project_name = project_name
@@ -213,36 +218,56 @@ class LoadContext:
     to manage loaded the content, to be able to switch versions or switch to
     different representation (png -> exr), or to remove them from the scene.
     """
-    def __init__(self) -> None:
-        self._shared_data = {}
+    def __init__(self, host: ILoadHost) -> None:
+        self._log: logging.Logger = Logger.get_logger(self.__class__.__name__)
+        self._host: ILoadHost = host
+        self._shared_data: dict[str, Any] = {}
         self._plugins: dict[str, LoadPlugin] = {}
+        self._legacy_plugins: list[LoaderPlugin] = []
         self._plugins_discovered: bool = False
-        self._containers = {}
+        self._project_settings: dict[str, Any] | None = {}
+        self._containers: dict[str, ContainerItem] = {}
         self._collect_containers()
-        self._log = Logger.get_logger(self.__class__.__name__)
+
+    @property
+    def host(self) -> ILoadHost:
+        return self._host
 
     def reset(self) -> None:
         self._shared_data = {}
         self._plugins = {}
+        self._legacy_plugins = []
         self._plugins_discovered = False
+        self._project_settings = None
         self._containers = {}
 
         self._collect_plugins()
         self._collect_containers()
+
+    def get_project_name(self) -> str:
+        return self.host.get_current_project_name()
+
+    def get_project_settings(self) -> dict[str, Any]:
+        if self._project_settings is not None:
+            return copy.deepcopy(self._project_settings)
+
+        project_settings = get_project_settings(self.get_project_name())
+        self._project_settings = project_settings
+        return copy.deepcopy(project_settings)
 
     def get_plugins(self) -> dict[str, LoadPlugin]:
         if not self._plugins_discovered:
             self._collect_plugins()
         return self._plugins
 
-    def get_plugin(self, identifier: str) -> Optional[LoadPlugin]:
+    def get_plugin(self, identifier: str) -> LoadPlugin | None:
         """Get plugin by identifier.
 
         Args:
             identifier (str): Plugin identifier.
 
         Returns:
-            Optional[LoadPlugin]: Load plugin or None if not found.
+            LoadPlugin | None: Load plugin or None if not found.
 
         """
         return self._get_plugin_by_identifier(identifier, validate=False)
@@ -262,7 +287,7 @@ class LoadContext:
 
     def get_container_by_id(
         self, scene_identifier: str
-    ) -> Optional[ContainerItem]:
+    ) -> ContainerItem | None:
         return self._containers.get(scene_identifier)
 
     def get_containers(self) -> dict[str, ContainerItem]:
@@ -371,13 +396,32 @@ class LoadContext:
         raise plugin.switch_containers(containers)
 
     def _collect_plugins(self) -> None:
-        # TODO implement
+        load_result, loader_result = discover_load_plugins()
+        plugins_by_id = {}
+        legacy_plugins = []
+        project_settings = self.get_project_settings()
+        for cls in load_result.plugins:
+            if issubclass(cls, LoaderPlugin):
+                legacy_plugins.append(cls)
+                continue
+
+            try:
+                plugin = cls(self, project_settings)
+            except Exception:
+                self.log.warning(f"Failed to load plugin {cls.__name__}")
+                continue
+            plugins_by_id[plugin.identifier] = plugin
+
+        for plugin in plugins_by_id.values():
+            plugin.post_initialize()
+
         self._plugins_discovered = True
-        self._plugins = {}
+        self._plugins = plugins_by_id
+        self._legacy_plugins = legacy_plugins
 
     def _get_plugin_by_identifier(
         self, identifier: str, validate: bool,
-    ) -> Optional[LoadPlugin]:
+    ) -> LoadPlugin | None:
         if not self._plugins_discovered:
             self._collect_plugins()
         plugin = self._plugins.get(identifier)
