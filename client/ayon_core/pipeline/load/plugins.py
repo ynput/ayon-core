@@ -476,9 +476,10 @@ class LoadPlugin(ABC):
         load_context: LoadContext,
         project_settings: dict[str, Any],
     ) -> None:
-        self._log = None
+        self.log: logging.Logger = Logger.get_logger(self.__class__.__name__)
         self._load_context = load_context
         self.apply_settings(project_settings)
+        self.initialize()
 
     @property
     @abstractmethod
@@ -487,10 +488,11 @@ class LoadPlugin(ABC):
         pass
 
     @property
-    def log(self) -> logging.Logger:
-        if self._log is None:
-            self._log = Logger.get_logger(self.__class__.__name__)
-        return self._log
+    def load_context(self) -> LoadContext:
+        return self._load_context
+
+    def initialize(self) -> None:
+        pass
 
     def apply_settings(self, project_settings: dict[str, Any]) -> None:
         """Apply project settings to the plugin.
