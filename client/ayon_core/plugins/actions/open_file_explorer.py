@@ -1,8 +1,7 @@
 import os
-import platform
-import subprocess
 from string import Formatter
 
+from ayon_core.lib import open_in_file_browser
 from ayon_core.pipeline import (
     Anatomy,
     LauncherAction,
@@ -33,7 +32,7 @@ class OpenTaskPath(LauncherAction):
             # Copy path to clipboard
             self.copy_path_to_clipboard(path)
         else:
-            self.open_in_explorer(path)
+            open_in_file_browser(path)
 
     def _find_first_filled_path(self, path):
         if not path:
@@ -92,21 +91,6 @@ class OpenTaskPath(LauncherAction):
             if os.path.exists(valid_workdir):
                 return valid_workdir
         raise AssertionError("Folder does not exist yet.")
-
-    @staticmethod
-    def open_in_explorer(path):
-        platform_name = platform.system().lower()
-        if platform_name == "windows":
-            os.startfile(path)
-            return
-        elif platform_name == "darwin":
-            args = ["open", "-R", path]
-        elif platform_name == "linux":
-            args = ["xdg-open", path]
-        else:
-            raise RuntimeError(f"Unknown platform {platform.system()}")
-        # Make sure path is converted correctly for 'os.system'
-        os.system(subprocess.list2cmdline(args))
 
     @staticmethod
     def copy_path_to_clipboard(path):

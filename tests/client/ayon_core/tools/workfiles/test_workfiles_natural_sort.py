@@ -12,6 +12,9 @@ from ayon_core.tools.workfiles.widgets import (
     files_widget_workarea,
     utils,
 )
+from ayon_core.tools.workfiles.widgets.actions_widgets import (
+    WorkfileActionsLoader,
+)
 
 UNSORTED_NAMES = [
     "sh010_comp_v10.hip",
@@ -93,7 +96,10 @@ def test_pure_python_compare():
 
 
 def test_workarea_files_sorting(qtbot):
-    widget = files_widget_workarea.WorkAreaFilesWidget(_Controller(), None)
+    controller = _Controller()
+    widget = files_widget_workarea.WorkAreaFilesWidget(
+        controller, WorkfileActionsLoader(controller), None
+    )
     qtbot.addWidget(widget)
     widget._model._on_task_changed({"folder_id": "f", "task_name": "comp"})
     proxy_model = widget._proxy_model
