@@ -226,12 +226,12 @@ class LoadContext:
     different representation (png -> exr), or to remove them from the scene.
     """
     def __init__(self, host: AbstractHost) -> None:
-        self._log: logging.Logger = Logger.get_logger(self.__class__.__name__)
+        self.log: logging.Logger = Logger.get_logger(self.__class__.__name__)
         self._host: AbstractHost = host
         self._shared_data: dict[str, Any] = {}
         self._plugins: dict[str, LoadPlugin] = {}
         self._plugins_discovered: bool = False
-        self._project_settings: dict[str, Any] | None = {}
+        self._project_settings: dict[str, Any] | None = None
         self._containers: dict[str, ContainerItem] = {}
         self._collect_containers()
 
@@ -398,7 +398,7 @@ class LoadContext:
 
         """
         plugin = self._get_plugin_by_identifier(identifier, validate=True)
-        raise plugin.switch_containers(containers)
+        return plugin.switch_containers(containers)
 
     def _collect_plugins(self) -> None:
         result = discover_with_report(
@@ -460,7 +460,5 @@ class LoadContext:
         return plugin
 
     def _collect_containers(self) -> None:
-        for plugin in sorted(
-            self.get_plugins().values(), key=lambda p: p.order
-        ):
+        for plugin in self.get_plugins().values():
             plugin.collect_containers()
