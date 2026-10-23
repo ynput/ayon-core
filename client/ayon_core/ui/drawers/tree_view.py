@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from qtpy.QtCore import QRect, QSize, Qt
+from qtpy.QtCore import QRect, QSize, Qt, QPoint
 from qtpy.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from qtpy.QtWidgets import QStyle, QStyleOption, QTreeView, QWidget
 
@@ -105,32 +105,14 @@ class TreeViewDrawer:
             return widget.parent() or widget
         return widget
 
-    def _paint_cell_background(
-        self,
-        painter: QPainter,
-        rect: QRect,
-        style: dict,
-        is_table: bool,
-        is_base_state: bool = False,
-    ) -> None:
-        """Paint background fill and optional cell borders.
-
-        Args:
-            painter: The QPainter to draw on.
-            rect: The rectangle to fill.
-            style: The style data dictionary.
-            is_table: Whether this is an AYTableView cell.
-            is_base_state: If True and is_table, use 'background-color-item'.
-        """
-        painter.save()
+    def _get_bg_color(
+        self, style: dict, is_table: bool, is_base_state: bool
+    ) -> QColor:
         if is_table and is_base_state:
             bg_key = "background-color-item"
         else:
             bg_key = "background-color"
-        painter.fillRect(rect, QColor(style.get(bg_key, "transparent")))
-        if is_table:
-            self._draw_cell_border(painter, rect, style)
-        painter.restore()
+        return QColor(style.get(bg_key, "transparent"))
 
     def _paint_icon(
         self,
@@ -196,9 +178,13 @@ class TreeViewDrawer:
         is_hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
         variant = getattr(tv, "_variant_str", "default")
 
-        state_name = (
-            "selected" if is_selected else "hover" if is_hovered else "base"
-        )
+        state_name = "base"
+        if is_selected and is_hovered:
+            state_name = "selected-hover"
+        elif is_hovered:
+            state_name = "hover"
+        elif is_selected:
+            state_name = "selected"
 
         widget_class = "AYTableView" if is_table else "QTreeView"
         t_style = self.model.get_style(
@@ -206,35 +192,65 @@ class TreeViewDrawer:
         )
 
         # Items without children only need background/border painting
+        is_base_state = False
         if not has_children:
-            self._paint_cell_background(
-                painter,
-                option.rect,
-                t_style,
-                is_table,
-                is_base_state=(state_name == "base"),
-            )
-            return
+            is_base_state = state_name == "base"
+        bg_color = self._get_bg_color(t_style, is_table, is_base_state)
 
+        painter.save()
+        painter.fillRect(option.rect, bg_color)
+        if is_table:
+            self._draw_cell_border(painter, option.rect, t_style)
+        painter.restore()
+
+        # Paint the expand/collapse icon if the item has children
+        if has_children:
+            self._paint_expand_icon(painter, option, t_style, bg_color)
+
+    def _paint_expand_icon(
+        self,
+        painter: QPainter,
+        option: QStyleOption,
+        t_style: dict,
+        bg_color: QColor,
+    ) -> None:
+        is_active = bool(option.state & QStyle.StateFlag.State_Active)
         is_open = bool(option.state & QStyle.StateFlag.State_Open)
         color = QColor(t_style.get("branch-indicator-color", "#8b9198"))
         icon_name = t_style.get(
             "expanded-icon-name" if is_open else "expand-icon-name"
         )
-
-        # Paint background for items with children
-        self._paint_cell_background(painter, option.rect, t_style, is_table)
-
-        if icon_name:
-            key = f"{icon_name}-{color.name()}"
-            if key not in self._icon_cache:
-                self._icon_cache[key] = get_icon(icon_name, color=color)
-            icon_size = t_style.get("expand-icon-size")
-            self._paint_icon(
-                painter, option.rect, self._icon_cache[key], icon_size
-            )
-        else:
+        if not icon_name:
             self._paint_fallback_arrow(painter, option.rect, color, is_open)
+            return
+
+        icon_size = t_style.get("expand-icon-size")
+        if is_active:
+            draw_rect = QRect(option.rect)
+            size = icon_size
+            if not size:
+                size = (draw_rect.height() - draw_rect.height() // 5)
+            center = draw_rect.center()
+            draw_rect.setSize(QSize(size, size))
+            draw_rect.moveTo(
+                option.rect.right() - (size + 1),
+                center.y() - size // 2
+            )
+            radius = (size // 3)
+            bg_color = bg_color.lighter()
+            painter.save()
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(bg_color))
+            painter.drawRoundedRect(draw_rect, radius, radius)
+            painter.restore()
+
+        key = f"{icon_name}-{color.name()}"
+        if key not in self._icon_cache:
+            self._icon_cache[key] = get_icon(icon_name, color=color)
+
+        self._paint_icon(
+            painter, option.rect, self._icon_cache[key], icon_size
+        )
 
     def draw_scrollbar_corner(
         self,
