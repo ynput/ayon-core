@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import Enum
 import typing
 from typing import Iterable, Any, Callable
 
@@ -84,6 +85,21 @@ class ProductGroupsInfo:
         )
 
 
+class LoadersGrouping(Enum):
+    """How the actions menu lists loaders that load per representation.
+
+    Attributes:
+        UNGROUPED: An item for each loader and representation.
+        GROUPED: A submenu for each loader, listing its representations.
+        GROUPED_IF_MULTIPLE: A submenu only for the loaders that can load
+            more than one representation, the others get a single item.
+
+    """
+    UNGROUPED = "ungrouped"
+    GROUPED = "grouped"
+    GROUPED_IF_MULTIPLE = "grouped_if_multiple"
+
+
 @dataclass
 class ActionItem:
     """Action item that can be triggered.
@@ -154,6 +170,48 @@ class AbstractBrowserController(ABC):
 
     Abstract base class that is required for both frontend and backed.
     """
+
+    @abstractmethod
+    def process_server_events(self) -> None:
+        """Process AYON server events received via websocket.
+
+        Server events are received in a background thread and are queued.
+        This method must be called from the main (UI) thread periodically,
+        the queued events are emitted as controller events:
+        - "ayon.connection.opened"
+        - "ayon.connection.closed"
+        - "ayon.auth.failed"
+        - "ayon.server.restart"
+
+        """
+        pass
+
+    @abstractmethod
+    def check_server_available(self) -> bool:
+        """Check if server is available.
+
+        Request to server is sent only if the connection state is not
+        known yet. Starts listening to server events, so
+        "ayon.connection.opened" is emitted once connection is established.
+
+        Can be used to postpone refresh of UI until the server is available.
+
+        Returns:
+            bool: 'False' if server is not available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_server_connection_state(self) -> bool | None:
+        """Server connection state.
+
+        Returns:
+            bool | None: 'True' if connected, 'False' if disconnected
+                and 'None' if state is not known yet.
+
+        """
+        pass
 
     @abstractmethod
     def get_window_subtitle(self) -> str | None:
@@ -343,6 +401,33 @@ class AbstractBrowserController(ABC):
         pass
 
     @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, str | None]: Thumbnail path by entity id.
+
+        """
+        pass
+
+    @abstractmethod
     def get_task_type_items(self, project_name, sender=None):
         """Task type items for a project.
 
@@ -495,6 +580,7 @@ class AbstractBrowserController(ABC):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         """Action items for versions selection.
 
@@ -502,6 +588,10 @@ class AbstractBrowserController(ABC):
             project_name (str): Project name.
             entity_ids (set[str]): Entity ids.
             entity_type (str): Entity type.
+            loaders_grouping (LoadersGrouping): Whether the items of a
+                loader that loads per representation are grouped under
+                the loader label, with the representation name as item
+                label.
 
         Returns:
             list[ActionItem]: List of action items.

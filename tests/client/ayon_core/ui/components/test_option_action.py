@@ -192,3 +192,30 @@ def test_optional_menu_uses_ayon_style(qtbot) -> None:
     assert menu.style() is get_ayon_style()
     assert "paintEvent" not in AYOptionalMenu.__dict__
     assert AYOptionalMenu.paintEvent is AYMenu.paintEvent
+
+
+def test_menu_rows_fit_ayon_painting_with_parent_stylesheet(qtbot) -> None:
+    # A stylesheet on the parent makes Qt measure the rows with the
+    # stylesheet's 'QMenu::item' rules instead of the AYON style.
+    parent = QtWidgets.QWidget()
+    qtbot.addWidget(parent)
+    parent.setStyleSheet("QMenu::item { padding: 6px 25px 6px 10px; }")
+
+    menu = AYMenu(parent)
+    submenu = AYMenu("Set frame range (with handles)", parent=menu)
+    submenu.addAction("Sub-action")
+    submenu_action = menu.addMenu(submenu)
+    assert menu.style() is not get_ayon_style()
+
+    opt = QtWidgets.QStyleOptionMenuItem()
+    menu.initStyleOption(opt, submenu_action)
+    painted_size = get_ayon_style().sizeFromContents(
+        QtWidgets.QStyle.ContentsType.CT_MenuItem,
+        opt,
+        QtCore.QSize(0, 0),
+        menu,
+    )
+
+    # Without enough width the label is painted into the submenu arrow
+    row_width = menu.actionGeometry(submenu_action).width()
+    assert row_width >= painted_size.width()
