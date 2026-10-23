@@ -215,21 +215,23 @@ class LoadContext:
     """
     def __init__(self) -> None:
         self._shared_data = {}
-        self._plugins = None
+        self._plugins: dict[str, LoadPlugin] = {}
+        self._plugins_discovered: bool = False
         self._containers = {}
         self._collect_containers()
         self._log = Logger.get_logger(self.__class__.__name__)
 
     def reset(self) -> None:
         self._shared_data = {}
-        self._plugins = None
+        self._plugins = {}
+        self._plugins_discovered = False
         self._containers = {}
 
         self._collect_plugins()
         self._collect_containers()
 
     def get_plugins(self) -> dict[str, LoadPlugin]:
-        if self._plugins is None:
+        if not self._plugins_discovered:
             self._collect_plugins()
         return self._plugins
 
@@ -254,7 +256,7 @@ class LoadContext:
         """
         for container in containers:
             if container.id in self._containers:
-                self._log.warning()
+                # self._log.warning()
                 continue
             self._containers[container.id] = container
 
@@ -370,12 +372,13 @@ class LoadContext:
 
     def _collect_plugins(self) -> None:
         # TODO implement
+        self._plugins_discovered = True
         self._plugins = {}
 
     def _get_plugin_by_identifier(
         self, identifier: str, validate: bool,
     ) -> Optional[LoadPlugin]:
-        if self._plugins is None:
+        if not self._plugins_discovered:
             self._collect_plugins()
         plugin = self._plugins.get(identifier)
         if validate and plugin is None:
