@@ -266,10 +266,18 @@ class ProjectPushRepreItem:
     def _strip_root(path):
         """Remove a leading root placeholder from a template path.
 
-        Files of a representation may be stored with a different root name than
-        the one used in 'attrib.template' (e.g. an older publish wrote to
-        '{root[unreal]}' while the template says '{root[work]}'). Comparing the
-        paths without their root allows to resolve such representations.
+        Files of a representation may be stored with a root name that is not
+        defined in the current project anatomy anymore (e.g. an older publish
+        wrote '{root[unreal]}' while the anatomy only defines 'work'). Such a
+        file cannot be resolved on its own, but its root-independent part can
+        still match the representation template, from which the path is then
+        resolved (see '_resolve_repre_path'). Comparing the paths including
+        their root name would take the main file for a resource file instead,
+        and the push would fail because no source files were found.
+
+        The anatomy root resolver works with absolute file paths and would
+        need the anatomy object, but this model only receives 'anatomy.roots',
+        so the placeholder is removed from the template directly.
         """
         match = re.match(r"^\{root\[[^]]+\]\}", path)
         if match:
@@ -297,14 +305,14 @@ class ProjectPushRepreItem:
         """Resolve the representation template path to an absolute path.
 
         Raises:
-            AssertionError: The template uses a root that is not defined in
+            ValueError: The template uses a root that is not defined in
                 the project anatomy.
         """
 
         try:
             return self._clean_path(repre_path.format(root=self._roots))
         except KeyError as exc:
-            raise AssertionError((
+            raise ValueError((
                 "Representation '{name}' uses root {root} which is not"
                 " defined in the project anatomy (roots: {roots})"
             ).format(

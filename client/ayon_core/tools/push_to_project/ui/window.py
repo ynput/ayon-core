@@ -32,7 +32,7 @@ SOURCE_RANGE_MIN_LENGTH = 3
 def _format_version_range(start, end):
     """Format one consecutive run of version numbers."""
     if end - start + 1 >= SOURCE_RANGE_MIN_LENGTH:
-        return "v[{:03d}-{:03d}]".format(start, end)
+        return "v{:03d}-v{:03d}".format(start, end)
     return ", ".join(
         "v{:03d}".format(number) for number in range(start, end + 1)
     )
@@ -42,7 +42,7 @@ def format_version_ranges(version_numbers):
     """Compress version numbers into a compact string.
 
     Consecutive sequences of 3+ versions become a range, shorter sequences and
-    holes are kept explicit, e.g. [1, 2, 3, 10] -> "v[001-003], v010".
+    holes are kept explicit, e.g. [1, 2, 3, 10] -> "v001-v003, v010".
     """
     numbers = sorted(set(version_numbers))
     if not numbers:
@@ -64,7 +64,7 @@ def format_source_items(source_items):
     """Group source paths by product and merge their version numbers.
 
     'proj/lib/workfile/v001', '.../v002' and '.../v003' become a single
-    'proj/lib/workfile  v[001-003]' line.
+    'proj/lib/workfile  v001-v003' line.
     """
     grouped = collections.OrderedDict()
     unparsed = []
@@ -677,7 +677,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         The controller provides a single label, one 'Source: <path>' line per
         pushed version. Versions of the same product are merged into ranges,
-        e.g. 'proj/lib/workfile  v[001-003]'.
+        e.g. 'proj/lib/workfile  v001-v003'.
         """
         source_label = self._controller.get_source_label()
         source_items = []
