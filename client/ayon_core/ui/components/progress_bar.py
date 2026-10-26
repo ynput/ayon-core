@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, replace
 from enum import Enum
-from functools import partial
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from qtpy.QtCore import QRectF, QSize, Qt, QTimer, Signal
 from qtpy.QtGui import (
@@ -25,56 +24,74 @@ from .label import AYLabel
 from .layouts import AYVBoxLayout
 from .style_mixin import StyleMixin
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
+@dataclass
+class ProgressTrack:
+    """Progress of a running task, the only contract with the widget.
 
-class ProgressSnapshot(Protocol):
-    label: str
-    phase: str
-    completed: int
-    total: int | None
-    failed: bool
-    message: str
-    finished: bool
-    overall: float | None
+    The object is shared: the code that makes progress updates the values,
+    the widget reads them. No callbacks or listeners are involved.
 
+    ``value`` / ``total_value`` describe the current phase, or the whole
+    task when the writer prefers a single scale. ``phase``,
+    ``total_phases`` and ``phase_label`` are informational and are shown in
+    the caption.
 
-@runtime_checkable
-class ProgressSource(Protocol):
-    """Anything the progress view can follow.
+    Special states:
 
-    AYON's review-desktop addon implements this with its ``ProgressReporter``
-    (``ayon_review_desktop.progress``); core only depends on the shape.
+    * ``value < 0`` or ``total_value < 0``: indeterminate, the widget
+      shows a sweeping chunk because progress cannot be expressed.
+    * ``value == 0`` and ``total_value == 0``: empty, nothing started yet.
+
+    Attributes:
+        label: Overall task label.
+        value: Completed steps.
+        total_value: Total steps.
+        failed: Whether the task failed.
+        finished: Whether the task finished.
+        message: Last message, or the failure reason.
+        phase: Index of the current phase, starting at 1.
+        total_phases: Number of phases of the task.
+        phase_label: Name of the current phase.
     """
 
-    def add_listener(
-        self,
-        callback: "Callable[[ProgressSnapshot], None]",
-        emit_immediately: bool = True,
-    ) -> None:
-        """Register *callback* for future snapshots.
+    label: str = ""
+    value: int = 0
+    total_value: int = 0
+    failed: bool = False
+    finished: bool = False
+    message: str = ""
+    phase: int = 1
+    total_phases: int = 1
+    phase_label: str = ""
 
-        With *emit_immediately* the callback is invoked synchronously once
-        with the current snapshot before returning -- the view relies on
-        that, it never calls :meth:`snapshot` itself.
+    @classmethod
+    def empty(cls) -> "ProgressTrack":
+        """Return a track with no progress reported yet."""
+        return cls()
 
-        Callbacks fire on every change, may fire on a worker thread (the view
-        marshals to the Qt thread itself), must run outside any internal
-        lock, and must never arrive out of order.
-        """
+    @property
+    def is_empty(self) -> bool:
+        """True while no progress was reported."""
+        return self.value == 0 and self.total_value == 0
 
-    def remove_listener(
-        self, callback: "Callable[[ProgressSnapshot], None]"
-    ) -> None:
-        """Unregister *callback*; unknown callbacks are ignored.
+    @property
+    def is_indeterminate(self) -> bool:
+        """True when progress cannot be shown as a fraction."""
+        return self.value < 0 or self.total_value < 0
 
-        The view calls this defensively (``bind`` unbinds first, and
-        ``unbind`` may run twice), so raising here would break re-binding.
-        """
+    @property
+    def percentage(self) -> float:
+        """Completion in the ``0.0``-``100.0`` range."""
+        if self.value < 0 or self.total_value <= 0:
+            return 0.0
+        fraction = self.value / self.total_value
+        return max(0.0, min(fraction, 1.0)) * 100.0
 
-    def snapshot(self) -> "ProgressSnapshot":
-        """Current immutable state; never notifies. Optional for binding."""
+    @property
+    def caption(self) -> str:
+        """Text that describes the current step."""
+        return self.message or self.phase_label or self.label
 
 
 class ProgressBarState(Enum):
@@ -96,20 +113,32 @@ class AYProgressBar(StyleMixin, QWidget):
     the painting itself happens in :meth:`paintEvent`, independent of any
     stylesheet or ``QStyle`` drawing code.
 
+    The bar is driven by a single :class:`ProgressTrack`. While visible it
+    reads that object every :attr:`PROGRESS_POLL_MS`, so the writer can
+    mutate the track in place or hand a new one to :meth:`set_progress`.
+    No callbacks are involved, which keeps the writer free to update the
+    progress any way it wants.
+
     Args:
+        progress: Track shown by the bar.
         parent: Parent widget.
         variant: Visual style variant.
-        total: Total number of steps. ``None`` or ``0`` makes the bar
-            indeterminate and animates a sweeping chunk instead.
 
     Signals:
-        progress_changed(int, int): ``(completed, total)``; ``total == 0``
-            marks the bar as indeterminate.
-        completed(): Emitted once when a determinate bar reaches its total.
+        progress_changed(int, int): ``(value, total_value)``; ``total_value
+            == 0`` marks the bar as indeterminate.
+        track_changed(object): Emitted with the track whenever the
+            displayed values change.
+        completed(): Emitted once when the track finishes or reaches its
+            total.
     """
 
     progress_changed = Signal(int, int)
+    track_changed = Signal(object)
     completed = Signal()
+
+    #: How often the bound track is read while the bar is visible.
+    PROGRESS_POLL_MS = 200
 
     #: Style token used to colour the chunk for each semantic state.
     _STATE_COLOR_KEY = {
@@ -124,18 +153,23 @@ class AYProgressBar(StyleMixin, QWidget):
 
     def __init__(
         self,
+        progress: ProgressTrack | None = None,
         parent: QWidget | None = None,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
-        total: int | None = None,
     ) -> None:
         super().__init__(parent)
         self._variant_str = variant.value
         self._style_data = StyleDict()
-        self._total = total
+        self._track = (
+            progress if progress is not None else ProgressTrack.empty()
+        )
+        # Copy of the applied track. Comparing against a copy is what makes
+        # an in-place mutation of ``_track`` detectable; comparing against
+        # the track itself would always be equal.
+        self._applied: ProgressTrack | None = None
+        self._total: int | None = None
         self._current = 0
         self._state = ProgressBarState.Normal
-        self._text = ""
-        self._text_visible = True
         self._completed = False
         self._phase = 0.0
 
@@ -156,6 +190,13 @@ class AYProgressBar(StyleMixin, QWidget):
         self._timer.setInterval(self._animation_interval())
         self._timer.timeout.connect(self._advance_phase)
 
+        # Reads the track instead of being notified about changes.
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(self.PROGRESS_POLL_MS)
+        self._poll_timer.timeout.connect(self._on_poll_timeout)
+
+        self._apply_track()
+
     @property
     def total(self) -> int | None:
         return self._total
@@ -166,7 +207,12 @@ class AYProgressBar(StyleMixin, QWidget):
 
     @property
     def is_indeterminate(self) -> bool:
-        return self.total is None or self.total == 0
+        """True while the track cannot be shown as a fraction."""
+        if self._track.finished:
+            # A finished run is complete, even when it never reported a
+            # total (it stays a full bar instead of sweeping forever).
+            return False
+        return self._track.is_indeterminate
 
     @property
     def is_animating(self) -> bool:
@@ -224,120 +270,104 @@ class AYProgressBar(StyleMixin, QWidget):
         else:
             self._timer.stop()
 
-    def set_total(self, total: int | None) -> None:
-        """Set the total number of steps.
+    def set_progress(self, progress: ProgressTrack) -> None:
+        """Follow *progress* and show it right away.
+
+        The bar keeps a reference to the track, so mutating that same
+        object also updates the bar on the next poll. Passing a different
+        object replaces the one that was followed.
 
         Args:
-            total: Number of steps, or ``None`` for indeterminate.
+            progress: Track to show.
         """
-        if total == self._total:
-            return
-        self._total = total
-        self._completed = False
-        if total is not None and self._current > max(total, 0):
-            self._current = max(total, 0)
-        self._update_animation()
-        self.update()
-        self.progress_changed.emit(self._current, self._total or 0)
-        self._emit_completed_if_done()
+        self._track = progress
+        self._apply_track()
+        self._update_polling()
 
-    def set_progress(self, value: int, total: int | None = None) -> None:
-        """Set the current progress value.
+    def refresh(self) -> None:
+        """Re-read the followed track now.
 
-        Args:
-            value: Current number of completed steps.
-            total: Optional total to set before applying *value*.  Unlike
-                :meth:`set_values`, ``None`` keeps the current total.
+        The poll timer calls this. Call it directly when a change has to be
+        shown before the next poll.
         """
-        if total is not None and total != self._total:
-            self._total = total
-            self._completed = False
-            self._update_animation()
-        if self._total is None:
-            self._current = value
-        else:
-            self._current = max(0, min(value, self._total))
-        self.update()
-        self.progress_changed.emit(self._current, self._total or 0)
-        self._emit_completed_if_done()
-
-    def set_values(self, value: int, total: int | None) -> None:
-        """Apply *value* and *total* together as a single change.
-
-        Always applies *total* (``None`` switches back to indeterminate)
-        and emits ``progress_changed`` once, after both are in place.
-        Applying them separately can emit a spurious ``completed`` when a
-        new, smaller total clamps the old value before the real value
-        arrives.
-
-        Args:
-            value: Current number of completed steps.
-            total: Number of steps, or ``None`` for indeterminate.
-        """
-        if total != self._total:
-            self._total = total
-            self._completed = False
-        if total is None:
-            self._current = max(0, value)
-        else:
-            self._current = max(0, min(value, total))
-        self._update_animation()
-        self.update()
-        self.progress_changed.emit(self._current, self._total or 0)
-        self._emit_completed_if_done()
-
-    def set_indeterminate(self) -> None:
-        """Switch to indeterminate mode (sweeping chunk, no total)."""
-        self.set_total(None)
-
-    def set_state(self, state: ProgressBarState) -> None:
-        """Set the semantic state that colours the chunk."""
-        if state is self._state:
-            return
-        self._state = state
-        self.update()
+        self._apply_track()
 
     def reset(self) -> None:
         """Reset progress, state, and text to their initial values."""
+        self._track = ProgressTrack.empty()
+        self._applied = None
         self._current = 0
         self._total = None
         self._state = ProgressBarState.Normal
-        self._text = ""
-        self._text_visible = True
         self._completed = False
         self._phase = 0.0
+        self._poll_timer.stop()
         self._update_animation()
         self.updateGeometry()
         self.update()
         self.progress_changed.emit(self._current, 0)
 
+    def _on_poll_timeout(self) -> None:
+        """Re-read the followed track."""
+        self._apply_track()
+
+    def _apply_track(self) -> None:
+        """Copy the track onto the widget state and repaint when it changed."""
+        track = self._track
+        if self._applied is not None and track == self._applied:
+            return
+        # Snapshot the values: comparing against a copy is what detects an
+        # in-place mutation of the same object on the next poll.
+        self._applied = replace(track)
+
+        if track.finished:
+            # A finished run is complete; ignore a value that was left
+            # short of the total.
+            self._total = max(track.total_value, 1)
+            self._current = self._total
+        elif track.is_indeterminate or track.is_empty:
+            self._total = None
+            self._current = 0
+        else:
+            self._total = track.total_value
+            self._current = max(0, min(track.value, track.total_value))
+
+        if track.failed:
+            self._state = ProgressBarState.Error
+        elif track.finished:
+            self._state = ProgressBarState.Success
+        else:
+            self._state = ProgressBarState.Normal
+
+        self._update_animation()
+        self.update()
+        self.progress_changed.emit(self._current, self._total or 0)
+        self._emit_completed_if_done()
+        self.track_changed.emit(track)
+
+    def _update_polling(self) -> None:
+        """Poll only while visible and while there is something to read."""
+        track = self._track
+        done = track.finished or track.failed
+        if self.isVisible() and not done:
+            if not self._poll_timer.isActive():
+                self._poll_timer.start()
+        else:
+            self._poll_timer.stop()
+
     def _emit_completed_if_done(self) -> None:
-        """Emit ``completed`` once per run when the total is reached."""
+        """Emit ``completed`` once per run when the track is done."""
         if self._completed:
+            return
+        if self._track.finished:
+            self._completed = True
+            self.completed.emit()
             return
         if self._total is None or self._total <= 0:
             return
         if self._current >= self._total:
             self._completed = True
             self.completed.emit()
-
-    def set_text(self, text: str) -> None:
-        """Set the text drawn over the bar."""
-        if text == self._text:
-            return
-        self._text = text
-        # The bar grows to fit the overlay text, so the layout must follow.
-        self.updateGeometry()
-        self.update()
-
-    def set_text_visible(self, visible: bool) -> None:
-        """Show or hide the text drawn over the bar."""
-        visible = bool(visible)
-        if visible == self._text_visible:
-            return
-        self._text_visible = visible
-        self.updateGeometry()
-        self.update()
 
     def percentage(self) -> float:
         """Return the completion percentage in the ``0.0``-``100.0`` range."""
@@ -388,16 +418,11 @@ class AYProgressBar(StyleMixin, QWidget):
             painter.setBrush(self._chunk_color(style))
             painter.drawRoundedRect(chunk, radius, radius)
 
-    def _draw_text(self, painter: QPainter, style: StyleDict) -> None:
-        """Draw the descriptive text centred over the bar."""
-        margin = int(style.get("text-margin", 6))
-        painter.setPen(QColor(style.get("text-color", "#f4f5f5")))
-        painter.setFont(self.font())
-        rect = self.rect().adjusted(margin, 0, -margin, 0)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, self._text)
-
     def paintEvent(self, event: QPaintEvent) -> None:
-        """Paint the track, chunk, and optional text.
+        """Paint the track and the filled or sweeping chunk.
+
+        The bar draws only the bar itself; descriptive text belongs to the
+        owner (``AYProgressView`` draws it as a caption above the bar).
 
         Args:
             event: The paint event; the whole widget is repainted.
@@ -407,29 +432,11 @@ class AYProgressBar(StyleMixin, QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setOpacity(self._opacity())
         self._draw_bar(painter, style)
-        if self._text_visible and self._text:
-            self._draw_text(painter, style)
         painter.end()
 
-    def _text_height(self) -> int:
-        """Return the height that keeps overlay text unclipped.
-
-        Returns:
-            The font height plus the configured vertical text margins.
-        """
-        margin = int(self._base_style().get("text-margin", 6))
-        return self.fontMetrics().height() + margin * 2
-
     def sizeHint(self) -> QSize:
-        """Return the preferred size derived from the style height.
-
-        A bar that draws overlay text grows to the text height, since the
-        style height (6 px, 4 px for the inline variant) is thinner than
-        the font and would clip the text.
-        """
+        """Return the preferred size derived from the style height."""
         height = int(self._base_style().get("height", 6))
-        if self._text_visible and self._text:
-            height = max(height, self._text_height())
         return QSize(200, height)
 
     def minimumSizeHint(self) -> QSize:
@@ -439,9 +446,13 @@ class AYProgressBar(StyleMixin, QWidget):
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._update_animation()
+        # Pick up anything that changed while hidden, then keep reading.
+        self._apply_track()
+        self._update_polling()
 
     def hideEvent(self, event: QHideEvent) -> None:
         self._timer.stop()
+        self._poll_timer.stop()
         super().hideEvent(event)
 
 
@@ -453,36 +464,30 @@ class AYProgressView(AYContainer):
         Caption text
         [=================--------]   45%
 
-    A reporter that declares a phase plan is shown as one continuous bar
-    driven by ``ProgressSnapshot.overall``, so switching phase does not reset
-    the bar to zero.  Without a phase plan the current phase's own
-    ``completed`` / ``total`` is shown.
+    The bar and the caption are driven by a single :class:`ProgressTrack`,
+    the same object the writer updates, so no callbacks are involved.
 
     Args:
         parent: Parent widget.
         label: Optional caption shown above the bar.
-        total: Total number of steps; ``None`` for indeterminate.
+        progress: Track to show.
         variant: Progress bar style variant.
         show_value: Whether the percentage readout is shown.
 
     Signals:
         progress_changed(int, int): Re-emitted from the inner bar.
-        completed(): Emitted once when the bound reporter finishes, or
-            when the inner bar completes if no reporter is bound.
+        completed(): Emitted once when the track finishes or reaches its
+            total.
     """
 
     progress_changed = Signal(int, int)
-    progress_ping = Signal(int, object)
     completed = Signal()
-
-    #: Denominator used to express ``ProgressSnapshot.overall`` on the bar.
-    _OVERALL_SCALE = 1000
 
     def __init__(
         self,
         parent: QWidget | None = None,
         label: str = "",
-        total: int | None = None,
+        progress: ProgressTrack | None = None,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
         show_value: bool = True,
     ) -> None:
@@ -509,7 +514,7 @@ class AYProgressView(AYContainer):
             layout_spacing=6,
             layout_margin=0,
         )
-        self._bar = AYProgressBar(variant=variant, total=total)
+        self._bar = AYProgressBar(progress=progress, variant=variant)
         self._value_label = AYLabel("", dim=True)
         self._value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         base = self._style_data.get("base") or StyleDict()
@@ -524,90 +529,48 @@ class AYProgressView(AYContainer):
         self._value_label.setVisible(self._show_value)
         self._bar.progress_changed.connect(self._on_progress_changed)
         self._bar.progress_changed.connect(self.progress_changed.emit)
-        self._bar.completed.connect(self._on_bar_completed)
+        self._bar.completed.connect(self.completed.emit)
+        self._bar.track_changed.connect(self._on_track_changed)
         self._on_progress_changed()
 
-        self._reporter: ProgressSource | None = None
-        self._reporter_completed = False
-        # Generation of the active binding.  Pings carry the generation
-        # they were emitted for, so ones that are already queued when the
-        # view is unbound or rebound are discarded instead of applied.
-        self._binding = 0
-        self._listener: Callable[[ProgressSnapshot], None] | None = None
-        # Reporter callbacks can arrive on a worker thread; hop to the Qt
-        # thread before touching any widget.
-        self.progress_ping.connect(
-            self._apply, Qt.ConnectionType.QueuedConnection
-        )
+        self._progress: ProgressTrack | None = progress
+        # The view keeps reading the track while it is bound, also while
+        # hidden: the owner shows it as soon as real progress arrives.
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(AYProgressBar.PROGRESS_POLL_MS)
+        self._poll_timer.timeout.connect(self._bar.refresh)
 
-    def bind(self, reporter: ProgressSource) -> None:
-        """Drive this view from *reporter*.
+    def bind(self, progress: ProgressTrack) -> None:
+        """Drive this view from *progress*.
 
         The view is reset first so a reused view cannot briefly show the
-        previous run's value, colour, or caption before the first
-        snapshot of the new binding arrives.
+        previous run's value, colour, or caption.
 
         Args:
-            reporter: The progress source to follow.
+            progress: Track to follow. The bar keeps a reference to it, so
+                mutating that object updates the view on the next poll.
         """
         self.unbind()
         self.reset()
-        self._binding += 1
-        self._reporter = reporter
-        self._reporter_completed = False
-        self._listener = partial(self._on_state, self._binding)
-        reporter.add_listener(self._listener)
+        self._progress = progress
+        self._bar.set_progress(progress)
+        if not (progress.finished or progress.failed):
+            self._poll_timer.start()
 
     def unbind(self) -> None:
-        """Stop following the bound reporter, if any.
+        """Stop following the bound track, if any."""
+        self._poll_timer.stop()
+        self._progress = None
+        self._bar.reset()
 
-        Snapshots *reporter* already queued are dropped rather than
-        applied: the binding generation changes, so ``_apply`` ignores
-        anything that was pinged for the previous binding.
-        """
-        self._binding += 1
-        if self._reporter is not None:
-            self._reporter.remove_listener(self._listener)
-            self._reporter = None
-
-    def _on_state(self, binding: int, state: ProgressSnapshot) -> None:
-        """Queue a reporter snapshot for the Qt thread."""
-        self.progress_ping.emit(binding, state)
-
-    def _apply(self, binding: int, state: ProgressSnapshot) -> None:
-        """Mirror a reporter snapshot onto the bar.
-
-        Snapshots queued by a reporter that is no longer bound are
-        discarded, so a stale terminal state cannot overwrite a newer
-        binding or take its completion latch.
-        """
-        if binding != self._binding:
-            return
-        if state.overall is None:
-            self._bar.set_values(state.completed, state.total)
-        else:
-            overall = max(0.0, min(state.overall, 1.0))
-            self._bar.set_values(
-                round(overall * self._OVERALL_SCALE), self._OVERALL_SCALE
-            )
-        caption = state.message or state.phase or state.label
-        if caption:
-            self.set_label(caption)
-        if state.failed:
-            self.set_state(ProgressBarState.Error)
-        elif state.finished:
-            self.set_state(ProgressBarState.Success)
-            if not self._reporter_completed:
-                self._reporter_completed = True
-                self.completed.emit()
-        else:
-            self.set_state(ProgressBarState.Normal)
+    def _on_track_changed(self, track: ProgressTrack) -> None:
+        """Update the caption from the track the bar applied."""
+        if track.caption:
+            self.set_label(track.caption)
+        if track.finished or track.failed:
+            self._poll_timer.stop()
 
     # --- private
-    def _on_bar_completed(self) -> None:
-        """Forward bar completion only when no reporter is bound."""
-        if self._reporter is None:
-            self.completed.emit()
 
     def _on_progress_changed(self) -> None:
         """Update the percentage label to match the current progress."""
@@ -637,31 +600,11 @@ class AYProgressView(AYContainer):
             return
         self._caption.setText(text)
 
-    def set_total(self, total: int | None) -> None:
-        """Set the total number of steps (``None`` for indeterminate)."""
-        self._bar.set_total(total)
-
-    def set_progress(self, value: int, total: int | None = None) -> None:
-        """Set the current progress value."""
-        if total is None:
-            self._bar.set_progress(value)
-        else:
-            self._bar.set_values(value, total)
-
-    def set_state(self, state: ProgressBarState) -> None:
-        """Set the semantic state that colours the chunk."""
-        self._bar.set_state(state)
-
-    def set_text(self, text: str) -> None:
-        """Set the text drawn over the bar."""
-        self._bar.set_text(text)
-
     def reset(self) -> None:
         """Reset the bar, the caption, and the percentage readout.
 
         The caption falls back to the label the view was created with.
         """
-        self._reporter_completed = False
         if self._caption is not None:
             self._caption.setText(self._initial_label)
         self._bar.reset()
@@ -674,7 +617,7 @@ class AYProgressDialog(QDialog):
     Args:
         parent: Parent widget.
         label: Message shown above the bar and used as the window title.
-        total: Total number of steps; ``None`` for indeterminate.
+        progress: Track to show.
         variant: Progress bar style variant.
         cancel_text: Text of the cancel button.
         cancellable: Whether a cancel button is offered.
@@ -691,7 +634,7 @@ class AYProgressDialog(QDialog):
         self,
         parent: QWidget | None = None,
         label: str = "",
-        total: int | None = None,
+        progress: ProgressTrack | None = None,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
         cancel_text: str = "Cancel",
         cancellable: bool = True,
@@ -715,7 +658,7 @@ class AYProgressDialog(QDialog):
         )
         self._view = AYProgressView(
             label=label,
-            total=total,
+            progress=progress,
             variant=variant,
         )
         body.add_widget(self._view)
@@ -742,40 +685,9 @@ class AYProgressDialog(QDialog):
         """Return the inner :class:`AYProgressBar`."""
         return self._view.progress_bar
 
-    @property
-    def progress_view(self) -> AYProgressView:
-        """Return the :class:`AYProgressView` holding the bar."""
-        return self._view
-
-    @property
-    def cancel_button(self) -> AYButton | None:
-        """Return the cancel button, or ``None`` when not cancellable."""
-        return self._cancel_button
-
-    def set_label(self, text: str) -> None:
-        """Set the message shown above the bar."""
-        if text:
-            self.setWindowTitle(text)
-        self._view.set_label(text)
-
-    def set_total(self, total: int | None) -> None:
-        """Set the total number of steps (``None`` for indeterminate)."""
-        self._view.set_total(total)
-
-    def set_progress(self, value: int, total: int | None = None) -> None:
-        """Set the current progress value."""
-        self._view.set_progress(value, total)
-
-    def set_state(self, state: ProgressBarState) -> None:
-        """Set the semantic state that colours the chunk."""
-        self._view.set_state(state)
-
-    def finish(self) -> None:
-        """Close the dialog without reporting a cancellation."""
-        self._finished = True
-        if self._cancel_button is not None:
-            self._cancel_button.setEnabled(False)
-        self.accept()
+    def bind(self, progress: ProgressTrack) -> None:
+        """Follow *progress* and show it."""
+        self._view.bind(progress)
 
     # --- private
     def _on_completed(self) -> None:

@@ -18,8 +18,7 @@ from .progress_bar import (
     AYProgressDialog,
     AYProgressView,
     ProgressBarState,
-    ProgressSnapshot,
-    ProgressSource,
+    ProgressTrack,
 )
 from .option_action import (
     AYMenu,
@@ -61,8 +60,7 @@ __all__ = (
     "AYProgressView",
     "AYProgressDialog",
     "ProgressBarState",
-    "ProgressSnapshot",
-    "ProgressSource",
+    "ProgressTrack",
     "AYLineEdit",
     "AYSpinBox",
     "AYTextEdit",
