@@ -1207,10 +1207,8 @@
                     "success-color": "--md-sys-color-tertiary-dark",
                     "warning-color": "--md-sys-color-warning-dark",
                     "failed-color": "--md-sys-color-error-dark",
-                    "text-color": "--md-sys-color-on-surface-dark",
                     "sweep-ratio": 0.3,
                     "animation-interval-ms": 16,
-                    "text-margin": 6,
                     "value-min-width": 40,
                     "disabled": {
                         "opacity": 0.5
@@ -1218,8 +1216,7 @@
                 },
                 "inline": {
                     "height": 4,
-                    "radius": 2,
-                    "text-margin": 4
+                    "radius": 2
                 }
             }
         }
