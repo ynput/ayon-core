@@ -199,7 +199,7 @@ class PushToContextController:
         """
         return len(self._src_version_entities) > 1
 
-    def set_use_original_name(self, use_original_name):
+    def set_use_original_name(self, use_original_name: bool) -> None:
         """Set if original product names should be used.
 
         Args:
