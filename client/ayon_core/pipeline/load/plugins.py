@@ -761,7 +761,7 @@ class LegacyLoadPlugin(LoadPlugin):
             plugin.remove(container.scene_data)
 
     def can_switch_container(self, container: ContainerItem) -> bool:
-        if not hasattr( self._plugin_cls, "switch"):
+        if not hasattr(self._plugin_cls, "switch"):
             return False
 
         repre_contexts = get_repres_contexts(
