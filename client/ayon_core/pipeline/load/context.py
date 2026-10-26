@@ -433,7 +433,7 @@ class LoadContext:
                 plugin = LegacyLoadPlugin(plugin, self, project_settings)
             except Exception:
                 self.log.warning(
-                    f"Failed to initialize plugin {cls.__name__}",
+                    f"Failed to initialize plugin {plugin.__name__}",
                     exc_info=True
                 )
                 continue
