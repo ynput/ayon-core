@@ -205,7 +205,6 @@ class PushToContextController:
         Args:
             use_original_name (bool): Use original product names.
         """
-        use_original_name = bool(use_original_name)
         if self._use_original_name == use_original_name:
             return
         self._use_original_name = use_original_name
