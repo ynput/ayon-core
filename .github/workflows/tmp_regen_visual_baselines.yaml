@@ -1,0 +1,35 @@
+name: TMP regenerate visual baselines
+
+on:
+  push:
+    branches: [ tests/visual-baselines-ubuntu-26.04 ]
+
+permissions:
+  contents: read
+
+jobs:
+  regen:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install requirements
+        run: ./tools/manage.sh create-env
+      - name: Regenerate baselines
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          uv run pytest tests/client/ayon_core/ui/test_visual.py -m optional --force-regen || true
+          uv run pytest tests/client/ayon_core/ui/test_visual.py -m optional
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-baselines
+          path: tests/client/ayon_core/ui/test_visual/
