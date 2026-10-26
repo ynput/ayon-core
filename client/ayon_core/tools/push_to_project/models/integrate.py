@@ -234,7 +234,7 @@ class ProjectPushRepreItem:
 
     def __init__(self, repre_entity, roots):
         self._repre_entity = repre_entity
-        self._roots = roots
+        self._roots = self._get_roots(repre_entity, roots)
         self._src_files = None
         self._resource_files = None
         self._frame = UNKNOWN
@@ -263,26 +263,30 @@ class ProjectPushRepreItem:
         return new_value
 
     @staticmethod
-    def _strip_root(path):
-        """Remove a leading root placeholder from a template path.
+    def _get_roots(repre_entity, anatomy_roots):
+        """Root values used to resolve the representation file paths.
 
-        Files of a representation may be stored with a root name that is not
-        defined in the current project anatomy anymore (e.g. an older publish
-        wrote '{root[unreal]}' while the anatomy only defines 'work'). Such a
-        file cannot be resolved on its own, but its root-independent part can
-        still match the representation template, from which the path is then
-        resolved (see '_resolve_repre_path'). Comparing the paths including
-        their root name would take the main file for a resource file instead,
-        and the push would fail because no source files were found.
+        Roots defined in the project anatomy are used first, because those
+        hold the current location of the published files. Roots that are not
+        (or no longer) defined in the anatomy are taken from the
+        representation context, which stores the roots the representation was
+        published with. Without that fallback the file paths of such a
+        representation could not be resolved at all.
 
-        The anatomy root resolver works with absolute file paths and would
-        need the anatomy object, but this model only receives 'anatomy.roots',
-        so the placeholder is removed from the template directly.
+        Args:
+            repre_entity (dict[str, Any]): Representation entity.
+            anatomy_roots (dict[str, str]): Project roots from the anatomy.
+
+        Returns:
+            dict[str, str]: Root values by root name.
         """
-        match = re.match(r"^\{root\[[^]]+\]\}", path)
-        if match:
-            return path[match.end():].lstrip("/")
-        return path
+        roots = dict(anatomy_roots or {})
+        repre_context = repre_entity.get("context") or {}
+        for root_name, root_value in (
+            repre_context.get("root") or {}
+        ).items():
+            roots.setdefault(root_name, root_value)
+        return roots
 
     def _resolve_filepath(self, filepath_template):
         """Resolve root placeholders of a file path.
@@ -292,7 +296,8 @@ class ProjectPushRepreItem:
 
         Returns:
             Optional[str]: Absolute file path, or None if the path uses a
-                root that is not defined in the project anatomy.
+                root that is neither in the project anatomy nor stored on
+                the representation.
         """
 
         try:
@@ -300,26 +305,6 @@ class ProjectPushRepreItem:
                 filepath_template.format(root=self._roots))
         except KeyError:
             return None
-
-    def _resolve_repre_path(self, repre_path):
-        """Resolve the representation template path to an absolute path.
-
-        Raises:
-            ValueError: The template uses a root that is not defined in
-                the project anatomy.
-        """
-
-        try:
-            return self._clean_path(repre_path.format(root=self._roots))
-        except KeyError as exc:
-            raise ValueError((
-                "Representation '{name}' uses root {root} which is not"
-                " defined in the project anatomy (roots: {roots})"
-            ).format(
-                name=self.repre_entity.get("name"),
-                root=exc,
-                roots=", ".join(sorted(self._roots)),
-            )) from exc
 
     @staticmethod
     def _get_relative_path(path, src_dirpath):
@@ -406,22 +391,17 @@ class ProjectPushRepreItem:
 
         repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
+        fill_repre_context["root"] = self._roots
         if "frame" in fill_repre_context:
             fill_repre_context["frame"] = frame_placeholder
 
         if "udim" in fill_repre_context:
             fill_repre_context["udim"] = udim_placeholder
 
-        fill_roots = fill_repre_context.get("root")
-        if fill_roots is not None:
-            for root_name in tuple(fill_roots.keys()):
-                fill_roots[root_name] = "{{root[{}]}}".format(root_name)
         repre_path = StringTemplate.format_template(
             template, fill_repre_context)
         repre_path = self._clean_path(repre_path)
-        # compare root-independent paths, see '_strip_root'
-        repre_rel_path = self._strip_root(repre_path)
-        src_rel_dirpath, src_basename = os.path.split(repre_rel_path)
+        src_dirpath, src_basename = os.path.split(repre_path)
         src_basename = (
             re.escape(src_basename)
             .replace(frame_placeholder, "(?P<frame>[0-9]+)")
@@ -431,25 +411,18 @@ class ProjectPushRepreItem:
         for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._resolve_filepath(filepath_template)
-            file_rel_path = self._strip_root(filepath_template)
-            dirpath, basename = os.path.split(file_rel_path)
-            is_source_file = (
-                dirpath.lower() == src_rel_dirpath.lower()
-                and src_basename_regex.match(basename) is not None
-            )
             if filepath is None:
-                if not is_source_file:
-                    # Side file on a root that is not in the anatomy anymore,
-                    # it cannot be transferred.
-                    continue
-                # The file was stored with a root that is not in the anatomy,
-                # its relative path matches the template, so the path can be
-                # resolved from the template instead.
-                filepath = self._resolve_repre_path(repre_path)
+                # The file uses a root that is neither in the anatomy nor
+                # stored on the representation, it cannot be transferred.
+                continue
 
-            if not is_source_file:
+            dirpath, basename = os.path.split(filepath)
+            if (
+                dirpath.lower() != src_dirpath.lower()
+                or not src_basename_regex.match(basename)
+            ):
                 relative_path = self._get_relative_path(
-                    filepath, src_rel_dirpath
+                    filepath, src_dirpath
                 )
                 resource_files.append(ResourceFile(filepath, relative_path))
                 continue
@@ -474,31 +447,24 @@ class ProjectPushRepreItem:
         template = self.repre_entity["attrib"]["template"]
         repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
-        fill_roots = fill_repre_context.get("root")
-        if fill_roots is not None:
-            for root_name in tuple(fill_roots.keys()):
-                fill_roots[root_name] = "{{root[{}]}}".format(root_name)
+        fill_repre_context["root"] = self._roots
         repre_path = StringTemplate.format_template(template,
                                                     fill_repre_context)
         repre_path = self._clean_path(repre_path)
-        # compare root-independent paths, see '_strip_root'
-        repre_rel_path = self._strip_root(repre_path)
-        src_rel_dirpath = os.path.dirname(repre_rel_path)
+        src_dirpath = os.path.dirname(repre_path)
         for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._resolve_filepath(filepath_template)
-            file_rel_path = self._strip_root(filepath_template)
+            if filepath is None:
+                # The file uses a root that is neither in the anatomy nor
+                # stored on the representation, it cannot be transferred.
+                continue
 
-            if file_rel_path.lower() == repre_rel_path.lower():
-                if filepath is None:
-                    # The file was stored with a root that is not in the
-                    # anatomy, its relative path matches the template, so the
-                    # path can be resolved from the template instead.
-                    filepath = self._resolve_repre_path(repre_path)
+            if filepath.lower() == repre_path.lower():
                 src_files.append(SourceFile(filepath))
-            elif filepath is not None:
+            else:
                 relative_path = self._get_relative_path(
-                    file_rel_path, src_rel_dirpath
+                    filepath, src_dirpath
                 )
                 resource_files.append(
                     ResourceFile(filepath, relative_path)
