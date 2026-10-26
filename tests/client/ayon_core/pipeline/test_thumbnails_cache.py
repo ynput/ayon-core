@@ -102,3 +102,43 @@ def test_thumbnail_is_stored_by_id_from_server(cache, monkeypatch):
         "demo", "folder", "folder", "new-id"
     ) == path
     assert con.get_thumbnail.call_count == 1
+
+
+def _project_thumbnail_con(monkeypatch, status_code=200):
+    con = Mock()
+    con.raw_get.return_value = SimpleNamespace(
+        status_code=status_code,
+        content=b"data",
+        content_type="image/png",
+    )
+    monkeypatch.setattr(
+        thumbnails.ayon_api, "get_server_api_connection", lambda: con
+    )
+    return con
+
+
+def test_project_thumbnail_is_cached_until_project_is_updated(
+    cache, monkeypatch
+):
+    """All project thumbnails have the same thumbnail id on server."""
+    con = _project_thumbnail_con(monkeypatch)
+
+    path = thumbnails.get_project_thumbnail_path("demo", "2026-01-01")
+    assert os.path.exists(path)
+    # Stored thumbnail is not requested again, not even by other process
+    assert thumbnails.get_project_thumbnail_path("demo", "2026-01-01") == path
+    assert con.raw_get.call_count == 1
+
+    # Server updates the project when its thumbnail is changed
+    new_path = thumbnails.get_project_thumbnail_path("demo", "2026-01-02")
+    assert new_path != path
+    assert con.raw_get.call_count == 2
+
+
+def test_project_without_thumbnail(cache, monkeypatch):
+    con = _project_thumbnail_con(monkeypatch, status_code=404)
+
+    assert thumbnails.get_project_thumbnail_path("demo", "2026-01-01") is None
+    # Placeholder image of the server must not be requested
+    assert "placeholder=none" in con.raw_get.call_args[0][0]
+    assert not os.path.exists(cache.get_project_dir("demo"))
