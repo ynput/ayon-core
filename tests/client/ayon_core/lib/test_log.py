@@ -1152,10 +1152,25 @@ def test_process_context_not_in_console(log_module, monkeypatch):
 def log_context(log_module, monkeypatch):
     """Log context of installed host, see 'install_host'."""
     context_tools = pytest.importorskip("ayon_core.pipeline.context_tools")
+    from ayon_core.host.host import HostBase
+
+    class _Host(HostBase):
+        name = "test"
+
+        def get_current_context(self):
+            return {
+                "project_name": "project",
+                "folder_path": "/a",
+                "task_name": "one",
+            }
+
     module = log_module()
-    monkeypatch.setenv("AYON_FOLDER_PATH", "/a")
-    monkeypatch.setenv("AYON_TASK_NAME", "one")
+    # Hosts may store the context elsewhere than in environment variables
+    monkeypatch.setenv("AYON_FOLDER_PATH", "/env")
+    monkeypatch.setenv("AYON_TASK_NAME", "env_task")
+    monkeypatch.setitem(context_tools._registered_host, "_", _Host())
     context_tools._set_log_context("test", "project")
+    context_tools._set_host_log_context()
     yield module
     module.set_process_context(
         host_name=None, project=None, folder=None, task=None
@@ -1168,6 +1183,26 @@ def test_install_sets_log_context(log_context):
         "project": "project",
         "folder": "/a",
         "task": "one",
+    }
+
+
+def test_install_keeps_log_context_on_host_failure(log_context, monkeypatch):
+    from ayon_core.pipeline import context_tools
+    from ayon_core.host.host import HostBase
+
+    class _Host(HostBase):
+        name = "test"
+
+        def get_current_context(self):
+            raise RuntimeError("Host is not ready")
+
+    monkeypatch.setitem(context_tools._registered_host, "_", _Host())
+    context_tools._set_log_context("test", "project")
+    context_tools._set_host_log_context()
+
+    assert log_context.get_process_context() == {
+        "host_name": "test",
+        "project": "project",
     }
 
 

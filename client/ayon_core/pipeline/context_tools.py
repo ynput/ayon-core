@@ -111,6 +111,9 @@ def install_host(host: AbstractHost) -> None:
         host.install()
 
     register_host(host)
+    # Folder and task are known only by the host which may need
+    #   to be installed first
+    _set_host_log_context()
 
     def modified_emit(obj, record):
         """Method replacing `emit` in Pyblish's MessageHandler."""
@@ -150,13 +153,34 @@ def _update_log_context(event) -> None:
     )
 
 
+def _set_host_log_context() -> None:
+    """Set current context of registered host to log records.
+
+    Context is not taken from environment variables because hosts may
+    store it elsewhere, e.g. in the workfile.
+
+    """
+    try:
+        context = get_current_context()
+    except Exception:
+        log.debug("Failed to get current context of host.", exc_info=True)
+        return
+
+    set_process_context(
+        project=context.get("project_name"),
+        folder=context.get("folder_path"),
+        task=context.get("task_name"),
+    )
+
+
 def _set_log_context(
     host_name: Optional[str], project_name: Optional[str]
 ) -> None:
-    """Add host and its current context to all log records of the process.
+    """Add host and project to all log records of the process.
 
-    Context is updated on each 'taskChanged' event, emitted by hosts
-    on context change.
+    Folder and task are added by '_set_host_log_context' once the host
+    is installed. Context is updated on each 'taskChanged' event, emitted
+    by hosts on context change.
 
     Args:
         host_name (Optional[str]): Name of the host.
@@ -168,8 +192,8 @@ def _set_log_context(
     set_process_context(
         host_name=host_name,
         project=project_name,
-        folder=os.getenv("AYON_FOLDER_PATH"),
-        task=os.getenv("AYON_TASK_NAME"),
+        folder=None,
+        task=None,
     )
     if _log_context_callback is None:
         _log_context_callback = register_event_callback(
