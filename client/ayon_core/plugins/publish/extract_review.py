@@ -62,11 +62,14 @@ def is_sequence_output(
     Returns:
         bool: True when the output has to be a frame sequence.
     """
-    input_is_sequence = isinstance(repre_files, (list, tuple))
-    input_is_video = input_ext.lower() not in image_exts
-    output_is_image = output_ext.lower() in image_exts
-    return bool(
-        output_is_image and (input_is_sequence or input_is_video)
+    # Output extension is not image
+    if output_ext.lower() not in image_exts:
+        return False
+
+    # Input is sequence or video
+    return (
+        isinstance(repre_files, (list, tuple))
+        input_ext.lower() not in image_exts
     )
 
 
