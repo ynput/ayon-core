@@ -17,7 +17,6 @@ from .progress_bar import (
     AYProgressBar,
     AYProgressView,
     ProgressBarState,
-    ProgressTrack,
 )
 from .option_action import (
     AYMenu,
