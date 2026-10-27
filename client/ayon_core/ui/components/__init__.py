@@ -58,7 +58,6 @@ __all__ = (
     "AYProgressBar",
     "AYProgressView",
     "ProgressBarState",
-    "ProgressTrack",
     "AYLineEdit",
     "AYSpinBox",
     "AYTextEdit",
