@@ -7,21 +7,18 @@ from enum import Enum
 
 from qtpy.QtCore import QRectF, QSize, Qt, QTimer, Signal
 from qtpy.QtGui import (
-    QCloseEvent,
     QColor,
     QHideEvent,
     QPainter,
     QPaintEvent,
     QShowEvent,
 )
-from qtpy.QtWidgets import QDialog, QSizePolicy, QWidget
+from qtpy.QtWidgets importQSizePolicy, QWidget
 
 from ..style_types import StyleDict, get_ayon_style
 from ..variants import AYProgressBarVariants
-from .buttons import AYButton
 from .container import AYContainer
 from .label import AYLabel
-from .layouts import AYVBoxLayout
 from .style_mixin import StyleMixin
 
 
@@ -609,110 +606,3 @@ class AYProgressView(AYContainer):
             self._caption.setText(self._initial_label)
         self._bar.reset()
         self._value_label.setText("")
-
-
-class AYProgressDialog(QDialog):
-    """Modal dialog wrapping :class:`AYProgressView`.
-
-    Args:
-        parent: Parent widget.
-        label: Message shown above the bar and used as the window title.
-        progress: Track to show.
-        variant: Progress bar style variant.
-        cancel_text: Text of the cancel button.
-        cancellable: Whether a cancel button is offered.
-        close_on_complete: Close the dialog once the bar completes.
-
-    Signals:
-        canceled(): Emitted when the user cancels or closes the dialog
-            before it finished.
-    """
-
-    canceled = Signal()
-
-    def __init__(
-        self,
-        parent: QWidget | None = None,
-        label: str = "",
-        progress: ProgressTrack | None = None,
-        variant: AYProgressBarVariants = AYProgressBarVariants.Default,
-        cancel_text: str = "Cancel",
-        cancellable: bool = True,
-        close_on_complete: bool = False,
-    ) -> None:
-        super().__init__(parent)
-        self.setStyle(get_ayon_style())
-        self.setWindowTitle(label or "Progress")
-        self.setModal(True)
-        self.setContentsMargins(0, 0, 0, 0)
-
-        self._finished = False
-        self._close_on_complete = bool(close_on_complete)
-
-        root = AYVBoxLayout(self, margin=0, spacing=0)
-
-        body = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            layout_margin=20,
-            layout_spacing=12,
-        )
-        self._view = AYProgressView(
-            label=label,
-            progress=progress,
-            variant=variant,
-        )
-        body.add_widget(self._view)
-
-        self._cancel_button: AYButton | None = None
-        if cancellable:
-            row = AYContainer(
-                layout=AYContainer.Layout.HBox,
-                layout_spacing=8,
-                layout_margin=0,
-            )
-            row.addStretch(1)
-            self._cancel_button = AYButton(cancel_text)
-            self._cancel_button.clicked.connect(self._on_cancel_clicked)
-            row.add_widget(self._cancel_button)
-            body.add_widget(row)
-
-        root.addWidget(body)
-        self._view.completed.connect(self._on_completed)
-
-    # --- public API
-    @property
-    def progress_bar(self) -> AYProgressBar:
-        """Return the inner :class:`AYProgressBar`."""
-        return self._view.progress_bar
-
-    def bind(self, progress: ProgressTrack) -> None:
-        """Follow *progress* and show it."""
-        self._view.bind(progress)
-
-    # --- private
-    def _on_completed(self) -> None:
-        self._finished = True
-        if self._cancel_button is not None:
-            self._cancel_button.setEnabled(False)
-        if self._close_on_complete:
-            self.accept()
-
-    def _on_cancel_clicked(self) -> None:
-        if self._finished:
-            return
-        self._finished = True
-        self.canceled.emit()
-        self.reject()
-
-    def reject(self) -> None:
-        # Escape calls reject() directly, without a closeEvent.
-        if not self._finished:
-            self._finished = True
-            self.canceled.emit()
-        super().reject()
-
-    def closeEvent(self, event: QCloseEvent) -> None:
-        if not self._finished:
-            self._finished = True
-            self.canceled.emit()
-        super().closeEvent(event)

@@ -15,7 +15,6 @@ from .line_edit import AYLineEdit
 from .spinbox import AYSpinBox
 from .progress_bar import (
     AYProgressBar,
-    AYProgressDialog,
     AYProgressView,
     ProgressBarState,
     ProgressTrack,
@@ -58,7 +57,6 @@ __all__ = (
     "AYGridLayout",
     "AYProgressBar",
     "AYProgressView",
-    "AYProgressDialog",
     "ProgressBarState",
     "ProgressTrack",
     "AYLineEdit",

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from ayon_core.ui.components.progress_bar import (
     AYProgressBar,
-    AYProgressDialog,
     AYProgressView,
     ProgressBarState,
     ProgressTrack,
@@ -65,7 +64,7 @@ def test_track_is_applied(qapp):
     assert bar.current == 3
     assert bar.total == 10
     assert bar.percentage() == 30.0
-    assert bar._state is ProgressBarState.Normal
+    assert bar.state is ProgressBarState.Normal
 
 
 def test_in_place_mutation_is_detected(qtbot):
@@ -96,7 +95,14 @@ def test_completed_is_latched_once(qtbot):
     done = []
     bar.completed.connect(lambda: done.append(True))
 
+    # Completion is the track's ``finished`` flag; reaching the total
+    # without it is not a completion.
     track.value = 2
+    bar._apply_track()
+    bar._apply_track()
+    assert done == []
+
+    track.finished = True
     bar._apply_track()
     bar._apply_track()
     assert done == [True]
@@ -113,7 +119,7 @@ def test_finished_sets_success_and_stops_polling(qtbot):
     bar._apply_track()
     bar._update_polling()
 
-    assert bar._state is ProgressBarState.Success
+    assert bar.state is ProgressBarState.Success
     assert bar.current == 2
     assert not bar._poll_timer.isActive()
 
@@ -271,10 +277,10 @@ def test_view_rebind_resets_previous_state(qtbot):
     view.bind(fail_track)
     fail_track.failed = True
     view.progress_bar._apply_track()
-    assert view.progress_bar._state is ProgressBarState.Error
+    assert view.progress_bar.state is ProgressBarState.Error
 
     view.bind(ProgressTrack(value=0, total_value=4))
-    assert view.progress_bar._state is ProgressBarState.Normal
+    assert view.progress_bar.state is ProgressBarState.Normal
     assert view.progress_bar.current == 0
 
 
@@ -299,30 +305,3 @@ def test_high_frequency_updates_keep_the_last_value(qtbot):
         track.value = i
     view.progress_bar.refresh()
     assert view.progress_bar.current == 10_000
-
-
-# --- AYProgressDialog ------------------------------------------------------
-
-
-def test_dialog_bind(qtbot):
-    dialog = AYProgressDialog(label="Doing")
-    qtbot.addWidget(dialog)
-    dialog.bind(ProgressTrack(value=1, total_value=2))
-    assert dialog.progress_bar.current == 1
-
-
-def test_dialog_closes_when_track_finishes(qtbot):
-    dialog = AYProgressDialog(close_on_complete=True)
-    qtbot.addWidget(dialog)
-    canceled = []
-    dialog.canceled.connect(lambda: canceled.append(True))
-
-    track = ProgressTrack(value=1, total_value=2)
-    dialog.bind(track)
-    dialog.show()
-    assert dialog.isVisible()
-
-    track.finished = True
-    dialog.progress_bar._apply_track()
-    qtbot.waitUntil(lambda: not dialog.isVisible())
-    assert canceled == []
