@@ -3940,7 +3940,7 @@ class BrowserWidgetController(QtCore.QObject):
                 continue
             name = str(user.get("name") or "").strip()
             full_name = str(
-                (user.get("ownAttrib") or {}).get("fullName") or ""
+                user["attrib"].get("fullName") or ""
             ).strip()
             if name and full_name:
                 output[name] = full_name
