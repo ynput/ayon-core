@@ -343,7 +343,7 @@ class OiioColorConvertDisplayViewCommands(unittest.TestCase):
 
         cmd = self._get_oiio_cmd()
 
-        modifier = "--ociodisplay:from=ACES2065-1:inverse=1:subimages=0"
+        modifier = '--ociodisplay:from="ACES2065-1":inverse=1:subimages=0'
         self.assertIn(modifier, cmd)
         idx = cmd.index(modifier)
         self.assertEqual(cmd[idx + 1], "sRGB - Display")
@@ -375,10 +375,32 @@ class OiioColorConvertDisplayViewCommands(unittest.TestCase):
         cmd = self._get_oiio_cmd()
 
         self.assertIn(
-            "--ociodisplay:from=Rec.1886 Rec.709 - Display"
+            '--ociodisplay:from="Rec.1886 Rec.709 - Display"'
             ":inverse=1:subimages=0",
             cmd,
         )
+
+    def test_display_view_to_colorspace_quotes_name_with_colon(self):
+        # oiiotool splits modifiers on ':', so an unquoted colorspace name
+        # containing ':' would be cut off at the colon and silently resolve
+        # to a different colorspace. The name must be quoted.
+        oiio_color_convert(
+            input_path="input.exr",
+            output_path="output.exr",
+            config_path="config.ocio",
+            source_colorspace=None,
+            source_display="ACES",
+            source_view="sRGB",
+            target_colorspace="ACES:ACEScg",
+        )
+
+        cmd = self._get_oiio_cmd()
+
+        modifier = '--ociodisplay:from="ACES:ACEScg":inverse=1:subimages=0'
+        self.assertIn(modifier, cmd)
+        idx = cmd.index(modifier)
+        self.assertEqual(cmd[idx + 1], "ACES")
+        self.assertEqual(cmd[idx + 2], "sRGB")
 
     def test_display_view_to_different_display_view_is_two_step(self):
         oiio_color_convert(

@@ -1529,8 +1529,11 @@ def oiio_color_convert(
             # still goes through the OCIO config's reference space without us
             # having to name that intermediate space ourselves, so that OCIO
             # picks the right one - avoiding hue shifts, etc.
+            # The colorspace name is quoted because oiiotool splits
+            # modifiers on ':', so a name containing ':' would otherwise
+            # be cut off and resolve to the wrong colorspace.
             oiio_cmd.extend([
-                f"--ociodisplay:from={target_colorspace}"
+                f'--ociodisplay:from="{target_colorspace}"'
                 ":inverse=1:subimages=0",
                 source_display,
                 source_view,
