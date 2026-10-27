@@ -1,5 +1,5 @@
 [project]
-name="core"
+name="ayon-core"
 description="AYON core addon."
 dynamic = ["version"]
 
