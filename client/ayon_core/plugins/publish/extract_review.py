@@ -14,6 +14,7 @@ from ayon_core.pipeline.publish.review_utils import (
     DEFAULT_IMAGE_EXTS,
     DEFAULT_VIDEO_EXTS,
     DEFAULT_ALPHA_EXTS,
+    OverscanCrop as OverscanCrop,
     ReviewRenderer,
     get_profile_outputs_for_instance,
     filter_outputs_by_custom_tags,
