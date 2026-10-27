@@ -18,6 +18,7 @@ import clique
 from .execute import run_subprocess
 from .vendor_bin_utils import (
     get_ffmpeg_tool_args,
+    get_ffmpeg_available_encoders,
     get_oiio_tool_args,
     is_oiio_supported,
 )
@@ -970,6 +971,12 @@ def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
     if codec_name == "dnxhd":
         return _ffmpeg_dnxhd_codec_args(video_stream, source_ffmpeg_cmd)
 
+    # Codec "av1"
+    if codec_name == "av1":
+        return _ffmpeg_av1_codec_args(
+            video_stream, source_ffmpeg_cmd, logger
+        )
+
     output = []
     if codec_name:
         output.extend(["-codec:v", codec_name])
@@ -1048,6 +1055,105 @@ def _ffmpeg_h264_codec_args(stream_data, source_ffmpeg_cmd):
         output.extend(["-pix_fmt", pix_fmt])
 
     output.extend(["-g", "1"])
+    return output
+
+
+# Preference order of AV1 encoders, best first. ffprobe only tells us the
+# codec is "av1"; which concrete encoder exists is build dependent, so the
+# encoder is resolved at runtime instead of being hardcoded.
+# Only software encoders are auto-selected: being listed by
+# ``ffmpeg -encoders`` means an encoder was compiled in, not that the host
+# can run it, so hardware encoders (av1_nvenc/av1_qsv) would fail at init
+# on a machine without the matching hardware. They can be added later as an
+# explicit opt-in with a runtime capability probe.
+_AV1_ENCODER_PREFERENCE = (
+    "libsvtav1",   # fast, good quality, the usual choice
+    "libaom-av1",  # reference encoder, slower but widely available
+)
+
+
+def _pick_av1_encoder():
+    """Return the best available AV1 encoder for this FFmpeg build.
+
+    Falls back to the bare ``av1`` codec (FFmpeg picks its own default)
+    if none of the preferred encoders are compiled in.
+    """
+    available = get_ffmpeg_available_encoders()
+    for encoder in _AV1_ENCODER_PREFERENCE:
+        if encoder in available:
+            return encoder
+    return "av1"
+
+
+def _default_av1_crf(stream_data):
+    """Pick a default CRF from the input resolution.
+
+    CRF is not stored in the source file and cannot be read back, so the
+    only input-derived signal is resolution. Larger frames tolerate a
+    slightly higher CRF for similar perceived quality.
+    """
+    try:
+        width = int(stream_data.get("width") or 0)
+    except (TypeError, ValueError):
+        width = 0
+    if width >= 3840:
+        return "32"
+    return "30"
+
+
+def _ffmpeg_av1_codec_args(stream_data, source_ffmpeg_cmd, logger=None):
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    encoder = _pick_av1_encoder()
+    logger.debug("Using '%s' as AV1 output encoder.", encoder)
+    output = ["-codec:v", encoder]
+
+    # '-crf' is understood by libsvtav1 and libaom-av1; '-preset' and
+    # '-svtav1-params' only by libsvtav1.
+    uses_crf = encoder in ("libsvtav1", "libaom-av1")
+    uses_preset = encoder == "libsvtav1"
+
+    # Copy only explicit quality args a studio set in ExtractReview output
+    # args. Rate-control args ('-b:v'/'-maxrate'/'-bufsize') are
+    # intentionally NOT copied: every output frame is a keyframe, so a cap
+    # meant for a long-GOP encode destroys quality.
+    copied = set()
+    if source_ffmpeg_cmd:
+        copy_args = []
+        if uses_crf:
+            copy_args.append("-crf")
+        if uses_preset:
+            copy_args.extend(["-preset", "-svtav1-params"])
+        if copy_args:
+            args = source_ffmpeg_cmd.split(" ")
+            for idx, arg in enumerate(args):
+                if arg in copy_args:
+                    output.extend([arg, args[idx + 1]])
+                    copied.add(arg.lstrip("-"))
+
+    # Defaults when the studio did not set them, driven by CRF.
+    if uses_preset and "preset" not in copied:
+        output.extend(["-preset", "8"])
+
+    if uses_crf and "crf" not in copied:
+        output.extend(["-crf", _default_av1_crf(stream_data)])
+
+    pix_fmt = stream_data.get("pix_fmt")
+    if pix_fmt:
+        output.extend(["-pix_fmt", pix_fmt])
+
+    # Make every frame a keyframe for frame-accurate scrubbing in AYON web.
+    if encoder == "libaom-av1":
+        # libaom's all-intra mode already makes every frame a keyframe;
+        # it is far faster than '-g 1' with a normal GOP setup (which can
+        # also crash newer libaom builds on longer clips).
+        output.extend(
+            ["-usage", "allintra", "-cpu-used", "6", "-row-mt", "1"]
+        )
+    else:
+        output.extend(["-g", "1"])
+
     return output
 
 

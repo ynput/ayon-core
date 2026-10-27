@@ -37,7 +37,6 @@ _is_installed = False
 _process_id = None
 # Callback updating log context on context change, see '_set_log_context'
 _log_context_callback = None
-_registered_root = {"_": {}}
 _registered_host = {"_": None}
 # Keep modules manager (and it's modules) in memory
 # - that gives option to register modules' callbacks
@@ -67,37 +66,6 @@ def _get_addons_manager():
     if _addons_manager is None:
         _addons_manager = AddonsManager()
     return _addons_manager
-
-
-def register_root(path):
-    """DEPRECATED Register currently active root."""
-    log.info("Registering root: %s" % path)
-    _registered_root["_"] = path
-
-
-def registered_root():
-    """Return registered roots from current project anatomy.
-
-    Consider this does return roots only for current project and current
-        platforms, only if host was installer using 'install_host'.
-
-    Deprecated:
-        Please use project 'Anatomy' to get roots. This function is still used
-            at current core functions of load logic, but that will change
-            in future and this function will be removed eventually. Using this
-            function at new places can cause problems in the future.
-
-    Returns:
-        dict[str, str]: Root paths.
-
-    """
-    warnings.warn(
-        "Used deprecated function 'registered_root'. Please use 'Anatomy'"
-        " to get roots.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _registered_root["_"]
 
 
 def install_host(host: AbstractHost) -> None:
@@ -233,13 +201,24 @@ def install_ayon_plugins(project_name=None, host_name=None):
     if host_name is None:
         host_name = get_current_host_name()
 
+    addons_manager = _get_addons_manager()
+
+    # Loader plugin paths are registered without a host name too. Tools that
+    # run without a host (the tray Browser) rely on addons returning their
+    # host-less loader folders for `host_name=None`, e.g. the 'global'
+    # folders of the OpenRV, DJV and xStudio addons. An addon that has only
+    # host specific loaders simply returns nothing for `None`.
+    # TODO remove when the addons stop using LoaderPlugin for actions
+    load_plugin_paths = addons_manager.collect_load_plugin_paths(host_name)
+    for path in load_plugin_paths:
+        register_loader_plugin_path(path)
+
     if host_name is None:
         log.debug(
             "Host name is not set. Skipping registering host specific plugins."
         )
     else:
         # Load host specific plugins
-        addons_manager = _get_addons_manager()
         publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
             host_name)
         for path in publish_plugin_dirs:
@@ -250,23 +229,10 @@ def install_ayon_plugins(project_name=None, host_name=None):
         for path in create_plugin_paths:
             register_creator_plugin_path(path)
 
-        load_plugin_paths = addons_manager.collect_load_plugin_paths(
-            host_name)
-        for path in load_plugin_paths:
-            register_loader_plugin_path(path)
-
         inventory_action_paths = addons_manager.collect_inventory_action_paths(
             host_name)
         for path in inventory_action_paths:
             register_inventory_action_path(path)
-
-    if project_name is None:
-        project_name = os.environ.get("AYON_PROJECT_NAME")
-
-    if project_name:
-        anatomy = Anatomy(project_name)
-        anatomy.set_root_environments()
-        register_root(anatomy.roots)
 
 
 def uninstall_host():

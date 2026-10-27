@@ -199,6 +199,18 @@ class PushToContextController:
         """
         return len(self._src_version_entities) > 1
 
+    def set_use_original_name(self, use_original_name):
+        """Set if original product names should be used.
+
+        Args:
+            use_original_name (bool): Use original product names.
+        """
+        use_original_name = bool(use_original_name)
+        if self._use_original_name == use_original_name:
+            return
+        self._use_original_name = use_original_name
+        self._invalidate()
+
     def set_user_value_folder_name(self, folder_name):
         self._user_values.set_new_folder_name(folder_name)
         self._invalidate()
