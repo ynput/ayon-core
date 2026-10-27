@@ -34,7 +34,6 @@ from . import (
 
 _is_installed = False
 _process_id = None
-_registered_root = {"_": {}}
 _registered_host = {"_": None}
 # Keep modules manager (and it's modules) in memory
 # - that gives option to register modules' callbacks
@@ -64,37 +63,6 @@ def _get_addons_manager():
     if _addons_manager is None:
         _addons_manager = AddonsManager()
     return _addons_manager
-
-
-def register_root(path):
-    """DEPRECATED Register currently active root."""
-    log.info("Registering root: %s" % path)
-    _registered_root["_"] = path
-
-
-def registered_root():
-    """Return registered roots from current project anatomy.
-
-    Consider this does return roots only for current project and current
-        platforms, only if host was installer using 'install_host'.
-
-    Deprecated:
-        Please use project 'Anatomy' to get roots. This function is still used
-            at current core functions of load logic, but that will change
-            in future and this function will be removed eventually. Using this
-            function at new places can cause problems in the future.
-
-    Returns:
-        dict[str, str]: Root paths.
-
-    """
-    warnings.warn(
-        "Used deprecated function 'registered_root'. Please use 'Anatomy'"
-        " to get roots.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _registered_root["_"]
 
 
 def install_host(host: AbstractHost) -> None:
@@ -219,14 +187,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
             host_name)
         for path in inventory_action_paths:
             register_inventory_action_path(path)
-
-    if project_name is None:
-        project_name = os.environ.get("AYON_PROJECT_NAME")
-
-    if project_name:
-        anatomy = Anatomy(project_name)
-        anatomy.set_root_environments()
-        register_root(anatomy.roots)
 
 
 def uninstall_host():

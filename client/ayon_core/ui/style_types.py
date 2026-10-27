@@ -204,6 +204,8 @@ class StyleData:
             QPalette.ColorRole.Dark: "qt-active-dark",
             QPalette.ColorRole.Mid: "qt-active-mid",
             QPalette.ColorRole.Shadow: "qt-active-shadow",
+            QPalette.ColorRole.ToolTipBase: "qt-active-tooltip-base",
+            QPalette.ColorRole.ToolTipText: "qt-active-tooltip-text",
         }
         p = QPalette()
         for role, color_name in bp.items():
