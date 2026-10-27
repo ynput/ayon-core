@@ -1,0 +1,1602 @@
+{
+  "manifestVersion": 1,
+  "addon": "core",
+  "coreHash": "sha256:1a5f5d0ba75d0fb585f2783f499b0f73adec7a61900d616bd9a6ddde44e69576",
+  "traits": {
+    "ayon.2d.Deep.v1": {
+      "definition": {
+        "id": "ayon.2d.Deep.v1",
+        "versionlessId": "ayon.2d.Deep",
+        "version": 1,
+        "name": "Deep",
+        "description": "Deep Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Deep",
+          "description": "Deep trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:1167016904cf958430f047118f58eedc8595dacb38cc9b0845e605ac8bb2d437",
+        "meta": "sha256:96cd47899bc320962741beb9c0da2e4e4bbff5590000c598e3354766e1c3621a"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.2d.Image.v1": {
+      "definition": {
+        "id": "ayon.2d.Image.v1",
+        "versionlessId": "ayon.2d.Image",
+        "version": 1,
+        "name": "Image",
+        "description": "Image Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Image",
+          "description": "Image trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:c4d592ec1a8adbc3aeb8d21cf5904f8ed3de91c63d3424231183486191f18cdb",
+        "meta": "sha256:4a140418377ec3bf464292f31a864221d35ecc2a511addfbd3603b9b2a982198"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.2d.Overscan.v1": {
+      "definition": {
+        "id": "ayon.2d.Overscan.v1",
+        "versionlessId": "ayon.2d.Overscan",
+        "version": 1,
+        "name": "Overscan",
+        "description": "Overscan Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Overscan",
+          "description": "Overscan trait model.",
+          "properties": {
+            "left": {
+              "type": "integer",
+              "description": "Left overscan/underscan."
+            },
+            "right": {
+              "type": "integer",
+              "description": "Right overscan/underscan."
+            },
+            "top": {
+              "type": "integer",
+              "description": "Top overscan/underscan."
+            },
+            "bottom": {
+              "type": "integer",
+              "description": "Bottom overscan/underscan."
+            }
+          },
+          "required": [
+            "left",
+            "right",
+            "top",
+            "bottom"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:ace8b4bc671713deebeb088fabd0e14203c615436d28c08c71e70c32e276285c",
+        "behavior": "sha256:55663a1c3c69e8a34095b808ed4b3fbf5d3ed675b06843d1b9842a9356c6924f",
+        "meta": "sha256:b3eb0f98e0aa72d8762190523709809f023fbe7b18d407a57ef31f7d0d60bb0f"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.2d.PixelBased.v1": {
+      "definition": {
+        "id": "ayon.2d.PixelBased.v1",
+        "versionlessId": "ayon.2d.PixelBased",
+        "version": 1,
+        "name": "PixelBased",
+        "description": "PixelBased Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "PixelBased",
+          "description": "PixelBased trait model.",
+          "properties": {
+            "display_window_width": {
+              "type": "integer",
+              "description": "Width of the image display window."
+            },
+            "display_window_height": {
+              "type": "integer",
+              "description": "Height of the image display window."
+            },
+            "pixel_aspect_ratio": {
+              "type": "number",
+              "description": "Pixel aspect ratio."
+            }
+          },
+          "required": [
+            "display_window_width",
+            "display_window_height",
+            "pixel_aspect_ratio"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:3501e906a8d1e8628befd49cf12e5239fc53911a762972412197c57dbaf2988b",
+        "behavior": "sha256:5eb92465f1c2a0d5119d7288b7c144bdb5af4d60faa2734ebac143546c2e606c",
+        "meta": "sha256:ff38511e7eb353352aac5ab94f0d937b8403fded6f0d9f6b17787658b966abe2"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.2d.Planar.v1": {
+      "definition": {
+        "id": "ayon.2d.Planar.v1",
+        "versionlessId": "ayon.2d.Planar",
+        "version": 1,
+        "name": "Planar",
+        "description": "Planar Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Planar",
+          "description": "Planar trait model.",
+          "properties": {
+            "planar_configuration": {
+              "type": "string",
+              "description": "Planar configuration."
+            }
+          },
+          "required": [
+            "planar_configuration"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:e2986a7a007f7fbe307a95a1d4e6cea6ec37f036a9d19435e0eca99d6cdb6efb",
+        "behavior": "sha256:c1dade0e8cf14d8ec2cfb9b0c9b56d61b2b819ab4b3996a167bbaa8e9a4955a6",
+        "meta": "sha256:4bc50ec6aa498e28bb6cbf9f9718051eb1dfe75964c5071a4cc53967998e9d26"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.2d.UDIM.v1": {
+      "definition": {
+        "id": "ayon.2d.UDIM.v1",
+        "versionlessId": "ayon.2d.UDIM",
+        "version": 1,
+        "name": "UDIM",
+        "description": "UDIM Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "UDIM",
+          "description": "UDIM trait model.",
+          "properties": {
+            "udim": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "UDIM value."
+            },
+            "udim_regex": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": "(?:\\.|_)(?P<udim>\\d+)\\.\\D+\\d?$",
+              "description": "UDIM regex."
+            }
+          },
+          "required": [
+            "udim"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:ed62ee5b3f4a0d4e2d1c1bc76dfa69b98caa095eacd766ca6add95fecef1ecaf",
+        "behavior": "sha256:3e5a203d11fded550170c062e02ca54925259343c05da3e2d8207de0d699677c",
+        "meta": "sha256:441d3ecf8e53e65e7c0d3ac1428545f1fca69e2589cd35fe442171227d1f09a8"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.3d.Geometry.v1": {
+      "definition": {
+        "id": "ayon.3d.Geometry.v1",
+        "versionlessId": "ayon.3d.Geometry",
+        "version": 1,
+        "name": "Geometry",
+        "description": "Geometry trait model.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Geometry",
+          "description": "Geometry type trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:52792ed04cae03ce150478ff4d6bef73ccf6cc1404ada7eee704f8b8c79a5fe0",
+        "meta": "sha256:08c70330295e4e495926bf8a0fbc74811db9229465f372fd731e44ca3ac809e8"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.3d.IESProfile.v1": {
+      "definition": {
+        "id": "ayon.3d.IESProfile.v1",
+        "versionlessId": "ayon.3d.IESProfile",
+        "version": 1,
+        "name": "IESProfile",
+        "description": "IES profile trait model.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "IESProfile",
+          "description": "IES profile (IES-LM-64) type trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:9f0deeb44f636c8208e1f9c60b351c6afeccbe5780c6c5da217aaafbda93ae4d",
+        "meta": "sha256:91da3271da6ececa70bfe5b0ab5826d56996dd656d0ff416d9183870873e380a"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.3d.Lighting.v1": {
+      "definition": {
+        "id": "ayon.3d.Lighting.v1",
+        "versionlessId": "ayon.3d.Lighting",
+        "version": 1,
+        "name": "Lighting",
+        "description": "Lighting trait model.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Lighting",
+          "description": "Lighting trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:c537b0e931e5b1ae1b295840a5b6af6774623c0dcb3c297d50541d4789e99ec7",
+        "meta": "sha256:02fd43e8976a62942abfbcf00fec80e0f718ae76389260c854ca71605b1ac5d6"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.3d.Shader.v1": {
+      "definition": {
+        "id": "ayon.3d.Shader.v1",
+        "versionlessId": "ayon.3d.Shader",
+        "version": 1,
+        "name": "Shader",
+        "description": "Shader trait model.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Shader",
+          "description": "Shader trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:5f88fae949194d0052c350eb24495c261364fa8357727f7799a95eba5c92adab",
+        "meta": "sha256:d55efc929747f8f8d7c780f2697250fb5c64242d2404dcaf5d74a30cf725f35a"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.3d.Spatial.v1": {
+      "definition": {
+        "id": "ayon.3d.Spatial.v1",
+        "versionlessId": "ayon.3d.Spatial",
+        "version": 1,
+        "name": "Spatial",
+        "description": "Spatial trait model.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Spatial",
+          "description": "Spatial trait model.",
+          "properties": {
+            "up_axis": {
+              "type": "string",
+              "description": "Up axis."
+            },
+            "handedness": {
+              "type": "string",
+              "description": "Handedness."
+            },
+            "meters_per_unit": {
+              "type": "number",
+              "description": "Meters per unit."
+            }
+          },
+          "required": [
+            "up_axis",
+            "handedness",
+            "meters_per_unit"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:2935d07b8e5ec4892a41791c684a0e50f973523628810a35ec1bead58839d793",
+        "behavior": "sha256:0f48b82df6a43eb8904f10e658350737c4d730b8e7f5735d89125cb8a114b85d",
+        "meta": "sha256:070f891e3755b1ae5b18f1920c5bbdbef8ebf4cee1fc32d115e3da39a733c2e1"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.color.ColorManaged.v1": {
+      "definition": {
+        "id": "ayon.color.ColorManaged.v1",
+        "versionlessId": "ayon.color.ColorManaged",
+        "version": 1,
+        "name": "ColorManaged",
+        "description": "Color Managed trait.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "ColorManaged",
+          "description": "Color managed trait.",
+          "properties": {
+            "color_space": {
+              "type": "string",
+              "description": "An OCIO colorspace name available in the \"current\" OCIO context."
+            },
+            "config_path": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Absolute, resolved path to the OCIO config used to interpret `color_space`."
+            },
+            "config_template": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Anatomy template (with tokens) pointing at the same OCIO config, for contexts where the resolved absolute path isn't portable (e.g. remote publishing)."
+            },
+            "display": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "OCIO display, set when the data were produced through a display/view transform."
+            },
+            "view": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "OCIO view, paired with `display`."
+            }
+          },
+          "required": [
+            "color_space"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:4526ba9c8983d45e547327e5e46fa7f912c7cc5fa21c2f459803d3730713d430",
+        "behavior": "sha256:3eaa7f984b51d5cda501770cf6f50b1ac0ca02a8ea495981d01a650491992bab",
+        "meta": "sha256:7516c20527b810721453634493747b3bfcd9ae5f1bac23bf7a09cc8e070d8cd0"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.Bundle.v1": {
+      "definition": {
+        "id": "ayon.content.Bundle.v1",
+        "versionlessId": "ayon.content.Bundle",
+        "version": 1,
+        "name": "Bundle",
+        "description": "Bundle Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Bundle",
+          "description": "Bundle trait model.",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "format": "ayon-traits",
+                "additionalProperties": {
+                  "type": "object"
+                }
+              },
+              "description": "List of representations."
+            }
+          },
+          "required": [
+            "items"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:fdeb8fa94effcbe0fc17bad81738909a048ed632cb869f54d5de3ae50b2fd350",
+        "behavior": "sha256:dafcf7d161c8b4d52418b1e5b1411fe9eb6875ed3e3791184c808b354098992c",
+        "meta": "sha256:2d1eb65d728385af223c4f33c4fc7d8543d4ab80aff38efb966ad404dbe5f0f7"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.Compressed.v1": {
+      "definition": {
+        "id": "ayon.content.Compressed.v1",
+        "versionlessId": "ayon.content.Compressed",
+        "version": 1,
+        "name": "Compressed",
+        "description": "Compressed Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Compressed",
+          "description": "Compressed trait model.",
+          "properties": {
+            "compression_type": {
+              "type": "string",
+              "description": "Compression type."
+            }
+          },
+          "required": [
+            "compression_type"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:040d4b4610f42edf893e9f8cfc74eaf04e8c8ac663c99ca01073d6c9e7a28b42",
+        "behavior": "sha256:5c7e9aad5a5482db65de1f5b82a7321c3a9064d9c2e5a14e9c4b094d1acdb148",
+        "meta": "sha256:9fc9bae20c35cad1cd34aabc664896852617d4b6748d438212951dd8b093c525"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.FileLocation.v2": {
+      "definition": {
+        "id": "ayon.content.FileLocation.v2",
+        "versionlessId": "ayon.content.FileLocation",
+        "version": 2,
+        "name": "FileLocation",
+        "description": "FileLocation Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "FileLocation",
+          "description": "FileLocation trait model.",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "format": "path",
+              "description": "File path."
+            },
+            "file_size": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "File size in bytes."
+            },
+            "file_hash": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "File hash."
+            },
+            "file_hash_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Algorithm used for `file_hash` (e.g. \"sha256\"), None if unknown."
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:ed192d6533ec00426e3c988a81a7ec32137decf206eba94906a451939f3bebce",
+        "behavior": "sha256:e0b487d86e61df4c2ce7a9835cbb88edb844a1b985c6270de5bcff1fa0383f9e",
+        "meta": "sha256:5ec0c23a08541154c12fec8454e77dd23461ac99a5a8da2a1a36abafc10473d9"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.FileLocations.v2": {
+      "definition": {
+        "id": "ayon.content.FileLocations.v2",
+        "versionlessId": "ayon.content.FileLocations",
+        "version": 2,
+        "name": "FileLocations",
+        "description": "FileLocations Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "FileLocations",
+          "description": "FileLocations trait model.",
+          "properties": {
+            "file_paths": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ayon.content.FileLocation.v2"
+              },
+              "description": "File locations."
+            }
+          },
+          "required": [
+            "file_paths"
+          ],
+          "$defs": {
+            "ayon.content.FileLocation.v2": {
+              "type": "object",
+              "title": "FileLocation",
+              "description": "FileLocation trait model.",
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "format": "path",
+                  "description": "File path."
+                },
+                "file_size": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "default": null,
+                  "description": "File size in bytes."
+                },
+                "file_hash": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "default": null,
+                  "description": "File hash."
+                },
+                "file_hash_type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "default": null,
+                  "description": "Algorithm used for `file_hash` (e.g. \"sha256\"), None if unknown."
+                }
+              },
+              "required": [
+                "file_path"
+              ]
+            }
+          }
+        }
+      },
+      "hashes": {
+        "schema": "sha256:c6779bd7e2e9e50d525d82fe158ae82c0e90a3c90b547eb6e49f05b4f2de0e43",
+        "behavior": "sha256:7e9e5870ceb5e342e5e8f5bf018661012e8caf31d62d2edfa03db0a59f2391bf",
+        "meta": "sha256:2ed52edb45081fd0464c7c06b64e2263a6f19c5281fa43439b18189e9ed6ecba"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.Fragment.v1": {
+      "definition": {
+        "id": "ayon.content.Fragment.v1",
+        "versionlessId": "ayon.content.Fragment",
+        "version": 1,
+        "name": "Fragment",
+        "description": "Fragment Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Fragment",
+          "description": "Fragment trait model.",
+          "properties": {
+            "parent": {
+              "type": "string",
+              "description": "Parent representation id."
+            }
+          },
+          "required": [
+            "parent"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:e2bc781aae1e313722b052584a5929e094fd187f102c965568da39ca1c658b9f",
+        "behavior": "sha256:088ee0b115700c00dd94d38a97283a182ecbb2e960f08ef17c26495b730281f7",
+        "meta": "sha256:fc64a9d61991b437e6429f1338611f21dfc6e2eaf6a8dfb61b28d01b3669506a"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.LocatableContent.v1": {
+      "definition": {
+        "id": "ayon.content.LocatableContent.v1",
+        "versionlessId": "ayon.content.LocatableContent",
+        "version": 1,
+        "name": "LocatableContent",
+        "description": "LocatableContent Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "LocatableContent",
+          "description": "LocatableContent trait model.",
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "Location."
+            },
+            "is_templated": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": null,
+              "description": "Is the location templated? Default is None."
+            }
+          },
+          "required": [
+            "location"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:1edb3f3175a621b9b65881a584afff26b92cd1fdc11fc09a2b0bd00e1e626a0e",
+        "behavior": "sha256:3da21541e975e1b934edf0533a996f7db55f6e30e9cce2ead2a69b8452ba8c75",
+        "meta": "sha256:0cc56865cb1ef456c6bf1d894be8d75a643f72c85278fab05163ed2e6f5ad7b1"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.MimeType.v1": {
+      "definition": {
+        "id": "ayon.content.MimeType.v1",
+        "versionlessId": "ayon.content.MimeType",
+        "version": 1,
+        "name": "MimeType",
+        "description": "MimeType Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "MimeType",
+          "description": "MimeType trait model.",
+          "properties": {
+            "mime_type": {
+              "type": "string",
+              "description": "Mime type like image/jpeg."
+            }
+          },
+          "required": [
+            "mime_type"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:4fe66d677567b1da9e031b4b7fd3f8795b3caeda2f5a89242345c0c1e17187c5",
+        "behavior": "sha256:0beb907a12cd8c53af14a761f89903e52d032ce8124efb4f5496f0c1169a5b02",
+        "meta": "sha256:54d692552b465695c0f923cc2b146b3020304c17718e700ad409c4dc6ffdf2a6"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.OriginalFilename.v1": {
+      "definition": {
+        "id": "ayon.content.OriginalFilename.v1",
+        "versionlessId": "ayon.content.OriginalFilename",
+        "version": 1,
+        "name": "OriginalFilename",
+        "description": "OriginalFilename Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "OriginalFilename",
+          "description": "OriginalFilename trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:e92ee7b53a0e0e1ca282f69fe25660e44b3d8ff9005f3f95c550d8030562482a",
+        "meta": "sha256:dbba2d4e02a6c034144c03456edb70cd0cdaded821a29fe87092a557581790f7"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.RootlessLocation.v1": {
+      "definition": {
+        "id": "ayon.content.RootlessLocation.v1",
+        "versionlessId": "ayon.content.RootlessLocation",
+        "version": 1,
+        "name": "RootlessLocation",
+        "description": "RootlessLocation Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "RootlessLocation",
+          "description": "RootlessLocation trait model.",
+          "properties": {
+            "rootless_path": {
+              "type": "string",
+              "description": "Rootless path."
+            }
+          },
+          "required": [
+            "rootless_path"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:dc28a557e0176e3a0611c38b7a50f054bca77203d462bfaec2649efbe0387956",
+        "behavior": "sha256:483a92ee14747defec9f698860e33aec83e0b99485b02a5272401bc05e5b6608",
+        "meta": "sha256:4e24578796d52187495a0f8a56f3c36b329b09e2cf84262d29645d12009b5490"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.cryptography.DigitallySigned.v1": {
+      "definition": {
+        "id": "ayon.cryptography.DigitallySigned.v1",
+        "versionlessId": "ayon.cryptography.DigitallySigned",
+        "version": 1,
+        "name": "DigitallySigned",
+        "description": "Digitally signed trait.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "DigitallySigned",
+          "description": "Digitally signed trait.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:08b383bb03447ff05cf942b7f2cf1614a75a978811ca90c334b9c096d4f37beb",
+        "meta": "sha256:0f1e8ceab632939e7c71fcc6d7c6855e2673e04bee2dfe8766a116cf1bc6035b"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.cryptography.PGPSigned.v1": {
+      "definition": {
+        "id": "ayon.cryptography.PGPSigned.v1",
+        "versionlessId": "ayon.cryptography.PGPSigned",
+        "version": 1,
+        "name": "PGPSigned",
+        "description": "PGP signed trait.",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "PGPSigned",
+          "description": "PGP signed trait.",
+          "properties": {
+            "signed_data": {
+              "type": "string",
+              "description": "Signed data."
+            },
+            "clear_text": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Clear text."
+            }
+          },
+          "required": [
+            "signed_data"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:a44bfd9be5e2f80d1e7463cbed5ba9f7b0b9992901bf93589082940223a8c7b4",
+        "behavior": "sha256:2f784df575de2cc98478c12992637c420e885f987f86286e407ce645c62f0a4b",
+        "meta": "sha256:596be252373d7c5d41b6376cf1d400cd74692a8f67fb4cdfe01eb79c2aa7a8f0"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.lifecycle.Persistent.v1": {
+      "definition": {
+        "id": "ayon.lifecycle.Persistent.v1",
+        "versionlessId": "ayon.lifecycle.Persistent",
+        "version": 1,
+        "name": "Persistent",
+        "description": "Persistent Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Persistent",
+          "description": "Persistent trait model.",
+          "properties": {
+            "persistent": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      },
+      "hashes": {
+        "schema": "sha256:826f1a9f9b64b196b03d3318e5203a94427032dc1a14bcdca8d1935c9aa490c2",
+        "behavior": "sha256:6604f1ef626903434fe522ced4493d86dfa08e034186897b8011f623821d98c4",
+        "meta": "sha256:b7d4e8e88b1ebcf3e2074e8dce73e9db8bd48794e789a63541876cc0f2a7f69b"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.lifecycle.StagingDirectory.v1": {
+      "definition": {
+        "id": "ayon.lifecycle.StagingDirectory.v1",
+        "versionlessId": "ayon.lifecycle.StagingDirectory",
+        "version": 1,
+        "name": "StagingDirectory",
+        "description": "Staging Directory Trait Model",
+        "persistent": false,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "StagingDirectory",
+          "description": "Staging directory of representation files during publishing.",
+          "properties": {
+            "path": {
+              "type": "string",
+              "format": "path",
+              "description": "Staging directory."
+            },
+            "is_persistent": {
+              "type": "boolean",
+              "default": false,
+              "description": "Files in the staging directory must be kept after publishing."
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:16b0eedb787d0ab90878df7249f18ad2c30ae2b4cd32f4f2cd94df24159b6126",
+        "behavior": "sha256:c54990a231800ba3e5fde7070a6ebce5ec8de7b6c8a14e6f6993fef78a9d0cd5",
+        "meta": "sha256:c071e743a33b2c99130963eedffb49c3a59904fe6041262014791fc12f4becc8"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.lifecycle.Transient.v1": {
+      "definition": {
+        "id": "ayon.lifecycle.Transient.v1",
+        "versionlessId": "ayon.lifecycle.Transient",
+        "version": 1,
+        "name": "Transient",
+        "description": "Transient Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Transient",
+          "description": "Transient trait model.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:713d37c2454b9def8ece0fcc369c85bbf5a1c92dffa2df1181312e843a5d8fcd",
+        "meta": "sha256:2034216681d201a96edc13b45ae269a78d979f5e777c635ad374f3ba5b262d2f"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.CustomTags.v1": {
+      "definition": {
+        "id": "ayon.meta.CustomTags.v1",
+        "versionlessId": "ayon.meta.CustomTags",
+        "version": 1,
+        "name": "CustomTags",
+        "description": "Custom Tags Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "CustomTags",
+          "description": "Custom tags trait model.",
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Custom tags."
+            }
+          },
+          "required": [
+            "tags"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:58667a679ebac85e62b3d8166717fb90fe9a422a2a506f82937ce2ab5b88938c",
+        "behavior": "sha256:853035bc25c4b56671381f8a2a787d6a8a6e6e7d1532722e237e7cbd8b7e9ed0",
+        "meta": "sha256:5781d4b2e25d9b25f1e7d967c829accd47f26e2f1c77a0bd795e16b7db9c5850"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.IntendedUse.v1": {
+      "definition": {
+        "id": "ayon.meta.IntendedUse.v1",
+        "versionlessId": "ayon.meta.IntendedUse",
+        "version": 1,
+        "name": "IntendedUse",
+        "description": "Intended Use Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "IntendedUse",
+          "description": "Intended use of the representation.",
+          "properties": {
+            "use": {
+              "type": "string",
+              "description": "Intended use description."
+            }
+          },
+          "required": [
+            "use"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:83a0d0743faadf75d1b4e5d05afbe81111a6c4d72a2c1def5371e270d72dd8e7",
+        "behavior": "sha256:84251b96cdb63d3fc449a0c3fa42ae2f2b1fd89d05bcf76c4a7db27086055565",
+        "meta": "sha256:23969c159635759ed4b538528f458e5bf1c9846ba9062dbdcc9dab531476befd"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.KeepOriginalLocation.v1": {
+      "definition": {
+        "id": "ayon.meta.KeepOriginalLocation.v1",
+        "versionlessId": "ayon.meta.KeepOriginalLocation",
+        "version": 1,
+        "name": "KeepOriginalLocation",
+        "description": "Keep Original Location Trait Model",
+        "persistent": false,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "KeepOriginalLocation",
+          "description": "Keep files in its original location.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:4a6e2f57b51fa9fa441e0fbe660a73b11ea0ff7b8524bf3a6d1dc97914c4d84b",
+        "behavior": "sha256:9fa0521ab5c5a6e3480ebff442d1864a9c5dc1c1d139241f6a691a36ed95e71f",
+        "meta": "sha256:18d75fb826589dd4c805b334c0117fcea7ea698b51e7e3781c283f532c4b6765"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.KeepOriginalName.v1": {
+      "definition": {
+        "id": "ayon.meta.KeepOriginalName.v1",
+        "versionlessId": "ayon.meta.KeepOriginalName",
+        "version": 1,
+        "name": "KeepOriginalName",
+        "description": "Keep Original Name Trait Model",
+        "persistent": false,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "KeepOriginalName",
+          "description": "Keep files in its original name.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:4a6e2f57b51fa9fa441e0fbe660a73b11ea0ff7b8524bf3a6d1dc97914c4d84b",
+        "behavior": "sha256:98ff141c2b2e9a6b8675b1030239dea4e3b6a41c9a2cd2f3c4c73a4f6cd3e369",
+        "meta": "sha256:32ffcf2f77858ca5864527f42482f8110be24010b6b192b0f047a87aacd31b4c"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.ReviewOutput.v1": {
+      "definition": {
+        "id": "ayon.meta.ReviewOutput.v1",
+        "versionlessId": "ayon.meta.ReviewOutput",
+        "version": 1,
+        "name": "ReviewOutput",
+        "description": "Review Output Trait Model",
+        "persistent": false,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "ReviewOutput",
+          "description": "Data of a review output needed by the following publish plugins.",
+          "properties": {
+            "burnins": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "description": "Names of burnin definitions linked to the output."
+            },
+            "ffmpeg_cmd": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Command used to create the output."
+            },
+            "source_resolution_width": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Width of the source."
+            },
+            "source_resolution_height": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Height of the source."
+            },
+            "output_def": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "default": null,
+              "description": "Output definition from review settings used to create the output."
+            }
+          }
+        }
+      },
+      "hashes": {
+        "schema": "sha256:bd6c1b172497744b9af8337b02adf79e1df0ace40feef14cacb85e5793b4a8d1",
+        "behavior": "sha256:838c612b3c87a82765bd50b5653e0a46356ce8ee37b0d09079f0e3dc59e0cbbc",
+        "meta": "sha256:23689feff66531a240a15c5fe61d585c1a81593f4c9a484739fb1936f32f1dd0"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.SourceApplication.v1": {
+      "definition": {
+        "id": "ayon.meta.SourceApplication.v1",
+        "versionlessId": "ayon.meta.SourceApplication",
+        "version": 1,
+        "name": "SourceApplication",
+        "description": "Source Application Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "SourceApplication",
+          "description": "Metadata about the source (producing) application.",
+          "properties": {
+            "application": {
+              "type": "string",
+              "description": "Application name."
+            },
+            "variant": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Application variant."
+            },
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Application version."
+            },
+            "platform": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Platform name (Windows, darwin, etc.)."
+            },
+            "host_name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "AYON host name if applicable."
+            }
+          },
+          "required": [
+            "application"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:dabf2f3c15a72ba7a46ee90ad78e979ebb3447607f78913dd67008f477f6762b",
+        "behavior": "sha256:64bf768d60d7f46503c2b5aa2ec46e0211d21c574ccf23248642441a34e12032",
+        "meta": "sha256:a1124ed7930f4650d54fe33ee2e68d246eace74c1c4e9da91bbe72f4249fc1ef"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.Tagged.v1": {
+      "definition": {
+        "id": "ayon.meta.Tagged.v1",
+        "versionlessId": "ayon.meta.Tagged",
+        "version": 1,
+        "name": "Tagged",
+        "description": "Tagged Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Tagged",
+          "description": "Tagged trait model.",
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Tags."
+            }
+          },
+          "required": [
+            "tags"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:58667a679ebac85e62b3d8166717fb90fe9a422a2a506f82937ce2ab5b88938c",
+        "behavior": "sha256:056448b0805c0225544655543e09b9bc9ec06f92b0be59e0627262efa5ea0714",
+        "meta": "sha256:52eb2765e11ee9a90ffe389ba587eae64ebb93b9e2ce6692c1aaf52105873195"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.TemplatePath.v1": {
+      "definition": {
+        "id": "ayon.meta.TemplatePath.v1",
+        "versionlessId": "ayon.meta.TemplatePath",
+        "version": 1,
+        "name": "TemplatePath",
+        "description": "Template Path Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "TemplatePath",
+          "description": "TemplatePath trait model.",
+          "properties": {
+            "template": {
+              "type": "string",
+              "description": "Template path."
+            },
+            "data": {
+              "type": "object",
+              "description": "Formatting data."
+            }
+          },
+          "required": [
+            "template",
+            "data"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:da124bca327f53db798eda828c1ee75003b471d43d4e16b00c71474f87d842e9",
+        "behavior": "sha256:41804eaf15f7e38d8ec2509a13a6cb2ce779b16d51cc592e25b8f800683f221f",
+        "meta": "sha256:1c5545e8fc5042503198e2de671b8cea30ba749643674b979a875c87a2422e0a"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.meta.Variant.v1": {
+      "definition": {
+        "id": "ayon.meta.Variant.v1",
+        "versionlessId": "ayon.meta.Variant",
+        "version": 1,
+        "name": "Variant",
+        "description": "Variant Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Variant",
+          "description": "Variant trait model.",
+          "properties": {
+            "variant": {
+              "type": "string",
+              "description": "Variant name."
+            }
+          },
+          "required": [
+            "variant"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:180f2aa60a7be9a7296775a4573db98c9af2b55d353cd1e5e5d8eafb5159544c",
+        "behavior": "sha256:cdd7ad90c829bf0ed7f42146c317f620d6bb36c454ac32e875dd2a8796b120ab",
+        "meta": "sha256:6453ba317d34e790abf570849c743cd4a11959618022feec4cd081f580f94c25"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.time.FrameRanged.v2": {
+      "definition": {
+        "id": "ayon.time.FrameRanged.v2",
+        "versionlessId": "ayon.time.FrameRanged",
+        "version": 2,
+        "name": "FrameRanged",
+        "description": "Frame Ranged Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "FrameRanged",
+          "description": "Frame ranged trait model.",
+          "properties": {
+            "frame_start": {
+              "type": "integer",
+              "description": "Frame start."
+            },
+            "frame_end": {
+              "type": "integer",
+              "description": "Frame end."
+            },
+            "frame_in": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame in."
+            },
+            "frame_out": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame out."
+            },
+            "step": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Step."
+            },
+            "frame_rate_numerator": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame rate numerator."
+            },
+            "frame_rate_denominator": {
+              "type": "integer",
+              "default": 1,
+              "description": "Frame rate denominator."
+            }
+          },
+          "required": [
+            "frame_start",
+            "frame_end"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:8d52b239419fc68b5df757c7f2db0399ec9ad09bf791264f412c6b6c66d96eb4",
+        "behavior": "sha256:c085665c31e72cdd2214647d87db3c5fd488c2fbc049a4f0d9ecfdc36cb0ae95",
+        "meta": "sha256:1d919c67f6502afefcced896236d45c618311b03cce130694d11b62214bf7200"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.time.Handles.v1": {
+      "definition": {
+        "id": "ayon.time.Handles.v1",
+        "versionlessId": "ayon.time.Handles",
+        "version": 1,
+        "name": "Handles",
+        "description": "Handles Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Handles",
+          "description": "Handles trait model.",
+          "properties": {
+            "inclusive": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "default": false,
+              "description": "Handle frames are part of the files - they are included in the `FrameRanged` frame range."
+            },
+            "frame_start_handle": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame start handle."
+            },
+            "frame_end_handle": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame end handle."
+            }
+          }
+        }
+      },
+      "hashes": {
+        "schema": "sha256:0b3f7dd2800c4820b59bd3d9fb16d14d8d4a9e896b53f035dac10191501875d6",
+        "behavior": "sha256:6d3def357d7c5b6ccee78977ac8ec7ade957de99ec357a651b30973d12948643",
+        "meta": "sha256:31180ee36af9d93ebb425310a5b872098dd48ad7bbf6750d364e3427d61a9dd9"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.time.SMPTETimecode.v1": {
+      "definition": {
+        "id": "ayon.time.SMPTETimecode.v1",
+        "versionlessId": "ayon.time.SMPTETimecode",
+        "version": 1,
+        "name": "Timecode",
+        "description": "SMPTE Timecode Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Timecode",
+          "description": "SMPTE Timecode trait model.",
+          "properties": {
+            "timecode": {
+              "type": "string",
+              "description": "SMPTE Timecode HH:MM:SS:FF"
+            }
+          },
+          "required": [
+            "timecode"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:5f2106adde7fcb61081a106fc78df8a258eb25dbca13fbd1edaa5a518c207bf4",
+        "behavior": "sha256:2f8e6311d7de8fbdb1a472d12a6fdc54353e357c045dbe660f89c003f8dbfd9e",
+        "meta": "sha256:5a2505fb19bf0127a91d5e40072e28c05b0ebb66c4dc9bb1762b4bd2c60537c8"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.time.Sequence.v1": {
+      "definition": {
+        "id": "ayon.time.Sequence.v1",
+        "versionlessId": "ayon.time.Sequence",
+        "version": 1,
+        "name": "Sequence",
+        "description": "Sequence Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Sequence",
+          "description": "Sequence trait model.",
+          "properties": {
+            "frame_padding": {
+              "type": "integer",
+              "description": "Frame padding."
+            },
+            "gaps_policy": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "forbidden",
+                "missing",
+                "hold",
+                "black",
+                null
+              ],
+              "default": "forbidden",
+              "description": "Gaps policy - how to handle gaps in sequence."
+            },
+            "frame_regex": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "regex",
+              "default": null,
+              "description": "Frame regex - regular expression to match frame numbers. Must include 'index' named group and 'padding' named group."
+            },
+            "frame_spec": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame list specification of frames. This takes string like \"1-10,20-30,40-50\" etc."
+            }
+          },
+          "required": [
+            "frame_padding"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:8038517fb649a5d23a0abd028675cf7abe70b67380c0a86a37513b9842d265f2",
+        "behavior": "sha256:3a1d3ff1c5c1eba56a61d26e4a382efcc7fe79613fa4ea79e883036c5f591da8",
+        "meta": "sha256:942e752c3fb3df2e865126195bca35c02a2f4f5ebe3c402db7992898b26ed8e4"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.time.Slate.v1": {
+      "definition": {
+        "id": "ayon.time.Slate.v1",
+        "versionlessId": "ayon.time.Slate",
+        "version": 1,
+        "name": "Slate",
+        "description": "Slate Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Slate",
+          "description": "Slate trait model.",
+          "properties": {
+            "frames": {
+              "type": "integer",
+              "default": 1,
+              "description": "Number of slate frames at the start."
+            }
+          }
+        }
+      },
+      "hashes": {
+        "schema": "sha256:70a303a1c70d68b718309183aaddeee17c277a2e2ce2db0a8201cc50cfb5970c",
+        "behavior": "sha256:52de507febd77bcb75720ae7b4cedc8032e0e9eecb96e99b98543c11e3945501",
+        "meta": "sha256:b31f5655fb0d5bdca05efd8ce6577ba00ee1ac3b2dbbf3c8ffd0c543fc8fb377"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.time.Static.v1": {
+      "definition": {
+        "id": "ayon.time.Static.v1",
+        "versionlessId": "ayon.time.Static",
+        "version": 1,
+        "name": "Static",
+        "description": "Static Time Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "Static",
+          "description": "Static time trait.",
+          "properties": {}
+        }
+      },
+      "hashes": {
+        "schema": "sha256:98ca3298c218655ed4a808575e79fc6506d34bb234202ea091beb09d0c37c9f3",
+        "behavior": "sha256:5e50ba9e8aec7a1b237c087ab455f851e20e89ce0b42012552d21988665cce54",
+        "meta": "sha256:56613ed47d20f9c084fd703b7c7f1f755554c80e268ecf7166abed3dc91e7fe8"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": false,
+      "behaviorChanges": []
+    }
+  }
+}

@@ -430,6 +430,19 @@ def test_from_dict_nested_and_typed_values() -> None:
         result.validate()
 
 
+def test_from_dict_legacy_enum() -> None:
+    """Enums stored as `str(member)` by older versions are restored."""
+    trait_data = {
+        Sequence.id: {
+            "frame_padding": 4,
+            "gaps_policy": "GapPolicy.forbidden",
+        },
+    }
+    result = Representation.from_dict("exr", trait_data=trait_data)
+    sequence = result.get_trait(Sequence)
+    assert sequence.gaps_policy is GapPolicy.forbidden
+
+
 def test_from_dict_bundle() -> None:
     """Bundle items are restored by their trait ids, also nested."""
     import json

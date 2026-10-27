@@ -224,6 +224,28 @@ function Run-Tests {
     & uv $RunArgs @TestArguments
 }
 
+function Invoke-TraitsManifest {
+    param(
+        [string[]]$ManifestArguments
+    )
+
+    $Command = "check"
+    $OtherArguments = @()
+    if ($ManifestArguments.Length -gt 0) {
+        $Command = $ManifestArguments[0]
+        $OtherArguments = @($ManifestArguments | Select-Object -Skip 1)
+    }
+    if ($OtherArguments -notcontains "--base-ref") {
+        $OtherArguments += @("--base-ref", "origin/develop")
+    }
+    $env:PYTHONPATH = "$($RepoRoot)/client"
+    $RunArgs = @(
+        "run", "python", "-m", "ayon_core.pipeline.traits.manifest",
+        $Command, "--module", "ayon_core.pipeline.traits", "--core-hash"
+    )
+    & uv $RunArgs @OtherArguments
+}
+
 function Update-Tests-Visuals {
     # Render the same images as the CI job
     #   '.github/workflows/pr_unittests.yaml': linux x64, offscreen Qt and
@@ -263,6 +285,8 @@ function Write-Help {
     Write-Info -Text "  run-tests                     ", "Run ayon-core tests without optional tests" -Color White, Cyan
     Write-Info -Text "  run-tests --optional          ", "Run ayon-core tests including optional tests" -Color White, Cyan
     Write-Info -Text "  update-tests-visuals          ", "Run ayon-core tests to update visual images" -Color White, Cyan
+    Write-Info -Text "  traits-manifest export        ", "Update trait manifest server/traits.json" -Color White, Cyan
+    Write-Info -Text "  traits-manifest check         ", "Check trait manifest against origin/develop" -Color White, Cyan
     Write-Host ""
 }
 
@@ -293,6 +317,9 @@ function Resolve-Function {
     } elseif ($FunctionName -eq "updatetestsvisuals") {
         Set-Cwd
         Update-Tests-Visuals
+    } elseif ($FunctionName -eq "traitsmanifest") {
+        Set-Cwd
+        Invoke-TraitsManifest -ManifestArguments $Arguments
     } else {
         Write-Host "Unknown function ""$FunctionName"""
         Write-Help

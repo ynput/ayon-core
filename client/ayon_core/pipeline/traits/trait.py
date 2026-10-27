@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
+    ClassVar,
     Generic,
     Optional,
     TypeVar,
@@ -33,7 +34,14 @@ class TraitBase(ABC):
     This model must be used as a base for all trait models.
     ``id``, ``name``, and ``description`` are abstract attributes that must be
     implemented in the derived classes.
+
+    ``ui_hints`` are optional hints for rendering the trait in
+    the frontend (e.g. ``{"group": "Files", "widget": "files"}``).
+    They are exported with the trait definition
+    (see `ayon_core.pipeline.traits.schema`) and do not affect the data.
     """
+
+    ui_hints: ClassVar[Optional[dict[str, Any]]] = None
 
     @property
     @abstractmethod
@@ -179,8 +187,12 @@ def _convert_value(value: Any, type_hint: Any) -> Any:  # noqa: PLR0911
     if type_hint is re.Pattern and isinstance(value, str):
         return re.compile(value)
     if issubclass(type_hint, Enum):
-        if isinstance(value, str) and value in type_hint.__members__:
-            return type_hint[value]
+        if isinstance(value, str):
+            # Older data stored enums as `str(member)`, for example
+            # "GapPolicy.forbidden", so the class prefix is ignored.
+            name = value.removeprefix(f"{type_hint.__name__}.")
+            if name in type_hint.__members__:
+                return type_hint[name]
         return type_hint(value)
     if (
         issubclass(type_hint, TraitBase)
