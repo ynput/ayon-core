@@ -876,6 +876,33 @@ class PaginatedTableModel(QAbstractItemModel):
         )
         return [node.row_data for node in nodes if not node.is_root]
 
+    def get_all_child_rows(
+        self, node_id: str
+    ) -> list[dict[str, Any]] | None:
+        """Return the row data of all children of a node, when loaded.
+
+        Lets callers use the children without fetching them again, but
+        only when every page of them is in the model already.
+
+        Args:
+            node_id: Row ``id`` of the parent node.
+
+        Returns:
+            Row-data dicts of the children, or ``None`` when the node is
+            not loaded or more of its children can still be fetched.
+        """
+        for node in self._all_nodes:
+            if node.node_id != node_id or node.is_root:
+                continue
+            if (
+                not node.children_loaded
+                or node.has_more
+                or node.is_fetching
+            ):
+                return None
+            return [child.row_data for child in node.children]
+        return None
+
     def get_distinct_values(self, key: str) -> list[str]:
         """Return sorted distinct non-empty string values for a column.
 

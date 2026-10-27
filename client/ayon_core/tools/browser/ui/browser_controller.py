@@ -76,6 +76,7 @@ from ayon_core.tools.browser.ui.browser_queries import (
     get_products_query,
     get_sort_by,
     get_version_group_counts_query,
+    get_version_ids_query,
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import (
@@ -89,6 +90,9 @@ log = Logger.get_logger(__name__)
 # Each page contains up to 1 000 products, so this caps the total at
 # 50 000 products before a warning is logged.
 _MAX_GROUP_PAGES: int = 50
+
+# Page size of the ids-only query collecting the versions of a group.
+_VERSION_IDS_PAGE_SIZE: int = 1000
 
 # Columns queried for the grid, whose cards show the thumbnail, status and
 # product type (along with names that are always queried). The product
@@ -185,6 +189,21 @@ class _GroupCounts:
     counts: dict[str, int]
     total: int | None = None
     ungrouped: int | None = None
+
+
+@dataclass
+class _GroupVersionsFilter:
+    """Query arguments narrowing the versions to one group header.
+
+    Attributes:
+        version_filter: Version filter merged into the active one.
+        product_filter: Product filter merged into the active one.
+        product_ids: Limit the versions to these products.
+    """
+
+    version_filter: str = ""
+    product_filter: str = ""
+    product_ids: list[str] | None = None
 
 
 def _collect_product_base_types(
@@ -1861,31 +1880,8 @@ class BrowserWidgetController(QtCore.QObject):
 
             # Expanding a group header: fetch filtered versions.
             if parent_id.startswith("grp:"):
-                group_key, group_value = self._parse_group_id(parent_id)
-
-                product_ids: list[str] | None = None
-                version_filter = ""
-                product_filter = ""
-
-                if group_value is None:
-                    # The group of versions without a value.
-                    group_option = self._group_by_options.get(group_key)
-                    empty_filters = (
-                        self._build_ungrouped_filter(group_option)
-                        if group_option is not None
-                        else None
-                    )
-                    if empty_filters is None:
-                        return []
-                    version_filter, product_filter = empty_filters
-                elif group_key == GROUP_BY_PRODUCT_KEY:
-                    product_ids = [group_value]
-                else:
-                    version_filter, product_filter = (
-                        self._build_version_filter(group_key, group_value)
-                    )
-
-                if cursor is None:
+                group_filter = self._get_group_versions_filter(parent_id)
+                if group_filter is None or cursor is None:
                     return []
                 return self._fetch_filtered_versions_page(
                     query_filters,
@@ -1895,9 +1891,9 @@ class BrowserWidgetController(QtCore.QObject):
                     cursor,
                     sort_by,
                     descending,
-                    version_filter,
-                    product_filter,
-                    product_ids=product_ids,
+                    group_filter.version_filter,
+                    group_filter.product_filter,
+                    product_ids=group_filter.product_ids,
                 )
 
         # -- Default hierarchy / flat mode --------------------------------
@@ -3255,6 +3251,105 @@ class BrowserWidgetController(QtCore.QObject):
                 return group_type, None
         return group_type, group_value
 
+    def _get_group_versions_filter(
+        self, group_id: str
+    ) -> _GroupVersionsFilter | None:
+        """Return the query arguments listing the versions of a group.
+
+        Args:
+            group_id: Group header id, see :meth:`_parse_group_id`.
+
+        Returns:
+            Arguments narrowing the versions to the group, or ``None``
+            when the group can not hold any versions.
+        """
+        group_key, group_value = self._parse_group_id(group_id)
+        if group_value is None:
+            # The group of versions without a value.
+            group_option = self._group_by_options.get(group_key)
+            if group_option is None:
+                return None
+            empty_filters = self._build_ungrouped_filter(group_option)
+            if empty_filters is None:
+                return None
+            version_filter, product_filter = empty_filters
+            return _GroupVersionsFilter(version_filter, product_filter)
+        if group_key == GROUP_BY_PRODUCT_KEY:
+            return _GroupVersionsFilter(product_ids=[group_value])
+        version_filter, product_filter = self._build_version_filter(
+            group_key, group_value
+        )
+        return _GroupVersionsFilter(version_filter, product_filter)
+
+    def get_group_version_ids(self, group_id: str) -> set[str]:
+        """Return the ids of all versions listed under a group header.
+
+        Queries only the ids, with the filters used when expanding the
+        group, so these are the versions the group shows expanded.
+
+        Args:
+            group_id: Group header id, see :meth:`_parse_group_id`.
+
+        Returns:
+            Version ids of the group.
+
+        Raises:
+            RuntimeError: If there is no server connection or the
+                query returns errors.
+        """
+        project_name = self._current_project
+        if not project_name or not self._selected_folder_ids:
+            return set()
+        group_filter = self._get_group_versions_filter(group_id)
+        if group_filter is None:
+            return set()
+
+        con = ayon_api.get_server_api_connection()
+        if not con:
+            raise RuntimeError("No server connection")
+
+        query_filters = self._get_query_filters()
+        query_kwargs = self._version_query_kwargs(
+            query_filters,
+            self._merge_query_filters(
+                query_filters["version_filter"],
+                group_filter.version_filter,
+            ),
+            self._merge_query_filters(
+                query_filters["product_filter"],
+                group_filter.product_filter,
+            ),
+        )
+        variables: dict[str, Any] = {
+            "projectName": project_name,
+            "folderIds": self._selected_folder_ids,
+            "includeFolderChildren": self._include_folder_children,
+            "productIds": group_filter.product_ids,
+            "first": _VERSION_IDS_PAGE_SIZE,
+            "after": None,
+            **self._version_filter_variables(**query_kwargs),
+        }
+        query = get_version_ids_query()
+        version_ids: set[str] = set()
+        while True:
+            resp = con.query_graphql(query, variables)
+            if resp.errors:
+                raise RuntimeError(resp.errors)
+            versions_block = resp.data["data"]["project"]["versions"]
+            version_ids.update(
+                edge["node"]["id"] for edge in versions_block["edges"]
+            )
+            page_info = versions_block["pageInfo"]
+            next_cursor = page_info["endCursor"]
+            if (
+                not page_info["hasNextPage"]
+                or not next_cursor
+                or next_cursor == variables["after"]
+            ):
+                break
+            variables["after"] = next_cursor
+        return version_ids
+
     def _build_version_filter(
         self,
         group_key: str,
@@ -3966,6 +4061,34 @@ class BrowserWidgetController(QtCore.QObject):
             for tag in (tags or [])
         ]
 
+    @staticmethod
+    def _version_filter_variables(
+        version_filter: str = "",
+        product_filter: str = "",
+        task_filter: str = "",
+        folder_filter: str = "",
+        representation_filter: str = "",
+        featured_only: list[str] | None = None,
+        latest_per_folder: bool = False,
+        search: str | None = None,
+        has_reviewables: bool | None = None,
+    ) -> dict[str, Any]:
+        """Return the GraphQL variables of the version filters.
+
+        Takes the keyword arguments of :meth:`_version_query_kwargs`.
+        """
+        return {
+            "versionFilter": version_filter or "",
+            "productFilter": product_filter or "",
+            "taskFilter": task_filter or "",
+            "folderFilter": folder_filter or "",
+            "representationFilter": representation_filter or "",
+            "featuredOnly": featured_only,
+            "latestPerFolder": latest_per_folder,
+            "search": search,
+            "hasReviewables": has_reviewables,
+        }
+
     def _get_versions_page(
         self,
         project_name: str,
@@ -4046,20 +4169,22 @@ class BrowserWidgetController(QtCore.QObject):
 
         variables: dict[str, Any] = {
             "projectName": project_name,
-            "versionFilter": version_filter or "",
-            "productFilter": product_filter or "",
-            "taskFilter": task_filter or "",
-            "folderFilter": folder_filter or "",
-            "featuredOnly": featured_only,
-            "latestPerFolder": latest_per_folder,
-            "search": search,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
             "includeFolderChildren": include_folder_children,
             "versionIds": version_ids if version_ids is not None else None,
             "productIds": product_ids if product_ids else None,
-            "hasReviewables": has_reviewables,
-            "representationFilter": representation_filter or "",
+            **self._version_filter_variables(
+                version_filter=version_filter,
+                product_filter=product_filter,
+                task_filter=task_filter,
+                folder_filter=folder_filter,
+                representation_filter=representation_filter,
+                featured_only=featured_only,
+                latest_per_folder=latest_per_folder,
+                search=search,
+                has_reviewables=has_reviewables,
+            ),
         }
         if descending:
             variables["last"] = page_size

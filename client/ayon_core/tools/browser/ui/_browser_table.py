@@ -631,6 +631,20 @@ class BrowserTable(AYContainer):
     # Public methods
     # ------------------------------------------------------------------
 
+    def get_all_child_rows(
+        self, row_id: str
+    ) -> list[dict[str, Any]] | None:
+        """Return the rows under a row when all of them are loaded.
+
+        Args:
+            row_id: Row ``id`` of the parent row.
+
+        Returns:
+            Row-data dicts of the children, or ``None`` when not all of
+            them are loaded.
+        """
+        return self._model.get_all_child_rows(row_id)
+
     def reset_data(self) -> None:
         """Reset the underlying model data."""
         self._model.set_fetch_enabled(self._controller.has_selection)
