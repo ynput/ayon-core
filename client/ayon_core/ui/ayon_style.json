@@ -1380,6 +1380,8 @@
         "qt-active-midlight": "--md-sys-color-surface-container-high-dark",
         "qt-active-dark": "--md-sys-color-surface-container-dark",
         "qt-active-mid": "--md-sys-color-surface-container-low-dark",
-        "qt-active-shadow": "--md-sys-color-surface-container-lowest-dark"
+        "qt-active-shadow": "--md-sys-color-surface-container-lowest-dark",
+        "qt-active-tooltip-base": "--md-sys-color-background-lowest-dark",
+        "qt-active-tooltip-text": "--md-sys-color-on-surface-dark"
     }
 }

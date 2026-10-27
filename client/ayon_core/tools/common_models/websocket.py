@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import socket
 import ssl
 import threading
 import typing
@@ -509,6 +510,26 @@ _AUTH_FAILED_DELAY: float = 30.0
 _STOP_TIMEOUT: float = 1.0
 
 
+def _get_requests_ca_bundle() -> str | None:
+    """CA bundle used by 'requests' for ssl verification.
+
+    Returns:
+        str | None: Path to CA bundle file or directory.
+
+    """
+    # Same order as 'requests' uses when 'trust_env' is enabled
+    for env_key in ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
+        path = os.environ.get(env_key)
+        if path:
+            return path
+    try:
+        from requests.certs import where
+
+        return where()
+    except Exception:
+        return None
+
+
 def _abort_ws(ws_con: WebSocket) -> None:
     """Close websocket without waiting for server response.
 
@@ -525,6 +546,44 @@ def _abort_ws(ws_con: WebSocket) -> None:
             return
         except Exception:
             pass
+
+
+def _disable_websocket_ipv6() -> None:
+    """Skip IPv6 addresses in 'websocket' when python does not support IPv6.
+
+    Some DCC pythons are built without IPv6 support (e.g. Flame's on macOS).
+        'websocket' tries resolved addresses in order and fails on the first
+        IPv6 address with 'connect(): bad family' instead of trying the next
+        one. As 'localhost' resolves to '::1' first, websocket never
+        connected while REST requests (which use only IPv4) did work.
+
+    """
+    if socket.has_ipv6:
+        return
+
+    try:
+        from websocket import _http
+    except ImportError:
+        return
+
+    # Private function of 'websocket', skip if not available
+    get_addrinfo_list = getattr(_http, "_get_addrinfo_list", None)
+    if get_addrinfo_list is None or getattr(
+        get_addrinfo_list, "_ayon_ipv6_disabled", False
+    ):
+        return
+
+    def _get_ipv4_addrinfo_list(*args, **kwargs):
+        addrinfo_list, *other = get_addrinfo_list(*args, **kwargs)
+        ipv4_addrinfo_list = [
+            addrinfo
+            for addrinfo in addrinfo_list
+            if addrinfo[0] != socket.AF_INET6
+        ]
+        return (ipv4_addrinfo_list or addrinfo_list, *other)
+
+    _get_ipv4_addrinfo_list._ayon_ipv6_disabled = True
+    _http._get_addrinfo_list = _get_ipv4_addrinfo_list
 
 
 @dataclass
@@ -853,8 +912,19 @@ class EventHub:
         cert = con.get_cert()
         if ssl_verify is False:
             prepared_sslopt.setdefault("cert_reqs", ssl.CERT_NONE)
-        elif isinstance(ssl_verify, str):
-            prepared_sslopt.setdefault("ca_certs", ssl_verify)
+        else:
+            # Verify with the same CA bundle as REST requests do. Without
+            #   it 'websocket' uses system certificates of the python ssl
+            #   module, which might be missing (e.g. python on macOS), so
+            #   REST would work but websocket would always fail.
+            ca_bundle = ssl_verify
+            if not isinstance(ca_bundle, str):
+                ca_bundle = _get_requests_ca_bundle()
+            if ca_bundle:
+                key = "ca_certs"
+                if os.path.isdir(ca_bundle):
+                    key = "ca_cert_path"
+                prepared_sslopt.setdefault(key, ca_bundle)
 
         if cert:
             prepared_sslopt.setdefault("certfile", cert)
@@ -865,6 +935,7 @@ class EventHub:
         return create_connection(ws_url, **ws_kwargs)
 
     def _create_ws_connection(self) -> WebSocket:
+        _disable_websocket_ipv6()
         if hasattr(self._connection, "create_websocket"):
             ws_con = self._connection.create_websocket("ws")
         else:
@@ -942,7 +1013,11 @@ class EventHub:
         else:
             self.emit_event(Event("connection.closed"))
 
-    def _on_connection_lost(self, stop_event: threading.Event) -> None:
+    def _on_connection_lost(
+        self,
+        stop_event: threading.Event,
+        exc: Exception | None = None,
+    ) -> None:
         state = self._loop_state
         received_message = state.received_message
         state.received_message = False
@@ -950,6 +1025,12 @@ class EventHub:
         if stop_event.is_set():
             return
 
+        # Log only first failure, reconnection attempts would spam the log
+        if state.connected is not False:
+            self._log.warning(
+                "Lost connection to AYON server websocket: %s",
+                exc if exc is not None else "Closed by server",
+            )
         self._set_connected(False)
 
         # Server closes unauthorized clients after few seconds without
@@ -987,10 +1068,10 @@ class EventHub:
 
                 try:
                     ws_con = self._create_ws_connection()
-                except Exception:
+                except Exception as exc:
                     # Server is not available (connection refused, timeout,
                     #   502 from proxy during restart, ssl error...)
-                    self._on_connection_lost(stop_event)
+                    self._on_connection_lost(stop_event, exc)
                     continue
 
                 with self._thread_lock:
@@ -1010,15 +1091,15 @@ class EventHub:
                 }
                 try:
                     ws_con.send(json.dumps(subscribe_payload))
-                except Exception:
-                    self._on_connection_lost(stop_event)
+                except Exception as exc:
+                    self._on_connection_lost(stop_event, exc)
                 continue
 
             try:
                 op_code, message = ws_con.recv_data()
-            except Exception:
+            except Exception as exc:
                 # Timeout (no heartbeat), closed connection, socket error...
-                self._on_connection_lost(stop_event)
+                self._on_connection_lost(stop_event, exc)
                 continue
 
             if op_code == ABNF.OPCODE_CLOSE:
