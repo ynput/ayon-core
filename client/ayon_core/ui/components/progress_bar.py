@@ -57,6 +57,7 @@ class AYProgressBar(StyleMixin, QWidget):
 
     def __init__(
         self,
+        maximum: int = 0,
         parent: QWidget | None = None,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
     ) -> None:
@@ -65,7 +66,7 @@ class AYProgressBar(StyleMixin, QWidget):
         self._style_data = StyleDict()
 
         self._value: int = 0
-        self._maximum: int = 0
+        self._maximum: int = maximum
         self._state: ProgressBarState = ProgressBarState.Normal
 
         # Offset of the indeterminate sweep animation, not progress data.
@@ -98,21 +99,27 @@ class AYProgressBar(StyleMixin, QWidget):
         if value == self._value:
             return
         self._value = value
-        if self.isVisible():
-            self._update_animation()
-            self.update()
+        self._update_animation()
+        self.update()
         self.value_changed.emit(self._value)
 
     def set_maximum(self, value: int) -> None:
         if self._maximum  == value:
             return
         self._maximum = value
-        if self.isVisible():
-            self.update()
+        self._update_animation()
+        self.update()
 
     def state(self) -> ProgressBarState:
         """Semantic state derived from the followed track."""
         return self._state
+
+    def set_state(self, state: ProgressBarState) -> None:
+        if state == self._state:
+            return
+        self._state = state
+        self._update_animation()
+        self.update()
 
     def is_indeterminate(self) -> bool:
         """True while the track cannot be shown as a fraction."""
@@ -121,6 +128,14 @@ class AYProgressBar(StyleMixin, QWidget):
     def is_animating(self) -> bool:
         """True while the indeterminate sweep timer is running."""
         return self._timer.isActive()
+
+    def percentage(self) -> float:
+        """Return the completion percentage in the ``0.0``-``100.0`` range."""
+        if self._maximum is None or self._maximum == 0:
+            return 0.0
+        if self._value is None or self._value < 0:
+            return 0.0
+        return (self._value / self._maximum) * 100.0
 
     def _base_style(self) -> StyleDict:
         """Return the colours and geometry shared by every state.
@@ -172,24 +187,6 @@ class AYProgressBar(StyleMixin, QWidget):
                 self._timer.start()
         else:
             self._timer.stop()
-
-    def _apply_track(self) -> None:
-        """Repaint when the followed track changed.
-
-        Everything the bar shows is read from the track; this only keeps a
-        copy of the applied values so an in-place mutation is detected on
-        the next poll.
-        """
-        self._update_animation()
-        self.update()
-
-    def percentage(self) -> float:
-        """Return the completion percentage in the ``0.0``-``100.0`` range."""
-        if self._maximum is None or self._maximum == 0:
-            return 0.0
-        if self._value is None or self._value < 0:
-            return 0.0
-        return (self._value / self._maximum) * 100.0
 
     # --- painting
     def _chunk_color(self, style: StyleDict) -> QColor:
@@ -290,6 +287,7 @@ class AYProgressView(AYContainer):
 
     def __init__(
         self,
+        maximum: int = 0,
         parent: QWidget | None = None,
         label: str = "",
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
@@ -318,7 +316,7 @@ class AYProgressView(AYContainer):
             layout_spacing=6,
             layout_margin=0,
         )
-        self._bar = AYProgressBar(variant=variant)
+        self._bar = AYProgressBar(maximum, variant=variant)
         self._value_label = AYLabel("", dim=True)
         self._value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         base = self._style_data.get("base") or StyleDict()
@@ -335,6 +333,36 @@ class AYProgressView(AYContainer):
         self._bar.value_changed.connect(self.value_changed)
         self._on_progress_changed()
 
+    def value(self) -> int:
+        return self._bar.value()
+
+    def set_value(self, value: int) -> None:
+         self._bar.set_value(value)
+
+    def maximum(self) -> int:
+        return self._bar.maximum()
+
+    def set_maximum(self, value: int) -> None:
+        self._bar.set_maximum(value)
+
+    def percentage(self) -> float:
+        return self._bar.percentage()
+
+    def state(self) -> ProgressBarState:
+        """Semantic state derived from the followed track."""
+        return self._bar.state()
+
+    def set_state(self, state: ProgressBarState) -> None:
+        self._bar.set_state(state)
+
+    def is_indeterminate(self) -> bool:
+        """True while the track cannot be shown as a fraction."""
+        return self._bar.is_indeterminate()
+
+    def is_animating(self) -> bool:
+        """True while the indeterminate sweep timer is running."""
+        return self._bar.is_animating()
+
     def set_label(self, text: str) -> None:
         """Set or replace the caption shown above the bar."""
         if not text:
@@ -345,7 +373,7 @@ class AYProgressView(AYContainer):
 
     def _on_progress_changed(self) -> None:
         """Update the percentage label to match the current progress."""
-        if not self._show_value or self._bar.is_indeterminate():
+        if not self._show_value or self.is_indeterminate():
             self._value_label.setText("")
             return
-        self._value_label.setText(f"{self._bar.percentage():.0f}%")
+        self._value_label.setText(f"{self.percentage():.0f}%")
