@@ -13,7 +13,7 @@ from qtpy.QtGui import (
     QPaintEvent,
     QShowEvent,
 )
-from qtpy.QtWidgets importQSizePolicy, QWidget
+from qtpy.QtWidgets import QSizePolicy, QWidget
 
 from ..style_types import StyleDict, get_ayon_style
 from ..variants import AYProgressBarVariants
@@ -164,11 +164,8 @@ class AYProgressBar(StyleMixin, QWidget):
         # an in-place mutation of ``_track`` detectable; comparing against
         # the track itself would always be equal.
         self._applied: ProgressTrack | None = None
-        self._total: int | None = None
-        self._current = 0
-        self._state = ProgressBarState.Normal
-        self._completed = False
-        self._phase = 0.0
+        # Offset of the indeterminate sweep animation, not progress data.
+        self._sweep = 0.0
 
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding,
@@ -185,7 +182,7 @@ class AYProgressBar(StyleMixin, QWidget):
         # The sweep animation only runs while indeterminate AND visible.
         self._timer = QTimer(self)
         self._timer.setInterval(self._animation_interval())
-        self._timer.timeout.connect(self._advance_phase)
+        self._timer.timeout.connect(self._advance_sweep)
 
         # Reads the track instead of being notified about changes.
         self._poll_timer = QTimer(self)
@@ -196,11 +193,34 @@ class AYProgressBar(StyleMixin, QWidget):
 
     @property
     def total(self) -> int | None:
-        return self._total
+        """Total of the followed track, or ``None`` when indeterminate."""
+        track = self._track
+        if track.finished:
+            # A finished run is complete even when it never reported a
+            # total, so it stays a full bar instead of sweeping forever.
+            return max(track.total_value, 1)
+        if track.is_indeterminate or track.is_empty:
+            return None
+        return track.total_value
 
     @property
     def current(self) -> int:
-        return self._current
+        """Completed value of the followed track, clamped to the total."""
+        total = self.total
+        if total is None:
+            return 0
+        if self._track.finished:
+            return total
+        return max(0, min(self._track.value, total))
+
+    @property
+    def state(self) -> ProgressBarState:
+        """Semantic state derived from the followed track."""
+        if self._track.failed:
+            return ProgressBarState.Error
+        if self._track.finished:
+            return ProgressBarState.Success
+        return ProgressBarState.Normal
 
     @property
     def is_indeterminate(self) -> bool:
@@ -252,17 +272,17 @@ class AYProgressBar(StyleMixin, QWidget):
         except (TypeError, ValueError):
             return 16
 
-    def _advance_phase(self) -> None:
-        """Advance the indeterminate sweep phase and repaint."""
+    def _advance_sweep(self) -> None:
+        """Advance the indeterminate sweep and repaint."""
         step = self._timer.interval() / self._SWEEP_DURATION_MS
-        self._phase = (self._phase + step) % 1.0
+        self._sweep = (self._sweep + step) % 1.0
         self.update()
 
     def _update_animation(self) -> None:
         """Start the sweep timer while indeterminate and visible."""
         if self.is_indeterminate and self.isVisible():
             if not self._timer.isActive():
-                self._phase = 0.0
+                self._sweep = 0.0
                 self._timer.start()
         else:
             self._timer.stop()
@@ -290,56 +310,38 @@ class AYProgressBar(StyleMixin, QWidget):
         self._apply_track()
 
     def reset(self) -> None:
-        """Reset progress, state, and text to their initial values."""
+        """Return the bar to an empty track."""
         self._track = ProgressTrack.empty()
         self._applied = None
-        self._current = 0
-        self._total = None
-        self._state = ProgressBarState.Normal
-        self._completed = False
-        self._phase = 0.0
+        self._sweep = 0.0
         self._poll_timer.stop()
         self._update_animation()
         self.updateGeometry()
         self.update()
-        self.progress_changed.emit(self._current, 0)
+        self.progress_changed.emit(self.current, 0)
 
     def _on_poll_timeout(self) -> None:
         """Re-read the followed track."""
         self._apply_track()
 
     def _apply_track(self) -> None:
-        """Copy the track onto the widget state and repaint when it changed."""
+        """Repaint when the followed track changed.
+
+        Everything the bar shows is read from the track; this only keeps a
+        copy of the applied values so an in-place mutation is detected on
+        the next poll.
+        """
         track = self._track
-        if self._applied is not None and track == self._applied:
+        previous = self._applied
+        if previous is not None and track == previous:
             return
-        # Snapshot the values: comparing against a copy is what detects an
-        # in-place mutation of the same object on the next poll.
         self._applied = replace(track)
-
-        if track.finished:
-            # A finished run is complete; ignore a value that was left
-            # short of the total.
-            self._total = max(track.total_value, 1)
-            self._current = self._total
-        elif track.is_indeterminate or track.is_empty:
-            self._total = None
-            self._current = 0
-        else:
-            self._total = track.total_value
-            self._current = max(0, min(track.value, track.total_value))
-
-        if track.failed:
-            self._state = ProgressBarState.Error
-        elif track.finished:
-            self._state = ProgressBarState.Success
-        else:
-            self._state = ProgressBarState.Normal
 
         self._update_animation()
         self.update()
-        self.progress_changed.emit(self._current, self._total or 0)
-        self._emit_completed_if_done()
+        self.progress_changed.emit(self.current, self.total or 0)
+        if track.finished and not (previous is not None and previous.finished):
+            self.completed.emit()
         self.track_changed.emit(track)
 
     def _update_polling(self) -> None:
@@ -352,20 +354,6 @@ class AYProgressBar(StyleMixin, QWidget):
         else:
             self._poll_timer.stop()
 
-    def _emit_completed_if_done(self) -> None:
-        """Emit ``completed`` once per run when the track is done."""
-        if self._completed:
-            return
-        if self._track.finished:
-            self._completed = True
-            self.completed.emit()
-            return
-        if self._total is None or self._total <= 0:
-            return
-        if self._current >= self._total:
-            self._completed = True
-            self.completed.emit()
-
     def percentage(self) -> float:
         """Return the completion percentage in the ``0.0``-``100.0`` range."""
         if self.total is None or self.total == 0:
@@ -375,7 +363,7 @@ class AYProgressBar(StyleMixin, QWidget):
     # --- painting
     def _chunk_color(self, style: StyleDict) -> QColor:
         """Return the chunk colour for the current semantic state."""
-        key = self._STATE_COLOR_KEY.get(self._state, "chunk-color")
+        key = self._STATE_COLOR_KEY.get(self.state, "chunk-color")
         color = style.get(key) or style.get("chunk-color", "#8fceff")
         return QColor(color)
 
@@ -402,14 +390,14 @@ class AYProgressBar(StyleMixin, QWidget):
 
         if self.is_indeterminate:
             chunk_w = width * float(style.get("sweep-ratio", 0.3))
-            x = track.x() - chunk_w + self._phase * (width + chunk_w)
+            x = track.x() - chunk_w + self._sweep * (width + chunk_w)
             chunk = QRectF(x, top, chunk_w, height)
             painter.save()
             painter.setClipRect(track)
             painter.setBrush(self._chunk_color(style))
             painter.drawRoundedRect(chunk, radius, radius)
             painter.restore()
-        elif self._current > 0:
+        elif self.current > 0:
             chunk_w = width * (self.percentage() / 100.0)
             chunk = QRectF(track.x(), top, chunk_w, height)
             painter.setBrush(self._chunk_color(style))
