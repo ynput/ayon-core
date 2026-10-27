@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from qtpy.QtCore import QRect, QRectF, QSize, Qt
 from qtpy.QtGui import (
+    QAbstractTextDocumentLayout,
     QBrush,
     QColor,
     QFont,
     QFontMetrics,
     QIcon,
     QPainter,
+    QPalette,
     QPen,
+    Qt as QtNamespace,
+    QTextDocument,
 )
 from qtpy.QtWidgets import (
     QMenu,
@@ -47,6 +52,28 @@ class MenuItemLayout:
     arrow_pad: int
     row_h: int
     total_w: int
+
+
+def _rich_text_document(text: str, font: QFont) -> QTextDocument | None:
+    """Return a laid out document for *text* if it looks like rich text.
+
+    Menu labels (e.g. loader action labels) may use the Qt rich text
+    subset, which ``QPainter.drawText`` would paint as literal markup.
+
+    Args:
+        text: Label text.
+        font: Font the label is drawn with.
+
+    Returns:
+        Document with the label, or None for plain text.
+    """
+    if not text or not QtNamespace.mightBeRichText(text):
+        return None
+    doc = QTextDocument()
+    doc.setDocumentMargin(0)
+    doc.setDefaultFont(font)
+    doc.setHtml(text)
+    return doc
 
 
 class MenuDrawer:
@@ -200,11 +227,12 @@ class MenuDrawer:
 
         text = option.text or ""
         label, _, shortcut = text.partition("\t")
-        text_w = (
-            fm.horizontalAdvance(label)
-            if fm
-            else (contents_size.width() if contents_size else 0)
-        )
+        if doc := _rich_text_document(label, option.font):
+            text_w = math.ceil(doc.idealWidth())
+        elif fm:
+            text_w = fm.horizontalAdvance(label)
+        else:
+            text_w = contents_size.width() if contents_size else 0
 
         sc_w = getattr(
             option,
@@ -274,7 +302,7 @@ class MenuDrawer:
 
         layout = self._compute_layout(option, style, contents_size)
         return QSize(
-            max(layout.total_w, contents_size.width()),
+            layout.total_w,
             layout.row_h,
         )
 
@@ -453,16 +481,19 @@ class MenuDrawer:
             - (layout.sc_w + layout.pad_h if layout.sc_w else 0),
             rect.height(),
         )
-        # Not clipped: with fractional font metrics (display scaling) the
-        # text can still be a pixel wider than measured, the padding next
-        # to it has room for that.
-        painter.drawText(
-            label_rect,
-            Qt.AlignmentFlag.AlignVCenter
-            | Qt.AlignmentFlag.AlignLeft
-            | Qt.TextFlag.TextDontClip,
-            layout.label_text,
-        )
+        if doc := _rich_text_document(layout.label_text, painter.font()):
+            self._draw_rich_text(painter, doc, label_rect, text_color)
+        else:
+            # Not clipped: with fractional font metrics (display scaling)
+            # the text can still be a pixel wider than measured, the
+            # padding next to it has room for that.
+            painter.drawText(
+                label_rect,
+                Qt.AlignmentFlag.AlignVCenter
+                | Qt.AlignmentFlag.AlignLeft
+                | Qt.TextFlag.TextDontClip,
+                layout.label_text,
+            )
 
         if layout.shortcut_text:
             sc_bg_color = QColor(
@@ -523,6 +554,29 @@ class MenuDrawer:
                 layout.icon_size,
             )
             arrow_icon.paint(painter, arrow_rect)
+
+        painter.restore()
+
+    @staticmethod
+    def _draw_rich_text(
+        painter: QPainter,
+        doc: QTextDocument,
+        rect: QRect,
+        color: QColor,
+    ) -> None:
+        """Draw a rich text label vertically centered in *rect*."""
+        height = doc.size().height()
+
+        painter.save()
+        painter.translate(
+            rect.left(),
+            rect.top() + (rect.height() - height) / 2.0,
+        )
+
+        # paint
+        context = QAbstractTextDocumentLayout.PaintContext()
+        context.palette.setColor(QPalette.ColorRole.Text, color)
+        doc.documentLayout().draw(painter, context)
 
         painter.restore()
 
