@@ -742,11 +742,16 @@ class FilesWidget(QtWidgets.QFrame):
         if single_item:
             footer_hint.setText("Drop a file to replace it")
             browse_btn.setText("Replace...")
+            browse_icon_name = "swap_horiz"
             clear_btn.setText("Remove")
         else:
             footer_hint.setText("Drop more files to add them")
-            browse_btn.setText("Add files...")
+            browse_btn.setText("Add...")
+            browse_icon_name = "add"
             clear_btn.setText("Clear all")
+        browse_btn.setIcon(get_qt_icon(
+            MaterialSymbolsIcon(browse_icon_name, color="#ffffff")
+        ))
 
         footer_layout = QtWidgets.QHBoxLayout(footer_widget)
         footer_layout.setContentsMargins(5, 2, 2, 2)
