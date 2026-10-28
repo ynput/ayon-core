@@ -1481,6 +1481,10 @@ AttributeDefinitionsWidget QAbstractSpinBox, AttributeDefinitionsWidget QLineEdi
 AttributeDefinitionsWidget QComboBox {
     padding: 1px 1px 1px 0.2em;
 }
+FilesView::item {
+    /* Item widgets define their own size, padding would cut them */
+    padding: 0px;
+}
 WarningLabel {
     color: {color:publisher:warning};
 }
