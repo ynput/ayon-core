@@ -1,0 +1,1376 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=dialogs.html><link rel=next href=error_dialog.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.8.0"><title>entity_thumbnails - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.57a0d79d.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.fb2fffe2.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.tools.utils.entity_thumbnails class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> entity_thumbnails </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <div class=md-nav__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class="md-nav__item md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_2> <label class=md-nav__link for=__nav_2 id=__nav_2_label tabindex> <span class=md-ellipsis> UI Library </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_2_label aria-expanded=false> <label class=md-nav__title for=__nav_2> <span class="md-nav__icon md-icon"></span> UI Library </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../ui.html class=md-nav__link> <span class=md-ellipsis> Overview </span> </a> </li> <li class=md-nav__item> <a href=../../../../../ui_testing.html class=md-nav__link> <span class=md-ellipsis> Testing </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4 checked> <label class=md-nav__link for=__nav_4 id=__nav_4_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_4_label aria-expanded=true> <label class=md-nav__title for=__nav_4> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1 checked> <label class=md-nav__link for=__nav_4_1 id=__nav_4_1_label tabindex=0> <span class=md-ellipsis> client </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_4_1_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1 checked> <label class=md-nav__link for=__nav_4_1_1 id=__nav_4_1_1_label tabindex=0> <span class=md-ellipsis> ayon_core </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_4_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> _main_ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/abstract.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/_compatibility.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../pipeline/actions/inventory.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1_14 checked> <label class=md-nav__link for=__nav_4_1_1_14 id=__nav_4_1_1_14_label tabindex=0> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_4_1_1_14_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1_14> <span class="md-nav__icon md-icon"></span> tools </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> attribute_defs </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../browser/abstract.html class=md-nav__link> <span class=md-ellipsis> browser </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../common_models/cache.html class=md-nav__link> <span class=md-ellipsis> common_models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../console_interpreter/abstract.html class=md-nav__link> <span class=md-ellipsis> console_interpreter </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../context_dialog/window.html class=md-nav__link> <span class=md-ellipsis> context_dialog </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../delivery/delivery.html class=md-nav__link> <span class=md-ellipsis> delivery </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../experimental_tools/dialog.html class=md-nav__link> <span class=md-ellipsis> experimental_tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../flickcharm.html class=md-nav__link> <span class=md-ellipsis> flickcharm </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../launcher/abstract.html class=md-nav__link> <span class=md-ellipsis> launcher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../loader/abstract.html class=md-nav__link> <span class=md-ellipsis> loader </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../publisher/abstract.html class=md-nav__link> <span class=md-ellipsis> publisher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../push_to_project/control.html class=md-nav__link> <span class=md-ellipsis> push_to_project </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../sceneinventory/control.html class=md-nav__link> <span class=md-ellipsis> sceneinventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../stdout_broker/broker.html class=md-nav__link> <span class=md-ellipsis> stdout_broker </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../texture_copy/app.html class=md-nav__link> <span class=md-ellipsis> texture_copy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tray/lib.html class=md-nav__link> <span class=md-ellipsis> tray </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_4_1_1_14_18 checked> <label class=md-nav__link for=__nav_4_1_1_14_18 id=__nav_4_1_1_14_18_label tabindex=0> <span class=md-ellipsis> utils </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_4_1_1_14_18_label aria-expanded=true> <label class=md-nav__title for=__nav_4_1_1_14_18> <span class="md-nav__icon md-icon"></span> utils </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=color_widgets/color_inputs.html class=md-nav__link> <span class=md-ellipsis> color_widgets </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=connection_overlay.html class=md-nav__link> <span class=md-ellipsis> connection_overlay </span> </a> </li> <li class=md-nav__item> <a href=constants.html class=md-nav__link> <span class=md-ellipsis> constants </span> </a> </li> <li class=md-nav__item> <a href=delegates.html class=md-nav__link> <span class=md-ellipsis> delegates </span> </a> </li> <li class=md-nav__item> <a href=dialogs.html class=md-nav__link> <span class=md-ellipsis> dialogs </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> entity_thumbnails </span> <span class="md-nav__icon md-icon"></span> </label> <a href=entity_thumbnails.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> entity_thumbnails </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails class=md-nav__link> <span class=md-ellipsis> entity_thumbnails </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailDelegate class=md-nav__link> <span class=md-ellipsis> EntityThumbnailDelegate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader class=md-nav__link> <span class=md-ellipsis> EntityThumbnailsLoader </span> </a> <nav class=md-nav aria-label=EntityThumbnailsLoader> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.get_pixmap class=md-nav__link> <span class=md-ellipsis> get_pixmap </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.is_available class=md-nav__link> <span class=md-ellipsis> is_available </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.load class=md-nav__link> <span class=md-ellipsis> load </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.set_outdated class=md-nav__link> <span class=md-ellipsis> set_outdated </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.set_project_name class=md-nav__link> <span class=md-ellipsis> set_project_name </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter class=md-nav__link> <span class=md-ellipsis> EntityThumbnailsPainter </span> </a> <nav class=md-nav aria-label=EntityThumbnailsPainter> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.get_reserved_width class=md-nav__link> <span class=md-ellipsis> get_reserved_width </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.paint class=md-nav__link> <span class=md-ellipsis> paint </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_enabled class=md-nav__link> <span class=md-ellipsis> set_enabled </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_outdated class=md-nav__link> <span class=md-ellipsis> set_outdated </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_project_name class=md-nav__link> <span class=md-ellipsis> set_project_name </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=error_dialog.html class=md-nav__link> <span class=md-ellipsis> error_dialog </span> </a> </li> <li class=md-nav__item> <a href=folders_widget.html class=md-nav__link> <span class=md-ellipsis> folders_widget </span> </a> </li> <li class=md-nav__item> <a href=host_tools.html class=md-nav__link> <span class=md-ellipsis> host_tools </span> </a> </li> <li class=md-nav__item> <a href=images/index.html class=md-nav__link> <span class=md-ellipsis> images </span> </a> </li> <li class=md-nav__item> <a href=layouts.html class=md-nav__link> <span class=md-ellipsis> layouts </span> </a> </li> <li class=md-nav__item> <a href=lib.html class=md-nav__link> <span class=md-ellipsis> lib </span> </a> </li> <li class=md-nav__item> <a href=models.html class=md-nav__link> <span class=md-ellipsis> models </span> </a> </li> <li class=md-nav__item> <a href=multiselection_combobox.html class=md-nav__link> <span class=md-ellipsis> multiselection_combobox </span> </a> </li> <li class=md-nav__item> <a href=nice_checkbox.html class=md-nav__link> <span class=md-ellipsis> nice_checkbox </span> </a> </li> <li class=md-nav__item> <a href=overlay_messages.html class=md-nav__link> <span class=md-ellipsis> overlay_messages </span> </a> </li> <li class=md-nav__item> <a href=projects_widget.html class=md-nav__link> <span class=md-ellipsis> projects_widget </span> </a> </li> <li class=md-nav__item> <a href=sliders.html class=md-nav__link> <span class=md-ellipsis> sliders </span> </a> </li> <li class=md-nav__item> <a href=tasks_widget.html class=md-nav__link> <span class=md-ellipsis> tasks_widget </span> </a> </li> <li class=md-nav__item> <a href=thumbnail_paint_widget.html class=md-nav__link> <span class=md-ellipsis> thumbnail_paint_widget </span> </a> </li> <li class=md-nav__item> <a href=views.html class=md-nav__link> <span class=md-ellipsis> views </span> </a> </li> <li class=md-nav__item> <a href=widgets.html class=md-nav__link> <span class=md-ellipsis> widgets </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfile_template_build/lib.html class=md-nav__link> <span class=md-ellipsis> workfile_template_build </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfiles/abstract.html class=md-nav__link> <span class=md-ellipsis> workfiles </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../ui/color_utils.html class=md-nav__link> <span class=md-ellipsis> ui </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../ui_preview/buttons.html class=md-nav__link> <span class=md-ellipsis> ui_preview </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails class=md-nav__link> <span class=md-ellipsis> entity_thumbnails </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailDelegate class=md-nav__link> <span class=md-ellipsis> EntityThumbnailDelegate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader class=md-nav__link> <span class=md-ellipsis> EntityThumbnailsLoader </span> </a> <nav class=md-nav aria-label=EntityThumbnailsLoader> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.get_pixmap class=md-nav__link> <span class=md-ellipsis> get_pixmap </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.is_available class=md-nav__link> <span class=md-ellipsis> is_available </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.load class=md-nav__link> <span class=md-ellipsis> load </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.set_outdated class=md-nav__link> <span class=md-ellipsis> set_outdated </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.set_project_name class=md-nav__link> <span class=md-ellipsis> set_project_name </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter class=md-nav__link> <span class=md-ellipsis> EntityThumbnailsPainter </span> </a> <nav class=md-nav aria-label=EntityThumbnailsPainter> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.get_reserved_width class=md-nav__link> <span class=md-ellipsis> get_reserved_width </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.paint class=md-nav__link> <span class=md-ellipsis> paint </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_enabled class=md-nav__link> <span class=md-ellipsis> set_enabled </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_outdated class=md-nav__link> <span class=md-ellipsis> set_outdated </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_project_name class=md-nav__link> <span class=md-ellipsis> set_project_name </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <nav class=md-path aria-label=Navigation> <ol class=md-path__list> <li class=md-path__item> <a href=../../../../../index.html class=md-path__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-path__item> <a href=../../__main__.html class=md-path__link> <span class=md-ellipsis> Reference </span> </a> </li> <li class=md-path__item> <a href=../../__main__.html class=md-path__link> <span class=md-ellipsis> client </span> </a> </li> <li class=md-path__item> <a href=../../__main__.html class=md-path__link> <span class=md-ellipsis> ayon_core </span> </a> </li> <li class=md-path__item> <a href=../attribute_defs/_constants.html class=md-path__link> <span class=md-ellipsis> tools </span> </a> </li> <li class=md-path__item> <a href=color_widgets/color_inputs.html class=md-path__link> <span class=md-ellipsis> utils </span> </a> </li> </ol> </nav> <article class="md-content__inner md-typeset"> <h1>entity_thumbnails</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.tools.utils.entity_thumbnails></a> <div class="doc doc-contents first"> <p>Deferred entity thumbnails for item views.</p> <p>Thumbnails are painted on the far right of an item by a delegate. Paths to thumbnail files are received from a controller in a background thread, which is also where the images are loaded and scaled, so the main thread only paints prepared pixmaps.</p> <p>The controller must implement 'get_thumbnail_paths' (see 'ThumbnailsModel' in 'ayon_core.tools.common_models'), without it thumbnails are not shown.</p> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailDelegate class="doc doc-heading"> <code>EntityThumbnailDelegate</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=ayon_core.ui.components.tree_view.TreeViewItemDelegate>TreeViewItemDelegate</span></code></p> <p>Delegate for 'AYTreeView' painting entity thumbnails on the right.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>thumbnails_painter</code> </td> <td> <code><a class="autorefs autorefs-internal" title="EntityThumbnailsPainter (client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter)" href=#client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter>EntityThumbnailsPainter</a></code> </td> <td> <div class=doc-md-description> <p>Painter of the thumbnails.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>**kwargs</code> </td> <td> </td> <td> <div class=doc-md-description> <p>Arguments of 'TreeViewItemDelegate'.</p> </div> </td> <td> <code>{}</code> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>608</span>
+<span class=normal>609</span>
+<span class=normal>610</span>
+<span class=normal>611</span>
+<span class=normal>612</span>
+<span class=normal>613</span>
+<span class=normal>614</span>
+<span class=normal>615</span>
+<span class=normal>616</span>
+<span class=normal>617</span>
+<span class=normal>618</span>
+<span class=normal>619</span>
+<span class=normal>620</span>
+<span class=normal>621</span>
+<span class=normal>622</span>
+<span class=normal>623</span>
+<span class=normal>624</span>
+<span class=normal>625</span>
+<span class=normal>626</span>
+<span class=normal>627</span>
+<span class=normal>628</span>
+<span class=normal>629</span>
+<span class=normal>630</span>
+<span class=normal>631</span>
+<span class=normal>632</span>
+<span class=normal>633</span>
+<span class=normal>634</span>
+<span class=normal>635</span>
+<span class=normal>636</span>
+<span class=normal>637</span>
+<span class=normal>638</span>
+<span class=normal>639</span>
+<span class=normal>640</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>EntityThumbnailDelegate</span><span class=p>(</span><span class=n>TreeViewItemDelegate</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>"""Delegate for 'AYTreeView' painting entity thumbnails on the right.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        thumbnails_painter: Painter of the thumbnails.</span>
+<span class=sd>        **kwargs: Arguments of 'TreeViewItemDelegate'.</span>
+<span class=sd>    """</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>thumbnails_painter</span><span class=p>:</span> <span class=n>EntityThumbnailsPainter</span><span class=p>,</span>
+        <span class=o>**</span><span class=n>kwargs</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_painter</span> <span class=o>=</span> <span class=n>thumbnails_painter</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_reserved_right_width</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>option</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionViewItem</span><span class=p>,</span>
+        <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>int</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_painter</span><span class=o>.</span><span class=n>get_reserved_width</span><span class=p>(</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=p>,</span> <span class=n>index</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>paint</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>painter</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>,</span>
+        <span class=n>option</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionViewItem</span><span class=p>,</span>
+        <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>paint</span><span class=p>(</span><span class=n>painter</span><span class=p>,</span> <span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_painter</span><span class=o>.</span><span class=n>paint</span><span class=p>(</span><span class=n>painter</span><span class=p>,</span> <span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader class="doc doc-heading"> <code>EntityThumbnailsLoader</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtCore.QObject>QObject</span></code></p> <p>Load entity thumbnails in background threads.</p> <p>Thumbnails are loaded only on request using 'load', nothing is loaded upfront. Loaded pixmaps are kept in memory until the project changes.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>controller</code> </td> <td> <code><span title=typing.Any>Any</span></code> </td> <td> <div class=doc-md-description> <p>Controller of a tool. Thumbnails are available only if the controller has 'get_thumbnail_paths' method.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>entity_type</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Entity type passed to the controller. Project name does not have to be set for 'project', where entity ids are project names.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>thumbnail_size</code> </td> <td> <code><span title=qtpy.QtCore.QSize>QSize</span></code> </td> <td> <div class=doc-md-description> <p>Size of thumbnails in device independent pixels.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>radius</code> </td> <td> <code><span title=float>float</span></code> </td> <td> <div class=doc-md-description> <p>Radius of rounded corners in device independent pixels.</p> </div> </td> <td> <code>0.0</code> </td> </tr> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=typing.Optional>Optional</span>[<span title=qtpy.QtCore.QObject>QObject</span>]</code> </td> <td> <div class=doc-md-description> <p>Parent object.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>EntityThumbnailsLoader</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QObject</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>"""Load entity thumbnails in background threads.</span>
+
+<span class=sd>    Thumbnails are loaded only on request using 'load', nothing is loaded</span>
+<span class=sd>    upfront. Loaded pixmaps are kept in memory until the project changes.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        controller: Controller of a tool. Thumbnails are available only</span>
+<span class=sd>            if the controller has 'get_thumbnail_paths' method.</span>
+<span class=sd>        entity_type: Entity type passed to the controller. Project name</span>
+<span class=sd>            does not have to be set for 'project', where entity ids are</span>
+<span class=sd>            project names.</span>
+<span class=sd>        thumbnail_size: Size of thumbnails in device independent pixels.</span>
+<span class=sd>        radius: Radius of rounded corners in device independent pixels.</span>
+<span class=sd>        parent: Parent object.</span>
+<span class=sd>    """</span>
+    <span class=n>thumbnails_changed</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>(</span><span class=nb>list</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>controller</span><span class=p>:</span> <span class=n>Any</span><span class=p>,</span>
+        <span class=n>entity_type</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>thumbnail_size</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>,</span>
+        <span class=n>radius</span><span class=p>:</span> <span class=nb>float</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>,</span>
+        <span class=n>parent</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QObject</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span> <span class=o>=</span> <span class=n>controller</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_entity_type</span> <span class=o>=</span> <span class=n>entity_type</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnail_size</span> <span class=o>=</span> <span class=n>thumbnail_size</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_radius</span> <span class=o>=</span> <span class=n>radius</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=c1># Used to cancel tasks and to ignore their results when the project</span>
+        <span class=c1>#   changes or when loaded thumbnails are marked as outdated</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span> <span class=o>=</span> <span class=s2>""</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_context_counter</span> <span class=o>=</span> <span class=mi>0</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_path_by_entity_id</span><span class=p>:</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]]</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span><span class=p>:</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>]</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=c1># Entity ids that have up-to-date path</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_valid_ids</span><span class=p>:</span> <span class=nb>set</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loading_ids</span><span class=p>:</span> <span class=nb>set</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>is_available</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Controller is able to provide thumbnails."""</span>
+        <span class=k>return</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=p>,</span> <span class=s2>"get_thumbnail_paths"</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_thumbnail_size</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnail_size</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Change project, forget everything about the previous one."""</span>
+        <span class=k>if</span> <span class=n>project_name</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span> <span class=o>=</span> <span class=n>project_name</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_path_by_entity_id</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>set_outdated</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_outdated</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Entities could change, validate thumbnails on next request.</span>
+
+<span class=sd>        Already loaded thumbnails are still available, and are replaced</span>
+<span class=sd>        only if the entity received a different thumbnail. Results of</span>
+<span class=sd>        loads that are still running are ignored, they could be received</span>
+<span class=sd>        before the entities changed.</span>
+<span class=sd>        """</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_clear_tasks</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_valid_ids</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loading_ids</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>needs_load</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>entity_id</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+        <span class=k>return</span> <span class=p>(</span>
+            <span class=n>entity_id</span> <span class=ow>not</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_valid_ids</span>
+            <span class=ow>and</span> <span class=n>entity_id</span> <span class=ow>not</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loading_ids</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_pixmap</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>entity_id</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>"""Loaded thumbnail of an entity.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Thumbnail pixmap, or None if the entity does not have</span>
+<span class=sd>                a thumbnail or it is not loaded yet.</span>
+<span class=sd>        """</span>
+        <span class=n>path</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_path_by_entity_id</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>path</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>path</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>load</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>entity_ids</span><span class=p>:</span> <span class=n>Iterable</span><span class=p>[</span><span class=nb>str</span><span class=p>],</span> <span class=n>device_pixel_ratio</span><span class=p>:</span> <span class=nb>float</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Load thumbnails of entities in background threads.</span>
+
+<span class=sd>        Signal 'thumbnails_changed' is emitted when thumbnails of entities</span>
+<span class=sd>        become available or change.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            entity_ids: Entity ids to load thumbnails for, thumbnails are</span>
+<span class=sd>                loaded in the passed order.</span>
+<span class=sd>            device_pixel_ratio: Pixel ratio of the screen thumbnails are</span>
+<span class=sd>                painted on.</span>
+<span class=sd>        """</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>is_available</span><span class=p>():</span>
+            <span class=k>return</span>
+        <span class=c1># Projects are not part of a project, their ids are project names</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span> <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>_entity_type</span> <span class=o>!=</span> <span class=s2>"project"</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>entity_ids</span> <span class=o>=</span> <span class=p>[</span>
+            <span class=n>entity_id</span>
+            <span class=k>for</span> <span class=n>entity_id</span> <span class=ow>in</span> <span class=n>entity_ids</span>
+            <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>needs_load</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+        <span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>entity_ids</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_context_counter</span> <span class=o>+=</span> <span class=mi>1</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span> <span class=o>=</span> <span class=p>(</span>
+                <span class=sa>f</span><span class=s2>"entity_thumbnails_</span><span class=si>{</span><span class=nb>id</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span><span class=si>}</span><span class=s2>_</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_context_counter</span><span class=si>}</span><span class=s2>"</span>
+            <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loading_ids</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>entity_ids</span><span class=p>)</span>
+
+        <span class=n>_ImagesLoading</span><span class=o>.</span><span class=n>warm_up</span><span class=p>()</span>
+        <span class=n>size</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnail_size</span> <span class=o>*</span> <span class=n>device_pixel_ratio</span>
+        <span class=n>loaded_paths</span> <span class=o>=</span> <span class=nb>set</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span><span class=p>)</span>
+        <span class=n>task_queue</span> <span class=o>=</span> <span class=n>get_task_queue</span><span class=p>()</span>
+        <span class=k>for</span> <span class=n>idx</span> <span class=ow>in</span> <span class=nb>range</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=nb>len</span><span class=p>(</span><span class=n>entity_ids</span><span class=p>),</span> <span class=n>_CHUNK_SIZE</span><span class=p>):</span>
+            <span class=n>chunk_ids</span> <span class=o>=</span> <span class=nb>set</span><span class=p>(</span><span class=n>entity_ids</span><span class=p>[</span><span class=n>idx</span><span class=p>:</span><span class=n>idx</span> <span class=o>+</span> <span class=n>_CHUNK_SIZE</span><span class=p>])</span>
+            <span class=n>task_queue</span><span class=o>.</span><span class=n>enqueue</span><span class=p>(</span><span class=n>AsyncTask</span><span class=p>(</span>
+                <span class=n>name</span><span class=o>=</span><span class=sa>f</span><span class=s2>"entity_thumbnails_</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_entity_type</span><span class=si>}</span><span class=s2>"</span><span class=p>,</span>
+                <span class=c1># The task must not keep the loader alive</span>
+                <span class=n>function</span><span class=o>=</span><span class=n>partial</span><span class=p>(</span>
+                    <span class=n>_load_thumbnails</span><span class=p>,</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=p>,</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span><span class=p>,</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_entity_type</span><span class=p>,</span>
+                    <span class=n>chunk_ids</span><span class=p>,</span>
+                    <span class=n>loaded_paths</span><span class=p>,</span>
+                    <span class=n>size</span><span class=p>,</span>
+                <span class=p>),</span>
+                <span class=n>callback</span><span class=o>=</span><span class=n>_LoadedCallback</span><span class=p>(</span>
+                    <span class=bp>self</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>,</span> <span class=n>chunk_ids</span><span class=p>,</span> <span class=n>device_pixel_ratio</span>
+                <span class=p>),</span>
+                <span class=n>priority</span><span class=o>=</span><span class=mi>10</span><span class=p>,</span>
+                <span class=n>context_id</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>,</span>
+            <span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_clear_tasks</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>context_id</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>,</span> <span class=s2>""</span>
+        <span class=k>if</span> <span class=n>context_id</span><span class=p>:</span>
+            <span class=n>get_task_queue</span><span class=p>()</span><span class=o>.</span><span class=n>clear_context_tasks</span><span class=p>(</span><span class=n>context_id</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_loaded</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>context_id</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>entity_ids</span><span class=p>:</span> <span class=nb>set</span><span class=p>[</span><span class=nb>str</span><span class=p>],</span>
+        <span class=n>device_pixel_ratio</span><span class=p>:</span> <span class=nb>float</span><span class=p>,</span>
+        <span class=n>result</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span>
+            <span class=nb>tuple</span><span class=p>[</span><span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]],</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QImage</span><span class=p>]]</span>
+        <span class=p>],</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=c1># Result of a previous project or from before a refresh</span>
+        <span class=k>if</span> <span class=n>context_id</span> <span class=o>!=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loading_ids</span> <span class=o>-=</span> <span class=n>entity_ids</span>
+        <span class=c1># Do not try again until next refresh, even if the load failed</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_valid_ids</span> <span class=o>|=</span> <span class=n>entity_ids</span>
+        <span class=k>if</span> <span class=n>result</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=n>path_by_entity_id</span><span class=p>,</span> <span class=n>images_by_path</span> <span class=o>=</span> <span class=n>result</span>
+        <span class=k>for</span> <span class=n>path</span><span class=p>,</span> <span class=n>image</span> <span class=ow>in</span> <span class=n>images_by_path</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span><span class=p>[</span><span class=n>path</span><span class=p>]</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_create_pixmap</span><span class=p>(</span>
+                <span class=n>image</span><span class=p>,</span> <span class=n>device_pixel_ratio</span>
+            <span class=p>)</span>
+
+        <span class=n>changed_ids</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=k>for</span> <span class=n>entity_id</span> <span class=ow>in</span> <span class=n>entity_ids</span><span class=p>:</span>
+            <span class=n>path</span> <span class=o>=</span> <span class=n>path_by_entity_id</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>path</span> <span class=ow>not</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span><span class=p>:</span>
+                <span class=n>path</span> <span class=o>=</span> <span class=kc>None</span>
+            <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_path_by_entity_id</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span> <span class=o>!=</span> <span class=n>path</span><span class=p>:</span>
+                <span class=n>changed_ids</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_path_by_entity_id</span><span class=p>[</span><span class=n>entity_id</span><span class=p>]</span> <span class=o>=</span> <span class=n>path</span>
+
+        <span class=k>if</span> <span class=n>changed_ids</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>thumbnails_changed</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=n>changed_ids</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_create_pixmap</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>image</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QImage</span><span class=p>,</span> <span class=n>device_pixel_ratio</span><span class=p>:</span> <span class=nb>float</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Create pixmap with rounded corners.</span>
+
+<span class=sd>        Corners are rounded only once here, so painting of items does not</span>
+<span class=sd>        have to clip the pixmap.</span>
+<span class=sd>        """</span>
+        <span class=n>radius</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_radius</span> <span class=o>*</span> <span class=n>device_pixel_ratio</span>
+        <span class=k>if</span> <span class=n>radius</span> <span class=o>&lt;=</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=n>pixmap</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=o>.</span><span class=n>fromImage</span><span class=p>(</span><span class=n>image</span><span class=p>)</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>pixmap</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>(</span><span class=n>image</span><span class=o>.</span><span class=n>size</span><span class=p>())</span>
+            <span class=n>pixmap</span><span class=o>.</span><span class=n>fill</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>transparent</span><span class=p>)</span>
+            <span class=n>painter</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>(</span><span class=n>pixmap</span><span class=p>)</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>setRenderHint</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=o>.</span><span class=n>Antialiasing</span><span class=p>)</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>NoPen</span><span class=p>)</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>setBrush</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QBrush</span><span class=p>(</span><span class=n>image</span><span class=p>))</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>drawRoundedRect</span><span class=p>(</span>
+                <span class=n>QtCore</span><span class=o>.</span><span class=n>QRectF</span><span class=p>(</span><span class=n>pixmap</span><span class=o>.</span><span class=n>rect</span><span class=p>()),</span> <span class=n>radius</span><span class=p>,</span> <span class=n>radius</span>
+            <span class=p>)</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>end</span><span class=p>()</span>
+        <span class=n>pixmap</span><span class=o>.</span><span class=n>setDevicePixelRatio</span><span class=p>(</span><span class=n>device_pixel_ratio</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>pixmap</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.get_pixmap class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_pixmap</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Loaded thumbnail of an entity.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=typing.Optional>Optional</span>[<span title=qtpy.QtGui.QPixmap>QPixmap</span>]</code> </td> <td> <div class=doc-md-description> <p>Thumbnail pixmap, or None if the entity does not have a thumbnail or it is not loaded yet.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_pixmap</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>entity_id</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>"""Loaded thumbnail of an entity.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Thumbnail pixmap, or None if the entity does not have</span>
+<span class=sd>            a thumbnail or it is not loaded yet.</span>
+<span class=sd>    """</span>
+    <span class=n>path</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_path_by_entity_id</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>path</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>None</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>path</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.is_available class="doc doc-heading"> <code class="highlight language-python"><span class=n>is_available</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Controller is able to provide thumbnails.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>is_available</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Controller is able to provide thumbnails."""</span>
+    <span class=k>return</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=p>,</span> <span class=s2>"get_thumbnail_paths"</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.load class="doc doc-heading"> <code class="highlight language-python"><span class=n>load</span><span class=p>(</span><span class=n>entity_ids</span><span class=p>,</span> <span class=n>device_pixel_ratio</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Load thumbnails of entities in background threads.</p> <p>Signal 'thumbnails_changed' is emitted when thumbnails of entities become available or change.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>entity_ids</code> </td> <td> <code><span title=typing.Iterable>Iterable</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>Entity ids to load thumbnails for, thumbnails are loaded in the passed order.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>device_pixel_ratio</code> </td> <td> <code><span title=float>float</span></code> </td> <td> <div class=doc-md-description> <p>Pixel ratio of the screen thumbnails are painted on.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>load</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>entity_ids</span><span class=p>:</span> <span class=n>Iterable</span><span class=p>[</span><span class=nb>str</span><span class=p>],</span> <span class=n>device_pixel_ratio</span><span class=p>:</span> <span class=nb>float</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Load thumbnails of entities in background threads.</span>
+
+<span class=sd>    Signal 'thumbnails_changed' is emitted when thumbnails of entities</span>
+<span class=sd>    become available or change.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        entity_ids: Entity ids to load thumbnails for, thumbnails are</span>
+<span class=sd>            loaded in the passed order.</span>
+<span class=sd>        device_pixel_ratio: Pixel ratio of the screen thumbnails are</span>
+<span class=sd>            painted on.</span>
+<span class=sd>    """</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>is_available</span><span class=p>():</span>
+        <span class=k>return</span>
+    <span class=c1># Projects are not part of a project, their ids are project names</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span> <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>_entity_type</span> <span class=o>!=</span> <span class=s2>"project"</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=n>entity_ids</span> <span class=o>=</span> <span class=p>[</span>
+        <span class=n>entity_id</span>
+        <span class=k>for</span> <span class=n>entity_id</span> <span class=ow>in</span> <span class=n>entity_ids</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>needs_load</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+    <span class=p>]</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>entity_ids</span><span class=p>:</span>
+        <span class=k>return</span>
+
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_context_counter</span> <span class=o>+=</span> <span class=mi>1</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=sa>f</span><span class=s2>"entity_thumbnails_</span><span class=si>{</span><span class=nb>id</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span><span class=si>}</span><span class=s2>_</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_context_counter</span><span class=si>}</span><span class=s2>"</span>
+        <span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_loading_ids</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>entity_ids</span><span class=p>)</span>
+
+    <span class=n>_ImagesLoading</span><span class=o>.</span><span class=n>warm_up</span><span class=p>()</span>
+    <span class=n>size</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnail_size</span> <span class=o>*</span> <span class=n>device_pixel_ratio</span>
+    <span class=n>loaded_paths</span> <span class=o>=</span> <span class=nb>set</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span><span class=p>)</span>
+    <span class=n>task_queue</span> <span class=o>=</span> <span class=n>get_task_queue</span><span class=p>()</span>
+    <span class=k>for</span> <span class=n>idx</span> <span class=ow>in</span> <span class=nb>range</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=nb>len</span><span class=p>(</span><span class=n>entity_ids</span><span class=p>),</span> <span class=n>_CHUNK_SIZE</span><span class=p>):</span>
+        <span class=n>chunk_ids</span> <span class=o>=</span> <span class=nb>set</span><span class=p>(</span><span class=n>entity_ids</span><span class=p>[</span><span class=n>idx</span><span class=p>:</span><span class=n>idx</span> <span class=o>+</span> <span class=n>_CHUNK_SIZE</span><span class=p>])</span>
+        <span class=n>task_queue</span><span class=o>.</span><span class=n>enqueue</span><span class=p>(</span><span class=n>AsyncTask</span><span class=p>(</span>
+            <span class=n>name</span><span class=o>=</span><span class=sa>f</span><span class=s2>"entity_thumbnails_</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>_entity_type</span><span class=si>}</span><span class=s2>"</span><span class=p>,</span>
+            <span class=c1># The task must not keep the loader alive</span>
+            <span class=n>function</span><span class=o>=</span><span class=n>partial</span><span class=p>(</span>
+                <span class=n>_load_thumbnails</span><span class=p>,</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=p>,</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span><span class=p>,</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_entity_type</span><span class=p>,</span>
+                <span class=n>chunk_ids</span><span class=p>,</span>
+                <span class=n>loaded_paths</span><span class=p>,</span>
+                <span class=n>size</span><span class=p>,</span>
+            <span class=p>),</span>
+            <span class=n>callback</span><span class=o>=</span><span class=n>_LoadedCallback</span><span class=p>(</span>
+                <span class=bp>self</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>,</span> <span class=n>chunk_ids</span><span class=p>,</span> <span class=n>device_pixel_ratio</span>
+            <span class=p>),</span>
+            <span class=n>priority</span><span class=o>=</span><span class=mi>10</span><span class=p>,</span>
+            <span class=n>context_id</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>_context_id</span><span class=p>,</span>
+        <span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.set_outdated class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_outdated</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Entities could change, validate thumbnails on next request.</p> <p>Already loaded thumbnails are still available, and are replaced only if the entity received a different thumbnail. Results of loads that are still running are ignored, they could be received before the entities changed.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_outdated</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Entities could change, validate thumbnails on next request.</span>
+
+<span class=sd>    Already loaded thumbnails are still available, and are replaced</span>
+<span class=sd>    only if the entity received a different thumbnail. Results of</span>
+<span class=sd>    loads that are still running are ignored, they could be received</span>
+<span class=sd>    before the entities changed.</span>
+<span class=sd>    """</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_clear_tasks</span><span class=p>()</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_valid_ids</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_loading_ids</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsLoader.set_project_name class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_project_name</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Change project, forget everything about the previous one.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Change project, forget everything about the previous one."""</span>
+    <span class=k>if</span> <span class=n>project_name</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span> <span class=o>=</span> <span class=n>project_name</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_path_by_entity_id</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_pixmap_by_path</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>set_outdated</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter class="doc doc-heading"> <code>EntityThumbnailsPainter</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtCore.QObject>QObject</span></code></p> <p>Paint entity thumbnails on the far right of view items.</p> <p>Helper for item delegates. A thumbnail is requested the first time its item is painted, so only thumbnails of items the user really sees are loaded. Loaded thumbnails fade in.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>view</code> </td> <td> <code><span title=qtpy.QtWidgets.QAbstractItemView>QAbstractItemView</span></code> </td> <td> <div class=doc-md-description> <p>View where the thumbnails are painted.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>controller</code> </td> <td> <code><span title=typing.Any>Any</span></code> </td> <td> <div class=doc-md-description> <p>Controller of a tool, see 'EntityThumbnailsLoader'.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>entity_type</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Entity type of the view items.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>entity_id_role</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Item data role with an entity id.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>thumbnail_height</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Height of thumbnails in pixels.</p> </div> </td> <td> <code>20</code> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span>
+<span class=normal>518</span>
+<span class=normal>519</span>
+<span class=normal>520</span>
+<span class=normal>521</span>
+<span class=normal>522</span>
+<span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span>
+<span class=normal>531</span>
+<span class=normal>532</span>
+<span class=normal>533</span>
+<span class=normal>534</span>
+<span class=normal>535</span>
+<span class=normal>536</span>
+<span class=normal>537</span>
+<span class=normal>538</span>
+<span class=normal>539</span>
+<span class=normal>540</span>
+<span class=normal>541</span>
+<span class=normal>542</span>
+<span class=normal>543</span>
+<span class=normal>544</span>
+<span class=normal>545</span>
+<span class=normal>546</span>
+<span class=normal>547</span>
+<span class=normal>548</span>
+<span class=normal>549</span>
+<span class=normal>550</span>
+<span class=normal>551</span>
+<span class=normal>552</span>
+<span class=normal>553</span>
+<span class=normal>554</span>
+<span class=normal>555</span>
+<span class=normal>556</span>
+<span class=normal>557</span>
+<span class=normal>558</span>
+<span class=normal>559</span>
+<span class=normal>560</span>
+<span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span>
+<span class=normal>564</span>
+<span class=normal>565</span>
+<span class=normal>566</span>
+<span class=normal>567</span>
+<span class=normal>568</span>
+<span class=normal>569</span>
+<span class=normal>570</span>
+<span class=normal>571</span>
+<span class=normal>572</span>
+<span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span>
+<span class=normal>579</span>
+<span class=normal>580</span>
+<span class=normal>581</span>
+<span class=normal>582</span>
+<span class=normal>583</span>
+<span class=normal>584</span>
+<span class=normal>585</span>
+<span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span>
+<span class=normal>593</span>
+<span class=normal>594</span>
+<span class=normal>595</span>
+<span class=normal>596</span>
+<span class=normal>597</span>
+<span class=normal>598</span>
+<span class=normal>599</span>
+<span class=normal>600</span>
+<span class=normal>601</span>
+<span class=normal>602</span>
+<span class=normal>603</span>
+<span class=normal>604</span>
+<span class=normal>605</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>EntityThumbnailsPainter</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QObject</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>"""Paint entity thumbnails on the far right of view items.</span>
+
+<span class=sd>    Helper for item delegates. A thumbnail is requested the first time its</span>
+<span class=sd>    item is painted, so only thumbnails of items the user really sees are</span>
+<span class=sd>    loaded. Loaded thumbnails fade in.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        view: View where the thumbnails are painted.</span>
+<span class=sd>        controller: Controller of a tool, see 'EntityThumbnailsLoader'.</span>
+<span class=sd>        entity_type: Entity type of the view items.</span>
+<span class=sd>        entity_id_role: Item data role with an entity id.</span>
+<span class=sd>        thumbnail_height: Height of thumbnails in pixels.</span>
+<span class=sd>    """</span>
+    <span class=n>fade_duration</span> <span class=o>=</span> <span class=mi>400</span>  <span class=c1># In milliseconds</span>
+    <span class=n>aspect_ratio</span> <span class=o>=</span> <span class=mi>16</span> <span class=o>/</span> <span class=mi>9</span>
+    <span class=c1># Space around the thumbnail</span>
+    <span class=n>margin</span> <span class=o>=</span> <span class=mi>4</span>
+    <span class=n>radius</span> <span class=o>=</span> <span class=mi>2</span>
+    <span class=c1># Thumbnail is hidden only if there would not be enough space left for</span>
+    <span class=c1>#   an icon and few characters of a label. Should be low, items deep</span>
+    <span class=c1>#   in a hierarchy are narrow and their width changes, e.g. when</span>
+    <span class=c1>#   a scrollbar is shown.</span>
+    <span class=n>min_label_width</span> <span class=o>=</span> <span class=mi>50</span>
+    <span class=c1># Thumbnails are requested when no new items were painted for this</span>
+    <span class=c1>#   time (in milliseconds), so less is requested while scrolling</span>
+    <span class=n>_request_delay</span> <span class=o>=</span> <span class=mi>100</span>
+    <span class=c1># The longest time (in milliseconds) the request can be postponed, so</span>
+    <span class=c1>#   thumbnails keep loading during slow continuous scrolling</span>
+    <span class=n>_max_request_delay</span> <span class=o>=</span> <span class=mi>400</span>
+    <span class=c1># Limit of items waiting for the request, the oldest are forgotten</span>
+    <span class=c1>#   and requested again on their next paint</span>
+    <span class=n>_max_requested</span> <span class=o>=</span> <span class=mi>200</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>view</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAbstractItemView</span><span class=p>,</span>
+        <span class=n>controller</span><span class=p>:</span> <span class=n>Any</span><span class=p>,</span>
+        <span class=n>entity_type</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>entity_id_role</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=n>thumbnail_height</span><span class=p>:</span> <span class=nb>int</span> <span class=o>=</span> <span class=mi>20</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>view</span><span class=p>)</span>
+        <span class=n>loader</span> <span class=o>=</span> <span class=n>EntityThumbnailsLoader</span><span class=p>(</span>
+            <span class=n>controller</span><span class=p>,</span>
+            <span class=n>entity_type</span><span class=p>,</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>(</span>
+                <span class=nb>round</span><span class=p>(</span><span class=n>thumbnail_height</span> <span class=o>*</span> <span class=bp>self</span><span class=o>.</span><span class=n>aspect_ratio</span><span class=p>),</span> <span class=n>thumbnail_height</span>
+            <span class=p>),</span>
+            <span class=n>radius</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>radius</span><span class=p>,</span>
+            <span class=n>parent</span><span class=o>=</span><span class=bp>self</span><span class=p>,</span>
+        <span class=p>)</span>
+
+        <span class=n>request_timer</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QTimer</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>request_timer</span><span class=o>.</span><span class=n>setSingleShot</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+        <span class=n>request_timer</span><span class=o>.</span><span class=n>setInterval</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_request_delay</span><span class=p>)</span>
+
+        <span class=n>fade_timer</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QTimer</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>fade_timer</span><span class=o>.</span><span class=n>setInterval</span><span class=p>(</span><span class=mi>16</span><span class=p>)</span>
+
+        <span class=n>loader</span><span class=o>.</span><span class=n>thumbnails_changed</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_thumbnails_changed</span><span class=p>)</span>
+        <span class=n>request_timer</span><span class=o>.</span><span class=n>timeout</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_request_timer</span><span class=p>)</span>
+        <span class=n>fade_timer</span><span class=o>.</span><span class=n>timeout</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_fade_timer</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_view</span> <span class=o>=</span> <span class=n>view</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span> <span class=o>=</span> <span class=n>loader</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_entity_id_role</span> <span class=o>=</span> <span class=n>entity_id_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span> <span class=o>=</span> <span class=n>loader</span><span class=o>.</span><span class=n>is_available</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_request_timer</span> <span class=o>=</span> <span class=n>request_timer</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fade_timer</span> <span class=o>=</span> <span class=n>fade_timer</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fade_curve</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QEasingCurve</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QEasingCurve</span><span class=o>.</span><span class=n>InOutQuad</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span><span class=p>:</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QPersistentModelIndex</span><span class=p>]</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_first_request_time</span> <span class=o>=</span> <span class=mf>0.0</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span><span class=p>:</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=nb>float</span><span class=p>]</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=c1># Where fading thumbnails were painted, to repaint only them</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fade_rect_by_id</span><span class=p>:</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>]</span> <span class=o>=</span> <span class=p>{}</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>is_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>enabled</span><span class=p>:</span> <span class=nb>bool</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Show or hide thumbnails.</span>
+
+<span class=sd>        Thumbnails cannot be enabled if the controller does not support</span>
+<span class=sd>        them.</span>
+<span class=sd>        """</span>
+        <span class=n>enabled</span> <span class=o>=</span> <span class=n>enabled</span> <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>is_available</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>enabled</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span> <span class=o>=</span> <span class=n>enabled</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Set project of entities in the view.</span>
+
+<span class=sd>        Should be called on each refresh of the view, so changed thumbnails</span>
+<span class=sd>        are updated.</span>
+<span class=sd>        """</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>set_project_name</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>set_outdated</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_outdated</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Entities in the view were refreshed, validate their thumbnails.</span>
+
+<span class=sd>        Already loaded thumbnails stay visible until they are validated.</span>
+<span class=sd>        """</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>set_outdated</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_reserved_width</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>item_rect</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>int</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Width of the item that should be kept free for the thumbnail.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            item_rect: Rectangle of the item.</span>
+<span class=sd>            index: Index of the item.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Width in pixels, 0 if the thumbnail is not painted.</span>
+<span class=sd>        """</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span><span class=p>:</span>
+            <span class=k>return</span> <span class=mi>0</span>
+        <span class=n>entity_id</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_entity_id_role</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>entity_id</span> <span class=ow>or</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>get_pixmap</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=mi>0</span>
+        <span class=n>rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_thumbnail_rect</span><span class=p>(</span><span class=n>item_rect</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>rect</span><span class=o>.</span><span class=n>isEmpty</span><span class=p>():</span>
+            <span class=k>return</span> <span class=mi>0</span>
+        <span class=k>return</span> <span class=n>rect</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>+</span> <span class=bp>self</span><span class=o>.</span><span class=n>margin</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>paint</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>painter</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>,</span>
+        <span class=n>item_rect</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>,</span>
+        <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>"""Paint the thumbnail of an item, request it if is not loaded.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            painter: Painter of the item.</span>
+<span class=sd>            item_rect: Rectangle of the item.</span>
+<span class=sd>            index: Index of the item.</span>
+<span class=sd>        """</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>entity_id</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_entity_id_role</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>entity_id</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=c1># Thumbnail that would not be visible is not even requested</span>
+        <span class=n>rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_thumbnail_rect</span><span class=p>(</span><span class=n>item_rect</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>rect</span><span class=o>.</span><span class=n>isEmpty</span><span class=p>():</span>
+            <span class=k>return</span>
+
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>needs_load</span><span class=p>(</span><span class=n>entity_id</span><span class=p>):</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_request</span><span class=p>(</span><span class=n>entity_id</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+
+        <span class=n>pixmap</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>get_pixmap</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>pixmap</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=n>opacity</span> <span class=o>=</span> <span class=mf>1.0</span>
+        <span class=n>fade_start</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>fade_start</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>opacity</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_fade_opacity</span><span class=p>(</span><span class=n>fade_start</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_fade_rect_by_id</span><span class=p>[</span><span class=n>entity_id</span><span class=p>]</span> <span class=o>=</span> <span class=n>rect</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>save</span><span class=p>()</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setRenderHint</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=o>.</span><span class=n>SmoothPixmapTransform</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setOpacity</span><span class=p>(</span><span class=n>painter</span><span class=o>.</span><span class=n>opacity</span><span class=p>()</span> <span class=o>*</span> <span class=n>opacity</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>drawPixmap</span><span class=p>(</span><span class=n>rect</span><span class=p>,</span> <span class=n>pixmap</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>restore</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_request</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>entity_id</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>entity_id</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=k>if</span> <span class=nb>len</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_requested</span><span class=p>)</span> <span class=o>&gt;=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_max_requested</span><span class=p>:</span>
+            <span class=k>del</span> <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span><span class=p>[</span><span class=nb>next</span><span class=p>(</span><span class=nb>iter</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_requested</span><span class=p>))]</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span><span class=p>[</span><span class=n>entity_id</span><span class=p>]</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QPersistentModelIndex</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+        <span class=n>now</span> <span class=o>=</span> <span class=n>time</span><span class=o>.</span><span class=n>monotonic</span><span class=p>()</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_request_timer</span><span class=o>.</span><span class=n>isActive</span><span class=p>():</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_first_request_time</span> <span class=o>=</span> <span class=n>now</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_request_timer</span><span class=o>.</span><span class=n>start</span><span class=p>()</span>
+        <span class=k>elif</span> <span class=p>(</span>
+            <span class=p>(</span><span class=n>now</span> <span class=o>-</span> <span class=bp>self</span><span class=o>.</span><span class=n>_first_request_time</span><span class=p>)</span> <span class=o>*</span> <span class=mi>1000</span>
+            <span class=o>&lt;</span> <span class=bp>self</span><span class=o>.</span><span class=n>_max_request_delay</span>
+        <span class=p>):</span>
+            <span class=c1># Restart the timer to wait until painting of new items settles</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_request_timer</span><span class=o>.</span><span class=n>start</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_thumbnail_rect</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>item_rect</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>:</span>
+        <span class=n>size</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>get_thumbnail_size</span><span class=p>())</span>
+        <span class=c1># Keep at least 1px above and below the thumbnail</span>
+        <span class=n>max_height</span> <span class=o>=</span> <span class=n>item_rect</span><span class=o>.</span><span class=n>height</span><span class=p>()</span> <span class=o>-</span> <span class=mi>2</span>
+        <span class=k>if</span> <span class=n>size</span><span class=o>.</span><span class=n>height</span><span class=p>()</span> <span class=o>&gt;</span> <span class=n>max_height</span><span class=p>:</span>
+            <span class=n>size</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>(</span>
+                <span class=nb>round</span><span class=p>(</span><span class=n>max_height</span> <span class=o>*</span> <span class=bp>self</span><span class=o>.</span><span class=n>aspect_ratio</span><span class=p>),</span> <span class=n>max_height</span>
+            <span class=p>)</span>
+        <span class=n>rect</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QPoint</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>),</span> <span class=n>size</span><span class=p>)</span>
+        <span class=n>rect</span><span class=o>.</span><span class=n>moveCenter</span><span class=p>(</span><span class=n>item_rect</span><span class=o>.</span><span class=n>center</span><span class=p>())</span>
+        <span class=n>rect</span><span class=o>.</span><span class=n>moveRight</span><span class=p>(</span><span class=n>item_rect</span><span class=o>.</span><span class=n>right</span><span class=p>()</span> <span class=o>-</span> <span class=bp>self</span><span class=o>.</span><span class=n>margin</span><span class=p>)</span>
+        <span class=c1># Label is more important than the thumbnail in narrow items</span>
+        <span class=k>if</span> <span class=n>rect</span><span class=o>.</span><span class=n>left</span><span class=p>()</span> <span class=o>-</span> <span class=n>item_rect</span><span class=o>.</span><span class=n>left</span><span class=p>()</span> <span class=o>&lt;</span> <span class=bp>self</span><span class=o>.</span><span class=n>min_label_width</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>rect</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_fade_opacity</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>fade_start</span><span class=p>:</span> <span class=nb>float</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>float</span><span class=p>:</span>
+        <span class=n>progress</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=p>(</span><span class=n>time</span><span class=o>.</span><span class=n>monotonic</span><span class=p>()</span> <span class=o>-</span> <span class=n>fade_start</span><span class=p>)</span> <span class=o>*</span> <span class=mi>1000</span> <span class=o>/</span> <span class=bp>self</span><span class=o>.</span><span class=n>fade_duration</span>
+        <span class=p>)</span>
+        <span class=k>if</span> <span class=n>progress</span> <span class=o>&gt;=</span> <span class=mf>1.0</span><span class=p>:</span>
+            <span class=k>return</span> <span class=mf>1.0</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_curve</span><span class=o>.</span><span class=n>valueForProgress</span><span class=p>(</span><span class=nb>max</span><span class=p>(</span><span class=n>progress</span><span class=p>,</span> <span class=mf>0.0</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_request_timer</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>requested</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span><span class=p>,</span> <span class=p>{}</span>
+        <span class=c1># Items could be scrolled away, collapsed or removed in the meantime</span>
+        <span class=n>viewport_rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>rect</span><span class=p>()</span>
+        <span class=n>visible_ids</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=k>for</span> <span class=n>entity_id</span><span class=p>,</span> <span class=n>index</span> <span class=ow>in</span> <span class=n>requested</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+                <span class=k>continue</span>
+            <span class=c1># Explicit conversion, not all Qt bindings do it implicitly</span>
+            <span class=n>rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>visualRect</span><span class=p>(</span>
+                <span class=n>index</span><span class=o>.</span><span class=n>model</span><span class=p>()</span><span class=o>.</span><span class=n>index</span><span class=p>(</span>
+                    <span class=n>index</span><span class=o>.</span><span class=n>row</span><span class=p>(),</span> <span class=n>index</span><span class=o>.</span><span class=n>column</span><span class=p>(),</span> <span class=n>index</span><span class=o>.</span><span class=n>parent</span><span class=p>()</span>
+                <span class=p>)</span>
+            <span class=p>)</span>
+            <span class=k>if</span> <span class=n>rect</span><span class=o>.</span><span class=n>isValid</span><span class=p>()</span> <span class=ow>and</span> <span class=n>rect</span><span class=o>.</span><span class=n>intersects</span><span class=p>(</span><span class=n>viewport_rect</span><span class=p>):</span>
+                <span class=n>visible_ids</span><span class=o>.</span><span class=n>append</span><span class=p>((</span><span class=n>rect</span><span class=o>.</span><span class=n>top</span><span class=p>(),</span> <span class=n>entity_id</span><span class=p>))</span>
+
+        <span class=k>if</span> <span class=n>visible_ids</span><span class=p>:</span>
+            <span class=c1># Load thumbnails from top to bottom</span>
+            <span class=n>visible_ids</span><span class=o>.</span><span class=n>sort</span><span class=p>()</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>load</span><span class=p>(</span>
+                <span class=p>[</span><span class=n>entity_id</span> <span class=k>for</span> <span class=n>_</span><span class=p>,</span> <span class=n>entity_id</span> <span class=ow>in</span> <span class=n>visible_ids</span><span class=p>],</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>devicePixelRatioF</span><span class=p>(),</span>
+            <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_thumbnails_changed</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>entity_ids</span><span class=p>:</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>fade_start</span> <span class=o>=</span> <span class=n>time</span><span class=o>.</span><span class=n>monotonic</span><span class=p>()</span>
+        <span class=k>for</span> <span class=n>entity_id</span> <span class=ow>in</span> <span class=n>entity_ids</span><span class=p>:</span>
+            <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>get_pixmap</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span><span class=p>[</span><span class=n>entity_id</span><span class=p>]</span> <span class=o>=</span> <span class=n>fade_start</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span> <span class=ow>and</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_timer</span><span class=o>.</span><span class=n>isActive</span><span class=p>():</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_fade_timer</span><span class=o>.</span><span class=n>start</span><span class=p>()</span>
+        <span class=c1># Labels of the items are elided differently, repaint them all once</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_fade_timer</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>viewport</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span>
+        <span class=n>fade_end</span> <span class=o>=</span> <span class=n>time</span><span class=o>.</span><span class=n>monotonic</span><span class=p>()</span> <span class=o>-</span> <span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>fade_duration</span> <span class=o>/</span> <span class=mi>1000</span><span class=p>)</span>
+        <span class=k>for</span> <span class=n>entity_id</span><span class=p>,</span> <span class=n>fade_start</span> <span class=ow>in</span> <span class=nb>tuple</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span><span class=o>.</span><span class=n>items</span><span class=p>()):</span>
+            <span class=n>rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_rect_by_id</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>fade_start</span> <span class=o>&lt;=</span> <span class=n>fade_end</span><span class=p>:</span>
+                <span class=k>del</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span><span class=p>[</span><span class=n>entity_id</span><span class=p>]</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_fade_rect_by_id</span><span class=o>.</span><span class=n>pop</span><span class=p>(</span><span class=n>entity_id</span><span class=p>,</span> <span class=kc>None</span><span class=p>)</span>
+            <span class=c1># Thumbnails that are not visible do not have a rectangle</span>
+            <span class=k>if</span> <span class=n>rect</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=n>viewport</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>rect</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_fade_timer</span><span class=o>.</span><span class=n>stop</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.get_reserved_width class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_reserved_width</span><span class=p>(</span><span class=n>item_rect</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Width of the item that should be kept free for the thumbnail.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>item_rect</code> </td> <td> <code><span title=qtpy.QtCore.QRect>QRect</span></code> </td> <td> <div class=doc-md-description> <p>Rectangle of the item.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>index</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>Index of the item.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Width in pixels, 0 if the thumbnail is not painted.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_reserved_width</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>item_rect</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>,</span> <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>int</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Width of the item that should be kept free for the thumbnail.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        item_rect: Rectangle of the item.</span>
+<span class=sd>        index: Index of the item.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Width in pixels, 0 if the thumbnail is not painted.</span>
+<span class=sd>    """</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span><span class=p>:</span>
+        <span class=k>return</span> <span class=mi>0</span>
+    <span class=n>entity_id</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_entity_id_role</span><span class=p>)</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>entity_id</span> <span class=ow>or</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>get_pixmap</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>return</span> <span class=mi>0</span>
+    <span class=n>rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_thumbnail_rect</span><span class=p>(</span><span class=n>item_rect</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>rect</span><span class=o>.</span><span class=n>isEmpty</span><span class=p>():</span>
+        <span class=k>return</span> <span class=mi>0</span>
+    <span class=k>return</span> <span class=n>rect</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>+</span> <span class=bp>self</span><span class=o>.</span><span class=n>margin</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.paint class="doc doc-heading"> <code class="highlight language-python"><span class=n>paint</span><span class=p>(</span><span class=n>painter</span><span class=p>,</span> <span class=n>item_rect</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Paint the thumbnail of an item, request it if is not loaded.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>painter</code> </td> <td> <code><span title=qtpy.QtGui.QPainter>QPainter</span></code> </td> <td> <div class=doc-md-description> <p>Painter of the item.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>item_rect</code> </td> <td> <code><span title=qtpy.QtCore.QRect>QRect</span></code> </td> <td> <div class=doc-md-description> <p>Rectangle of the item.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>index</code> </td> <td> <code><span title=qtpy.QtCore.QModelIndex>QModelIndex</span></code> </td> <td> <div class=doc-md-description> <p>Index of the item.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>paint</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>painter</span><span class=p>:</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>,</span>
+    <span class=n>item_rect</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>,</span>
+    <span class=n>index</span><span class=p>:</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>,</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Paint the thumbnail of an item, request it if is not loaded.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        painter: Painter of the item.</span>
+<span class=sd>        item_rect: Rectangle of the item.</span>
+<span class=sd>        index: Index of the item.</span>
+<span class=sd>    """</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=n>entity_id</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_entity_id_role</span><span class=p>)</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>entity_id</span><span class=p>:</span>
+        <span class=k>return</span>
+
+    <span class=c1># Thumbnail that would not be visible is not even requested</span>
+    <span class=n>rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_thumbnail_rect</span><span class=p>(</span><span class=n>item_rect</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>rect</span><span class=o>.</span><span class=n>isEmpty</span><span class=p>():</span>
+        <span class=k>return</span>
+
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>needs_load</span><span class=p>(</span><span class=n>entity_id</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_request</span><span class=p>(</span><span class=n>entity_id</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+
+    <span class=n>pixmap</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>get_pixmap</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>pixmap</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>return</span>
+
+    <span class=n>opacity</span> <span class=o>=</span> <span class=mf>1.0</span>
+    <span class=n>fade_start</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_fade_start_by_id</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>entity_id</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>fade_start</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>opacity</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_fade_opacity</span><span class=p>(</span><span class=n>fade_start</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_fade_rect_by_id</span><span class=p>[</span><span class=n>entity_id</span><span class=p>]</span> <span class=o>=</span> <span class=n>rect</span>
+
+    <span class=n>painter</span><span class=o>.</span><span class=n>save</span><span class=p>()</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setRenderHint</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=o>.</span><span class=n>SmoothPixmapTransform</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setOpacity</span><span class=p>(</span><span class=n>painter</span><span class=o>.</span><span class=n>opacity</span><span class=p>()</span> <span class=o>*</span> <span class=n>opacity</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>drawPixmap</span><span class=p>(</span><span class=n>rect</span><span class=p>,</span> <span class=n>pixmap</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>restore</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_enabled class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_enabled</span><span class=p>(</span><span class=n>enabled</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Show or hide thumbnails.</p> <p>Thumbnails cannot be enabled if the controller does not support them.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>enabled</span><span class=p>:</span> <span class=nb>bool</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Show or hide thumbnails.</span>
+
+<span class=sd>    Thumbnails cannot be enabled if the controller does not support</span>
+<span class=sd>    them.</span>
+<span class=sd>    """</span>
+    <span class=n>enabled</span> <span class=o>=</span> <span class=n>enabled</span> <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>is_available</span><span class=p>()</span>
+    <span class=k>if</span> <span class=n>enabled</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_enabled</span> <span class=o>=</span> <span class=n>enabled</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_outdated class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_outdated</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Entities in the view were refreshed, validate their thumbnails.</p> <p>Already loaded thumbnails stay visible until they are validated.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_outdated</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Entities in the view were refreshed, validate their thumbnails.</span>
+
+<span class=sd>    Already loaded thumbnails stay visible until they are validated.</span>
+<span class=sd>    """</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_requested</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>set_outdated</span><span class=p>()</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>update</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.entity_thumbnails.EntityThumbnailsPainter.set_project_name class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_project_name</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Set project of entities in the view.</p> <p>Should be called on each refresh of the view, so changed thumbnails are updated.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/tools/utils/entity_thumbnails.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>"""Set project of entities in the view.</span>
+
+<span class=sd>    Should be called on each refresh of the view, so changed thumbnails</span>
+<span class=sd>    are updated.</span>
+<span class=sd>    """</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_loader</span><span class=o>.</span><span class=n>set_project_name</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>set_outdated</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"annotate": null, "base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.c21346df.min.js></script> </body> </html>
