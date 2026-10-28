@@ -11,6 +11,7 @@ from ayon_core.tools.utils import (
     paint_image_with_color,
     get_qt_icon,
     ClickableLabel,
+    IconButton,
 )
 # TODO change imports
 from ayon_core.tools.resources import get_image
@@ -54,6 +55,15 @@ class SupportLabel(QtWidgets.QLabel):
 
 
 class WarningLabel(QtWidgets.QLabel):
+    pass
+
+
+class InViewButton(IconButton):
+    pass
+
+
+class FilesOverlay(QtWidgets.QFrame):
+    """Buttons shown over bottom of the view on mouse hover."""
     pass
 
 
@@ -652,6 +662,9 @@ class FilesView(QtWidgets.QListView):
     def __init__(self, *args, **kwargs):
         super(FilesView, self).__init__(*args, **kwargs)
 
+        # Used in 'updateGeometries' which may be called from setters
+        self._bottom_space = 0
+
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
@@ -660,8 +673,28 @@ class FilesView(QtWidgets.QListView):
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.setVerticalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
 
         self.customContextMenuRequested.connect(self._on_context_menu_request)
+
+    def set_bottom_space(self, space):
+        """Extra scroll space so overlay does not cover last item."""
+        if self._bottom_space == space:
+            return
+        self._bottom_space = space
+        self.updateGeometries()
+
+    def updateGeometries(self):
+        super().updateGeometries()
+        if not self._bottom_space:
+            return
+        content_height = self.contentsSize().height()
+        maximum = (
+            content_height + self._bottom_space - self.viewport().height()
+        )
+        self.verticalScrollBar().setRange(0, max(0, maximum))
 
     def has_selected_item_ids(self):
         """Is any index selected."""
@@ -731,36 +764,39 @@ class FilesWidget(QtWidgets.QFrame):
         wrapper_layout.addWidget(files_view)
         wrapper_layout.setCurrentWidget(empty_widget)
 
-        # Footer is visible when there are items, so it is clear that more
-        #   files can be added (or the current one replaced)
-        footer_widget = QtWidgets.QWidget(self)
-        footer_hint = SupportLabel(footer_widget)
-        message_label = WarningLabel(footer_widget)
-        message_label.setVisible(False)
-        browse_btn = QtWidgets.QPushButton(footer_widget)
-        clear_btn = QtWidgets.QPushButton(footer_widget)
+        # Buttons over bottom right corner of the view, visible on hover
+        overlay_widget = FilesOverlay(wrapper_widget)
+        browse_btn = InViewButton(overlay_widget)
+        remove_btn = InViewButton(overlay_widget)
         if single_item:
-            footer_hint.setText("Drop a file to replace it")
-            browse_btn.setText("Replace...")
             browse_icon_name = "swap_horiz"
-            clear_btn.setText("Remove")
+            browse_btn.setToolTip("Replace...")
+            remove_btn.setToolTip("Remove")
         else:
-            footer_hint.setText("Drop more files to add them")
-            browse_btn.setText("Add...")
             browse_icon_name = "add"
-            clear_btn.setText("Clear all")
+            browse_btn.setToolTip("Add...")
+            remove_btn.setToolTip(
+                "Remove selected items (all if nothing is selected)"
+            )
         browse_btn.setIcon(get_qt_icon(
             MaterialSymbolsIcon(browse_icon_name, color="#ffffff")
         ))
+        remove_btn.setIcon(get_qt_icon(
+            MaterialSymbolsIcon("delete", color="#ffffff")
+        ))
 
-        footer_layout = QtWidgets.QHBoxLayout(footer_widget)
-        footer_layout.setContentsMargins(5, 2, 2, 2)
-        footer_layout.addWidget(footer_hint, 0)
-        footer_layout.addWidget(message_label, 1)
-        footer_layout.addStretch(0)
-        footer_layout.addWidget(browse_btn, 0)
-        footer_layout.addWidget(clear_btn, 0)
-        footer_widget.setVisible(False)
+        overlay_layout = QtWidgets.QHBoxLayout(overlay_widget)
+        overlay_layout.setContentsMargins(2, 2, 2, 2)
+        overlay_layout.setSpacing(2)
+        overlay_layout.addWidget(browse_btn, 0)
+        overlay_layout.addWidget(remove_btn, 0)
+        overlay_widget.setVisible(False)
+
+        # Feedback about dropped items, shown for a while
+        message_label = WarningLabel(wrapper_widget)
+        message_label.setWordWrap(True)
+        message_label.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        message_label.setVisible(False)
 
         message_timer = QtCore.QTimer(self)
         message_timer.setSingleShot(True)
@@ -771,7 +807,6 @@ class FilesWidget(QtWidgets.QFrame):
         main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.setSpacing(0)
         main_layout.addWidget(wrapper_widget, 1)
-        main_layout.addWidget(footer_widget, 0)
 
         # Handle drops from outside of the view directly, the view is in
         #   'InternalMove' mode and ignores them. Some hosts (e.g. Houdini)
@@ -786,7 +821,7 @@ class FilesWidget(QtWidgets.QFrame):
         )
         empty_widget.browse_requested.connect(self._on_browse_requested)
         browse_btn.clicked.connect(self._on_browse_requested)
-        clear_btn.clicked.connect(self._on_clear_requested)
+        remove_btn.clicked.connect(self._on_overlay_remove_clicked)
         message_timer.timeout.connect(self._on_message_timer)
 
         self._in_set_value = False
@@ -795,9 +830,9 @@ class FilesWidget(QtWidgets.QFrame):
         self._multivalue = False
         self._drop_hover = False
         self._drop_hover_color = None
+        self._mouse_hover = False
 
-        self._footer_widget = footer_widget
-        self._footer_hint = footer_hint
+        self._overlay_widget = overlay_widget
         self._message_label = message_label
         self._message_timer = message_timer
 
@@ -815,6 +850,12 @@ class FilesWidget(QtWidgets.QFrame):
         self.customContextMenuRequested.connect(self._on_context_menu)
 
     def eventFilter(self, obj, event):
+        if (
+            obj is self._files_view.viewport()
+            and event.type() == QtCore.QEvent.Resize
+        ):
+            self._update_overlay_geometry()
+
         if (
             obj is self._files_view.viewport()
             and event.type() in (
@@ -1002,9 +1043,13 @@ class FilesWidget(QtWidgets.QFrame):
         if not self._multivalue:
             self._remove_item_by_ids({item_id})
 
-    def _on_clear_requested(self):
-        if not self._multivalue:
-            self._remove_item_by_ids(set(self._widgets_by_id.keys()))
+    def _on_overlay_remove_clicked(self):
+        if self._multivalue:
+            return
+        item_ids = self._files_view.get_selected_item_ids()
+        if not item_ids:
+            item_ids = set(self._widgets_by_id.keys())
+        self._remove_item_by_ids(item_ids)
 
     def _on_browse_requested(self):
         if self._multivalue:
@@ -1070,12 +1115,59 @@ class FilesWidget(QtWidgets.QFrame):
     def _show_message(self, message):
         self._message_label.setText(message)
         self._message_label.setVisible(bool(message))
-        self._footer_hint.setVisible(not message)
         if message:
             self._message_timer.start()
+        self._update_overlay_geometry()
 
     def _on_message_timer(self):
         self._show_message("")
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._mouse_hover = True
+        self._update_overlay_visibility()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._mouse_hover = False
+        self._update_overlay_visibility()
+
+    def _update_overlay_visibility(self):
+        visible = (
+            self._mouse_hover
+            and not self._multivalue
+            and self._files_proxy_model.rowCount() > 0
+        )
+        self._overlay_widget.setVisible(visible)
+        if visible:
+            self._overlay_widget.raise_()
+
+    def _update_overlay_geometry(self):
+        """Place overlay and message to bottom of view viewport."""
+        viewport = self._files_view.viewport()
+        rect = QtCore.QRect(
+            viewport.mapTo(self._wrapper_widget, QtCore.QPoint(0, 0)),
+            viewport.size()
+        )
+        margin = 5
+        overlay = self._overlay_widget
+        overlay.resize(overlay.sizeHint())
+        overlay.move(
+            max(0, rect.right() - overlay.width() - margin + 1),
+            max(0, rect.bottom() - overlay.height() - margin + 1),
+        )
+        self._files_view.set_bottom_space(overlay.height() + margin)
+
+        label = self._message_label
+        if label.isVisible():
+            width = max(0, overlay.x() - rect.x() - margin * 2)
+            label.setFixedWidth(width)
+            label.adjustSize()
+            label.move(
+                rect.x() + margin,
+                max(0, rect.bottom() - label.height() - margin + 1),
+            )
+            label.raise_()
 
     def _set_drop_hover(self, hover):
         if self._drop_hover == hover:
@@ -1242,6 +1334,7 @@ class FilesWidget(QtWidgets.QFrame):
         else:
             current_widget = self._empty_widget
         self._wrapper_layout.setCurrentWidget(current_widget)
-        self._footer_widget.setVisible(files_exists and not self._multivalue)
-        if not files_exists:
-            self._show_message("")
+        self._update_overlay_visibility()
+        self._update_overlay_geometry()
+        if self._message_label.isVisible():
+            self._message_label.raise_()
