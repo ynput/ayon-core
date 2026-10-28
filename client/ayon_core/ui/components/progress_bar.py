@@ -37,9 +37,10 @@ class AYProgressBar(StyleMixin, QWidget):
     The bar is empty while ``maximum`` is ``0``, and indeterminate (a
     sweeping chunk) while ``value`` or ``maximum`` is negative.
 
-    With ``show_value`` the percentage is drawn right of the track. Its
-    space is reserved also while indeterminate, so the track does not
-    change width when the text appears or disappears.
+    By default the percentage is drawn right of the track. Its space is
+    reserved also while indeterminate, so the track does not change width
+    when the text appears or disappears. Pass ``show_value=False`` for a
+    bar without text.
 
     Args:
         parent: Parent widget.
@@ -72,7 +73,7 @@ class AYProgressBar(StyleMixin, QWidget):
         *,
         maximum: int = 0,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
-        show_value: bool = False,
+        show_value: bool = True,
     ) -> None:
         super().__init__(parent)
         self._variant_str = variant.value

@@ -88,7 +88,7 @@ def test_set_state(qapp):
 
 
 def test_size_hint_follows_style_height(qapp):
-    bar = AYProgressBar()
+    bar = AYProgressBar(show_value=False)
     style_height = int(bar._base_style().get("height", 6))
     assert bar.sizeHint().height() == style_height
 
@@ -170,15 +170,14 @@ def test_text_is_empty_while_indeterminate(qapp):
     assert bar.text() == ""
 
 
-def test_value_is_hidden_by_default(qapp):
+def test_value_is_shown_by_default(qapp):
     bar = AYProgressBar()
-    assert not bar.show_value()
-    style_height = int(bar._base_style().get("height", 6))
-    assert bar.sizeHint().height() == style_height
+    assert bar.show_value()
+    assert bar.sizeHint().height() >= bar.fontMetrics().height()
 
 
 def test_show_value_reserves_space(qapp):
-    bar = AYProgressBar(maximum=10)
+    bar = AYProgressBar(maximum=10, show_value=False)
     plain_hint = bar.sizeHint()
 
     bar.set_show_value(True)
@@ -190,7 +189,7 @@ def test_show_value_reserves_space(qapp):
 
 def test_show_value_shortens_track(qtbot):
     """The percentage is drawn right of the track, not over it."""
-    bar = AYProgressBar(maximum=10)
+    bar = AYProgressBar(maximum=10, show_value=False)
     bar.resize(200, 20)
     qtbot.addWidget(bar)
     bar.set_value(10)
