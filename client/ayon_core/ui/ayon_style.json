@@ -1136,7 +1136,6 @@
                     "label-value-spacing": 8,
                     "row-spacing": 6,
                     "value-min-width": 40,
-                    "value-spacing": 6,
                     "track-height": 4,
                     "track-color": "--md-sys-color-surface-container-highest-dark",
                     "filled-color": "--md-sys-color-primary-dark",
