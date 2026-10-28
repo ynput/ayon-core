@@ -372,28 +372,22 @@ def _sort_key(value) -> tuple:
 
 
 class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
-    """Sort workfiles of all hosts together.
+    """Sort workfiles by name per host, or by date and size of all hosts.
 
-    Grouped host items are always on top sorted by host name, regardless
-    of the sort order. Workfiles without a value, e.g. unknown size, are
-    lowest.
+    Sorting by name keeps workfiles of the same host together, hosts are
+    sorted by name regardless of the sort order. Sorting by modified date
+    or size sorts workfiles of all hosts together, grouped host items are
+    on top. Workfiles without a value, e.g. unknown size, are lowest.
     """
 
     def lessThan(self, source_left, source_right):
-        l_is_group = source_left.data(ITEM_TYPE_ROLE) == 1
-        r_is_group = source_right.data(ITEM_TYPE_ROLE) == 1
-        if l_is_group or r_is_group:
-            # Descending order calls 'lessThan(right, left)', swap them
-            #   back to keep the same order of group items
+        l_fixed = self._fixed_order_key(source_left)
+        r_fixed = self._fixed_order_key(source_right)
+        if l_fixed != r_fixed:
+            # Descending order calls 'lessThan(right, left)'
             if self.sortOrder() == QtCore.Qt.DescendingOrder:
-                source_left, source_right = source_right, source_left
-                l_is_group, r_is_group = r_is_group, l_is_group
-            if l_is_group != r_is_group:
-                return l_is_group
-            return (
-                _sort_key(source_left.data(HOST_NAME_ROLE))
-                < _sort_key(source_right.data(HOST_NAME_ROLE))
-            )
+                return r_fixed < l_fixed
+            return l_fixed < r_fixed
 
         l_key = _sort_key(source_left.data(self.sortRole()))
         r_key = _sort_key(source_right.data(self.sortRole()))
@@ -406,6 +400,18 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
                 source_right.sibling(source_right.row(), 0).data()
             )
         return l_key < r_key
+
+    @staticmethod
+    def _fixed_order_key(index) -> tuple:
+        """Key of the order that does not change with the sort order."""
+        host_key = _sort_key(index.data(HOST_NAME_ROLE))
+        if index.column() == 0:
+            # Workfiles of the same host are together
+            return host_key
+        if index.data(ITEM_TYPE_ROLE) == 1:
+            # Grouped host items are on top
+            return (0, host_key)
+        return (1,)
 
 
 class WorkfilesDelegate(TreeViewItemDelegate):

@@ -162,25 +162,25 @@ def _sorted_names(qtbot, grouped_host_names, column, order) -> list[str]:
 
 
 @pytest.mark.parametrize(
-    "column, expected_order",
+    "column, ascending, descending",
     [
-        (0, [0, 1, 2, 3]),
+        # Name, workfiles of the same host are together
+        (0, [0, 2, 1, 3], [2, 0, 3, 1]),
         # Modified time, workfiles of different hosts are not separated
-        (1, [1, 2, 0, 3]),
+        (1, [1, 2, 0, 3], [3, 0, 2, 1]),
         # Size in bytes, unknown size is lowest
-        (2, [3, 0, 1, 2]),
+        (2, [3, 0, 1, 2], [2, 1, 0, 3]),
     ],
 )
 def test_workfiles_are_sorted_by_raw_values(
-    qtbot, task_queue, column, expected_order
+    qtbot, task_queue, column, ascending, descending
 ):
-    expected = [SORTING_ITEMS[idx].filename for idx in expected_order]
-    assert _sorted_names(
-        qtbot, [], column, QtCore.Qt.AscendingOrder
-    ) == expected
-    assert _sorted_names(
-        qtbot, [], column, QtCore.Qt.DescendingOrder
-    ) == expected[::-1]
+    for order, expected_order in (
+        (QtCore.Qt.AscendingOrder, ascending),
+        (QtCore.Qt.DescendingOrder, descending),
+    ):
+        expected = [SORTING_ITEMS[idx].filename for idx in expected_order]
+        assert _sorted_names(qtbot, [], column, order) == expected
 
 
 @pytest.mark.parametrize(
@@ -196,6 +196,10 @@ def test_grouped_hosts_are_on_top(qtbot, task_queue, order):
         "sh010_comp_v001.comp",
         "sh010_comp_v003.comp",
     ]
+
+    # Sorting by name keeps the order of hosts
+    names = _sorted_names(qtbot, ["nuke"], 0, order)
+    assert names[-1] == "nuke"
 
 
 def test_delegate_formats_size_column(qtbot, task_queue, avatar_tasks):
