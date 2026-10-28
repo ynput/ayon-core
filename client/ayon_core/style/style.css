@@ -1486,14 +1486,16 @@ FilesView::item {
     padding: 0px;
 }
 FilesOverlay {
-    background: {color:bg-view};
-    border-radius: 0.2em;
-}
-InViewButton, InViewButton:disabled {
     background: transparent;
 }
+InViewButton {
+    background: {color:bg-buttons};
+}
 InViewButton:hover {
-    background: rgba(255, 255, 255, 37);
+    background: {color:bg-buttons-hover};
+}
+InViewButton:disabled {
+    background: {color:bg-buttons-disabled};
 }
 WarningLabel {
     color: {color:publisher:warning};

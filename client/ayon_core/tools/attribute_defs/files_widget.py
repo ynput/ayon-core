@@ -63,7 +63,7 @@ class InViewButton(IconButton):
 
 
 class FilesOverlay(QtWidgets.QFrame):
-    """Buttons shown over bottom of the view on mouse hover."""
+    """Button shown under view items on mouse hover."""
     pass
 
 
@@ -642,9 +642,6 @@ class FilesView(QtWidgets.QListView):
     def __init__(self, *args, **kwargs):
         super(FilesView, self).__init__(*args, **kwargs)
 
-        # Used in 'updateGeometries' which may be called from setters
-        self._bottom_space = 0
-
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
@@ -653,28 +650,13 @@ class FilesView(QtWidgets.QListView):
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
-        self.setVerticalScrollMode(
-            QtWidgets.QAbstractItemView.ScrollPerPixel
-        )
 
         self.customContextMenuRequested.connect(self._on_context_menu_request)
 
     def set_bottom_space(self, space):
-        """Extra scroll space so overlay does not cover last item."""
-        if self._bottom_space == space:
-            return
-        self._bottom_space = space
-        self.updateGeometries()
-
-    def updateGeometries(self):
-        super().updateGeometries()
-        if not self._bottom_space:
-            return
-        content_height = self.contentsSize().height()
-        maximum = (
-            content_height + self._bottom_space - self.viewport().height()
-        )
-        self.verticalScrollBar().setRange(0, max(0, maximum))
+        """Space under items for buttons, so they never cover an item."""
+        if self.viewportMargins().bottom() != space:
+            self.setViewportMargins(0, 0, 0, space)
 
     def has_selected_item_ids(self):
         """Is any index selected."""
@@ -781,9 +763,7 @@ class FilesWidget(QtWidgets.QFrame):
 
         # Feedback about dropped items, shown for a while
         message_label = WarningLabel(wrapper_widget)
-        message_label.setWordWrap(True)
         message_label.setAlignment(QtCore.Qt.AlignCenter)
-        message_label.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         message_label.setVisible(False)
 
         message_timer = QtCore.QTimer(self)
@@ -822,6 +802,7 @@ class FilesWidget(QtWidgets.QFrame):
         self._drop_hover = False
         self._drop_hover_color = None
         self._mouse_hover = False
+        self._message = ""
 
         self._browse_overlay = browse_overlay
         self._remove_overlay = remove_overlay
@@ -1096,7 +1077,9 @@ class FilesWidget(QtWidgets.QFrame):
         self._show_message(". ".join(messages))
 
     def _show_message(self, message):
+        self._message = message
         self._message_label.setText(message)
+        self._message_label.setToolTip(message)
         self._message_label.setVisible(bool(message))
         if message:
             self._message_timer.start()
@@ -1127,41 +1110,42 @@ class FilesWidget(QtWidgets.QFrame):
                 overlay.raise_()
 
     def _update_overlay_geometry(self):
-        """Place overlay and message to bottom of view viewport."""
-        viewport = self._files_view.viewport()
-        rect = QtCore.QRect(
-            viewport.mapTo(self._wrapper_widget, QtCore.QPoint(0, 0)),
-            viewport.size()
-        )
-        margin = 5
+        """Place buttons and message to space under view items."""
+        rect = self._files_view.geometry()
+        margin = 3
         browse_overlay = self._browse_overlay
         remove_overlay = self._remove_overlay
         browse_overlay.resize(browse_overlay.sizeHint())
         remove_overlay.resize(remove_overlay.sizeHint())
         height = max(browse_overlay.height(), remove_overlay.height())
-        pos_y = max(0, rect.bottom() - height - margin + 1)
+        self._files_view.set_bottom_space(height + margin * 2)
+
+        pos_y = rect.bottom() - height - margin + 1
         browse_overlay.move(rect.x() + margin, pos_y)
         remove_overlay.move(
-            max(0, rect.right() - remove_overlay.width() - margin + 1),
-            pos_y
+            rect.right() - remove_overlay.width() - margin + 1, pos_y
         )
-        self._files_view.set_bottom_space(height + margin)
 
         # Message is centered between the buttons
         label = self._message_label
         if label.isVisible():
             side_width = max(browse_overlay.width(), remove_overlay.width())
-            width = max(0, rect.width() - (side_width + margin * 2) * 2)
+            max_width = max(0, rect.width() - (side_width + margin * 2) * 2)
             margins = label.contentsMargins()
-            text_width = (
-                label.fontMetrics().horizontalAdvance(label.text())
-                + margins.left() + margins.right() + 8
+            extra_width = margins.left() + margins.right() + 2
+            metrics = label.fontMetrics()
+            text = metrics.elidedText(
+                self._message, QtCore.Qt.ElideRight, max_width - extra_width
             )
-            width = min(width, text_width)
-            label.setFixedSize(width, label.heightForWidth(width))
+            label.setText(text)
+            width = min(
+                max_width, metrics.horizontalAdvance(text) + extra_width
+            )
+            label.setFixedWidth(width)
+            label.adjustSize()
             label.move(
-                rect.x() + (rect.width() - label.width()) // 2,
-                max(0, rect.bottom() - label.height() - margin + 1),
+                rect.x() + (rect.width() - width) // 2,
+                pos_y + (height - label.height()) // 2,
             )
             label.raise_()
 
