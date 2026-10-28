@@ -10,6 +10,7 @@ from qtpy.QtGui import (
     QHideEvent,
     QPainter,
     QPaintEvent,
+    QPalette,
     QShowEvent,
 )
 from qtpy.QtWidgets import QSizePolicy, QWidget
@@ -36,10 +37,15 @@ class AYProgressBar(StyleMixin, QWidget):
     The bar is empty while ``maximum`` is ``0``, and indeterminate (a
     sweeping chunk) while ``value`` or ``maximum`` is negative.
 
+    With ``show_value`` the percentage is drawn right of the track. Its
+    space is reserved also while indeterminate, so the track does not
+    change width when the text appears or disappears.
+
     Args:
         parent: Parent widget.
         maximum: Value that represents a full bar.
         variant: Visual style variant.
+        show_value: Whether the percentage is drawn next to the track.
 
     Signals:
         value_changed (int): Current value.
@@ -66,6 +72,7 @@ class AYProgressBar(StyleMixin, QWidget):
         *,
         maximum: int = 0,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
+        show_value: bool = False,
     ) -> None:
         super().__init__(parent)
         self._variant_str = variant.value
@@ -74,6 +81,7 @@ class AYProgressBar(StyleMixin, QWidget):
         self._value: int = 0
         self._maximum: int = maximum
         self._state: ProgressBarState = ProgressBarState.Normal
+        self._show_value: bool = show_value
 
         # Offset of the indeterminate sweep animation, not progress data.
         self._sweep = 0.0
@@ -147,6 +155,24 @@ class AYProgressBar(StyleMixin, QWidget):
         fraction = self._value / self._maximum
         return max(0.0, min(fraction, 1.0)) * 100.0
 
+    def text(self) -> str:
+        """Return the percentage text, empty while indeterminate."""
+        if self.is_indeterminate():
+            return ""
+        return f"{self.percentage():.0f}%"
+
+    def show_value(self) -> bool:
+        """Return whether the percentage is drawn next to the track."""
+        return self._show_value
+
+    def set_show_value(self, show_value: bool) -> None:
+        """Set whether the percentage is drawn next to the track."""
+        if show_value == self._show_value:
+            return
+        self._show_value = show_value
+        self.updateGeometry()
+        self.update()
+
     def _base_style(self) -> StyleDict:
         """Return the colours and geometry shared by every state.
 
@@ -205,6 +231,49 @@ class AYProgressBar(StyleMixin, QWidget):
         color = style.get(key) or style.get("chunk-color", "#8fceff")
         return QColor(color)
 
+    def _value_width(self, style: StyleDict) -> int:
+        """Return the width reserved for the percentage text."""
+        if not self._show_value:
+            return 0
+        text_width = self.fontMetrics().horizontalAdvance("100%")
+        return max(int(style.get("value-min-width", 40)), text_width)
+
+    def _value_space(self, style: StyleDict) -> int:
+        """Return the total width taken by the text and its spacing."""
+        value_width = self._value_width(style)
+        if not value_width:
+            return 0
+        return value_width + int(style.get("value-spacing", 6))
+
+    def _draw_value(self, painter: QPainter, style: StyleDict) -> None:
+        """Draw the percentage right-aligned at the right edge.
+
+        Args:
+            painter: Painter configured for this widget.
+            style: Style tokens for the current state.
+        """
+        text = self.text()
+        if not self._show_value or not text:
+            return
+        margin = float(style.get("margin", 0))
+        value_width = self._value_width(style)
+        rect = QRectF(
+            self.width() - margin - value_width,
+            0,
+            value_width,
+            self.height(),
+        )
+        # Same colour as a dim ``AYLabel``.
+        painter.setPen(
+            self.palette().color(QPalette.ColorRole.PlaceholderText)
+        )
+        painter.setFont(self.font())
+        painter.drawText(
+            rect,
+            int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+            text,
+        )
+
     def _draw_bar(self, painter: QPainter, style: StyleDict) -> None:
         """Draw the track and the filled or sweeping chunk.
 
@@ -214,7 +283,7 @@ class AYProgressBar(StyleMixin, QWidget):
         """
         height = float(style.get("height", 6))
         margin = float(style.get("margin", 0))
-        width = self.width() - margin * 2
+        width = self.width() - margin * 2 - self._value_space(style)
         if width <= 0 or height <= 0:
             return
 
@@ -242,10 +311,10 @@ class AYProgressBar(StyleMixin, QWidget):
             painter.drawRoundedRect(chunk, radius, radius)
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        """Paint the track and the filled or sweeping chunk.
+        """Paint the track, the chunk, and the optional percentage.
 
-        The bar draws only the bar itself; descriptive text belongs to the
-        owner (``AYProgressView`` draws it as a caption above the bar).
+        Descriptive text belongs to the owner (``AYProgressView`` draws it
+        as a caption above the bar).
 
         Args:
             event: The paint event; the whole widget is repainted.
@@ -255,16 +324,23 @@ class AYProgressBar(StyleMixin, QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setOpacity(self._opacity())
         self._draw_bar(painter, style)
+        self._draw_value(painter, style)
         painter.end()
 
     def sizeHint(self) -> QSize:
         """Return the preferred size derived from the style height."""
-        height = int(self._base_style().get("height", 6))
-        return QSize(200, height)
+        style = self._base_style()
+        height = int(style.get("height", 6))
+        if self._show_value:
+            height = max(height, self.fontMetrics().height())
+        return QSize(200 + self._value_space(style), height)
 
     def minimumSizeHint(self) -> QSize:
         """Return the minimum size derived from the style height."""
-        return QSize(40, self.sizeHint().height())
+        style = self._base_style()
+        return QSize(
+            40 + self._value_space(style), self.sizeHint().height()
+        )
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
@@ -288,7 +364,7 @@ class AYProgressView(AYContainer):
         label: Optional caption shown above the bar.
         maximum: Value that represents a full bar.
         variant: Progress bar style variant.
-        show_value: Whether the percentage readout is shown.
+        show_value: Whether the bar draws the percentage readout.
 
     Signals:
         value_changed (int): Current value of the progress bar.
@@ -313,41 +389,21 @@ class AYProgressView(AYContainer):
             layout_spacing=5,
             layout_margin=0,
         )
-        self._style_data = get_ayon_style().model.get_styles(
-            "AYProgressBar",
-            variant=variant.value,
-        )
-        self._show_value = show_value
-
         label = label or ""
         self._caption = AYLabel(label)
         self.add_widget(self._caption)
         if not label:
             self._caption.setVisible(False)
 
-        self._row = AYContainer(
-            layout=AYContainer.Layout.HBox,
-            layout_spacing=6,
-            layout_margin=0,
+        self._bar = AYProgressBar(
+            maximum=maximum,
+            variant=variant,
+            show_value=show_value,
         )
-        self._bar = AYProgressBar(maximum=maximum, variant=variant)
-        self._value_label = AYLabel("", dim=True)
-        self._value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        base = self._style_data.get("base") or StyleDict()
-        self._value_label.setMinimumWidth(
-            base.get("value-min-width", 40)
-        )
+        self.add_widget(self._bar)
 
-        self._row.add_widget(self._bar, stretch=1)
-        self._row.add_widget(self._value_label, stretch=0)
-        self.add_widget(self._row)
-
-        self._value_label.setVisible(self._show_value)
-        self._bar.value_changed.connect(self._on_progress_changed)
-        self._bar.maximum_changed.connect(self._on_progress_changed)
         self._bar.value_changed.connect(self.value_changed)
         self._bar.maximum_changed.connect(self.maximum_changed)
-        self._on_progress_changed()
 
     def value(self) -> int:
         """Return the current value."""
@@ -368,6 +424,18 @@ class AYProgressView(AYContainer):
     def percentage(self) -> float:
         """Return the completion percentage in the ``0.0``-``100.0`` range."""
         return self._bar.percentage()
+
+    def text(self) -> str:
+        """Return the percentage text, empty while indeterminate."""
+        return self._bar.text()
+
+    def show_value(self) -> bool:
+        """Return whether the percentage is drawn next to the bar."""
+        return self._bar.show_value()
+
+    def set_show_value(self, show_value: bool) -> None:
+        """Set whether the percentage is drawn next to the bar."""
+        self._bar.set_show_value(show_value)
 
     def state(self) -> ProgressBarState:
         """Return the semantic state used to colour the chunk."""
@@ -392,10 +460,3 @@ class AYProgressView(AYContainer):
         else:
             self._caption.setText(text)
             self._caption.setVisible(True)
-
-    def _on_progress_changed(self) -> None:
-        """Update the percentage label to match the current progress."""
-        if not self._show_value or self.is_indeterminate():
-            self._value_label.setText("")
-            return
-        self._value_label.setText(f"{self.percentage():.0f}%")

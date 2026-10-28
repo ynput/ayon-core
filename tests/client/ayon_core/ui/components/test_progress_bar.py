@@ -152,6 +152,62 @@ def test_state_changes_chunk_colour(qtbot):
     assert normal != error
 
 
+def test_text_follows_value_and_maximum(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_value(5)
+    assert bar.text() == "50%"
+
+    bar.set_maximum(20)
+    assert bar.text() == "25%"
+
+    bar.set_maximum(-1)
+    assert bar.text() == ""
+
+
+def test_text_is_empty_while_indeterminate(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_value(-1)
+    assert bar.text() == ""
+
+
+def test_value_is_hidden_by_default(qapp):
+    bar = AYProgressBar()
+    assert not bar.show_value()
+    style_height = int(bar._base_style().get("height", 6))
+    assert bar.sizeHint().height() == style_height
+
+
+def test_show_value_reserves_space(qapp):
+    bar = AYProgressBar(maximum=10)
+    plain_hint = bar.sizeHint()
+
+    bar.set_show_value(True)
+    hint = bar.sizeHint()
+    assert hint.width() > plain_hint.width()
+    assert hint.height() >= bar.fontMetrics().height()
+    assert bar.minimumSizeHint().width() > 40
+
+
+def test_show_value_shortens_track(qtbot):
+    """The percentage is drawn right of the track, not over it."""
+    bar = AYProgressBar(maximum=10)
+    bar.resize(200, 20)
+    qtbot.addWidget(bar)
+    bar.set_value(10)
+    bar.show()
+    qtbot.waitExposed(bar)
+    full = bar.grab().toImage()
+    style = bar._base_style()
+    # Right end of a full track is chunk coloured.
+    chunk = full.pixelColor(196, 10)
+
+    bar.set_show_value(True)
+    with_value = bar.grab().toImage()
+    track_end = 200 - bar._value_space(style)
+    assert with_value.pixelColor(track_end - 4, 10) == chunk
+    assert with_value.pixelColor(track_end + 2, 10) != chunk
+
+
 def test_inline_variant_resolves(qapp):
     bar = AYProgressBar(variant=AYProgressBarVariants.Inline)
     assert bar._base_style().get("height") == 4
@@ -166,7 +222,7 @@ def test_view_forwards_to_bar(qapp):
     assert view.value() == 2
     assert view.maximum() == 4
     assert view.percentage() == 50.0
-    assert view._value_label.text() == "50%"
+    assert view.text() == "50%"
 
     view.set_state(ProgressBarState.Success)
     assert view.state() is ProgressBarState.Success
@@ -177,30 +233,19 @@ def test_view_label_is_positional(qapp):
     assert view._caption.text() == "Submitting"
 
 
-def test_view_label_follows_maximum(qapp):
+def test_view_shows_value_by_default(qapp):
     view = AYProgressView(maximum=10)
-    view.set_value(5)
-    assert view._value_label.text() == "50%"
-
-    view.set_maximum(20)
-    assert view._value_label.text() == "25%"
-
-    view.set_maximum(-1)
-    assert view._value_label.text() == ""
-
-
-def test_view_label_is_empty_while_indeterminate(qapp):
-    view = AYProgressView(maximum=10)
-    view.set_value(-1)
-    assert view.is_indeterminate()
-    assert view._value_label.text() == ""
+    assert view.show_value()
+    assert view._bar.show_value()
 
 
 def test_view_hidden_value(qapp):
     view = AYProgressView(maximum=10, show_value=False)
-    view.set_value(5)
-    assert view._value_label.text() == ""
-    assert view._value_label.isHidden()
+    assert not view.show_value()
+    assert not view._bar.show_value()
+
+    view.set_show_value(True)
+    assert view._bar.show_value()
 
 
 def test_view_forwards_signals(qapp):
