@@ -17,8 +17,6 @@ from qtpy.QtWidgets import QSizePolicy, QWidget
 
 from ..style_types import StyleDict, get_ayon_style
 from ..variants import AYProgressBarVariants
-from .container import AYContainer
-from .label import AYLabel
 from .style_mixin import StyleMixin
 
 
@@ -314,8 +312,7 @@ class AYProgressBar(StyleMixin, QWidget):
     def paintEvent(self, event: QPaintEvent) -> None:
         """Paint the track, the chunk, and the optional percentage.
 
-        Descriptive text belongs to the owner (``AYProgressView`` draws it
-        as a caption above the bar).
+        Descriptive text, such as a caption, belongs to the owner.
 
         Args:
             event: The paint event; the whole widget is repainted.
@@ -350,114 +347,3 @@ class AYProgressBar(StyleMixin, QWidget):
     def hideEvent(self, event: QHideEvent) -> None:
         self._timer.stop()
         super().hideEvent(event)
-
-
-class AYProgressView(AYContainer):
-    """Caption, progress bar, and percentage readout.
-
-    Layout::
-
-        Caption text
-        [=================--------]   45%
-
-    Args:
-        parent: Parent widget.
-        label: Optional caption shown above the bar.
-        maximum: Value that represents a full bar.
-        variant: Progress bar style variant.
-        show_value: Whether the bar draws the percentage readout.
-
-    Signals:
-        value_changed (int): Current value of the progress bar.
-        maximum_changed (int): Current maximum of the progress bar.
-
-    """
-    value_changed = Signal(int)
-    maximum_changed = Signal(int)
-
-    def __init__(
-        self,
-        parent: QWidget | None = None,
-        label: str = "",
-        *,
-        maximum: int = 0,
-        variant: AYProgressBarVariants = AYProgressBarVariants.Default,
-        show_value: bool = True,
-    ) -> None:
-        super().__init__(
-            parent,
-            layout=AYContainer.Layout.VBox,
-            layout_spacing=5,
-            layout_margin=0,
-        )
-        label = label or ""
-        self._caption = AYLabel(label)
-        self.add_widget(self._caption)
-        if not label:
-            self._caption.setVisible(False)
-
-        self._bar = AYProgressBar(
-            maximum=maximum,
-            variant=variant,
-            show_value=show_value,
-        )
-        self.add_widget(self._bar)
-
-        self._bar.value_changed.connect(self.value_changed)
-        self._bar.maximum_changed.connect(self.maximum_changed)
-
-    def value(self) -> int:
-        """Return the current value."""
-        return self._bar.value()
-
-    def set_value(self, value: int) -> None:
-        """Set the current value, negative makes the bar indeterminate."""
-        self._bar.set_value(value)
-
-    def maximum(self) -> int:
-        """Return the value that represents a full bar."""
-        return self._bar.maximum()
-
-    def set_maximum(self, value: int) -> None:
-        """Set the full-bar value, negative makes the bar indeterminate."""
-        self._bar.set_maximum(value)
-
-    def percentage(self) -> float:
-        """Return the completion percentage in the ``0.0``-``100.0`` range."""
-        return self._bar.percentage()
-
-    def text(self) -> str:
-        """Return the percentage text, empty while indeterminate."""
-        return self._bar.text()
-
-    def show_value(self) -> bool:
-        """Return whether the percentage is drawn next to the bar."""
-        return self._bar.show_value()
-
-    def set_show_value(self, show_value: bool) -> None:
-        """Set whether the percentage is drawn next to the bar."""
-        self._bar.set_show_value(show_value)
-
-    def state(self) -> ProgressBarState:
-        """Return the semantic state used to colour the chunk."""
-        return self._bar.state()
-
-    def set_state(self, state: ProgressBarState) -> None:
-        """Set the semantic state used to colour the chunk."""
-        self._bar.set_state(state)
-
-    def is_indeterminate(self) -> bool:
-        """True while the progress cannot be shown as a fraction."""
-        return self._bar.is_indeterminate()
-
-    def is_animating(self) -> bool:
-        """True while the indeterminate sweep timer is running."""
-        return self._bar.is_animating()
-
-    def set_label(self, text: str) -> None:
-        """Set or replace the caption shown above the bar."""
-        if not text:
-            self._caption.setVisible(False)
-        else:
-            self._caption.setText(text)
-            self._caption.setVisible(True)

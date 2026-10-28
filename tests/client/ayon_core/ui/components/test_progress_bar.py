@@ -1,9 +1,8 @@
-"""Tests for AYProgressBar and AYProgressView."""
+"""Tests for AYProgressBar."""
 from __future__ import annotations
 
 from ayon_core.ui.components.progress_bar import (
     AYProgressBar,
-    AYProgressView,
     ProgressBarState,
 )
 from ayon_core.ui.variants import AYProgressBarVariants
@@ -210,74 +209,3 @@ def test_show_value_shortens_track(qtbot):
 def test_inline_variant_resolves(qapp):
     bar = AYProgressBar(variant=AYProgressBarVariants.Inline)
     assert bar._base_style().get("height") == 4
-
-
-# --- AYProgressView --------------------------------------------------------
-
-
-def test_view_forwards_to_bar(qapp):
-    view = AYProgressView(label="Submitting", maximum=4)
-    view.set_value(2)
-    assert view.value() == 2
-    assert view.maximum() == 4
-    assert view.percentage() == 50.0
-    assert view.text() == "50%"
-
-    view.set_state(ProgressBarState.Success)
-    assert view.state() is ProgressBarState.Success
-
-
-def test_view_label_is_positional(qapp):
-    view = AYProgressView(None, "Submitting")
-    assert view._caption.text() == "Submitting"
-
-
-def test_view_shows_value_by_default(qapp):
-    view = AYProgressView(maximum=10)
-    assert view.show_value()
-    assert view._bar.show_value()
-
-
-def test_view_hidden_value(qapp):
-    view = AYProgressView(maximum=10, show_value=False)
-    assert not view.show_value()
-    assert not view._bar.show_value()
-
-    view.set_show_value(True)
-    assert view._bar.show_value()
-
-
-def test_view_forwards_signals(qapp):
-    view = AYProgressView(maximum=10)
-    values = []
-    maximums = []
-    view.value_changed.connect(values.append)
-    view.maximum_changed.connect(maximums.append)
-    view.set_value(3)
-    view.set_maximum(30)
-    assert values == [3]
-    assert maximums == [30]
-
-
-def test_view_caption_visibility(qapp):
-    view = AYProgressView()
-    assert view._caption.isHidden()
-
-    view.set_label("Uploading")
-    assert not view._caption.isHidden()
-    assert view._caption.text() == "Uploading"
-
-    view.set_label("")
-    assert view._caption.isHidden()
-
-
-def test_view_animation(qtbot):
-    view = AYProgressView(maximum=10)
-    qtbot.addWidget(view)
-    view.show()
-    qtbot.waitExposed(view)
-    view.set_value(-1)
-    assert view.is_animating()
-
-    view.set_value(1)
-    assert not view.is_animating()
