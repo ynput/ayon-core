@@ -1,9 +1,8 @@
-"""Tests for AYProgressBar and AYProgressView."""
+"""Tests for AYProgressBar."""
 from __future__ import annotations
 
 from ayon_core.ui.components.progress_bar import (
     AYProgressBar,
-    AYProgressView,
     ProgressBarState,
 )
 from ayon_core.ui.variants import AYProgressBarVariants
@@ -88,7 +87,7 @@ def test_set_state(qapp):
 
 
 def test_size_hint_follows_style_height(qapp):
-    bar = AYProgressBar()
+    bar = AYProgressBar(show_value=False)
     style_height = int(bar._base_style().get("height", 6))
     assert bar.sizeHint().height() == style_height
 
@@ -152,88 +151,61 @@ def test_state_changes_chunk_colour(qtbot):
     assert normal != error
 
 
+def test_text_follows_value_and_maximum(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_value(5)
+    assert bar.text() == "50%"
+
+    bar.set_maximum(20)
+    assert bar.text() == "25%"
+
+    bar.set_maximum(-1)
+    assert bar.text() == ""
+
+
+def test_text_is_empty_while_indeterminate(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_value(-1)
+    assert bar.text() == ""
+
+
+def test_value_is_shown_by_default(qapp):
+    bar = AYProgressBar()
+    assert bar.show_value()
+    assert bar.sizeHint().height() >= bar.fontMetrics().height()
+
+
+def test_show_value_reserves_space(qapp):
+    bar = AYProgressBar(maximum=10, show_value=False)
+    plain_hint = bar.sizeHint()
+
+    bar.set_show_value(True)
+    hint = bar.sizeHint()
+    assert hint.width() > plain_hint.width()
+    assert hint.height() >= bar.fontMetrics().height()
+    assert bar.minimumSizeHint().width() > 40
+
+
+def test_show_value_shortens_track(qtbot):
+    """The percentage is drawn right of the track, not over it."""
+    bar = AYProgressBar(maximum=10, show_value=False)
+    bar.resize(200, 20)
+    qtbot.addWidget(bar)
+    bar.set_value(10)
+    bar.show()
+    qtbot.waitExposed(bar)
+    full = bar.grab().toImage()
+    style = bar._base_style()
+    # Right end of a full track is chunk coloured.
+    chunk = full.pixelColor(196, 10)
+
+    bar.set_show_value(True)
+    with_value = bar.grab().toImage()
+    track_end = 200 - bar._value_space(style)
+    assert with_value.pixelColor(track_end - 4, 10) == chunk
+    assert with_value.pixelColor(track_end + 2, 10) != chunk
+
+
 def test_inline_variant_resolves(qapp):
     bar = AYProgressBar(variant=AYProgressBarVariants.Inline)
     assert bar._base_style().get("height") == 4
-
-
-# --- AYProgressView --------------------------------------------------------
-
-
-def test_view_forwards_to_bar(qapp):
-    view = AYProgressView(label="Submitting", maximum=4)
-    view.set_value(2)
-    assert view.value() == 2
-    assert view.maximum() == 4
-    assert view.percentage() == 50.0
-    assert view._value_label.text() == "50%"
-
-    view.set_state(ProgressBarState.Success)
-    assert view.state() is ProgressBarState.Success
-
-
-def test_view_label_is_positional(qapp):
-    view = AYProgressView(None, "Submitting")
-    assert view._caption.text() == "Submitting"
-
-
-def test_view_label_follows_maximum(qapp):
-    view = AYProgressView(maximum=10)
-    view.set_value(5)
-    assert view._value_label.text() == "50%"
-
-    view.set_maximum(20)
-    assert view._value_label.text() == "25%"
-
-    view.set_maximum(-1)
-    assert view._value_label.text() == ""
-
-
-def test_view_label_is_empty_while_indeterminate(qapp):
-    view = AYProgressView(maximum=10)
-    view.set_value(-1)
-    assert view.is_indeterminate()
-    assert view._value_label.text() == ""
-
-
-def test_view_hidden_value(qapp):
-    view = AYProgressView(maximum=10, show_value=False)
-    view.set_value(5)
-    assert view._value_label.text() == ""
-    assert view._value_label.isHidden()
-
-
-def test_view_forwards_signals(qapp):
-    view = AYProgressView(maximum=10)
-    values = []
-    maximums = []
-    view.value_changed.connect(values.append)
-    view.maximum_changed.connect(maximums.append)
-    view.set_value(3)
-    view.set_maximum(30)
-    assert values == [3]
-    assert maximums == [30]
-
-
-def test_view_caption_visibility(qapp):
-    view = AYProgressView()
-    assert view._caption.isHidden()
-
-    view.set_label("Uploading")
-    assert not view._caption.isHidden()
-    assert view._caption.text() == "Uploading"
-
-    view.set_label("")
-    assert view._caption.isHidden()
-
-
-def test_view_animation(qtbot):
-    view = AYProgressView(maximum=10)
-    qtbot.addWidget(view)
-    view.show()
-    qtbot.waitExposed(view)
-    view.set_value(-1)
-    assert view.is_animating()
-
-    view.set_value(1)
-    assert not view.is_animating()
