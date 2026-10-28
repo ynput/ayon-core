@@ -1114,6 +1114,10 @@ class FilesWidget(QtWidgets.QFrame):
     def _on_message_timer(self):
         self._show_message("")
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._update_overlay_geometry()
+
     def enterEvent(self, event):
         super().enterEvent(event)
         self._mouse_hover = True
@@ -1134,6 +1138,10 @@ class FilesWidget(QtWidgets.QFrame):
             overlay.setVisible(visible)
             if visible:
                 overlay.raise_()
+        # Size hint of hidden buttons may not match the size when shown
+        #   (stylesheet is applied on show), place them once visible
+        if visible:
+            self._update_overlay_geometry()
 
     def _update_overlay_geometry(self):
         """Place buttons and message over bottom of view viewport."""
