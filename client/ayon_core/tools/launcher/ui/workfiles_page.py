@@ -224,6 +224,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             host_item.setColumnCount(self.columnCount())
             host_items_by_name[host_name] = host_item
             if host_name in self._group_host_names:
+                host_item.appendRows(items)
                 new_items.append(host_item)
             else:
                 new_items.extend(items)
@@ -270,14 +271,25 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         if group:
             for item in items:
                 root_item.takeRow(item.row())
+            host_item.appendRows(items)
             root_item.appendRow(host_item)
             self._group_host_names.add(host_name)
         else:
             root_item.takeRow(host_item.row())
+            for item in items:
+                host_item.takeRow(item.row())
             root_item.appendRows(items)
             self._group_host_names.discard(host_name)
 
         self._controller.set_grouped_host_names(list(self._group_host_names))
+
+    def is_host_grouped(self, host_name: str | None) -> bool:
+        """Workfiles of the host are nested under the host item."""
+        return host_name in self._group_host_names
+
+    def has_grouped_hosts(self) -> bool:
+        """Workfiles of any host are nested under the host item."""
+        return bool(self._group_host_names & set(self._host_items_by_name))
 
     def flags(self, index):
         if index.column() != 0:
@@ -487,6 +499,8 @@ class WorkfilesPage(AYContainer):
 
         workfiles_view = AYTreeView(self)
         workfiles_view.setHeaderHidden(False)
+        # Indentation is used only when workfiles are grouped by host
+        indentation = workfiles_view.indentation()
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -517,7 +531,7 @@ class WorkfilesPage(AYContainer):
         workfiles_view.selectionModel().selectionChanged.connect(
             self._on_selection_changed
         )
-        workfiles_view.doubleClicked.connect(self._on_view_clicked)
+        workfiles_model.refreshed.connect(self._update_indentation)
         workfiles_view.customContextMenuRequested.connect(
             self._on_custom_menu_request
         )
@@ -530,6 +544,7 @@ class WorkfilesPage(AYContainer):
         self._workfiles_proxy = workfiles_proxy
         self._resize_timer = resize_timer
         self._resize_counter = 0
+        self._indentation = indentation
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -595,11 +610,11 @@ class WorkfilesPage(AYContainer):
             workfile_id = index.data(WORKFILE_ID_ROLE)
         self._controller.set_selected_workfile(workfile_id)
 
-    def _on_view_clicked(self, index) -> None:
-        if not index.isValid() or index.data(ITEM_TYPE_ROLE) != 1:
-            return
-        host_name = index.data(HOST_NAME_ROLE)
-        self._workfiles_model.set_group_by_host_name(host_name)
+    def _update_indentation(self) -> None:
+        indentation = 0
+        if self._workfiles_model.has_grouped_hosts():
+            indentation = self._indentation
+        self._workfiles_view.setIndentation(indentation)
 
     def _on_custom_menu_request(self, point):
         index = self._workfiles_view.indexAt(point)
@@ -611,10 +626,13 @@ class WorkfilesPage(AYContainer):
             return
 
         action_title = None
-        if item_type == 0:
+        host_name = index.data(HOST_NAME_ROLE)
+        if item_type == 1:
+            action_title = "Ungroup"
+        elif item_type == 0:
             action_title = "Group by host"
-        elif item_type == 1:
-            action_title = "Ungroup (double-click)"
+            if self._workfiles_model.is_host_grouped(host_name):
+                action_title = "Ungroup by host"
 
         if action_title is None:
             return
@@ -625,5 +643,5 @@ class WorkfilesPage(AYContainer):
         global_pos = self._workfiles_view.viewport().mapToGlobal(point)
         action = menu.exec_(global_pos)
         if action is not None:
-            host_name = index.data(HOST_NAME_ROLE)
             self._workfiles_model.set_group_by_host_name(host_name)
+            self._update_indentation()
