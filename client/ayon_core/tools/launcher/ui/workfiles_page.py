@@ -184,9 +184,6 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
             host_name = workfile_item.host_name
-            file_size = ""
-            if workfile_item.file_size is not None:
-                file_size = file_size_to_string(workfile_item.file_size)
             updated_by = workfile_item.updated_by
             updated_by_label = updated_by
             user_item = user_items_by_name.get(updated_by)
@@ -197,7 +194,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
-            item.setData(file_size, FILE_SIZE_ROLE)
+            item.setData(workfile_item.file_size, FILE_SIZE_ROLE)
             item.setData(updated_by, UPDATED_BY_ROLE)
             item.setData(updated_by_label, UPDATED_BY_LABEL_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
@@ -365,19 +362,56 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         return icon
 
 
+def _sort_key(value) -> tuple:
+    """Key to compare raw values of a column, missing values are lowest."""
+    if value is None:
+        return (0, 0)
+    if isinstance(value, str):
+        return (1, value.casefold())
+    return (1, value)
+
+
 class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
+    """Sort workfiles by name per host, or by date and size of all hosts.
+
+    Sorting by name keeps workfiles of the same host together, hosts are
+    sorted by name regardless of the sort order. Sorting by modified date
+    or size sorts workfiles of all hosts together, grouped host items are
+    on top. Workfiles without a value, e.g. unknown size, are lowest.
+    """
+
     def lessThan(self, source_left, source_right):
-        l_host = source_left.data(HOST_NAME_ROLE)
-        r_host = source_right.data(HOST_NAME_ROLE)
-        if l_host != r_host:
-            if l_host is None:
-                return True
-            if r_host is None:
-                return False
+        l_fixed = self._fixed_order_key(source_left)
+        r_fixed = self._fixed_order_key(source_right)
+        if l_fixed != r_fixed:
+            # Descending order calls 'lessThan(right, left)'
             if self.sortOrder() == QtCore.Qt.DescendingOrder:
-                return l_host > r_host
-            return l_host < r_host
-        return super().lessThan(source_left, source_right)
+                return r_fixed < l_fixed
+            return l_fixed < r_fixed
+
+        l_key = _sort_key(source_left.data(self.sortRole()))
+        r_key = _sort_key(source_right.data(self.sortRole()))
+        if l_key == r_key:
+            # Same value, e.g. unknown size, fall back to name
+            l_key = _sort_key(
+                source_left.sibling(source_left.row(), 0).data()
+            )
+            r_key = _sort_key(
+                source_right.sibling(source_right.row(), 0).data()
+            )
+        return l_key < r_key
+
+    @staticmethod
+    def _fixed_order_key(index) -> tuple:
+        """Key of the order that does not change with the sort order."""
+        host_key = _sort_key(index.data(HOST_NAME_ROLE))
+        if index.column() == 0:
+            # Workfiles of the same host are together
+            return host_key
+        if index.data(ITEM_TYPE_ROLE) == 1:
+            # Grouped host items are on top
+            return (0, host_key)
+        return (1,)
 
 
 class WorkfilesDelegate(TreeViewItemDelegate):
@@ -387,6 +421,9 @@ class WorkfilesDelegate(TreeViewItemDelegate):
     Column 1: pretty-printed timestamp with the avatar of the user who
         made the last change.
     Column 2: file size in human-readable format.
+
+    Model stores raw timestamp and size in bytes, so the columns are
+    sorted by their values.
 
     Args:
         avatar_cache: Cache of the user avatars. The view should be
@@ -425,6 +462,14 @@ class WorkfilesDelegate(TreeViewItemDelegate):
                 index.data(UPDATED_BY_ROLE),
                 index.data(UPDATED_BY_LABEL_ROLE),
             )
+
+        elif index.column() == 2:
+            # Column 2 exposes size in bytes through DisplayRole.
+            file_size = index.data(QtCore.Qt.DisplayRole)
+            text = ""
+            if file_size is not None:
+                text = file_size_to_string(file_size)
+            option.text = text
 
 
 class WorkfilesPage(AYContainer):
