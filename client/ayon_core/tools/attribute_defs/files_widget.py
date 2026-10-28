@@ -5,10 +5,11 @@ import json
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.lib import FileDefItem
+from ayon_core.lib import FileDefItem, MaterialSymbolsIcon
 from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import (
     paint_image_with_color,
+    get_qt_icon,
     ClickableLabel,
 )
 # TODO change imports
@@ -570,16 +571,16 @@ class ItemWidget(QtWidgets.QWidget):
 
         label_size_hint = label_widget.sizeHint()
         height = label_size_hint.height()
-        actions_menu_pix = paint_image_with_color(
-            get_image(filename="menu.png"), QtCore.Qt.white
+        actions_menu_icon = get_qt_icon(
+            MaterialSymbolsIcon("more_horiz", color="#ffffff")
         )
-        remove_pix = paint_image_with_color(
-            get_image(filename="delete.png"), QtCore.Qt.white
+        remove_icon = get_qt_icon(
+            MaterialSymbolsIcon("delete", color="#ffffff")
         )
 
         split_btn = ClickableLabel(self)
         split_btn.setFixedSize(height, height)
-        split_btn.setPixmap(actions_menu_pix)
+        split_btn.setPixmap(actions_menu_icon.pixmap(height, height))
         split_btn.setToolTip("Sequence actions")
         if multivalue:
             split_btn.setVisible(False)
@@ -588,7 +589,7 @@ class ItemWidget(QtWidgets.QWidget):
 
         remove_btn = ClickableLabel(self)
         remove_btn.setFixedSize(height, height)
-        remove_btn.setPixmap(remove_pix)
+        remove_btn.setPixmap(remove_icon.pixmap(height, height))
         remove_btn.setToolTip("Remove")
         remove_btn.setCursor(QtCore.Qt.PointingHandCursor)
         remove_btn.setVisible(not multivalue)
@@ -608,8 +609,8 @@ class ItemWidget(QtWidgets.QWidget):
         self._label_widget = label_widget
         self._split_btn = split_btn
         self._remove_btn = remove_btn
-        self._actions_menu_pix = actions_menu_pix
-        self._remove_pix = remove_pix
+        self._actions_menu_icon = actions_menu_icon
+        self._remove_icon = remove_icon
         self._last_scaled_pix_height = None
 
     def _update_btn_size(self):
@@ -618,16 +619,12 @@ class ItemWidget(QtWidgets.QWidget):
         if height == self._last_scaled_pix_height:
             return
         self._last_scaled_pix_height = height
-        for btn, pix in (
-            (self._split_btn, self._actions_menu_pix),
-            (self._remove_btn, self._remove_pix),
+        for btn, icon in (
+            (self._split_btn, self._actions_menu_icon),
+            (self._remove_btn, self._remove_icon),
         ):
             btn.setFixedSize(height, height)
-            btn.setPixmap(pix.scaled(
-                height, height,
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation
-            ))
+            btn.setPixmap(icon.pixmap(height, height))
 
     def showEvent(self, event):
         super(ItemWidget, self).showEvent(event)
