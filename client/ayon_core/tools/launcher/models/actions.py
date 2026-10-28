@@ -277,8 +277,7 @@ class ActionsModel:
                     "unknown",
                     False,
                     error_message=(
-                        "Actions can't be run with a service user API key."
-                        " Log in as a regular user (check AYON_API_KEY)."
+                        "Service users can't run actions."
                     ),
                 )
             else:
