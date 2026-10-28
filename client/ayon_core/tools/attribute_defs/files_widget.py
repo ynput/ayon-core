@@ -1011,24 +1011,36 @@ class FilesWidget(QtWidgets.QFrame):
         if self._multivalue:
             return
 
-        item_ids = self._files_view.get_selected_item_ids()
-        if not item_ids:
+        merged_item_ids, all_paths = self._get_selected_paths()
+        if not merged_item_ids:
             return
+        self._remove_item_by_ids(merged_item_ids)
+        new_items = FileDefItem.from_value(list(all_paths), True)
+        self._add_filepaths(new_items)
 
+    def _get_selected_paths(self):
+        item_ids = set()
         all_paths = set()
-        merged_item_ids = set()
-        for item_id in item_ids:
+        for item_id in self._files_view.get_selected_item_ids():
             file_item = self._files_model.get_file_item_by_id(item_id)
             if file_item is None:
                 continue
-            merged_item_ids.add(item_id)
+            item_ids.add(item_id)
             all_paths |= {
                 os.path.join(file_item.directory, filename)
                 for filename in file_item.filenames
             }
-        self._remove_item_by_ids(merged_item_ids)
+        return item_ids, all_paths
+
+    def _can_merge_selected(self):
+        """Selected items would be merged to less items."""
+        if not self._allow_sequences:
+            return False
+        item_ids, all_paths = self._get_selected_paths()
+        if len(item_ids) < 2:
+            return False
         new_items = FileDefItem.from_value(list(all_paths), True)
-        self._add_filepaths(new_items)
+        return len(new_items) < len(item_ids)
 
     def _on_remove_requested(self):
         if self._multivalue:
@@ -1222,6 +1234,8 @@ class FilesWidget(QtWidgets.QFrame):
                 split_action.triggered.connect(self._on_split_request)
                 menu.addAction(split_action)
 
+            # Also allow to merge single files, e.g. after split
+            if self._can_merge_selected():
                 merge_action = QtWidgets.QAction("Merge sequence", menu)
                 merge_action.triggered.connect(self._on_merge_request)
                 menu.addAction(merge_action)
