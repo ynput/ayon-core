@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 from enum import Enum
 
 from qtpy.QtCore import QRectF, QSize, Qt, QTimer, Signal
@@ -22,75 +21,6 @@ from .label import AYLabel
 from .style_mixin import StyleMixin
 
 
-@dataclass
-class ProgressTrack:
-    """Progress of a running task, the only contract with the widget.
-
-    The object is shared: the code that makes progress updates the values,
-    the widget reads them. No callbacks or listeners are involved.
-
-    ``value`` / ``total_value`` describe the current phase, or the whole
-    task when the writer prefers a single scale. ``phase``,
-    ``total_phases`` and ``phase_label`` are informational and are shown in
-    the caption.
-
-    Special states:
-
-    * ``value < 0`` or ``total_value < 0``: indeterminate, the widget
-      shows a sweeping chunk because progress cannot be expressed.
-    * ``value == 0`` and ``total_value == 0``: empty, nothing started yet.
-
-    Attributes:
-        label: Overall task label.
-        value: Completed steps.
-        total_value: Total steps.
-        failed: Whether the task failed.
-        finished: Whether the task finished.
-        message: Last message, or the failure reason.
-        phase: Index of the current phase, starting at 1.
-        total_phases: Number of phases of the task.
-        phase_label: Name of the current phase.
-    """
-
-    label: str = ""
-    value: int = 0
-    total_value: int = 0
-    failed: bool = False
-    finished: bool = False
-    message: str = ""
-    phase: int = 1
-    total_phases: int = 1
-    phase_label: str = ""
-
-    @classmethod
-    def empty(cls) -> "ProgressTrack":
-        """Return a track with no progress reported yet."""
-        return cls()
-
-    @property
-    def is_empty(self) -> bool:
-        """True while no progress was reported."""
-        return self.value == 0 and self.total_value == 0
-
-    @property
-    def is_indeterminate(self) -> bool:
-        """True when progress cannot be shown as a fraction."""
-        return self.value < 0 or self.total_value < 0
-
-    @property
-    def percentage(self) -> float:
-        """Completion in the ``0.0``-``100.0`` range."""
-        if self.value < 0 or self.total_value <= 0:
-            return 0.0
-        fraction = self.value / self.total_value
-        return max(0.0, min(fraction, 1.0)) * 100.0
-
-    @property
-    def caption(self) -> str:
-        """Text that describes the current step."""
-        return self.message or self.phase_label or self.label
-
-
 class ProgressBarState(Enum):
     """Semantic state controlling the colour of the filled chunk."""
 
@@ -103,39 +33,21 @@ class ProgressBarState(Enum):
 class AYProgressBar(StyleMixin, QWidget):
     """Determinate and indeterminate progress bar in the AYON style.
 
-    Every visual property (height, radius, colours, sweep ratio, ...) is
-    read from the ``AYProgressBar`` block of ``ayon_style.json``.  The
-    native Qt style is still routed through :class:`AYONStyle`
-    (``setStyle``) so the widget inherits the AYON font and palette, but
-    the painting itself happens in :meth:`paintEvent`, independent of any
-    stylesheet or ``QStyle`` drawing code.
-
-    The bar is driven by a single :class:`ProgressTrack`. While visible it
-    reads that object every :attr:`PROGRESS_POLL_MS`, so the writer can
-    mutate the track in place or hand a new one to :meth:`set_progress`.
-    No callbacks are involved, which keeps the writer free to update the
-    progress any way it wants.
+    The bar is empty while ``maximum`` is ``0``, and indeterminate (a
+    sweeping chunk) while ``value`` or ``maximum`` is negative.
 
     Args:
-        progress: Track shown by the bar.
         parent: Parent widget.
+        maximum: Value that represents a full bar.
         variant: Visual style variant.
 
     Signals:
-        progress_changed(int, int): ``(value, total_value)``; ``total_value
-            == 0`` marks the bar as indeterminate.
-        track_changed(object): Emitted with the track whenever the
-            displayed values change.
-        completed(): Emitted once when the track finishes or reaches its
-            total.
+        value_changed (int): Current value.
+        maximum_changed (int): Current maximum.
+
     """
-
-    progress_changed = Signal(int, int)
-    track_changed = Signal(object)
-    completed = Signal()
-
-    #: How often the bound track is read while the bar is visible.
-    PROGRESS_POLL_MS = 200
+    value_changed = Signal(int)
+    maximum_changed = Signal(int)
 
     #: Style token used to colour the chunk for each semantic state.
     _STATE_COLOR_KEY = {
@@ -150,20 +62,19 @@ class AYProgressBar(StyleMixin, QWidget):
 
     def __init__(
         self,
-        progress: ProgressTrack | None = None,
         parent: QWidget | None = None,
+        *,
+        maximum: int = 0,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
     ) -> None:
         super().__init__(parent)
         self._variant_str = variant.value
         self._style_data = StyleDict()
-        self._track = (
-            progress if progress is not None else ProgressTrack.empty()
-        )
-        # Copy of the applied track. Comparing against a copy is what makes
-        # an in-place mutation of ``_track`` detectable; comparing against
-        # the track itself would always be equal.
-        self._applied: ProgressTrack | None = None
+
+        self._value: int = 0
+        self._maximum: int = maximum
+        self._state: ProgressBarState = ProgressBarState.Normal
+
         # Offset of the indeterminate sweep animation, not progress data.
         self._sweep = 0.0
 
@@ -184,57 +95,57 @@ class AYProgressBar(StyleMixin, QWidget):
         self._timer.setInterval(self._animation_interval())
         self._timer.timeout.connect(self._advance_sweep)
 
-        # Reads the track instead of being notified about changes.
-        self._poll_timer = QTimer(self)
-        self._poll_timer.setInterval(self.PROGRESS_POLL_MS)
-        self._poll_timer.timeout.connect(self._on_poll_timeout)
+    def value(self) -> int:
+        """Return the current value."""
+        return self._value
 
-        self._apply_track()
+    def maximum(self) -> int:
+        """Return the value that represents a full bar."""
+        return self._maximum
 
-    @property
-    def total(self) -> int | None:
-        """Total of the followed track, or ``None`` when indeterminate."""
-        track = self._track
-        if track.finished:
-            # A finished run is complete even when it never reported a
-            # total, so it stays a full bar instead of sweeping forever.
-            return max(track.total_value, 1)
-        if track.is_indeterminate or track.is_empty:
-            return None
-        return track.total_value
+    def set_value(self, value: int) -> None:
+        """Set the current value, negative makes the bar indeterminate."""
+        if value == self._value:
+            return
+        self._value = value
+        self._update_animation()
+        self.update()
+        self.value_changed.emit(self._value)
 
-    @property
-    def current(self) -> int:
-        """Completed value of the followed track, clamped to the total."""
-        total = self.total
-        if total is None:
-            return 0
-        if self._track.finished:
-            return total
-        return max(0, min(self._track.value, total))
+    def set_maximum(self, value: int) -> None:
+        """Set the full-bar value, negative makes the bar indeterminate."""
+        if value == self._maximum:
+            return
+        self._maximum = value
+        self._update_animation()
+        self.update()
+        self.maximum_changed.emit(self._maximum)
 
-    @property
     def state(self) -> ProgressBarState:
-        """Semantic state derived from the followed track."""
-        if self._track.failed:
-            return ProgressBarState.Error
-        if self._track.finished:
-            return ProgressBarState.Success
-        return ProgressBarState.Normal
+        """Return the semantic state used to colour the chunk."""
+        return self._state
 
-    @property
+    def set_state(self, state: ProgressBarState) -> None:
+        """Set the semantic state used to colour the chunk."""
+        if state == self._state:
+            return
+        self._state = state
+        self.update()
+
     def is_indeterminate(self) -> bool:
-        """True while the track cannot be shown as a fraction."""
-        if self._track.finished:
-            # A finished run is complete, even when it never reported a
-            # total (it stays a full bar instead of sweeping forever).
-            return False
-        return self._track.is_indeterminate
+        """True while the progress cannot be shown as a fraction."""
+        return self._value < 0 or self._maximum < 0
 
-    @property
     def is_animating(self) -> bool:
         """True while the indeterminate sweep timer is running."""
         return self._timer.isActive()
+
+    def percentage(self) -> float:
+        """Return the completion percentage in the ``0.0``-``100.0`` range."""
+        if self.is_indeterminate() or self._maximum == 0:
+            return 0.0
+        fraction = self._value / self._maximum
+        return max(0.0, min(fraction, 1.0)) * 100.0
 
     def _base_style(self) -> StyleDict:
         """Return the colours and geometry shared by every state.
@@ -280,90 +191,17 @@ class AYProgressBar(StyleMixin, QWidget):
 
     def _update_animation(self) -> None:
         """Start the sweep timer while indeterminate and visible."""
-        if self.is_indeterminate and self.isVisible():
+        if self.is_indeterminate() and self.isVisible():
             if not self._timer.isActive():
                 self._sweep = 0.0
                 self._timer.start()
         else:
             self._timer.stop()
 
-    def set_progress(self, progress: ProgressTrack) -> None:
-        """Follow *progress* and show it right away.
-
-        The bar keeps a reference to the track, so mutating that same
-        object also updates the bar on the next poll. Passing a different
-        object replaces the one that was followed.
-
-        Args:
-            progress: Track to show.
-        """
-        self._track = progress
-        self._apply_track()
-        self._update_polling()
-
-    def refresh(self) -> None:
-        """Re-read the followed track now.
-
-        The poll timer calls this. Call it directly when a change has to be
-        shown before the next poll.
-        """
-        self._apply_track()
-
-    def reset(self) -> None:
-        """Return the bar to an empty track."""
-        self._track = ProgressTrack.empty()
-        self._applied = None
-        self._sweep = 0.0
-        self._poll_timer.stop()
-        self._update_animation()
-        self.updateGeometry()
-        self.update()
-        self.progress_changed.emit(self.current, 0)
-
-    def _on_poll_timeout(self) -> None:
-        """Re-read the followed track."""
-        self._apply_track()
-
-    def _apply_track(self) -> None:
-        """Repaint when the followed track changed.
-
-        Everything the bar shows is read from the track; this only keeps a
-        copy of the applied values so an in-place mutation is detected on
-        the next poll.
-        """
-        track = self._track
-        previous = self._applied
-        if previous is not None and track == previous:
-            return
-        self._applied = replace(track)
-
-        self._update_animation()
-        self.update()
-        self.progress_changed.emit(self.current, self.total or 0)
-        if track.finished and not (previous is not None and previous.finished):
-            self.completed.emit()
-        self.track_changed.emit(track)
-
-    def _update_polling(self) -> None:
-        """Poll only while visible and while there is something to read."""
-        track = self._track
-        done = track.finished or track.failed
-        if self.isVisible() and not done:
-            if not self._poll_timer.isActive():
-                self._poll_timer.start()
-        else:
-            self._poll_timer.stop()
-
-    def percentage(self) -> float:
-        """Return the completion percentage in the ``0.0``-``100.0`` range."""
-        if self.total is None or self.total == 0:
-            return 0.0
-        return (self.current / self.total) * 100.0
-
     # --- painting
     def _chunk_color(self, style: StyleDict) -> QColor:
         """Return the chunk colour for the current semantic state."""
-        key = self._STATE_COLOR_KEY.get(self.state, "chunk-color")
+        key = self._STATE_COLOR_KEY.get(self.state(), "chunk-color")
         color = style.get(key) or style.get("chunk-color", "#8fceff")
         return QColor(color)
 
@@ -388,7 +226,7 @@ class AYProgressBar(StyleMixin, QWidget):
         painter.setBrush(QColor(style.get("track-color", "#41474d")))
         painter.drawRoundedRect(track, radius, radius)
 
-        if self.is_indeterminate:
+        if self.is_indeterminate():
             chunk_w = width * float(style.get("sweep-ratio", 0.3))
             x = track.x() - chunk_w + self._sweep * (width + chunk_w)
             chunk = QRectF(x, top, chunk_w, height)
@@ -397,7 +235,7 @@ class AYProgressBar(StyleMixin, QWidget):
             painter.setBrush(self._chunk_color(style))
             painter.drawRoundedRect(chunk, radius, radius)
             painter.restore()
-        elif self.current > 0:
+        elif self._value > 0:
             chunk_w = width * (self.percentage() / 100.0)
             chunk = QRectF(track.x(), top, chunk_w, height)
             painter.setBrush(self._chunk_color(style))
@@ -431,13 +269,9 @@ class AYProgressBar(StyleMixin, QWidget):
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._update_animation()
-        # Pick up anything that changed while hidden, then keep reading.
-        self._apply_track()
-        self._update_polling()
 
     def hideEvent(self, event: QHideEvent) -> None:
         self._timer.stop()
-        self._poll_timer.stop()
         super().hideEvent(event)
 
 
@@ -449,30 +283,27 @@ class AYProgressView(AYContainer):
         Caption text
         [=================--------]   45%
 
-    The bar and the caption are driven by a single :class:`ProgressTrack`,
-    the same object the writer updates, so no callbacks are involved.
-
     Args:
         parent: Parent widget.
         label: Optional caption shown above the bar.
-        progress: Track to show.
+        maximum: Value that represents a full bar.
         variant: Progress bar style variant.
         show_value: Whether the percentage readout is shown.
 
     Signals:
-        progress_changed(int, int): Re-emitted from the inner bar.
-        completed(): Emitted once when the track finishes or reaches its
-            total.
-    """
+        value_changed (int): Current value of the progress bar.
+        maximum_changed (int): Current maximum of the progress bar.
 
-    progress_changed = Signal(int, int)
-    completed = Signal()
+    """
+    value_changed = Signal(int)
+    maximum_changed = Signal(int)
 
     def __init__(
         self,
         parent: QWidget | None = None,
         label: str = "",
-        progress: ProgressTrack | None = None,
+        *,
+        maximum: int = 0,
         variant: AYProgressBarVariants = AYProgressBarVariants.Default,
         show_value: bool = True,
     ) -> None:
@@ -486,20 +317,20 @@ class AYProgressView(AYContainer):
             "AYProgressBar",
             variant=variant.value,
         )
-        self._show_value = bool(show_value)
-        self._initial_label = str(label or "")
+        self._show_value = show_value
 
-        self._caption: AYLabel | None = None
-        if label:
-            self._caption = AYLabel(label)
-            self.add_widget(self._caption)
+        label = label or ""
+        self._caption = AYLabel(label)
+        self.add_widget(self._caption)
+        if not label:
+            self._caption.setVisible(False)
 
         self._row = AYContainer(
             layout=AYContainer.Layout.HBox,
             layout_spacing=6,
             layout_margin=0,
         )
-        self._bar = AYProgressBar(progress=progress, variant=variant)
+        self._bar = AYProgressBar(maximum=maximum, variant=variant)
         self._value_label = AYLabel("", dim=True)
         self._value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         base = self._style_data.get("base") or StyleDict()
@@ -512,85 +343,59 @@ class AYProgressView(AYContainer):
         self.add_widget(self._row)
 
         self._value_label.setVisible(self._show_value)
-        self._bar.progress_changed.connect(self._on_progress_changed)
-        self._bar.progress_changed.connect(self.progress_changed.emit)
-        self._bar.completed.connect(self.completed.emit)
-        self._bar.track_changed.connect(self._on_track_changed)
+        self._bar.value_changed.connect(self._on_progress_changed)
+        self._bar.maximum_changed.connect(self._on_progress_changed)
+        self._bar.value_changed.connect(self.value_changed)
+        self._bar.maximum_changed.connect(self.maximum_changed)
         self._on_progress_changed()
 
-        self._progress: ProgressTrack | None = progress
-        # The view keeps reading the track while it is bound, also while
-        # hidden: the owner shows it as soon as real progress arrives.
-        self._poll_timer = QTimer(self)
-        self._poll_timer.setInterval(AYProgressBar.PROGRESS_POLL_MS)
-        self._poll_timer.timeout.connect(self._bar.refresh)
+    def value(self) -> int:
+        """Return the current value."""
+        return self._bar.value()
 
-    def bind(self, progress: ProgressTrack) -> None:
-        """Drive this view from *progress*.
+    def set_value(self, value: int) -> None:
+        """Set the current value, negative makes the bar indeterminate."""
+        self._bar.set_value(value)
 
-        The view is reset first so a reused view cannot briefly show the
-        previous run's value, colour, or caption.
+    def maximum(self) -> int:
+        """Return the value that represents a full bar."""
+        return self._bar.maximum()
 
-        Args:
-            progress: Track to follow. The bar keeps a reference to it, so
-                mutating that object updates the view on the next poll.
-        """
-        self.unbind()
-        self.reset()
-        self._progress = progress
-        self._bar.set_progress(progress)
-        if not (progress.finished or progress.failed):
-            self._poll_timer.start()
+    def set_maximum(self, value: int) -> None:
+        """Set the full-bar value, negative makes the bar indeterminate."""
+        self._bar.set_maximum(value)
 
-    def unbind(self) -> None:
-        """Stop following the bound track, if any."""
-        self._poll_timer.stop()
-        self._progress = None
-        self._bar.reset()
+    def percentage(self) -> float:
+        """Return the completion percentage in the ``0.0``-``100.0`` range."""
+        return self._bar.percentage()
 
-    def _on_track_changed(self, track: ProgressTrack) -> None:
-        """Update the caption from the track the bar applied."""
-        if track.caption:
-            self.set_label(track.caption)
-        if track.finished or track.failed:
-            self._poll_timer.stop()
+    def state(self) -> ProgressBarState:
+        """Return the semantic state used to colour the chunk."""
+        return self._bar.state()
 
-    # --- private
+    def set_state(self, state: ProgressBarState) -> None:
+        """Set the semantic state used to colour the chunk."""
+        self._bar.set_state(state)
 
-    def _on_progress_changed(self) -> None:
-        """Update the percentage label to match the current progress."""
-        if not self._show_value or self._bar.is_indeterminate:
-            self._value_label.setText("")
-            return
-        self._value_label.setText(f"{self._bar.percentage():.0f}%")
+    def is_indeterminate(self) -> bool:
+        """True while the progress cannot be shown as a fraction."""
+        return self._bar.is_indeterminate()
 
-    # --- public API
-    @property
-    def progress_bar(self) -> AYProgressBar:
-        """Return the inner :class:`AYProgressBar`."""
-        return self._bar
-
-    @property
-    def value_label(self) -> AYLabel:
-        """Return the percentage readout label."""
-        return self._value_label
+    def is_animating(self) -> bool:
+        """True while the indeterminate sweep timer is running."""
+        return self._bar.is_animating()
 
     def set_label(self, text: str) -> None:
         """Set or replace the caption shown above the bar."""
-        if self._caption is None:
-            if not text:
-                return
-            self._caption = AYLabel(text)
-            self.insert_widget(0, self._caption)
+        if not text:
+            self._caption.setVisible(False)
+        else:
+            self._caption.setText(text)
+            self._caption.setVisible(True)
+
+    def _on_progress_changed(self) -> None:
+        """Update the percentage label to match the current progress."""
+        if not self._show_value or self.is_indeterminate():
+            self._value_label.setText("")
             return
-        self._caption.setText(text)
-
-    def reset(self) -> None:
-        """Reset the bar, the caption, and the percentage readout.
-
-        The caption falls back to the label the view was created with.
-        """
-        if self._caption is not None:
-            self._caption.setText(self._initial_label)
-        self._bar.reset()
-        self._value_label.setText("")
+        self._value_label.setText(f"{self.percentage():.0f}%")

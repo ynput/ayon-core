@@ -5,46 +5,8 @@ from ayon_core.ui.components.progress_bar import (
     AYProgressBar,
     AYProgressView,
     ProgressBarState,
-    ProgressTrack,
 )
 from ayon_core.ui.variants import AYProgressBarVariants
-
-
-# --- ProgressTrack ---------------------------------------------------------
-
-
-def test_track_empty():
-    track = ProgressTrack.empty()
-    assert track.is_empty
-    assert not track.is_indeterminate
-    assert track.percentage == 0.0
-    assert track.caption == ""
-
-
-def test_track_percentage_is_clamped():
-    assert ProgressTrack(value=3, total_value=10).percentage == 30.0
-    assert ProgressTrack(value=20, total_value=10).percentage == 100.0
-    assert ProgressTrack(value=-1, total_value=10).percentage == 0.0
-    assert ProgressTrack(value=1, total_value=0).percentage == 0.0
-
-
-def test_track_caption_fallback():
-    assert ProgressTrack(label="task").caption == "task"
-    assert (
-        ProgressTrack(label="task", phase_label="upload").caption == "upload"
-    )
-    assert (
-        ProgressTrack(
-            label="task", phase_label="upload", message="failed"
-        ).caption
-        == "failed"
-    )
-
-
-def test_track_indeterminate():
-    track = ProgressTrack(value=-1, total_value=-1)
-    assert track.is_indeterminate
-    assert not track.is_empty
 
 
 # --- AYProgressBar ---------------------------------------------------------
@@ -52,125 +14,115 @@ def test_track_indeterminate():
 
 def test_defaults(qapp):
     bar = AYProgressBar()
-    assert bar.total is None and bar.current == 0
-    assert not bar.is_indeterminate
+    assert bar.value() == 0
+    assert bar.maximum() == 0
+    assert bar.state() is ProgressBarState.Normal
+    assert not bar.is_indeterminate()
     assert bar.percentage() == 0.0
 
 
-def test_track_is_applied(qapp):
-    bar = AYProgressBar(
-        ProgressTrack(label="task", value=3, total_value=10)
-    )
-    assert bar.current == 3
-    assert bar.total == 10
+def test_maximum_is_keyword_only(qapp):
+    bar = AYProgressBar(maximum=10)
+    assert bar.maximum() == 10
+    assert bar.parent() is None
+
+
+def test_value_and_percentage(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_value(3)
+    assert bar.value() == 3
     assert bar.percentage() == 30.0
-    assert bar.state is ProgressBarState.Normal
 
 
-def test_in_place_mutation_is_detected(qtbot):
-    """The widget holds a reference; mutating the track must be seen."""
-    track = ProgressTrack(value=1, total_value=4)
-    bar = AYProgressBar(track)
-    qtbot.addWidget(bar)
-    assert bar.current == 1
-
-    track.value = 4
-    bar._apply_track()  # what the poll timeout calls
-    assert bar.current == 4
+def test_percentage_is_clamped(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_value(15)
+    assert bar.percentage() == 100.0
 
 
-def test_unchanged_track_is_not_reapplied(qtbot):
-    bar = AYProgressBar(ProgressTrack(value=1, total_value=4))
-    qtbot.addWidget(bar)
-    emitted = []
-    bar.track_changed.connect(emitted.append)
-    bar._apply_track()
-    assert emitted == []
-
-
-def test_completed_is_latched_once(qtbot):
-    track = ProgressTrack(value=1, total_value=2)
-    bar = AYProgressBar(track)
-    qtbot.addWidget(bar)
-    done = []
-    bar.completed.connect(lambda: done.append(True))
-
-    # Completion is the track's ``finished`` flag; reaching the total
-    # without it is not a completion.
-    track.value = 2
-    bar._apply_track()
-    bar._apply_track()
-    assert done == []
-
-    track.finished = True
-    bar._apply_track()
-    bar._apply_track()
-    assert done == [True]
-
-
-def test_finished_sets_success_and_stops_polling(qtbot):
-    track = ProgressTrack(value=1, total_value=2)
-    bar = AYProgressBar(track)
-    qtbot.addWidget(bar)
-    bar.show()
-    qtbot.waitExposed(bar)
-
-    track.finished = True
-    bar._apply_track()
-    bar._update_polling()
-
-    assert bar.state is ProgressBarState.Success
-    assert bar.current == 2
-    assert not bar._poll_timer.isActive()
-
-
-def test_indeterminate_track(qapp):
-    bar = AYProgressBar(ProgressTrack(value=-1, total_value=-1))
-    assert bar.is_indeterminate
-    assert bar.total is None
-
-
-def test_empty_track_is_not_animating(qapp):
+def test_zero_maximum_is_empty(qapp):
     bar = AYProgressBar()
-    assert not bar.is_indeterminate
+    bar.set_value(5)
+    assert not bar.is_indeterminate()
+    assert bar.percentage() == 0.0
 
 
-def test_caption_is_not_drawn_on_the_bar(qapp):
-    """The caption belongs to the view; the bar keeps its style height."""
-    bar = AYProgressBar(ProgressTrack(label="Submitting comment"))
+def test_negative_value_is_indeterminate(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_value(-1)
+    assert bar.is_indeterminate()
+    assert bar.percentage() == 0.0
+
+
+def test_negative_maximum_is_indeterminate(qapp):
+    bar = AYProgressBar(maximum=-1)
+    bar.set_value(5)
+    assert bar.is_indeterminate()
+    assert bar.percentage() == 0.0
+
+
+def test_value_changed_only_on_change(qapp):
+    bar = AYProgressBar(maximum=10)
+    emitted = []
+    bar.value_changed.connect(emitted.append)
+    bar.set_value(4)
+    bar.set_value(4)
+    bar.set_value(5)
+    assert emitted == [4, 5]
+
+
+def test_maximum_changed_only_on_change(qapp):
+    bar = AYProgressBar(maximum=10)
+    emitted = []
+    bar.maximum_changed.connect(emitted.append)
+    bar.set_maximum(10)
+    bar.set_maximum(20)
+    assert emitted == [20]
+    assert bar.maximum() == 20
+
+
+def test_set_state(qapp):
+    bar = AYProgressBar(maximum=10)
+    bar.set_state(ProgressBarState.Error)
+    assert bar.state() is ProgressBarState.Error
+
+
+def test_size_hint_follows_style_height(qapp):
+    bar = AYProgressBar()
     style_height = int(bar._base_style().get("height", 6))
     assert bar.sizeHint().height() == style_height
 
 
-def test_set_progress_replaces_track(qapp):
-    bar = AYProgressBar()
-    bar.set_progress(ProgressTrack(value=2, total_value=4))
-    assert bar.current == 2
-    assert bar.total == 4
-
-
-def test_reset(qapp):
-    bar = AYProgressBar(ProgressTrack(value=4, total_value=4))
-    bar.reset()
-    assert bar.current == 0
-    assert bar.total is None
-    assert not bar._poll_timer.isActive()
-
-
 def test_animation_only_while_visible_and_indeterminate(qtbot):
-    bar = AYProgressBar(ProgressTrack(value=-1, total_value=-1))
+    bar = AYProgressBar(maximum=10)
     qtbot.addWidget(bar)
     bar.show()
     qtbot.waitExposed(bar)
-    assert bar.is_animating
+    assert not bar.is_animating()
+
+    bar.set_value(-1)
+    assert bar.is_animating()
 
     bar.hide()
-    assert not bar.is_animating
+    assert not bar.is_animating()
+
+    bar.show()
+    qtbot.waitExposed(bar)
+    assert bar.is_animating()
+
+    bar.set_value(3)
+    assert not bar.is_animating()
+
+
+def test_hidden_indeterminate_bar_does_not_animate(qapp):
+    bar = AYProgressBar(maximum=-1)
+    assert bar.is_indeterminate()
+    assert not bar.is_animating()
 
 
 def test_paint_renders_chunk(qtbot):
     """Regression guard: paintEvent must not raise."""
-    bar = AYProgressBar(ProgressTrack(value=0, total_value=10))
+    bar = AYProgressBar(maximum=10)
     bar.resize(200, 12)
     qtbot.addWidget(bar)
     bar.show()
@@ -178,12 +130,26 @@ def test_paint_renders_chunk(qtbot):
     qtbot.wait(20)
     empty = bar.grab().toImage()
 
-    bar.set_progress(ProgressTrack(value=10, total_value=10))
+    bar.set_value(10)
     qtbot.wait(20)
     full = bar.grab().toImage()
 
     assert not empty.isNull()
     assert empty.pixelColor(6, 6) != full.pixelColor(6, 6)
+
+
+def test_state_changes_chunk_colour(qtbot):
+    bar = AYProgressBar(maximum=10)
+    bar.resize(200, 12)
+    qtbot.addWidget(bar)
+    bar.set_value(10)
+    bar.show()
+    qtbot.waitExposed(bar)
+    normal = bar.grab().toImage().pixelColor(100, 6)
+
+    bar.set_state(ProgressBarState.Error)
+    error = bar.grab().toImage().pixelColor(100, 6)
+    assert normal != error
 
 
 def test_inline_variant_resolves(qapp):
@@ -194,114 +160,80 @@ def test_inline_variant_resolves(qapp):
 # --- AYProgressView --------------------------------------------------------
 
 
-def test_view_bind_shows_track(qtbot):
-    view = AYProgressView(label="Submitting")
-    qtbot.addWidget(view)
-    view.bind(ProgressTrack(value=2, total_value=4))
-    assert view.progress_bar.current == 2
-    assert view.value_label.text() == "50%"
+def test_view_forwards_to_bar(qapp):
+    view = AYProgressView(label="Submitting", maximum=4)
+    view.set_value(2)
+    assert view.value() == 2
+    assert view.maximum() == 4
+    assert view.percentage() == 50.0
+    assert view._value_label.text() == "50%"
+
+    view.set_state(ProgressBarState.Success)
+    assert view.state() is ProgressBarState.Success
 
 
-def test_view_caption_follows_the_track(qtbot):
-    view = AYProgressView(label="Submitting")
-    qtbot.addWidget(view)
-    track = ProgressTrack()
-    view.bind(track)
+def test_view_label_is_positional(qapp):
+    view = AYProgressView(None, "Submitting")
+    assert view._caption.text() == "Submitting"
 
-    track.phase_label = "Uploading"
-    view.progress_bar._apply_track()
-    assert view._caption is not None
+
+def test_view_label_follows_maximum(qapp):
+    view = AYProgressView(maximum=10)
+    view.set_value(5)
+    assert view._value_label.text() == "50%"
+
+    view.set_maximum(20)
+    assert view._value_label.text() == "25%"
+
+    view.set_maximum(-1)
+    assert view._value_label.text() == ""
+
+
+def test_view_label_is_empty_while_indeterminate(qapp):
+    view = AYProgressView(maximum=10)
+    view.set_value(-1)
+    assert view.is_indeterminate()
+    assert view._value_label.text() == ""
+
+
+def test_view_hidden_value(qapp):
+    view = AYProgressView(maximum=10, show_value=False)
+    view.set_value(5)
+    assert view._value_label.text() == ""
+    assert view._value_label.isHidden()
+
+
+def test_view_forwards_signals(qapp):
+    view = AYProgressView(maximum=10)
+    values = []
+    maximums = []
+    view.value_changed.connect(values.append)
+    view.maximum_changed.connect(maximums.append)
+    view.set_value(3)
+    view.set_maximum(30)
+    assert values == [3]
+    assert maximums == [30]
+
+
+def test_view_caption_visibility(qapp):
+    view = AYProgressView()
+    assert view._caption.isHidden()
+
+    view.set_label("Uploading")
+    assert not view._caption.isHidden()
     assert view._caption.text() == "Uploading"
 
+    view.set_label("")
+    assert view._caption.isHidden()
 
-def test_view_polls_while_hidden(qtbot):
-    """The owner shows the view once progress arrives.
 
-    That only works if a bound view keeps reading the track while it is
-    still hidden.
-    """
-    view = AYProgressView(label="Submitting")
+def test_view_animation(qtbot):
+    view = AYProgressView(maximum=10)
     qtbot.addWidget(view)
-    track = ProgressTrack()
-    view.bind(track)
-    assert not view.isVisible()
-    assert view._poll_timer.isActive()
+    view.show()
+    qtbot.waitExposed(view)
+    view.set_value(-1)
+    assert view.is_animating()
 
-    track.phase_label = "Uploading"
-    qtbot.waitUntil(
-        lambda: view._caption is not None
-        and view._caption.text() == "Uploading",
-        timeout=2000,
-    )
-
-
-def test_view_stops_polling_when_terminal(qtbot):
-    view = AYProgressView()
-    qtbot.addWidget(view)
-    track = ProgressTrack(value=1, total_value=2)
-    view.bind(track)
-    assert view._poll_timer.isActive()
-
-    track.finished = True
-    view._bar.refresh()
-    assert not view._poll_timer.isActive()
-
-
-def test_view_emits_completed_once(qtbot):
-    view = AYProgressView()
-    qtbot.addWidget(view)
-    done = []
-    view.completed.connect(lambda: done.append(True))
-
-    track = ProgressTrack(value=1, total_value=2)
-    view.bind(track)
-    track.finished = True
-    view.progress_bar._apply_track()
-    view.progress_bar._apply_track()
-    assert done == [True]
-
-
-def test_view_unbind_stops_following(qtbot):
-    view = AYProgressView()
-    qtbot.addWidget(view)
-    view.bind(ProgressTrack(value=1, total_value=2))
-    view.unbind()
-    assert view._progress is None
-    assert not view.progress_bar._poll_timer.isActive()
-
-
-def test_view_rebind_resets_previous_state(qtbot):
-    view = AYProgressView()
-    qtbot.addWidget(view)
-    fail_track = ProgressTrack(value=1, total_value=2)
-    view.bind(fail_track)
-    fail_track.failed = True
-    view.progress_bar._apply_track()
-    assert view.progress_bar.state is ProgressBarState.Error
-
-    view.bind(ProgressTrack(value=0, total_value=4))
-    assert view.progress_bar.state is ProgressBarState.Normal
-    assert view.progress_bar.current == 0
-
-
-def test_view_idle_does_not_emit(qtbot):
-    """Polling an unchanged track must not repaint or re-emit."""
-    view = AYProgressView()
-    qtbot.addWidget(view)
-    track = ProgressTrack(value=1, total_value=4)
-    view.bind(track)
-    emitted = []
-    view.progress_bar.track_changed.connect(emitted.append)
-    qtbot.wait(450)  # more than two poll intervals
-    assert emitted == []
-
-
-def test_high_frequency_updates_keep_the_last_value(qtbot):
-    track = ProgressTrack(total_value=10_000)
-    view = AYProgressView()
-    qtbot.addWidget(view)
-    view.bind(track)
-    for i in range(1, 10_001):
-        track.value = i
-    view.progress_bar.refresh()
-    assert view.progress_bar.current == 10_000
+    view.set_value(1)
+    assert not view.is_animating()
