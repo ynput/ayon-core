@@ -6,16 +6,14 @@ import json
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import FileDefItem
+from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import (
     paint_image_with_color,
     ClickableLabel,
 )
 # TODO change imports
 from ayon_core.tools.resources import get_image
-from ayon_core.tools.utils import (
-    IconButton,
-    PixmapLabel
-)
+from ayon_core.tools.utils import PixmapLabel
 
 from ._constants import REVERT_TO_DEFAULT_LABEL
 
@@ -54,13 +52,22 @@ class SupportLabel(QtWidgets.QLabel):
     pass
 
 
+class WarningLabel(QtWidgets.QLabel):
+    pass
+
+
 class DropEmpty(QtWidgets.QWidget):
     _empty_extensions = "Any file"
+
+    browse_requested = QtCore.Signal()
 
     def __init__(self, single_item, allow_sequences, extensions_label, parent):
         super(DropEmpty, self).__init__(parent)
 
-        drop_label_widget = QtWidgets.QLabel("Drag & Drop files here", self)
+        drop_label_widget = QtWidgets.QLabel("Drop files here or", self)
+
+        browse_btn = QtWidgets.QPushButton("Browse...", self)
+        browse_btn.setCursor(QtCore.Qt.PointingHandCursor)
 
         items_label_widget = SupportLabel(self)
         items_label_widget.setWordWrap(True)
@@ -71,7 +78,9 @@ class DropEmpty(QtWidgets.QWidget):
         layout.addWidget(
             drop_label_widget, 0, alignment=QtCore.Qt.AlignCenter
         )
-        layout.addSpacing(30)
+        layout.addSpacing(5)
+        layout.addWidget(browse_btn, 0, alignment=QtCore.Qt.AlignCenter)
+        layout.addSpacing(20)
         layout.addStretch(1)
         layout.addWidget(
             items_label_widget, 0, alignment=QtCore.Qt.AlignCenter
@@ -90,6 +99,7 @@ class DropEmpty(QtWidgets.QWidget):
         update_size_timer.setSingleShot(True)
 
         update_size_timer.timeout.connect(self._on_update_size_timer)
+        browse_btn.clicked.connect(self.browse_requested)
 
         self._update_size_timer = update_size_timer
 
@@ -103,6 +113,7 @@ class DropEmpty(QtWidgets.QWidget):
         self._allow_folders = None
 
         self._drop_label_widget = drop_label_widget
+        self._browse_btn = browse_btn
         self._items_label_widget = items_label_widget
 
         self.set_allow_folders(False)
@@ -141,12 +152,14 @@ class DropEmpty(QtWidgets.QWidget):
 
         if not allowed_items:
             self._drop_label_widget.setVisible(False)
+            self._browse_btn.setVisible(False)
             self._items_label_widget.setText(
                 "It is not allowed to add anything here!"
             )
             return
 
         self._drop_label_widget.setVisible(True)
+        self._browse_btn.setVisible(True)
         items_label = "Multiple "
         if self._single_item:
             items_label = "Single "
@@ -465,6 +478,12 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
             self._allowed_extensions = extensions
             self.invalidateFilter()
 
+    def get_allow_folders(self):
+        return self._allow_folders
+
+    def get_allowed_extensions(self):
+        return set(self._allowed_extensions or [])
+
     def are_valid_files(self, filepaths):
         for filepath in filepaths:
             if os.path.isfile(filepath):
@@ -523,45 +542,74 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
 
 class ItemWidget(QtWidgets.QWidget):
     context_menu_requested = QtCore.Signal(QtCore.QPoint)
+    remove_requested = QtCore.Signal(str)
 
     def __init__(
-        self, item_id, label, pixmap_icon, is_sequence, multivalue, parent=None
+        self,
+        item_id,
+        label,
+        pixmap_icon,
+        is_sequence,
+        multivalue,
+        details=None,
+        tooltip=None,
+        parent=None,
     ):
         self._item_id = item_id
 
         super(ItemWidget, self).__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        if tooltip:
+            self.setToolTip(tooltip)
 
         icon_widget = PixmapLabel(pixmap_icon, self)
         label_widget = QtWidgets.QLabel(label, self)
+        details_widget = SupportLabel(details or "", self)
+        details_widget.setVisible(bool(details))
 
         label_size_hint = label_widget.sizeHint()
         height = label_size_hint.height()
         actions_menu_pix = paint_image_with_color(
             get_image(filename="menu.png"), QtCore.Qt.white
         )
+        remove_pix = paint_image_with_color(
+            get_image(filename="delete.png"), QtCore.Qt.white
+        )
 
         split_btn = ClickableLabel(self)
         split_btn.setFixedSize(height, height)
         split_btn.setPixmap(actions_menu_pix)
+        split_btn.setToolTip("Sequence actions")
         if multivalue:
             split_btn.setVisible(False)
         else:
             split_btn.setVisible(is_sequence)
 
+        remove_btn = ClickableLabel(self)
+        remove_btn.setFixedSize(height, height)
+        remove_btn.setPixmap(remove_pix)
+        remove_btn.setToolTip("Remove")
+        remove_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        remove_btn.setVisible(not multivalue)
+
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(icon_widget, 0)
         layout.addWidget(label_widget, 1)
+        layout.addWidget(details_widget, 0)
         layout.addWidget(split_btn, 0)
+        layout.addWidget(remove_btn, 0)
 
         split_btn.clicked.connect(self._on_actions_clicked)
+        remove_btn.clicked.connect(self._on_remove_clicked)
 
         self._icon_widget = icon_widget
         self._label_widget = label_widget
         self._split_btn = split_btn
+        self._remove_btn = remove_btn
         self._actions_menu_pix = actions_menu_pix
+        self._remove_pix = remove_pix
         self._last_scaled_pix_height = None
 
     def _update_btn_size(self):
@@ -570,13 +618,16 @@ class ItemWidget(QtWidgets.QWidget):
         if height == self._last_scaled_pix_height:
             return
         self._last_scaled_pix_height = height
-        self._split_btn.setFixedSize(height, height)
-        pix = self._actions_menu_pix.scaled(
-            height, height,
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
-        )
-        self._split_btn.setPixmap(pix)
+        for btn, pix in (
+            (self._split_btn, self._actions_menu_pix),
+            (self._remove_btn, self._remove_pix),
+        ):
+            btn.setFixedSize(height, height)
+            btn.setPixmap(pix.scaled(
+                height, height,
+                QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation
+            ))
 
     def showEvent(self, event):
         super(ItemWidget, self).showEvent(event)
@@ -591,9 +642,8 @@ class ItemWidget(QtWidgets.QWidget):
         point = self._split_btn.mapToGlobal(pos)
         self.context_menu_requested.emit(point)
 
-
-class InViewButton(IconButton):
-    pass
+    def _on_remove_clicked(self):
+        self.remove_requested.emit(self._item_id)
 
 
 class FilesView(QtWidgets.QListView):
@@ -614,46 +664,7 @@ class FilesView(QtWidgets.QListView):
         self.setDragEnabled(True)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
 
-        remove_btn = InViewButton(self)
-        pix_enabled = paint_image_with_color(
-            get_image(filename="delete.png"), QtCore.Qt.white
-        )
-        pix_disabled = paint_image_with_color(
-            get_image(filename="delete.png"), QtCore.Qt.gray
-        )
-        icon = QtGui.QIcon(pix_enabled)
-        icon.addPixmap(pix_disabled, QtGui.QIcon.Disabled, QtGui.QIcon.Off)
-        remove_btn.setIcon(icon)
-        remove_btn.setEnabled(False)
-
-        remove_btn.clicked.connect(self._on_remove_clicked)
         self.customContextMenuRequested.connect(self._on_context_menu_request)
-
-        self._remove_btn = remove_btn
-        self._multivalue = False
-
-    def setSelectionModel(self, *args, **kwargs):
-        """Catch selection model set to register signal callback.
-
-        Selection model is not available during initialization.
-        """
-
-        super(FilesView, self).setSelectionModel(*args, **kwargs)
-        selection_model = self.selectionModel()
-        selection_model.selectionChanged.connect(self._on_selection_change)
-
-    def set_multivalue(self, multivalue):
-        """Disable remove button on multivalue."""
-
-        self._multivalue = multivalue
-        self._remove_btn.setVisible(not multivalue)
-
-    def update_remove_btn_visibility(self):
-        model = self.model()
-        visible = False
-        if not self._multivalue and model:
-            visible = model.rowCount() > 0
-        self._remove_btn.setVisible(visible)
 
     def has_selected_item_ids(self):
         """Is any index selected."""
@@ -695,30 +706,6 @@ class FilesView(QtWidgets.QListView):
         point = self.viewport().mapToGlobal(pos)
         self.context_menu_requested.emit(point, index.isValid())
 
-    def _on_selection_change(self):
-        self._remove_btn.setEnabled(self.has_selected_item_ids())
-
-    def _on_remove_clicked(self):
-        self.remove_requested.emit()
-
-    def _update_remove_btn(self):
-        """Position remove button to bottom right."""
-
-        viewport = self.viewport()
-        height = viewport.height()
-        pos_x = viewport.width() - self._remove_btn.width() - 5
-        pos_y = height - self._remove_btn.height() - 5
-        self._remove_btn.move(max(0, pos_x), max(0, pos_y))
-
-    def resizeEvent(self, event):
-        super(FilesView, self).resizeEvent(event)
-        self._update_remove_btn()
-
-    def showEvent(self, event):
-        super(FilesView, self).showEvent(event)
-        self._update_remove_btn()
-        self.update_remove_btn_visibility()
-
 
 class FilesWidget(QtWidgets.QFrame):
     value_changed = QtCore.Signal()
@@ -747,9 +734,42 @@ class FilesWidget(QtWidgets.QFrame):
         wrapper_layout.addWidget(files_view)
         wrapper_layout.setCurrentWidget(empty_widget)
 
-        main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        # Footer is visible when there are items, so it is clear that more
+        #   files can be added (or the current one replaced)
+        footer_widget = QtWidgets.QWidget(self)
+        footer_hint = SupportLabel(footer_widget)
+        message_label = WarningLabel(footer_widget)
+        message_label.setVisible(False)
+        browse_btn = QtWidgets.QPushButton(footer_widget)
+        clear_btn = QtWidgets.QPushButton(footer_widget)
+        if single_item:
+            footer_hint.setText("Drop a file to replace it")
+            browse_btn.setText("Replace...")
+            clear_btn.setText("Remove")
+        else:
+            footer_hint.setText("Drop more files to add them")
+            browse_btn.setText("Add files...")
+            clear_btn.setText("Clear all")
+
+        footer_layout = QtWidgets.QHBoxLayout(footer_widget)
+        footer_layout.setContentsMargins(5, 2, 2, 2)
+        footer_layout.addWidget(footer_hint, 0)
+        footer_layout.addWidget(message_label, 1)
+        footer_layout.addStretch(0)
+        footer_layout.addWidget(browse_btn, 0)
+        footer_layout.addWidget(clear_btn, 0)
+        footer_widget.setVisible(False)
+
+        message_timer = QtCore.QTimer(self)
+        message_timer.setSingleShot(True)
+        message_timer.setInterval(6000)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        # Leave space for drop hover border
+        main_layout.setContentsMargins(2, 2, 2, 2)
+        main_layout.setSpacing(0)
         main_layout.addWidget(wrapper_widget, 1)
+        main_layout.addWidget(footer_widget, 0)
 
         # Handle drops from outside of the view directly, the view is in
         #   'InternalMove' mode and ignores them. Some hosts (e.g. Houdini)
@@ -762,10 +782,22 @@ class FilesWidget(QtWidgets.QFrame):
         files_view.context_menu_requested.connect(
             self._on_context_menu_requested
         )
+        empty_widget.browse_requested.connect(self._on_browse_requested)
+        browse_btn.clicked.connect(self._on_browse_requested)
+        clear_btn.clicked.connect(self._on_clear_requested)
+        message_timer.timeout.connect(self._on_message_timer)
 
         self._in_set_value = False
         self._single_item = single_item
+        self._allow_sequences = allow_sequences
         self._multivalue = False
+        self._drop_hover = False
+        self._drop_hover_color = None
+
+        self._footer_widget = footer_widget
+        self._footer_hint = footer_hint
+        self._message_label = message_label
+        self._message_timer = message_timer
 
         self._empty_widget = empty_widget
         self._files_model = files_model
@@ -810,10 +842,10 @@ class FilesWidget(QtWidgets.QFrame):
         if self._multivalue is multivalue:
             return
         self._multivalue = multivalue
-        self._files_view.set_multivalue(multivalue)
         self._files_model.set_multivalue(multivalue)
         self._files_proxy_model.set_multivalue(multivalue)
         self._wrapper_widget.setEnabled(not multivalue)
+        self._update_visibility()
 
     def set_value(self, value, multivalue):
         self._in_set_value = True
@@ -863,17 +895,27 @@ class FilesWidget(QtWidgets.QFrame):
             label = index.data(ITEM_LABEL_ROLE)
             pixmap_icon = index.data(ITEM_ICON_ROLE)
             is_sequence = index.data(IS_SEQUENCE_ROLE)
+            filenames = index.data(FILENAMES_ROLE) or []
+            directory = index.data(DIRPATH_ROLE) or ""
+
+            details = None
+            if is_sequence:
+                details = "{} frames".format(len(filenames))
+            tooltip = os.path.join(directory, label) if label else None
 
             widget = ItemWidget(
                 item_id,
                 label,
                 pixmap_icon,
                 is_sequence,
-                self._multivalue
+                self._multivalue,
+                details=details,
+                tooltip=tooltip,
             )
             widget.context_menu_requested.connect(
                 self._on_item_context_menu_request
             )
+            widget.remove_requested.connect(self._on_item_remove_requested)
             self._files_view.setIndexWidget(index, widget)
             self._files_proxy_model.setData(
                 index, widget.sizeHint(), QtCore.Qt.SizeHintRole
@@ -954,6 +996,109 @@ class FilesWidget(QtWidgets.QFrame):
         if items_to_delete:
             self._remove_item_by_ids(items_to_delete)
 
+    def _on_item_remove_requested(self, item_id):
+        if not self._multivalue:
+            self._remove_item_by_ids({item_id})
+
+    def _on_clear_requested(self):
+        if not self._multivalue:
+            self._remove_item_by_ids(set(self._widgets_by_id.keys()))
+
+    def _on_browse_requested(self):
+        if self._multivalue:
+            return
+
+        proxy_model = self._files_proxy_model
+        extensions = proxy_model.get_allowed_extensions()
+        if not extensions:
+            if not proxy_model.get_allow_folders():
+                return
+            dirpath = QtWidgets.QFileDialog.getExistingDirectory(
+                self, "Select folder"
+            )
+            if dirpath:
+                self._add_user_filepaths([dirpath])
+            return
+
+        ext_filter = "Allowed files ({})".format(
+            " ".join("*{}".format(ext) for ext in sorted(extensions))
+        )
+        # Allow selection of multiple files for sequences
+        if self._single_item and not self._allow_sequences:
+            filepath, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self, "Select file", "", ext_filter
+            )
+            filepaths = [filepath] if filepath else []
+        else:
+            filepaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
+                self, "Select files", "", ext_filter
+            )
+        self._add_user_filepaths(filepaths)
+
+    def _add_user_filepaths(self, filepaths):
+        """Add paths picked by user and tell them what was not used."""
+        if not filepaths:
+            return
+
+        valid_paths = self._files_proxy_model.filter_valid_files(filepaths)
+        messages = []
+        skipped_count = len(filepaths) - len(valid_paths)
+        if skipped_count:
+            messages.append(
+                "{} item{} skipped, not allowed here".format(
+                    skipped_count, "s" if skipped_count > 1 else ""
+                )
+            )
+
+        if valid_paths and self._single_item:
+            file_items = FileDefItem.from_value(
+                valid_paths, self._allow_sequences
+            )
+            if len(file_items) > 1:
+                messages.append(
+                    "Only one item allowed, used '{}'".format(
+                        file_items[0].label
+                    )
+                )
+
+        if valid_paths:
+            self._add_filepaths(valid_paths)
+        self._show_message(". ".join(messages))
+
+    def _show_message(self, message):
+        self._message_label.setText(message)
+        self._message_label.setVisible(bool(message))
+        self._footer_hint.setVisible(not message)
+        if message:
+            self._message_timer.start()
+
+    def _on_message_timer(self):
+        self._show_message("")
+
+    def _set_drop_hover(self, hover):
+        if self._drop_hover == hover:
+            return
+        self._drop_hover = hover
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._drop_hover:
+            return
+        # Highlight is painted to layout margins around children
+        if self._drop_hover_color is None:
+            color = get_objected_colors(
+                "bg-view-selection-hover"
+            ).get_qcolor()
+            color.setAlpha(255)
+            self._drop_hover_color = color
+        pen = QtGui.QPen(self._drop_hover_color)
+        pen.setWidth(2)
+        painter = QtGui.QPainter(self)
+        painter.setPen(pen)
+        painter.drawRect(self.rect().adjusted(1, 1, -1, -1))
+        painter.end()
+
     def _on_context_menu(self, pos):
         self._on_context_menu_requested(pos, False)
 
@@ -1004,14 +1149,18 @@ class FilesWidget(QtWidgets.QFrame):
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
 
+        self._set_drop_hover(event.isAccepted())
+
     def dragMoveEvent(self, event):
         event.ignore()
         self.dragEnterEvent(event)
 
     def dragLeaveEvent(self, event):
+        self._set_drop_hover(False)
         event.accept()
 
     def dropEvent(self, event):
+        self._set_drop_hover(False)
         if self._multivalue:
             return
 
@@ -1024,10 +1173,7 @@ class FilesWidget(QtWidgets.QFrame):
                 if os.path.exists(filepath):
                     filepaths.append(filepath)
 
-            # Filter filepaths before passing it to model
-            filepaths = self._files_proxy_model.filter_valid_files(filepaths)
-            if filepaths:
-                self._add_filepaths(filepaths)
+            self._add_user_filepaths(filepaths)
 
         if self._handle_full_data_drop(
             mime_data.data("files_widget/full_data")
@@ -1094,4 +1240,6 @@ class FilesWidget(QtWidgets.QFrame):
         else:
             current_widget = self._empty_widget
         self._wrapper_layout.setCurrentWidget(current_widget)
-        self._files_view.update_remove_btn_visibility()
+        self._footer_widget.setVisible(files_exists and not self._multivalue)
+        if not files_exists:
+            self._show_message("")
