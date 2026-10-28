@@ -946,7 +946,9 @@ def _ffmpeg_mov_format_args(ffprobe_data: dict) -> list[str]:
         movflags.append("use_metadata_tags")
 
     if movflags:
-        output.extend(["-movflags", "+".join(movflags)])
+        # Add flags (prefixed with '+') instead of replacing them, so other
+        #   '-movflags' arguments in the command are kept
+        output.extend(["-movflags", "".join(f"+{f}" for f in movflags)])
     return output
 
 

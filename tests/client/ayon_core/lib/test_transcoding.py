@@ -317,7 +317,7 @@ class GetFFmpegFormatArgs(unittest.TestCase):
             + _atom(b"free")
             + _atom(b"mdat", b"\0" * 32)
         )
-        self.assertEqual(args, ["-movflags", "faststart"])
+        self.assertEqual(args, ["-movflags", "+faststart"])
 
     def test_mov_moov_at_end(self):
         args = self._format_args(
@@ -336,7 +336,7 @@ class GetFFmpegFormatArgs(unittest.TestCase):
             + _atom(b"moov", b"\0" * 16)
             + _large_atom(b"mdat", b"\0" * 32)
         )
-        self.assertEqual(args, ["-movflags", "faststart"])
+        self.assertEqual(args, ["-movflags", "+faststart"])
 
     def test_mov_invalid_file(self):
         self.assertEqual(self._format_args(b""), [])
@@ -362,11 +362,11 @@ class GetFFmpegFormatArgs(unittest.TestCase):
         mdat = _atom(b"mdat", b"\0" * 32)
         self.assertEqual(
             self._format_args(_atom(b"ftyp", b"isom") + moov + mdat),
-            ["-movflags", "faststart+use_metadata_tags"]
+            ["-movflags", "+faststart+use_metadata_tags"]
         )
         self.assertEqual(
             self._format_args(_atom(b"ftyp", b"isom") + mdat + moov),
-            ["-movflags", "use_metadata_tags"]
+            ["-movflags", "+use_metadata_tags"]
         )
 
     def test_mov_quicktime_metadata_keys(self):
@@ -376,7 +376,7 @@ class GetFFmpegFormatArgs(unittest.TestCase):
         mdat = _atom(b"mdat", b"\0" * 32)
         self.assertEqual(
             self._format_args(_atom(b"ftyp", b"qt  ") + mdat + moov),
-            ["-movflags", "use_metadata_tags"]
+            ["-movflags", "+use_metadata_tags"]
         )
 
     def test_mov_metadata_without_keys(self):
