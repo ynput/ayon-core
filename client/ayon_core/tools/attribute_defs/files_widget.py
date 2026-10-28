@@ -553,7 +553,6 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
 
 class ItemWidget(QtWidgets.QWidget):
     context_menu_requested = QtCore.Signal(QtCore.QPoint)
-    remove_requested = QtCore.Signal(str)
 
     def __init__(
         self,
@@ -584,9 +583,6 @@ class ItemWidget(QtWidgets.QWidget):
         actions_menu_icon = get_qt_icon(
             MaterialSymbolsIcon("more_horiz", color="#ffffff")
         )
-        remove_icon = get_qt_icon(
-            MaterialSymbolsIcon("delete", color="#ffffff")
-        )
 
         split_btn = ClickableLabel(self)
         split_btn.setFixedSize(height, height)
@@ -597,30 +593,19 @@ class ItemWidget(QtWidgets.QWidget):
         else:
             split_btn.setVisible(is_sequence)
 
-        remove_btn = ClickableLabel(self)
-        remove_btn.setFixedSize(height, height)
-        remove_btn.setPixmap(remove_icon.pixmap(height, height))
-        remove_btn.setToolTip("Remove")
-        remove_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        remove_btn.setVisible(not multivalue)
-
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(icon_widget, 0)
         layout.addWidget(label_widget, 1)
         layout.addWidget(details_widget, 0)
         layout.addWidget(split_btn, 0)
-        layout.addWidget(remove_btn, 0)
 
         split_btn.clicked.connect(self._on_actions_clicked)
-        remove_btn.clicked.connect(self._on_remove_clicked)
 
         self._icon_widget = icon_widget
         self._label_widget = label_widget
         self._split_btn = split_btn
-        self._remove_btn = remove_btn
         self._actions_menu_icon = actions_menu_icon
-        self._remove_icon = remove_icon
         self._last_scaled_pix_height = None
 
     def _update_btn_size(self):
@@ -629,12 +614,10 @@ class ItemWidget(QtWidgets.QWidget):
         if height == self._last_scaled_pix_height:
             return
         self._last_scaled_pix_height = height
-        for btn, icon in (
-            (self._split_btn, self._actions_menu_icon),
-            (self._remove_btn, self._remove_icon),
-        ):
-            btn.setFixedSize(height, height)
-            btn.setPixmap(icon.pixmap(height, height))
+        self._split_btn.setFixedSize(height, height)
+        self._split_btn.setPixmap(
+            self._actions_menu_icon.pixmap(height, height)
+        )
 
     def showEvent(self, event):
         super(ItemWidget, self).showEvent(event)
@@ -648,9 +631,6 @@ class ItemWidget(QtWidgets.QWidget):
         pos = self._split_btn.rect().bottomLeft()
         point = self._split_btn.mapToGlobal(pos)
         self.context_menu_requested.emit(point)
-
-    def _on_remove_clicked(self):
-        self.remove_requested.emit(self._item_id)
 
 
 class FilesView(QtWidgets.QListView):
@@ -764,37 +744,45 @@ class FilesWidget(QtWidgets.QFrame):
         wrapper_layout.addWidget(files_view)
         wrapper_layout.setCurrentWidget(empty_widget)
 
-        # Buttons over bottom right corner of the view, visible on hover
-        overlay_widget = FilesOverlay(wrapper_widget)
-        browse_btn = InViewButton(overlay_widget)
-        remove_btn = InViewButton(overlay_widget)
+        # Buttons over bottom corners of the view, visible on hover
+        browse_overlay = FilesOverlay(wrapper_widget)
+        browse_btn = InViewButton(browse_overlay)
+        remove_overlay = FilesOverlay(wrapper_widget)
+        remove_btn = InViewButton(remove_overlay)
+        remove_btn.setToolTip("Remove selected")
+        remove_btn.setEnabled(False)
         if single_item:
             browse_icon_name = "swap_horiz"
             browse_btn.setToolTip("Replace...")
-            remove_btn.setToolTip("Remove")
         else:
             browse_icon_name = "add"
             browse_btn.setToolTip("Add...")
-            remove_btn.setToolTip(
-                "Remove selected items (all if nothing is selected)"
-            )
         browse_btn.setIcon(get_qt_icon(
             MaterialSymbolsIcon(browse_icon_name, color="#ffffff")
         ))
-        remove_btn.setIcon(get_qt_icon(
-            MaterialSymbolsIcon("delete", color="#ffffff")
-        ))
+        # Icons from 'get_qt_icon' are cached, combine them to new icon
+        remove_icon = QtGui.QIcon()
+        for color, mode in (
+            ("#ffffff", QtGui.QIcon.Normal),
+            ("#808080", QtGui.QIcon.Disabled),
+        ):
+            icon = get_qt_icon(MaterialSymbolsIcon("delete", color=color))
+            remove_icon.addPixmap(icon.pixmap(64, 64), mode)
+        remove_btn.setIcon(remove_icon)
 
-        overlay_layout = QtWidgets.QHBoxLayout(overlay_widget)
-        overlay_layout.setContentsMargins(2, 2, 2, 2)
-        overlay_layout.setSpacing(2)
-        overlay_layout.addWidget(browse_btn, 0)
-        overlay_layout.addWidget(remove_btn, 0)
-        overlay_widget.setVisible(False)
+        for overlay, btn in (
+            (browse_overlay, browse_btn),
+            (remove_overlay, remove_btn),
+        ):
+            overlay_layout = QtWidgets.QHBoxLayout(overlay)
+            overlay_layout.setContentsMargins(2, 2, 2, 2)
+            overlay_layout.addWidget(btn, 0)
+            overlay.setVisible(False)
 
         # Feedback about dropped items, shown for a while
         message_label = WarningLabel(wrapper_widget)
         message_label.setWordWrap(True)
+        message_label.setAlignment(QtCore.Qt.AlignCenter)
         message_label.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         message_label.setVisible(False)
 
@@ -816,12 +804,15 @@ class FilesWidget(QtWidgets.QFrame):
         files_proxy_model.rowsInserted.connect(self._on_rows_inserted)
         files_proxy_model.rowsRemoved.connect(self._on_rows_removed)
         files_view.remove_requested.connect(self._on_remove_requested)
+        files_view.selectionModel().selectionChanged.connect(
+            self._on_selection_changed
+        )
         files_view.context_menu_requested.connect(
             self._on_context_menu_requested
         )
         empty_widget.browse_requested.connect(self._on_browse_requested)
         browse_btn.clicked.connect(self._on_browse_requested)
-        remove_btn.clicked.connect(self._on_overlay_remove_clicked)
+        remove_btn.clicked.connect(self._on_remove_requested)
         message_timer.timeout.connect(self._on_message_timer)
 
         self._in_set_value = False
@@ -832,7 +823,9 @@ class FilesWidget(QtWidgets.QFrame):
         self._drop_hover_color = None
         self._mouse_hover = False
 
-        self._overlay_widget = overlay_widget
+        self._browse_overlay = browse_overlay
+        self._remove_overlay = remove_overlay
+        self._remove_btn = remove_btn
         self._message_label = message_label
         self._message_timer = message_timer
 
@@ -958,7 +951,6 @@ class FilesWidget(QtWidgets.QFrame):
             widget.context_menu_requested.connect(
                 self._on_item_context_menu_request
             )
-            widget.remove_requested.connect(self._on_item_remove_requested)
             self._files_view.setIndexWidget(index, widget)
             self._files_proxy_model.setData(
                 index, widget.sizeHint(), QtCore.Qt.SizeHintRole
@@ -1039,17 +1031,8 @@ class FilesWidget(QtWidgets.QFrame):
         if items_to_delete:
             self._remove_item_by_ids(items_to_delete)
 
-    def _on_item_remove_requested(self, item_id):
-        if not self._multivalue:
-            self._remove_item_by_ids({item_id})
-
-    def _on_overlay_remove_clicked(self):
-        if self._multivalue:
-            return
-        item_ids = self._files_view.get_selected_item_ids()
-        if not item_ids:
-            item_ids = set(self._widgets_by_id.keys())
-        self._remove_item_by_ids(item_ids)
+    def _on_selection_changed(self):
+        self._remove_btn.setEnabled(self._files_view.has_selected_item_ids())
 
     def _on_browse_requested(self):
         if self._multivalue:
@@ -1138,9 +1121,10 @@ class FilesWidget(QtWidgets.QFrame):
             and not self._multivalue
             and self._files_proxy_model.rowCount() > 0
         )
-        self._overlay_widget.setVisible(visible)
-        if visible:
-            self._overlay_widget.raise_()
+        for overlay in (self._browse_overlay, self._remove_overlay):
+            overlay.setVisible(visible)
+            if visible:
+                overlay.raise_()
 
     def _update_overlay_geometry(self):
         """Place overlay and message to bottom of view viewport."""
@@ -1150,21 +1134,33 @@ class FilesWidget(QtWidgets.QFrame):
             viewport.size()
         )
         margin = 5
-        overlay = self._overlay_widget
-        overlay.resize(overlay.sizeHint())
-        overlay.move(
-            max(0, rect.right() - overlay.width() - margin + 1),
-            max(0, rect.bottom() - overlay.height() - margin + 1),
+        browse_overlay = self._browse_overlay
+        remove_overlay = self._remove_overlay
+        browse_overlay.resize(browse_overlay.sizeHint())
+        remove_overlay.resize(remove_overlay.sizeHint())
+        height = max(browse_overlay.height(), remove_overlay.height())
+        pos_y = max(0, rect.bottom() - height - margin + 1)
+        browse_overlay.move(rect.x() + margin, pos_y)
+        remove_overlay.move(
+            max(0, rect.right() - remove_overlay.width() - margin + 1),
+            pos_y
         )
-        self._files_view.set_bottom_space(overlay.height() + margin)
+        self._files_view.set_bottom_space(height + margin)
 
+        # Message is centered between the buttons
         label = self._message_label
         if label.isVisible():
-            width = max(0, overlay.x() - rect.x() - margin * 2)
-            label.setFixedWidth(width)
-            label.adjustSize()
+            side_width = max(browse_overlay.width(), remove_overlay.width())
+            width = max(0, rect.width() - (side_width + margin * 2) * 2)
+            margins = label.contentsMargins()
+            text_width = (
+                label.fontMetrics().horizontalAdvance(label.text())
+                + margins.left() + margins.right() + 8
+            )
+            width = min(width, text_width)
+            label.setFixedSize(width, label.heightForWidth(width))
             label.move(
-                rect.x() + margin,
+                rect.x() + (rect.width() - label.width()) // 2,
                 max(0, rect.bottom() - label.height() - margin + 1),
             )
             label.raise_()

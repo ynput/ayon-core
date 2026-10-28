@@ -1489,7 +1489,7 @@ FilesOverlay {
     background: {color:bg-view};
     border-radius: 0.2em;
 }
-InViewButton {
+InViewButton, InViewButton:disabled {
     background: transparent;
 }
 InViewButton:hover {
