@@ -63,7 +63,7 @@ class InViewButton(IconButton):
 
 
 class FilesOverlay(QtWidgets.QFrame):
-    """Button shown under view items on mouse hover."""
+    """Button shown over bottom of the view on mouse hover."""
     pass
 
 
@@ -642,6 +642,9 @@ class FilesView(QtWidgets.QListView):
     def __init__(self, *args, **kwargs):
         super(FilesView, self).__init__(*args, **kwargs)
 
+        # Used in callbacks which may be triggered from setters
+        self._bottom_space = 0
+
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
@@ -650,13 +653,36 @@ class FilesView(QtWidgets.QListView):
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.setVerticalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
+        self.verticalScrollBar().rangeChanged.connect(
+            self._on_scroll_range_change
+        )
 
         self.customContextMenuRequested.connect(self._on_context_menu_request)
 
     def set_bottom_space(self, space):
-        """Space under items for buttons, so they never cover an item."""
-        if self.viewportMargins().bottom() != space:
-            self.setViewportMargins(0, 0, 0, space)
+        """Extra scroll space so buttons over viewport don't cover items."""
+        if self._bottom_space == space:
+            return
+        self._bottom_space = space
+        self.updateGeometries()
+
+    def _on_scroll_range_change(self, minimum, maximum):
+        # Scroll range is set from multiple places in Qt, extend it
+        #   whenever it changes
+        if not self._bottom_space or self.model() is None:
+            return
+        if self.model().rowCount() == 0:
+            return
+        expected = max(0, (
+            self.contentsSize().height()
+            + self._bottom_space
+            - self.viewport().height()
+        ))
+        if maximum < expected:
+            self.verticalScrollBar().setRange(minimum, expected)
 
     def has_selected_item_ids(self):
         """Is any index selected."""
@@ -1110,8 +1136,12 @@ class FilesWidget(QtWidgets.QFrame):
                 overlay.raise_()
 
     def _update_overlay_geometry(self):
-        """Place buttons and message to space under view items."""
-        rect = self._files_view.geometry()
+        """Place buttons and message over bottom of view viewport."""
+        viewport = self._files_view.viewport()
+        rect = QtCore.QRect(
+            viewport.mapTo(self._wrapper_widget, QtCore.QPoint(0, 0)),
+            viewport.size()
+        )
         margin = 3
         browse_overlay = self._browse_overlay
         remove_overlay = self._remove_overlay
