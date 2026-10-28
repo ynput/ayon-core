@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Iterable
 
 from ayon_core.lib import Logger
+from ayon_core.ui.components.table_filter import filter_values_match
 from ayon_core.ui.components.table_model import FilterEntry, TableColumn
 
 log = Logger.get_logger(__name__)
@@ -219,6 +220,88 @@ class BrowserColumnManager:
             for provider in self._providers
             for key in provider.filter_keys
         }
+
+    def get_filtering_providers(
+        self,
+        context: BrowserColumnContext,
+    ) -> list[BrowserColumnProvider]:
+        """Return providers owning any of the active filters.
+
+        Only compares keys, so it is cheap enough to call before
+        deciding whether rows need provider data at all.
+        """
+        if not context.project_name:
+            return []
+        active_keys = {
+            item.key for item in context.active_filters if item.values
+        }
+        if not active_keys:
+            return []
+        return [
+            provider
+            for provider in self._providers
+            if not active_keys.isdisjoint(provider.filter_keys)
+        ]
+
+    def filter_rows(
+        self,
+        context: BrowserColumnContext,
+        rows: list[dict],
+    ) -> list[dict]:
+        """Return the rows passing the active provider-owned filters.
+
+        Runs ``enrich_rows`` only of the providers owning an active
+        filter, visible columns are ignored. Rows are returned as they
+        are when no provider filter is active.
+
+        Like the table's filter, a filter the provider does not offer in
+        the context is ignored.
+
+        Args:
+            context: Browser state with the active filters.
+            rows: Row dictionaries, enriched in place.
+
+        Returns:
+            Rows matching all active provider-owned filters.
+        """
+        providers = self.get_filtering_providers(context)
+        if not providers or not rows:
+            return rows
+
+        filter_context = replace(context, enabled_column_keys=frozenset())
+        offered_keys: set[str] = set()
+        for provider in providers:
+            try:
+                provider_keys = provider.filter_keys & {
+                    item.key for item in provider.get_filters(context)
+                }
+                if not provider_keys:
+                    continue
+                offered_keys |= provider_keys
+                provider.enrich_rows(filter_context, rows)
+            except Exception:
+                log.exception(
+                    "Browser column provider %r failed to filter rows",
+                    provider.identifier,
+                )
+
+        filters = [
+            item
+            for item in context.active_filters
+            if item.values and item.key in offered_keys
+        ]
+        if not filters:
+            return rows
+        return [
+            row
+            for row in rows
+            if all(
+                filter_values_match(
+                    row.get(item.key), item.values, item.use_substring
+                ) != item.exclude
+                for item in filters
+            )
+        ]
 
     def get_required_query_keys(
         self,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from qtpy.QtCore import (
     QEvent,
@@ -63,6 +63,56 @@ NO_VALUE = "noValue"
 #: Criterion value matching rows where the filtered field is not empty.
 HAS_VALUE = "hasValue"
 EMPTY_VALUE_OPTIONS = (NO_VALUE, HAS_VALUE)
+
+
+def is_empty_filter_value(value: Any) -> bool:
+    """Return whether a row value counts as empty for a filter."""
+    return (
+        value is None
+        or value == ""
+        or (isinstance(value, (list, tuple, set)) and not value)
+    )
+
+
+def filter_values_match(
+    cell_value: Any,
+    values: Iterable[str],
+    use_substring: bool = False,
+    is_empty: Callable[[], bool] | None = None,
+) -> bool:
+    """Return whether a row value matches any of a criterion's values.
+
+    The exclude flag of the criterion is left to the caller.
+
+    Args:
+        cell_value: Row value compared to the values.
+        values: Values of the criterion, combined with OR logic.
+        use_substring: Match the values as case-insensitive substrings
+            instead of whole values.
+        is_empty: Returns whether the row value counts as empty, for the
+            "No value" and "Has value" options. Checks *cell_value* by
+            default.
+
+    Returns:
+        ``True`` when any of the values matches.
+    """
+    cell_str = "" if cell_value is None else str(cell_value).lower()
+    for value in values:
+        if value in EMPTY_VALUE_OPTIONS:
+            if is_empty is None:
+                empty = is_empty_filter_value(cell_value)
+            else:
+                empty = is_empty()
+            if empty == (value == NO_VALUE):
+                return True
+            continue
+        value_lower = value.lower()
+        if use_substring:
+            if value_lower in cell_str:
+                return True
+        elif cell_str == value_lower:
+            return True
+    return False
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -249,14 +299,7 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
         if self._row_value_getter is not None:
             index = source_model.index(source_row, 0, source_parent)
             cell_value = self._row_value_getter(index, key)
-        return (
-            cell_value is None
-            or cell_value == ""
-            or (
-                isinstance(cell_value, (list, tuple, set))
-                and not cell_value
-            )
-        )
+        return is_empty_filter_value(cell_value)
 
     def _direct_match(
         self,
@@ -295,27 +338,18 @@ class AYTableFilterProxyModel(QSortFilterProxyModel):
                 cell_value = self._row_value_getter(index, criterion.key)
             else:
                 continue
-            cell_str = "" if cell_value is None else str(cell_value).lower()
 
-            matched = False
-            for val in criterion.values:
-                if val in EMPTY_VALUE_OPTIONS:
-                    if self._is_empty_value(
+            matched = filter_values_match(
+                cell_value,
+                criterion.values,
+                criterion.use_substring,
+                lambda key=criterion.key, value=cell_value: (
+                    self._is_empty_value(
                         source_model, source_row, source_parent,
-                        criterion.key, cell_value,
-                    ) == (val == NO_VALUE):
-                        matched = True
-                        break
-                    continue
-                val_lower = val.lower()
-                if criterion.use_substring:
-                    if val_lower in cell_str:
-                        matched = True
-                        break
-                else:
-                    if cell_str == val_lower:
-                        matched = True
-                        break
+                        key, value,
+                    )
+                ),
+            )
             if matched == criterion.exclude:
                 return False
 

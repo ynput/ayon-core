@@ -8,6 +8,12 @@ from typing import Any
 
 import pytest
 
+from ayon_core.tools.browser.columns import (
+    BrowserColumnContext,
+    BrowserColumnManager,
+    BrowserColumnProvider,
+    BrowserFilter,
+)
 from ayon_core.tools.browser.ui import browser_controller
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
@@ -16,7 +22,10 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     GROUP_BY_PRODUCT_KEY,
     GROUP_BY_STATUS_KEY,
 )
-from ayon_core.ui.components.table_model import PaginatedTableModel
+from ayon_core.ui.components.table_model import (
+    FilterEntry,
+    PaginatedTableModel,
+)
 
 
 class FakeResponse:
@@ -80,6 +89,20 @@ class ControllerStub:
         self._latest_per_folder = False
         self._group_by_key = GROUP_BY_STATUS_KEY
         self._group_by_options: dict[str, Any] = {}
+        self._column_manager = BrowserColumnManager()
+        self._active_filters: tuple[BrowserFilter, ...] = ()
+
+    def _get_column_context(self) -> BrowserColumnContext:
+        return BrowserColumnContext(
+            project_name=self._current_project,
+            category="hierarchy",
+            selected_folder_ids=tuple(self._selected_folder_ids),
+            selected_task_ids=(),
+            enabled_column_keys=frozenset(),
+            active_filters=self._active_filters,
+            group_by_key=self._group_by_key,
+            include_folder_children=self._include_folder_children,
+        )
 
     def _get_query_filters(self) -> dict[str, Any]:
         return {
@@ -152,6 +175,68 @@ def test_group_without_versions_does_not_query(connection) -> None:
     assert connection.calls == []
 
 
+class InSceneStubProvider(BrowserColumnProvider):
+    """Mark versions in the scene, like the In Scene column."""
+
+    identifier = "in_scene_stub"
+    column_keys = frozenset({"in_scene"})
+    filter_keys = frozenset({"in_scene"})
+
+    def __init__(self, loaded_ids: set[str]) -> None:
+        self.loaded_ids = loaded_ids
+        self.enriched: list[list[dict[str, Any]]] = []
+
+    def get_filters(self, context: BrowserColumnContext) -> list[FilterEntry]:
+        return [FilterEntry("in_scene", "In Scene", options=["Yes", "No"])]
+
+    def enrich_rows(
+        self, context: BrowserColumnContext, rows: list[dict[str, Any]]
+    ) -> None:
+        self.enriched.append([dict(row) for row in rows])
+        for row in rows:
+            if row.get("entityType") == "Version":
+                in_scene = row["id"] in self.loaded_ids
+                row["in_scene"] = "Yes" if in_scene else "No"
+
+
+def test_group_version_ids_skip_providers_without_filter(connection) -> None:
+    controller = ControllerStub()
+    provider = InSceneStubProvider({"v1"})
+    controller._column_manager = BrowserColumnManager([provider])
+
+    version_ids = controller.get_group_version_ids(
+        f"grp:{GROUP_BY_STATUS_KEY}:Approved"
+    )
+
+    assert version_ids == {f"v{idx}" for idx in range(5)}
+    assert provider.enriched == []
+
+
+def test_group_version_ids_apply_provider_filters(connection) -> None:
+    controller = ControllerStub()
+    provider = InSceneStubProvider({"v1", "v4"})
+    controller._column_manager = BrowserColumnManager([provider])
+    controller._active_filters = (BrowserFilter("in_scene", ("Yes",)),)
+
+    version_ids = controller.get_group_version_ids(
+        f"grp:{GROUP_BY_STATUS_KEY}:Approved"
+    )
+
+    assert version_ids == {"v1", "v4"}
+    # Each page of ids is checked by the provider as version rows.
+    assert provider.enriched == [
+        [
+            {"id": "v0", "entityType": "Version"},
+            {"id": "v1", "entityType": "Version"},
+        ],
+        [
+            {"id": "v2", "entityType": "Version"},
+            {"id": "v3", "entityType": "Version"},
+        ],
+        [{"id": "v4", "entityType": "Version"}],
+    ]
+
+
 def _make_model(children: dict[str, list[dict[str, Any]]]):
     def fetch_page(
         page: int,
@@ -205,3 +290,22 @@ def test_all_child_rows_only_when_fully_loaded(qtbot) -> None:
 
     assert model.get_all_child_rows("grp:c") is None
     assert model.get_all_child_rows("grp:missing") is None
+
+
+def test_all_child_rows_leave_out_rejected_rows(qtbot) -> None:
+    children = {"grp:a": [{"id": "v1"}, {"id": "v2"}, {"id": "v3"}]}
+    model = _make_model(children)
+    model.fetchMore(_group_index(model, "grp:a"))
+    model.fetchMore(_group_index(model, "grp:a"))
+    calls = []
+
+    def accept_row(row: int, parent_index) -> bool:
+        calls.append((row, parent_index.internalPointer().node_id))
+        return row != 1
+
+    rows = model.get_all_child_rows("grp:a", accept_row=accept_row)
+
+    assert rows == [{"id": "v1"}, {"id": "v3"}]
+    # Called with the child rows under the parent's index, like the
+    # table filter's `filterAcceptsRow`.
+    assert calls == [(0, "grp:a"), (1, "grp:a"), (2, "grp:a")]

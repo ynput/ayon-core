@@ -3285,7 +3285,9 @@ class BrowserWidgetController(QtCore.QObject):
         """Return the ids of all versions listed under a group header.
 
         Queries only the ids, with the filters used when expanding the
-        group, so these are the versions the group shows expanded.
+        group, so these are the versions the group shows expanded. When
+        a column provider's filter is active, the provider is asked for
+        its values to apply that filter too.
 
         Args:
             group_id: Group header id, see :meth:`_parse_group_id`.
@@ -3329,6 +3331,13 @@ class BrowserWidgetController(QtCore.QObject):
             "after": None,
             **self._version_filter_variables(**query_kwargs),
         }
+        # Filters of column providers are applied client-side, so they
+        #   are not part of the query. Providers are called only when one
+        #   of their filters is active.
+        column_context = self._get_column_context()
+        filter_by_providers = bool(
+            self._column_manager.get_filtering_providers(column_context)
+        )
         query = get_version_ids_query()
         version_ids: set[str] = set()
         while True:
@@ -3336,9 +3345,19 @@ class BrowserWidgetController(QtCore.QObject):
             if resp.errors:
                 raise RuntimeError(resp.errors)
             versions_block = resp.data["data"]["project"]["versions"]
-            version_ids.update(
+            page_ids = [
                 edge["node"]["id"] for edge in versions_block["edges"]
-            )
+            ]
+            if filter_by_providers and page_ids:
+                rows = self._column_manager.filter_rows(
+                    column_context,
+                    [
+                        {"id": version_id, "entityType": "Version"}
+                        for version_id in page_ids
+                    ],
+                )
+                page_ids = [row["id"] for row in rows]
+            version_ids.update(page_ids)
             page_info = versions_block["pageInfo"]
             next_cursor = page_info["endCursor"]
             if (

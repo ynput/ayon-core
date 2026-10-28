@@ -636,14 +636,20 @@ class BrowserTable(AYContainer):
     ) -> list[dict[str, Any]] | None:
         """Return the rows under a row when all of them are loaded.
 
+        Only rows passing the table's filters are returned, which
+        includes the filters of column providers applied client-side.
+
         Args:
             row_id: Row ``id`` of the parent row.
 
         Returns:
-            Row-data dicts of the children, or ``None`` when not all of
-            them are loaded.
+            Row-data dicts of the shown children, or ``None`` when not
+            all of them are loaded.
         """
-        return self._model.get_all_child_rows(row_id)
+        return self._model.get_all_child_rows(
+            row_id,
+            accept_row=self._table_filter.filter_model.filterAcceptsRow,
+        )
 
     def reset_data(self) -> None:
         """Reset the underlying model data."""

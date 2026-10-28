@@ -877,7 +877,9 @@ class PaginatedTableModel(QAbstractItemModel):
         return [node.row_data for node in nodes if not node.is_root]
 
     def get_all_child_rows(
-        self, node_id: str
+        self,
+        node_id: str,
+        accept_row: Callable[[int, QModelIndex], bool] | None = None,
     ) -> list[dict[str, Any]] | None:
         """Return the row data of all children of a node, when loaded.
 
@@ -886,6 +888,10 @@ class PaginatedTableModel(QAbstractItemModel):
 
         Args:
             node_id: Row ``id`` of the parent node.
+            accept_row: Optional check of a child, called with its row
+                and the parent index like
+                ``QSortFilterProxyModel.filterAcceptsRow``. Children it
+                rejects are left out.
 
         Returns:
             Row-data dicts of the children, or ``None`` when the node is
@@ -900,7 +906,14 @@ class PaginatedTableModel(QAbstractItemModel):
                 or node.is_fetching
             ):
                 return None
-            return [child.row_data for child in node.children]
+            if accept_row is None:
+                return [child.row_data for child in node.children]
+            parent_index = self._index_for_node(node)
+            return [
+                child.row_data
+                for row, child in enumerate(node.children)
+                if accept_row(row, parent_index)
+            ]
         return None
 
     def get_distinct_values(self, key: str) -> list[str]:
