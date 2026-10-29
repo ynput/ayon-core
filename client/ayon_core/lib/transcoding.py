@@ -9,6 +9,7 @@ import subprocess
 import platform
 import warnings
 import functools
+from dataclasses import dataclass
 from typing import Optional
 
 import xml.etree.ElementTree
@@ -911,8 +912,11 @@ def get_ffmpeg_format_args(ffprobe_data, source_ffmpeg_cmd=None):
         source_ffmpeg_cmd(str): Command that created input if available.
     """
     input_format = ffprobe_data.get("format") or {}
-    if input_format.get("format_name") == "mxf":
+    format_name = input_format.get("format_name") or ""
+    if format_name == "mxf":
         return _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd)
+    if "mov" in format_name.split(","):
+        return _ffmpeg_mov_format_args(ffprobe_data)
     return []
 
 
@@ -924,6 +928,163 @@ def _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd):
     if operational_pattern_ul == "060e2b34.04010102.0d010201.10030000":
         output.extend(["-f", "mxf_opatom"])
     return output
+
+
+def _ffmpeg_mov_format_args(ffprobe_data: dict) -> list[str]:
+    output = []
+    filepath = ffprobe_data["format"].get("filename")
+    if not filepath:
+        return output
+
+    atoms_info = _get_mov_atoms_info(filepath)
+    movflags = []
+    if atoms_info.moov_before_mdat:
+        # Keep the file streamable if source was streamable
+        movflags.append("faststart")
+    if atoms_info.has_metadata_keys:
+        # Custom metadata keys are not written without the flag
+        movflags.append("use_metadata_tags")
+
+    if movflags:
+        # Add flags (prefixed with '+') instead of replacing them, so other
+        #   '-movflags' arguments in the command are kept
+        output.extend(["-movflags", "".join(f"+{f}" for f in movflags)])
+    return output
+
+
+@dataclass
+class _MovAtomsInfo:
+    """Information about mov/mp4 file based on its atoms.
+
+    Attributes:
+        moov_before_mdat (bool): 'moov' atom is before 'mdat' atom, which
+            means the file was created with '-movflags faststart'.
+        has_metadata_keys (bool): Metadata are stored with custom keys,
+            which means the file was created with
+            '-movflags use_metadata_tags'.
+
+    """
+    moov_before_mdat: bool = False
+    has_metadata_keys: bool = False
+
+
+def _iter_mov_atoms(stream, start: int, end: int):
+    """Iterate over atoms in range of mov/mp4 file.
+
+    Only atom headers are read, the stream is moved to the end of atom
+        after each yielded atom, so content of the atom can be read
+        by the caller.
+
+    Args:
+        stream (BinaryIO): Opened mov/mp4 file.
+        start (int): Position where first atom starts.
+        end (int): Position where the parent atom (or file) ends.
+
+    Yields:
+        tuple[bytes, int, int]: Atom type, start of atom content and
+            end of atom.
+
+    """
+    position = start
+    while position + 8 <= end:
+        stream.seek(position)
+        header = stream.read(8)
+        if len(header) < 8:
+            return
+
+        size = int.from_bytes(header[:4], "big")
+        atom_type = header[4:]
+        header_size = 8
+        if size == 1:
+            # 64-bit size is stored after atom type
+            large_size = stream.read(8)
+            if len(large_size) < 8:
+                return
+            size = int.from_bytes(large_size, "big")
+            header_size = 16
+        elif size == 0:
+            # Size '0' means the atom goes to the end of parent
+            size = end - position
+
+        if size < header_size or position + size > end:
+            return
+
+        atom_end = position + size
+        yield atom_type, position + header_size, atom_end
+        position = atom_end
+
+
+def _mov_meta_has_keys(stream, start: int, end: int) -> bool:
+    # ISO 'meta' atom starts with 4 bytes of version and flags, which
+    #   are '0', QuickTime 'meta' atom starts directly with child atoms
+    stream.seek(start)
+    if stream.read(4) == b"\0\0\0\0":
+        start += 4
+
+    for atom_type, _, _ in _iter_mov_atoms(stream, start, end):
+        if atom_type == b"keys":
+            return True
+    return False
+
+
+def _mov_moov_has_metadata_keys(stream, start: int, end: int) -> bool:
+    # Metadata with custom keys are in 'moov/udta/meta' (ffmpeg) or
+    #   in 'moov/meta' (QuickTime)
+    for atom_type, atom_start, atom_end in _iter_mov_atoms(
+        stream, start, end
+    ):
+        if atom_type == b"meta":
+            if _mov_meta_has_keys(stream, atom_start, atom_end):
+                return True
+
+        elif atom_type == b"udta":
+            for child_type, child_start, child_end in _iter_mov_atoms(
+                stream, atom_start, atom_end
+            ):
+                if (
+                    child_type == b"meta"
+                    and _mov_meta_has_keys(stream, child_start, child_end)
+                ):
+                    return True
+    return False
+
+
+def _get_mov_atoms_info(filepath: str) -> _MovAtomsInfo:
+    """Get information about mov/mp4 file from its atoms.
+
+    Only atom headers are read, except for metadata atoms in 'moov' atom.
+
+    Args:
+        filepath (str): Path to mov/mp4 file.
+
+    Returns:
+        _MovAtomsInfo: Information about the file. Default values are used
+            if the file can't be read or is not a valid mov/mp4 file.
+
+    """
+    atoms_info = _MovAtomsInfo()
+    try:
+        with open(filepath, "rb") as stream:
+            file_size = os.fstat(stream.fileno()).st_size
+            mdat_found = False
+            for atom_type, atom_start, atom_end in _iter_mov_atoms(
+                stream, 0, file_size
+            ):
+                if atom_type == b"mdat":
+                    mdat_found = True
+
+                elif atom_type == b"moov":
+                    atoms_info.moov_before_mdat = not mdat_found
+                    atoms_info.has_metadata_keys = (
+                        _mov_moov_has_metadata_keys(
+                            stream, atom_start, atom_end
+                        )
+                    )
+                    break
+
+    except OSError:
+        pass
+    return atoms_info
 
 
 def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
