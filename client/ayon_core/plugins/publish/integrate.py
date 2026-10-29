@@ -4,7 +4,7 @@ import os
 import logging
 import sys
 import copy
-from dataclasses import dataclass
+from collections import defaultdict
 from typing import Iterable, Any
 
 import clique
@@ -45,13 +45,23 @@ log = logging.getLogger(__name__)
 PublishRepresentation = dict[str, Any]
 
 
-@dataclass
+# NOTE: These are intentionally not dataclasses. Pyblish plugin discovery
+#   can fail on dataclasses in plugin files, see:
+#   https://github.com/ynput/ayon-core/pull/2050
 class _PreparedRepresentation:
-    representation: dict[str, Any]
-    repre_update_data: dict[str, Any] | None
-    anatomy_data: dict[str, Any]
-    transfers: list[tuple[str, str]]
-    published_files: list[str]
+    def __init__(
+        self,
+        representation: dict[str, Any],
+        repre_update_data: dict[str, Any] | None,
+        anatomy_data: dict[str, Any],
+        transfers: list[tuple[str, str]],
+        published_files: list[str],
+    ) -> None:
+        self.representation = representation
+        self.repre_update_data = repre_update_data
+        self.anatomy_data = anatomy_data
+        self.transfers = transfers
+        self.published_files = published_files
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -63,15 +73,24 @@ class _PreparedRepresentation:
         }
 
 
-@dataclass
 class _PreparedInstance:
-    instance: pyblish.api.Instance
-    prepared_representations: list[_PreparedRepresentation]
-    operations: OperationsSession
-    existing_repres_by_name: dict[str, dict[str, Any]]
-    resource_destinations: set[str]
-    anatomy: Anatomy
-    preferred_root_name: str | None
+    def __init__(
+        self,
+        instance: pyblish.api.Instance,
+        prepared_representations: list[_PreparedRepresentation],
+        operations: OperationsSession,
+        existing_repres_by_name: dict[str, dict[str, Any]],
+        resource_destinations: set[str],
+        anatomy: Anatomy,
+        preferred_root_name: str | None,
+    ) -> None:
+        self.instance = instance
+        self.prepared_representations = prepared_representations
+        self.operations = operations
+        self.existing_repres_by_name = existing_repres_by_name
+        self.resource_destinations = resource_destinations
+        self.anatomy = anatomy
+        self.preferred_root_name = preferred_root_name
 
     def to_dict(self) -> dict[str, Any]:
         return {
