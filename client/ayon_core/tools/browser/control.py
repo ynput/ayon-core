@@ -22,6 +22,7 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractBrowserController,
     ActionItem,
+    LoadersGrouping,
     ProductGroupsInfo,
 )
 from .models import ProductsModel, LoaderActionsModel
@@ -53,12 +54,12 @@ class BrowserController(AbstractBrowserController):
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._products_model = ProductsModel()
         self._loader_actions_model = LoaderActionsModel(self)
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
         self._activities_model = ActivitiesModel()
-        self._thumbnails_model = ThumbnailsModel()
 
     @property
     def log(self):
@@ -99,6 +100,7 @@ class BrowserController(AbstractBrowserController):
 
         self._products_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._loader_actions_model.reset()
         self._projects_model.reset()
         self._users_model.reset()
@@ -133,6 +135,17 @@ class BrowserController(AbstractBrowserController):
             ))
         return output
 
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     def get_task_type_items(self, project_name, sender=None):
         return self._projects_model.get_task_type_items(
             project_name, sender
@@ -151,9 +164,6 @@ class BrowserController(AbstractBrowserController):
 
     def get_user_items(self, project_name: str | None) -> list[UserItem]:
         return self._users_model.get_user_items(project_name)
-
-    def get_user_avatar_path(self, username: str) -> str | None:
-        return self._users_model.get_user_avatar_path(username)
 
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
@@ -224,9 +234,10 @@ class BrowserController(AbstractBrowserController):
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         return self._loader_actions_model.get_action_items(
-            project_name, entity_ids, entity_type
+            project_name, entity_ids, entity_type, loaders_grouping
         )
 
     def warm_up_action_items(self, project_name: str) -> None:

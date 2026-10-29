@@ -21,6 +21,10 @@ from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
 from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.utils.folders_widget import CenteredIconDelegate
+from ayon_core.tools.utils.entity_thumbnails import (
+    EntityThumbnailsPainter,
+    EntityThumbnailDelegate,
+)
 
 from .tasks_widget import BrowserTasksWidget
 from .folders_model import (
@@ -333,6 +337,19 @@ class BrowserSlicer(AYContainer):
                 variant=QTreeViewVariants.Default.value,
             )
         )
+        # Thumbnails are painted on the right side of folder label
+        self._folder_thumbnails_painter = EntityThumbnailsPainter(
+            self._folders_view, be_controller, "folder", FOLDER_ID_ROLE
+        )
+        self._folders_view.setItemDelegateForColumn(
+            0,
+            EntityThumbnailDelegate(
+                self._folder_thumbnails_painter,
+                parent=self._folders_view,
+                style_model=get_ayon_style().model,
+                variant=QTreeViewVariants.Low.value,
+            )
+        )
 
         self._lists_view = BrowserFolderTreeView(self)
         self._lists_model = BulkTreeModel(
@@ -370,6 +387,9 @@ class BrowserSlicer(AYContainer):
             self._on_folders_selection_changed
         )
         self._folders_model.reset_finished.connect(self._on_folders_reset)
+        self._folders_model.reset_finished.connect(
+            self._update_folder_thumbnails
+        )
         self._lists_view.selection_changed.connect(
             self._on_lists_selection_changed
         )
@@ -649,6 +669,11 @@ class BrowserSlicer(AYContainer):
 
         log.debug("Selected: %s, Deselected: %s", selected, deselected)
         self._apply_tree_selection(explicit_ids, ids)
+
+    def _update_folder_thumbnails(self) -> None:
+        self._folder_thumbnails_painter.set_project_name(
+            self._folders_model.get_project_name()
+        )
 
     def _on_folders_reset(self):
         # A search typed while the folders were still loading had

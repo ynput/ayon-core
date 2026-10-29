@@ -109,10 +109,6 @@ class FakeController:
             UserItem("libor", None, None, None, True),
         ]
 
-    def get_user_avatar_path(self, username: str) -> str | None:
-        self.calls.append(("avatar", username))
-        return None
-
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:
@@ -229,7 +225,6 @@ def test_controllers_implement_the_interface(controller_class: type):
     assert set(methods) == {
         "get_activity_items",
         "get_project_status_items",
-        "get_user_avatar_path",
         "get_user_items",
         "get_version_thumbnail_path",
     }
@@ -499,6 +494,83 @@ def test_browser_inspector_uses_its_controller(qtbot, monkeypatch):
     assert inspector._activity._avatar_cache is avatar_cache
 
 
+def test_browser_inspector_tells_what_the_activity_is_of(
+    qtbot, monkeypatch
+):
+    from qtpy import QtCore, QtGui
+
+    from ayon_core.tools.browser.control import BrowserController
+    from ayon_core.tools.browser.ui import browser_inspector
+
+    addon_manager = Mock()
+    addon_manager.get.return_value = None
+    monkeypatch.setattr(
+        "ayon_core.tools.browser.sitesync_columns.AddonsManager",
+        lambda: addon_manager,
+    )
+    # Representations of the selection are not relevant
+    monkeypatch.setattr(browser_inspector, "get_task_queue", FakeTaskQueue)
+    controller = BrowserWidgetController(BrowserController())
+    inspector = browser_inspector.ReviewInspector(controller)
+    qtbot.addWidget(inspector)
+    inspector.show()
+    # The label has an icon, its text is read from the tooltip
+    label = inspector._activity_context_label
+    activity = inspector._activity
+
+    version_row = {
+        "id": "version_1",
+        "entityType": "version",
+        "project_name": "demo",
+        "productName": "modelMain",
+        "version": "v001",
+    }
+    # Group of a product shows the activity of its featured version
+    group_row = {
+        "id": "grp:product:product_id",
+        "entityType": "Product",
+        "project_name": "demo",
+        "productName": "modelMain",
+        "version": "v003 (3 versions)",
+        "_version_id": "version_3",
+        "_version_name": "v003",
+    }
+    folder_row = {"id": "folder_id", "entityType": "folder"}
+    model = QtGui.QStandardItemModel()
+    for row in (version_row, group_row, folder_row):
+        item = QtGui.QStandardItem()
+        item.setData(row, QtCore.Qt.ItemDataRole.UserRole)
+        model.appendRow(item)
+
+    def _select(*rows: int) -> None:
+        inspector._current_selection = {
+            model.index(row, 0): None for row in rows
+        }
+        inspector._update()
+
+    _select(1)
+    assert label.toolTip() == "modelMain v003"
+    assert not label.isHidden()
+    assert activity._entity_ids == ("version_3",)
+
+    _select(0)
+    assert label.toolTip() == "modelMain v001"
+
+    _select(0, 1)
+    assert label.toolTip() == "2 versions"
+    assert activity._entity_ids == ("version_1", "version_3")
+
+    # Nothing with a version is selected
+    _select(2)
+    assert label.isHidden()
+    assert activity._entity_ids == ()
+
+    monkeypatch.setattr(inspector, "activity_selection_limit", 1)
+    _select(0, 1)
+    assert label.isHidden()
+    assert activity._entity_ids == ()
+
+
 def test_activity_widget_shares_a_passed_avatar_cache(qtbot):
     controller = FakeController()
     shared_cache = UserAvatarCache()
@@ -513,17 +585,33 @@ def test_activity_widget_shares_a_passed_avatar_cache(qtbot):
     assert alone._avatar_cache is not shared_cache
 
 
-def test_avatars_are_loaded_by_the_controller(qtbot, monkeypatch):
+def test_avatars_come_from_the_shared_image_cache(
+    qtbot, monkeypatch, tmp_path
+):
+    """Avatars are not downloaded again for the activity feed."""
+    avatar_path = tmp_path / "libor.png"
+    avatar_path.write_bytes(b"png")
+    keys = []
+
+    class FakeImageCache:
+        def get(self, key, file_closure):
+            keys.append(key)
+            return str(avatar_path)
+
+    monkeypatch.setattr(
+        user_avatars.ImageCache, "get_instance", FakeImageCache
+    )
     avatars_queue = FakeTaskQueue()
     monkeypatch.setattr(
         user_avatars, "get_task_queue", lambda: avatars_queue
     )
-    controller = FakeController()
-    widget = _create_widget(qtbot, controller)
+    widget = _create_widget(qtbot, FakeController())
 
     widget._avatar_cache.pixmap("libor", "Libor", 20)
     assert avatars_queue.run() == 1
-    assert ("avatar", "libor") in controller.calls
-    # A user is asked for once, also when there is no avatar
+    # The key that the views of all tools use for the avatar of a user
+    assert keys == ["user-avatar/libor"]
+    assert widget._avatar_cache._sources == {"libor": str(avatar_path)}
+    # A user is asked for once
     widget._avatar_cache.pixmap("libor", "Libor", 20)
     assert avatars_queue.run() == 0

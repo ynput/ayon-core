@@ -225,16 +225,23 @@ function Run-Tests {
 }
 
 function Update-Tests-Visuals {
+    # Render the same images as the CI job
+    #   '.github/workflows/pr_unittests.yaml': linux x64, offscreen Qt and
+    #   the locked dependencies.
     $IMAGE_FULL_NAME = "ayon-core-tests:v1"
-    & docker build -t $IMAGE_FULL_NAME -f "$($RepoRoot)/tools/VisualTestsDocker" .
+    & docker build --platform linux/amd64 -t $IMAGE_FULL_NAME -f "$($RepoRoot)/tools/VisualTestsDocker" .
+    if ($LASTEXITCODE -ne 0) {
+        Write-Info -Text "!!! ", "Docker image build failed." -Color Red, Yellow
+        Exit-WithCode $LASTEXITCODE
+    }
 
-    $visuals_subdir = "tests/client/ayon_core/ui/test_visual"
-    $dst_dir = "$($RepoRoot)/$($visuals_subdir)"
-    & docker run --rm -ti `
-      -v "$($RepoRoot)/tests:/core/tests" `
-      -v "$($RepoRoot)/client:/core/client" `
+    # '-m "not server"' overrides "not optional" from pytest addopts,
+    #   otherwise the visual tests would be deselected.
+    & docker run --rm -ti --platform linux/amd64 `
+      -v "$($RepoRoot):/core" `
       --hostname coreuitests `
-      $IMAGE_FULL_NAME uv run pytest ./tests/client/ayon_core/ui --store-images
+      $IMAGE_FULL_NAME `
+      bash -c 'uv sync --extra test && uv run pytest ./tests/client/ayon_core/ui -m "not server" --store-images'
 }
 
 function Write-Help {

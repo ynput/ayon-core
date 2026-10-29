@@ -6,7 +6,6 @@ from typing import Any
 import ayon_api
 
 from ayon_core.lib import NestedCacheItem, get_ayon_username
-from ayon_core.pipeline.avatars import get_user_avatar_path
 
 NOT_SET = object()
 
@@ -102,22 +101,6 @@ class UsersModel:
             if user_item.username == username:
                 return user_item
         return None
-
-    def get_user_avatar_path(self, username: str) -> str | None:
-        """Get path to the avatar image of a user.
-
-        Avatars are stored in a cache shared by all AYON processes on the
-        machine, so an avatar is downloaded once for all tools.
-
-        Args:
-            username (str): Name of the user.
-
-        Returns:
-            str | None: Path to the image, or None if the user has no
-                avatar.
-
-        """
-        return get_user_avatar_path(username)
 
     def _invalidate_cache(self, project_name: str | None) -> None:
         cache = self._users_cache[project_name]

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 
+import ayon_api
 import pyblish.api
 from typing import TYPE_CHECKING, Literal
 
@@ -553,9 +554,28 @@ def get_pyblish_icon():
 def use_legacy_loader() -> bool:
     """Check if legacy loader should be used.
 
+    The legacy loader is always used on AYON servers too old for the
+    Browser, whatever the environment variable or settings say.
+
     Returns:
         bool: True if legacy loader should be used, False otherwise.
     """
+    # TODO: Backwards compatibility for AYON server < 1.15.0.
+    #   Remove this once 1.15.0 is the minimum supported server.
+    from ayon_core.tools.browser.server_capabilities import (
+        BROWSER_MINIMUM_SERVER_VERSION,
+        server_supports_browser,
+    )
+
+    if not server_supports_browser():
+        Logger.get_logger(__name__).warning(
+            "The Browser requires AYON server %s or newer, this server"
+            " is %s. Using the legacy Loader instead.",
+            ".".join(str(part) for part in BROWSER_MINIMUM_SERVER_VERSION),
+            ayon_api.get_server_version(),
+        )
+        return True
+
     use_legacy = env_value_to_bool(
         "AYON_USE_LEGACY_LOADER",
         default=None,

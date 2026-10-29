@@ -381,23 +381,6 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_user_avatar_path(self, username: str) -> str | None:
-        """Path to the avatar image of a user.
-
-        The avatar is downloaded if it is not in the avatars cache of the
-        machine, so it should not be called from the main thread.
-
-        Args:
-            username (str): Name of the user.
-
-        Returns:
-            str | None: Path to the image, or None if the user has no
-                avatar.
-
-        """
-        pass
-
-    @abstractmethod
     def get_version_thumbnail_path(
         self, project_name: str, version_id: str, thumbnail_id: str
     ) -> str | None:
@@ -769,6 +752,33 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Returns:
             list[TaskItem]: Minimum possible information needed
                 for visualisation of tasks.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, str | None]: Thumbnail path by entity id.
 
         """
         pass

@@ -164,15 +164,3 @@ def test_users_are_queried_once_for_table_and_activity(fake_server):
     user_items = controller.get_user_items("demo")
     assert [user_item.username for user_item in user_items] == ["libor"]
     assert fake_server["users"] == 1
-
-
-def test_user_avatar_comes_from_the_avatars_cache(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    monkeypatch.setattr(
-        "ayon_core.tools.common_models.users.get_user_avatar_path",
-        lambda username: f"/avatars/{username}.png",
-    )
-    controller = BrowserWidgetController(BrowserController())
-
-    assert controller.get_user_avatar_path("libor") == "/avatars/libor.png"
