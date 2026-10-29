@@ -56,12 +56,16 @@ class _PreparedRepresentation:
         anatomy_data: dict[str, Any],
         transfers: list[tuple[str, str]],
         published_files: list[str],
+        rootless_by_dst: dict[str, str],
     ) -> None:
         self.representation = representation
         self.repre_update_data = repre_update_data
         self.anatomy_data = anatomy_data
         self.transfers = transfers
         self.published_files = published_files
+        # Rootless path for each transfer destination, resolved from the
+        #   root used to fill the publish template.
+        self.rootless_by_dst = rootless_by_dst
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,6 +94,8 @@ class _PreparedInstance:
         self.existing_repres_by_name = existing_repres_by_name
         self.resource_destinations = resource_destinations
         self.anatomy = anatomy
+        # Only used for instance resource files ('transfers' and
+        #   'hardlinks'), representation files know their root already.
         self.preferred_root_name = preferred_root_name
 
     def to_dict(self) -> dict[str, Any]:
@@ -469,11 +475,12 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             new_repre_names_low = set()
             for prepared in prepared_instance.prepared_representations:
                 repre_entity = prepared.representation
-                repre_files = self.get_files_info(
-                    [dst for _, dst in prepared.transfers],
-                    anatomy,
-                    prepared_instance.preferred_root_name,
-                )
+                repre_files = [
+                    self._create_file_info(
+                        dst, prepared.rootless_by_dst[str(dst)]
+                    )
+                    for _, dst in prepared.transfers
+                ]
                 repre_files += resource_file_infos
                 repre_entity["files"] = repre_files
                 update_data = prepared.repre_update_data
@@ -857,6 +864,8 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
 
         # Treat template with 'orignalBasename' in special way
         transfers: list[tuple[str, str]]
+        # First filled path template, used to know which root was used
+        first_filled: AnatomyTemplateResult | None = None
         if "{originalBasename}" in template:
             # Remove 'frame' from template data
             template_data.pop("frame", None)
@@ -892,6 +901,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                 src = os.path.join(stagingdir, src_file_name)
                 transfers.append((src, dst))
                 if repre_context is None:
+                    first_filled = dst
                     repre_context = dst.used_values
 
             repre_context: dict[str, Any]
@@ -955,6 +965,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                     self.log.debug(
                         "Template filled: {}".format(str(template_filled))
                     )
+                    first_filled = template_filled
                     repre_context = template_filled.used_values
 
             # Make sure context contains frame
@@ -992,6 +1003,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                 template_data["udim"] = repre["udim"][0]
             # Construct destination filepath from template
             template_filled = path_template_obj.format_strict(template_data)
+            first_filled = template_filled
             repre_context = template_filled.used_values
             dst = os.path.normpath(template_filled)
 
@@ -1003,6 +1015,15 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             raise PublishError(
                 "Could not determine representation context."
             )
+
+        # Resolve rootless paths now, using the root the publish template
+        #   was filled with, instead of guessing the root from the
+        #   absolute path after the transfer.
+        used_root = self._get_used_root(anatomy, first_filled)
+        rootless_by_dst = {
+            str(dst): self._get_rootless_destination(anatomy, used_root, dst)
+            for _, dst in transfers
+        }
 
         # todo: Are we sure the assumption each representation
         #       ends up in the same folder is valid?
@@ -1077,6 +1098,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             # todo: avoid the need for 'published_files' used by Integrate Hero
             # backwards compatibility
             published_files=[dst_path for _, dst_path in transfers],
+            rootless_by_dst=rootless_by_dst,
         )
 
     def create_version_data(
@@ -1241,15 +1263,75 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             dict[str, Any]: Representation file info dictionary.
 
         """
-        rootless_path = None
+        rootless_path = self._get_rootless_destination(anatomy, root, path)
+        return self._create_file_info(path, rootless_path)
+
+    def _get_used_root(
+        self,
+        anatomy: Anatomy,
+        template_result: AnatomyTemplateResult | None,
+    ) -> AnatomyRoot | None:
+        """Get the anatomy root that was used to fill a template.
+
+        Args:
+            anatomy (Anatomy): Project anatomy.
+            template_result (AnatomyTemplateResult | None): Filled template.
+
+        Returns:
+            AnatomyRoot | None: Used root, or None if it can't be determined
+                (e.g. template does not use exactly one root).
+
+        """
+        if template_result is None:
+            return None
+        used_root = template_result.used_values.get("root")
+        if not isinstance(used_root, dict) or len(used_root) != 1:
+            return None
+        roots = anatomy.roots
+        if not isinstance(roots, dict):
+            return None
+        root_name = next(iter(used_root))
+        return roots.get(root_name)
+
+    def _get_rootless_destination(
+        self,
+        anatomy: Anatomy,
+        root: AnatomyRoot | None,
+        path: str,
+    ) -> str:
+        """Get rootless path, trying the given root first.
+
+        Args:
+            anatomy (Anatomy): Project anatomy.
+            root (AnatomyRoot | None): Root to try first.
+            path (str): Absolute path.
+
+        Returns:
+            str: Rootless path, or the input path if no root matched.
+
+        """
         if root is not None:
             success, rootless_path = root.find_root_template_from_path(path)
-            if not success:
-                rootless_path = None
+            if success:
+                return rootless_path
+        return self.get_rootless_path(anatomy, path)
 
-        if rootless_path is None:
-            rootless_path = self.get_rootless_path(anatomy, path)
+    def _create_file_info(
+        self, path: str, rootless_path: str
+    ) -> dict[str, Any]:
+        """Create representation file info for an integrated file.
 
+        Size and hash are read from the destination, so this must be
+        called after the file was transferred.
+
+        Args:
+            path (str): Absolute destination path of the published file.
+            rootless_path (str): Rootless destination path.
+
+        Returns:
+            dict[str, Any]: Representation file info dictionary.
+
+        """
         return {
             "id": create_entity_id(),
             "name": os.path.basename(path),
