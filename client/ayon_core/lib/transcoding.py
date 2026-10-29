@@ -9,6 +9,7 @@ import subprocess
 import platform
 import warnings
 import functools
+from dataclasses import dataclass
 from typing import Optional
 
 import xml.etree.ElementTree
@@ -18,6 +19,7 @@ import clique
 from .execute import run_subprocess
 from .vendor_bin_utils import (
     get_ffmpeg_tool_args,
+    get_ffmpeg_available_encoders,
     get_oiio_tool_args,
     is_oiio_supported,
 )
@@ -910,8 +912,11 @@ def get_ffmpeg_format_args(ffprobe_data, source_ffmpeg_cmd=None):
         source_ffmpeg_cmd(str): Command that created input if available.
     """
     input_format = ffprobe_data.get("format") or {}
-    if input_format.get("format_name") == "mxf":
+    format_name = input_format.get("format_name") or ""
+    if format_name == "mxf":
         return _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd)
+    if "mov" in format_name.split(","):
+        return _ffmpeg_mov_format_args(ffprobe_data)
     return []
 
 
@@ -923,6 +928,163 @@ def _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd):
     if operational_pattern_ul == "060e2b34.04010102.0d010201.10030000":
         output.extend(["-f", "mxf_opatom"])
     return output
+
+
+def _ffmpeg_mov_format_args(ffprobe_data: dict) -> list[str]:
+    output = []
+    filepath = ffprobe_data["format"].get("filename")
+    if not filepath:
+        return output
+
+    atoms_info = _get_mov_atoms_info(filepath)
+    movflags = []
+    if atoms_info.moov_before_mdat:
+        # Keep the file streamable if source was streamable
+        movflags.append("faststart")
+    if atoms_info.has_metadata_keys:
+        # Custom metadata keys are not written without the flag
+        movflags.append("use_metadata_tags")
+
+    if movflags:
+        # Add flags (prefixed with '+') instead of replacing them, so other
+        #   '-movflags' arguments in the command are kept
+        output.extend(["-movflags", "".join(f"+{f}" for f in movflags)])
+    return output
+
+
+@dataclass
+class _MovAtomsInfo:
+    """Information about mov/mp4 file based on its atoms.
+
+    Attributes:
+        moov_before_mdat (bool): 'moov' atom is before 'mdat' atom, which
+            means the file was created with '-movflags faststart'.
+        has_metadata_keys (bool): Metadata are stored with custom keys,
+            which means the file was created with
+            '-movflags use_metadata_tags'.
+
+    """
+    moov_before_mdat: bool = False
+    has_metadata_keys: bool = False
+
+
+def _iter_mov_atoms(stream, start: int, end: int):
+    """Iterate over atoms in range of mov/mp4 file.
+
+    Only atom headers are read, the stream is moved to the end of atom
+        after each yielded atom, so content of the atom can be read
+        by the caller.
+
+    Args:
+        stream (BinaryIO): Opened mov/mp4 file.
+        start (int): Position where first atom starts.
+        end (int): Position where the parent atom (or file) ends.
+
+    Yields:
+        tuple[bytes, int, int]: Atom type, start of atom content and
+            end of atom.
+
+    """
+    position = start
+    while position + 8 <= end:
+        stream.seek(position)
+        header = stream.read(8)
+        if len(header) < 8:
+            return
+
+        size = int.from_bytes(header[:4], "big")
+        atom_type = header[4:]
+        header_size = 8
+        if size == 1:
+            # 64-bit size is stored after atom type
+            large_size = stream.read(8)
+            if len(large_size) < 8:
+                return
+            size = int.from_bytes(large_size, "big")
+            header_size = 16
+        elif size == 0:
+            # Size '0' means the atom goes to the end of parent
+            size = end - position
+
+        if size < header_size or position + size > end:
+            return
+
+        atom_end = position + size
+        yield atom_type, position + header_size, atom_end
+        position = atom_end
+
+
+def _mov_meta_has_keys(stream, start: int, end: int) -> bool:
+    # ISO 'meta' atom starts with 4 bytes of version and flags, which
+    #   are '0', QuickTime 'meta' atom starts directly with child atoms
+    stream.seek(start)
+    if stream.read(4) == b"\0\0\0\0":
+        start += 4
+
+    for atom_type, _, _ in _iter_mov_atoms(stream, start, end):
+        if atom_type == b"keys":
+            return True
+    return False
+
+
+def _mov_moov_has_metadata_keys(stream, start: int, end: int) -> bool:
+    # Metadata with custom keys are in 'moov/udta/meta' (ffmpeg) or
+    #   in 'moov/meta' (QuickTime)
+    for atom_type, atom_start, atom_end in _iter_mov_atoms(
+        stream, start, end
+    ):
+        if atom_type == b"meta":
+            if _mov_meta_has_keys(stream, atom_start, atom_end):
+                return True
+
+        elif atom_type == b"udta":
+            for child_type, child_start, child_end in _iter_mov_atoms(
+                stream, atom_start, atom_end
+            ):
+                if (
+                    child_type == b"meta"
+                    and _mov_meta_has_keys(stream, child_start, child_end)
+                ):
+                    return True
+    return False
+
+
+def _get_mov_atoms_info(filepath: str) -> _MovAtomsInfo:
+    """Get information about mov/mp4 file from its atoms.
+
+    Only atom headers are read, except for metadata atoms in 'moov' atom.
+
+    Args:
+        filepath (str): Path to mov/mp4 file.
+
+    Returns:
+        _MovAtomsInfo: Information about the file. Default values are used
+            if the file can't be read or is not a valid mov/mp4 file.
+
+    """
+    atoms_info = _MovAtomsInfo()
+    try:
+        with open(filepath, "rb") as stream:
+            file_size = os.fstat(stream.fileno()).st_size
+            mdat_found = False
+            for atom_type, atom_start, atom_end in _iter_mov_atoms(
+                stream, 0, file_size
+            ):
+                if atom_type == b"mdat":
+                    mdat_found = True
+
+                elif atom_type == b"moov":
+                    atoms_info.moov_before_mdat = not mdat_found
+                    atoms_info.has_metadata_keys = (
+                        _mov_moov_has_metadata_keys(
+                            stream, atom_start, atom_end
+                        )
+                    )
+                    break
+
+    except OSError:
+        pass
+    return atoms_info
 
 
 def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
@@ -968,6 +1130,12 @@ def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
     # Coded DNxHD
     if codec_name == "dnxhd":
         return _ffmpeg_dnxhd_codec_args(video_stream, source_ffmpeg_cmd)
+
+    # Codec "av1"
+    if codec_name == "av1":
+        return _ffmpeg_av1_codec_args(
+            video_stream, source_ffmpeg_cmd, logger
+        )
 
     output = []
     if codec_name:
@@ -1047,6 +1215,105 @@ def _ffmpeg_h264_codec_args(stream_data, source_ffmpeg_cmd):
         output.extend(["-pix_fmt", pix_fmt])
 
     output.extend(["-g", "1"])
+    return output
+
+
+# Preference order of AV1 encoders, best first. ffprobe only tells us the
+# codec is "av1"; which concrete encoder exists is build dependent, so the
+# encoder is resolved at runtime instead of being hardcoded.
+# Only software encoders are auto-selected: being listed by
+# ``ffmpeg -encoders`` means an encoder was compiled in, not that the host
+# can run it, so hardware encoders (av1_nvenc/av1_qsv) would fail at init
+# on a machine without the matching hardware. They can be added later as an
+# explicit opt-in with a runtime capability probe.
+_AV1_ENCODER_PREFERENCE = (
+    "libsvtav1",   # fast, good quality, the usual choice
+    "libaom-av1",  # reference encoder, slower but widely available
+)
+
+
+def _pick_av1_encoder():
+    """Return the best available AV1 encoder for this FFmpeg build.
+
+    Falls back to the bare ``av1`` codec (FFmpeg picks its own default)
+    if none of the preferred encoders are compiled in.
+    """
+    available = get_ffmpeg_available_encoders()
+    for encoder in _AV1_ENCODER_PREFERENCE:
+        if encoder in available:
+            return encoder
+    return "av1"
+
+
+def _default_av1_crf(stream_data):
+    """Pick a default CRF from the input resolution.
+
+    CRF is not stored in the source file and cannot be read back, so the
+    only input-derived signal is resolution. Larger frames tolerate a
+    slightly higher CRF for similar perceived quality.
+    """
+    try:
+        width = int(stream_data.get("width") or 0)
+    except (TypeError, ValueError):
+        width = 0
+    if width >= 3840:
+        return "32"
+    return "30"
+
+
+def _ffmpeg_av1_codec_args(stream_data, source_ffmpeg_cmd, logger=None):
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    encoder = _pick_av1_encoder()
+    logger.debug("Using '%s' as AV1 output encoder.", encoder)
+    output = ["-codec:v", encoder]
+
+    # '-crf' is understood by libsvtav1 and libaom-av1; '-preset' and
+    # '-svtav1-params' only by libsvtav1.
+    uses_crf = encoder in ("libsvtav1", "libaom-av1")
+    uses_preset = encoder == "libsvtav1"
+
+    # Copy only explicit quality args a studio set in ExtractReview output
+    # args. Rate-control args ('-b:v'/'-maxrate'/'-bufsize') are
+    # intentionally NOT copied: every output frame is a keyframe, so a cap
+    # meant for a long-GOP encode destroys quality.
+    copied = set()
+    if source_ffmpeg_cmd:
+        copy_args = []
+        if uses_crf:
+            copy_args.append("-crf")
+        if uses_preset:
+            copy_args.extend(["-preset", "-svtav1-params"])
+        if copy_args:
+            args = source_ffmpeg_cmd.split(" ")
+            for idx, arg in enumerate(args):
+                if arg in copy_args:
+                    output.extend([arg, args[idx + 1]])
+                    copied.add(arg.lstrip("-"))
+
+    # Defaults when the studio did not set them, driven by CRF.
+    if uses_preset and "preset" not in copied:
+        output.extend(["-preset", "8"])
+
+    if uses_crf and "crf" not in copied:
+        output.extend(["-crf", _default_av1_crf(stream_data)])
+
+    pix_fmt = stream_data.get("pix_fmt")
+    if pix_fmt:
+        output.extend(["-pix_fmt", pix_fmt])
+
+    # Make every frame a keyframe for frame-accurate scrubbing in AYON web.
+    if encoder == "libaom-av1":
+        # libaom's all-intra mode already makes every frame a keyframe;
+        # it is far faster than '-g 1' with a normal GOP setup (which can
+        # also crash newer libaom builds on longer clips).
+        output.extend(
+            ["-usage", "allintra", "-cpu-used", "6", "-row-mt", "1"]
+        )
+    else:
+        output.extend(["-g", "1"])
+
     return output
 
 
