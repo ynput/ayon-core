@@ -466,7 +466,7 @@ class CoreSettings(BaseSettingsModel):
         title="Filter farm environment",
         description=(
             "Remove or modify environment variables of farm jobs.\n\n"
-            "Applies to publish jobs sent to the render farm. The first"
+            "Applies to render and publish jobs on the farm. The first"
             " profile matching the host, task and folder is used."
         ),
     )
