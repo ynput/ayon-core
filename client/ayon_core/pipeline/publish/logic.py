@@ -1026,6 +1026,9 @@ class PublishLogic:
         # Capture records of all loggers, not only of the plugin logger,
         #   so logs of library functions called by the plugin (e.g.
         #   subprocess output) are part of the publish report.
+        # Host or its plugins may have removed AYON handlers from
+        #   the root logger since the last plugin.
+        Logger.ensure_handlers()
         root = logging.getLogger()
         ayon_root = Logger.get_root_logger()
         plugin_logger = plugin.log

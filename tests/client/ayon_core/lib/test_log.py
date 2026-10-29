@@ -1231,6 +1231,28 @@ def test_task_changed_updates_log_context(log_context):
     assert contexts == [expected]
 
 
+def test_task_changed_adds_back_structured_handlers(log_context, monkeypatch):
+    """Host plugins loaded after host installation may reset root logger."""
+    from ayon_core.lib import emit_event
+    from ayon_core.pipeline import context_tools
+
+    # 'context_tools' imported 'Logger' before the log module was reloaded
+    monkeypatch.setattr(context_tools, "Logger", log_context.Logger)
+    structured_handler = _HostConsoleHandler()
+    monkeypatch.setattr(
+        log_context.Logger, "_structured_handlers", [structured_handler]
+    )
+    host_handler = _replace_root_handlers()
+
+    emit_event("taskChanged", {
+        "project_name": "project",
+        "folder_path": "/b",
+        "task_name": "two",
+    })
+
+    assert logging.getLogger().handlers == [host_handler, structured_handler]
+
+
 def test_host_context_change_updates_log_context(log_context):
     from ayon_core.host.host import HostBase
 
@@ -1596,6 +1618,109 @@ def test_structured_handlers(log_module, monkeypatch, log_root):
     ]
 
 
+class _HostConsoleHandler(logging.Handler):
+    """Console handler of a host, e.g. Maya script editor."""
+
+    def emit(self, record):
+        pass
+
+
+def _replace_root_handlers():
+    """Replace all root logger handlers like plugins of hosts do.
+
+    E.g. Component Creator plugin of MayaUSD does it on load.
+    """
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        root.removeHandler(handler)
+    host_handler = _HostConsoleHandler()
+    root.addHandler(host_handler)
+    return host_handler
+
+
+def test_structured_handlers_removed_from_root(
+    log_module, monkeypatch, log_root
+):
+    _enable_log_file(monkeypatch, log_root)
+    module = log_module()
+    (file_handler,) = module.Logger.get_structured_handlers()
+
+    _replace_root_handlers()
+
+    assert module.Logger.get_structured_handlers() == [file_handler]
+
+
+def test_ensure_handlers_adds_back_structured_handlers(
+    log_module, monkeypatch, log_root
+):
+    _enable_log_file(monkeypatch, log_root)
+    module = log_module()
+    root = logging.getLogger()
+    (file_handler,) = module.Logger.get_structured_handlers()
+
+    # Nothing to add back
+    orig_handlers = list(root.handlers)
+    module.Logger.ensure_handlers()
+    assert root.handlers == orig_handlers
+
+    host_handler = _replace_root_handlers()
+    module.Logger.get_logger("ayon_core.tests.lost").info("Lost record")
+    module.Logger.ensure_handlers()
+    module.Logger.ensure_handlers()
+    module.Logger.get_logger("ayon_core.tests.kept").info("Kept record")
+
+    # Console handler is not added back, host shows records in its console
+    assert root.handlers == [host_handler, file_handler]
+    events = _log_file_events(log_root)
+    assert "Lost record" not in events
+    assert "Kept record" in events
+
+
+def test_ensure_handlers_without_structured_handlers(log_module):
+    module = log_module()
+    host_handler = _replace_root_handlers()
+
+    module.Logger.ensure_handlers()
+
+    assert logging.getLogger().handlers == [host_handler]
+
+
+def test_publisher_plugin_logs_go_to_log_file_after_root_reset(
+    log_module, monkeypatch, log_root, restore_logger_levels
+):
+    """Host removed AYON handlers from root logger before publishing."""
+    pytest.importorskip("pyblish.plugin")
+    from ayon_core.pipeline.publish import logic
+    from ayon_core.pipeline.publish.logic import MessageHandler, PublishLogic
+
+    _enable_log_file(monkeypatch, log_root)
+    module = log_module()
+    # 'logic' imported 'Logger' before the log module was reloaded
+    monkeypatch.setattr(logic, "Logger", module.Logger)
+    (file_handler,) = module.Logger.get_structured_handlers()
+    host_handler = _replace_root_handlers()
+    plugin_log = restore_logger_levels("pyblish.TestPublisherResetPlugin")
+    plugin_log.setLevel(logging.DEBUG)
+    orig_handlers = list(plugin_log.handlers)
+    plugin = types.SimpleNamespace(log=plugin_log)
+    publish_logic = types.SimpleNamespace(
+        _log_handler=MessageHandler(),
+        _log_to_console=False,
+    )
+
+    with PublishLogic._log_manager(publish_logic, plugin):
+        plugin_log.info("Plugin info")
+        module.Logger.get_logger("ayon_core.tests.publish").info(
+            "Library info"
+        )
+
+    events = _log_file_events(log_root)
+    assert "Plugin info" in events
+    assert "Library info" in events
+    assert logging.getLogger().handlers == [host_handler, file_handler]
+    assert plugin_log.handlers == orig_handlers
+
+
 def test_publisher_plugin_logs_go_to_log_file(
     log_module, monkeypatch, log_root, restore_logger_levels
 ):
@@ -1815,6 +1940,10 @@ def test_disable_vector_after_fork(log_module, monkeypatch):
 
         assert queue_handler not in logging.getLogger().handlers
         assert module._vector_sender is None
+        # Not added back, nothing sends the records in the child
+        module.Logger.ensure_handlers()
+        assert queue_handler not in logging.getLogger().handlers
+        assert module.Logger.get_structured_handlers() == []
         # 'stop' at exit does not wait for the thread
         start = time.monotonic()
         vector_sender.stop()

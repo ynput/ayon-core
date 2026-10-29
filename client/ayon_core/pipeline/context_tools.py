@@ -146,6 +146,9 @@ def install_host(host: AbstractHost) -> None:
 
 def _update_log_context(event) -> None:
     """Set context of 'taskChanged' event to log records."""
+    # Host plugins loaded after host installation may have removed
+    #   AYON handlers from the root logger
+    Logger.ensure_handlers()
     set_process_context(
         project=event.get("project_name"),
         folder=event.get("folder_path"),
@@ -160,6 +163,9 @@ def _set_host_log_context() -> None:
     store it elsewhere, e.g. in the workfile.
 
     """
+    # Host may have removed AYON handlers from the root logger
+    #   during its installation
+    Logger.ensure_handlers()
     try:
         context = get_current_context()
     except Exception:

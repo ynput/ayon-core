@@ -849,6 +849,9 @@ def _disable_vector_after_fork(
     global _vector_sender
 
     logging.getLogger().removeHandler(queue_handler)
+    # Must not be added back by 'Logger.ensure_handlers'
+    if queue_handler in Logger._structured_handlers:
+        Logger._structured_handlers.remove(queue_handler)
     vector_sender.reset_after_fork()
     _vector_sender = None
 
@@ -1233,6 +1236,9 @@ class Logger:
     _logging_configured = False
     _init_lock = threading.Lock()
     _root_logger = None
+    # Log file and Vector handlers added to root logger, see
+    #   '_configure_logger' and 'ensure_handlers'
+    _structured_handlers: list[logging.Handler] = []
 
     # Logging level - AYON_LOG_LEVEL
     log_level = None
@@ -1315,18 +1321,57 @@ class Logger:
         the root logger, to keep its records out of the console but still
         in the log file and Vector.
 
+        Handlers added by AYON are returned even when they were removed
+        from the root logger, see 'ensure_handlers'.
+
         Returns:
-            list[logging.Handler]: Handlers marked by
-                'STRUCTURED_HANDLER_ATTR'.
+            list[logging.Handler]: Handlers added by AYON and handlers
+                of root logger marked by 'STRUCTURED_HANDLER_ATTR'.
 
         """
         if not cls.initialized:
             cls.initialize()
-        return [
+        handlers = list(cls._structured_handlers)
+        for handler in logging.getLogger().handlers:
+            if (
+                handler not in handlers
+                and getattr(handler, STRUCTURED_HANDLER_ATTR, False)
+            ):
+                handlers.append(handler)
+        return handlers
+
+    @classmethod
+    def ensure_handlers(cls) -> None:
+        """Add back log file and Vector handlers removed from root logger.
+
+        Host applications or their plugins may remove all handlers of
+        the root logger, e.g. Component Creator plugin of MayaUSD does
+        it on load. Records would not reach the log file and Vector
+        anymore.
+
+        Console handler is not added back, the host replacing handlers
+        shows records in its own console.
+
+        Safe to call often, handlers already on the root logger are kept.
+
+        """
+        if not cls.initialized:
+            cls.initialize()
+        root_logger = logging.getLogger()
+        missing = [
             handler
-            for handler in logging.getLogger().handlers
-            if getattr(handler, STRUCTURED_HANDLER_ATTR, False)
+            for handler in cls._structured_handlers
+            if handler not in root_logger.handlers
         ]
+        if not missing:
+            return
+        # 'addHandler' ignores handlers which are already added, e.g. by
+        #   another thread meanwhile
+        for handler in missing:
+            root_logger.addHandler(handler)
+        logging.getLogger(__name__).debug(
+            "Log handlers were removed from root logger, added them back."
+        )
 
     @classmethod
     def get_process_data(cls):
@@ -1478,6 +1523,7 @@ class Logger:
                 file_handler.setFormatter(json_formatter)
                 setattr(file_handler, STRUCTURED_HANDLER_ATTR, True)
                 root_logger.addHandler(file_handler)
+                cls._structured_handlers.append(file_handler)
 
         if VECTOR_LOG_URL:
             # Send logs to Vector asynchronously so HTTP calls
@@ -1517,6 +1563,7 @@ class Logger:
                         )
                     )
                 root_logger.addHandler(queue_handler)
+                cls._structured_handlers.append(queue_handler)
 
     @staticmethod
     def _configure_structlog() -> tuple[
