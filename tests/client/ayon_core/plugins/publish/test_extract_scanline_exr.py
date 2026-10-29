@@ -12,6 +12,18 @@ PLUGIN_MODULE = extract_scanline_exr
 OIIO_ARGS = ["oiiotool"]
 
 
+@pytest.fixture
+def tmp_path(tmp_path_factory):
+    """Give every test its own directory.
+
+    The `pytest-ayon` plugin (installed in CI) replaces the built-in
+    `tmp_path` fixture with a session-scoped one, which would let
+    temporary files from one test leak into the checks of another. A
+    module-level fixture takes precedence over plugin fixtures.
+    """
+    return tmp_path_factory.mktemp("scanline")
+
+
 def _write(path, data=b"tiled"):
     path.write_bytes(data)
 

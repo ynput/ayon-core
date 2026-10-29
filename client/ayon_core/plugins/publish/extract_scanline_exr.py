@@ -105,63 +105,63 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
                 OIIO tool.
         """
         pending_files = []
+        try:
+            for file in input_files:
+                source_path = os.path.join(stagingdir, file)
+                if not os.path.isfile(source_path):
+                    raise PublishError(
+                        f"File to convert does not exist: {source_path}"
+                    )
+                stem, extension = os.path.splitext(os.path.basename(file))
+                extension = extension.lower() or ".exr"
+                temp_path = os.path.join(
+                    os.path.dirname(source_path),
+                    f".{stem}.{uuid.uuid4().hex}{extension}")
+                oiio_cmd = oiio_tool_args + [
+                    source_path, "--scanline", "-o",
+                    temp_path,
+                ]
 
-        for file in input_files:
-            source_path = os.path.join(stagingdir, file)
-            if not os.path.isfile(source_path):
-                raise PublishError(
-                    f"File to convert does not exist: {source_path}"
-                )
-            stem, extension = os.path.splitext(os.path.basename(file))
-            extension = extension.lower() or ".exr"
-            temp_path = os.path.join(
-                os.path.dirname(source_path),
-                f".{stem}.{uuid.uuid4().hex}{extension}")
-            oiio_cmd = oiio_tool_args + [
-                source_path, "--scanline", "-o",
-                temp_path,
-            ]
+                self.log.debug(f"running: {' '.join(oiio_cmd)}")
+                try:
+                    run_subprocess(oiio_cmd, logger=self.log)
+                except RuntimeError as exc:
+                    raise PublishError(
+                        f"oiiotool failed to convert '{source_path}' "
+                        "to scanline."
+                    ) from exc
+                # Register the temporary output before validating it, so the
+                # finally block removes it when the conversion produced
+                # nothing or a zero-byte file.
+                pending_files.append((source_path, temp_path))
 
-            self.log.debug(f"running: {' '.join(oiio_cmd)}")
-            try:
-                run_subprocess(oiio_cmd, logger=self.log)
-            except RuntimeError as exc:
-                raise PublishError(
-                    f"oiiotool failed to convert '{source_path}' "
-                    "to scanline."
-                ) from exc
-            # Register the temporary output before validating it, so the
-            # finally block removes it when the conversion produced
-            # nothing or a zero-byte file.
-            pending_files.append((source_path, temp_path))
+                if (
+                    not os.path.isfile(temp_path)
+                    or os.path.getsize(temp_path) == 0
+                ):
+                    raise PublishError(
+                        f"Failed to convert file to scanline EXR:"
+                        f" {source_path}"
+                    )
 
-            if (
-                not os.path.isfile(temp_path)
-                or os.path.getsize(temp_path) == 0
-            ):
-                raise PublishError(
-                    f"Failed to convert file to scanline EXR:"
-                    f" {source_path}"
-                )
-
-        # Every file converted: swap outputs over the sources.
-        while pending_files:
-            source_path, temp_path = pending_files[0]
-            try:
-                os.replace(temp_path, source_path)
-            except OSError as e:
-                raise PublishError(
-                    "Unable to replace original file with scanline EXR:"
-                    f" {source_path}. Error: {e}"
-                ) from e
-            pending_files.pop(0)
-
-        for _source_path, temp_path in pending_files:
-            if not os.path.exists(temp_path):
-                continue
-            try:
-                os.remove(temp_path)
-            except OSError:
-                self.log.warning(
-                    f"Failed to remove temporary file: {temp_path}"
-                )
+            # Every file converted: swap outputs over the sources.
+            while pending_files:
+                source_path, temp_path = pending_files[0]
+                try:
+                    os.replace(temp_path, source_path)
+                except OSError as e:
+                    raise PublishError(
+                        "Unable to replace original file with scanline EXR:"
+                        f" {source_path}. Error: {e}"
+                    ) from e
+                pending_files.pop(0)
+        finally:
+            for _source_path, temp_path in pending_files:
+                if not os.path.exists(temp_path):
+                    continue
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    self.log.warning(
+                        f"Failed to remove temporary file: {temp_path}"
+                    )
