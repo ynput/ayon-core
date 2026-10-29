@@ -3287,7 +3287,8 @@ class BrowserWidgetController(QtCore.QObject):
         Queries only the ids, with the filters used when expanding the
         group, so these are the versions the group shows expanded. When
         a column provider's filter is active, the provider is asked for
-        its values to apply that filter too.
+        its values to apply that filter too. If such a provider needs
+        more fields than the id, full version rows are queried instead.
 
         Args:
             group_id: Group header id, see :meth:`_parse_group_id`.
@@ -3338,26 +3339,38 @@ class BrowserWidgetController(QtCore.QObject):
         filter_by_providers = bool(
             self._column_manager.get_filtering_providers(column_context)
         )
-        query = get_version_ids_query()
+        # Providers reading row fields other than the id get full rows,
+        #   like the ones of the table.
+        provider_query_keys = (
+            self._column_manager.get_filter_query_keys(column_context)
+            if filter_by_providers
+            else set()
+        )
+        if provider_query_keys:
+            query = get_versions_query(provider_query_keys)
+        else:
+            query = get_version_ids_query()
         version_ids: set[str] = set()
         while True:
             resp = con.query_graphql(query, variables)
             if resp.errors:
                 raise RuntimeError(resp.errors)
             versions_block = resp.data["data"]["project"]["versions"]
-            page_ids = [
-                edge["node"]["id"] for edge in versions_block["edges"]
-            ]
-            if filter_by_providers and page_ids:
-                rows = self._column_manager.filter_rows(
-                    column_context,
-                    [
-                        {"id": version_id, "entityType": "Version"}
-                        for version_id in page_ids
-                    ],
-                )
-                page_ids = [row["id"] for row in rows]
-            version_ids.update(page_ids)
+            edges = versions_block["edges"]
+            if filter_by_providers and edges:
+                if provider_query_keys:
+                    rows = [
+                        self._transform_version_edge(edge) for edge in edges
+                    ]
+                else:
+                    rows = [
+                        {"id": edge["node"]["id"], "entityType": "Version"}
+                        for edge in edges
+                    ]
+                rows = self._column_manager.filter_rows(column_context, rows)
+                version_ids.update(row["id"] for row in rows)
+            else:
+                version_ids.update(edge["node"]["id"] for edge in edges)
             page_info = versions_block["pageInfo"]
             next_cursor = page_info["endCursor"]
             if (

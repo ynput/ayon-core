@@ -293,3 +293,15 @@ def test_filter_rows_ignores_filters_not_offered():
     # Like the table, a filter the provider does not offer is ignored.
     assert filtered == rows
     assert provider.enrich_calls == 0
+
+
+def test_filter_query_keys_only_of_filtering_providers():
+    manager = BrowserColumnManager([_TestProvider()])
+
+    # The provider's column is visible, but its filter is not active.
+    assert manager.get_filter_query_keys(
+        _context(enabled={"test:value"})
+    ) == set()
+    assert manager.get_filter_query_keys(
+        _context(filters=(BrowserFilter("test:status", ("Keep",)),))
+    ) == {"status"}

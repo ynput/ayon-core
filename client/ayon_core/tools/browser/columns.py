@@ -243,6 +243,29 @@ class BrowserColumnManager:
             if not active_keys.isdisjoint(provider.filter_keys)
         ]
 
+    def get_filter_query_keys(
+        self,
+        context: BrowserColumnContext,
+    ) -> set[str]:
+        """Return base-query fields the active provider filters need.
+
+        Like :meth:`get_required_query_keys`, but only of the providers
+        owning an active filter, as :meth:`filter_rows` runs only those.
+        """
+        filter_context = replace(context, enabled_column_keys=frozenset())
+        output = set()
+        for provider in self.get_filtering_providers(context):
+            try:
+                output.update(
+                    provider.get_required_query_keys(filter_context)
+                )
+            except Exception:
+                log.exception(
+                    "Browser column provider %r failed to request fields",
+                    provider.identifier,
+                )
+        return output
+
     def filter_rows(
         self,
         context: BrowserColumnContext,

@@ -40,14 +40,27 @@ class FakeConnection:
     def __init__(self, version_ids: list[str]) -> None:
         self.version_ids = version_ids
         self.calls: list[dict[str, Any]] = []
+        self.queries: list[str] = []
 
     def query_graphql(
         self, query: str, variables: dict[str, Any]
     ) -> FakeResponse:
         self.calls.append(dict(variables))
+        self.queries.append(query)
         start = int(variables["after"] or 0)
         end = start + variables["first"]
         page = self.version_ids[start:end]
+        if query == "ids_query":
+            nodes = [{"id": version_id} for version_id in page]
+        else:
+            # Full version rows, every other one approved.
+            nodes = [
+                {
+                    "id": version_id,
+                    "status": "Approved" if idx % 2 else "Pending",
+                }
+                for idx, version_id in enumerate(page, start)
+            ]
         return FakeResponse({
             "project": {
                 "versions": {
@@ -55,10 +68,7 @@ class FakeConnection:
                         "endCursor": str(end) if page else None,
                         "hasNextPage": end < len(self.version_ids),
                     },
-                    "edges": [
-                        {"node": {"id": version_id}}
-                        for version_id in page
-                    ],
+                    "edges": [{"node": node} for node in nodes],
                 }
             }
         })
@@ -91,6 +101,11 @@ class ControllerStub:
         self._group_by_options: dict[str, Any] = {}
         self._column_manager = BrowserColumnManager()
         self._active_filters: tuple[BrowserFilter, ...] = ()
+
+    @staticmethod
+    def _transform_version_edge(edge: dict[str, Any]) -> dict[str, Any]:
+        # The table row of a version, reduced to what the tests use.
+        return {"entityType": "Version", **edge["node"]}
 
     def _get_column_context(self) -> BrowserColumnContext:
         return BrowserColumnContext(
@@ -130,7 +145,12 @@ def connection(monkeypatch) -> FakeConnection:
         lambda: con,
     )
     monkeypatch.setattr(
-        browser_controller, "get_version_ids_query", lambda: "query"
+        browser_controller, "get_version_ids_query", lambda: "ids_query"
+    )
+    monkeypatch.setattr(
+        browser_controller,
+        "get_versions_query",
+        lambda keys: "versions_query:" + ",".join(sorted(keys)),
     )
     monkeypatch.setattr(browser_controller, "_VERSION_IDS_PAGE_SIZE", 2)
     return con
@@ -235,6 +255,44 @@ def test_group_version_ids_apply_provider_filters(connection) -> None:
         ],
         [{"id": "v4", "entityType": "Version"}],
     ]
+    # The provider needs only the ids.
+    assert set(connection.queries) == {"ids_query"}
+
+
+class StatusStubProvider(BrowserColumnProvider):
+    """Filter on a field of the base query, the version status."""
+
+    identifier = "status_stub"
+    filter_keys = frozenset({"approved"})
+
+    def get_filters(self, context: BrowserColumnContext) -> list[FilterEntry]:
+        return [FilterEntry("approved", "Approved", options=["Yes", "No"])]
+
+    def get_required_query_keys(
+        self, context: BrowserColumnContext
+    ) -> set[str]:
+        return {"status"}
+
+    def enrich_rows(
+        self, context: BrowserColumnContext, rows: list[dict[str, Any]]
+    ) -> None:
+        for row in rows:
+            approved = row.get("status") == "Approved"
+            row["approved"] = "Yes" if approved else "No"
+
+
+def test_group_version_ids_query_fields_providers_need(connection) -> None:
+    controller = ControllerStub()
+    controller._column_manager = BrowserColumnManager([StatusStubProvider()])
+    controller._active_filters = (BrowserFilter("approved", ("Yes",)),)
+
+    version_ids = controller.get_group_version_ids(
+        f"grp:{GROUP_BY_STATUS_KEY}:Approved"
+    )
+
+    # Rows with the status are queried, so the provider can filter.
+    assert version_ids == {"v1", "v3"}
+    assert set(connection.queries) == {"versions_query:status"}
 
 
 def _make_model(children: dict[str, list[dict[str, Any]]]):
