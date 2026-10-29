@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QPoint, QSize
 from qtpy.QtGui import QPainter, QPaintEvent
 from qtpy.QtWidgets import (
     QFrame,
@@ -21,12 +21,33 @@ class AYScrollBar(StyleMixin, QScrollBar):
 
     Overrides Qt's stylesheet painting with AYONStyle custom rendering.
 
+    Mouse interaction is handled here too, instead of by QScrollBar. When
+    any ancestor (or the app) has a stylesheet, Qt wraps ``self.style()``
+    in a ``QStyleSheetStyle`` which, as soon as a rule like
+    ``QWidget { background: ... }`` matches, computes its own scrollbar
+    geometry (including arrow buttons). QScrollBar's C++ mouse handling
+    would then hit-test against that geometry rather than what we paint.
+    Using the raw AYONStyle for both keeps them in sync.
+
     Args:
-        *args: Positional arguments passed to QTextEdit.
-        **kwargs: Keyword arguments passed to QTextEdit.
+        *args: Positional arguments passed to QScrollBar.
+        **kwargs: Keyword arguments passed to QScrollBar.
     """
 
+    # Delays (ms) before and between repeated page steps while pressed.
+    _repeat_threshold = 500
+    _repeat_time = 50
+
     def __init__(self, *args, **kwargs) -> None:
+        # Set before 'super().__init__' so overrides like 'sliderChange' are
+        # safe to call while the base classes initialize.
+        self._pressed_subcontrol = QStyle.SubControl.SC_None
+        self._active_subcontrols = QStyle.SubControl.SC_None
+        # Offset of the press position from the slider start while dragging
+        self._click_offset = 0
+        # Page step action and last mouse position while a page is pressed
+        self._page_action: QScrollBar.SliderAction | None = None
+        self._page_pos: QPoint | None = None
         super().__init__(*args, **kwargs)
         self.setStyle(get_ayon_style())
 
@@ -40,14 +61,192 @@ class AYScrollBar(StyleMixin, QScrollBar):
             | SC.SC_ScrollBarSlider
         )
 
+    def sizeHint(self) -> QSize:
+        # Same as QScrollBar.sizeHint but with the raw AYONStyle, so a host
+        # stylesheet (e.g. 'QScrollBar:vertical { width: 15px; }') cannot
+        # change the space reserved for the scrollbar.
+        self.ensurePolished()
+        style = get_ayon_style()
+        option = self._style_option()
+        extent = style.pixelMetric(
+            QStyle.PixelMetric.PM_ScrollBarExtent, option, self
+        )
+        slider_min = style.pixelMetric(
+            QStyle.PixelMetric.PM_ScrollBarSliderMin, option, self
+        )
+        if self.orientation() == Qt.Orientation.Horizontal:
+            size = QSize(extent * 2 + slider_min, extent)
+        else:
+            size = QSize(extent, extent * 2 + slider_min)
+        return style.sizeFromContents(
+            QStyle.ContentsType.CT_ScrollBar, option, size, self
+        )
+
     def paintEvent(self, arg__1: QPaintEvent) -> None:
         p = QPainter(self)
         option = QStyleOptionSlider()
         self.initStyleOption(option)
+        if self._pressed_subcontrol & QStyle.SubControl.SC_ScrollBarSlider:
+            option.activeSubControls = self._pressed_subcontrol
+            # State can be used to draw pressed slider in a different way
+            option.state |= QStyle.StateFlag.State_Sunken
+        else:
+            option.activeSubControls = self._active_subcontrols
+
         get_ayon_style().drawComplexControl(
             QStyle.ComplexControl.CC_ScrollBar, option, p, self
         )
-        return
+
+    def mousePressEvent(self, event) -> None:
+        SC = QStyle.SubControl
+        if (
+            event.button() != Qt.MouseButton.LeftButton
+            or self.maximum() == self.minimum()
+        ):
+            event.ignore()
+            return
+
+        pos = event.pos()
+        sc = self._hit_test(pos)
+        if sc == SC.SC_ScrollBarSlider:
+            start, _length = self._slider_span()
+            self._click_offset = self._pos_along(pos) - start
+            self.setSliderDown(True)
+        elif sc in (SC.SC_ScrollBarSubPage, SC.SC_ScrollBarAddPage):
+            self._page_action = (
+                QScrollBar.SliderAction.SliderPageStepSub
+                if sc == SC.SC_ScrollBarSubPage
+                else QScrollBar.SliderAction.SliderPageStepAdd
+            )
+            self._page_pos = pos
+            self.triggerAction(self._page_action)
+        else:
+            return
+
+        self._pressed_subcontrol = sc
+        self._active_subcontrols = sc
+        self._update_page_repeat()
+        self.update()
+
+    def mouseMoveEvent(self, event) -> None:
+        pos = event.pos()
+        if self.isSliderDown():
+            self.setSliderPosition(self._pixel_to_value(pos))
+        elif self._page_action is not None:
+            self._page_pos = pos
+            self._update_page_repeat()
+        else:
+            self._update_active_subcontrols(pos)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if self._pressed_subcontrol == QStyle.SubControl.SC_None:
+            event.ignore()
+            return
+        self._reset_pressed()
+        self._update_active_subcontrols(event.pos())
+
+    def hideEvent(self, event) -> None:
+        # No release event arrives when hidden mid-press (e.g. an 'as needed'
+        # scrollbar disappearing while page stepping).
+        super().hideEvent(event)
+        self._reset_pressed()
+
+    def sliderChange(self, change) -> None:
+        super().sliderChange(change)
+        self._update_page_repeat()
+
+    def leaveEvent(self, event) -> None:
+        super().leaveEvent(event)
+        if self._active_subcontrols != QStyle.SubControl.SC_None:
+            self._active_subcontrols = QStyle.SubControl.SC_None
+            self.update()
+
+    def _style_option(self) -> QStyleOptionSlider:
+        option = QStyleOptionSlider()
+        self.initStyleOption(option)
+        return option
+
+    def _hit_test(self, pos: QPoint) -> QStyle.SubControl:
+        return get_ayon_style().hitTestComplexControl(
+            QStyle.ComplexControl.CC_ScrollBar,
+            self._style_option(),
+            pos,
+            self,
+        )
+
+    def _update_page_repeat(self) -> None:
+        """Repeat page steps only while the cursor is over the pressed page.
+
+        This stops once the slider reaches the cursor, and pauses/resumes
+        when the cursor leaves/re-enters the page area, like QScrollBar.
+        """
+        if self._page_action is None:
+            return
+        if self._hit_test(self._page_pos) == self._pressed_subcontrol:
+            if self.repeatAction() == QScrollBar.SliderAction.SliderNoAction:
+                self.setRepeatAction(
+                    self._page_action,
+                    self._repeat_threshold,
+                    self._repeat_time,
+                )
+        else:
+            self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
+
+    def _reset_pressed(self) -> None:
+        self.setRepeatAction(QScrollBar.SliderAction.SliderNoAction)
+        self._page_action = None
+        self._page_pos = None
+        if self.isSliderDown():
+            self.setSliderDown(False)
+        if self._pressed_subcontrol != QStyle.SubControl.SC_None:
+            self._pressed_subcontrol = QStyle.SubControl.SC_None
+            self.update()
+
+    def _pos_along(self, pos: QPoint) -> int:
+        """Logical position of ``pos`` along the scrollbar's orientation."""
+        if self.orientation() == Qt.Orientation.Horizontal:
+            return QStyle.visualPos(
+                self.layoutDirection(), self.rect(), pos
+            ).x()
+        return pos.y()
+
+    def _slider_span(self) -> tuple[int, int]:
+        """Logical (start, length) of the slider along the orientation."""
+        option = self._style_option()
+        rect = QStyle.visualRect(
+            option.direction,
+            option.rect,
+            get_ayon_style().subControlRect(
+                QStyle.ComplexControl.CC_ScrollBar,
+                option,
+                QStyle.SubControl.SC_ScrollBarSlider,
+                self,
+            ),
+        )
+        if self.orientation() == Qt.Orientation.Horizontal:
+            return rect.x(), rect.width()
+        return rect.y(), rect.height()
+
+    def _pixel_to_value(self, pos: QPoint) -> int:
+        """Slider value for dragging the slider to ``pos``."""
+        _start, length = self._slider_span()
+        if self.orientation() == Qt.Orientation.Horizontal:
+            groove_length = self.width()
+        else:
+            groove_length = self.height()
+        return QStyle.sliderValueFromPosition(
+            self.minimum(),
+            self.maximum(),
+            self._pos_along(pos) - self._click_offset,
+            groove_length - length,
+            self._style_option().upsideDown,
+        )
+
+    def _update_active_subcontrols(self, pos: QPoint) -> None:
+        active_sub_controls = self._hit_test(pos)
+        if active_sub_controls != self._active_subcontrols:
+            self._active_subcontrols = active_sub_controls
+            self.update()
 
 
 class AYScrollArea(StyleMixin, QScrollArea):

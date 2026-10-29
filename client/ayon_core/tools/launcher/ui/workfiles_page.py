@@ -12,25 +12,48 @@ from ayon_core.lib.icon_definitions import (
     UrlIcon,
     TransparentIcon,
 )
-from ayon_core.tools.utils import get_qt_icon, DeselectableTreeView
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
+from ayon_core.tools.utils.delegates import (
+    pretty_timestamp,
+    file_size_to_string,
+)
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
+from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.tree_view import TreeViewItemDelegate
+from ayon_core.ui.components.user_avatars import (
+    ITEM_AVATAR_SIZE,
+    UserAvatarCache,
+    set_avatar_decoration,
+)
+from ayon_core.ui.style_types import get_ayon_style
+
 
 ITEM_TYPE_ROLE = QtCore.Qt.UserRole + 1
 WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 UPDATED_AT_ROLE = QtCore.Qt.UserRole + 3
 HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
+FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
+UPDATED_BY_ROLE = QtCore.Qt.UserRole + 6
+UPDATED_BY_LABEL_ROLE = QtCore.Qt.UserRole + 7
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
+    """Workfiles of selected task.
+
+    Workfiles are fetched in the shared task queue so the UI stays
+    responsive, 'AYTreeView' shows loading placeholder meanwhile.
+    """
     refreshed = QtCore.Signal()
+    loading_changed = QtCore.Signal(bool)
 
     def __init__(self, controller: AbstractLauncherFrontEnd) -> None:
         super().__init__()
 
-        self.setColumnCount(2)
+        self.setColumnCount(3)
         self.setHeaderData(0, QtCore.Qt.Horizontal, "Workfiles")
         self.setHeaderData(1, QtCore.Qt.Horizontal, "Modified")
+        self.setHeaderData(2, QtCore.Qt.Horizontal, "Size")
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -58,29 +81,124 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         self._host_items_by_name = {}
         self._items_by_host_name = collections.defaultdict(list)
 
-    def refresh(self) -> None:
+        self._is_loading = False
+        self._refresh_id = 0
+        self._context_id = f"launcher_workfiles_model_{id(self)}"
+
+    def is_loading(self) -> bool:
+        """Workfiles are being fetched.
+
+        Returns:
+            bool: True if workfiles are being fetched.
+        """
+        return self._is_loading
+
+    def refresh(self, clear: bool = False) -> None:
+        """Refresh workfiles of current selection.
+
+        Args:
+            clear (bool): Remove current items right away. Used when
+                selection changed so workfiles of previous selection
+                are not shown while new ones are loading.
+        """
+        self._refresh_id += 1
+        refresh_id = self._refresh_id
+        project_name = self._selected_project_name
+        task_id = self._selected_task_id
+        if not project_name or not task_id:
+            self._fill([], {})
+            self._set_loading(False)
+            return
+
+        if clear:
+            self._clear()
+        self._set_loading(True)
+        task_queue = get_task_queue()
+        # Drop pending fetches of previous selection
+        task_queue.clear_context_tasks(self._context_id)
+        task_queue.enqueue(AsyncTask(
+            name="fetch_launcher_workfiles",
+            function=lambda: self._fetch_workfile_items(
+                project_name, task_id
+            ),
+            callback=lambda result: self._on_workfiles_fetched(
+                refresh_id, result
+            ),
+            priority=2,
+            context_id=self._context_id,
+            cancellable=True,
+        ))
+
+    def _fetch_workfile_items(
+        self, project_name: str, task_id: str
+    ) -> tuple[list, dict]:
+        """Called in a worker thread, must not touch the model."""
+        workfile_items = self._controller.get_workfile_items(
+            project_name, task_id
+        )
+        # Users are queried here so filling the model does not wait
+        user_items_by_name = {}
+        if any(item.updated_by for item in workfile_items):
+            user_items_by_name = self._controller.get_user_items_by_name(
+                project_name
+            )
+        # Download url icons here so filling the model does not wait
+        prefetch_qt_icons([
+            self._get_icon_def(icon_url)
+            for icon_url in {item.icon for item in workfile_items}
+        ])
+        return workfile_items, user_items_by_name
+
+    def _set_loading(self, loading: bool) -> None:
+        if self._is_loading == loading:
+            return
+        self._is_loading = loading
+        self.loading_changed.emit(loading)
+
+    def _on_workfiles_fetched(
+        self, refresh_id: int, result: Optional[tuple[list, dict]]
+    ) -> None:
+        # Selection changed meanwhile, newer refresh is running
+        if refresh_id != self._refresh_id:
+            return
+        # 'None' means fetching failed
+        workfile_items, user_items_by_name = result or ([], {})
+        self._fill(workfile_items, user_items_by_name)
+        self._set_loading(False)
+
+    def _clear(self) -> None:
+        root_item = self.invisibleRootItem()
+        root_item.removeRows(0, root_item.rowCount())
+        self._host_items_by_name = {}
+        self._items_by_host_name = collections.defaultdict(list)
+
+    def _fill(self, workfile_items: list, user_items_by_name: dict) -> None:
         self._group_host_names = set(
             self._controller.get_grouped_host_names()
         )
 
+        self._clear()
         root_item = self.invisibleRootItem()
-        root_item.removeRows(0, root_item.rowCount())
 
-        workfile_items = self._controller.get_workfile_items(
-            self._selected_project_name, self._selected_task_id
-        )
         items_by_host_name = collections.defaultdict(list)
         for workfile_item in workfile_items:
             icon = self._get_icon(workfile_item.icon)
             host_name = workfile_item.host_name
-
+            updated_by = workfile_item.updated_by
+            updated_by_label = updated_by
+            user_item = user_items_by_name.get(updated_by)
+            if user_item is not None and user_item.full_name:
+                updated_by_label = user_item.full_name
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             item.setData(workfile_item.updated_at_time, UPDATED_AT_ROLE)
             item.setData(host_name, HOST_NAME_ROLE)
+            item.setData(workfile_item.file_size, FILE_SIZE_ROLE)
+            item.setData(updated_by, UPDATED_BY_ROLE)
+            item.setData(updated_by_label, UPDATED_BY_LABEL_ROLE)
             item.setData(0, ITEM_TYPE_ROLE)
-            item.setColumnCount(2)
+            item.setColumnCount(self.columnCount())
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
@@ -103,9 +221,10 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             host_item.setData(host_name, HOST_NAME_ROLE)
             host_item.setData(1, ITEM_TYPE_ROLE)
             host_item.setFlags(QtCore.Qt.ItemIsEnabled)
-            host_item.setColumnCount(2)
+            host_item.setColumnCount(self.columnCount())
             host_items_by_name[host_name] = host_item
             if host_name in self._group_host_names:
+                host_item.appendRows(items)
                 new_items.append(host_item)
             else:
                 new_items.extend(items)
@@ -152,14 +271,25 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         if group:
             for item in items:
                 root_item.takeRow(item.row())
+            host_item.appendRows(items)
             root_item.appendRow(host_item)
             self._group_host_names.add(host_name)
         else:
             root_item.takeRow(host_item.row())
+            for item in items:
+                host_item.takeRow(item.row())
             root_item.appendRows(items)
             self._group_host_names.discard(host_name)
 
         self._controller.set_grouped_host_names(list(self._group_host_names))
+
+    def is_host_grouped(self, host_name: str | None) -> bool:
+        """Workfiles of the host are nested under the host item."""
+        return host_name in self._group_host_names
+
+    def has_grouped_hosts(self) -> bool:
+        """Workfiles of any host are nested under the host item."""
+        return bool(self._group_host_names & set(self._host_items_by_name))
 
     def flags(self, index):
         if index.column() != 0:
@@ -167,37 +297,52 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         return super().flags(index)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.column() == 1:
-            if role == QtCore.Qt.DisplayRole:
-                role = UPDATED_AT_ROLE
+        if role in {
+            WORKFILE_ID_ROLE,
+            HOST_NAME_ROLE,
+            ITEM_TYPE_ROLE,
+            FILE_SIZE_ROLE,
+            UPDATED_BY_ROLE,
+            UPDATED_BY_LABEL_ROLE,
+        }:
+            if index.column() != 0:
+                index = index.sibling(index.row(), 0)
+            return super().data(index, role)
 
-            elif role not in (
-                WORKFILE_ID_ROLE,
-                HOST_NAME_ROLE,
-                ITEM_TYPE_ROLE,
-            ):
+        col = index.column()
+        if col != 0:
+            if role == QtCore.Qt.ToolTipRole and col == 1:
+                # Name of the user whose avatar is shown in the column
+                role = UPDATED_BY_LABEL_ROLE
+            elif role != QtCore.Qt.DisplayRole:
                 return None
+            elif col == 1:
+                role = UPDATED_AT_ROLE
+            elif col == 2:
+                role = FILE_SIZE_ROLE
+            else:
+                return None
+            index = index.sibling(index.row(), 0)
 
-            index = self.index(index.row(), 0, index.parent())
         return super().data(index, role)
 
     def _on_selection_project_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
         self._selected_task_id = None
-        self.refresh()
+        self.refresh(clear=True)
 
     def _on_selection_folder_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = None
-        self.refresh()
+        self.refresh(clear=True)
 
     def _on_selection_task_changed(self, event) -> None:
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
-        self.refresh()
+        self.refresh(clear=True)
 
     def _get_transparent_icon(self) -> QtGui.QIcon:
         if self._transparent_icon is None:
@@ -206,6 +351,15 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             )
         return self._transparent_icon
 
+    @staticmethod
+    def _get_icon_def(icon_url: Optional[str]):
+        if icon_url is None:
+            return None
+        base_url = ayon_api.get_base_url()
+        if icon_url.startswith(base_url):
+            return AYONUrlIcon(icon_url[len(base_url) + 1:])
+        return UrlIcon(icon_url)
+
     def _get_icon(self, icon_url: Optional[str]) -> QtGui.QIcon:
         if icon_url is None:
             return self._get_transparent_icon()
@@ -213,58 +367,146 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         if icon is not None:
             return icon
 
-        base_url = ayon_api.get_base_url()
-        if icon_url.startswith(base_url):
-            url = icon_url[len(base_url) + 1:]
-            icon_def = AYONUrlIcon(url)
-        else:
-            icon_def = UrlIcon(icon_url)
-
-        icon = get_qt_icon(icon_def)
+        icon = get_qt_icon(self._get_icon_def(icon_url))
         if icon is None:
             icon = self._get_transparent_icon()
         self._cached_icons[icon_url] = icon
         return icon
 
 
+def _sort_key(value) -> tuple:
+    """Key to compare raw values of a column, missing values are lowest."""
+    if value is None:
+        return (0, 0)
+    if isinstance(value, str):
+        return (1, value.casefold())
+    return (1, value)
+
+
 class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
+    """Sort workfiles by name per host, or by date and size of all hosts.
+
+    Sorting by name keeps workfiles of the same host together, hosts are
+    sorted by name regardless of the sort order. Sorting by modified date
+    or size sorts workfiles of all hosts together, grouped host items are
+    on top. Workfiles without a value, e.g. unknown size, are lowest.
+    """
+
     def lessThan(self, source_left, source_right):
-        l_host = source_left.data(HOST_NAME_ROLE)
-        r_host = source_right.data(HOST_NAME_ROLE)
-        if l_host != r_host:
-            if l_host is None:
-                return True
-            if r_host is None:
-                return False
+        l_fixed = self._fixed_order_key(source_left)
+        r_fixed = self._fixed_order_key(source_right)
+        if l_fixed != r_fixed:
+            # Descending order calls 'lessThan(right, left)'
             if self.sortOrder() == QtCore.Qt.DescendingOrder:
-                return l_host > r_host
-            return l_host < r_host
-        return super().lessThan(source_left, source_right)
+                return r_fixed < l_fixed
+            return l_fixed < r_fixed
+
+        l_key = _sort_key(source_left.data(self.sortRole()))
+        r_key = _sort_key(source_right.data(self.sortRole()))
+        if l_key == r_key:
+            # Same value, e.g. unknown size, fall back to name
+            l_key = _sort_key(
+                source_left.sibling(source_left.row(), 0).data()
+            )
+            r_key = _sort_key(
+                source_right.sibling(source_right.row(), 0).data()
+            )
+        return l_key < r_key
+
+    @staticmethod
+    def _fixed_order_key(index) -> tuple:
+        """Key of the order that does not change with the sort order."""
+        host_key = _sort_key(index.data(HOST_NAME_ROLE))
+        if index.column() == 0:
+            # Workfiles of the same host are together
+            return host_key
+        if index.data(ITEM_TYPE_ROLE) == 1:
+            # Grouped host items are on top
+            return (0, host_key)
+        return (1,)
 
 
-class WorkfilesView(DeselectableTreeView):
-    def drawBranches(self, painter, rect, index):
-        return
+class WorkfilesDelegate(TreeViewItemDelegate):
+    """Unified delegate for the workfiles tree view.
+
+    Column 0: workfile name with middle-elide.
+    Column 1: pretty-printed timestamp with the avatar of the user who
+        made the last change.
+    Column 2: file size in human-readable format.
+
+    Model stores raw timestamp and size in bytes, so the columns are
+    sorted by their values.
+
+    Args:
+        avatar_cache: Cache of the user avatars. The view should be
+            repainted when an avatar is updated.
+        parent: The parent widget.
+        style_model: Style data of the tree view.
+    """
+
+    def __init__(
+        self,
+        avatar_cache: UserAvatarCache,
+        parent: Optional[QtWidgets.QWidget] = None,
+        style_model=None,
+    ) -> None:
+        super().__init__(parent=parent, style_model=style_model)
+        self._avatar_cache = avatar_cache
+
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        if index.column() == 0:
+            option.textElideMode = QtCore.Qt.ElideMiddle
+
+        elif index.column() == 1:
+            # Column 1 exposes timestamp through DisplayRole in WorkfilesModel.
+            raw = index.data(QtCore.Qt.DisplayRole)
+            text = ""
+            if raw is not None:
+                pretty = pretty_timestamp(raw)
+                if pretty is not None:
+                    text = pretty
+            option.text = text
+            # Never blocks, the avatar is downloaded in the background.
+            set_avatar_decoration(
+                option,
+                self._avatar_cache,
+                index.data(UPDATED_BY_ROLE),
+                index.data(UPDATED_BY_LABEL_ROLE),
+            )
+
+        elif index.column() == 2:
+            # Column 2 exposes size in bytes through DisplayRole.
+            file_size = index.data(QtCore.Qt.DisplayRole)
+            text = ""
+            if file_size is not None:
+                text = file_size_to_string(file_size)
+            option.text = text
 
 
-class WorkfilesDelegate(QtWidgets.QStyledItemDelegate):
-    def paint(self, painter, option, index):
-        option.textElideMode = QtCore.Qt.ElideMiddle
-        super().paint(painter, option, index)
-
-
-class WorkfilesPage(QtWidgets.QWidget):
+class WorkfilesPage(AYContainer):
     def __init__(
         self,
         controller: AbstractLauncherFrontEnd,
         parent: QtWidgets.QWidget,
     ) -> None:
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
-        workfiles_view = WorkfilesView(self)
+        workfiles_view = AYTreeView(self)
+        workfiles_view.setHeaderHidden(False)
+        # Indentation is used only when workfiles are grouped by host
+        indentation = workfiles_view.indentation()
         workfiles_view.setIndentation(0)
         workfiles_view.setSortingEnabled(True)
         workfiles_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        workfiles_view.setSelectionMode(
+            QtWidgets.QAbstractItemView.SingleSelection
+        )
 
         workfiles_model = WorkfilesModel(controller)
         workfiles_proxy = WorkfileSortFilterProxy()
@@ -272,24 +514,24 @@ class WorkfilesPage(QtWidgets.QWidget):
 
         workfiles_view.setModel(workfiles_proxy)
 
-        workfiles_delegate = WorkfilesDelegate()
-        updated_at_delegate = PrettyTimeDelegate(
-            default="N/A", parent=workfiles_view
+        avatar_cache = UserAvatarCache(workfiles_view)
+        avatar_cache.avatar_updated.connect(self._on_avatar_updated)
+
+        workfiles_delegate = WorkfilesDelegate(
+            avatar_cache,
+            parent=workfiles_view,
+            style_model=get_ayon_style().model
         )
+        workfiles_view.setItemDelegate(workfiles_delegate)
 
-        workfiles_view.setItemDelegateForColumn(0, workfiles_delegate)
-        workfiles_view.setItemDelegateForColumn(1, updated_at_delegate)
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(workfiles_view, 1)
+        self.add_widget(workfiles_view, stretch=1)
 
         resize_timer = QtCore.QTimer()
 
         workfiles_view.selectionModel().selectionChanged.connect(
             self._on_selection_changed
         )
-        workfiles_view.doubleClicked.connect(self._on_view_clicked)
+        workfiles_model.refreshed.connect(self._update_indentation)
         workfiles_view.customContextMenuRequested.connect(
             self._on_custom_menu_request
         )
@@ -298,11 +540,11 @@ class WorkfilesPage(QtWidgets.QWidget):
         self._controller = controller
         self._workfiles_view = workfiles_view
         self._workfiles_delegate = workfiles_delegate
-        self._updated_at_delegate = updated_at_delegate
         self._workfiles_model = workfiles_model
         self._workfiles_proxy = workfiles_proxy
         self._resize_timer = resize_timer
         self._resize_counter = 0
+        self._indentation = indentation
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -343,14 +585,24 @@ class WorkfilesPage(QtWidgets.QWidget):
         view_header.setSectionResizeMode(
             1, QtWidgets.QHeaderView.ResizeMode.Interactive
         )
+        view_header.setSectionResizeMode(
+            2, QtWidgets.QHeaderView.ResizeMode.Interactive
+        )
 
         # Resize workfiles column
+        # - modified column shows avatar of the user next to the date
+        col_1_width = 140 + ITEM_AVATAR_SIZE + 6
+        col_2_width = 80
         view_size = self._workfiles_view.size()
-        col_1_width = view_size.width() - 160
-        if col_1_width < 120:
-            col_1_width = 120
-        view_header = self._workfiles_view.header()
-        view_header.resizeSection(view_header.logicalIndex(0), col_1_width)
+        col_0_width = view_size.width() - (col_1_width + col_2_width)
+        if col_0_width < 120:
+            col_0_width = 120
+        view_header.resizeSection(0, col_0_width)
+        view_header.resizeSection(1, col_1_width)
+        view_header.resizeSection(2, col_2_width)
+
+    def _on_avatar_updated(self, _username: str) -> None:
+        self._workfiles_view.viewport().update()
 
     def _on_selection_changed(self, selected, _deselected) -> None:
         workfile_id = None
@@ -358,11 +610,11 @@ class WorkfilesPage(QtWidgets.QWidget):
             workfile_id = index.data(WORKFILE_ID_ROLE)
         self._controller.set_selected_workfile(workfile_id)
 
-    def _on_view_clicked(self, index) -> None:
-        if not index.isValid() or index.data(ITEM_TYPE_ROLE) != 1:
-            return
-        host_name = index.data(HOST_NAME_ROLE)
-        self._workfiles_model.set_group_by_host_name(host_name)
+    def _update_indentation(self) -> None:
+        indentation = 0
+        if self._workfiles_model.has_grouped_hosts():
+            indentation = self._indentation
+        self._workfiles_view.setIndentation(indentation)
 
     def _on_custom_menu_request(self, point):
         index = self._workfiles_view.indexAt(point)
@@ -374,19 +626,22 @@ class WorkfilesPage(QtWidgets.QWidget):
             return
 
         action_title = None
-        if item_type == 0:
+        host_name = index.data(HOST_NAME_ROLE)
+        if item_type == 1:
+            action_title = "Ungroup"
+        elif item_type == 0:
             action_title = "Group by host"
-        elif item_type == 1:
-            action_title = "Ungroup (double-click)"
+            if self._workfiles_model.is_host_grouped(host_name):
+                action_title = "Ungroup by host"
 
         if action_title is None:
             return
 
-        menu = QtWidgets.QMenu(self._workfiles_view)
+        menu = AYMenu(self._workfiles_view)
         menu.addAction(action_title)
 
         global_pos = self._workfiles_view.viewport().mapToGlobal(point)
         action = menu.exec_(global_pos)
         if action is not None:
-            host_name = index.data(HOST_NAME_ROLE)
             self._workfiles_model.set_group_by_host_name(host_name)
+            self._update_indentation()

@@ -305,6 +305,48 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """
 
     @abstractmethod
+    def process_server_events(self) -> None:
+        """Process AYON server events received via websocket.
+
+        Server events are received in a background thread and are queued.
+        This method must be called from the main (UI) thread periodically,
+        the queued events are emitted as controller events:
+        - "ayon.connection.opened"
+        - "ayon.connection.closed"
+        - "ayon.auth.failed"
+        - "ayon.server.restart"
+
+        """
+        pass
+
+    @abstractmethod
+    def check_server_available(self) -> bool:
+        """Check if server is available.
+
+        Request to server is sent only if the connection state is not
+        known yet. Starts listening to server events, so
+        "ayon.connection.opened" is emitted once connection is established.
+
+        Can be used to postpone refresh of UI until the server is available.
+
+        Returns:
+            bool: 'False' if server is not available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_server_connection_state(self) -> bool | None:
+        """Server connection state.
+
+        Returns:
+            bool | None: 'True' if connected, 'False' if disconnected
+                and 'None' if state is not known yet.
+
+        """
+        pass
+
+    @abstractmethod
     def register_event_callback(self, topic: str, callback: Callable) -> None:
         """Register event callback.
 
@@ -669,6 +711,33 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         Returns:
             list[TaskItem]: Minimum possible information needed
                 for visualisation of tasks.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, str | None]: Thumbnail path by entity id.
 
         """
         pass

@@ -73,6 +73,7 @@ from ..data_models import MenuSize
 from ..style_types import StyleData, get_ayon_style
 from ..variants import QComboBoxVariants
 from .style_mixin import StyleMixin
+from .scroll_area import AYScrollBar
 
 
 class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
@@ -96,6 +97,9 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> QtCore.QSize:
         """Calculate size hint including padding."""
+        sh = index.data(Qt.SizeHintRole)
+        if sh is not None:
+            return sh
 
         # Calculate text dimensions
         font_metrics = option.fontMetrics
@@ -130,6 +134,25 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             )
         return self._icon_cache[key]
 
+    def _get_reserved_right_width(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> int:
+        """Width on the right side of the item kept free of text.
+
+        Allows subclasses to paint additional content on the far right of
+        the item without overlapping the text, which is elided earlier.
+
+        Args:
+            option: The initialized style option for the item.
+            index: The model index of the item.
+
+        Returns:
+            Reserved width in pixels.
+        """
+        return 0
+
     def initStyleOption(
         self,
         option: QtWidgets.QStyleOptionViewItem,
@@ -163,39 +186,62 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         bg_data = index.data(Qt.ItemDataRole.BackgroundRole)
 
         cb = self.parent()
+        highlight_color = opt.palette.color(
+            QPalette.ColorGroup.Active, QPalette.ColorRole.Dark
+        )
 
         # Menu background from the AYON style JSON
         if self._style_model:
             cb_style = self._style_model.get_style("QComboBox")
             cb_style.set_context(cb)
             menu_bg = QColor(cb_style.get("menu-background-color", "#1c2026"))
+            selected_bg = QColor(
+                cb_style.get(
+                    "menu-selected-background-color",
+                    highlight_color,
+                )
+            )
+            selected_hover_bg = QColor(
+                cb_style.get(
+                    "menu-selected-hover-background-color",
+                    selected_bg,
+                )
+            )
+            selected_fg = QColor(
+                cb_style.get(
+                    "menu-selected-color",
+                    opt.palette.color(QPalette.ColorRole.HighlightedText),
+                )
+            )
         else:
             menu_bg = opt.palette.color(
                 QPalette.ColorGroup.Active,
                 QPalette.ColorRole.Window,
             )
-
-        highlight_color = opt.palette.color(
-            QPalette.ColorGroup.Active, QPalette.ColorRole.Dark
-        )
+            selected_bg = highlight_color
+            selected_hover_bg = selected_bg
+            selected_fg = opt.palette.color(
+                QPalette.ColorRole.HighlightedText
+            )
 
         state = opt.state
         is_selected = bool(state & QStyle.StateFlag.State_Selected)
-        is_hovered = (
-            bool(state & QStyle.StateFlag.State_MouseOver) and not is_selected
-        )
+        is_hovered = bool(state & QStyle.StateFlag.State_MouseOver)
+        # Hovering a row that is not the current one gets the plain
+        # highlight; hovering the current one brightens its own color
+        # instead, so it stays recognizable as the selected row.
+        hover_only = is_hovered and not is_selected
+        selected_background = selected_hover_bg if is_hovered else selected_bg
 
         if fg_data and bg_data:
             fg = fg_data.color()
-            bg = bg_data.color()
 
-            if is_hovered:
+            if hover_only:
                 bg_color = highlight_color
                 text_color = fg
             elif is_selected:
-                bg_color = fg
-                text_color = bg
-                # Regenerate icon with the swapped text_color
+                bg_color = selected_background
+                text_color = selected_fg
                 icon_name = (
                     index.data(cb.model().IconNameRole)
                     if hasattr(cb.model(), "IconNameRole")
@@ -211,9 +257,13 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
         else:
             # Fallback for items without FG/BG data
             if is_hovered or is_selected:
-                bg_color = highlight_color
-                text_color = opt.palette.color(
-                    QPalette.ColorRole.HighlightedText
+                bg_color = (
+                    selected_background if is_selected else highlight_color
+                )
+                text_color = (
+                    selected_fg
+                    if is_selected
+                    else opt.palette.color(QPalette.ColorRole.HighlightedText)
                 )
             else:
                 bg_color = menu_bg
@@ -257,12 +307,19 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             text_rect = QRect(opt.rect)
             text_rect.setLeft(content_left)
             text_rect.setRight(text_rect.right() - self._padding)
+            text = opt.text
+            reserved_width = self._get_reserved_right_width(opt, index)
+            if reserved_width > 0:
+                text_rect.setRight(text_rect.right() - reserved_width)
+                text = opt.fontMetrics.elidedText(
+                    text, Qt.TextElideMode.ElideRight, text_rect.width()
+                )
             painter.setPen(text_color)
             painter.setFont(opt.font)
             painter.drawText(
                 text_rect,
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                opt.text,
+                text,
             )
 
         painter.restore()
@@ -386,7 +443,7 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         inverted: bool = False,
         icon_size: int = 20,
         variant: Variants = Variants.Default,
-        show_chevron: bool = False,
+        show_chevron: bool = True,
         **kwargs,
     ) -> None:
         self._uses_incompatible_model = False
@@ -396,6 +453,14 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         self.setStyle(get_ayon_style())
         self.setMouseTracking(True)
         self.setMaximumHeight(height)
+        self._popup_pressed_index = QtCore.QPersistentModelIndex()
+        self._pending_popup_activation = -1
+        self._popup_activation_timer = QtCore.QTimer(self)
+        self._popup_activation_timer.setSingleShot(True)
+        self._popup_activation_timer.timeout.connect(
+            self._emit_pending_popup_activation
+        )
+        self.view().viewport().installEventFilter(self)
 
         # Initialize properties
         self._size: MenuSize = (
@@ -414,7 +479,78 @@ class AYComboBox(StyleMixin, QtWidgets.QComboBox):
         model = AYComboBoxModel(self)
         self.setModel(model)
 
+        view = self.view()
+
+        view.setVerticalScrollBar(AYScrollBar(Qt.Orientation.Vertical))
+        view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        view.setHorizontalScrollBar(AYScrollBar(Qt.Orientation.Horizontal))
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Paint popup rows with the AYON styled delegate, so every combo-box
+        # gets the same row height, padding and menu colors instead of Qt's
+        # cramped default rows.
+        self.setItemDelegate(
+            ComboBoxItemDelegate(
+                parent=view,
+                style_model=get_ayon_style().model,
+            )
+        )
+
         self.update_items(items)
+
+    def eventFilter(
+        self,
+        watched: QtCore.QObject,
+        event: QtCore.QEvent,
+    ) -> bool:
+        """Commit clicks that begin inside the open popup.
+
+        QComboBox suppresses mouse releases for a short period after opening
+        its popup. This prevents the opening click from selecting an item,
+        but can also swallow a genuine fast second click. Tracking a new
+        press inside the popup distinguishes those two cases.
+        """
+        viewport = self.view().viewport()
+        if watched is viewport:
+            event_type = event.type()
+            if event_type in (
+                QtCore.QEvent.Type.MouseButtonPress,
+                QtCore.QEvent.Type.MouseButtonDblClick,
+            ):
+                index = self.view().indexAt(event.pos())
+                self._popup_pressed_index = QtCore.QPersistentModelIndex(
+                    index
+                )
+
+            elif event_type == QtCore.QEvent.Type.MouseButtonRelease:
+                index = self.view().indexAt(event.pos())
+                pressed_index = self._popup_pressed_index
+                self._popup_pressed_index = QtCore.QPersistentModelIndex()
+                if (
+                    pressed_index.isValid()
+                    and index.isValid()
+                    and pressed_index == index
+                    and bool(index.flags() & QtCore.Qt.ItemFlag.ItemIsEnabled)
+                ):
+                    self._pending_popup_activation = index.row()
+                    self._popup_activation_timer.start(0)
+                    return True
+
+        return super().eventFilter(watched, event)
+
+    def _emit_pending_popup_activation(self) -> None:
+        """Emit a popup selection after its mouse event has unwound."""
+        row = self._pending_popup_activation
+        self._pending_popup_activation = -1
+        if 0 <= row < self.count():
+            self.setCurrentIndex(row)
+            self.hidePopup()
+            self.activated.emit(row)
+
+    def hidePopup(self) -> None:
+        """Hide the popup and clear any unfinished popup click."""
+        self._popup_pressed_index = QtCore.QPersistentModelIndex()
+        super().hidePopup()
 
     def _assert_compatible_model(self) -> None:
         """Raise :exc:`RuntimeError` when an incompatible model is active.

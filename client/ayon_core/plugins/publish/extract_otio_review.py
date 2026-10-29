@@ -13,8 +13,10 @@ Optional:
 Provides:
     instance -> otioReviewClips
 """
+from __future__ import annotations
 
 import os
+import typing
 
 import clique
 from pyblish import api
@@ -27,6 +29,9 @@ from ayon_core.pipeline import (
     PublishError,
     publish,
 )
+
+if typing.TYPE_CHECKING:
+    from opentimelineio.opentime import RationalTime
 
 
 class ExtractOTIOReview(
@@ -53,10 +58,13 @@ class ExtractOTIOReview(
     label = "Extract OTIO review"
     families = ["otio.clip.review"]
 
-    # plugin default attributes
-    to_width = 1280
-    to_height = 720
-    output_ext = ".png"
+    settings_category = "core"
+
+    # Configurable by Settings
+    representation_name = None
+    output_ext = "png"
+    default_width = 1280
+    default_height = 720
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -92,10 +100,14 @@ class ExtractOTIOReview(
         #       end frame since start could be lower then 1000
         self.padding = len(str(instance.data.get("frameEnd", 1001)))
         self.used_frames.append(self.workfile_start)
-        self.to_width = instance.data.get(
-            "resolutionWidth") or self.to_width
-        self.to_height = instance.data.get(
-            "resolutionHeight") or self.to_height
+        self.output_ext = self.output_ext.lower().lstrip(".")
+
+        self.to_width = instance.data.get("resolutionWidth")
+        self.to_height = instance.data.get("resolutionHeight")
+
+        if self.to_width is None or self.to_height is None:
+            self.to_width = self.default_width
+            self.to_height = self.default_height
 
         # skip instance if no reviewable data available
         if (
@@ -150,8 +162,14 @@ class ExtractOTIOReview(
                 )
                 processing_range = None
                 self.actual_fps = available_range.duration.rate
-                start = src_range.start_time.rescaled_to(self.actual_fps)
-                duration = src_range.duration.rescaled_to(self.actual_fps)
+                # Hosts export float noise (Resolve native source start
+                # 86399.9977, Hiero float32 fps vs 23.976 media rate) and
+                # the frame conversions below truncate, which shifts the
+                # extract one frame early or drops the last frame.
+                start = self._snap_to_frame(
+                    src_range.start_time.rescaled_to(self.actual_fps))
+                duration = self._snap_to_frame(
+                    src_range.duration.rescaled_to(self.actual_fps))
 
                 # Temporary.
                 # Some AYON custom OTIO exporter were implemented with
@@ -317,7 +335,7 @@ class ExtractOTIOReview(
 
         collection = clique.Collection(
             self.temp_file_head,
-            tail=self.output_ext,
+            tail=f".{self.output_ext}",
             padding=self.padding,
             indexes=set(self.used_frames)
         )
@@ -330,13 +348,29 @@ class ExtractOTIOReview(
             files = files[0]
         ext = collection.format("{tail}")
         representation_data.update({
-            "name": ext[1:],
+            "name": self.representation_name or ext[1:],
             "ext": ext[1:],
             "files": files,
             "frameStart": start,
             "frameEnd": end,
         })
         return representation_data
+
+    @staticmethod
+    def _snap_to_frame(
+        rational_time: RationalTime, tolerance: float = 0.01
+    ) -> RationalTime:
+        """Snap a value within `tolerance` frames of a whole frame to it.
+
+        Genuine sub-frame values (e.g. 25fps clip on 24fps media) are kept.
+        """
+        import opentimelineio as otio
+
+        value = rational_time.value
+        nearest = round(value)
+        if abs(value - nearest) < tolerance:
+            value = float(nearest)
+        return otio.opentime.RationalTime(value, rational_time.rate)
 
     def _trim_available_range(self, avl_range, start, duration):
         """
@@ -561,7 +595,7 @@ class ExtractOTIOReview(
         # add copying if extensions are matching
         if (
             input_extension
-            and self.output_ext == input_extension
+            and self.output_ext == input_extension.lower().strip(".")
         ):
             command.extend(["-c", "copy"])
         else:
@@ -624,8 +658,8 @@ class ExtractOTIOReview(
         """
         output_file = "{}{}{}".format(
             self.temp_file_head,
-            "%0{}d".format(self.padding),
-            self.output_ext
+            f"%0{self.padding}d",
+            f".{self.output_ext}"
         )
         # create path to destination
         output_path = os.path.join(self.staging_dir, output_file)

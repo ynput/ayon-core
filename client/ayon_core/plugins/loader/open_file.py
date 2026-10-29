@@ -9,10 +9,10 @@ from typing import Optional, Any, Callable
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.actions import (
-    LoaderActionPlugin,
     LoaderActionItem,
-    LoaderActionSelection,
+    LoaderActionPlugin,
     LoaderActionResult,
+    LoaderActionSelection,
 )
 
 
@@ -267,6 +267,11 @@ class OpenFileAction(LoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        settings = selection.get_project_settings()
+        actions_settings = settings["core"]["tools"]["loader"].get(
+            "actions", {})
+        if not actions_settings.get("open_file", True):
+            return []
         repres = []
         if selection.selected_type == "representation":
             repres = selection.entities.get_representations(

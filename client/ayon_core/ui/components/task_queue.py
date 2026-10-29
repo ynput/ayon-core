@@ -279,6 +279,17 @@ class AsyncTaskQueue(QThread):
         if not self._callback_queue.empty():
             QTimer.singleShot(1, self._drain_callback_queue)
 
+    def start(self, *args: Any, **kwargs: Any) -> None:
+        """Start the dispatch thread.
+
+        The running flag is set here and not in :meth:`run`.  The thread
+        begins to run with a delay, so setting the flag there would
+        overwrite a :meth:`stop` called in the meantime and the dispatch
+        loop would never end.
+        """
+        self._running = True
+        super().start(*args, **kwargs)
+
     def run(self) -> None:
         """Dispatch loop - runs in the QThread context.
 
@@ -287,7 +298,6 @@ class AsyncTaskQueue(QThread):
         so it wakes the instant :meth:`enqueue` adds a new task, eliminating
         the 50 ms polling delay of the previous single-worker design.
         """
-        self._running = True
         self._executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=self._num_workers,
             thread_name_prefix="ayon_task_worker",
@@ -375,34 +385,15 @@ class AsyncTaskQueue(QThread):
                 "Failed to emit task_started for %s.", task.name, exc_info=True
             )
 
+        # Only the task function itself is guarded: an error raised while
+        # delivering or logging a successful result must not be reported
+        # as a task failure, which would deliver a second callback.
         try:
             result = task.function()
-
-            # Double-check cancellation after execution.
-            if task.is_cancelled():
-                log.debug(
-                    "Task %s completed but was cancelled, discarding result",
-                    task.name,
-                )
-                return
-
-            if task.callback:
-                self._invoke_callback_safely(task.callback, result, task.name)
-
-            try:
-                self.task_completed.emit(task.name, result)
-            except Exception:
-                log.debug(
-                    "Failed to emit task_completed for %s.",
-                    task.name,
-                    exc_info=True,
-                )
-
-            log.debug("Task completed successfully: %s", task.name)
-
         except Exception as e:
-            log.exception("Task %s failed: %s", task.name, e)
-
+            # Deliver the failure before logging it. Logging may itself
+            # raise (e.g. a host stream that is unusable from a worker
+            # thread) and the caller must still learn the task ended.
             if task.callback:
                 self._invoke_callback_safely(task.callback, None, task.name)
 
@@ -414,6 +405,31 @@ class AsyncTaskQueue(QThread):
                     task.name,
                     exc_info=True,
                 )
+
+            log.exception("Task %s failed: %s", task.name, e)
+            return
+
+        # Double-check cancellation after execution.
+        if task.is_cancelled():
+            log.debug(
+                "Task %s completed but was cancelled, discarding result",
+                task.name,
+            )
+            return
+
+        if task.callback:
+            self._invoke_callback_safely(task.callback, result, task.name)
+
+        try:
+            self.task_completed.emit(task.name, result)
+        except Exception:
+            log.debug(
+                "Failed to emit task_completed for %s.",
+                task.name,
+                exc_info=True,
+            )
+
+        log.debug("Task completed successfully: %s", task.name)
 
     def _invoke_callback_safely(
         self, callback: Callable, result: Any, task_name: str

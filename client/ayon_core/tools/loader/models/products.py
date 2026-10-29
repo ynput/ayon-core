@@ -33,13 +33,16 @@ PRODUCTS_MODEL_SENDER = "products.model"
 
 
 def version_item_from_entity(version):
-    version_attribs = version["attrib"]
+    version_attribs = version.get("attrib") or {}
+    version_data = version.get("data") or {}
     tags = version["tags"]
     frame_start = version_attribs.get("frameStart")
     frame_end = version_attribs.get("frameEnd")
     handle_start = version_attribs.get("handleStart")
     handle_end = version_attribs.get("handleEnd")
     step = version_attribs.get("step")
+    if step is None:
+        step = version_data.get("step")
     comment = version_attribs.get("comment")
     source = version_attribs.get("source")
 

@@ -18,6 +18,7 @@ from ayon_core.lib.attribute_definitions import (
     UILabelDef,
     ButtonDef,
 )
+from ayon_core.lib.icon_definitions import TransparentIcon
 from ayon_core.tools.utils import (
     CustomTextComboBox,
     FocusSpinBox,
@@ -694,8 +695,29 @@ class EnumAttrWidget(BaseAttrDefWidget):
         if self.attr_def.tooltip:
             input_widget.setToolTip(self.attr_def.tooltip)
 
+        # Use transparent icon for items without icon to keep labels aligned
+        #   if any item has an icon
+        # - multiselection combobox handles the alignment in its delegate
+        has_icons = any(item.get("icon") for item in self.attr_def.items)
+        empty_icon = None
+        if has_icons and not self.multiselection:
+            empty_icon = get_qt_icon(TransparentIcon())
         for item in self.attr_def.items:
-            input_widget.addItem(item["label"], item["value"])
+            icon_def = item.get("icon")
+            if icon_def:
+                icon = get_qt_icon(icon_def)
+            else:
+                icon = empty_icon
+            if icon is not None:
+                input_widget.addItem(icon, item["label"], item["value"])
+            else:
+                input_widget.addItem(item["label"], item["value"])
+
+            tooltip = item.get("tooltip")
+            if tooltip:
+                input_widget.setItemData(
+                    input_widget.count() - 1, tooltip, QtCore.Qt.ToolTipRole
+                )
 
         if not self.attr_def.items:
             self._add_empty_item(input_widget)
@@ -798,8 +820,8 @@ class EnumAttrWidget(BaseAttrDefWidget):
 class UnknownAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = QtWidgets.QLabel(self)
-        self._value = self.attr_def.default
-        input_widget.setText(str(self._value))
+        self._value = str(self.attr_def.default)
+        input_widget.setText(self._value)
 
         self._input_widget = input_widget
 
@@ -812,9 +834,11 @@ class UnknownAttrWidget(BaseAttrDefWidget):
 
     def set_value(self, value, multivalue=False):
         if multivalue:
-            set_value = set(value)
-            if len(set_value) == 1:
-                value = tuple(set_value)[0]
+            # Unknown values can be unhashable (e.g. list or dict) so
+            #   they can't be deduplicated using 'set'
+            values = list(value)
+            if values and all(item == values[0] for item in values):
+                value = values[0]
             else:
                 value = "< Multiselection >"
 

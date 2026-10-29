@@ -204,14 +204,17 @@ class StyleData:
             QPalette.ColorRole.Dark: "qt-active-dark",
             QPalette.ColorRole.Mid: "qt-active-mid",
             QPalette.ColorRole.Shadow: "qt-active-shadow",
+            QPalette.ColorRole.ToolTipBase: "qt-active-tooltip-base",
+            QPalette.ColorRole.ToolTipText: "qt-active-tooltip-text",
         }
         p = QPalette()
         for role, color_name in bp.items():
-            p.setColor(
+            color = QColor(self._palette.get(color_name, "#ff0000"))
+            for group in (
                 QPalette.ColorGroup.Active,
-                role,
-                QColor(self._palette.get(color_name, "#ff0000")),
-            )
+                QPalette.ColorGroup.Inactive,
+            ):
+                p.setColor(group, role, color)
         return p
 
     def get_style_palette(self, widget: QWidget, widget_key: str) -> QPalette:
@@ -397,10 +400,19 @@ class StyleData:
             # Override palette variables with the current state's values and
             # remove all states. That way, we can directly use
             # "background-color" without checking the widget's state.
+            # A compound state ("selected-hover") that a variant doesn't
+            # define falls back to its first component ("selected") so
+            # callers don't have to duplicate a state's block just to
+            # cover every combination a widget can request.
+            fallback_state = (
+                state.split("-", 1)[0]
+                if isinstance(state, str) and "-" in state and state not in d
+                else None
+            )
             state_dict = {}
             for key, val in list(d.items()):
                 if isinstance(val, dict):
-                    if key == state:
+                    if key == state or key == fallback_state:
                         state_dict = {
                             kk: pal.get(vv, vv) for kk, vv in val.items()
                         }

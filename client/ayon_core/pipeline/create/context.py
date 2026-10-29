@@ -47,8 +47,7 @@ from .structures import (
 from .creator_plugins import (
     Creator,
     AutoCreator,
-    discover_creator_plugins,
-    discover_convertor_plugins,
+    discover_create_plugins,
 )
 if typing.TYPE_CHECKING:
     from types import TracebackType
@@ -688,8 +687,9 @@ class CreateContext:
         """
 
         self._reset_publish_plugins(discover_publish_plugins)
-        self._reset_creator_plugins()
-        self._reset_convertor_plugins()
+        create_result, convertor_result = discover_create_plugins()
+        self._reset_creator_plugins(create_result)
+        self._reset_convertor_plugins(convertor_result)
 
     def _reset_publish_plugins(self, discover_publish_plugins: bool) -> None:
         from ayon_core.pipeline import AYONPyblishPluginMixin
@@ -716,10 +716,11 @@ class CreateContext:
                 if AYONPyblishPluginMixin in inspect.getmro(plugin):
                     plugins_with_defs.append(plugin)
 
+            plugins_by_targets_set = set(plugins_by_targets)
             plugins_mismatch_targets = [
                 plugin
                 for plugin in publish_plugins
-                if plugin not in plugins_by_targets
+                if plugin not in plugins_by_targets_set
             ]
 
         # Register create context callbacks
@@ -745,7 +746,7 @@ class CreateContext:
         self.publish_plugins = plugins_by_targets
         self.plugins_with_defs = plugins_with_defs
 
-    def _reset_creator_plugins(self) -> None:
+    def _reset_creator_plugins(self, discover_report: DiscoverResult) -> None:
         # Prepare settings
         project_settings = self.get_current_project_settings()
 
@@ -754,15 +755,14 @@ class CreateContext:
         disabled_creators = {}
         autocreators = {}
         manual_creators = {}
-        report = discover_creator_plugins(return_report=True)
-        self.creator_discover_result = report
-        for creator_class in report.abstract_plugins:
+        self.creator_discover_result = discover_report
+        for creator_class in discover_report.abstract_plugins:
             self.log.debug(
                 "Skipping abstract Creator '%s'",
                 str(creator_class)
             )
 
-        for creator_class in report.plugins:
+        for creator_class in discover_report.plugins:
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
                 self.log.warning(
@@ -820,17 +820,12 @@ class CreateContext:
         self.creators = creators
         self.disabled_creators = disabled_creators
 
-    def _reset_convertor_plugins(self) -> None:
+    def _reset_convertor_plugins(
+        self, discover_report: DiscoverResult
+    ) -> None:
         convertors_plugins = {}
-        report = discover_convertor_plugins(return_report=True)
-        self.convertor_discover_result = report
-        for convertor_class in report.plugins:
-            if inspect.isabstract(convertor_class):
-                self.log.info(
-                    f"Skipping abstract Creator {convertor_class}"
-                )
-                continue
-
+        self.convertor_discover_result = discover_report
+        for convertor_class in discover_report.plugins:
             convertor_identifier = convertor_class.identifier
             if convertor_identifier in convertors_plugins:
                 self.log.warning((
@@ -1924,7 +1919,11 @@ class CreateContext:
         if not folder_path_by_id:
             return output
 
-        task_entities_by_parent_id = collections.defaultdict(list)
+        # Prefill with empty lists to also cache folders without tasks
+        task_entities_by_parent_id = {
+            folder_id: []
+            for folder_id in folder_path_by_id
+        }
         for task_entity in ayon_api.get_tasks(
             self.project_name,
             folder_ids=folder_path_by_id.keys()
@@ -2198,9 +2197,13 @@ class CreateContext:
             context_info = info_by_instance_id[instance.id]
             context_info.folder_is_valid = True
 
+            # Output of 'get_task_entities' contains requested task names
+            #   with 'None' value if task was not found
             if (
                 not task_name
-                or task_name in task_entities_by_folder_path[folder_path]
+                or task_entities_by_folder_path.get(
+                    folder_path, {}
+                ).get(task_name) is not None
             ):
                 context_info.task_is_valid = True
         return info_by_instance_id
@@ -2607,15 +2610,25 @@ class CreateContext:
         if not instances_to_validate:
             return
 
+        # Cache folder and task entities for all instances at once, so
+        #   plugins asking for them per instance don't query them one by one
+        self.get_instances_context_info(instances_to_validate)
+
+        # Signature check is slow, run it only once per plugin
+        new_style_convert_by_plugin = {
+            plugin: is_func_signature_supported(
+                plugin.convert_attribute_values, self, None
+            )
+            for plugin in self.plugins_with_defs
+        }
+
         # Set publish attributes before bulk callbacks are triggered
         for instance in instances_to_validate:
             publish_attributes = instance.publish_attributes
             # Prepare publish plugin attributes and set it on instance
             for plugin in self.plugins_with_defs:
                 try:
-                    if is_func_signature_supported(
-                            plugin.convert_attribute_values, self, instance
-                    ):
+                    if new_style_convert_by_plugin[plugin]:
                         plugin.convert_attribute_values(self, instance)
 
                     elif plugin.__instanceEnabled__:
@@ -2650,9 +2663,6 @@ class CreateContext:
                 instance.set_publish_plugin_attr_defs(
                     plugin.__name__, attr_defs
                 )
-
-        # Cache folder and task entities for all instances at once
-        self.get_instances_context_info(instances_to_validate)
 
         self._emit_event(
             INSTANCE_ADDED_TOPIC,
