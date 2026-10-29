@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from qtpy import QtCore, QtWidgets, QtGui
 
+from ayon_core.lib.icon_definitions import IconBase, MaterialSymbolsIcon
 from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import (
     get_qt_icon,
@@ -48,7 +49,7 @@ class FilterDefinition:
     name: str
     title: str
     filter_type: str
-    icon: Optional[dict[str, Any]] = None
+    icon: IconBase | dict[str, Any] | None = None
     placeholder: Optional[str] = None
     items: Optional[list[dict[str, str]]] = None
 
@@ -61,11 +62,9 @@ class CloseButton(SquareButton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.__class__._icon is None:
-            self.__class__._icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "close",
-                "color": "#FFFFFF",
-            })
+            self.__class__._icon = get_qt_icon(
+                MaterialSymbolsIcon("close", color="#FFFFFF")
+            )
         if self.__class__._hover_color is None:
             color = get_objected_colors("bg-view-selection-hover")
             self.__class__._hover_color = color.get_qcolor()
@@ -368,10 +367,9 @@ class FilterValueTextInput(QtWidgets.QWidget):
 
         back_btn = QtWidgets.QPushButton("Back", btns_widget)
         back_btn.setObjectName("BackButton")
-        back_btn.setIcon(get_qt_icon({
-            "type": "material-symbols",
-            "name": "arrow_back",
-        }))
+        back_btn.setIcon(get_qt_icon(
+            MaterialSymbolsIcon("arrow_back")
+        ))
         confirm_btn = QtWidgets.QPushButton("Confirm", btns_widget)
         confirm_btn.setObjectName("ConfirmButton")
 
@@ -462,10 +460,9 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
         back_btn = QtWidgets.QPushButton("Back", btns_widget)
         back_btn.setObjectName("BackButton")
-        back_btn.setIcon(get_qt_icon({
-            "type": "material-symbols",
-            "name": "arrow_back",
-        }))
+        back_btn.setIcon(get_qt_icon(
+            MaterialSymbolsIcon("arrow_back")
+        ))
 
         select_all_btn = QtWidgets.QPushButton("Select all", btns_widget)
         clear_btn = QtWidgets.QPushButton("Clear", btns_widget)
@@ -874,11 +871,9 @@ class FiltersBar(BaseClickableFrame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        search_icon = get_qt_icon({
-            "type": "material-symbols",
-            "name": "search",
-            "color": "#FFFFFF",
-        })
+        search_icon = get_qt_icon(
+            MaterialSymbolsIcon("search", color="#FFFFFF")
+        )
         search_btn = SquareButton(self)
         search_btn.setIcon(search_icon)
         search_btn.setFlat(True)

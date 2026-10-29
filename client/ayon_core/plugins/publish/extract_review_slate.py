@@ -15,7 +15,7 @@ from ayon_core.lib import (
     get_ffmpeg_format_args,
 )
 from ayon_core.pipeline import publish
-from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import PublishError
 
 
 class ExtractReviewSlate(publish.Extractor):
@@ -40,12 +40,15 @@ class ExtractReviewSlate(publish.Extractor):
 
         # get slates frame from upstream
         slates_data = inst_data.get("slateFrames")
-        if not slates_data:
+        slate_frame = inst_data.get("slateFrame")
+        if not slates_data and slate_frame is not None:
             # make it backward compatible and open for slates generator
             # premium plugin
             slates_data = {
-                "*": inst_data["slateFrame"]
+                "*": slate_frame
             }
+        if not slates_data:
+            return
 
         self.log.debug("_ slates_data: {}".format(pformat(slates_data)))
 
@@ -94,9 +97,9 @@ class ExtractReviewSlate(publish.Extractor):
 
             # Raise exception of any stream didn't define input resolution
             if input_width is None:
-                raise KnownPublishError(
-                    "FFprobe couldn't read resolution from input file: \"{}\""
-                    .format(input_path)
+                raise PublishError(
+                    "FFprobe couldn't read resolution from input file:"
+                    f" \"{input_path}\""
                 )
 
             (

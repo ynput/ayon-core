@@ -1,7 +1,27 @@
 import logging
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore, QtGui
 
 log = logging.getLogger(__name__)
+
+
+def icon_widget(parent, icon, size: int = 64) -> QtWidgets.QLabel:
+    """Wrap an Icon into a QLabel with a fixed size.
+
+    Args:
+        icon (QtWidgets.QMessageBox.Icon | QtGui.QIcon): Icon to display.
+        size (int): Size of the icon in pixels (default: 64).
+
+    Returns:
+        QtWidgets.QLabel: Label with the icon.
+
+    """
+    label = QtWidgets.QLabel(parent)
+    if isinstance(icon, QtGui.QIcon):
+        label.setPixmap(icon.pixmap(size, size))
+    else:
+        label.setPixmap(QtWidgets.QMessageBox.standardIcon(icon))
+
+    return label
 
 
 def show_message_dialog(title, message, level=None, parent=None):
@@ -34,7 +54,7 @@ class ScrollMessageBox(QtWidgets.QDialog):
     No other existing dialog implementation is scrollable.
 
     Args:
-        icon (QtWidgets.QMessageBox.Icon): Icon to display.
+        icon (QtWidgets.QMessageBox.Icon | QtGui.QIcon): Icon to display.
         title (str): Window title.
         messages (list[str]): List of messages.
         cancelable (Optional[bool]): True if Cancel button should be added.
@@ -44,10 +64,11 @@ class ScrollMessageBox(QtWidgets.QDialog):
         super().__init__()
         self.setWindowTitle(title)
         self.icon = icon
-
         self._messages = messages
 
         self.setWindowFlags(QtCore.Qt.WindowTitleHint)
+
+        wrapped_icon = icon_widget(self, icon)
 
         scroll_widget = QtWidgets.QScrollArea(self)
         scroll_widget.setWidgetResizable(True)
@@ -60,6 +81,7 @@ class ScrollMessageBox(QtWidgets.QDialog):
             label_widget = QtWidgets.QLabel(message, content_widget)
             content_layout.addWidget(label_widget)
             message_len = max(message_len, len(message))
+        content_layout.addStretch(1)
 
         # Set minimum width
         scroll_widget.setMinimumWidth(360)
@@ -78,9 +100,14 @@ class ScrollMessageBox(QtWidgets.QDialog):
         btn.clicked.connect(self._on_copy_click)
         btn_box.addButton(btn, QtWidgets.QDialogButtonBox.NoRole)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.addWidget(scroll_widget, 1)
-        main_layout.addWidget(btn_box, 0)
+        main_layout = QtWidgets.QGridLayout(self)
+        main_layout.addWidget(wrapped_icon, 0, 0,
+            alignment=QtCore.Qt.AlignmentFlag.AlignTop,
+        )
+        main_layout.addWidget(scroll_widget, 0, 1)
+        main_layout.addWidget(btn_box, 1, 1)
+        main_layout.setRowStretch(0, 1)
+        main_layout.setRowStretch(1, 0)
 
     def _on_copy_click(self):
         clipboard = QtWidgets.QApplication.clipboard()

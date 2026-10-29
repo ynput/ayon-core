@@ -6,6 +6,7 @@ from .base import (
     ProcessContext,
     ProcessPreparationError,
     load_addons,
+    get_bundle_information,
 )
 from .interfaces import (
     IHostAddon,
@@ -35,4 +36,5 @@ __all__ = (
     "ensure_addons_are_process_context_ready",
     "ensure_addons_are_process_ready",
     "load_addons",
+    "get_bundle_information",
 )

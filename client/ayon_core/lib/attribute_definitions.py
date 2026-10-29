@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import collections
@@ -15,16 +17,25 @@ from typing import (
     Dict,
     Iterable,
     TypeVar,
+    Callable,
 )
 
 import clique
 
+from .icon_definitions import (
+    IconBase,
+    MaterialSymbolsIcon,
+    get_icon_def_from_data,
+)
+
 if typing.TYPE_CHECKING:
-    from typing import Self, Tuple, Union, TypedDict, Pattern
+    from typing import Self, Tuple, Union, TypedDict, Pattern, NotRequired
 
     class EnumItemDict(TypedDict):
         label: str
         value: Any
+        icon: NotRequired[IconBase | dict[str, str] | None]
+        tooltip: NotRequired[str | None]
 
     EnumItemsInputType = Union[
         Dict[Any, str],
@@ -320,6 +331,73 @@ class UILabelDef(UIDef):
         return self.label == other.label
 
 
+class ButtonDef(UIDef):
+    """Button definition.
+
+    UI element to allow to trigger a callback.
+    """
+    type = "button"
+
+    def __init__(
+        self,
+        key: str,
+        callback: Callable | None,
+        text: str | None = None,
+        icon: IconBase | None = None,
+        **kwargs
+    ):
+        self._callback = callback
+        if not text and not icon:
+            icon = MaterialSymbolsIcon(name="left_click")
+        self.icon = icon
+        self.text = text
+        super().__init__(key=key, **kwargs)
+
+    def get_callback(self) -> Callable | None:
+        return self._callback
+
+    def set_callback(self, callback: Callable) -> None:
+        self._callback = callback
+
+    callback = property(get_callback, set_callback)
+
+    def trigger(self) -> None:
+        self._callback()
+
+    def serialize(self) -> dict[str, Any]:
+        """Serialize object to data so it's possible to recreate it.
+
+        Serialization of button definition does not include callback function.
+            Logic after deserialization has to be handled manually.
+
+        """
+        data = super().serialize()
+        icon_data = None
+        if self.icon is not None:
+            icon_data = self.icon.to_data()
+        data["callback"] = None
+        data["icon"] = icon_data
+        data["text"] = self.text
+        return data
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> "Self":
+        """Recreate object from data.
+
+        Data can be received using 'serialize' method.
+        """
+        icon = data["icon"]
+        if isinstance(icon, dict):
+            data["icon"] = get_icon_def_from_data(icon)
+
+        return cls(**data)
+
+    def clone(self) -> "Self":
+        attr_def = super().clone()
+        attr_def.set_callback(self._callback)
+        return attr_def
+
+
 # ---------------------------------------
 # Attribute definitions should hold value
 # ---------------------------------------
@@ -429,7 +507,7 @@ class NumberDef(AbstractAttrDef):
                 return False
         elif not isinstance(value, float):
             return False
-        if self.minimum > value > self.maximum:
+        if not self.minimum <= value <= self.maximum:
             return False
         return True
 
@@ -450,7 +528,7 @@ class NumberDef(AbstractAttrDef):
     def _def_type_compare(self, other: "NumberDef") -> bool:
         return (
             self.decimals == other.decimals
-            and self.maximum == other.maximum
+            and self.minimum == other.minimum
             and self.maximum == other.maximum
         )
 
@@ -551,6 +629,9 @@ class EnumDef(AbstractAttrDef):
         placeholder (Optional[str]): Placeholder for UI purposes, only for
             multiselection enumeration.
 
+    Items defined as dictionaries can optionally define an 'icon'
+    (`IconBase` or its serialized data) and a 'tooltip' to show in UI.
+
     """
     type = "enum"
 
@@ -623,7 +704,14 @@ class EnumDef(AbstractAttrDef):
 
     def serialize(self):
         data = super().serialize()
-        data["items"] = copy.deepcopy(self.items)
+        items = []
+        for item in self.items:
+            item = copy.deepcopy(item)
+            icon = item.get("icon")
+            if isinstance(icon, IconBase):
+                item["icon"] = icon.to_data()
+            items.append(item)
+        data["items"] = items
         return data
 
     @staticmethod
@@ -633,7 +721,8 @@ class EnumDef(AbstractAttrDef):
         """Convert items to unified structure.
 
         Output is a list where each item is dictionary with 'value'
-        and 'label'.
+        and 'label'. Optional 'icon' is converted to `IconBase` if it was
+        passed as serialized icon data.
 
         ```python
         # Example output
@@ -663,8 +752,13 @@ class EnumDef(AbstractAttrDef):
                     if "value" not in item:
                         raise KeyError("Item does not contain 'value' key.")
 
+                    item = dict(item)
                     if "label" not in item:
                         item["label"] = str(item["value"])
+
+                    icon = item.get("icon")
+                    if isinstance(icon, dict):
+                        item["icon"] = get_icon_def_from_data(icon)
                 elif isinstance(item, (list, tuple)):
                     if len(item) == 2:
                         value, label = item
@@ -1011,7 +1105,7 @@ class FileDef(AbstractAttrDef):
                 elif isinstance(default, str):
                     default = FileDefItem.from_paths(
                         [default.strip()], allow_sequences
-                    )[0]
+                    )[0].to_dict()
 
                 else:
                     raise TypeError((
@@ -1047,6 +1141,12 @@ class FileDef(AbstractAttrDef):
             and self.extensions == other.extensions
             and self.allow_sequences == other.allow_sequences
         )
+
+    def serialize(self) -> Dict[str, Any]:
+        data = super().serialize()
+        # Make sure output is JSON serializable
+        data["extensions"] = sorted(self.extensions)
+        return data
 
     def is_value_valid(self, value: Any) -> bool:
         if self.single_item:

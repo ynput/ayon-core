@@ -1,6 +1,7 @@
 [project]
-name="core"
+name="ayon-core"
 description="AYON core addon."
+dynamic = ["version"]
 
 [tool.poetry.dependencies]
 markdown = "^3.4.1"
@@ -8,9 +9,10 @@ clique = "1.6.*"
 jsonschema = "^2.6.0"
 pyblish-base = "^1.8.11"
 pygments = "^2.15.0"
-speedcopy = "^2.1"
+speedcopy = "^2.2"
 six = "^1.15"
 qtawesome = "0.7.3"
+websocket-client = ">=1.7.0,<2"
 
 [ayon.runtimeDependencies]
 aiohttp-middlewares = "^2.0.0"
@@ -18,7 +20,6 @@ Click = "^8"
 OpenTimelineIO = "0.16.0"
 opencolorio = "^2.5.1,<2.6.0"
 Pillow = "9.5.0"
-websocket-client = ">=0.40.0,<2"
 fontTools = "*"
 
 [ayon.runtimeDependencies.darwin]

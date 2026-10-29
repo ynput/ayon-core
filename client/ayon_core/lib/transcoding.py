@@ -9,6 +9,7 @@ import subprocess
 import platform
 import warnings
 import functools
+from dataclasses import dataclass
 from typing import Optional
 
 import xml.etree.ElementTree
@@ -18,6 +19,7 @@ import clique
 from .execute import run_subprocess
 from .vendor_bin_utils import (
     get_ffmpeg_tool_args,
+    get_ffmpeg_available_encoders,
     get_oiio_tool_args,
     is_oiio_supported,
 )
@@ -258,7 +260,6 @@ def convert_value_by_type_name(value_type, value, logger=None):
     # - are returned as list of lists
     if value_type in ("matrix", "matrixd"):
         output = []
-        current_index = -1
         parts = value.split(",")
         parts_len = len(parts)
         if parts_len == 1:
@@ -277,12 +278,11 @@ def convert_value_by_type_name(value_type, value, logger=None):
                 output.append(float(part))
             return output
 
+        # Values are in row-major order
         for idx, item in enumerate(parts):
-            list_index = idx % divisor
-            if list_index > current_index:
-                current_index = list_index
+            if idx % divisor == 0:
                 output.append([])
-            output[list_index].append(float(item))
+            output[-1].append(float(item))
         return output
 
     if value_type == "rational2i":
@@ -385,7 +385,11 @@ def parse_oiio_xml_output(xml_string, logger=None):
     return output
 
 
-def get_review_info_by_layer_name(channel_names):
+def get_review_info_by_layer_name(
+    channel_names: list[str],
+    *,
+    review_layers: Optional[list[str]] = None
+) -> list[dict]:
     """Get channels info grouped by layer name.
 
     Finds all layers in channel names and returns list of dictionaries with
@@ -419,6 +423,7 @@ def get_review_info_by_layer_name(channel_names):
 
     Args:
         channel_names (list[str]): List of channel names.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         list[dict]: List of channels information.
@@ -426,7 +431,6 @@ def get_review_info_by_layer_name(channel_names):
 
     layer_names_order = []
     channels_by_layer_name = collections.defaultdict(dict)
-
     for channel_name in channel_names:
         layer_name = ""
         last_part = channel_name
@@ -452,11 +456,16 @@ def get_review_info_by_layer_name(channel_names):
 
         channels_by_layer_name[layer_name][channel] = channel_name
 
-    # Put empty layer or 'rgba' to the beginning of the list
-    # - if input has R, G, B, A channels they should be used for review
+    if review_layers is None:
+        review_layers = []
+
     def _sort(_layer_name: str) -> int:
-        # Prioritize "" layer name
-        # Prioritize layers with RGB channels
+        # Put empty layer or 'rgba' to the beginning of the list
+        # - if input has R, G, B, A channels they should be used for review
+        for idx, layer in enumerate(review_layers):
+            if re.match(layer, _layer_name):
+                return idx - len(review_layers)
+
         if _layer_name == "rgba":
             return 0
 
@@ -527,7 +536,11 @@ def get_review_info_by_layer_name(channel_names):
     return output
 
 
-def get_convert_rgb_channels(channel_names):
+def get_convert_rgb_channels(
+    channel_names: list[str],
+    *,
+    review_layers: Optional[list[str]] = None,
+) -> Optional[tuple[str, str, str, Optional[str]]]:
     """Get first available RGB(A) group from channels info.
 
     ## Examples
@@ -552,14 +565,16 @@ def get_convert_rgb_channels(channel_names):
 
     Args:
         channel_names (list[str]): List of channel names.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         Union[NoneType, tuple[str, str, str, Union[str, None]]]: Tuple of
             4 channel names defying channel names for R, G, B, A or None
             if there is not any layer with RGB combination.
     """
-
-    channels_info = get_review_info_by_layer_name(channel_names)
+    channels_info = get_review_info_by_layer_name(
+        channel_names, review_layers=review_layers
+    )
     for item in channels_info:
         review_channels = item["review_channels"]
         return (
@@ -571,11 +586,16 @@ def get_convert_rgb_channels(channel_names):
     return None
 
 
-def get_review_layer_name(src_filepath):
+def get_review_layer_name(
+    src_filepath: str,
+    *,
+    review_layers: Optional[list[str]] = None,
+) -> Optional[str]:
     """Find layer name that could be used for review.
 
     Args:
         src_filepath (str): Path to input file.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         Union[str, None]: Layer name of None.
@@ -594,7 +614,9 @@ def get_review_layer_name(src_filepath):
         return None
 
     channel_names = input_info["channelnames"]
-    channels_info = get_review_info_by_layer_name(channel_names)
+    channels_info = get_review_info_by_layer_name(
+        channel_names, review_layers=review_layers
+    )
     for item in channels_info:
         # Layer name can be '', when review channels are 'R', 'G', 'B'
         #   without layer
@@ -602,10 +624,18 @@ def get_review_layer_name(src_filepath):
     return None
 
 
-def should_convert_for_ffmpeg(src_filepath):
+def should_convert_for_ffmpeg(
+    src_filepath: str,
+    *,
+    review_layers: Optional[list[str]] = None,
+) -> Optional[bool]:
     """Find out if input should be converted for ffmpeg.
 
     Currently cares only about exr inputs and is based on OpenImageIO.
+
+    Args:
+        src_filepath (str): Path to input file.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         bool/NoneType: True if should be converted, False if should not and
@@ -636,7 +666,10 @@ def should_convert_for_ffmpeg(src_filepath):
 
     # Check channels
     channel_names = input_info["channelnames"]
-    review_channels = get_convert_rgb_channels(channel_names)
+    review_channels = get_convert_rgb_channels(
+        channel_names,
+        review_layers=review_layers
+    )
     if review_channels is None:
         return None
 
@@ -685,10 +718,13 @@ def _get_attributes_to_erase(
 
 
 def convert_input_paths_for_ffmpeg(
-    input_paths,
-    output_dir,
-    logger=None
-):
+    input_paths: str,
+    output_dir: str,
+    # TODO move 'review_layers' before logger
+    logger: logging.Logger = None,
+    *,
+    review_layers: Optional[list[str]] = None,
+) -> None:
     """Convert source file to format supported in ffmpeg.
 
     Can currently convert only EXRs. The input filepaths should be files
@@ -706,6 +742,7 @@ def convert_input_paths_for_ffmpeg(
         output_dir (str): Path to directory where output will be rendered.
             Must not be same as input's directory.
         logger (logging.Logger): Logger used for logging.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Raises:
         ValueError: If input filepath has extension not supported by function.
@@ -732,7 +769,9 @@ def convert_input_paths_for_ffmpeg(
         compression = "none"
 
     # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
+    input_arg, channels_arg = get_oiio_input_and_channel_args(
+        input_info, review_layers=review_layers
+    )
 
     # Find which attributes to strip
     erase_attributes: list[str] = _get_attributes_to_erase(
@@ -873,8 +912,11 @@ def get_ffmpeg_format_args(ffprobe_data, source_ffmpeg_cmd=None):
         source_ffmpeg_cmd(str): Command that created input if available.
     """
     input_format = ffprobe_data.get("format") or {}
-    if input_format.get("format_name") == "mxf":
+    format_name = input_format.get("format_name") or ""
+    if format_name == "mxf":
         return _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd)
+    if "mov" in format_name.split(","):
+        return _ffmpeg_mov_format_args(ffprobe_data)
     return []
 
 
@@ -886,6 +928,163 @@ def _ffmpeg_mxf_format_args(ffprobe_data, source_ffmpeg_cmd):
     if operational_pattern_ul == "060e2b34.04010102.0d010201.10030000":
         output.extend(["-f", "mxf_opatom"])
     return output
+
+
+def _ffmpeg_mov_format_args(ffprobe_data: dict) -> list[str]:
+    output = []
+    filepath = ffprobe_data["format"].get("filename")
+    if not filepath:
+        return output
+
+    atoms_info = _get_mov_atoms_info(filepath)
+    movflags = []
+    if atoms_info.moov_before_mdat:
+        # Keep the file streamable if source was streamable
+        movflags.append("faststart")
+    if atoms_info.has_metadata_keys:
+        # Custom metadata keys are not written without the flag
+        movflags.append("use_metadata_tags")
+
+    if movflags:
+        # Add flags (prefixed with '+') instead of replacing them, so other
+        #   '-movflags' arguments in the command are kept
+        output.extend(["-movflags", "".join(f"+{f}" for f in movflags)])
+    return output
+
+
+@dataclass
+class _MovAtomsInfo:
+    """Information about mov/mp4 file based on its atoms.
+
+    Attributes:
+        moov_before_mdat (bool): 'moov' atom is before 'mdat' atom, which
+            means the file was created with '-movflags faststart'.
+        has_metadata_keys (bool): Metadata are stored with custom keys,
+            which means the file was created with
+            '-movflags use_metadata_tags'.
+
+    """
+    moov_before_mdat: bool = False
+    has_metadata_keys: bool = False
+
+
+def _iter_mov_atoms(stream, start: int, end: int):
+    """Iterate over atoms in range of mov/mp4 file.
+
+    Only atom headers are read, the stream is moved to the end of atom
+        after each yielded atom, so content of the atom can be read
+        by the caller.
+
+    Args:
+        stream (BinaryIO): Opened mov/mp4 file.
+        start (int): Position where first atom starts.
+        end (int): Position where the parent atom (or file) ends.
+
+    Yields:
+        tuple[bytes, int, int]: Atom type, start of atom content and
+            end of atom.
+
+    """
+    position = start
+    while position + 8 <= end:
+        stream.seek(position)
+        header = stream.read(8)
+        if len(header) < 8:
+            return
+
+        size = int.from_bytes(header[:4], "big")
+        atom_type = header[4:]
+        header_size = 8
+        if size == 1:
+            # 64-bit size is stored after atom type
+            large_size = stream.read(8)
+            if len(large_size) < 8:
+                return
+            size = int.from_bytes(large_size, "big")
+            header_size = 16
+        elif size == 0:
+            # Size '0' means the atom goes to the end of parent
+            size = end - position
+
+        if size < header_size or position + size > end:
+            return
+
+        atom_end = position + size
+        yield atom_type, position + header_size, atom_end
+        position = atom_end
+
+
+def _mov_meta_has_keys(stream, start: int, end: int) -> bool:
+    # ISO 'meta' atom starts with 4 bytes of version and flags, which
+    #   are '0', QuickTime 'meta' atom starts directly with child atoms
+    stream.seek(start)
+    if stream.read(4) == b"\0\0\0\0":
+        start += 4
+
+    for atom_type, _, _ in _iter_mov_atoms(stream, start, end):
+        if atom_type == b"keys":
+            return True
+    return False
+
+
+def _mov_moov_has_metadata_keys(stream, start: int, end: int) -> bool:
+    # Metadata with custom keys are in 'moov/udta/meta' (ffmpeg) or
+    #   in 'moov/meta' (QuickTime)
+    for atom_type, atom_start, atom_end in _iter_mov_atoms(
+        stream, start, end
+    ):
+        if atom_type == b"meta":
+            if _mov_meta_has_keys(stream, atom_start, atom_end):
+                return True
+
+        elif atom_type == b"udta":
+            for child_type, child_start, child_end in _iter_mov_atoms(
+                stream, atom_start, atom_end
+            ):
+                if (
+                    child_type == b"meta"
+                    and _mov_meta_has_keys(stream, child_start, child_end)
+                ):
+                    return True
+    return False
+
+
+def _get_mov_atoms_info(filepath: str) -> _MovAtomsInfo:
+    """Get information about mov/mp4 file from its atoms.
+
+    Only atom headers are read, except for metadata atoms in 'moov' atom.
+
+    Args:
+        filepath (str): Path to mov/mp4 file.
+
+    Returns:
+        _MovAtomsInfo: Information about the file. Default values are used
+            if the file can't be read or is not a valid mov/mp4 file.
+
+    """
+    atoms_info = _MovAtomsInfo()
+    try:
+        with open(filepath, "rb") as stream:
+            file_size = os.fstat(stream.fileno()).st_size
+            mdat_found = False
+            for atom_type, atom_start, atom_end in _iter_mov_atoms(
+                stream, 0, file_size
+            ):
+                if atom_type == b"mdat":
+                    mdat_found = True
+
+                elif atom_type == b"moov":
+                    atoms_info.moov_before_mdat = not mdat_found
+                    atoms_info.has_metadata_keys = (
+                        _mov_moov_has_metadata_keys(
+                            stream, atom_start, atom_end
+                        )
+                    )
+                    break
+
+    except OSError:
+        pass
+    return atoms_info
 
 
 def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
@@ -931,6 +1130,12 @@ def get_ffmpeg_codec_args(ffprobe_data, source_ffmpeg_cmd=None, logger=None):
     # Coded DNxHD
     if codec_name == "dnxhd":
         return _ffmpeg_dnxhd_codec_args(video_stream, source_ffmpeg_cmd)
+
+    # Codec "av1"
+    if codec_name == "av1":
+        return _ffmpeg_av1_codec_args(
+            video_stream, source_ffmpeg_cmd, logger
+        )
 
     output = []
     if codec_name:
@@ -1013,6 +1218,147 @@ def _ffmpeg_h264_codec_args(stream_data, source_ffmpeg_cmd):
     return output
 
 
+# Preference order of AV1 encoders, best first. ffprobe only tells us the
+# codec is "av1"; which concrete encoder exists is build dependent, so the
+# encoder is resolved at runtime instead of being hardcoded.
+# Only software encoders are auto-selected: being listed by
+# ``ffmpeg -encoders`` means an encoder was compiled in, not that the host
+# can run it, so hardware encoders (av1_nvenc/av1_qsv) would fail at init
+# on a machine without the matching hardware. They can be added later as an
+# explicit opt-in with a runtime capability probe.
+_AV1_ENCODER_PREFERENCE = (
+    "libsvtav1",   # fast, good quality, the usual choice
+    "libaom-av1",  # reference encoder, slower but widely available
+)
+
+
+def _pick_av1_encoder():
+    """Return the best available AV1 encoder for this FFmpeg build.
+
+    Falls back to the bare ``av1`` codec (FFmpeg picks its own default)
+    if none of the preferred encoders are compiled in.
+    """
+    available = get_ffmpeg_available_encoders()
+    for encoder in _AV1_ENCODER_PREFERENCE:
+        if encoder in available:
+            return encoder
+    return "av1"
+
+
+def _default_av1_crf(stream_data):
+    """Pick a default CRF from the input resolution.
+
+    CRF is not stored in the source file and cannot be read back, so the
+    only input-derived signal is resolution. Larger frames tolerate a
+    slightly higher CRF for similar perceived quality.
+    """
+    try:
+        width = int(stream_data.get("width") or 0)
+    except (TypeError, ValueError):
+        width = 0
+    if width >= 3840:
+        return "32"
+    return "30"
+
+
+def _ffmpeg_av1_codec_args(stream_data, source_ffmpeg_cmd, logger=None):
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    encoder = _pick_av1_encoder()
+    logger.debug("Using '%s' as AV1 output encoder.", encoder)
+    output = ["-codec:v", encoder]
+
+    # '-crf' is understood by libsvtav1 and libaom-av1; '-preset' and
+    # '-svtav1-params' only by libsvtav1.
+    uses_crf = encoder in ("libsvtav1", "libaom-av1")
+    uses_preset = encoder == "libsvtav1"
+
+    # Copy only explicit quality args a studio set in ExtractReview output
+    # args. Rate-control args ('-b:v'/'-maxrate'/'-bufsize') are
+    # intentionally NOT copied: every output frame is a keyframe, so a cap
+    # meant for a long-GOP encode destroys quality.
+    copied = set()
+    if source_ffmpeg_cmd:
+        copy_args = []
+        if uses_crf:
+            copy_args.append("-crf")
+        if uses_preset:
+            copy_args.extend(["-preset", "-svtav1-params"])
+        if copy_args:
+            args = source_ffmpeg_cmd.split(" ")
+            for idx, arg in enumerate(args):
+                if arg in copy_args:
+                    output.extend([arg, args[idx + 1]])
+                    copied.add(arg.lstrip("-"))
+
+    # Defaults when the studio did not set them, driven by CRF.
+    if uses_preset and "preset" not in copied:
+        output.extend(["-preset", "8"])
+
+    if uses_crf and "crf" not in copied:
+        output.extend(["-crf", _default_av1_crf(stream_data)])
+
+    pix_fmt = stream_data.get("pix_fmt")
+    if pix_fmt:
+        output.extend(["-pix_fmt", pix_fmt])
+
+    # Make every frame a keyframe for frame-accurate scrubbing in AYON web.
+    if encoder == "libaom-av1":
+        # libaom's all-intra mode already makes every frame a keyframe;
+        # it is far faster than '-g 1' with a normal GOP setup (which can
+        # also crash newer libaom builds on longer clips).
+        output.extend(
+            ["-usage", "allintra", "-cpu-used", "6", "-row-mt", "1"]
+        )
+    else:
+        output.extend(["-g", "1"])
+
+    return output
+
+
+_DNXHD_VALID_BITRATES = {
+    (1920, 1080, False, "yuv422p10le"): (175, 185, 365, 440),
+    (1920, 1080, False, "yuv422p"): (
+        36, 45, 75, 90, 115, 120, 145, 175, 185, 220, 240, 290, 365, 440
+    ),
+    (1920, 1080, True, "yuv422p10le"): (185, 220),
+    (1920, 1080, True, "yuv422p"): (120, 145, 185, 220),
+    (1280, 720, False, "yuv422p10le"): (90, 180, 220),
+    (1280, 720, False, "yuv422p"): (60, 75, 90, 110, 120, 145, 180, 220),
+    (960, 720, False, "yuv422p"): (42, 60, 75, 115),
+    (1440, 1080, False, "yuv422p"): (63, 84, 100, 110),
+    (1440, 1080, True, "yuv422p"): (80, 90, 100, 110, 120, 145),
+}
+
+
+def _find_closest_dnxhd_bitrate(
+    src_bit_rate: str,
+    width: int,
+    height: int,
+    interlaced: bool,
+    pix_fmt: str,
+) -> str:
+    """Return the nearest valid DNxHD bitrate (in bits/sec) to src_bit_rate.
+
+    Falls back to returning src_bit_rate unmodified if no matching
+    resolution/pix_fmt entry is found in the table (encoder will then
+    raise its own error, same as before this fix).
+    """
+    key = (width, height, interlaced, pix_fmt)
+    valid_mbps = _DNXHD_VALID_BITRATES.get(key)
+    if not valid_mbps:
+        return src_bit_rate
+
+    try:
+        src_mbps = float(src_bit_rate) / 1_000_000
+    except (TypeError, ValueError):
+        return src_bit_rate
+
+    closest_mbps = min(valid_mbps, key=lambda v: abs(v - src_mbps))
+    return str(int(closest_mbps * 1_000_000))
+
+
 def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
     output = ["-codec:v", "dnxhd"]
 
@@ -1032,7 +1378,7 @@ def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
         "dnxhr_sq",
         "dnxhr_hq",
         "dnxhr_hqx",
-        "dnxhr_444"
+        "dnxhr_444",
     }
     if cleaned_profile in dnx_profiles:
         if cleaned_profile != "dnxhd":
@@ -1061,10 +1407,20 @@ def _ffmpeg_dnxhd_codec_args(stream_data, source_ffmpeg_cmd):
                 output.extend([arg, args[idx + 1]])
 
     # Add bitrate if needed
-    if bit_rate_must_be_defined and not bit_rate_defined:
-        src_bit_rate = stream_data.get("bit_rate")
-        if src_bit_rate:
-            output.extend(["-b:v", src_bit_rate])
+    src_bit_rate = stream_data.get("bit_rate")
+    width = stream_data.get("width")
+    height = stream_data.get("height")
+    if (
+        bit_rate_must_be_defined
+        and not bit_rate_defined
+        and all((pix_fmt, src_bit_rate, width, height))
+    ):
+        field_order = stream_data.get("field_order", "progressive")
+        interlaced = field_order not in ("progressive", "unknown", "")
+        fixed_bit_rate = _find_closest_dnxhd_bitrate(
+            src_bit_rate, width, height, interlaced, pix_fmt
+        )
+        output.extend(["-b:v", fixed_bit_rate])
 
     output.extend(["-g", "1"])
     return output
@@ -1193,7 +1549,9 @@ def oiio_color_convert(
     frame_padding: Optional[int] = None,
     parallel_frames: bool = False,
     logger: Optional[logging.Logger] = None,
-):
+    *,
+    review_layers: Optional[list[str]] = None,
+) -> None:
     """Transcode source file to other with colormanagement.
 
     Oiiotool also support additional arguments for transcoding.
@@ -1233,7 +1591,7 @@ def oiio_color_convert(
         parallel_frames (bool): If True, process frames in parallel inside
             the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
-
+        review_layers (Optional[list[str]]): List of reviewable layers.
     Raises:
         ValueError: if misconfigured
 
@@ -1257,7 +1615,9 @@ def oiio_color_convert(
     )
 
     # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
+    input_arg, channels_arg = get_oiio_input_and_channel_args(
+        input_info, review_layers=review_layers
+    )
 
     # Prepare subprocess arguments
     oiio_cmd = get_oiio_tool_args(
@@ -1324,45 +1684,38 @@ def oiio_color_convert(
     # Handle the different conversion cases
     # Source view and display are known
     if source_view and source_display:
-        color_convert_args = None
-        ocio_display_args = None
         if target_colorspace:
-            # This is a two-step conversion process since there's no direct
-            # display/view to colorspace command
-            # This could be a config parameter or determined from OCIO config
-            # Use temporary role space 'scene_linear'
-            color_convert_args = ("scene_linear", target_colorspace)
+            # Invert the source display/view directly into the target
+            # colorspace as a single OCIO operation. Under the hood this
+            # still goes through the OCIO config's reference space without us
+            # having to name that intermediate space ourselves, so that OCIO
+            # picks the right one - avoiding hue shifts, etc.
+            # The colorspace name is quoted because oiiotool splits
+            # modifiers on ':', so a name containing ':' would otherwise
+            # be cut off and resolve to the wrong colorspace.
+            oiio_cmd.extend([
+                f'--ociodisplay:from="{target_colorspace}"'
+                ":inverse=1:subimages=0",
+                source_display,
+                source_view,
+            ])
         elif source_display != target_display or source_view != target_view:
-            # Complete display/view pair conversion
-            # - go through a reference space
-            ocio_display_args = (target_display, target_view)
-        else:
-            logger.debug(
-                "Source and target display/view pairs are identical."
-                " No color conversion needed."
-            )
-
-        if color_convert_args or ocio_display_args:
-            # Invert source display/view so that we can go from there to the
-            # target colorspace or display/view
+            # Perform source to target display/view conversion
             oiio_cmd.extend([
                 "--ociodisplay:inverse=1:subimages=0",
                 source_display,
                 source_view,
             ])
-
-        if color_convert_args:
-            # Use colorconvert for colorspace target
-            oiio_cmd.extend([
-                "--colorconvert:subimages=0",
-                *color_convert_args
-            ])
-        elif ocio_display_args:
-            # Use ociodisplay for display/view target
             oiio_cmd.extend([
                 "--ociodisplay:subimages=0",
-                *ocio_display_args
+                target_display,
+                target_view,
             ])
+        else:
+            logger.debug(
+                "Source and target display/view pairs are identical."
+                " No color conversion needed."
+            )
 
     elif target_colorspace:
         # Standard color space to color space conversion
@@ -1388,14 +1741,16 @@ def oiio_color_convert(
 
 
 def get_rescaled_command_arguments(
-        application,
-        input_path,
-        target_width,
-        target_height,
-        target_par=None,
-        bg_color=None,
-        log=None
-):
+    application: str,
+    input_path: str,
+    target_width: int,
+    target_height: int,
+    *,
+    target_par: float = None,
+    bg_color: Optional[list[int]] = None,
+    review_layers: Optional[list[str]] = None,
+    log: Optional[logging.Logger] = None,
+) -> list[str]:
     """Get command arguments for rescaling input to target size.
 
     Args:
@@ -1408,6 +1763,7 @@ def get_rescaled_command_arguments(
         bg_color (Optional[list[int]]): List of 8bit int values for
             background color. Should be in range 0 - 255.
         log (Optional[logging.Logger]): Logger used for logging.
+        review_layers (Optional[list[str]]): List of reviewable layers.
 
     Returns:
         list[str]: List of command arguments.
@@ -1475,7 +1831,8 @@ def get_rescaled_command_arguments(
         )
         # Collect channels to export
         _, channels_arg = get_oiio_input_and_channel_args(
-            input_info, alpha_default=1.0)
+            input_info, alpha_default=1.0, review_layers=review_layers
+        )
 
         command_args.extend([
             # Tell oiiotool which channels should be put to top stack
@@ -1612,20 +1969,30 @@ def convert_color_values(application, color_value):
         )
 
 
-def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
+def get_oiio_input_and_channel_args(
+    oiio_input_info: dict,
+    alpha_default: float = None,
+    *,
+    review_layers: Optional[list[str]] = None,
+) -> tuple[str, str]:
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
             Should be output of function 'get_oiio_info_for_input' (can be
             called with 'verbose=False').
         alpha_default (float, optional): Default value for alpha channel.
+        review_layers (Optional[list[str]], optional): List of reviewable
+            layers.
 
     Returns:
         tuple[str, str]: Tuple of input and channel arguments.
 
     """
     channel_names = oiio_input_info["channelnames"]
-    review_channels = get_convert_rgb_channels(channel_names)
+    review_channels = get_convert_rgb_channels(
+        channel_names,
+        review_layers=review_layers
+    )
 
     if review_channels is None:
         raise MissingRGBAChannelsError(

@@ -133,7 +133,7 @@ class TextureCopy:
 @click.option('--path', required=True)
 def texture_copy(project, folder, path):
     t.echo("*** Running Texture tool ***")
-    t.echo(">>> Initializing avalon session ...")
+    t.echo(">>> Initializing AYON session ...")
     os.environ["AYON_PROJECT_NAME"] = project
     os.environ["AYON_FOLDER_PATH"] = folder
     TextureCopy().process(project, folder, path)

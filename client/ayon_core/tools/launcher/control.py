@@ -1,13 +1,20 @@
+from __future__ import annotations
+
+import json
+import typing
 from typing import Optional
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
-from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
+    ThumbnailsModel,
+    UserItem,
 )
 
 from .abstract import (
@@ -21,6 +28,9 @@ from .models import (
     WorkfilesModel,
 )
 
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
+
 NOT_SET = object()
 
 
@@ -28,18 +38,25 @@ class BaseLauncherController(
     AbstractLauncherFrontEnd, AbstractLauncherBackend
 ):
     def __init__(self):
-        self._project_settings = {}
         self._event_system = None
         self._log = None
 
+        self._launcher_registry = JSONSettingRegistry(
+            "launcher",
+            get_launcher_local_dir("tools")
+        )
+
         self._addons_manager = None
 
+        self._settings_model = SettingsModel()
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._actions_model = ActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -76,10 +93,34 @@ class BaseLauncherController(
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
 
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
+
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
             self._addons_manager = AddonsManager()
         return self._addons_manager
+
+    def get_grouped_host_names(self) -> list[str | None]:
+        try:
+            value = self._launcher_registry.get_item(
+                "grouped_hosts", default="[]"
+            )
+            return json.loads(value)
+        except Exception:
+            # NOTE This is future-guarding in case we'd change the stored data
+            self.log.warning("Failed to get grouped hosts", exc_info=True)
+            return []
+
+    def set_grouped_host_names(self, host_names: list[str | None]):
+        value = json.dumps(host_names)
+        self._launcher_registry.set_item("grouped_hosts", value)
 
     # Entity items for UI
     def get_project_items(self, sender=None):
@@ -87,6 +128,11 @@ class BaseLauncherController(
 
     def get_folder_type_items(self, project_name, sender=None):
         return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_project_status_items(self, project_name, sender=None):
+        return self._projects_model.get_project_status_items(
             project_name, sender
         )
 
@@ -103,16 +149,23 @@ class BaseLauncherController(
             project_name, folder_id, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     # Project settings for applications actions
     def get_project_settings(self, project_name):
-        if project_name in self._project_settings:
-            return self._project_settings[project_name]
-        if project_name:
-            settings = get_project_settings(project_name)
-        else:
-            settings = get_studio_settings()
-        self._project_settings[project_name] = settings
-        return settings
+        return self._settings_model.get_settings(project_name)
+
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
 
     # Entity for backend
     def get_project_entity(self, project_name):
@@ -169,6 +222,11 @@ class BaseLauncherController(
             task_id,
         )
 
+    def get_user_items_by_name(
+        self, project_name: Optional[str]
+    ) -> dict[str, UserItem]:
+        return self._users_model.get_user_items_by_name(project_name)
+
     # Actions
     def get_action_items(
         self, project_name, folder_id, task_id, workfile_id
@@ -208,10 +266,10 @@ class BaseLauncherController(
     def refresh(self):
         self._emit_event("controller.refresh.started")
 
-        self._project_settings = {}
-
+        self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._users_model.reset()
 
         self._actions_model.refresh()
@@ -223,7 +281,7 @@ class BaseLauncherController(
         self._emit_event("controller.refresh.actions.started")
 
         # Refresh project settings (used for actions discovery)
-        self._project_settings = {}
+        self._settings_model.reset()
         # Refresh projects - they define applications
         self._projects_model.reset()
         # Refresh actions

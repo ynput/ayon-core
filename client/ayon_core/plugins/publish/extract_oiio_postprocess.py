@@ -26,7 +26,8 @@ class ExtractOIIOPostProcess(publish.Extractor):
     """
 
     label = "OIIO Post Process"
-    order = pyblish.api.ExtractorOrder + 0.020
+    # After ExtractOIIOTranscode, before ExtractReview
+    order = pyblish.api.ExtractorOrder + 0.0195
 
     settings_category = "core"
 
@@ -36,8 +37,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
     supported_exts = {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}
 
     # Configurable by Settings
-    profiles = None
-    options = None
+    profiles = []
 
     def process(self, instance):
         if instance.data.get("farm"):
