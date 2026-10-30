@@ -27,6 +27,7 @@ from .comment import (
     AYStatusChange,
     ThumbnailLoader,
 )
+from .comment_completion import MentionModel, get_mention_model
 from .container import AYContainer
 from .label import AYLabel
 from .scroll_area import AYScrollArea
@@ -62,7 +63,11 @@ class AYActivityStream(AYContainer):
         status_definitions: Project statuses as dictionaries with ``text``,
             ``short_text``, ``icon`` and ``color`` keys, used to render
             status changes.
-        user_list: Project users, used to render user mentions.
+        user_list: Deprecated, kept for backwards compatibility. Pass the
+            users with ``mention_model`` instead. Deprecation added
+            2026/10/30 (1.10.5+dev).
+        mention_model: Users, versions and tasks to mention when editing a
+            comment, can be shared with other comment editors.
         thumbnail_loader: Non-blocking loader of thumbnails of published
             versions, called as ``(key, on_loaded)`` with the
             ``thumbnail_key`` of a publish that is not in the image cache.
@@ -108,6 +113,7 @@ class AYActivityStream(AYContainer):
         *args,
         status_definitions: list[dict[str, Any]] | None = None,
         user_list: list[User] | None = None,
+        mention_model: MentionModel | None = None,
         thumbnail_loader: ThumbnailLoader = None,
         avatar_cache: UserAvatarCache | None = None,
         variant: AYContainer.Variants = AYContainer.Variants.Low,
@@ -125,7 +131,9 @@ class AYActivityStream(AYContainer):
             **kwargs,
         )
         self._status_definitions = status_definitions or []
-        self._user_list = user_list or []
+        self._mention_model = get_mention_model(
+            self, mention_model, user_list
+        )
         self._thumbnail_loader = thumbnail_loader
         self._editable = editable
         self._compact = compact
@@ -270,19 +278,17 @@ class AYActivityStream(AYContainer):
         self._status_definitions = status_definitions
         self._recreate_rows((AYPublish, AYStatusChange))
 
-    def set_user_list(self, user_list: list[User]) -> None:
-        """Set users used to render mentions in comments.
+    def mention_model(self) -> MentionModel:
+        """Users, versions and tasks to mention when editing a comment."""
+        return self._mention_model
 
-        Rows that are already displayed are updated.
+    def set_user_list(self, user_list: list[User]) -> None:
+        """Set the users to mention when editing a comment.
 
         Args:
             user_list: Project users.
         """
-        user_list = user_list or []
-        if user_list == self._user_list:
-            return
-        self._user_list = user_list
-        self._recreate_rows((AYComment,))
+        self._mention_model.set_users(user_list)
 
     def set_message(self, text: str) -> None:
         """Show a message instead of the feed, e.g. while loading.
@@ -528,7 +534,7 @@ class AYActivityStream(AYContainer):
         return None
 
     def _create_comment(self, activity: CommentModel) -> AYComment:
-        widget = AYComment(data=activity, user_list=self._user_list)
+        widget = AYComment(data=activity, mention_model=self._mention_model)
         if self._editable:
             widget.comment_edited.connect(self.comment_edited)
             widget.comment_deleted.connect(self.comment_deleted)

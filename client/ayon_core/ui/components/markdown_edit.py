@@ -8,7 +8,7 @@ from qtpy.QtCore import QPoint, Qt, Signal
 from qtpy.QtGui import QTextCharFormat, QTextCursor, QTextDocument
 from qtpy.QtWidgets import QTextEdit
 
-from ..data_models import EntityMention, User
+from ..data_models import User
 from ..variants import QTextEditVariants
 from .checkbox_handler import (
     CHECKBOX_CHECKED_PROP,
@@ -18,7 +18,10 @@ from .checkbox_handler import (
 )
 from .comment_completion import (
     MentionCompleter,
+    MentionHighlighter,
+    MentionModel,
     apply_code_block_backgrounds,
+    get_mention_model,
     mentions_to_display,
     mentions_to_storage,
 )
@@ -36,16 +39,26 @@ class AYMarkdownEdit(AYTextEdit):
     can be toggled even in read-only mode, and mentions of users (``@``),
     versions (``@@``) and tasks (``@@@``).
 
+    What can be mentioned comes from a :class:`MentionModel`, which can be
+    shared by the editors of a context. The popup to mention is only
+    created once the text is editable.
+
+    Args:
+        *args: Forwarded to ``AYTextEdit``.
+        read_only: Display the markdown instead of editing it.
+        user_list: Deprecated, kept for backwards compatibility. Pass the
+            users with ``mention_model`` instead. Deprecation added
+            2026/10/30 (1.10.5+dev).
+        mention_model: Users, versions and tasks which can be mentioned.
+        variant: Text edit variant.
+        **kwargs: Forwarded to ``AYTextEdit``.
+
     Signals:
         checklist_changed: Emitted when a checkbox state changes.
-        mention_entities_requested: Emitted when the popup to mention a
-            version or task opens. Answer with
-            :meth:`set_mention_entities`, right away or later.
     """
 
     Variants = QTextEditVariants
     checklist_changed = Signal()
-    mention_entities_requested = Signal()
 
     # Text inserted in front of a new checkbox
     _checkbox_indent = ""
@@ -53,14 +66,17 @@ class AYMarkdownEdit(AYTextEdit):
     def __init__(
         self,
         *args,
+        read_only: bool = False,
         user_list: list[User] | None = None,
+        mention_model: MentionModel | None = None,
         variant: Variants = Variants.Default,
         **kwargs,
     ) -> None:
-        self._user_list: list[User] = user_list or []
         self._checkbox_handler: CheckboxHandler | None = None
         # Guard flag: when True, apply_code_block_backgrounds is a no-op.
         self._suppress_formatting: bool = False
+        # Popup to mention, created once the text is editable
+        self._mentions: MentionCompleter | None = None
 
         super().__init__(*args, variant=variant, **kwargs)
         # Enable mouse tracking on viewport to receive mouseMoveEvent
@@ -69,46 +85,42 @@ class AYMarkdownEdit(AYTextEdit):
         # automatic bullet lists
         self.setAutoFormatting(QTextEdit.AutoFormattingFlag.AutoAll)
 
-        self._mentions = MentionCompleter(self, self._user_list)
-        self._mentions.entities_requested.connect(
-            self.mention_entities_requested
+        self._mention_model = get_mention_model(
+            self, mention_model, user_list
         )
+        self._highlighter = MentionHighlighter(self.document())
+        self.setReadOnly(read_only)
         self.document().contentsChanged.connect(self._on_contents_changed)
 
     def _on_contents_changed(self) -> None:
         apply_code_block_backgrounds(self)
 
+    def setReadOnly(self, read_only: bool) -> None:
+        """Make the text read-only or editable with a popup to mention."""
+        super().setReadOnly(read_only)
+        if not read_only and self._mentions is None:
+            self._mentions = MentionCompleter(self, self._mention_model)
+
     # MENTIONS ---------------------------------------------------------------
+
+    def mention_model(self) -> MentionModel:
+        """Users, versions and tasks which can be mentioned."""
+        return self._mention_model
 
     def set_user_list(self, user_list: list[User]) -> None:
         """Set the users which can be mentioned with ``@``."""
-        self._user_list = user_list
-        self._mentions.set_users(user_list)
-
-    def set_mention_entities(
-        self,
-        versions: list[EntityMention] | None = None,
-        tasks: list[EntityMention] | None = None,
-    ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention.
-
-        Either up front or, to only get them when they are needed, in
-        response to :attr:`mention_entities_requested`.
-        """
-        self._mentions.set_entities(versions, tasks)
-
-    def clear_mention_entities(self) -> None:
-        """Forget the versions and tasks to mention.
-
-        Call it when they are of another context than the one commented
-        on now. They show as loading until :meth:`set_mention_entities`.
-        """
-        self._mentions.clear_entities()
+        self._mention_model.set_users(user_list)
 
     def insert_mention_trigger(self, trigger: str) -> None:
         """Type ``@``, ``@@`` or ``@@@`` at the text cursor to mention."""
+        if self._mentions is None:
+            return
         self._mentions.insert_trigger(trigger)
         self.setFocus()
+
+    def _mention_popup_visible(self) -> bool:
+        """Whether the popup to pick a mention is open."""
+        return self._mentions is not None and self._mentions.popup_visible()
 
     # MARKDOWN ---------------------------------------------------------------
 
@@ -279,7 +291,9 @@ class AYMarkdownEdit(AYTextEdit):
 
     def keyPressEvent(self, event) -> None:
         """Complete mentions and continue checklists on Enter."""
-        if self._mentions.handle_key_press(event):
+        if self._mentions is not None and self._mentions.handle_key_press(
+            event
+        ):
             event.accept()
             return
 

@@ -29,7 +29,6 @@ from qtpy.QtWidgets import QLabel, QLayout, QMessageBox, QTextEdit, QWidget
 
 from ..data_models import (
     CommentModel,
-    EntityMention,
     StatusChangeModel,
     User,
     VersionPublishModel,
@@ -39,7 +38,11 @@ from ..image_cache import ImageCache, make_activity_cache_key
 from ..style_types import get_ayon_style
 from ..utils import color_blend
 from .buttons import AYButton
-from .comment_completion import is_mention_href
+from .comment_completion import (
+    MentionModel,
+    get_mention_model,
+    is_mention_href,
+)
 from .container import AYContainer
 from .entity_thumbnail import AYEntityThumbnail
 from .gallery_dialog import GalleryDialog
@@ -424,7 +427,11 @@ class AYCommentField(AYMarkdownEdit):
         self._checkboxes_enabled: bool = True
 
         super().__init__(
-            *args, user_list=user_list, variant=variant, **kwargs
+            *args,
+            read_only=read_only,
+            user_list=user_list,
+            variant=variant,
+            **kwargs,
         )
         self.setSizeAdjustPolicy(QTextEdit.SizeAdjustPolicy.AdjustToContents)
         self.set_markdown(text)
@@ -443,7 +450,6 @@ class AYCommentField(AYMarkdownEdit):
             self.setPlaceholderText(
                 "Comment or mention with @user, @@version, @@@task..."
             )
-        self.setReadOnly(self._read_only)
 
     def get_bg_color(self, base_color: str):
         if not self._bg_color:
@@ -791,22 +797,31 @@ class AYImageAttachment(QLabel):
 
 
 class AYComment(AYContainer):
-    """Enhanced comment widget that displays images from CommentModel.files."""
+    """Enhanced comment widget that displays images from CommentModel.files.
+
+    Args:
+        *args: Forwarded to ``AYContainer``.
+        data: The comment to display.
+        user_list: Deprecated, kept for backwards compatibility. Pass the
+            users with ``mention_model`` instead. Deprecation added
+            2026/10/30 (1.10.5+dev).
+        mention_model: Users, versions and tasks which can be mentioned
+            while editing, can be shared with other comment editors.
+        **kwargs: Forwarded to ``AYContainer``.
+    """
 
     comment_deleted = Signal(object)
     comment_edited = Signal(object)
-    # The popup to mention a version or task opened
-    mention_entities_requested = Signal()
 
     def __init__(
         self,
         *args,
         data: CommentModel | None = None,
         user_list: list[User] | None = None,
+        mention_model: MentionModel | None = None,
         **kwargs,
     ):
         self._data = data if data else CommentModel()
-        self._user_list: list[User] = user_list or []
         self._bg_color = None
         self._image_widgets = {}
         self._attachments_built = False
@@ -821,6 +836,9 @@ class AYComment(AYContainer):
             layout_margin=1,
             **kwargs,
         )
+        self._mention_model = get_mention_model(
+            self, mention_model, user_list
+        )
 
         self._build()
 
@@ -829,9 +847,6 @@ class AYComment(AYContainer):
             self.update_comment()
 
         self.text_field.checklist_changed.connect(self._on_checklist_changed)
-        self.text_field.mention_entities_requested.connect(
-            self.mention_entities_requested
-        )
 
     def update_comment(self, data: CommentModel | None = None):
         prev_data = self._data
@@ -843,22 +858,6 @@ class AYComment(AYContainer):
         if not self._attachments_built or prev_data.files != self._data.files:
             self.images_container.clear()
             self._build_image_attachments()
-
-    def set_mention_entities(
-        self,
-        versions: list[EntityMention] | None = None,
-        tasks: list[EntityMention] | None = None,
-    ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention.
-
-        Either up front or in response to
-        :attr:`mention_entities_requested`.
-        """
-        self.text_field.set_mention_entities(versions, tasks)
-
-    def clear_mention_entities(self) -> None:
-        """Forget the versions and tasks, they show as loading until set."""
-        self.text_field.clear_mention_entities()
 
     def _build_top_bar(self):
         self.user_icon = AYUserImage(
@@ -942,7 +941,7 @@ class AYComment(AYContainer):
             self,
             text=self._data.comment,
             read_only=True,
-            user_list=self._user_list,
+            mention_model=self._mention_model,
             model=self._data,
             variant=AYCommentField.Variants.High,
         )

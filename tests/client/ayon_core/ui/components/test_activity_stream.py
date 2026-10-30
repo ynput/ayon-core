@@ -340,11 +340,12 @@ def test_setters_update_displayed_rows(qtbot) -> None:
     stream.set_status_definitions(list(STATUSES))
     assert stream._widgets[1][1] is new_status_row
 
-    stream.set_user_list(
-        [User(name="roy", short_name="roy", full_name="Roy", email="")]
-    )
-    assert stream._widgets[0][1] is not comment_row
+    # Users are only used to mention, rows are not created for them
+    users = [User(name="roy", short_name="roy", full_name="Roy", email="")]
+    stream.set_user_list(users)
+    assert stream._widgets[0][1] is comment_row
     assert stream._widgets[1][1] is new_status_row
+    assert stream.mention_model().get_items("@") == users
 
 
 def test_relative_date_of_a_future_date_is_just_now() -> None:

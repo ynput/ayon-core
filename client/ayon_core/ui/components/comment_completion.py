@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import logging
+import warnings
 
 from qtmaterialsymbols import get_icon, get_icon_name_char
 from qtpy.QtCore import (
@@ -296,45 +297,138 @@ class MentionCompleterDelegate(QStyledItemDelegate):
         return QSize(option.rect.width(), self.icon_size + 8)
 
 
-class MentionCompleter(QObject):
-    """Mention completion and highlighting for a QTextEdit.
+class MentionModel(QObject):
+    """Users, versions and tasks which can be mentioned in comments.
 
-    Typing ``@``, ``@@`` or ``@@@`` at the start of a word opens a popup
-    listing the users, versions or tasks which can be mentioned. The picked
-    item is inserted as a link, e.g. ``@@v003`` linking to ``version:<id>``,
-    so the document's markdown contains ``[@@v003](version:<id>)``. Use
-    :func:`mentions_to_display` and :func:`mentions_to_storage` to convert
-    from and to the markdown stored on the server.
+    One model is shared by the comment editors of a context, e.g. a comment
+    box and the comments being edited in an activity stream, so they are
+    set once instead of on each editor.
 
     The versions and tasks don't have to be known up front:
-    :attr:`entities_requested` is emitted each time the popup opens for
-    them, to answer with :meth:`set_entities` whenever they are available.
+    :attr:`entities_requested` is emitted each time an editor opens its
+    popup for them, to answer with :meth:`set_entities` whenever they are
+    available. The model does not fetch anything itself.
 
     Signals:
-        entities_requested: The popup opened to mention a version or task.
+        changed: The users, versions or tasks changed.
+        entities_requested: An editor opened its popup to mention a version
+            or task.
+    """
+
+    changed = Signal()
+    entities_requested = Signal()
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._items: dict[str, list] = {"@": [], "@@": [], "@@@": []}
+        self._entities_loading = False
+
+    def get_items(self, trigger: str) -> list[User] | list[EntityMention]:
+        """Get the users (``@``), versions (``@@``) or tasks (``@@@``)."""
+        return self._items[trigger]
+
+    def is_loading_entities(self) -> bool:
+        """Whether the versions and tasks are waited for."""
+        return self._entities_loading
+
+    def set_users(self, users: list[User] | None) -> None:
+        """Set the users which can be mentioned with ``@``."""
+        users = users or []
+        if users == self._items["@"]:
+            return
+        self._items["@"] = users
+        self.changed.emit()
+
+    def set_entities(
+        self,
+        versions: list[EntityMention] | None = None,
+        tasks: list[EntityMention] | None = None,
+    ) -> None:
+        """Set the versions (``@@``) and tasks (``@@@``) to mention.
+
+        Either up front or in response to :attr:`entities_requested`.
+        """
+        self._items["@@"] = versions or []
+        self._items["@@@"] = tasks or []
+        self._entities_loading = False
+        self.changed.emit()
+
+    def clear_entities(self) -> None:
+        """Forget the versions and tasks, e.g. of another version.
+
+        Editors show them as loading until :meth:`set_entities` is called,
+        which is asked for with :attr:`entities_requested` the next time a
+        popup opens.
+        """
+        self._items["@@"] = []
+        self._items["@@@"] = []
+        self._entities_loading = True
+        self.changed.emit()
+
+    def request_entities(self) -> None:
+        """Ask for the versions and tasks, called by the editors."""
+        self.entities_requested.emit()
+
+
+def get_mention_model(
+    parent: QObject,
+    mention_model: MentionModel | None,
+    user_list: list[User] | None,
+) -> MentionModel:
+    """Get the mention model of a widget, or create one for it.
+
+    Args:
+        parent: Widget which gets its own model if none is passed.
+        mention_model: The model passed to the widget.
+        user_list: Deprecated, users passed to the widget for backwards
+            compatibility. They are only set on a model created here.
+
+    Returns:
+        The model to use.
+    """
+    if user_list is not None:
+        warnings.warn(
+            "Argument 'user_list' is deprecated. Please pass the users with"
+            " a 'MentionModel' as 'mention_model' instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+    if mention_model is None:
+        mention_model = MentionModel(parent)
+        mention_model.set_users(user_list)
+    return mention_model
+
+
+class MentionCompleter(QObject):
+    """Mention completion for a QTextEdit.
+
+    Typing ``@``, ``@@`` or ``@@@`` at the start of a word opens a popup
+    listing the users, versions or tasks of a :class:`MentionModel`. The
+    picked item is inserted as a link, e.g. ``@@v003`` linking to
+    ``version:<id>``, so the document's markdown contains
+    ``[@@v003](version:<id>)``. Use :func:`mentions_to_display` and
+    :func:`mentions_to_storage` to convert from and to the markdown stored
+    on the server.
+
+    The versions and tasks are requested from the model each time the popup
+    opens for them.
 
     Args:
         text_edit: The QTextEdit to complete mentions in.
-        users: Users which can be mentioned.
+        model: Users, versions and tasks which can be mentioned.
     """
-
-    entities_requested = Signal()
 
     # Events which can type text, to not make it part of a mention's link
     _LEAVE_EVENTS = frozenset((
         QEvent.Type.KeyPress, QEvent.Type.InputMethod,
     ))
 
-    def __init__(
-        self, text_edit: QTextEdit, users: list[User] | None = None
-    ) -> None:
+    def __init__(self, text_edit: QTextEdit, model: MentionModel) -> None:
         super().__init__(text_edit)
         self._text_edit = text_edit
-        self._items: dict[str, list] = {"@": [], "@@": [], "@@@": []}
+        self._model = model
         # Trigger the completer model is currently populated for
         self._trigger = ""
-        # Whether the versions and tasks are waited for
-        self._entities_loading = False
         # Whether the entities were requested for the open popup
         self._entities_requested = False
 
@@ -351,49 +445,21 @@ class MentionCompleter(QObject):
         popup.setItemDelegate(MentionCompleterDelegate(popup))
         popup.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
 
-        self._highlighter = MentionHighlighter(text_edit.document())
-        self.set_users(users or [])
-
         self._completer.activated[QModelIndex].connect(self._insert_mention)
         text_edit.textChanged.connect(self._update_popup)
         # Close the popup when the text cursor leaves the mention
         text_edit.cursorPositionChanged.connect(self._update_popup)
         text_edit.installEventFilter(self)
+        model.changed.connect(self._on_model_changed)
 
-    def set_users(self, users: list[User]) -> None:
-        """Set the users which can be mentioned with ``@``."""
-        self._items["@"] = users
+    def _on_model_changed(self) -> None:
+        """Update the popup of this editor, if it is open."""
         self._trigger = ""
-
-    def set_entities(
-        self,
-        versions: list[EntityMention] | None = None,
-        tasks: list[EntityMention] | None = None,
-    ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention.
-
-        An open popup is updated, so this can be called at any time after
-        :attr:`entities_requested`.
-        """
-        self._items["@@"] = versions or []
-        self._items["@@@"] = tasks or []
-        self._entities_loading = False
-        self._trigger = ""
-        self._update_popup()
-
-    def clear_entities(self) -> None:
-        """Forget the versions and tasks, e.g. of another version.
-
-        The popup shows them as loading until :meth:`set_entities` is
-        called, which is asked for with :attr:`entities_requested` the next
-        time the popup opens.
-        """
-        self._items["@@"] = []
-        self._items["@@@"] = []
-        self._entities_loading = True
-        self._entities_requested = False
-        self._trigger = ""
-        self._update_popup()
+        if self._model.is_loading_entities():
+            # Ask for the entities of the new context
+            self._entities_requested = False
+        if self.popup_visible():
+            self._update_popup()
 
     def popup_visible(self) -> bool:
         """Whether the popup to pick a mention is open."""
@@ -548,7 +614,7 @@ class MentionCompleter(QObject):
         self._trigger = trigger
 
         model = QStandardItemModel(self._completer)
-        for item in self._items[trigger]:
+        for item in self._model.get_items(trigger):
             if isinstance(item, User):
                 text = item.full_name
             else:
@@ -559,7 +625,7 @@ class MentionCompleter(QObject):
             model.appendRow(row)
         if not model.rowCount():
             text = f"No {_MENTION_NOUNS[trigger]} to mention"
-            if trigger != "@" and self._entities_loading:
+            if trigger != "@" and self._model.is_loading_entities():
                 text = f"Loading {_MENTION_NOUNS[trigger]}..."
             row = QStandardItem(text)
             row.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -582,8 +648,11 @@ class MentionCompleter(QObject):
             # Once each time the popup opens for versions or tasks, typing
             # "@@@" passes "@@" and one answer has both of them.
             self._entities_requested = True
-            self.entities_requested.emit()
+            self._model.request_entities()
         self._populate(trigger)
+        if trigger != "@" and self._model.is_loading_entities():
+            # Keep the popup open while typing, to update it when they arrive
+            prefix = ""
         self._completer.setCompletionPrefix(prefix)
         row_count = self._completer.completionCount()
         if not row_count:
