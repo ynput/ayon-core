@@ -732,6 +732,34 @@ def test_vector_queue_renders_in_logging_thread(log_module):
     assert json.loads(queued[0])["event"] == "Data {'frame': 1}"
 
 
+def test_vector_queue_skips_records_of_sender_thread(log_module):
+    """E.g. 'urllib3' logs each request to Vector in the sender thread.
+
+    Each sent batch would cause another record to send.
+    """
+    module = log_module()
+    log_queue = queue.Queue()
+    handler = module._DroppingQueueHandler(log_queue)
+    logger = logging.getLogger("ayon_core.tests.vector_thread")
+    logger.addHandler(handler)
+    logger.propagate = False
+    try:
+        thread = threading.Thread(
+            target=logger.warning,
+            args=("Sender request",),
+            name=module._VECTOR_THREAD_NAME,
+        )
+        thread.start()
+        thread.join()
+        logger.warning("Other record")
+    finally:
+        logger.removeHandler(handler)
+
+    queued = [log_queue.get_nowait() for _ in range(log_queue.qsize())]
+    assert len(queued) == 1
+    assert "Other record" in queued[0]
+
+
 def test_vector_queue_drops_when_full(log_module):
     module = log_module()
     log_queue = queue.Queue(maxsize=1)
@@ -1497,6 +1525,41 @@ def test_log_file_filters_pyblish_by_ayon_level(
     if log_level == "DEBUG":
         expected.insert(0, "Plugin debug")
     assert _log_file_events(log_root) == expected
+
+
+@pytest.mark.parametrize("log_level", ["INFO", "DEBUG"])
+def test_log_file_filters_loggers_without_level_by_ayon_level(
+    log_module,
+    monkeypatch,
+    log_root,
+    restore_logger_levels,
+    log_level,
+):
+    """Pyblish sets root logger level to DEBUG while a plugin is processed.
+
+    Debug records of libraries without own level, e.g. 'urllib3', are not
+    written to log file unless AYON log level is DEBUG.
+    """
+    pyblish_plugin = pytest.importorskip("pyblish.plugin")
+    monkeypatch.setenv("AYON_LOG_LEVEL", log_level)
+    _enable_log_file(monkeypatch, log_root)
+    module = log_module()
+    restore_logger_levels("ayon_tests_library")
+    restore_logger_levels("ayon_tests_explicit").setLevel(logging.DEBUG)
+
+    with pyblish_plugin.logger(logging.NullHandler()):
+        logging.getLogger("ayon_tests_library.pool").debug("Library debug")
+        logging.getLogger("ayon_tests_library.pool").info("Library info")
+        logging.getLogger("ayon_tests_explicit.child").debug(
+            "Explicit debug"
+        )
+        module.Logger.get_logger("ayon_core.tests.ayon").debug("AYON debug")
+
+    events = _log_file_events(log_root)
+    assert "Library info" in events
+    assert "Explicit debug" in events
+    assert ("Library debug" in events) is (log_level == "DEBUG")
+    assert ("AYON debug" in events) is (log_level == "DEBUG")
 
 
 def test_explicit_logger_level_is_respected(

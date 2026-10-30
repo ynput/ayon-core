@@ -97,6 +97,8 @@ Log files are stored in `logs` subfolder of AYON launcher local directory (`AYON
 
 Records are sent to Vector in batches as JSON arrays. When Vector is unreachable, records are dropped and sending is paused for a while. 
 
+Log file and Vector apply `AYON_LOG_LEVEL` to records of loggers without their own level, e.g. `urllib3`, and to pyblish loggers. Pyblish sets the root logger level to `DEBUG` while a publish plugin is processed, debug records of all libraries would be written otherwise. A level set on a logger or its parent is respected.
+
 Some hosts or their plugins remove all handlers of the root logger, e.g. Component Creator plugin of MayaUSD on load. Log file and Vector handlers are added back on host context change and before each publish plugin is processed, `Logger.ensure_handlers()` does it on demand. Records logged in between are not in the log file and Vector. The console handler is not added back, the host shows records in its own console.
 
 Development and testing notes

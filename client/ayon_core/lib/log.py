@@ -593,6 +593,9 @@ VECTOR_WARN_INTERVAL = 30.0
 # Logger for problems of Vector delivery. Its records are not sent to
 # Vector, see '_DroppingQueueHandler'.
 _VECTOR_LOGGER_NAME = "ayon.vector_log"
+# Name of thread sending records to Vector. Records logged in it are not
+#   sent to Vector, see '_DroppingQueueHandler'.
+_VECTOR_THREAD_NAME = "AYONVectorSender"
 # Attribute marking handlers writing structured records (log file, Vector),
 #   see 'Logger.get_structured_handlers'. Other packages configuring
 #   logging (e.g. 'ayon_common' in ayon-launcher) should set it on their
@@ -652,12 +655,21 @@ class _DroppingQueueHandler(QueueHandler):
     and with later changes of mutable log arguments.
 
     Records about Vector delivery itself are not queued, they would only
-    add load to an endpoint that is already failing.
+    add load to an endpoint that is already failing. Records logged in
+    the sender thread are not queued either, e.g. 'urllib3' logs each
+    request to Vector. Each sent batch would cause another record to send.
     """
 
     def __init__(self, log_queue: queue.Queue):
         super().__init__(log_queue)
-        self.addFilter(lambda record: record.name != _VECTOR_LOGGER_NAME)
+        self.addFilter(self._filter_vector_records)
+
+    @staticmethod
+    def _filter_vector_records(record: logging.LogRecord) -> bool:
+        return (
+            record.name != _VECTOR_LOGGER_NAME
+            and record.threadName != _VECTOR_THREAD_NAME
+        )
 
     def prepare(self, record: logging.LogRecord) -> str:
         return self.format(record)
@@ -743,7 +755,7 @@ class VectorHTTPSender:
         self._stopping = False
         self._gave_up = False
         self._thread = threading.Thread(
-            target=self._run, name="AYONVectorSender", daemon=True
+            target=self._run, name=_VECTOR_THREAD_NAME, daemon=True
         )
         self._thread.start()
 
@@ -1169,14 +1181,46 @@ class _StderrHandler(logging.StreamHandler):
         )
 
 
-class _PyblishLevelFilter(logging.Filter):
-    """Apply AYON log level to records of pyblish loggers.
+def _has_explicit_level(name: str) -> bool:
+    """Level is set on the logger or on one of its parents below root.
 
-    Pyblish sets DEBUG level on logger of every plugin when the plugin
-    class is created, see 'pyblish.plugin.append_logger'. Without this
-    filter all debug records of publish plugins would be sent to log file
-    and Vector. Levels of other loggers are respected, e.g. DEBUG level
-    set on a single logger to debug it.
+    Looks to the logger registry directly, 'logging.getLogger' would
+    acquire the logging module lock for each record.
+
+    Args:
+        name (str): Name of the logger.
+
+    Returns:
+        bool: Level of the logger does not come from the root logger.
+
+    """
+    logger = logging.Logger.manager.loggerDict.get(name)
+    if not isinstance(logger, logging.Logger):
+        return False
+    while logger is not None and logger is not logging.root:
+        if logger.level != logging.NOTSET:
+            return True
+        logger = logger.parent
+    return False
+
+
+class _AyonLevelFilter(logging.Filter):
+    """Apply AYON log level to records of loggers without own level.
+
+    Loggers without a level use the level of the root logger. It belongs
+    to the host application and pyblish sets it to DEBUG while a publish
+    plugin is processed, see 'pyblish.plugin.logger'. Without this filter
+    debug records of all libraries (e.g. 'urllib3') would be sent to log
+    file and Vector during publishing.
+
+    Pyblish also sets DEBUG level on logger of every plugin when the plugin
+    class is created, see 'pyblish.plugin.append_logger', the AYON level
+    is applied to pyblish loggers too.
+
+    Level set on any other logger, or on its parent, is respected, e.g.
+    DEBUG level set on a single logger to debug it. Loggers from
+    'Logger.get_logger' are children of the 'AYON' logger with the AYON
+    level.
 
     Used only by log file and Vector handlers. Console shows all plugin
     records, including DEBUG, e.g. in output of farm publish jobs.
@@ -1187,9 +1231,11 @@ class _PyblishLevelFilter(logging.Filter):
         self._level = level
 
     def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= self._level:
+            return True
         if record.name == "pyblish" or record.name.startswith("pyblish."):
-            return record.levelno >= self._level
-        return True
+            return False
+        return _has_explicit_level(record.name)
 
 
 def _console_handler_enabled() -> bool:
@@ -1451,8 +1497,9 @@ class Logger:
         records, see '_console_handler_enabled'.
 
         Level of the root logger is not changed, it belongs to the host
-        application. Records of pyblish loggers are filtered by AYON log
-        level on log file and Vector handlers, see '_PyblishLevelFilter'.
+        application. Records of loggers without own level, and of pyblish
+        loggers, are filtered by AYON log level on log file and Vector
+        handlers, see '_AyonLevelFilter'.
 
         Safe to call multiple times, and safe even if another package (e.g.
         'ayon_common' in ayon-launcher) configures logging first - only the
@@ -1481,7 +1528,7 @@ class Logger:
                 cls._configure_structlog()
             )
 
-        pyblish_filter = _PyblishLevelFilter(get_log_level_from_env())
+        level_filter = _AyonLevelFilter(get_log_level_from_env())
         root_logger = logging.getLogger()
         if _console_handler_enabled():
             handler = _StderrHandler(color_formatter=color_formatter)
@@ -1519,7 +1566,7 @@ class Logger:
                     exc,
                 )
             else:
-                file_handler.addFilter(pyblish_filter)
+                file_handler.addFilter(level_filter)
                 file_handler.setFormatter(json_formatter)
                 setattr(file_handler, STRUCTURED_HANDLER_ATTR, True)
                 root_logger.addHandler(file_handler)
@@ -1534,7 +1581,7 @@ class Logger:
                 VECTOR_QUEUE_MAX_SIZE
             )
             queue_handler = _DroppingQueueHandler(log_queue)
-            queue_handler.addFilter(pyblish_filter)
+            queue_handler.addFilter(level_filter)
             queue_handler.setFormatter(json_formatter)
             setattr(queue_handler, STRUCTURED_HANDLER_ATTR, True)
             try:
