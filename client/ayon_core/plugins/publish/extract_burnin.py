@@ -24,6 +24,10 @@ from ayon_core.pipeline.publish.lib import (
     add_repre_files_for_cleanup,
     get_default_reviewable_layers
 )
+from ayon_core.plugins.publish.prepare_attach_reviewables import (
+    ATTACH_TARGET_ID_KEY,
+    get_target_version,
+)
 
 
 class ExtractBurnin(publish.Extractor):
@@ -476,6 +480,21 @@ class ExtractBurnin(publish.Extractor):
         version = instance.data.get("version")
         if version is None:
             version = context.data.get("version")
+
+        target_id = instance.data.get(ATTACH_TARGET_ID_KEY)
+        if target_id:
+            target_instance = next(
+                (
+                    candidate
+                    for candidate in context
+                    if candidate.data.get("instance_id") == target_id
+                ),
+                None,
+            )
+            if target_instance is not None:
+                target_version = get_target_version(target_instance)
+                if target_version is not None:
+                    version = target_version
 
         frame_start = instance.data.get("frameStart")
         if frame_start is None:

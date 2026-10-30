@@ -12,6 +12,27 @@ from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 ATTACH_TARGET_ID_KEY = "_attach_reviewable_target_id"
 
 
+def get_target_version(instance):
+    """Return the version that will be used by a target instance."""
+    version_entity = instance.data.get("versionEntity") or {}
+    version = version_entity.get("version")
+    if version is not None:
+        return version
+
+    anatomy_data = instance.data.get("anatomyData") or {}
+    version = anatomy_data.get("version")
+    if version is not None:
+        return version
+
+    version = instance.data.get("version")
+    if version is not None:
+        return version
+
+    latest_version = instance.data.get("latestVersion")
+    if latest_version is not None:
+        return int(latest_version) + 1
+
+
 class PrepareAttachReviewables(pyblish.api.ContextPlugin):
     """Prepare one review instance for every attached target instance."""
 
@@ -131,7 +152,7 @@ class PrepareAttachReviewables(pyblish.api.ContextPlugin):
 
         # The target version is used by anatomy templates and burnins while
         # the source review settings and representations remain unchanged.
-        target_version = target_instance.data.get("version")
+        target_version = get_target_version(target_instance)
         if target_version is not None:
             instance.data["version"] = copy.deepcopy(target_version)
 

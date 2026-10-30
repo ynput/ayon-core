@@ -4,6 +4,7 @@ import os
 import pyblish.api
 
 import ayon_core.plugins.publish.prepare_attach_reviewables as prepare
+from ayon_core.plugins.publish.extract_burnin import ExtractBurnin
 from ayon_core.plugins.publish.integrate_attach_reviewable import (
     AttachReviewables,
 )
@@ -149,6 +150,31 @@ def test_attach_prepared_instance_to_target():
 
     assert target_a.data["representations"] == expected_representations
     assert prepared_instance.data["integrate"] is False
+
+
+def test_burnin_uses_target_version_when_review_is_stale():
+    context, _, _, target_b = _create_context()
+    context.data["version"] = 2
+
+    PrepareAttachReviewables().process(context)
+    prepared_instance = next(
+        instance
+        for instance in context
+        if instance.data.get(ATTACH_TARGET_ID_KEY) == "target-b"
+    )
+    prepared_instance.data.update(
+        {
+            "comment": "",
+            "frameStart": 1,
+            "frameEnd": 1,
+            "version": 2,
+        }
+    )
+
+    burnin_data, _ = ExtractBurnin().prepare_basic_data(prepared_instance)
+
+    assert target_b.data["version"] == 8
+    assert burnin_data["version"] == 8
 
 
 def test_prepare_copies_files_to_unique_staging_dirs(tmp_path, monkeypatch):
