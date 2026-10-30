@@ -387,9 +387,7 @@ class VersionHistoryWidget(QtWidgets.QWidget):
             STATUS_ICON_ROLE,
             versions_view,
         )
-        avatar_cache = UserAvatarCache(
-            self, avatar_loader=controller.get_user_avatar_path
-        )
+        avatar_cache = UserAvatarCache(self)
         user_delegate = _UserDelegate(avatar_cache, versions_view)
         for col, delegate in (
             (self.thumbnail_col, thumbnail_delegate),

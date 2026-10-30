@@ -286,9 +286,6 @@ class FakeController:
             UserItem("libor", None, None, None, True),
         ]
 
-    def get_user_avatar_path(self, username: str) -> None:
-        return None
-
 
 @pytest.fixture
 def app() -> QtWidgets.QApplication:
@@ -299,11 +296,7 @@ def app() -> QtWidgets.QApplication:
 def no_avatars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Avatars would be downloaded from the server."""
     monkeypatch.setattr(
-        user_avatars, "_fetch_avatar_file", lambda user_name: ""
-    )
-    monkeypatch.setattr(
-        "ayon_core.tools.common_models.users.get_user_avatar_path",
-        lambda username: None,
+        user_avatars, "_fetch_avatar", lambda user_name: None
     )
 
 
@@ -698,7 +691,7 @@ def test_controller_provides_the_activity_of_versions(monkeypatch):
     assert callable(controller.get_project_status_items)
 
 
-def test_controller_uses_the_shared_thumbnail_and_avatar_caches(monkeypatch):
+def test_controller_uses_the_shared_thumbnail_cache(monkeypatch):
     from ayon_core.tools.sceneinventory.control import (
         SceneInventoryController,
     )
@@ -713,10 +706,6 @@ def test_controller_uses_the_shared_thumbnail_and_avatar_caches(monkeypatch):
         "ayon_core.tools.common_models.thumbnails.get_thumbnail_path",
         get_thumbnail_path,
     )
-    monkeypatch.setattr(
-        "ayon_core.tools.common_models.users.get_user_avatar_path",
-        lambda username: f"/avatars/{username}.png",
-    )
     controller = SceneInventoryController(host=object())
 
     assert (
@@ -724,4 +713,3 @@ def test_controller_uses_the_shared_thumbnail_and_avatar_caches(monkeypatch):
         == "/cache/thumbnail.png"
     )
     assert calls == [(PROJECT_NAME, "version", "v1", "t1")]
-    assert controller.get_user_avatar_path("roy") == "/avatars/roy.png"

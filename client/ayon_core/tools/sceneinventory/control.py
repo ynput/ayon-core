@@ -231,19 +231,6 @@ class SceneInventoryController:
         """
         return self._users_model.get_user_items(project_name)
 
-    def get_user_avatar_path(self, username):
-        """Path to the avatar image of a user.
-
-        Args:
-            username (str): Name of the user.
-
-        Returns:
-            Optional[str]: Path to the image, None if the user has no
-                avatar.
-
-        """
-        return self._users_model.get_user_avatar_path(username)
-
     # Site Sync methods
     def is_sitesync_enabled(self):
         return self._sitesync_model.is_sitesync_enabled()
