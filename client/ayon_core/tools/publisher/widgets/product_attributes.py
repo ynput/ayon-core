@@ -10,6 +10,7 @@ from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
     ButtonDef,
+    get_attr_defs_visibility,
 )
 from ayon_core.tools.attribute_defs import (
     create_widget_for_attr_def,
@@ -24,7 +25,37 @@ from ayon_core.tools.publisher.constants import (
 from .utils import CreateButtonCallback, PublishButtonCallback
 
 if typing.TYPE_CHECKING:
-    from typing import Union
+    from typing import Tuple, Union
+
+
+def _get_instances_visibility(
+    attr_defs_by_instance_id: Dict[
+        "Union[str, None]", "Tuple[List[AbstractAttrDef], Dict[str, Any]]"
+    ],
+) -> Dict[str, bool]:
+    """Resolve visibility of attribute definitions for multiple instances.
+
+    Visibility is resolved for each instance separately, using only
+    attribute definitions and values of that instance. Attribute definition
+    is visible if it is visible for any of the instances.
+
+    Args:
+        attr_defs_by_instance_id (Dict[Union[str, None], Tuple[
+            List[AbstractAttrDef], Dict[str, Any]]]): Attribute definitions
+            and values by attribute definition key per instance id.
+
+    Returns:
+        Dict[str, bool]: Visibility by attribute definition id.
+
+    """
+    visibility_by_id = {}
+    for attr_defs, values in attr_defs_by_instance_id.values():
+        for attr_id, visible in get_attr_defs_visibility(
+            attr_defs, values
+        ).items():
+            if visible or attr_id not in visibility_by_id:
+                visibility_by_id[attr_id] = visible
+    return visibility_by_id
 
 
 class _CreateAttrDefInfo:
@@ -148,8 +179,27 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         content_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         content_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
 
+        attr_defs_by_instance_id = {}
+        for attr_def, info_by_id in result:
+            for instance_id, item in info_by_id.items():
+                instance_attr_defs, instance_values = (
+                    attr_defs_by_instance_id.setdefault(
+                        instance_id, ([], {})
+                    )
+                )
+                instance_attr_defs.append(attr_def)
+                if attr_def.is_value_def:
+                    value = item["value"]
+                    if value is None:
+                        value = item["default"]
+                    instance_values[attr_def.key] = value
+        visibility_by_id = _get_instances_visibility(
+            attr_defs_by_instance_id
+        )
+
         row = 0
         for attr_def, info_by_id in result:
+            visible = visibility_by_id[attr_def.id]
             if isinstance(attr_def, ButtonDef):
                 inner_callback = CreateButtonCallback(
                     self._controller,
@@ -189,7 +239,8 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             )
             self._attr_def_info_by_id[attr_def.id] = attr_def_info
 
-            if not attr_def.visible:
+            if not visible:
+                widget.setVisible(False)
                 continue
 
             col_num = 0
@@ -386,6 +437,30 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
         row = 0
         for plugin_attr_defs in result:
+            attr_defs_by_instance_id = {
+                instance_id: ([], {})
+                for instance_id in plugin_attr_defs.instance_ids
+            }
+            for attr_def in plugin_attr_defs.attr_defs:
+                if not attr_def.is_value_def:
+                    # UI definitions are not instance specific
+                    for instance_attr_defs, _ in (
+                        attr_defs_by_instance_id.values()
+                    ):
+                        instance_attr_defs.append(attr_def)
+                    continue
+
+                for instance_id, value, _ in plugin_attr_defs.values.get(
+                    attr_def.key, []
+                ):
+                    instance_attr_defs, instance_values = (
+                        attr_defs_by_instance_id[instance_id]
+                    )
+                    instance_attr_defs.append(attr_def)
+                    instance_values[attr_def.key] = value
+            visibility_by_id = _get_instances_visibility(
+                attr_defs_by_instance_id
+            )
             for attr_def in plugin_attr_defs.attr_defs:
                 values = []
                 default_values = []
@@ -414,13 +489,15 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 widget = create_widget_for_attr_def(
                     attr_def, content_widget, handle_revert_to_default=False
                 )
-                visible_widget = attr_def.visible
+                visible_widget = visibility_by_id[attr_def.id]
                 # Hide unknown values of publish plugins
                 # - The keys in most of the cases does not represent what
                 #    would label represent
                 if isinstance(attr_def, UnknownDef):
-                    widget.setVisible(False)
                     visible_widget = False
+
+                if not visible_widget:
+                    widget.setVisible(False)
 
                 label_widget = None
                 if visible_widget:

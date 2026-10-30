@@ -20,6 +20,7 @@ from ayon_core.lib.attribute_definitions import (
     EnumDef,
     UIDef,
 )
+from ayon_core.lib.attribute_conditions import GroupCondition
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib import (
     is_func_signature_supported,
@@ -404,6 +405,32 @@ class InstanceItem:
         return cls(**data)
 
 
+def _merge_visibility_conditions(
+    attr_def_src: AbstractAttrDef, attr_def_new: AbstractAttrDef
+) -> None:
+    """Show merged attribute definition if any of the conditions is met."""
+    src_condition = attr_def_src.visibility_condition
+    new_condition = attr_def_new.visibility_condition
+    if src_condition == new_condition:
+        return
+
+    if src_condition is None or new_condition is None:
+        attr_def_src.visibility_condition = None
+        return
+
+    if (
+        isinstance(src_condition, GroupCondition)
+        and src_condition.operator == "or"
+    ):
+        if new_condition not in src_condition.conditions:
+            src_condition.conditions.append(new_condition)
+        return
+
+    attr_def_src.visibility_condition = GroupCondition(
+        [src_condition, new_condition], operator="or"
+    )
+
+
 def _merge_attr_defs(
     attr_def_src: AbstractAttrDef, attr_def_new: AbstractAttrDef
 ) -> Optional[AbstractAttrDef]:
@@ -411,6 +438,7 @@ def _merge_attr_defs(
         attr_def_src.enabled = True
     if not attr_def_src.visible and attr_def_new.visible:
         attr_def_src.visible = True
+    _merge_visibility_conditions(attr_def_src, attr_def_new)
 
     if not isinstance(attr_def_src, EnumDef):
         return None
