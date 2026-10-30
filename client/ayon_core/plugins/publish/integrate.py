@@ -704,8 +704,20 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
             # Find out first frame string value
             first_index_padded = None
+            original_basename = None
             if not is_udim and is_sequence_representation:
-                col = clique.assemble(files)[0][0]
+                # Remove extension and create collection
+                # - that is needed for removement of frame from basename
+                #   and is NOT needed for anything else
+                col = clique.assemble(
+                    [os.path.splitext(file)[0] for file in files]
+                )[0][0]
+                # Remove frame basename for sequences if frame is in template
+                if "{frame" in template:
+                    head = col.head.rstrip("._")
+                    tail = col.tail.lstrip("._")
+                    original_basename = f"{head}{tail}"
+
                 sorted_frames = tuple(sorted(col.indexes))
                 # First frame used for end value
                 first_frame = sorted_frames[0]
@@ -726,8 +738,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             repre_context = None
             transfers = []
             for src_file_name in files:
-                template_data["originalBasename"], _ = os.path.splitext(
-                    src_file_name)
+                # This still does not handle udims
+                if original_basename is None:
+                    original_basename, _ = os.path.splitext(src_file_name)
 
                 dst = path_template_obj.format_strict(template_data)
                 src = os.path.join(stagingdir, src_file_name)
@@ -735,6 +748,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 if repre_context is None:
                     repre_context = dst.used_values
 
+            template_data["originalBasename"] = original_basename
             if not is_udim and first_index_padded is not None:
                 repre_context["frame"] = first_index_padded
 
