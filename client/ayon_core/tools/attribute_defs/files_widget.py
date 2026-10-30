@@ -781,11 +781,16 @@ class FilesView(QtWidgets.QListView):
         Items dropped to other files widget are removed by that widget,
         items moved in this view are moved by model.
         """
-        indexes = [
-            index
-            for index in self.selectedIndexes()
-            if index.flags() & QtCore.Qt.ItemIsDragEnabled
-        ]
+        # Keep order of items in view, selected indexes are in order of
+        #   selection
+        indexes = sorted(
+            (
+                index
+                for index in self.selectedIndexes()
+                if index.flags() & QtCore.Qt.ItemIsDragEnabled
+            ),
+            key=lambda index: index.row()
+        )
         if not indexes:
             return
         mime_data = self.model().mimeData(indexes)
@@ -808,7 +813,6 @@ class FilesView(QtWidgets.QListView):
 
     def _create_drag_pixmap(self, indexes):
         max_rows = 5
-        indexes = sorted(indexes, key=lambda index: index.row())
         pixmaps = []
         for index in indexes[:max_rows]:
             widget = self.indexWidget(index)
