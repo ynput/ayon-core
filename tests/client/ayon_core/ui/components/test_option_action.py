@@ -11,6 +11,7 @@ with and without option boxes:
 
 from __future__ import annotations
 
+from ayon_core.style import load_stylesheet
 from ayon_core.ui.components import (
     AYButton,
     AYMenu,
@@ -219,3 +220,51 @@ def test_menu_rows_fit_ayon_painting_with_parent_stylesheet(qtbot) -> None:
     # Without enough width the label is painted into the submenu arrow
     row_width = menu.actionGeometry(submenu_action).width()
     assert row_width >= painted_size.width()
+
+
+def test_menu_rows_measure_rich_text_labels(qtbot) -> None:
+    # Labels may use the Qt rich text subset, the row must be sized by
+    # the rendered text and not by the markup.
+    menu = AYMenu()
+    qtbot.addWidget(menu)
+    plain_action = menu.addAction("Load (exr)")
+    rich_action = menu.addAction("<b>Load</b> <i>(exr)</i>")
+
+    def row_width(action: QtWidgets.QAction) -> int:
+        opt = QtWidgets.QStyleOptionMenuItem()
+        menu.initStyleOption(opt, action)
+        return get_ayon_style().sizeFromContents(
+            QtWidgets.QStyle.ContentsType.CT_MenuItem,
+            opt,
+            QtCore.QSize(0, 0),
+            menu,
+        ).width()
+
+    markup_width = menu.fontMetrics().horizontalAdvance("<b></b><i></i>")
+    width_diff = row_width(rich_action) - row_width(plain_action)
+    assert 0 <= width_diff < markup_width
+
+
+def test_rich_text_rows_with_tools_stylesheet(qtbot) -> None:
+    # Under the tools stylesheet Qt measures normal rows itself, by the
+    # label text including its markup. Widget rows are measured by the
+    # AYON style, so rich text rows are not sized by their markup.
+    parent = QtWidgets.QWidget()
+    qtbot.addWidget(parent)
+    parent.setStyleSheet(load_stylesheet())
+
+    def popup_row(label: str) -> QtCore.QRect:
+        menu = AYOptionalMenu(parent)
+        action = AYOptionalAction(label, use_option=False, parent=menu)
+        menu.addAction(action)
+        menu.popup(QtCore.QPoint(0, 0))
+        qtbot.waitExposed(menu)
+        geometry = menu.actionGeometry(action)
+        menu.close()
+        return geometry
+
+    plain_row = popup_row("Load coloured text")
+    rich_row = popup_row("Load <font color='#e5a50a'>coloured</font> text")
+
+    assert rich_row.height() == plain_row.height()
+    assert rich_row.width() == plain_row.width()

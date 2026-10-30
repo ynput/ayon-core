@@ -134,6 +134,25 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             )
         return self._icon_cache[key]
 
+    def _get_reserved_right_width(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> int:
+        """Width on the right side of the item kept free of text.
+
+        Allows subclasses to paint additional content on the far right of
+        the item without overlapping the text, which is elided earlier.
+
+        Args:
+            option: The initialized style option for the item.
+            index: The model index of the item.
+
+        Returns:
+            Reserved width in pixels.
+        """
+        return 0
+
     def initStyleOption(
         self,
         option: QtWidgets.QStyleOptionViewItem,
@@ -288,12 +307,19 @@ class ComboBoxItemDelegate(StyleMixin, QtWidgets.QStyledItemDelegate):
             text_rect = QRect(opt.rect)
             text_rect.setLeft(content_left)
             text_rect.setRight(text_rect.right() - self._padding)
+            text = opt.text
+            reserved_width = self._get_reserved_right_width(opt, index)
+            if reserved_width > 0:
+                text_rect.setRight(text_rect.right() - reserved_width)
+                text = opt.fontMetrics.elidedText(
+                    text, Qt.TextElideMode.ElideRight, text_rect.width()
+                )
             painter.setPen(text_color)
             painter.setFont(opt.font)
             painter.drawText(
                 text_rect,
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                opt.text,
+                text,
             )
 
         painter.restore()
