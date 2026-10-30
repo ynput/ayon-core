@@ -273,7 +273,7 @@ class FilesModel(QtGui.QStandardItemModel):
         """
 
         for row in range(start, end + 1):
-            index = self.index(start, end, parent_index)
+            index = self.index(row, 0, parent_index)
             item_id = index.data(ITEM_ID_ROLE)
             if item_id not in self._items_by_id:
                 self._items_by_id[item_id] = self.item(row)
@@ -751,6 +751,11 @@ class FilesWidget(QtWidgets.QFrame):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(wrapper_widget, 1)
 
+        # Handle drops from outside of the view directly, the view is in
+        #   'InternalMove' mode and ignores them. Some hosts (e.g. Houdini)
+        #   don't propagate ignored drag events to parent widgets.
+        files_view.viewport().installEventFilter(self)
+
         files_proxy_model.rowsInserted.connect(self._on_rows_inserted)
         files_proxy_model.rowsRemoved.connect(self._on_rows_removed)
         files_view.remove_requested.connect(self._on_remove_requested)
@@ -774,6 +779,32 @@ class FilesWidget(QtWidgets.QFrame):
 
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_context_menu)
+
+    def eventFilter(self, obj, event):
+        if (
+            obj is self._files_view.viewport()
+            and event.type() in (
+                QtCore.QEvent.DragEnter,
+                QtCore.QEvent.DragMove,
+                QtCore.QEvent.Drop,
+            )
+            # Internal move is handled by the view
+            and event.source() is not self._files_view
+        ):
+            event_type = event.type()
+            if event_type == QtCore.QEvent.DragEnter:
+                self.dragEnterEvent(event)
+            elif event_type == QtCore.QEvent.DragMove:
+                self.dragMoveEvent(event)
+            else:
+                self.dropEvent(event)
+                # Accept to stop propagation to this widget again, copy
+                #   action makes sure the source does not remove the items
+                if not event.isAccepted():
+                    event.setDropAction(QtCore.Qt.CopyAction)
+                    event.accept()
+            return True
+        return super().eventFilter(obj, event)
 
     def _set_multivalue(self, multivalue):
         if self._multivalue is multivalue:
@@ -972,6 +1003,10 @@ class FilesWidget(QtWidgets.QFrame):
         if self._handle_full_data_drag(full_data_value):
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
+
+    def dragMoveEvent(self, event):
+        event.ignore()
+        self.dragEnterEvent(event)
 
     def dragLeaveEvent(self, event):
         event.accept()
