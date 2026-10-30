@@ -1287,11 +1287,8 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         used_root = template_result.used_values.get("root")
         if not isinstance(used_root, dict) or len(used_root) != 1:
             return None
-        roots = anatomy.roots
-        if not isinstance(roots, dict):
-            return None
         root_name = next(iter(used_root))
-        return roots.get(root_name)
+        return anatomy.roots.get(root_name)
 
     def _get_rootless_destination(
         self,
