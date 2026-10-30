@@ -18,9 +18,12 @@ from .path_resolving import (
 )
 
 from .utils import (
+    get_workfile_on_launch_profile,
     should_use_last_workfile_on_launch,
     should_open_workfiles_tool_on_launch,
     MissingWorkdirError,
+    WorkfileOnLaunchProfile,
+    get_last_published_workfile_representation,
 
     save_workfile_info,
     save_current_workfile_to,
@@ -61,9 +64,12 @@ __all__ = (
 
     "get_comments_from_workfile_paths",
 
+    "get_workfile_on_launch_profile",
     "should_use_last_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",
     "MissingWorkdirError",
+    "WorkfileOnLaunchProfile",
+    "get_last_published_workfile_representation",
 
     "save_workfile_info",
     "save_current_workfile_to",
