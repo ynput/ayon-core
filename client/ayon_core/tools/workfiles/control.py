@@ -16,9 +16,10 @@ from ayon_core.tools.common_models import (
     HierarchyExpectedSelection,
     HierarchyModel,
     ProjectsModel,
-    UsersModel,
     WSEventsModel,
     ThumbnailsModel,
+    UsersModel,
+    ActivitiesModel,
 )
 
 from .abstract import (
@@ -41,6 +42,7 @@ if typing.TYPE_CHECKING:
         TaskTypeItem,
         StatusItem,
         UserItem,
+        ActivityItem,
     )
 
     from .abstract import (
@@ -183,8 +185,9 @@ class BaseWorkfileController(
         self._selection_model = self._create_selection_model()
         self._projects_model = self._create_projects_model()
         self._hierarchy_model = self._create_hierarchy_model()
-        self._thumbnails_model = ThumbnailsModel()
+        self._thumbnails_model = self._create_thumbnails_model()
         self._workfiles_model = self._create_workfiles_model()
+        self._activities_model = self._create_activities_model()
         self._ws_events_model = WSEventsModel(self)
 
     @property
@@ -225,6 +228,12 @@ class BaseWorkfileController(
 
     def _create_hierarchy_model(self):
         return HierarchyModel(self)
+
+    def _create_activities_model(self):
+        return ActivitiesModel()
+
+    def _create_thumbnails_model(self):
+        return ThumbnailsModel()
 
     # ----------------------------------------------------
     # Implementation of methods required for backend logic
@@ -331,6 +340,26 @@ class BaseWorkfileController(
     def get_user_items_by_name(self) -> dict[str, UserItem]:
         project_name = self.get_current_project_name()
         return self._users_model.get_user_items_by_name(project_name)
+
+    def get_user_items(self, project_name: str | None) -> list[UserItem]:
+        return self._users_model.get_user_items(project_name)
+
+    def get_activity_items(
+        self,
+        project_name: str,
+        entity_ids: list[str] | set[str],
+        limit: int = 50,
+    ) -> list[ActivityItem]:
+        return self._activities_model.get_activity_items(
+            project_name, entity_ids, limit
+        )
+
+    def get_version_thumbnail_path(
+        self, project_name: str, version_id: str, thumbnail_id: str
+    ) -> str | None:
+        return self._thumbnails_model.get_thumbnail_path(
+            project_name, "version", version_id, thumbnail_id
+        )
 
     # Host information
     def get_workfile_extensions(self) -> list[str]:

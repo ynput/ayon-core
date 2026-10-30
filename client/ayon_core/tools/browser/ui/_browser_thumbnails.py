@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import tempfile
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-import ayon_api
 from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
@@ -48,12 +46,17 @@ def _browser_card_mapper(row_data: dict) -> dict:
     }
 
 
-def _thumbnail_loader(key: str) -> str:
-    """Fetch a version thumbnail from AYON and persist it to a temp file.
+def _thumbnail_loader(key: str, controller: Any) -> str:
+    """Get a version thumbnail from the controller into the image cache.
+
+    The controller downloads the thumbnail into the thumbnails cache of
+    the machine, which is shared by all AYON tools and processes. The
+    image cache only makes it available by its key to the widgets.
 
     Args:
         key: Cache key in the form
           ``"<project_name>/<version_id>/<thumbnail_id>"``.
+        controller: Controller with ``get_version_thumbnail_path``.
 
     Returns:
         Absolute path to the saved image file, or empty string when the
@@ -67,21 +70,14 @@ def _thumbnail_loader(key: str) -> str:
         ic = ImageCache.get_instance()
 
         def _fetch() -> str:
-            log.debug("  |_ Cache miss; fetching from ayon API: %r", key)
+            log.debug("  |_ Cache miss; asking the controller: %r", key)
             project_name, version_id, thumbnail_id = key.split("/", 2)
-            content = ayon_api.get_version_thumbnail(
+            path = controller.get_version_thumbnail_path(
                 project_name, version_id, thumbnail_id
             )
-            if not content.is_valid:
-                return ""
-            ext = (
-                ".jpg"
-                if content.content_type and "jpeg" in content.content_type
-                else ".png"
-            )
-            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as fh:
-                fh.write(content.content)
-                return fh.name
+            if not path:
+                raise ValueError(f"No thumbnail for key {key!r}")
+            return path
 
         try:
             return ic.get(key, _fetch)
@@ -96,6 +92,7 @@ def _thumbnail_loader(key: str) -> str:
 
 def _make_card_async_fetcher(
     model: VisibilityAwarePaginatedTableModel,
+    controller: Any,
 ) -> Callable[[str, Callable[[str], None]], None]:
     """Return an async thumbnail fetcher for use with ``AYEntityCard``.
 
@@ -111,6 +108,7 @@ def _make_card_async_fetcher(
     Args:
         model: The paginated table model; provides the current request
             context ID via :attr:`request_id`.
+        controller: Controller with ``get_version_thumbnail_path``.
 
     Returns:
         A non-blocking fetcher callable suitable for
@@ -132,7 +130,7 @@ def _make_card_async_fetcher(
         get_task_queue().enqueue(
             AsyncTask(
                 name=f"card_thumb_{key}",
-                function=lambda k=key: _thumbnail_loader(k),
+                function=lambda k=key: _thumbnail_loader(k, controller),
                 callback=on_loaded,
                 priority=2,
                 context_id=model.request_id,
@@ -156,6 +154,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
             ``"<project>/<version_id>/<thumbnail_id>"``.
         context_id: Model request-ID used to scope the task-queue
             entry so stale tasks can be cancelled on model reset.
+        controller: Controller with ``get_version_thumbnail_path``.
         size: ``(width, height)`` dimensions for the thumbnail.
         parent: Optional parent widget.
     """
@@ -164,6 +163,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         self,
         key: str,
         context_id: str,
+        controller: Any,
         size: tuple[int, int] = (66, 32),
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
@@ -176,6 +176,7 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         )
         self._thumb_key: str = key
         self._context_id: str = context_id
+        self._controller = controller
         self._load_requested: bool = False
 
     def paintEvent(  # type: ignore[override]
@@ -214,7 +215,9 @@ class LazyThumbnailWidget(AYEntityThumbnail):
                 get_task_queue().enqueue(
                     AsyncTask(
                         name=f"thumbnail_loader_{self._thumb_key}",
-                        function=lambda: _thumbnail_loader(self._thumb_key),
+                        function=lambda: _thumbnail_loader(
+                            self._thumb_key, self._controller
+                        ),
                         callback=lambda fpath: _on_thumb_loaded(w, fpath),
                         priority=2,
                         context_id=self._context_id,
