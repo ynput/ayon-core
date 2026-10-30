@@ -1250,7 +1250,7 @@ class FilesWidget(QtWidgets.QFrame):
                 color.setAlpha(255)
             else:
                 color = get_objected_colors(
-                    "publisher", "warning"
+                    "publisher", "error"
                 ).get_qcolor()
             self._drop_colors[state] = color
         return color
