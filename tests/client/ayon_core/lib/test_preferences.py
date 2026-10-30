@@ -236,7 +236,7 @@ def test_user_preferences_refresh(monkeypatch):
     # Changed on another machine
     server.preferences[(KEY, None)] = {"visible": True}
     assert prefs.get_data() == {}
-    prefs.refresh()
+    assert prefs.refresh() is True
     assert prefs.get_data() == {"visible": True}
 
 
@@ -300,6 +300,7 @@ def test_user_preferences_while_server_is_not_reachable(
     prefs = UserPreferences(KEY)
     assert prefs.get_item("visible", default=False) is False
     assert prefs.is_stored_on_server() is None
+    assert prefs.refresh() is False
 
     # Kept for the session, but not written on this machine
     prefs.set_item("visible", True)

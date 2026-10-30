@@ -318,16 +318,24 @@ class UserPreferences(ASettingRegistry):
             self._ensure_loaded()
         return _get_server_support()
 
-    def refresh(self) -> None:
+    def refresh(self) -> bool:
         """Receive the preference again, e.g. changed on another machine.
 
         The cached items are kept if the server is not reachable.
+
+        Returns:
+            bool: Whether the preference was received. A tool that
+                replaces a whole item based on what it read should not
+                do so when it was not, e.g. a list of entries.
+
         """
         with self._lock:
             self._loaded = True
             data = self._receive_data()
-            if data is not None:
-                self._data = data
+            if data is None:
+                return False
+            self._data = data
+            return True
 
     def get_data(self) -> dict[str, Any]:
         """All items of the preference.
