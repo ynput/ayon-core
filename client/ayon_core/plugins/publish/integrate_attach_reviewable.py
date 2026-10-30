@@ -5,6 +5,10 @@ from typing import List
 from ayon_core.lib import EnumDef
 from ayon_core.pipeline import OptionalPyblishPluginMixin
 
+from ayon_core.plugins.publish.prepare_attach_reviewables import (
+    ATTACH_TARGET_ID_KEY,
+)
+
 
 class AttachReviewables(
     pyblish.api.InstancePlugin, OptionalPyblishPluginMixin
@@ -29,6 +33,11 @@ class AttachReviewables(
     settings_category = "core"
 
     def process(self, instance):
+        target_id = instance.data.get(ATTACH_TARGET_ID_KEY)
+        if target_id:
+            self._attach_to_target(instance, target_id)
+            return
+
         # TODO: Support farm.
         #  If instance is being submitted to the farm we should pass through
         #  the 'attached reviewables' metadata to the farm job
@@ -103,6 +112,30 @@ class AttachReviewables(
         # Stop integrator from trying to integrate this instance
         if attach_to:
             instance.data["integrate"] = False
+
+    def _attach_to_target(self, instance, target_id):
+        """Move prepared representations to their single target."""
+        target_instance = next(
+            (
+                _inst
+                for _inst in instance.context
+                if _inst.data.get("instance_id") == target_id
+            ),
+            None,
+        )
+        if target_instance is None:
+            self.log.warning(
+                "Attached instance id '%s' was not found in context.",
+                target_id,
+            )
+            return
+
+        representations = instance.data.get("representations", [])
+        self.log.info("Attaching prepared reviewable to %s", target_instance)
+        target_instance.data.setdefault("representations", []).extend(
+            copy.deepcopy(representations)
+        )
+        instance.data["integrate"] = False
 
     @classmethod
     def get_attr_defs_for_instance(cls, create_context, instance):
