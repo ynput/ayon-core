@@ -38,7 +38,11 @@ from ..image_cache import ImageCache, make_activity_cache_key
 from ..style_types import get_ayon_style
 from ..utils import color_blend
 from .buttons import AYButton
-from .comment_completion import MentionModel, is_mention_href
+from .comment_completion import (
+    MentionModel,
+    get_mention_model,
+    is_mention_href,
+)
 from .container import AYContainer
 from .entity_thumbnail import AYEntityThumbnail
 from .gallery_dialog import GalleryDialog
@@ -798,8 +802,9 @@ class AYComment(AYContainer):
     Args:
         *args: Forwarded to ``AYContainer``.
         data: The comment to display.
-        user_list: Users to mention while editing, used when no
-            ``mention_model`` is given.
+        user_list: Deprecated, kept for backwards compatibility. Pass the
+            users with ``mention_model`` instead. Deprecation added
+            2026/10/30 (1.10.5+dev).
         mention_model: Users, versions and tasks which can be mentioned
             while editing, can be shared with other comment editors.
         **kwargs: Forwarded to ``AYContainer``.
@@ -817,8 +822,6 @@ class AYComment(AYContainer):
         **kwargs,
     ):
         self._data = data if data else CommentModel()
-        self._user_list: list[User] = user_list or []
-        self._mention_model = mention_model
         self._bg_color = None
         self._image_widgets = {}
         self._attachments_built = False
@@ -832,6 +835,9 @@ class AYComment(AYContainer):
             layout_spacing=0,
             layout_margin=1,
             **kwargs,
+        )
+        self._mention_model = get_mention_model(
+            self, mention_model, user_list
         )
 
         self._build()
@@ -935,7 +941,6 @@ class AYComment(AYContainer):
             self,
             text=self._data.comment,
             read_only=True,
-            user_list=self._user_list,
             mention_model=self._mention_model,
             model=self._data,
             variant=AYCommentField.Variants.High,

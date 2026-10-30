@@ -27,7 +27,7 @@ from .comment import (
     AYStatusChange,
     ThumbnailLoader,
 )
-from .comment_completion import MentionModel
+from .comment_completion import MentionModel, get_mention_model
 from .container import AYContainer
 from .label import AYLabel
 from .scroll_area import AYScrollArea
@@ -63,8 +63,9 @@ class AYActivityStream(AYContainer):
         status_definitions: Project statuses as dictionaries with ``text``,
             ``short_text``, ``icon`` and ``color`` keys, used to render
             status changes.
-        user_list: Project users to mention when editing a comment, used
-            when no ``mention_model`` is given.
+        user_list: Deprecated, kept for backwards compatibility. Pass the
+            users with ``mention_model`` instead. Deprecation added
+            2026/10/30 (1.10.5+dev).
         mention_model: Users, versions and tasks to mention when editing a
             comment, can be shared with other comment editors.
         thumbnail_loader: Non-blocking loader of thumbnails of published
@@ -130,10 +131,9 @@ class AYActivityStream(AYContainer):
             **kwargs,
         )
         self._status_definitions = status_definitions or []
-        if mention_model is None:
-            mention_model = MentionModel(self)
-            mention_model.set_users(user_list)
-        self._mention_model = mention_model
+        self._mention_model = get_mention_model(
+            self, mention_model, user_list
+        )
         self._thumbnail_loader = thumbnail_loader
         self._editable = editable
         self._compact = compact

@@ -41,9 +41,15 @@ DISPLAYED = (
 )
 
 
+def _mention_model() -> MentionModel:
+    model = MentionModel()
+    model.set_users(USERS)
+    return model
+
+
 @pytest.fixture
 def editor(qtbot) -> AYTextEditor:
-    widget = AYTextEditor(num_lines=4, user_list=USERS)
+    widget = AYTextEditor(num_lines=4, mention_model=_mention_model())
     widget.mention_model().set_entities(VERSIONS, TASKS)
     qtbot.addWidget(widget)
     widget.show()
@@ -212,7 +218,7 @@ def test_ending_checklist_removes_its_checkbox(qtbot, editor):
     ids=["plain", "checklist"],
 )
 def test_comment_field_round_trip(qtbot, stored):
-    field = AYCommentField(text=stored, read_only=True, user_list=USERS)
+    field = AYCommentField(text=stored, read_only=True)
     qtbot.addWidget(field)
 
     assert "@Roy Nieterau see @@v003 for @@@compositing" in field.toPlainText()
@@ -233,7 +239,7 @@ def test_typing_next_to_loaded_mention(qtbot, editor, key):
 
 @pytest.fixture
 def text_box(qtbot) -> AYTextBox:
-    widget = AYTextBox(num_lines=4, user_list=USERS)
+    widget = AYTextBox(num_lines=4, mention_model=_mention_model())
     widget.mention_model().set_entities(VERSIONS, TASKS)
     qtbot.addWidget(widget)
     widget.show()
@@ -364,7 +370,7 @@ def test_delete_selection_with_mention(qtbot, editor):
 
 
 def test_mention_not_deleted_in_read_only_field(qtbot):
-    field = AYCommentField(text=STORED, read_only=True, user_list=USERS)
+    field = AYCommentField(text=STORED, read_only=True)
     qtbot.addWidget(field)
     text = field.toPlainText()
     qtbot.keyClick(field, Qt.Key.Key_Backspace)
@@ -437,7 +443,7 @@ def test_mentions_next_to_code_are_converted():
 
 def test_code_of_loaded_comment_is_displayed_as_is(qtbot):
     stored = "```\n[v003](version:v3id)\n```\n"
-    field = AYCommentField(text=stored, read_only=True, user_list=USERS)
+    field = AYCommentField(text=stored, read_only=True)
     qtbot.addWidget(field)
 
     assert "[v003](version:v3id)" in field.toPlainText()
@@ -538,7 +544,7 @@ def test_same_label_mentions_keep_their_own_id(qtbot, editor):
 
 def test_edit_comment_keeps_mentions(qtbot):
     data = CommentModel(comment=STORED)
-    comment = AYComment(data=data, user_list=USERS)
+    comment = AYComment(data=data, mention_model=_mention_model())
     comment.text_field.mention_model().set_entities(VERSIONS, TASKS)
     qtbot.addWidget(comment)
     comment.show()
@@ -955,7 +961,9 @@ def test_text_box_and_comment_request_entities(qtbot, text_box):
     text_box.mention_model().clear_entities()
     assert _completions(text_box.edit_field) == ["Loading versions..."]
 
-    comment = AYComment(data=CommentModel(comment="hi"), user_list=USERS)
+    comment = AYComment(
+        data=CommentModel(comment="hi"), mention_model=_mention_model()
+    )
     qtbot.addWidget(comment)
     comment.show()
     qtbot.waitExposed(comment)
@@ -976,7 +984,9 @@ def test_text_box_and_comment_request_entities(qtbot, text_box):
 
 
 def test_popup_created_when_editing_comment(qtbot):
-    comment = AYComment(data=CommentModel(comment=STORED), user_list=USERS)
+    comment = AYComment(
+        data=CommentModel(comment=STORED), mention_model=_mention_model()
+    )
     qtbot.addWidget(comment)
     assert comment.text_field._mentions is None
     # Mentions are highlighted without it
@@ -1020,7 +1030,7 @@ def test_editors_share_mention_model(qtbot):
 
 
 def test_entities_do_not_open_popup_of_other_editor(qtbot, editor):
-    other = AYTextEditor(user_list=None, mention_model=editor.mention_model())
+    other = AYTextEditor(mention_model=editor.mention_model())
     qtbot.addWidget(other)
     other.show()
     qtbot.waitExposed(other)
@@ -1034,6 +1044,26 @@ def test_entities_do_not_open_popup_of_other_editor(qtbot, editor):
     editor.mention_model().set_entities(VERSIONS[:1], TASKS)
     assert _completions(other) == ["renderMain v003"]
     assert not editor._mentions.popup_visible()
+
+
+@pytest.mark.parametrize(
+    "create_widget",
+    [
+        lambda: AYTextEditor(user_list=USERS),
+        lambda: AYTextBox(user_list=USERS),
+        lambda: AYComment(data=CommentModel(comment="hi"), user_list=USERS),
+        lambda: AYActivityStream(user_list=USERS),
+    ],
+    ids=["AYTextEditor", "AYTextBox", "AYComment", "AYActivityStream"],
+)
+def test_deprecated_user_list(qtbot, create_widget):
+    with pytest.warns(DeprecationWarning, match="user_list") as warned:
+        widget = create_widget()
+    qtbot.addWidget(widget)
+    # Not again for the widgets it creates
+    assert len(warned) == 1
+    field = getattr(widget, "text_field", widget)
+    assert field.mention_model().get_items("@") == USERS
 
 
 def _underlined(editor: AYTextEditor) -> list[str]:
@@ -1050,7 +1080,7 @@ def _underlined(editor: AYTextEditor) -> list[str]:
 
 def _paste_comment(qtbot, editor: AYTextEditor, stored: str) -> None:
     """Copy all of a displayed comment and paste it in the editor."""
-    field = AYCommentField(text=stored, read_only=True, user_list=USERS)
+    field = AYCommentField(text=stored, read_only=True)
     qtbot.addWidget(field)
     field.selectAll()
     editor.insertFromMimeData(field.createMimeDataFromSelection())

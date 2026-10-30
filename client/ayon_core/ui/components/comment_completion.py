@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import logging
+import warnings
 
 from qtmaterialsymbols import get_icon, get_icon_name_char
 from qtpy.QtCore import (
@@ -367,6 +368,35 @@ class MentionModel(QObject):
     def request_entities(self) -> None:
         """Ask for the versions and tasks, called by the editors."""
         self.entities_requested.emit()
+
+
+def get_mention_model(
+    parent: QObject,
+    mention_model: MentionModel | None,
+    user_list: list[User] | None,
+) -> MentionModel:
+    """Get the mention model of a widget, or create one for it.
+
+    Args:
+        parent: Widget which gets its own model if none is passed.
+        mention_model: The model passed to the widget.
+        user_list: Deprecated, users passed to the widget for backwards
+            compatibility. They are only set on a model created here.
+
+    Returns:
+        The model to use.
+    """
+    if user_list is not None:
+        warnings.warn(
+            "Argument 'user_list' is deprecated. Please pass the users with"
+            " a 'MentionModel' as 'mention_model' instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+    if mention_model is None:
+        mention_model = MentionModel(parent)
+        mention_model.set_users(user_list)
+    return mention_model
 
 
 class MentionCompleter(QObject):

@@ -21,6 +21,7 @@ from .comment_completion import (
     MentionHighlighter,
     MentionModel,
     apply_code_block_backgrounds,
+    get_mention_model,
     mentions_to_display,
     mentions_to_storage,
 )
@@ -45,8 +46,9 @@ class AYMarkdownEdit(AYTextEdit):
     Args:
         *args: Forwarded to ``AYTextEdit``.
         read_only: Display the markdown instead of editing it.
-        user_list: Users to mention, used when no ``mention_model`` is
-            given.
+        user_list: Deprecated, kept for backwards compatibility. Pass the
+            users with ``mention_model`` instead. Deprecation added
+            2026/10/30 (1.10.5+dev).
         mention_model: Users, versions and tasks which can be mentioned.
         variant: Text edit variant.
         **kwargs: Forwarded to ``AYTextEdit``.
@@ -83,10 +85,9 @@ class AYMarkdownEdit(AYTextEdit):
         # automatic bullet lists
         self.setAutoFormatting(QTextEdit.AutoFormattingFlag.AutoAll)
 
-        if mention_model is None:
-            mention_model = MentionModel(self)
-            mention_model.set_users(user_list)
-        self._mention_model = mention_model
+        self._mention_model = get_mention_model(
+            self, mention_model, user_list
+        )
         self._highlighter = MentionHighlighter(self.document())
         self.setReadOnly(read_only)
         self.document().contentsChanged.connect(self._on_contents_changed)
