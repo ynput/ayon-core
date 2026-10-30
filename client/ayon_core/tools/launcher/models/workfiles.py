@@ -19,10 +19,7 @@ from ayon_core.tools.launcher.abstract import (
 
 def _ignore_auto_generated_description(description: str) -> str:
     # ignore auto-generated comments
-    if description.startswith((
-        "Incremented by publishing",
-        "Auto generated",
-    )):
+    if description.startswith("Incremented by publishing"):
         return ""
     return description
 
