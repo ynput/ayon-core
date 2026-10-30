@@ -1502,6 +1502,13 @@ WarningLabel {
     background: {color:bg-view};
     padding: 2px 4px;
 }
+DropHintLabel {
+    background: {color:bg-view};
+    padding: 2px 4px;
+}
+DropHintLabel[state="invalid"] {
+    color: {color:publisher:error};
+}
 SupportLabel {
     color: {color:font-disabled};
 }

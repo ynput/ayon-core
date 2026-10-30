@@ -62,6 +62,17 @@ class WarningLabel(QtWidgets.QLabel):
     pass
 
 
+class DropHintLabel(QtWidgets.QLabel):
+    """Tells what would happen on drop while dragging over widget."""
+    def set_hint(self, state, text):
+        self.setText(text)
+        self.setToolTip(text)
+        if self.property("state") != state:
+            self.setProperty("state", state or "")
+            self.style().unpolish(self)
+            self.style().polish(self)
+
+
 class InViewButton(IconButton):
     pass
 
@@ -112,7 +123,8 @@ class DropEmpty(QtWidgets.QWidget):
     def __init__(self, single_item, allow_sequences, extensions_label, parent):
         super(DropEmpty, self).__init__(parent)
 
-        drop_label_widget = QtWidgets.QLabel("Drop files here or", self)
+        # Shows what would happen on drop while dragging
+        drop_label_widget = DropHintLabel("Drop files here or", self)
 
         browse_btn = QtWidgets.QPushButton("Browse...", self)
         browse_btn.setCursor(QtCore.Qt.PointingHandCursor)
@@ -159,6 +171,8 @@ class DropEmpty(QtWidgets.QWidget):
         self._allow_sequences = allow_sequences
         self._allowed_extensions = set()
         self._allow_folders = None
+        self._anything_allowed = True
+        self._drop_hint = ""
 
         self._drop_label_widget = drop_label_widget
         self._browse_btn = browse_btn
@@ -185,6 +199,22 @@ class DropEmpty(QtWidgets.QWidget):
         self._allow_folders = allowed
         self._update_items_label()
 
+    def set_drop_hint(self, state, text):
+        """Show what would happen on drop instead of drop label."""
+        if text == self._drop_hint:
+            return
+        self._drop_hint = text
+        self._drop_label_widget.set_hint(state, text or "Drop files here or")
+        self._update_drop_widgets()
+
+    def _update_drop_widgets(self):
+        self._drop_label_widget.setVisible(
+            self._anything_allowed or bool(self._drop_hint)
+        )
+        self._browse_btn.setVisible(
+            self._anything_allowed and not self._drop_hint
+        )
+
     def _update_items_label(self):
         allowed_items = []
         if self._allow_folders:
@@ -198,16 +228,14 @@ class DropEmpty(QtWidgets.QWidget):
         if not self._single_item:
             allowed_items = [item + "s" for item in allowed_items]
 
+        self._anything_allowed = bool(allowed_items)
+        self._update_drop_widgets()
         if not allowed_items:
-            self._drop_label_widget.setVisible(False)
-            self._browse_btn.setVisible(False)
             self._items_label_widget.setText(
                 "It is not allowed to add anything here!"
             )
             return
 
-        self._drop_label_widget.setVisible(True)
-        self._browse_btn.setVisible(True)
         items_label = "Multiple "
         if self._single_item:
             items_label = "Single "
@@ -839,6 +867,10 @@ class FilesWidget(QtWidgets.QFrame):
         message_timer.setSingleShot(True)
         message_timer.setInterval(6000)
 
+        drop_hint_label = DropHintLabel(wrapper_widget)
+        drop_hint_label.setAlignment(QtCore.Qt.AlignCenter)
+        drop_hint_label.setVisible(False)
+
         main_layout = QtWidgets.QVBoxLayout(self)
         # Leave space for drop hover border
         main_layout.setContentsMargins(2, 2, 2, 2)
@@ -879,6 +911,9 @@ class FilesWidget(QtWidgets.QFrame):
         self._remove_btn = remove_btn
         self._message_label = message_label
         self._message_timer = message_timer
+        self._drop_hint_label = drop_hint_label
+        self._drop_hint = ""
+        self._drop_preview_cache = (None, (None, ""))
 
         self._empty_widget = empty_widget
         self._files_model = files_model
@@ -899,7 +934,7 @@ class FilesWidget(QtWidgets.QFrame):
                 self._update_overlay_geometry()
             elif event.type() == QtCore.QEvent.DragLeave:
                 # Let the view handle it too
-                self._set_drop_state(None)
+                self._set_drop_preview(None, "")
 
         if (
             obj is self._files_view.viewport()
@@ -1219,16 +1254,20 @@ class FilesWidget(QtWidgets.QFrame):
             rect.right() - remove_overlay.width() - margin + 1, pos_y
         )
 
-        # Message is centered between the buttons
-        label = self._message_label
-        if label.isVisible():
-            side_width = max(browse_overlay.width(), remove_overlay.width())
-            max_width = max(0, rect.width() - (side_width + margin * 2) * 2)
+        # Message and drop hint are centered between the buttons
+        side_width = max(browse_overlay.width(), remove_overlay.width())
+        max_width = max(0, rect.width() - (side_width + margin * 2) * 2)
+        for label, full_text in (
+            (self._message_label, self._message),
+            (self._drop_hint_label, self._drop_hint),
+        ):
+            if not label.isVisible():
+                continue
             margins = label.contentsMargins()
             extra_width = margins.left() + margins.right() + 2
             metrics = label.fontMetrics()
             text = metrics.elidedText(
-                self._message, QtCore.Qt.ElideRight, max_width - extra_width
+                full_text, QtCore.Qt.ElideRight, max_width - extra_width
             )
             label.setText(text)
             width = min(
@@ -1306,61 +1345,154 @@ class FilesWidget(QtWidgets.QFrame):
     def _on_item_context_menu_request(self, pos):
         self._on_context_menu_requested(pos, True)
 
-    def _get_drag_state(self, mime_data):
-        """Drop state for dragged data.
+    def _set_drop_preview(self, state, text):
+        self._set_drop_state(state)
+        if text == self._drop_hint:
+            return
+        self._drop_hint = text
+        if text:
+            # Hint replaces message from previous drop
+            self._show_message("")
+        has_items = self._files_proxy_model.rowCount() > 0
+        self._empty_widget.set_drop_hint(
+            state, "" if has_items else text
+        )
+        self._drop_hint_label.set_hint(state, text)
+        self._drop_hint_label.setVisible(bool(text) and has_items)
+        self._update_overlay_geometry()
+
+    def _get_drop_preview(self, mime_data):
+        """Drop state and text describing what drop would do.
 
         Returns:
-            Optional[str]: 'DROP_VALID' when data can be dropped,
-                'DROP_INVALID' when files are dragged but none of them can
-                be used, None for other data.
+            tuple[Optional[str], str]: 'DROP_VALID' when data can be
+                dropped, 'DROP_INVALID' when files are dragged but none of
+                them can be used, None for other data. And hint text.
 
         """
         if self._multivalue:
-            return None
+            return None, ""
 
-        full_data_value = mime_data.data("files_widget/full_data")
-        if self._handle_full_data_drag(full_data_value):
-            return DROP_VALID
+        copy = self._copy_modifiers_enabled()
+        full_data_raw = b""
+        if mime_data.hasFormat("files_widget/full_data"):
+            full_data_raw = mime_data.data("files_widget/full_data").data()
+        urls = mime_data.urls() if mime_data.hasUrls() else []
+        # Drag move events are frequent, compute only on change
+        cache_key = (
+            full_data_raw,
+            tuple(url.toString() for url in urls),
+            copy,
+            self._files_proxy_model.rowCount() > 0,
+        )
+        if self._drop_preview_cache[0] == cache_key:
+            return self._drop_preview_cache[1]
 
-        if not mime_data.hasUrls():
-            return None
+        result = None, ""
+        full_data = None
+        if full_data_raw:
+            full_data = convert_bytes_to_json(
+                mime_data.data("files_widget/full_data")
+            )
 
-        filepaths = []
-        for url in mime_data.urls():
-            filepath = url.toLocalFile()
-            if os.path.exists(filepath):
-                filepaths.append(filepath)
+        if full_data is not None:
+            # Items from this widget are only reordered
+            if full_data["id"] != self._files_model.id:
+                labels = []
+                skipped = 0
+                for item in full_data["items"]:
+                    filepaths = [
+                        os.path.join(item["directory"], filename)
+                        for filename in item["filenames"]
+                    ]
+                    if self._files_proxy_model.filter_valid_files(filepaths):
+                        labels.append(FileDefItem.from_dict(item).label)
+                    else:
+                        skipped += 1
+                verb = "Copy" if copy else "Move"
+                result = self._format_drop_preview(verb, labels, skipped)
+                if labels and not copy:
+                    result = (
+                        result[0], result[1] + " (hold Ctrl to copy)"
+                    )
 
-        if self._files_proxy_model.are_valid_files(filepaths):
-            return DROP_VALID
-        return DROP_INVALID
+        elif urls:
+            filepaths = []
+            for url in urls:
+                filepath = url.toLocalFile()
+                if os.path.exists(filepath):
+                    filepaths.append(filepath)
+            valid_paths = self._files_proxy_model.filter_valid_files(
+                filepaths
+            )
+            labels = []
+            if valid_paths:
+                labels = [
+                    file_item.label
+                    for file_item in FileDefItem.from_value(
+                        valid_paths, self._allow_sequences
+                    )
+                ]
+            verb = "Use" if self._single_item else "Add"
+            result = self._format_drop_preview(
+                verb, labels, len(filepaths) - len(valid_paths)
+            )
+
+        self._drop_preview_cache = (cache_key, result)
+        return result
+
+    def _format_drop_preview(self, verb, labels, skipped):
+        if not labels:
+            return DROP_INVALID, "Not allowed here"
+
+        if self._single_item:
+            parts = ["{} '{}'".format(verb, labels[0])]
+            if self._files_proxy_model.rowCount() > 0:
+                parts.append("replaces current")
+            if len(labels) > 1:
+                parts.append("only first is used")
+        else:
+            parts = ["{} {} item{}".format(
+                verb, len(labels), "s" if len(labels) > 1 else ""
+            )]
+        if skipped:
+            parts.append("{} not allowed".format(skipped))
+        return DROP_VALID, ", ".join(parts)
+
+    def _get_drop_action(self, mime_data):
+        if (
+            mime_data.hasFormat("files_widget/full_data")
+            and not self._copy_modifiers_enabled()
+        ):
+            return QtCore.Qt.MoveAction
+        return QtCore.Qt.CopyAction
 
     def dragEnterEvent(self, event):
-        state = self._get_drag_state(event.mimeData())
+        state, text = self._get_drop_preview(event.mimeData())
         if state == DROP_VALID:
-            event.setDropAction(QtCore.Qt.CopyAction)
+            event.setDropAction(self._get_drop_action(event.mimeData()))
             event.accept()
         elif state == DROP_INVALID:
             # Accept enter to receive leave event that removes highlight,
             #   drop is refused in move event which follows right after
             event.accept()
-        self._set_drop_state(state)
+        self._set_drop_preview(state, text)
 
     def dragMoveEvent(self, event):
-        state = self._get_drag_state(event.mimeData())
+        state, text = self._get_drop_preview(event.mimeData())
         if state == DROP_VALID:
-            event.setDropAction(QtCore.Qt.CopyAction)
+            event.setDropAction(self._get_drop_action(event.mimeData()))
             event.accept()
         else:
             event.ignore()
-        self._set_drop_state(state)
+        self._set_drop_preview(state, text)
 
     def dragLeaveEvent(self, event):
-        self._set_drop_state(None)
+        self._set_drop_preview(None, "")
         event.accept()
 
     def dropEvent(self, event):
-        self._set_drop_state(None)
+        self._set_drop_preview(None, "")
         if self._multivalue:
             return
 
