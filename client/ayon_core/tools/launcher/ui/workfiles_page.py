@@ -36,6 +36,7 @@ HOST_NAME_ROLE = QtCore.Qt.UserRole + 4
 FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
 UPDATED_BY_ROLE = QtCore.Qt.UserRole + 6
 UPDATED_BY_LABEL_ROLE = QtCore.Qt.UserRole + 7
+DESCRIPTION_ROLE = QtCore.Qt.UserRole + 8
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -186,6 +187,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             host_name = workfile_item.host_name
             updated_by = workfile_item.updated_by
             updated_by_label = updated_by
+            description = workfile_item.description
             user_item = user_items_by_name.get(updated_by)
             if user_item is not None and user_item.full_name:
                 updated_by_label = user_item.full_name
@@ -197,6 +199,9 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item.setData(workfile_item.file_size, FILE_SIZE_ROLE)
             item.setData(updated_by, UPDATED_BY_ROLE)
             item.setData(updated_by_label, UPDATED_BY_LABEL_ROLE)
+            item.setData(description, DESCRIPTION_ROLE)
+            if description:
+                item.setData(description, QtCore.Qt.ToolTipRole)
             item.setData(0, ITEM_TYPE_ROLE)
             item.setColumnCount(self.columnCount())
             flags = QtCore.Qt.NoItemFlags
@@ -304,6 +309,7 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             FILE_SIZE_ROLE,
             UPDATED_BY_ROLE,
             UPDATED_BY_LABEL_ROLE,
+            DESCRIPTION_ROLE,
         }:
             if index.column() != 0:
                 index = index.sibling(index.row(), 0)
