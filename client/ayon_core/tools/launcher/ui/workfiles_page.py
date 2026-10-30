@@ -7,6 +7,7 @@ from typing import Optional
 import ayon_api
 from qtpy import QtCore, QtWidgets, QtGui
 
+from ayon_core.lib import MaterialSymbolsIcon
 from ayon_core.lib.icon_definitions import (
     AYONUrlIcon,
     UrlIcon,
@@ -37,6 +38,8 @@ FILE_SIZE_ROLE = QtCore.Qt.UserRole + 5
 UPDATED_BY_ROLE = QtCore.Qt.UserRole + 6
 UPDATED_BY_LABEL_ROLE = QtCore.Qt.UserRole + 7
 DESCRIPTION_ROLE = QtCore.Qt.UserRole + 8
+
+DESCRIPTION_ICON_SIZE = 16
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -435,7 +438,8 @@ class WorkfileSortFilterProxy(QtCore.QSortFilterProxyModel):
 class WorkfilesDelegate(TreeViewItemDelegate):
     """Unified delegate for the workfiles tree view.
 
-    Column 0: workfile name with middle-elide.
+    Column 0: workfile name with middle-elide, and a chat icon on the
+        right when the workfile has a description.
     Column 1: pretty-printed timestamp with the avatar of the user who
         made the last change.
     Column 2: file size in human-readable format.
@@ -458,6 +462,9 @@ class WorkfilesDelegate(TreeViewItemDelegate):
     ) -> None:
         super().__init__(parent=parent, style_model=style_model)
         self._avatar_cache = avatar_cache
+        self._description_icon = get_qt_icon(
+            MaterialSymbolsIcon(name="chat")
+        )
 
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
@@ -488,6 +495,29 @@ class WorkfilesDelegate(TreeViewItemDelegate):
             if file_size is not None:
                 text = file_size_to_string(file_size)
             option.text = text
+
+    @staticmethod
+    def _show_description_icon(index) -> bool:
+        description = index.data(DESCRIPTION_ROLE)
+        return index.column() == 0 and bool(description)
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        if self._show_description_icon(index):
+            self._paint_description_icon(painter, option)
+
+    def _get_reserved_right_width(self, option, index) -> int:
+        if self._show_description_icon(index):
+            return DESCRIPTION_ICON_SIZE + 6  # padding
+        return 0
+
+    def _paint_description_icon(self, painter, option) -> None:
+        icon_rect = QtCore.QRect(
+            0, 0, DESCRIPTION_ICON_SIZE, DESCRIPTION_ICON_SIZE
+        )
+        icon_rect.moveCenter(option.rect.center())
+        icon_rect.moveRight(option.rect.right() - 4)
+        self._description_icon.paint(painter, icon_rect)
 
 
 class WorkfilesPage(AYContainer):
