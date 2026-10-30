@@ -18,7 +18,19 @@ from ayon_core.tools.launcher.abstract import (
 
 
 def _ignore_auto_generated_description(description: str) -> str:
-    # ignore auto-generated comments
+    """Clear auto-generated comments from the description.
+
+    TODO: This is a temporary hack.
+      Filter these with an explicit or customizable state instead
+      see https://github.com/ynput/ayon-core/pull/2282#discussion_r4424589237
+
+    Args:
+        description: The description to clear.
+
+    Returns:
+        The description with the auto-generated comments cleared.
+
+    """
     if description.startswith("Incremented by publishing"):
         return ""
     return description
