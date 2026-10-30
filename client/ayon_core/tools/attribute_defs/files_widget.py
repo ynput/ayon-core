@@ -506,6 +506,9 @@ class FilesModel(QtGui.QStandardItemModel):
         for item_id in item_ids:
             item = self._items_by_id.get(item_id)
             if item:
+                # Target row moves up for each taken item above it
+                if src_row is not None and item.row() < src_row:
+                    src_row -= 1
                 self.takeRow(item.row())
                 items.append(item)
 
@@ -521,7 +524,9 @@ class FilesModel(QtGui.QStandardItemModel):
         if src_row > row_count:
             src_row = row_count
 
-        root.insertRow(src_row, items)
+        # Each item as a row, 'insertRow' would add them as columns of one
+        #   row and only first would be visible
+        root.insertRows(src_row, items)
         return True
 
 
