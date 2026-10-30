@@ -1,14 +1,25 @@
-import os
-import sys
+from __future__ import annotations
+
+import copy
+import datetime
 import getpass
+import inspect
 import logging
+import os
 import platform
 import socket
+import sys
 import time
 import threading
-import copy
+import warnings
+from contextlib import contextmanager
+from typing import Generator
 
 from . import Terminal
+from .env_tools import env_value_to_bool
+
+# force the logger to use the same format for all log levels.
+USE_STD_FMT = env_value_to_bool("AYON_USE_STD_LOG_FORMAT", default=False)
 
 
 class LogStreamHandler(logging.StreamHandler):
@@ -49,17 +60,19 @@ class LogStreamHandler(logging.StreamHandler):
         except (KeyboardInterrupt, SystemExit):
             raise
 
-        except OSError:
-            self.handleError(record)
-
         except Exception:
-            print(repr(record))
-            self.handleError(record)
+            # Logging must never break the caller. Some hosts replace
+            # 'sys.stdout' and 'sys.stderr' with streams that raise when
+            # written to from a non-main thread, in which case reporting
+            # the error through 'handleError' fails as well.
+            try:
+                self.handleError(record)
+            except Exception:
+                pass
 
 
 class LogFormatter(logging.Formatter):
-
-    DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ]'
+    DFT = "%(levelname)s >>> { %(name)s }: [ %(message)s ]"
     default_formatter = logging.Formatter(DFT)
 
     def __init__(self, formats):
@@ -86,30 +99,52 @@ class LogFormatter(logging.Formatter):
                 line_len * "=",
                 str(record.exc_info[1]),
                 line_len * "=",
-                self.formatException(record.exc_info)
+                self.formatException(record.exc_info),
             )
         return out
 
+    def formatTime(self, record: logging.LogRecord, datefmt=None) -> str:
+        return (
+            datetime.datetime.fromtimestamp(record.created)
+            .astimezone(datetime.timezone.utc)
+            .isoformat(timespec="milliseconds")
+        )
+
+
+def _deprecated_getter(func):
+    def _get_logger_deprecate(cls, name: str | None = None) -> logging.Logger:
+        if name is None:
+            warnings.warn(
+                "DEPRECATION: 'Logger.get_logger' without passed name is"
+                " deprecated and will be removed in future versions.",
+                stacklevel=2,
+            )
+            name = "__main__"
+        return func(cls, name)
+    return _get_logger_deprecate
+
 
 class Logger:
-    DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ] '
+    DFT = "%(levelname)s >>> { %(name)s }: [ %(message)s ] "
     DBG = "  - { %(name)s }: [ %(message)s ] "
     INF = ">>> [ %(message)s ] "
     WRN = "*** WRN: >>> { %(name)s }: [ %(message)s ] "
     ERR = "!!! ERR: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
     CRI = "!!! CRI: %(asctime)s >>> { %(name)s }: [ %(message)s ] "
+    STD = "%(asctime)s %(levelname)8s [%(name)s]  %(funcName)s: %(message)s"
 
     FORMAT_FILE = {
-        logging.INFO: INF,
-        logging.DEBUG: DBG,
-        logging.WARNING: WRN,
-        logging.ERROR: ERR,
-        logging.CRITICAL: CRI,
+        logging.INFO: STD if USE_STD_FMT else INF,
+        logging.DEBUG: STD if USE_STD_FMT else DBG,
+        logging.WARNING: STD if USE_STD_FMT else WRN,
+        logging.ERROR: STD if USE_STD_FMT else ERR,
+        logging.CRITICAL: STD if USE_STD_FMT else CRI,
     }
 
     # Is static class initialized
     initialized = False
     _init_lock = threading.Lock()
+    _root_logger = None
 
     # Logging level - AYON_LOG_LEVEL
     log_level = None
@@ -120,27 +155,22 @@ class Logger:
     _process_name = None
 
     @classmethod
-    def get_logger(cls, name=None):
+    @_deprecated_getter
+    def get_logger(cls, name: str) -> logging.Logger:
         if not cls.initialized:
             cls.initialize()
 
         logger = logging.getLogger(name or "__main__")
-
         logger.setLevel(cls.log_level)
-
-        add_console_handler = True
-
-        for handler in logger.handlers:
-            if isinstance(handler, LogStreamHandler):
-                add_console_handler = False
-
-        if add_console_handler:
-            logger.addHandler(cls._get_console_handler())
-
-        # Do not propagate logs to root logger
-        logger.propagate = False
+        logger.parent = cls._root_logger
 
         return logger
+
+    @classmethod
+    def get_root_logger(cls) -> logging.Logger:
+        if not cls.initialized:
+            cls.initialize()
+        return cls._root_logger
 
     @classmethod
     def _get_console_handler(cls):
@@ -178,6 +208,11 @@ class Logger:
             else:
                 log_level = 20
         cls.log_level = int(log_level)
+        root_logger = logging.getLogger("AYON")
+        root_logger.propagate = False
+        root_logger.setLevel(cls.log_level)
+        root_logger.addHandler(cls._get_console_handler())
+        cls._root_logger = root_logger
 
         # Mark as initialized
         cls.initialized = True
@@ -207,7 +242,7 @@ class Logger:
             "hostip": host_ip,
             "username": getpass.getuser(),
             "system_name": platform.system(),
-            "process_name": process_name
+            "process_name": process_name,
         }
         return copy.deepcopy(cls.process_data)
 
@@ -236,6 +271,7 @@ class Logger:
         if not process_name:
             try:
                 import psutil
+
                 process = psutil.Process(os.getpid())
                 process_name = process.name()
 
@@ -247,3 +283,51 @@ class Logger:
 
         cls._process_name = process_name
         return cls._process_name
+
+
+# Dedicated logger for timing with a concise format
+_log_timing_enabled = env_value_to_bool("AYON_CORE_TIMERS")
+_timing_logger = Logger.get_logger("ayon-core-timers")
+_timing_logger.setLevel(logging.INFO)
+
+
+@contextmanager
+def log_timing(message: str) -> Generator[None, None, None]:
+    """Context manager to log the execution time of a code block.
+
+    Args:
+        message (str): Description of the operation being timed.
+
+    Yields:
+        None
+
+    Example:
+        with log_timing("Loading activities"):
+            # Your code here
+            data = fetch_data()
+    """
+
+    if not _log_timing_enabled:
+        yield
+        return
+
+    # Get the caller's function name with simple error handling
+    func_name = "unknown"
+    try:
+        frame = inspect.currentframe()
+        if frame and frame.f_back and frame.f_back.f_back:
+            func_name = frame.f_back.f_back.f_code.co_name
+    except (AttributeError, ValueError):
+        pass  # Use default "unknown" if inspection fails
+
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        elapsed = time.perf_counter() - start
+        _timing_logger.info(
+            "TIMER:  %s :: %s took %.3f seconds",
+            func_name,
+            message,
+            elapsed,
+        )

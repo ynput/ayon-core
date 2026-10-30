@@ -123,9 +123,9 @@ def should_use_last_workfile_on_launch(
         return default_output
 
     filter_data = {
-        "tasks": task_name,
+        "task_names": task_name,
         "task_types": task_type,
-        "hosts": host_name
+        "host_names": host_name,
     }
     matching_item = filter_profiles(profiles, filter_data)
 
@@ -183,9 +183,9 @@ def should_open_workfiles_tool_on_launch(
         return default_output
 
     filter_data = {
-        "tasks": task_name,
+        "task_names": task_name,
         "task_types": task_type,
-        "hosts": host_name
+        "host_names": host_name,
     }
     matching_item = filter_profiles(profiles, filter_data)
 
@@ -538,7 +538,7 @@ def save_next_version(
             host.name,
             task_name=task_entity["name"],
             task_type=task_entity["taskType"],
-            product_type="workfile"
+            product_base_type="workfile",
         )
 
     # Re-use comment from the current workfile if is not passed in
@@ -665,7 +665,7 @@ def copy_workfile_to_context(
                 host.name,
                 task_name=task_entity["name"],
                 task_type=task_entity["taskType"],
-                product_type="workfile"
+                product_base_type="workfile",
             )
 
     task_type = task_entity["taskType"]

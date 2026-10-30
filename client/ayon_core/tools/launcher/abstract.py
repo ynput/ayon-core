@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import typing
 from typing import Optional, Any
 
 from ayon_core.addon import AddonsManager
@@ -11,7 +12,11 @@ from ayon_core.tools.common_models import (
     FolderTypeItem,
     TaskItem,
     TaskTypeItem,
+    UserItem,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 
 @dataclass
@@ -34,6 +39,7 @@ class ActionItem:
         action_type (Literal["webaction", "local"]): Type of action.
         identifier (str): Unique identifier of action item.
         order (int): Action ordering.
+        suborder (int): Internal ordering used for webactions order.
         label (str): Action label.
         variant_label (Optional[str]): Variant label, full label is
             concatenated with space. Actions are grouped under single
@@ -49,6 +55,7 @@ class ActionItem:
     action_type: str
     identifier: str
     order: int
+    suborder: int
     label: str
     variant_label: Optional[str]
     full_label: str
@@ -63,8 +70,12 @@ class WorkfileItem:
     workfile_id: str
     filename: str
     exists: bool
-    icon: Optional[str]
-    version: Optional[int]
+    host_name: str | None
+    icon: str | None
+    version: int | None
+    updated_at_time: float | None
+    file_size: int | None = None
+    updated_by: str | None = None
 
 
 class AbstractLauncherCommon(ABC):
@@ -156,6 +167,68 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 
 
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
+    @abstractmethod
+    def process_server_events(self) -> None:
+        """Process AYON server events received via websocket.
+
+        Server events are received in a background thread and are queued.
+        This method must be called from the main (UI) thread periodically,
+        the queued events are emitted as controller events:
+        - "ayon.connection.opened"
+        - "ayon.connection.closed"
+        - "ayon.auth.failed"
+        - "ayon.server.restart"
+
+        """
+        pass
+
+    @abstractmethod
+    def check_server_available(self) -> bool:
+        """Check if server is available.
+
+        Request to server is sent only if the connection state is not
+        known yet. Starts listening to server events, so
+        "ayon.connection.opened" is emitted once connection is established.
+
+        Can be used to postpone refresh of UI until the server is available.
+
+        Returns:
+            bool: 'False' if server is not available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_server_connection_state(self) -> bool | None:
+        """Server connection state.
+
+        Returns:
+            bool | None: 'True' if connected, 'False' if disconnected
+                and 'None' if state is not known yet.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
+
+    @abstractmethod
+    def get_grouped_host_names(self) -> list[str | None]:
+        """Get list of host names that will group workfiles."""
+
+    @abstractmethod
+    def set_grouped_host_names(self, host_names: list[str | None]):
+        """Set list of host names that will group workfiles."""
+
     # Entity items for UI
     @abstractmethod
     def get_project_items(
@@ -260,6 +333,33 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Returns:
             list[TaskItem]: Minimum possible information needed
                 for visualisation of tasks.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, Optional[str]]:
+        """Get paths to thumbnails of entities.
+
+        Thumbnails that are not cached yet are downloaded from server, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (str): Project name.
+            entity_type (str): Entity type, e.g. 'folder' or 'task'.
+            entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
+
+        Returns:
+            dict[str, Optional[str]]: Thumbnail path by entity id.
 
         """
         pass
@@ -509,6 +609,24 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             list[WorkfileItem]: List of workfile items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_user_items_by_name(
+        self, project_name: Optional[str]
+    ) -> dict[str, UserItem]:
+        """Get user items of a project.
+
+        Users are queried from the server if they are not cached, so
+        the method should not be called from the main thread.
+
+        Args:
+            project_name (Optional[str]): Project name.
+
+        Returns:
+            dict[str, UserItem]: User items by username.
 
         """
         pass

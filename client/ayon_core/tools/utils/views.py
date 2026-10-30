@@ -6,6 +6,10 @@ from qtpy import QtWidgets, QtCore, QtGui
 class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setIndentation(20)
+
     def mousePressEvent(self, event):
         index = self.indexAt(event.pos())
         if not index.isValid():
@@ -38,6 +42,8 @@ class TreeView(QtWidgets.QTreeView):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setIndentation(20)
+
         self._deselectable = False
 
         self._flick_charm_activated = False

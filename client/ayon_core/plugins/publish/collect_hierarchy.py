@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pyblish.api
 import ayon_api
 
@@ -36,6 +38,7 @@ class CollectHierarchy(
     settings_category = "core"
 
     edit_shot_attributes_on_update = True
+    skip_shot_attributes_on_update: list[str] = []
 
     @classmethod
     def get_attr_defs_for_context(cls, create_context):
@@ -46,15 +49,6 @@ class CollectHierarchy(
                 default=cls.edit_shot_attributes_on_update
             )
         ]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        cls.edit_shot_attributes_on_update = (
-            project_settings
-                ["core"]
-                ["CollectHierarchy"]
-                ["edit_shot_attributes_on_update"]
-        )
 
     def _get_shot_instances(self, context):
         """Get shot instances from context.
@@ -68,11 +62,13 @@ class CollectHierarchy(
         shot_instances = []
         for instance in context:
             # shot data dict
-            product_type = instance.data["productType"]
+            product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data["productType"]
             families = instance.data["families"]
 
             # exclude other families then "shot" with intersection
-            if "shot" not in (families + [product_type]):
+            if "shot" not in (families + [product_base_type]):
                 self.log.debug("Skipping not a shot: {}".format(families))
                 continue
 
@@ -137,6 +133,10 @@ class CollectHierarchy(
         existing_entities = self.get_existing_folder_entities(
             project_name, shot_instances)
 
+        skip_shot_attributes_on_update: set[str] = set(
+            self.skip_shot_attributes_on_update
+        )
+
         for instance in shot_instances:
             folder_path = instance.data["folderPath"]
             self.log.debug(
@@ -155,9 +155,12 @@ class CollectHierarchy(
             # we need to check if the shot entity already exists
             # and if not the attributes needs to be added in case the option
             # is disabled by settings
+
+            # Add attributes for new shots or update existing shots if enabled
+            folder_entity = existing_entities.get(folder_path)
             if (
-                existing_entities.get(folder_path)
-                and edit_shot_attributes_on_update
+                (folder_entity and edit_shot_attributes_on_update)
+                or not folder_entity
             ):
                 for shot_attr in SHOT_ATTRS:
                     attr_value = instance.data.get(shot_attr)
@@ -169,11 +172,18 @@ class CollectHierarchy(
                         )
                         continue
 
+                    if shot_attr in skip_shot_attributes_on_update:
+                        self.log.debug(
+                            "%s shot attribute skipped as the attribute is"
+                            " blacklisted for update in settings.", shot_attr
+                        )
+                        continue
+
                     shot_data["attributes"][shot_attr] = attr_value
-                else:
-                    self.log.debug(
-                        "Shot attributes will not be updated."
-                    )
+            else:
+                self.log.debug(
+                    "Shot attributes will not be updated."
+                )
 
             # Split by '/' for AYON where asset is a path
             name = folder_path.split("/")[-1]
@@ -206,8 +216,8 @@ class CollectHierarchy(
         """Nesting each child into its parent.
 
         Args:
-            parent_dict (dict): parent dict wich should be nested with children
-            child_dict (dict): children dict which should be injested
+            parent_dict (dict): parent dict that should be nested with children
+            child_dict (dict): children dict which should be ingested
         """
 
         for key in parent_dict:

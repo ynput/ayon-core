@@ -3,6 +3,9 @@ from __future__ import annotations
 from code import InteractiveInterpreter
 from qtpy import QtCore, QtWidgets, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.tools.utils.lib import get_qt_icon
+
 try:
     from .syntax_highlight import PythonSyntaxHighlighter
 except ImportError:
@@ -245,6 +248,15 @@ class OutputTextWidget(QtWidgets.QTextEdit):
     def scroll_to_bottom(self):
         v_scroll = self.verticalScrollBar()
         return v_scroll.setValue(v_scroll.maximum())
+
+    def contextMenuEvent(self, event):
+        menu = self.createStandardContextMenu()
+        menu.addSeparator()
+        clear_action = menu.addAction(
+            get_qt_icon(MaterialSymbolsIcon("clear_all")), "Clear log"
+        )
+        clear_action.triggered.connect(self.clear)
+        menu.exec_(event.globalPos())
 
 
 class EnhancedTabBar(QtWidgets.QTabBar):

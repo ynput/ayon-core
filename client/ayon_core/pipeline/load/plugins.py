@@ -284,6 +284,10 @@ class LoaderPlugin(list):
         """
         return []
 
+    def __repr__(self):
+        # Avoid printing as a list (due to inheritance), but print like object.
+        return object.__repr__(self)
+
 
 class ProductLoaderPlugin(LoaderPlugin):
     """Load product into host application

@@ -4,7 +4,9 @@ import json
 import hashlib
 import platform
 import time
+import shlex
 import signal
+import subprocess
 from typing import Optional, List, Dict, Tuple, Any
 
 import requests
@@ -128,41 +130,97 @@ def _windows_get_pid_args(pid: int) -> Optional[List[str]]:
     return output
 
 
-def _windows_pid_is_running(pid: int) -> bool:
-    args = _windows_get_pid_args(pid)
+def _linux_get_pid_args(pid: int) -> List[str]:
+    """Get process command line arguments on Linux.
+
+    Args:
+        pid (int): Process ID.
+
+    Returns:
+        List[str]: Process command line arguments.
+
+    """
+    cmdline_path = f"/proc/{pid}/cmdline"
+    if not os.path.exists(cmdline_path):
+        return []
+
+    try:
+        with open(cmdline_path, "rb") as f:
+            content = f.read()
+    except (PermissionError, ProcessLookupError, FileNotFoundError):
+        return []
+
+    if not content:
+        return []
+
+    # cmdline content is separated by null bytes
+    try:
+        decoded = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return []
+
+    return [
+        arg
+        for arg in decoded.split("\x00")
+        if arg
+    ]
+
+
+def _darwin_get_pid_args(pid: int) -> List[str]:
+    """Get process command line arguments on macOS.
+
+    Args:
+        pid (int): Process ID.
+
+    Returns:
+        List[str]: Process command line arguments.
+
+    """
+    try:
+        output = subprocess.check_output(
+            ["ps", "-p", str(pid), "-o", "command="],
+            stderr=subprocess.STDOUT
+        ).decode("utf-8")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+    if not output:
+        return []
+
+    return shlex.split(output.strip())
+
+
+def _is_process_running(pid: int) -> bool:
+    """Check whether process with pid is running."""
+    system_name = platform.system().lower()
+
+    if pid == 0:
+        return True
+
+    args = []
+    if system_name == "windows":
+        args = _windows_get_pid_args(pid)
+
+    if system_name == "linux":
+        args = _linux_get_pid_args(pid)
+
+    if system_name == "darwin":
+        args = _darwin_get_pid_args(pid)
+
     if not args:
         return False
-    executable_path = args[0]
 
+    executable_path = args[0]
     filename = os.path.basename(executable_path).lower()
     if "ayon" in filename:
         return True
 
     # Try to handle tray running from code
-    # - this might be potential danger that kills other python process running
-    #   'start.py' script (low chance, but still)
     if "python" in filename and len(args) > 1:
         script_filename = os.path.basename(args[1].lower())
         if script_filename == "start.py":
             return True
     return False
-
-
-def _is_process_running(pid: int) -> bool:
-    """Check whether process with pid is running."""
-    if platform.system().lower() == "windows":
-        return _windows_pid_is_running(pid)
-
-    if pid == 0:
-        return True
-
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
 
 
 def _kill_tray_process(pid: int):

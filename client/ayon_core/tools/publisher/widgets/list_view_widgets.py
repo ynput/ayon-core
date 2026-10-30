@@ -35,6 +35,8 @@ from ayon_core.pipeline.create import (
     InstanceContextInfo,
     ParentFlags,
 )
+from ayon_core.pipeline.publish.report import CONTEXT_ID
+
 
 from ayon_core.tools.utils import NiceCheckbox, BaseClickableFrame
 from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
@@ -46,14 +48,13 @@ from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
     SORT_VALUE_ROLE,
     IS_GROUP_ROLE,
-    CONTEXT_ID,
     CONTEXT_LABEL,
     GROUP_ROLE,
     CONVERTER_IDENTIFIER_ROLE,
     CONVERTOR_ITEM_GROUP,
 )
 
-from .widgets import AbstractInstanceView
+from .widgets import AbstractInstanceView, InstancesSelection
 
 
 class ListItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -402,6 +403,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.setIndentation(20)
         self.setObjectName("InstanceListView")
         self.setHeaderHidden(True)
         self.setExpandsOnDoubleClick(False)
@@ -410,7 +412,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
         )
         self.viewport().setMouseTracking(True)
 
-    def get_selected_instance_ids(self):
+    def get_selected_instance_ids(self) -> set[str]:
         """Ids of selected instances."""
         instance_ids = set()
         for index in self.selectionModel().selectedIndexes():
@@ -694,6 +696,9 @@ class InstanceListView(AbstractInstanceView):
         ids_order = []
         ids_queue = collections.deque()
         ids_queue.extend(instance_ids_by_parent_id[None])
+        # Orphaned instances and their children
+        for parent_id in missing_parent_ids:
+            ids_queue.extend(instance_ids_by_parent_id[parent_id])
         while ids_queue:
             parent_id = ids_queue.popleft()
             ids_order.append(parent_id)
@@ -1009,7 +1014,9 @@ class InstanceListView(AbstractInstanceView):
 
         self._missing_parent_item = None
 
-    def refresh_instance_states(self, instance_ids=None):
+    def refresh_instance_states(
+        self, instance_ids: set[str] | None = None
+    ) -> None:
         """Trigger update of all instances."""
         if instance_ids is not None:
             instance_ids = set(instance_ids)
@@ -1020,53 +1027,49 @@ class InstanceListView(AbstractInstanceView):
         instance_items_by_id = self._controller.get_instance_items_by_id(
             instance_ids
         )
-        instance_ids = set(instance_items_by_id)
-        available_ids = set(instance_ids)
 
-        _queue = collections.deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
-
-        discarted_ids = set()
+        # Traverse whole hierarchy, active state of an instance may affect
+        #   all its descendants
+        _queue = collections.deque(self._get_root_ids_with_active())
         while _queue:
-            if not instance_ids:
-                break
-
             children_ids, parent_active = _queue.popleft()
             for instance_id in children_ids:
-                widget = self._widgets_by_id[instance_id]
-                # Parent active state changed -> traverse children too
-                add_children = False
-                if instance_id in instance_ids:
-                    add_children = (
-                        parent_active is not widget.is_parent_active()
-                    )
-                    if instance_id in available_ids:
-                        available_ids.discard(instance_id)
-                        widget.update_instance(
-                            instance_items_by_id[instance_id],
-                            context_info_by_id[instance_id],
-                            parent_active,
-                        )
-
-                    instance_ids.discard(instance_id)
-                    discarted_ids.add(instance_id)
-
-                if parent_active is not widget.is_parent_active():
-                    widget.set_parent_is_active(parent_active)
-                    add_children = True
-
-                if not add_children:
-                    if not instance_ids:
-                        break
+                widget = self._widgets_by_id.get(instance_id)
+                if widget is None:
                     continue
+                instance_item = instance_items_by_id.get(instance_id)
+                if instance_item is not None:
+                    widget.update_instance(
+                        instance_item,
+                        context_info_by_id[instance_id],
+                        parent_active,
+                    )
+                else:
+                    widget.set_parent_is_active(parent_active)
 
-                _children = set(self._instance_ids_by_parent_id[instance_id])
-                if _children:
-                    instance_ids |= _children
-                    _queue.append((_children, widget.is_active()))
+                children = self._instance_ids_by_parent_id.get(instance_id)
+                if children:
+                    _queue.append((set(children), widget.is_active()))
 
-                if not instance_ids:
-                    break
+        for group_name in self._group_items:
+            self._update_group_checkstate(group_name)
+
+    def _get_root_ids_with_active(self) -> list[tuple[set[str], bool]]:
+        """Top level instance ids with their parent active state.
+
+        Orphaned instances, which parent is not available, are considered
+            to have inactive parent.
+
+        Returns:
+            list[tuple[set[str], bool]]: Instance ids with parent active
+                state.
+
+        """
+        output = [(set(self._instance_ids_by_parent_id.get(None, ())), True)]
+        for parent_id, children_ids in self._instance_ids_by_parent_id.items():
+            if parent_id is not None and parent_id not in self._widgets_by_id:
+                output.append((set(children_ids), False))
+        return output
 
     def parent_grouping_enabled(self) -> bool:
         return self._parent_grouping
@@ -1074,30 +1077,38 @@ class InstanceListView(AbstractInstanceView):
     def set_parent_grouping(self, parent_grouping: bool) -> None:
         self._parent_grouping = parent_grouping
 
-    def _on_active_changed(self, changed_instance_id, new_value):
+    def _on_active_changed(
+        self, changed_instance_id: str, new_value: bool
+    ) -> None:
         self._toggle_active_state(new_value, changed_instance_id)
 
     def _toggle_active_state(
         self,
-        new_value: Optional[bool],
-        active_id: Optional[str] = None,
-        instance_ids: Optional[set[str]] = None,
+        new_value: bool | None,
+        active_id: str | None = None,
+        instance_ids: set[str] | None = None,
     ) -> None:
         if instance_ids is None:
-            instance_ids, _, _ = self.get_selected_items()
+            instance_ids = self.get_selected_items().instance_ids
         if active_id and active_id not in instance_ids:
             instance_ids = {active_id}
 
         active_by_id = {}
-        _queue = collections.deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        _queue = collections.deque(self._get_root_ids_with_active())
 
         while _queue:
             children_ids, parent_active = _queue.popleft()
             for instance_id in children_ids:
-                widget = self._widgets_by_id[instance_id]
+                widget = self._widgets_by_id.get(instance_id)
+                if widget is None:
+                    continue
                 widget.set_parent_is_active(parent_active)
-                if instance_id in instance_ids:
+                # Skip instances that can't be changed by user (mandatory,
+                #   or disabled by parent)
+                if (
+                    instance_id in instance_ids
+                    and widget.is_checkbox_enabled()
+                ):
                     value = new_value
                     if value is None:
                         value = not widget.is_active()
@@ -1105,7 +1116,7 @@ class InstanceListView(AbstractInstanceView):
                     active_by_id[instance_id] = value
 
                 children = set(
-                    self._instance_ids_by_parent_id[instance_id]
+                    self._instance_ids_by_parent_id.get(instance_id, ())
                 )
                 if children:
                     _queue.append((children, widget.is_active()))
@@ -1124,7 +1135,7 @@ class InstanceListView(AbstractInstanceView):
     def _on_selection_change(self, *_args):
         self.selection_changed.emit()
 
-    def _on_expand_toggle_request(self, group_name):
+    def _on_expand_toggle_request(self, group_name: str) -> None:
         group_item = self._group_items.get(group_name)
         if not group_item:
             return
@@ -1132,7 +1143,9 @@ class InstanceListView(AbstractInstanceView):
         new_state = not self._instance_view.isExpanded(proxy_index)
         self._instance_view.setExpanded(proxy_index, new_state)
 
-    def _on_group_toggle_request(self, group_name, state):
+    def _on_group_toggle_request(
+        self, group_name: str, state: int | QtCore.Qt.CheckState
+    ) -> None:
         state = checkstate_int_to_enum(state)
         if state == QtCore.Qt.PartiallyChecked:
             return
@@ -1162,46 +1175,34 @@ class InstanceListView(AbstractInstanceView):
             return True
         return False
 
-    def get_selected_items(self) -> tuple[list[str], bool, list[str]]:
+    def get_selected_items(self) -> InstancesSelection:
         """Get selected instance ids and context selection.
 
         Returns:
-            tuple[list[str], bool, list[str]]: Selected instance ids,
-                boolean if context is selected and selected convertor ids.
+            InstancesSelection: Selected instance ids, boolean if context is
+                selected and selected convertor ids.
 
         """
-        instance_ids = []
-        convertor_identifiers = []
-        context_selected = False
+        output = InstancesSelection()
 
         for index in self._instance_view.selectionModel().selectedIndexes():
             convertor_identifier = index.data(CONVERTER_IDENTIFIER_ROLE)
             if convertor_identifier is not None:
-                convertor_identifiers.append(convertor_identifier)
+                output.convertor_identifiers.add(convertor_identifier)
                 continue
 
             instance_id = index.data(INSTANCE_ID_ROLE)
-            if not context_selected and instance_id == CONTEXT_ID:
-                context_selected = True
+            if not output.context_selected and instance_id == CONTEXT_ID:
+                output.context_selected = True
 
             elif instance_id is not None:
-                instance_ids.append(instance_id)
+                output.instance_ids.add(instance_id)
 
-        return instance_ids, context_selected, convertor_identifiers
+        return output
 
-    def set_selected_items(
-        self, instance_ids, context_selected, convertor_identifiers
-    ):
-        s_instance_ids = set(instance_ids)
-        s_convertor_identifiers = set(convertor_identifiers)
-        cur_ids, cur_context, cur_convertor_identifiers = (
-            self.get_selected_items()
-        )
-        if (
-            set(cur_ids) == s_instance_ids
-            and cur_context == context_selected
-            and set(cur_convertor_identifiers) == s_convertor_identifiers
-        ):
+    def set_selected_items(self, selection: InstancesSelection) -> None:
+        current_selection = self.get_selected_items()
+        if selection == current_selection:
             return
 
         view = self._instance_view
@@ -1231,16 +1232,16 @@ class InstanceListView(AbstractInstanceView):
             select = False
             expand_parent = True
             if convertor_identifier is not None:
-                if convertor_identifier in s_convertor_identifiers:
+                if convertor_identifier in selection.convertor_identifiers:
                     select = True
             else:
                 instance_id = item.data(INSTANCE_ID_ROLE)
                 if instance_id == CONTEXT_ID:
-                    if context_selected:
+                    if selection.context_selected:
                         select = True
                         expand_parent = False
 
-                elif instance_id in s_instance_ids:
+                elif instance_id in selection.instance_ids:
                     select = True
 
             if not select:
