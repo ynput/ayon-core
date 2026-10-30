@@ -31,6 +31,7 @@ DIRPATH_ROLE = QtCore.Qt.UserRole + 5
 IS_DIR_ROLE = QtCore.Qt.UserRole + 6
 IS_SEQUENCE_ROLE = QtCore.Qt.UserRole + 7
 EXT_ROLE = QtCore.Qt.UserRole + 8
+PREVIEW_ROLE = QtCore.Qt.UserRole + 9
 
 
 def convert_bytes_to_json(bytes_value):
@@ -60,17 +61,6 @@ class SupportLabel(QtWidgets.QLabel):
 
 class WarningLabel(QtWidgets.QLabel):
     pass
-
-
-class DropHintLabel(QtWidgets.QLabel):
-    """Tells what would happen on drop while dragging over widget."""
-    def set_hint(self, state, text):
-        self.setText(text)
-        self.setToolTip(text)
-        if self.property("state") != state:
-            self.setProperty("state", state or "")
-            self.style().unpolish(self)
-            self.style().polish(self)
 
 
 class InViewButton(IconButton):
@@ -123,8 +113,7 @@ class DropEmpty(QtWidgets.QWidget):
     def __init__(self, single_item, allow_sequences, extensions_label, parent):
         super(DropEmpty, self).__init__(parent)
 
-        # Shows what would happen on drop while dragging
-        drop_label_widget = DropHintLabel("Drop files here or", self)
+        drop_label_widget = QtWidgets.QLabel("Drop files here or", self)
 
         browse_btn = QtWidgets.QPushButton("Browse...", self)
         browse_btn.setCursor(QtCore.Qt.PointingHandCursor)
@@ -171,8 +160,6 @@ class DropEmpty(QtWidgets.QWidget):
         self._allow_sequences = allow_sequences
         self._allowed_extensions = set()
         self._allow_folders = None
-        self._anything_allowed = True
-        self._drop_hint = ""
 
         self._drop_label_widget = drop_label_widget
         self._browse_btn = browse_btn
@@ -199,22 +186,6 @@ class DropEmpty(QtWidgets.QWidget):
         self._allow_folders = allowed
         self._update_items_label()
 
-    def set_drop_hint(self, state, text):
-        """Show what would happen on drop instead of drop label."""
-        if text == self._drop_hint:
-            return
-        self._drop_hint = text
-        self._drop_label_widget.set_hint(state, text or "Drop files here or")
-        self._update_drop_widgets()
-
-    def _update_drop_widgets(self):
-        self._drop_label_widget.setVisible(
-            self._anything_allowed or bool(self._drop_hint)
-        )
-        self._browse_btn.setVisible(
-            self._anything_allowed and not self._drop_hint
-        )
-
     def _update_items_label(self):
         allowed_items = []
         if self._allow_folders:
@@ -228,14 +199,16 @@ class DropEmpty(QtWidgets.QWidget):
         if not self._single_item:
             allowed_items = [item + "s" for item in allowed_items]
 
-        self._anything_allowed = bool(allowed_items)
-        self._update_drop_widgets()
         if not allowed_items:
+            self._drop_label_widget.setVisible(False)
+            self._browse_btn.setVisible(False)
             self._items_label_widget.setText(
                 "It is not allowed to add anything here!"
             )
             return
 
+        self._drop_label_widget.setVisible(True)
+        self._browse_btn.setVisible(True)
         items_label = "Multiple "
         if self._single_item:
             items_label = "Single "
@@ -329,6 +302,8 @@ class FilesModel(QtGui.QStandardItemModel):
 
         self._items_by_id = {}
         self._file_items_by_id = {}
+        # Items showing what would be added on drop
+        self._preview_ids = set()
         self._filenames_by_dirpath = collections.defaultdict(set)
         self._items_by_dirpath = collections.defaultdict(list)
 
@@ -407,6 +382,36 @@ class FilesModel(QtGui.QStandardItemModel):
         if new_model_items:
             roow_item = self.invisibleRootItem()
             roow_item.appendRows(new_model_items)
+
+    def set_preview_items(self, file_items):
+        """Show items which would be added on drop.
+
+        Preview items are not part of value.
+        """
+        self.clear_preview_items()
+        new_model_items = []
+        for file_item in file_items:
+            item_id, model_item = self._create_item(file_item)
+            model_item.setData(True, PREVIEW_ROLE)
+            model_item.setDragEnabled(False)
+            model_item.setSelectable(False)
+            self._preview_ids.add(item_id)
+            self._items_by_id[item_id] = model_item
+            new_model_items.append(model_item)
+
+        if new_model_items:
+            self.invisibleRootItem().appendRows(new_model_items)
+
+    def get_item_ids(self):
+        """Ids of items in value, without preview items."""
+        return set(self._file_items_by_id.keys())
+
+    def clear_preview_items(self):
+        preview_ids, self._preview_ids = self._preview_ids, set()
+        for item_id in preview_ids:
+            item = self._items_by_id.pop(item_id, None)
+            if item is not None:
+                self.removeRows(item.row(), 1)
 
     def remove_item_by_ids(self, item_ids):
         if not item_ids:
@@ -526,6 +531,7 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
         self._allow_folders = False
         self._allowed_extensions = None
         self._multivalue = False
+        self._hidden_item_ids = set()
 
     def set_multivalue(self, multivalue):
         """Disable filtering."""
@@ -533,6 +539,17 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
         if self._multivalue == multivalue:
             return
         self._multivalue = multivalue
+        self.invalidateFilter()
+
+    def get_hidden_item_ids(self):
+        return set(self._hidden_item_ids)
+
+    def set_hidden_item_ids(self, item_ids):
+        """Hide items which would be moved out or replaced on drop."""
+        item_ids = set(item_ids)
+        if item_ids == self._hidden_item_ids:
+            return
+        self._hidden_item_ids = item_ids
         self.invalidateFilter()
 
     def set_allow_folders(self, allow=None):
@@ -593,6 +610,9 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
 
         model = self.sourceModel()
         index = model.index(row, self.filterKeyColumn(), parent_index)
+        if index.data(ITEM_ID_ROLE) in self._hidden_item_ids:
+            return False
+
         # First check if item is folder and if folders are enabled
         if index.data(IS_DIR_ROLE):
             if not self._allow_folders:
@@ -867,10 +887,6 @@ class FilesWidget(QtWidgets.QFrame):
         message_timer.setSingleShot(True)
         message_timer.setInterval(6000)
 
-        drop_hint_label = DropHintLabel(wrapper_widget)
-        drop_hint_label.setAlignment(QtCore.Qt.AlignCenter)
-        drop_hint_label.setVisible(False)
-
         main_layout = QtWidgets.QVBoxLayout(self)
         # Leave space for drop hover border
         main_layout.setContentsMargins(2, 2, 2, 2)
@@ -903,6 +919,20 @@ class FilesWidget(QtWidgets.QFrame):
         # None, DROP_VALID or DROP_INVALID
         self._drop_state = None
         self._drop_colors = {}
+        # Rows shown or hidden to preview drop
+        self._in_drop_preview = False
+        self._drop_preview_key = None
+        self._drop_preview = None
+        self._applied_drop_preview = None
+        # Item ids hidden because dropped item would replace them
+        self._replaced_hidden_ids = set()
+        # Item ids hidden because other widget previews to move them
+        self._moved_out_ids_by_target = {}
+        drop_preview_clear_timer = QtCore.QTimer(self)
+        drop_preview_clear_timer.setSingleShot(True)
+        drop_preview_clear_timer.setInterval(0)
+        drop_preview_clear_timer.timeout.connect(self._clear_drop_preview)
+        self._drop_preview_clear_timer = drop_preview_clear_timer
         self._mouse_hover = False
         self._message = ""
 
@@ -911,9 +941,6 @@ class FilesWidget(QtWidgets.QFrame):
         self._remove_btn = remove_btn
         self._message_label = message_label
         self._message_timer = message_timer
-        self._drop_hint_label = drop_hint_label
-        self._drop_hint = ""
-        self._drop_preview_cache = (None, (None, ""))
 
         self._empty_widget = empty_widget
         self._files_model = files_model
@@ -934,7 +961,7 @@ class FilesWidget(QtWidgets.QFrame):
                 self._update_overlay_geometry()
             elif event.type() == QtCore.QEvent.DragLeave:
                 # Let the view handle it too
-                self._set_drop_preview(None, "")
+                self._on_drag_leave()
 
         if (
             obj is self._files_view.viewport()
@@ -988,6 +1015,8 @@ class FilesWidget(QtWidgets.QFrame):
         for row in range(model.rowCount()):
             index = model.index(row, 0)
             item_ids.add(index.data(ITEM_ID_ROLE))
+        # Items hidden by drop preview are still part of value
+        item_ids |= model.get_hidden_item_ids()
 
         file_items = []
         for item_id in item_ids:
@@ -1035,6 +1064,10 @@ class FilesWidget(QtWidgets.QFrame):
                 details=details,
                 tooltip=tooltip,
             )
+            if index.data(PREVIEW_ROLE):
+                opacity_effect = QtWidgets.QGraphicsOpacityEffect(widget)
+                opacity_effect.setOpacity(0.5)
+                widget.setGraphicsEffect(opacity_effect)
             widget.context_menu_requested.connect(
                 self._on_item_context_menu_request
             )
@@ -1044,7 +1077,7 @@ class FilesWidget(QtWidgets.QFrame):
             )
             self._widgets_by_id[item_id] = widget
 
-        if not self._in_set_value:
+        if not self._in_set_value and not self._in_drop_preview:
             self.value_changed.emit()
 
         self._update_visibility()
@@ -1066,7 +1099,7 @@ class FilesWidget(QtWidgets.QFrame):
             widget.setVisible(False)
             widget.deleteLater()
 
-        if not self._in_set_value:
+        if not self._in_set_value and not self._in_drop_preview:
             self.value_changed.emit()
         self._update_visibility()
 
@@ -1254,20 +1287,16 @@ class FilesWidget(QtWidgets.QFrame):
             rect.right() - remove_overlay.width() - margin + 1, pos_y
         )
 
-        # Message and drop hint are centered between the buttons
-        side_width = max(browse_overlay.width(), remove_overlay.width())
-        max_width = max(0, rect.width() - (side_width + margin * 2) * 2)
-        for label, full_text in (
-            (self._message_label, self._message),
-            (self._drop_hint_label, self._drop_hint),
-        ):
-            if not label.isVisible():
-                continue
+        # Message is centered between the buttons
+        label = self._message_label
+        if label.isVisible():
+            side_width = max(browse_overlay.width(), remove_overlay.width())
+            max_width = max(0, rect.width() - (side_width + margin * 2) * 2)
             margins = label.contentsMargins()
             extra_width = margins.left() + margins.right() + 2
             metrics = label.fontMetrics()
             text = metrics.elidedText(
-                full_text, QtCore.Qt.ElideRight, max_width - extra_width
+                self._message, QtCore.Qt.ElideRight, max_width - extra_width
             )
             label.setText(text)
             width = min(
@@ -1345,33 +1374,18 @@ class FilesWidget(QtWidgets.QFrame):
     def _on_item_context_menu_request(self, pos):
         self._on_context_menu_requested(pos, True)
 
-    def _set_drop_preview(self, state, text):
-        self._set_drop_state(state)
-        if text == self._drop_hint:
-            return
-        self._drop_hint = text
-        if text:
-            # Hint replaces message from previous drop
-            self._show_message("")
-        has_items = self._files_proxy_model.rowCount() > 0
-        self._empty_widget.set_drop_hint(
-            state, "" if has_items else text
-        )
-        self._drop_hint_label.set_hint(state, text)
-        self._drop_hint_label.setVisible(bool(text) and has_items)
-        self._update_overlay_geometry()
-
     def _get_drop_preview(self, mime_data):
-        """Drop state and text describing what drop would do.
+        """What would happen on drop of dragged data.
 
         Returns:
-            tuple[Optional[str], str]: 'DROP_VALID' when data can be
-                dropped, 'DROP_INVALID' when files are dragged but none of
-                them can be used, None for other data. And hint text.
+            Optional[dict[str, Any]]: None when data are not handled.
+                Otherwise 'state' ('DROP_VALID' or 'DROP_INVALID'),
+                'file_items' that would be added, 'source_id' of files
+                widget with 'moved_ids' that would be moved out of it.
 
         """
         if self._multivalue:
-            return None, ""
+            return None
 
         copy = self._copy_modifiers_enabled()
         full_data_raw = b""
@@ -1379,16 +1393,11 @@ class FilesWidget(QtWidgets.QFrame):
             full_data_raw = mime_data.data("files_widget/full_data").data()
         urls = mime_data.urls() if mime_data.hasUrls() else []
         # Drag move events are frequent, compute only on change
-        cache_key = (
-            full_data_raw,
-            tuple(url.toString() for url in urls),
-            copy,
-            self._files_proxy_model.rowCount() > 0,
-        )
-        if self._drop_preview_cache[0] == cache_key:
-            return self._drop_preview_cache[1]
+        key = (full_data_raw, tuple(url.toString() for url in urls), copy)
+        if key == self._drop_preview_key:
+            return self._drop_preview
 
-        result = None, ""
+        preview = None
         full_data = None
         if full_data_raw:
             full_data = convert_bytes_to_json(
@@ -1398,23 +1407,35 @@ class FilesWidget(QtWidgets.QFrame):
         if full_data is not None:
             # Items from this widget are only reordered
             if full_data["id"] != self._files_model.id:
-                labels = []
-                skipped = 0
-                for item in full_data["items"]:
+                item_ids = full_data.get("item_ids") or []
+                file_items = []
+                moved_ids = set()
+                for idx, item in enumerate(full_data["items"]):
                     filepaths = [
                         os.path.join(item["directory"], filename)
                         for filename in item["filenames"]
                     ]
-                    if self._files_proxy_model.filter_valid_files(filepaths):
-                        labels.append(FileDefItem.from_dict(item).label)
-                    else:
-                        skipped += 1
-                verb = "Copy" if copy else "Move"
-                result = self._format_drop_preview(verb, labels, skipped)
-                if labels and not copy:
-                    result = (
-                        result[0], result[1] + " (hold Ctrl to copy)"
+                    valid_paths = self._files_proxy_model.filter_valid_files(
+                        filepaths
                     )
+                    if not valid_paths:
+                        continue
+                    file_items.extend(FileDefItem.from_value(
+                        valid_paths, self._allow_sequences
+                    ))
+                    # Same rules as on drop
+                    if (
+                        len(valid_paths) == len(filepaths)
+                        and idx < len(item_ids)
+                    ):
+                        moved_ids.add(item_ids[idx])
+                    if self._single_item:
+                        break
+                preview = {
+                    "file_items": file_items,
+                    "source_id": full_data["id"],
+                    "moved_ids": set() if copy else moved_ids,
+                }
 
         elif urls:
             filepaths = []
@@ -1425,39 +1446,117 @@ class FilesWidget(QtWidgets.QFrame):
             valid_paths = self._files_proxy_model.filter_valid_files(
                 filepaths
             )
-            labels = []
+            file_items = []
             if valid_paths:
-                labels = [
-                    file_item.label
-                    for file_item in FileDefItem.from_value(
-                        valid_paths, self._allow_sequences
-                    )
-                ]
-            verb = "Use" if self._single_item else "Add"
-            result = self._format_drop_preview(
-                verb, labels, len(filepaths) - len(valid_paths)
+                file_items = FileDefItem.from_value(
+                    valid_paths, self._allow_sequences
+                )
+            preview = {
+                "file_items": file_items,
+                "source_id": None,
+                "moved_ids": set(),
+            }
+
+        if preview is not None:
+            if self._single_item:
+                preview["file_items"] = preview["file_items"][:1]
+            preview["state"] = (
+                DROP_VALID if preview["file_items"] else DROP_INVALID
             )
 
-        self._drop_preview_cache = (cache_key, result)
-        return result
+        self._drop_preview_key = key
+        self._drop_preview = preview
+        return preview
 
-    def _format_drop_preview(self, verb, labels, skipped):
-        if not labels:
-            return DROP_INVALID, "Not allowed here"
+    def _apply_drop_preview(self, preview):
+        """Show dragged items in this view and hide them in source view."""
+        self._drop_preview_clear_timer.stop()
+        if preview is None:
+            self._clear_drop_preview()
+            return
 
-        if self._single_item:
-            parts = ["{} '{}'".format(verb, labels[0])]
-            if self._files_proxy_model.rowCount() > 0:
-                parts.append("replaces current")
-            if len(labels) > 1:
-                parts.append("only first is used")
+        self._set_drop_state(preview["state"])
+        if self._applied_drop_preview is preview:
+            return
+        self._applied_drop_preview = preview
+
+        file_items = preview["file_items"]
+        self._in_drop_preview = True
+        try:
+            hidden_ids = set()
+            if self._single_item and file_items:
+                # Current item would be replaced
+                hidden_ids = self._files_model.get_item_ids()
+            self._files_model.set_preview_items(file_items)
+            self._update_hidden_items(hidden_ids)
+        finally:
+            self._in_drop_preview = False
+
+        source_widget = None
+        if preview["source_id"]:
+            source_widget = self._widgets_by_model_id.get(
+                preview["source_id"]
+            )
+        if source_widget is not None:
+            source_widget.set_moved_out_preview(
+                self._files_model.id, preview["moved_ids"]
+            )
+
+    def _clear_drop_preview(self):
+        self._drop_preview_clear_timer.stop()
+        self._set_drop_state(None)
+        preview = self._applied_drop_preview
+        self._applied_drop_preview = None
+        self._drop_preview_key = None
+        self._drop_preview = None
+        if preview is None:
+            return
+
+        self._in_drop_preview = True
+        try:
+            self._files_model.clear_preview_items()
+            self._update_hidden_items(set())
+        finally:
+            self._in_drop_preview = False
+
+        if preview["source_id"]:
+            source_widget = self._widgets_by_model_id.get(
+                preview["source_id"]
+            )
+            if source_widget is not None:
+                source_widget.set_moved_out_preview(
+                    self._files_model.id, set()
+                )
+
+    def set_moved_out_preview(self, target_id, item_ids):
+        """Hide items other files widget would move out on drop.
+
+        Args:
+            target_id (str): Id of model of target files widget.
+            item_ids (set[str]): Ids of items that would be moved.
+
+        """
+        if item_ids:
+            self._moved_out_ids_by_target[target_id] = set(item_ids)
         else:
-            parts = ["{} {} item{}".format(
-                verb, len(labels), "s" if len(labels) > 1 else ""
-            )]
-        if skipped:
-            parts.append("{} not allowed".format(skipped))
-        return DROP_VALID, ", ".join(parts)
+            self._moved_out_ids_by_target.pop(target_id, None)
+        self._in_drop_preview = True
+        try:
+            self._update_hidden_items(self._replaced_hidden_ids)
+        finally:
+            self._in_drop_preview = False
+
+    def _update_hidden_items(self, replaced_ids):
+        self._replaced_hidden_ids = replaced_ids
+        hidden_ids = set(replaced_ids)
+        for item_ids in self._moved_out_ids_by_target.values():
+            hidden_ids |= item_ids
+        self._files_proxy_model.set_hidden_item_ids(hidden_ids)
+
+    def _on_drag_leave(self):
+        # Clear on next event loop, rows of preview may change widget
+        #   under mouse which triggers leave and enter right after
+        self._drop_preview_clear_timer.start()
 
     def _get_drop_action(self, mime_data):
         if (
@@ -1468,7 +1567,8 @@ class FilesWidget(QtWidgets.QFrame):
         return QtCore.Qt.CopyAction
 
     def dragEnterEvent(self, event):
-        state, text = self._get_drop_preview(event.mimeData())
+        preview = self._get_drop_preview(event.mimeData())
+        state = preview["state"] if preview else None
         if state == DROP_VALID:
             event.setDropAction(self._get_drop_action(event.mimeData()))
             event.accept()
@@ -1476,23 +1576,25 @@ class FilesWidget(QtWidgets.QFrame):
             # Accept enter to receive leave event that removes highlight,
             #   drop is refused in move event which follows right after
             event.accept()
-        self._set_drop_preview(state, text)
+        self._apply_drop_preview(preview)
 
     def dragMoveEvent(self, event):
-        state, text = self._get_drop_preview(event.mimeData())
+        preview = self._get_drop_preview(event.mimeData())
+        state = preview["state"] if preview else None
         if state == DROP_VALID:
             event.setDropAction(self._get_drop_action(event.mimeData()))
             event.accept()
         else:
             event.ignore()
-        self._set_drop_preview(state, text)
+        self._apply_drop_preview(preview)
 
     def dragLeaveEvent(self, event):
-        self._set_drop_preview(None, "")
+        self._on_drag_leave()
         event.accept()
 
     def dropEvent(self, event):
-        self._set_drop_preview(None, "")
+        # Real items are added below
+        self._clear_drop_preview()
         if self._multivalue:
             return
 
