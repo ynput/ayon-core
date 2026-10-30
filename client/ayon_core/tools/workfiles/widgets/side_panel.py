@@ -133,13 +133,16 @@ class SidePanelWidget(AYContainer):
             "selection.representation.changed",
             self._on_representation_selection_change,
         )
+        # Activity is of the task (or folder), not of the selected file.
+        #   File events are not emitted when the task changes and no
+        #   file is selected before and after, e.g. in published mode.
         controller.register_event_callback(
             "selection.folder.changed",
-            self._on_folder_selection_change,
+            self._on_activity_context_change,
         )
         controller.register_event_callback(
             "selection.task.changed",
-            self._on_task_selection_change,
+            self._on_activity_context_change,
         )
 
         self._details_form = details_form
@@ -213,12 +216,11 @@ class SidePanelWidget(AYContainer):
 
         self._set_publish_context(folder_id, task_id, representation_id)
 
-    def _on_folder_selection_change(self, event):
-        self._set_activity_context(event["folder_id"], None, None)
-
-    def _on_task_selection_change(self, event):
+    def _on_activity_context_change(self, event):
+        # Folder change does not have task information, the task is not
+        #   selected yet
         self._set_activity_context(
-            event["folder_id"], event["task_id"], event["task_name"]
+            event["folder_id"], event.get("task_id"), event.get("task_name")
         )
 
     def _set_activity_context(

@@ -364,7 +364,7 @@
                 "hero": {
                     "default": {
                         "directory": "{root[work]}/{project[name]}/{hierarchy}/{folder[name]}/publish/{product[type]}/{product[name]}/hero",
-                        "file": "{project[code]}_{folder[name]}_{task[name]}_hero<_{comment}>.{ext}"
+                        "file": "{project[code]}_{folder[name]}_{task[name]}_hero<_{output}><_{comment}>.{ext}"
                     }
                 },
                 "publish": {

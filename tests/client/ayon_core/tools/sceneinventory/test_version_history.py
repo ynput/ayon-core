@@ -178,6 +178,19 @@ class FakeController:
     def get_window_subtitle(self) -> str:
         return "fakehost"
 
+    def register_event_callback(self, topic: str, callback: Any) -> None:
+        pass
+
+    # The server is always connected
+    def process_server_events(self) -> None:
+        pass
+
+    def check_server_available(self) -> bool:
+        return True
+
+    def get_server_connection_state(self) -> bool:
+        return True
+
     def reset(self) -> None:
         self.reset_count += 1
         self._history_model.reset()

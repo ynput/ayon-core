@@ -28,6 +28,7 @@ from .activities import (
     ActivityFileItem,
     ActivityAnnotationItem,
 )
+from .websocket import WSEventsModel
 
 
 __all__ = (
@@ -62,4 +63,5 @@ __all__ = (
     "ActivityItem",
     "ActivityFileItem",
     "ActivityAnnotationItem",
+    "WSEventsModel",
 )

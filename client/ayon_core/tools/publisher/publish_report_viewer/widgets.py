@@ -1062,9 +1062,12 @@ class DetailsWidget(QtWidgets.QWidget):
         )
 
     def _log_matches_level(self, log: ReportLog) -> bool:
-        if log.type == "error":
-            normalized_level = logging.ERROR
-        return normalized_level in self._level_filter
+        # Traceback entries are stored as exceptions without a logging level,
+        # so they are treated as ERROR entries for level filtering.
+        filter_level = (
+            logging.ERROR if log.type == "error" else log.levelno
+        )
+        return filter_level in self._level_filter
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):

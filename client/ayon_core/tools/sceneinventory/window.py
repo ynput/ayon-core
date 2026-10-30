@@ -3,7 +3,11 @@ import qtawesome
 
 from ayon_core import style, resources
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
-from ayon_core.tools.utils import PlaceholderLineEdit, get_qt_icon
+from ayon_core.tools.utils import (
+    PlaceholderLineEdit,
+    ConnectionOverlay,
+    get_qt_icon,
+)
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
@@ -99,6 +103,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         main_layout.addWidget(headers_widget, 0)
         main_layout.addWidget(body_splitter, 1)
 
+        connection_overlay = ConnectionOverlay(controller, self)
+
         show_timer = QtCore.QTimer()
         show_timer.setInterval(0)
         show_timer.setSingleShot(False)
@@ -117,6 +123,10 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         history_button.toggled.connect(self._on_history_toggle)
         refresh_button.clicked.connect(self._on_refresh_request)
         update_all_button.clicked.connect(self._on_update_all)
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
 
         self._show_timer = show_timer
         self._show_counter = 0
@@ -129,6 +139,9 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._history_icon = history_icon
         self._history_checked_icon = history_checked_icon
         self._history_widget = history_widget
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
 
         self._first_show = True
         self._history_first_show = True
@@ -172,7 +185,16 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             self._show_counter += 1
             return
         self._show_timer.stop()
-        self.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self.refresh()
+        else:
+            self._refresh_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self.refresh()
 
     def _on_hierarchy_view_change(self, enabled):
         self._view.set_hierarchy_view(enabled)
