@@ -1210,6 +1210,7 @@
                     "sweep-ratio": 0.3,
                     "animation-interval-ms": 16,
                     "value-min-width": 40,
+                    "value-spacing": 6,
                     "disabled": {
                         "opacity": 0.5
                     }
