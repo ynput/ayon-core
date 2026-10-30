@@ -470,6 +470,12 @@ def test_workfiles_side_panel_uses_its_controller(qtbot, task_queue):
         {"folder_id": "folder_id", "task_id": "task_id", "task_name": "a"},
     )
     assert widget._entity_ids == ("task_id",)
+    # Folder change is emitted before the task of the folder is selected,
+    #   the task of the previous folder is not shown
+    controller.emit_event(
+        "selection.folder.changed", {"folder_id": "other_folder_id"}
+    )
+    assert widget._entity_ids == ("other_folder_id",)
     # The activity tab is not opened
     assert task_queue.tasks == []
 
