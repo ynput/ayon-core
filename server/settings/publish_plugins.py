@@ -1699,6 +1699,32 @@ class ExtractBurninModel(BaseSettingsModel):
 # --- [END] Extract Burnin ---
 
 
+class ExtractFileTraitsModel(BaseSettingsModel):
+    """Fill missing representation traits by inspecting published files.
+
+    Runs at the very end of extraction, only on representations using
+    traits, and never overwrites a trait set by an extractor or host.
+    """
+    enabled: bool = SettingsField(False, title="Enabled")
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+        description=(
+            "Run only on instances with these product base types."
+            " Nothing is processed when empty."
+        ),
+    )
+    probe_pixel_data: bool = SettingsField(
+        False,
+        title="Probe pixel data",
+        description=(
+            "Read resolution and pixel aspect from files (oiiotool for"
+            " images, ffprobe for video). Slower than extension and"
+            " filename based detection."
+        ),
+    )
+
+
 class PreIntegrateThumbnailsProfile(BaseSettingsModel):
     _isGroup = True
     product_base_types: list[str] = SettingsField(
@@ -2011,6 +2037,10 @@ class PublishPuginsModel(BaseSettingsModel):
             "For example version, frame number or artist name. Only review"
             " outputs that have the `burnin` tag are processed."
         ),
+    )
+    ExtractFileTraits: ExtractFileTraitsModel = SettingsField(
+        default_factory=ExtractFileTraitsModel,
+        title="Extract File Traits"
     )
     ExtractUSDAssetContribution: AyonEntityURIModel = SettingsField(
         default_factory=AyonEntityURIModel,
@@ -2623,6 +2653,11 @@ DEFAULT_PUBLISH_VALUES = {
                 ]
             }
         ]
+    },
+    "ExtractFileTraits": {
+        "enabled": False,
+        "product_base_types": [],
+        "probe_pixel_data": False
     },
     "ExtractUSDAssetContribution": {
         "use_ayon_entity_uri": "filepath",

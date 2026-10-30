@@ -132,7 +132,7 @@ def test_get_transfers_from_representations_sequence_dispatches_file_locations(
         for frame in (1, 2)
     ]
     representation = Representation(name="sequence", traits=[
-        FrameRanged(frame_start=1, frame_end=2, frames_per_second="24"),
+        FrameRanged(frame_start=1, frame_end=2, frame_rate_numerator=24),
         Sequence(
             frame_padding=4,
             frame_regex=re.compile(
@@ -156,7 +156,12 @@ def test_get_transfers_from_representations_sequence_dispatches_file_locations(
         instance.data["publish_root"] / "sequence" / "0001.png",
         instance.data["publish_root"] / "sequence" / "0002.png",
     }
-    assert representation.get_trait(TemplatePath).data["frame"] == 2
+    # frame differs per file - stored per transfer, not in TemplatePath
+    assert "frame" not in representation.get_trait(TemplatePath).data
+    assert "root" not in representation.get_trait(TemplatePath).data
+    assert sorted(
+        transfer.template_data["frame"] for transfer in transfers
+    ) == [1, 2]
 
 
 def test_get_transfers_from_representations_udim_dispatches_file_locations(
@@ -187,7 +192,11 @@ def test_get_transfers_from_representations_udim_dispatches_file_locations(
         instance.data["publish_root"] / "tiles" / "1001.exr",
         instance.data["publish_root"] / "tiles" / "1002.exr",
     }
-    assert representation.get_trait(TemplatePath).data["udim"] == 1002
+    # udim differs per file - stored per transfer, not in TemplatePath
+    assert "udim" not in representation.get_trait(TemplatePath).data
+    assert sorted(
+        transfer.template_data["udim"] for transfer in transfers
+    ) == [1001, 1002]
 
 
 def test_get_transfers_from_representations_preserves_common_root_hierarchy(
@@ -287,7 +296,7 @@ def test_replace_paths_in_representation_updates_file_locations(
         for frame in (1, 2)
     ]
     representation = Representation(name="sequence", traits=[
-        FrameRanged(frame_start=1, frame_end=2, frames_per_second="24"),
+        FrameRanged(frame_start=1, frame_end=2, frame_rate_numerator=24),
         Sequence(
             frame_padding=4,
             frame_regex=re.compile(

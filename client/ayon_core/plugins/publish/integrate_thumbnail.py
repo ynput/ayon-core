@@ -7,7 +7,8 @@
     This one is used only as image describing content of published item and
         shows up only in Loader or WebUI.
 
-    Instance must have 'published_representations' to
+    Instance must have 'published_representations' (or
+        'publishedRepresentationsWithTraits' with 'versionEntity') to
         be able to integrate thumbnail.
     Possible sources of thumbnail paths:
     - instance.data["thumbnailPath"]
@@ -94,7 +95,14 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             # Skip instances without published representations
             # - there is no place where to put the thumbnail
             published_repres = instance.data.get("published_representations")
-            if not published_repres:
+            version_id = None
+            if published_repres:
+                version_id = self._get_version_id(published_repres)
+            elif instance.data.get("publishedRepresentationsWithTraits"):
+                # trait-based integration stores the version entity
+                version_id = instance.data["versionEntity"]["id"]
+
+            if not version_id:
                 self.log.debug((
                     "There are no published representations"
                     " on the instance {}."
@@ -102,12 +110,11 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 continue
 
             # Find thumbnail path on instance
-            thumbnail_path = (
-                instance.data.get("thumbnailPath")
-                or self._get_instance_thumbnail_path(
+            thumbnail_path = instance.data.get("thumbnailPath")
+            if not thumbnail_path and published_repres:
+                thumbnail_path = self._get_instance_thumbnail_path(
                     published_repres, anatomy
                 )
-            )
             if thumbnail_path:
                 self.log.debug((
                     "Found thumbnail path for instance \"{}\"."
@@ -131,7 +138,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 ).format(instance_label))
                 continue
 
-            version_id = str(self._get_version_id(published_repres))
+            version_id = str(version_id)
             filtered_instances.append(
                 InstanceFilterResult(instance, thumbnail_path, version_id)
             )
