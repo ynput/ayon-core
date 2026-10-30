@@ -1,8 +1,9 @@
 from __future__ import annotations
 import dataclasses
 import os
-import logging
 from typing import Literal, TYPE_CHECKING
+
+from ayon_core.lib import Logger
 
 try:
     from pxr import UsdGeom, Sdf, Kind
@@ -13,7 +14,7 @@ except ImportError:
 if TYPE_CHECKING:
     import pyblish.api
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 @dataclasses.dataclass

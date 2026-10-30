@@ -81,7 +81,6 @@ Usage
     )
 """
 
-import logging
 import re
 from typing import Pattern, Tuple
 
@@ -94,6 +93,8 @@ from aiohttp_middlewares.annotations import (
     UrlCollection,
 )
 from aiohttp_middlewares.utils import match_path
+
+from ayon_core.lib import Logger
 
 
 ACCESS_CONTROL = "Access-Control"
@@ -120,7 +121,7 @@ DEFAULT_ALLOW_HEADERS = (
 DEFAULT_ALLOW_METHODS = ("DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT")
 DEFAULT_URLS: Tuple[Pattern[str]] = (re.compile(r".*"),)
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 def cors_middleware(

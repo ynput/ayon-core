@@ -13,7 +13,6 @@ It owns the wiring between :class:`ViewManager` (persistence),
 
 from __future__ import annotations
 
-import logging
 from typing import Callable
 
 import ayon_api
@@ -28,6 +27,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from ayon_core.lib import Logger
+
 from ..buttons import AYButton, AYButtonMenu
 from ..container import AYClickableRow, AYContainer
 from ..frame import HoverReveal, RowHoverTracker
@@ -40,7 +41,7 @@ from .view_bindings import ViewBindings
 from .view_editor import AYViewEditor
 from .view_manager import ViewManager, DEFAULT_VIEW_LABEL
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 # Default access level granted to the current user in standalone demos.
 # Real consumer apps should pass the user's actual project access level

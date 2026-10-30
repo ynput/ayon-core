@@ -17,7 +17,7 @@ import pyblish.api
 import ayon_api
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import is_func_signature_supported, ButtonDef
+from ayon_core.lib import is_func_signature_supported, ButtonDef, Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import get_default_values
 from ayon_core.host import IWorkfileHost, IPublishHost
@@ -190,7 +190,7 @@ class CreateContext:
         self.host = host
 
         # Prepare attribute for logger (Created on demand in `log` property)
-        self._log = logging.getLogger(self.__class__.__name__)
+        self._log = Logger.get_logger(self.__class__.__name__)
         self._event_hub = QueuedEventSystem()
 
         # Publish context plugins attributes and it's values

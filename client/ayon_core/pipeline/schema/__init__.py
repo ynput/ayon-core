@@ -14,11 +14,12 @@ Resources:
 
 import os
 import json
-import logging
 
 import jsonschema
 
-log_ = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log_ = Logger.get_logger(__name__)
 
 ValidationError = jsonschema.ValidationError
 SchemaError = jsonschema.SchemaError

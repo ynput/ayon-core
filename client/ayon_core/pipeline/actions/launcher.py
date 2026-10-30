@@ -1,4 +1,3 @@
-import logging
 import warnings
 
 import ayon_api
@@ -9,6 +8,7 @@ from ayon_core.pipeline.plugin_discover import (
     register_plugin,
     register_plugin_path,
 )
+from ayon_core.lib import Logger
 
 
 class LauncherActionSelection:
@@ -354,8 +354,7 @@ class LauncherAction(object):
     color = None
     order = 0
 
-    log = logging.getLogger("LauncherAction")
-    log.propagate = True
+    log = Logger.get_logger("LauncherAction")
 
     def is_compatible(self, selection):
         """Return whether the class is compatible with the Session.

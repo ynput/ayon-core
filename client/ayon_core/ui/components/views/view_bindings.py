@@ -21,9 +21,10 @@ fresh :class:`ViewSettings` instance.
 from __future__ import annotations
 
 import copy
-import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
+
+from ayon_core.lib import Logger
 
 from ..table_model import PaginatedTableModel
 
@@ -34,7 +35,7 @@ from .data_models import (
     ViewSettings,
 )
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 # Callable invoked when a non-fatal error happens inside apply/capture.
 # Signature is ``(stage: str, exc: BaseException) -> None`` where
