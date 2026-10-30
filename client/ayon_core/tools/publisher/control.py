@@ -5,7 +5,7 @@ import logging
 import tempfile
 import shutil
 import typing
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, Iterable
 
 import ayon_api
 
@@ -33,11 +33,18 @@ from .abstract import (
     AbstractPublisherFrontend,
     CardMessageTypes,
     CommentDef,
+    PublishDebugState,
+    PublishDebugPluginItem,
+    PublishDebugDataItem,
+    PublishDebugExecResult,
+    PublishDebugValue,
 )
 
 if typing.TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.tools.common_models.settings import TaskSortMode
+
+    from .abstract import PublishDebugStepType
 
 
 class PublisherController(
@@ -683,17 +690,62 @@ class PublisherController(
     def run_action(self, plugin_id: str, action_id: str) -> None:
         self._publish_model.run_action(plugin_id, action_id)
 
+    def get_publish_debug_state(self) -> PublishDebugState:
+        return self._publish_model.get_debug_state()
+
+    def get_publish_debug_plugin_items(self) -> list[PublishDebugPluginItem]:
+        return self._publish_model.get_debug_plugin_items()
+
+    def get_publish_breakpoints(self) -> set[str]:
+        return self._publish_model.get_breakpoints()
+
+    def set_publish_breakpoints(
+        self, plugin_names: Iterable[str], enabled: bool
+    ) -> None:
+        self._publish_model.set_breakpoints(plugin_names, enabled)
+
+    def clear_publish_breakpoints(self) -> None:
+        self._publish_model.clear_breakpoints()
+
+    def get_publish_debug_data_items(self) -> list[PublishDebugDataItem]:
+        return self._publish_model.get_debug_data_items()
+
+    def get_publish_debug_value_children(
+        self, item_id: str, path: tuple[str, ...]
+    ) -> list[PublishDebugValue] | None:
+        return self._publish_model.get_debug_value_children(item_id, path)
+
+    def publish_debug_step(self, step_type: PublishDebugStepType) -> None:
+        # Keep 'Validate' behavior if publishing was started with it
+        stop_after_validation = False
+        if self._publish_model.has_started():
+            stop_after_validation = (
+                self._publish_model.get_publish_stop_after_validation()
+            )
+        self._start_publish(stop_after_validation, step_type)
+
+    def publish_debug_execute(
+        self, code: str, instance_id: str | None = None
+    ) -> PublishDebugExecResult:
+        return self._publish_model.debug_execute(code, instance_id)
+
     def _create_event_system(self):
         return QueuedEventSystem()
 
     def _emit_event(self, topic: str, data: dict | None = None) -> None:
         self.emit_event(topic, data, "controller")
 
-    def _start_publish(self, stop_after_validation: bool) -> None:
+    def _start_publish(
+        self,
+        stop_after_validation: bool,
+        debug_step_type: PublishDebugStepType | None = None,
+    ) -> None:
         self._publish_model.set_publish_stop_after_validation(
             stop_after_validation
         )
-        self._publish_model.start_publish(wait=True)
+        self._publish_model.start_publish(
+            wait=True, debug_step_type=debug_step_type
+        )
 
     def get_comment_def(self) -> CommentDef:
         # Take the cached settings from the Create Context
