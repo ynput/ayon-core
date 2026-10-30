@@ -27,7 +27,6 @@ from .option_action import (
 from .text_edit import AYTextEdit
 from .tree_view import AYTreeView
 from .frame import AYFrame
-from .comment_completion import MentionModel
 from .views import (
     AYViewEditor,
     AYViewSelector,
@@ -61,7 +60,6 @@ __all__ = (
     "AYTextEdit",
     "AYTreeView",
     "AYFrame",
-    "MentionModel",
     "AYOptionBox",
     "AYOptionalAction",
     "AYOptionalActionWidget",
