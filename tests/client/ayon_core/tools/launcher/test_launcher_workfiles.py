@@ -45,6 +45,9 @@ class _Controller:
     def get_grouped_host_names(self) -> list[str]:
         return list(self.grouped_host_names)
 
+    def set_grouped_host_names(self, host_names: list[str]) -> None:
+        self.grouped_host_names = list(host_names)
+
     def get_workfile_items(self, project_name, task_id):
         return self.workfile_items
 
@@ -200,6 +203,49 @@ def test_grouped_hosts_are_on_top(qtbot, task_queue, order):
     # Sorting by name keeps the order of hosts
     names = _sorted_names(qtbot, ["nuke"], 0, order)
     assert names[-1] == "nuke"
+
+
+def _child_names(model, parent=QtCore.QModelIndex()) -> list[str]:
+    return sorted(
+        model.index(row, 0, parent).data(QtCore.Qt.DisplayRole)
+        for row in range(model.rowCount(parent))
+    )
+
+
+def test_grouped_workfiles_are_nested_under_host(qtbot, task_queue):
+    controller = _Controller(SORTING_ITEMS, ["nuke"])
+    model = workfiles_page.WorkfilesModel(controller)
+    _refresh(qtbot, model)
+
+    assert model.has_grouped_hosts()
+    assert _child_names(model) == [
+        "nuke", "sh010_comp_v001.comp", "sh010_comp_v003.comp"
+    ]
+    nuke_index = next(
+        model.index(row, 0)
+        for row in range(model.rowCount())
+        if model.index(row, 0).data(workfiles_page.ITEM_TYPE_ROLE) == 1
+    )
+    assert _child_names(model, nuke_index) == [
+        "sh010_comp_v002.nk", "sh010_comp_v004.nk"
+    ]
+    # Nested workfiles have values in all columns
+    child_index = model.index(0, 2, nuke_index)
+    assert child_index.data(workfiles_page.WORKFILE_ID_ROLE)
+
+    # Ungroup moves workfiles to the root
+    model.set_group_by_host_name("nuke", False)
+    assert not model.has_grouped_hosts()
+    assert _child_names(model) == [item.filename for item in SORTING_ITEMS]
+    assert controller.grouped_host_names == []
+
+    # Group nests workfiles under the host item
+    model.set_group_by_host_name("fusion", True)
+    assert model.is_host_grouped("fusion")
+    assert _child_names(model) == [
+        "fusion", "sh010_comp_v002.nk", "sh010_comp_v004.nk"
+    ]
+    assert controller.grouped_host_names == ["fusion"]
 
 
 def test_delegate_formats_size_column(qtbot, task_queue, avatar_tasks):
