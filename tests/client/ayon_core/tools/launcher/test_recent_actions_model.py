@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import time
 from typing import Any, Optional
 
@@ -10,16 +11,16 @@ import pytest
 
 import ayon_api
 
+from ayon_core.lib import preferences
 from ayon_core.tools.launcher.abstract import (
     RECENT_ACTIONS_MAX,
     WorkfileItem,
 )
-from ayon_core.tools.launcher.models import recent_actions
 from ayon_core.tools.launcher.models.recent_actions import (
+    PREFERENCES_ITEM,
+    PREFERENCES_KEY,
     RecentActionsModel,
 )
-
-PREFERENCES_ENDPOINT = "users/tester/frontendPreferences"
 
 
 class TypeItem:
@@ -76,40 +77,54 @@ class FakeController:
         ]
 
 
+class Response:
+    def __init__(self, status_code: int, data: Optional[dict] = None):
+        self.status_code = status_code
+        self.data = data or {}
+        self.ok = 200 <= status_code < 300
+        self.detail = ""
+
+
 @pytest.fixture
-def user_data(monkeypatch) -> dict[str, Any]:
-    """In memory stand-in for the current AYON user on the server.
+def server(monkeypatch, tmp_path_factory) -> dict[str, Any]:
+    """In memory stand-in for the preferences API of AYON server.
 
-    Behaves like the server does for a user without manager rights - the
-    user may change own frontend preferences, but changes of user data
-    sent to the user itself are ignored.
+    Global preferences of the current user by key, in 'preferences'. A
+    'status_code' makes every request answer with it, e.g. 404 of a
+    server without the preferences API.
     """
-    user = {"name": "tester", "data": {}}
+    state = {"preferences": {}, "status_code": None}
 
-    class Response:
-        def raise_for_status(self) -> None:
-            pass
+    def raw_get(endpoint, **kwargs):
+        if state["status_code"]:
+            return Response(state["status_code"])
+        return Response(200, {"preferences": [
+            {"key": key, "data": copy.deepcopy(data)}
+            for key, data in state["preferences"].items()
+        ]})
 
     def raw_patch(endpoint, **kwargs):
-        if endpoint == PREFERENCES_ENDPOINT:
-            preferences = user["data"].setdefault("frontendPreferences", {})
-            preferences.update(copy.deepcopy(kwargs["json"]))
-        return Response()
+        if state["status_code"]:
+            return Response(state["status_code"])
+        key = endpoint.split("/", 1)[1]
+        stored = state["preferences"].setdefault(key, {})
+        stored.update(copy.deepcopy(kwargs["json"]))
+        return Response(204)
 
-    def get_user():
-        return copy.deepcopy(user)
-
-    monkeypatch.setattr(ayon_api, "get_user", get_user)
+    monkeypatch.setattr(ayon_api, "raw_get", raw_get)
     monkeypatch.setattr(ayon_api, "raw_patch", raw_patch)
-    monkeypatch.setattr(recent_actions, "get_ayon_user_entity", get_user)
-    monkeypatch.setattr(
-        recent_actions, "get_ayon_username", lambda: user["name"]
-    )
-    return user
+    monkeypatch.setattr(ayon_api, "get_base_url", lambda: "http://ayon")
+    monkeypatch.setattr(preferences._ServerSupport, "by_url", {})
+    # Used on servers without the preferences API
+    local_dir = tmp_path_factory.mktemp("local_dir")
+    monkeypatch.setenv("AYON_LAUNCHER_LOCAL_DIR", str(local_dir))
+    monkeypatch.setattr(preferences, "get_ayon_username", lambda: "tester")
+    state["local_dir"] = str(local_dir)
+    return state
 
 
-def stored_items(user_data) -> list[dict[str, Any]]:
-    return user_data["data"]["frontendPreferences"]["launcherRecentActions"]
+def stored_items(server) -> list[dict[str, Any]]:
+    return server["preferences"][PREFERENCES_KEY][PREFERENCES_ITEM]
 
 
 @pytest.fixture
@@ -118,7 +133,7 @@ def controller() -> FakeController:
 
 
 @pytest.fixture
-def model(controller, user_data) -> RecentActionsModel:
+def model(controller, server) -> RecentActionsModel:
     return RecentActionsModel(controller)
 
 
@@ -154,7 +169,7 @@ def trigger(controller, model, folder_id="f1", identifier="maya", **kwargs):
 
 
 def test_triggered_action_is_recorded_and_stored(
-    controller, model, user_data
+    controller, model, server
 ):
     trigger(controller, model)
 
@@ -162,12 +177,12 @@ def test_triggered_action_is_recorded_and_stored(
     assert item.identifier == "maya"
     assert item.folder_path == "/f1"
     # Stored on the server as well, not just kept in memory.
-    stored = stored_items(user_data)
+    stored = stored_items(server)
     assert [entry["record_id"] for entry in stored] == [item.record_id]
 
 
 def test_history_is_loaded_from_where_it_is_stored(
-    controller, model, user_data
+    controller, model, server
 ):
     trigger(controller, model, folder_id="a")
     trigger(controller, model, folder_id="b")
@@ -182,11 +197,11 @@ def test_history_is_loaded_from_where_it_is_stored(
 
 
 def test_unknown_stored_keys_do_not_break_loading(
-    controller, model, user_data
+    controller, model, server
 ):
     trigger(controller, model)
-    stored_items(user_data)[0]["added_by_newer_version"] = True
-    stored_items(user_data).append("not an entry")
+    stored_items(server)[0]["added_by_newer_version"] = True
+    stored_items(server).append("not an entry")
 
     model.refresh()
 
@@ -194,7 +209,7 @@ def test_unknown_stored_keys_do_not_break_loading(
 
 
 def test_action_triggered_before_the_history_was_loaded_keeps_it(
-    controller, model, user_data
+    controller, model, server
 ):
     trigger(controller, model, folder_id="a")
     trigger(controller, model, folder_id="b")
@@ -205,48 +220,67 @@ def test_action_triggered_before_the_history_was_loaded_keeps_it(
     other_session = RecentActionsModel(other_controller)
     trigger(other_controller, other_session, folder_id="c")
 
-    assert [entry["folder_id"] for entry in stored_items(user_data)] == [
+    assert [entry["folder_id"] for entry in stored_items(server)] == [
         "c", "b", "a"
     ]
 
 
 def test_action_is_not_recorded_if_the_history_cannot_be_loaded(
-    controller, model, user_data, monkeypatch
+    controller, model, server
 ):
     trigger(controller, model, folder_id="a")
-    stored = copy.deepcopy(stored_items(user_data))
+    stored = copy.deepcopy(stored_items(server))
 
-    def no_server():
-        raise ConnectionError("No server")
-
-    monkeypatch.setattr(ayon_api, "get_user", no_server)
+    server["status_code"] = 500
     other_controller = FakeController()
     other_session = RecentActionsModel(other_controller)
     trigger(other_controller, other_session, folder_id="b")
 
-    assert stored_items(user_data) == stored
+    assert stored_items(server) == stored
     assert not other_session.is_loaded()
 
 
 def test_refresh_does_not_undo_a_change_made_while_it_was_loading(
-    controller, model, user_data, monkeypatch
+    controller, model, server, monkeypatch
 ):
     trigger(controller, model)
     (item,) = model.get_recent_action_items()
-    get_user = ayon_api.get_user
+    raw_get = ayon_api.raw_get
 
-    def slow_get_user():
+    def slow_raw_get(endpoint, **kwargs):
         # What the server returns here does not have the change yet
-        user = get_user()
+        response = raw_get(endpoint, **kwargs)
         model.set_favorite(item.record_id, True)
-        return user
+        return response
 
-    monkeypatch.setattr(ayon_api, "get_user", slow_get_user)
+    monkeypatch.setattr(ayon_api, "raw_get", slow_raw_get)
     model.refresh()
     wait_idle(model)
 
     (item,) = model.get_recent_action_items()
     assert item.favorite
+
+
+def test_history_is_stored_on_this_machine_without_preferences_api(
+    controller, model, server
+):
+    server["status_code"] = 404
+    trigger(controller, model, folder_id="a")
+
+    assert server["preferences"] == {}
+    filepath = os.path.join(
+        server["local_dir"],
+        "tools",
+        "user_preferences",
+        "tester",
+        f"{PREFERENCES_KEY}.json",
+    )
+    assert os.path.exists(filepath)
+
+    other_session = RecentActionsModel(FakeController())
+    other_session.refresh()
+    folders = [i.folder_id for i in other_session.get_recent_action_items()]
+    assert folders == ["a"]
 
 
 def test_context_is_stored_with_names_and_type_icons(controller, model):

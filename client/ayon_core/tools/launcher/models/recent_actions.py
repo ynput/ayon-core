@@ -6,13 +6,7 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Optional
 
-import ayon_api
-
-from ayon_core.lib import (
-    Logger,
-    get_ayon_user_entity,
-    get_ayon_username,
-)
+from ayon_core.lib import Logger, UserPreferences
 from ayon_core.lib.icon_definitions import IconBase
 from ayon_core.tools.launcher.abstract import (
     RecentActionItem,
@@ -26,9 +20,9 @@ if TYPE_CHECKING:
     )
 
 
-# Key in 'data.frontendPreferences' of the user. Preferences are the only
-# part of user data a user without manager rights can change.
-_PREFERENCES_KEY = "launcherRecentActions"
+# User preferences of the launcher and the item of the history in them
+PREFERENCES_KEY = "io.ynput.core.launcher"
+PREFERENCES_ITEM = "recent_actions"
 
 
 def _icon_to_data(icon) -> Optional[dict]:
@@ -72,9 +66,11 @@ def _action_key(item: RecentActionItem) -> tuple:
 class RecentActionsModel:
     """Persistent store for recently triggered launcher actions.
 
-    Keeps up to :data:`RECENT_ACTIONS_MAX` entries per user, in
-    ``data.frontendPreferences.launcherRecentActions`` of the user on AYON
-    server - so the history follows the user to any machine. Duplicate
+    Keeps up to :data:`RECENT_ACTIONS_MAX` entries per user, in the
+    ``recent_actions`` item of the ``io.ynput.core.launcher`` user
+    preferences - so the history follows the user to any machine. On AYON
+    servers without the preferences API they are stored on this machine
+    instead, see 'UserPreferences'. Duplicate
     entries (same action in the same context) are deduplicated, the newest
     execution ends up on top. Favorited entries are pinned - they are listed
     first and newer actions never push them out.
@@ -105,6 +101,8 @@ class RecentActionsModel:
         controller: AbstractLauncherBackend | AbstractLauncherFrontEnd,
     ) -> None:
         self._controller = controller
+        # Thread safe, requests of the threads using it are serialized.
+        self._preferences = UserPreferences(PREFERENCES_KEY)
 
         # Guards everything below. It is touched by the recording worker,
         # by the threads loading the history and by the main thread.
@@ -160,12 +158,12 @@ class RecentActionsModel:
         return None
 
     def refresh(self) -> None:
-        """Load the history from the server.
+        """Load the history from where it is stored.
 
         A single request. Blocks, so it is meant to be called from a worker
         thread.
         """
-        self._load(use_cached_user=False)
+        self._load()
 
     def prewarm(self) -> None:
         """Load the history in the background, once.
@@ -180,11 +178,8 @@ class RecentActionsModel:
                 return
             self._prewarmed = True
 
-        # The launcher has just asked for the user while starting up, which
-        # is recent enough to not ask the server again.
         threading.Thread(
             target=self._load,
-            kwargs={"use_cached_user": True},
             name="recent-actions-prewarm",
             daemon=True,
         ).start()
@@ -256,14 +251,14 @@ class RecentActionsModel:
     # Persistence
     # ------------------------------------------------------------------
 
-    def _load(self, use_cached_user: bool) -> None:
+    def _load(self) -> None:
         with self._lock:
             revision = self._revision
             # What the server returns while a change is on its way to it
             # may or may not contain that change.
             is_storing = self._save_requested or self._saving
 
-        items = self._fetch_items(use_cached_user)
+        items = self._fetch_items()
         if items is None:
             return
 
@@ -271,9 +266,7 @@ class RecentActionsModel:
             if not is_storing and revision == self._revision:
                 self._items = items
 
-    def _fetch_items(
-        self, use_cached_user: bool = False
-    ) -> Optional[list[RecentActionItem]]:
+    def _fetch_items(self) -> Optional[list[RecentActionItem]]:
         """Get the stored history, ready to be shown.
 
         Returns:
@@ -281,24 +274,18 @@ class RecentActionsModel:
                 could not be loaded.
 
         """
-        try:
-            if use_cached_user:
-                user = get_ayon_user_entity()
-            else:
-                user = ayon_api.get_user()
-        except Exception:
-            self.log.error(
-                "Failed to load recent actions from AYON user.",
-                exc_info=True,
-            )
+        # Storing replaces the whole history, so an empty history must not
+        #   be used when it could not be received.
+        if not self._preferences.refresh():
+            self.log.warning("Failed to load recent actions.")
             return None
 
-        user_data = user.get("data") or {}
-        preferences = user_data.get("frontendPreferences") or {}
-        raw = preferences.get(_PREFERENCES_KEY)
+        raw = self._preferences.get_item(PREFERENCES_ITEM, default=None)
+        if not isinstance(raw, list):
+            raw = []
 
         items = []
-        for entry in raw or []:
+        for entry in raw:
             try:
                 item = RecentActionItem.from_data(entry)
             except (TypeError, AttributeError):
@@ -337,18 +324,11 @@ class RecentActionsModel:
             item.icon = _icon_to_data(icon)
 
     def _store_items(self, items: list[RecentActionItem]) -> None:
-        try:
-            # Only the passed key of the preferences is changed.
-            response = ayon_api.raw_patch(
-                f"users/{get_ayon_username()}/frontendPreferences",
-                json={_PREFERENCES_KEY: [item.to_data() for item in items]},
-            )
-            response.raise_for_status()
-        except Exception:
-            self.log.error(
-                "Failed to store recent actions to AYON user.",
-                exc_info=True,
-            )
+        # Only the history item of the preferences is changed. Failures are
+        #   logged by the preferences.
+        self._preferences.set_item(
+            PREFERENCES_ITEM, [item.to_data() for item in items]
+        )
 
     # ------------------------------------------------------------------
     # Recording
