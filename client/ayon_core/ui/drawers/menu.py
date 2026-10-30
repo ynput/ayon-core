@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from qtpy.QtCore import QRect, QRectF, QSize, Qt
-from qtpy.QtGui import QBrush, QColor, QFontMetrics, QIcon, QPainter, QPen
+from qtpy.QtGui import (
+    QAbstractTextDocumentLayout,
+    QBrush,
+    QColor,
+    QFont,
+    QFontMetrics,
+    QIcon,
+    QPainter,
+    QPalette,
+    QPen,
+    Qt as QtNamespace,
+    QTextDocument,
+)
 from qtpy.QtWidgets import (
     QMenu,
     QStyle,
@@ -41,6 +54,28 @@ class MenuItemLayout:
     total_w: int
 
 
+def _rich_text_document(text: str, font: QFont) -> QTextDocument | None:
+    """Return a laid out document for *text* if it looks like rich text.
+
+    Menu labels (e.g. loader action labels) may use the Qt rich text
+    subset, which ``QPainter.drawText`` would paint as literal markup.
+
+    Args:
+        text: Label text.
+        font: Font the label is drawn with.
+
+    Returns:
+        Document with the label, or None for plain text.
+    """
+    if not text or not QtNamespace.mightBeRichText(text):
+        return None
+    doc = QTextDocument()
+    doc.setDocumentMargin(0)
+    doc.setDefaultFont(font)
+    doc.setHtml(text)
+    return doc
+
+
 class MenuDrawer:
     """Drawer for QMenu using native QPainter calls (no QSS).
 
@@ -49,6 +84,8 @@ class MenuDrawer:
     """
 
     _WIDGET_CLS = "QMenu"
+    # Horizontal and vertical padding of the box around shortcut text
+    _SHORTCUT_PADDING = (5, 2)
 
     def __init__(self, style_inst: AYONStyle) -> None:
         self.style_inst = style_inst
@@ -190,11 +227,12 @@ class MenuDrawer:
 
         text = option.text or ""
         label, _, shortcut = text.partition("\t")
-        text_w = (
-            fm.horizontalAdvance(label)
-            if fm
-            else (contents_size.width() if contents_size else 0)
-        )
+        if doc := _rich_text_document(label, option.font):
+            text_w = math.ceil(doc.idealWidth())
+        elif fm:
+            text_w = fm.horizontalAdvance(label)
+        else:
+            text_w = contents_size.width() if contents_size else 0
 
         sc_w = getattr(
             option,
@@ -203,6 +241,10 @@ class MenuDrawer:
         )
         if shortcut and sc_w == 0 and fm:
             sc_w = fm.horizontalAdvance(shortcut)
+        if sc_w:
+            # Shortcut is drawn with smaller font inside a padded box
+            scale = float(style.get("shortcut-font-scale", 0.85))
+            sc_w = int(sc_w * scale) + self._SHORTCUT_PADDING[0] * 2
 
         icon_gutter = icon_size + item_spacing
         is_submenu = (
@@ -260,7 +302,7 @@ class MenuDrawer:
 
         layout = self._compute_layout(option, style, contents_size)
         return QSize(
-            max(layout.total_w, contents_size.width()),
+            layout.total_w,
             layout.row_h,
         )
 
@@ -439,16 +481,19 @@ class MenuDrawer:
             - (layout.sc_w + layout.pad_h if layout.sc_w else 0),
             rect.height(),
         )
-        # Not clipped: with fractional font metrics (display scaling) the
-        # text can still be a pixel wider than measured, the padding next
-        # to it has room for that.
-        painter.drawText(
-            label_rect,
-            Qt.AlignmentFlag.AlignVCenter
-            | Qt.AlignmentFlag.AlignLeft
-            | Qt.TextFlag.TextDontClip,
-            layout.label_text,
-        )
+        if doc := _rich_text_document(layout.label_text, painter.font()):
+            self._draw_rich_text(painter, doc, label_rect, text_color)
+        else:
+            # Not clipped: with fractional font metrics (display scaling)
+            # the text can still be a pixel wider than measured, the
+            # padding next to it has room for that.
+            painter.drawText(
+                label_rect,
+                Qt.AlignmentFlag.AlignVCenter
+                | Qt.AlignmentFlag.AlignLeft
+                | Qt.TextFlag.TextDontClip,
+                layout.label_text,
+            )
 
         if layout.shortcut_text:
             sc_bg_color = QColor(
@@ -457,19 +502,32 @@ class MenuDrawer:
                     style.get("background-color", "#2b3036"),
                 )
             )
-            text_rect = QFontMetrics(
-                self.style_inst.model.base_font
-            ).boundingRect(layout.shortcut_text)
+            # Shortcut is a hint, draw it smaller than the label inside
+            # a rounded box aligned to the right side of the row.
+            sc_font = QFont(painter.font())
+            scale = float(style.get("shortcut-font-scale", 0.85))
+            if sc_font.pixelSize() > 0:
+                sc_font.setPixelSize(
+                    max(1, round(sc_font.pixelSize() * scale))
+                )
+            else:
+                sc_font.setPointSizeF(sc_font.pointSizeF() * scale)
+            painter.setFont(sc_font)
+
+            sc_fm = QFontMetrics(sc_font)
+            sc_pad_h, sc_pad_v = self._SHORTCUT_PADDING
+            sc_rect = QRect(
+                0,
+                0,
+                sc_fm.horizontalAdvance(layout.shortcut_text)
+                + sc_pad_h * 2,
+                sc_fm.height() + sc_pad_v * 2,
+            )
+            sc_rect.moveCenter(rect.center())
+            sc_rect.moveRight(rect.right() - right_margin)
             painter.setBrush(QBrush(sc_bg_color))
             painter.setPen(Qt.PenStyle.NoPen)
-            sc_rect = QRect(
-                rect.right() - right_margin - layout.sc_w - layout.pad_h,
-                rect.top(),
-                layout.sc_w + layout.pad_h,
-                rect.height(),
-            )
-            text_rect.moveCenter(sc_rect.center())
-            painter.drawRoundedRect(text_rect.adjusted(-4, 0, 4, 0), 4, 4)
+            painter.drawRoundedRect(sc_rect, 4, 4)
 
             sc_color = QColor(
                 style.get(
@@ -496,6 +554,29 @@ class MenuDrawer:
                 layout.icon_size,
             )
             arrow_icon.paint(painter, arrow_rect)
+
+        painter.restore()
+
+    @staticmethod
+    def _draw_rich_text(
+        painter: QPainter,
+        doc: QTextDocument,
+        rect: QRect,
+        color: QColor,
+    ) -> None:
+        """Draw a rich text label vertically centered in *rect*."""
+        height = doc.size().height()
+
+        painter.save()
+        painter.translate(
+            rect.left(),
+            rect.top() + (rect.height() - height) / 2.0,
+        )
+
+        # paint
+        context = QAbstractTextDocumentLayout.PaintContext()
+        context.palette.setColor(QPalette.ColorRole.Text, color)
+        doc.documentLayout().draw(painter, context)
 
         painter.restore()
 
