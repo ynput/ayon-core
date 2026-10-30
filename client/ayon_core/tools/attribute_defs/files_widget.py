@@ -19,6 +19,9 @@ from ayon_core.tools.utils import PixmapLabel
 
 from ._constants import REVERT_TO_DEFAULT_LABEL
 
+DROP_VALID = "valid"
+DROP_INVALID = "invalid"
+
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 ITEM_LABEL_ROLE = QtCore.Qt.UserRole + 2
 ITEM_ICON_ROLE = QtCore.Qt.UserRole + 3
@@ -63,8 +66,41 @@ class InViewButton(IconButton):
 
 
 class FilesOverlay(QtWidgets.QFrame):
-    """Button shown over bottom of the view on mouse hover."""
-    pass
+    """Button shown over bottom of the view on mouse hover.
+
+    Fades in and out when shown or hidden.
+    """
+    def __init__(self, parent):
+        super().__init__(parent)
+        opacity_effect = QtWidgets.QGraphicsOpacityEffect(self)
+        opacity_effect.setOpacity(0.0)
+        self.setGraphicsEffect(opacity_effect)
+
+        anim = QtCore.QPropertyAnimation(opacity_effect, b"opacity", self)
+        anim.setDuration(150)
+        anim.finished.connect(self._on_anim_finished)
+
+        self.setVisible(False)
+
+        self._opacity_effect = opacity_effect
+        self._anim = anim
+        self._shown = False
+
+    def set_shown(self, shown):
+        if self._shown == shown:
+            return
+        self._shown = shown
+        self._anim.stop()
+        self._anim.setStartValue(self._opacity_effect.opacity())
+        self._anim.setEndValue(1.0 if shown else 0.0)
+        if shown:
+            self.setVisible(True)
+            self.raise_()
+        self._anim.start()
+
+    def _on_anim_finished(self):
+        if not self._shown:
+            self.setVisible(False)
 
 
 class DropEmpty(QtWidgets.QWidget):
@@ -785,7 +821,6 @@ class FilesWidget(QtWidgets.QFrame):
             overlay_layout = QtWidgets.QHBoxLayout(overlay)
             overlay_layout.setContentsMargins(2, 2, 2, 2)
             overlay_layout.addWidget(btn, 0)
-            overlay.setVisible(False)
 
         # Feedback about dropped items, shown for a while
         message_label = WarningLabel(wrapper_widget)
@@ -825,8 +860,9 @@ class FilesWidget(QtWidgets.QFrame):
         self._single_item = single_item
         self._allow_sequences = allow_sequences
         self._multivalue = False
-        self._drop_hover = False
-        self._drop_hover_color = None
+        # None, DROP_VALID or DROP_INVALID
+        self._drop_state = None
+        self._drop_colors = {}
         self._mouse_hover = False
         self._message = ""
 
@@ -850,11 +886,12 @@ class FilesWidget(QtWidgets.QFrame):
         self.customContextMenuRequested.connect(self._on_context_menu)
 
     def eventFilter(self, obj, event):
-        if (
-            obj is self._files_view.viewport()
-            and event.type() == QtCore.QEvent.Resize
-        ):
-            self._update_overlay_geometry()
+        if obj is self._files_view.viewport():
+            if event.type() == QtCore.QEvent.Resize:
+                self._update_overlay_geometry()
+            elif event.type() == QtCore.QEvent.DragLeave:
+                # Let the view handle it too
+                self._set_drop_state(None)
 
         if (
             obj is self._files_view.viewport()
@@ -1147,9 +1184,7 @@ class FilesWidget(QtWidgets.QFrame):
             and self._files_proxy_model.rowCount() > 0
         )
         for overlay in (self._browse_overlay, self._remove_overlay):
-            overlay.setVisible(visible)
-            if visible:
-                overlay.raise_()
+            overlay.set_shown(visible)
         # Size hint of hidden buttons may not match the size when shown
         #   (stylesheet is applied on show), place them once visible
         if visible:
@@ -1199,24 +1234,33 @@ class FilesWidget(QtWidgets.QFrame):
             )
             label.raise_()
 
-    def _set_drop_hover(self, hover):
-        if self._drop_hover == hover:
+    def _set_drop_state(self, state):
+        if self._drop_state == state:
             return
-        self._drop_hover = hover
+        self._drop_state = state
         self.update()
+
+    def _get_drop_color(self, state):
+        color = self._drop_colors.get(state)
+        if color is None:
+            if state == DROP_VALID:
+                color = get_objected_colors(
+                    "bg-view-selection-hover"
+                ).get_qcolor()
+                color.setAlpha(255)
+            else:
+                color = get_objected_colors(
+                    "publisher", "warning"
+                ).get_qcolor()
+            self._drop_colors[state] = color
+        return color
 
     def paintEvent(self, event):
         super().paintEvent(event)
-        if not self._drop_hover:
+        if self._drop_state is None:
             return
         # Highlight is painted to layout margins around children
-        if self._drop_hover_color is None:
-            color = get_objected_colors(
-                "bg-view-selection-hover"
-            ).get_qcolor()
-            color.setAlpha(255)
-            self._drop_hover_color = color
-        pen = QtGui.QPen(self._drop_hover_color)
+        pen = QtGui.QPen(self._get_drop_color(self._drop_state))
         pen.setWidth(2)
         painter = QtGui.QPainter(self)
         painter.setPen(pen)
@@ -1254,39 +1298,61 @@ class FilesWidget(QtWidgets.QFrame):
     def _on_item_context_menu_request(self, pos):
         self._on_context_menu_requested(pos, True)
 
-    def dragEnterEvent(self, event):
+    def _get_drag_state(self, mime_data):
+        """Drop state for dragged data.
+
+        Returns:
+            Optional[str]: 'DROP_VALID' when data can be dropped,
+                'DROP_INVALID' when files are dragged but none of them can
+                be used, None for other data.
+
+        """
         if self._multivalue:
-            return
-
-        mime_data = event.mimeData()
-        if mime_data.hasUrls():
-            filepaths = []
-            for url in mime_data.urls():
-                filepath = url.toLocalFile()
-                if os.path.exists(filepath):
-                    filepaths.append(filepath)
-
-            if self._files_proxy_model.are_valid_files(filepaths):
-                event.setDropAction(QtCore.Qt.CopyAction)
-                event.accept()
+            return None
 
         full_data_value = mime_data.data("files_widget/full_data")
         if self._handle_full_data_drag(full_data_value):
+            return DROP_VALID
+
+        if not mime_data.hasUrls():
+            return None
+
+        filepaths = []
+        for url in mime_data.urls():
+            filepath = url.toLocalFile()
+            if os.path.exists(filepath):
+                filepaths.append(filepath)
+
+        if self._files_proxy_model.are_valid_files(filepaths):
+            return DROP_VALID
+        return DROP_INVALID
+
+    def dragEnterEvent(self, event):
+        state = self._get_drag_state(event.mimeData())
+        if state == DROP_VALID:
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
-
-        self._set_drop_hover(event.isAccepted())
+        elif state == DROP_INVALID:
+            # Accept enter to receive leave event that removes highlight,
+            #   drop is refused in move event which follows right after
+            event.accept()
+        self._set_drop_state(state)
 
     def dragMoveEvent(self, event):
-        event.ignore()
-        self.dragEnterEvent(event)
+        state = self._get_drag_state(event.mimeData())
+        if state == DROP_VALID:
+            event.setDropAction(QtCore.Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+        self._set_drop_state(state)
 
     def dragLeaveEvent(self, event):
-        self._set_drop_hover(False)
+        self._set_drop_state(None)
         event.accept()
 
     def dropEvent(self, event):
-        self._set_drop_hover(False)
+        self._set_drop_state(None)
         if self._multivalue:
             return
 
