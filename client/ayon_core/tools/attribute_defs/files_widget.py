@@ -772,6 +772,99 @@ class FilesView(QtWidgets.QListView):
         if maximum < expected:
             self.verticalScrollBar().setRange(minimum, expected)
 
+    def startDrag(self, supported_actions):
+        """Start drag with pixmap of item widgets.
+
+        Default drag pixmap is painted by delegate which does not paint
+        anything for items, content is shown by index widgets.
+
+        Items dropped to other files widget are removed by that widget,
+        items moved in this view are moved by model.
+        """
+        indexes = [
+            index
+            for index in self.selectedIndexes()
+            if index.flags() & QtCore.Qt.ItemIsDragEnabled
+        ]
+        if not indexes:
+            return
+        mime_data = self.model().mimeData(indexes)
+        if mime_data is None:
+            return
+
+        drag = QtGui.QDrag(self)
+        drag.setMimeData(mime_data)
+        pixmap = self._create_drag_pixmap(indexes)
+        if pixmap is not None:
+            drag.setPixmap(pixmap)
+            # Cursor at start of first row
+            drag.setHotSpot(QtCore.QPoint(
+                min(20, pixmap.width() // 2), min(12, pixmap.height() // 2)
+            ))
+        drag.exec_(
+            QtCore.Qt.MoveAction | QtCore.Qt.CopyAction,
+            QtCore.Qt.MoveAction
+        )
+
+    def _create_drag_pixmap(self, indexes):
+        max_rows = 5
+        indexes = sorted(indexes, key=lambda index: index.row())
+        pixmaps = []
+        for index in indexes[:max_rows]:
+            widget = self.indexWidget(index)
+            if widget is not None:
+                pixmaps.append(widget.grab())
+        if not pixmaps:
+            return None
+
+        more_count = len(indexes) - len(pixmaps)
+        more_text = ""
+        if more_count > 0:
+            more_text = "+{} more".format(more_count)
+
+        sizes = []
+        for pix in pixmaps:
+            pix_ratio = pix.devicePixelRatio() or 1.0
+            sizes.append((
+                int(pix.width() / pix_ratio), int(pix.height() / pix_ratio)
+            ))
+        metrics = self.fontMetrics()
+        more_height = metrics.height() + 6 if more_text else 0
+        width = max(size[0] for size in sizes)
+        height = sum(size[1] for size in sizes) + more_height
+
+        ratio = self.devicePixelRatioF()
+        output = QtGui.QPixmap(int(width * ratio), int(height * ratio))
+        output.setDevicePixelRatio(ratio)
+        output.fill(QtCore.Qt.transparent)
+
+        bg_color = get_objected_colors("bg-view").get_qcolor()
+        border_color = get_objected_colors(
+            "bg-view-selection-hover"
+        ).get_qcolor()
+        painter = QtGui.QPainter(output)
+        painter.setOpacity(0.9)
+        painter.fillRect(QtCore.QRect(0, 0, width, height), bg_color)
+        pos_y = 0
+        for pix, size in zip(pixmaps, sizes):
+            painter.drawPixmap(QtCore.QPoint(0, pos_y), pix)
+            pos_y += size[1]
+        if more_text:
+            painter.setFont(self.font())
+            painter.setPen(
+                get_objected_colors("font-disabled").get_qcolor()
+            )
+            painter.drawText(
+                QtCore.QRect(0, pos_y, width, more_height),
+                QtCore.Qt.AlignCenter,
+                more_text
+            )
+        painter.setOpacity(1.0)
+        painter.setPen(border_color)
+        painter.drawRect(QtCore.QRect(0, 0, width - 1, height - 1))
+        painter.end()
+        return output
+
     def has_selected_item_ids(self):
         """Is any index selected."""
         for index in self.selectionModel().selectedIndexes():
