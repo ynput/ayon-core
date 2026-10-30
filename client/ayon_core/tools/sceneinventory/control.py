@@ -9,13 +9,20 @@ from ayon_core.pipeline import (
     get_current_context,
 )
 from ayon_core.tools.common_models import (
+    ActivitiesModel,
     HierarchyModel,
     ProjectsModel,
     ProductTypeIconMapping,
+    ThumbnailsModel,
+    UsersModel,
     WSEventsModel,
 )
 
-from .models import SiteSyncModel, ContainersModel
+from .models import (
+    SiteSyncModel,
+    ContainersModel,
+    VersionHistoryModel,
+)
 
 
 class SceneInventoryController:
@@ -37,6 +44,10 @@ class SceneInventoryController:
 
         self._containers_model = ContainersModel(self)
         self._sitesync_model = SiteSyncModel(self)
+        self._version_history_model = VersionHistoryModel(self)
+        self._activities_model = ActivitiesModel()
+        self._users_model = UsersModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
         self._projects_model = ProjectsModel(self)
@@ -76,6 +87,7 @@ class SceneInventoryController:
 
         self._containers_model.reset()
         self._sitesync_model.reset()
+        self._version_history_model.reset()
         self._hierarchy_model.reset()
 
     def get_current_context(self):
@@ -143,6 +155,81 @@ class SceneInventoryController:
     def get_version_items(self, project_name, product_ids):
         return self._containers_model.get_version_items(
             project_name, product_ids)
+
+    # Version history methods
+    def get_version_history_contexts(self, item_ids):
+        """Products of containers with versions that are loaded.
+
+        Args:
+            item_ids (Iterable[str]): Ids of container items.
+
+        Returns:
+            list[VersionHistoryContext]: Contexts of valid containers.
+
+        """
+        return self._version_history_model.get_contexts(item_ids)
+
+    def get_version_history_items(self, project_name, product_id):
+        """Versions of a product, from the newest to the oldest.
+
+        Args:
+            project_name (str): Project name.
+            product_id (str): Product id.
+
+        Returns:
+            list[VersionHistoryItem]: Versions of the product.
+
+        """
+        return self._version_history_model.get_items(
+            project_name, product_id
+        )
+
+    def get_version_thumbnail_path(
+        self, project_name, version_id, thumbnail_id
+    ):
+        """Path to a file with the thumbnail of a version.
+
+        Args:
+            project_name (str): Project name.
+            version_id (str): Version id.
+            thumbnail_id (str): Id of the version thumbnail.
+
+        Returns:
+            Optional[str]: Path to the image, None if there is none.
+
+        """
+        return self._thumbnails_model.get_thumbnail_path(
+            project_name, "version", version_id, thumbnail_id
+        )
+
+    # Activity methods
+    def get_activity_items(self, project_name, entity_ids, limit=50):
+        """Latest activities of entities, e.g. of a version.
+
+        Args:
+            project_name (str): Project name.
+            entity_ids (Union[list[str], set[str]]): Ids of entities.
+            limit (int): Maximum number of activities.
+
+        Returns:
+            list[ActivityItem]: Activities from the newest to the oldest.
+
+        """
+        return self._activities_model.get_activity_items(
+            project_name, entity_ids, limit
+        )
+
+    def get_user_items(self, project_name):
+        """Users of a project.
+
+        Args:
+            project_name (Optional[str]): Project name.
+
+        Returns:
+            list[UserItem]: User items.
+
+        """
+        return self._users_model.get_user_items(project_name)
 
     # Site Sync methods
     def is_sitesync_enabled(self):
