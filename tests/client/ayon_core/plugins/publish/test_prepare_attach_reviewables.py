@@ -1,5 +1,6 @@
 import copy
 import os
+import weakref
 
 import pyblish.api
 
@@ -131,6 +132,31 @@ def test_prepare_deep_copies_representations():
     assert "target-specific" not in prepared_instances[1].data[
         "representations"
     ][0]["tags"]
+
+
+def test_prepare_handles_non_copyable_runtime_data():
+    class Owner:
+        def callback(self):
+            pass
+
+    owner = Owner()
+    context, review_instance, _, _ = _create_context()
+    review_instance.data["transientData"] = {
+        "callback": weakref.WeakMethod(owner.callback),
+    }
+
+    PrepareAttachReviewables().process(context)
+
+    prepared_instances = [
+        instance
+        for instance in context
+        if instance.data.get(ATTACH_TARGET_ID_KEY)
+    ]
+    assert len(prepared_instances) == 2
+    assert all(
+        instance.data["transientData"]["callback"]().__self__ is owner
+        for instance in prepared_instances
+    )
 
 
 def test_attach_prepared_instance_to_target():

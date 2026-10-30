@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import os
 import shutil
+import weakref
 
 import pyblish.api
 
@@ -10,6 +11,32 @@ from ayon_core.pipeline import get_temp_dir
 from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 ATTACH_TARGET_ID_KEY = "_attach_reviewable_target_id"
+
+
+def _safe_copy(value):
+    """Copy nested data while retaining objects that cannot be pickled."""
+    if isinstance(value, weakref.WeakMethod):
+        return value
+
+    if isinstance(value, dict):
+        return {
+            _safe_copy(key): _safe_copy(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_safe_copy(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_safe_copy(item) for item in value)
+    if isinstance(value, set):
+        return {_safe_copy(item) for item in value}
+    if isinstance(value, frozenset):
+        return frozenset(_safe_copy(item) for item in value)
+
+    try:
+        return copy.deepcopy(value)
+    except TypeError:
+        pass
+    return value
 
 
 def get_target_version(instance):
@@ -140,7 +167,7 @@ class PrepareAttachReviewables(pyblish.api.ContextPlugin):
         instance = context.create_instance(
             "{} -> {}".format(source_instance.name, target_name)
         )
-        instance.data.update(copy.deepcopy(source_instance.data))
+        instance.data.update(_safe_copy(source_instance.data))
         instance.data["instance_id"] = str(instance.id)
         instance.data["representations"] = self._copy_representations(
             instance, representations
@@ -171,7 +198,7 @@ class PrepareAttachReviewables(pyblish.api.ContextPlugin):
         project_name = instance.context.data["projectName"]
 
         for representation in representations:
-            copied = copy.deepcopy(representation)
+            copied = _safe_copy(representation)
             source_staging_dir = representation.get("stagingDir")
             files = representation.get("files")
             if not source_staging_dir or not files:
