@@ -2,6 +2,7 @@ import os
 import collections
 import uuid
 import json
+import weakref
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -432,13 +433,16 @@ class FilesModel(QtGui.QStandardItemModel):
         mime_data.setData("files_widget/internal_move", item_ids_data)
 
         file_items = []
+        file_item_ids = []
         for item_id in item_ids:
             file_item = self.get_file_item_by_id(item_id)
             if file_item:
                 file_items.append(file_item.to_dict())
+                file_item_ids.append(item_id)
 
         full_item_data = convert_data_to_bytes({
             "items": file_items,
+            "item_ids": file_item_ids,
             "id": self._id
         })
         mime_data.setData("files_widget/full_data", full_item_data)
@@ -765,6 +769,9 @@ class FilesWidget(QtWidgets.QFrame):
     value_changed = QtCore.Signal()
     revert_requested = QtCore.Signal()
 
+    # Widgets by model id, used to remove items moved to other widget
+    _widgets_by_model_id = weakref.WeakValueDictionary()
+
     def __init__(self, single_item, allow_sequences, extensions_label, parent):
         super().__init__(parent)
         self.setAcceptDrops(True)
@@ -776,6 +783,7 @@ class FilesWidget(QtWidgets.QFrame):
         )
 
         files_model = FilesModel(single_item, allow_sequences)
+        self._widgets_by_model_id[files_model.id] = self
         files_proxy_model = FilesProxyModel()
         files_proxy_model.setSourceModel(files_model)
         files_view = FilesView(wrapper_widget)
@@ -1370,7 +1378,10 @@ class FilesWidget(QtWidgets.QFrame):
         if self._handle_full_data_drop(
             mime_data.data("files_widget/full_data")
         ):
-            event.setDropAction(QtCore.Qt.CopyAction)
+            if self._copy_modifiers_enabled():
+                event.setDropAction(QtCore.Qt.CopyAction)
+            else:
+                event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
 
         super(FilesWidget, self).dropEvent(event)
@@ -1395,21 +1406,45 @@ class FilesWidget(QtWidgets.QFrame):
         if full_data is None:
             return False
 
-        if full_data["id"] == self._files_model.id:
+        source_id = full_data["id"]
+        if source_id == self._files_model.id:
             return False
 
-        for item in full_data["items"]:
+        item_ids = full_data.get("item_ids") or []
+        used_item_ids = set()
+        for idx, item in enumerate(full_data["items"]):
             filepaths = [
                 os.path.join(item["directory"], filename)
                 for filename in item["filenames"]
             ]
-            filepaths = self._files_proxy_model.filter_valid_files(filepaths)
-            if filepaths:
-                self._add_filepaths(filepaths)
+            valid_paths = self._files_proxy_model.filter_valid_files(
+                filepaths
+            )
+            if not valid_paths:
+                continue
+            self._add_filepaths(valid_paths)
+            # Item can be moved only if all of its files were used
+            if len(valid_paths) == len(filepaths) and idx < len(item_ids):
+                used_item_ids.add(item_ids[idx])
+            # Only one item is used, others would replace it
+            if self._single_item:
+                break
 
-        if self._copy_modifiers_enabled():
-            return False
+        # Item view in 'InternalMove' mode does not remove items dropped
+        #   to other widget, remove them from source widget here
+        source_widget = self._widgets_by_model_id.get(source_id)
+        if (
+            used_item_ids
+            and source_widget is not None
+            and not self._copy_modifiers_enabled()
+        ):
+            source_widget.remove_moved_items(used_item_ids)
         return True
+
+    def remove_moved_items(self, item_ids):
+        """Remove items moved to other files widget."""
+        if not self._multivalue:
+            self._remove_item_by_ids(item_ids)
 
     def _copy_modifiers_enabled(self):
         if (
