@@ -17,6 +17,16 @@ from ayon_core.tools.launcher.abstract import (
 )
 
 
+def _ignore_auto_generated_description(description: str) -> str:
+    # ignore auto-generated comments
+    if description.startswith((
+        "Incremented by publishing",
+        "Auto generated",
+    )):
+        return ""
+    return description
+
+
 class WorkfilesModel:
     def __init__(self, controller: AbstractLauncherBackend):
         self._controller = controller
@@ -49,7 +59,9 @@ class WorkfilesModel:
         for workfile_entity in ayon_api.get_workfiles_info(
             project_name,
             task_ids={task_id},
-            fields={"id", "path", "data", "updatedAt", "updatedBy"},
+            fields={
+                "id", "path", "data", "updatedAt", "updatedBy", "attrib",
+            },
         ):
             rootless_path = workfile_entity["path"]
             exists = False
@@ -78,6 +90,9 @@ class WorkfilesModel:
             workfile_data = workfile_entity["data"]
             host_name = workfile_data.get("host_name")
             version = workfile_data.get("version")
+            attrib = workfile_entity.get("attrib") or {}
+            description = attrib.get("description") or ""
+            description = _ignore_auto_generated_description(description)
 
             items.append(WorkfileItem(
                 workfile_id=workfile_entity["id"],
@@ -89,6 +104,7 @@ class WorkfilesModel:
                 updated_at_time=mod_time,
                 file_size=file_size,
                 updated_by=workfile_entity.get("updatedBy"),
+                description=description,
             ))
         cache.update_data(items)
         return items

@@ -76,6 +76,7 @@ class WorkfileItem:
     updated_at_time: float | None
     file_size: int | None = None
     updated_by: str | None = None
+    description: str | None = None
 
 
 class AbstractLauncherCommon(ABC):
