@@ -20,6 +20,7 @@ from .local_settings import (
 from .preferences import (
     LocalPreferences,
     UserPreferences,
+    UserPreferencesNotSupported,
 )
 from .ayon_connection import initialize_ayon_connection
 from .cache import (
@@ -178,6 +179,7 @@ __all__ = [
 
     "LocalPreferences",
     "UserPreferences",
+    "UserPreferencesNotSupported",
 
     "initialize_ayon_connection",
 
