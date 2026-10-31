@@ -17,6 +17,11 @@ from .local_settings import (
     get_ayon_user_entity,
     get_ayon_username,
 )
+from .preferences import (
+    LocalPreferences,
+    UserPreferences,
+    UserPreferencesNotSupported,
+)
 from .ayon_connection import initialize_ayon_connection
 from .cache import (
     CacheItem,
@@ -171,6 +176,10 @@ __all__ = [
     "get_local_site_id",
     "get_ayon_user_entity",
     "get_ayon_username",
+
+    "LocalPreferences",
+    "UserPreferences",
+    "UserPreferencesNotSupported",
 
     "initialize_ayon_connection",
 
