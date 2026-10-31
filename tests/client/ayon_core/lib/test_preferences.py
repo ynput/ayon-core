@@ -4,6 +4,8 @@ from __future__ import annotations
 import copy
 import json
 import os
+import threading
+import time
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -14,6 +16,7 @@ from ayon_core.lib import (
     JSONSettingRegistry,
     LocalPreferences,
     UserPreferences,
+    UserPreferencesNotSupported,
     get_launcher_local_dir,
 )
 from ayon_core.lib import preferences
@@ -103,7 +106,6 @@ def local_dir(tmp_path_factory, monkeypatch) -> str:
     # 'tmp_path' of pytest-ayon is shared by the whole session
     tmp_path = tmp_path_factory.mktemp("local_dir")
     monkeypatch.setenv("AYON_LAUNCHER_LOCAL_DIR", str(tmp_path))
-    monkeypatch.setattr(preferences, "get_ayon_username", lambda: "roy")
     monkeypatch.setattr(
         ayon_api, "get_base_url", lambda: "http://ayon.server"
     )
@@ -199,8 +201,8 @@ def test_user_preferences_are_stored_on_server(monkeypatch):
     prefs = UserPreferences(KEY)
     assert prefs.get_item("visible") is True
     assert prefs.get_item("sizes", default=None) is None
-    assert prefs.is_stored_on_server() is True
-    # Received once, cached since
+    # Received once, cached since. That also told the server has the API.
+    assert UserPreferences.is_supported() is True
     assert server.calls == [("get", "preferences", None, None)]
 
     prefs.set_item("sizes", [1, 2])
@@ -263,32 +265,73 @@ def test_user_preferences_delete_keeps_items_of_others(monkeypatch):
 
 
 @pytest.mark.unit
-def test_user_preferences_fall_back_to_this_machine(monkeypatch, local_dir):
+def test_server_support_is_asked_once(monkeypatch):
+    server = use_server(monkeypatch, FakeServer())
+
+    assert UserPreferences.is_supported() is True
+    assert UserPreferences.is_supported() is True
+    assert len(server.calls) == 1
+    method, endpoint, _, _ = server.calls[0]
+    assert (method, endpoint) == ("get", "preferences")
+
+    # Cached by server
+    monkeypatch.setattr(ayon_api, "get_base_url", lambda: "http://other")
+    server.status_code = 404
+    assert UserPreferences.is_supported() is False
+    assert UserPreferences.is_supported() is False
+    assert len(server.calls) == 2
+
+
+@pytest.mark.unit
+def test_server_support_asked_by_threads_at_once(monkeypatch):
+    server = FakeServer()
+    raw_get = server.raw_get
+
+    def slow_raw_get(endpoint, **kwargs):
+        time.sleep(0.05)
+        return raw_get(endpoint, **kwargs)
+
+    monkeypatch.setattr(ayon_api, "raw_get", slow_raw_get)
+    results = []
+    threads = [
+        threading.Thread(
+            target=lambda: results.append(UserPreferences.is_supported())
+        )
+        for _ in range(4)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert results == [True] * 4
+    assert len(server.calls) == 1
+
+
+@pytest.mark.unit
+def test_user_preferences_on_server_without_api(monkeypatch, local_dir):
     server = use_server(monkeypatch, FakeServer(status_code=404))
-
     prefs = UserPreferences(KEY)
-    assert prefs.get_item("visible", default=False) is False
-    assert prefs.is_stored_on_server() is False
 
-    prefs.set_item("visible", True)
-    project_prefs = UserPreferences(KEY, project_name="demo")
-    project_prefs.set_item("visible", False)
-    # Only the first request found out the server has no API
-    assert server.calls == [("get", "preferences", None, None)]
+    with pytest.raises(UserPreferencesNotSupported, match="1.17.3"):
+        prefs.get_item("visible", default=False)
+    # The first request found out the server has no API
+    assert UserPreferences.is_supported() is False
+    assert len(server.calls) == 1
 
-    user_dir = os.path.join(local_dir, "tools", "user_preferences", "roy")
-    assert read_json(os.path.join(user_dir, f"{KEY}.json"))["registry"] == {
-        "visible": True
-    }
-    project_path = os.path.join(user_dir, "projects", "demo", f"{KEY}.json")
-    assert read_json(project_path)["registry"] == {"visible": False}
-
-    # Never mixed with local preferences of the same name
-    assert LocalPreferences(KEY).get_data() == {}
-    assert UserPreferences(KEY).get_item("visible") is True
-
-    prefs.delete_item("visible")
-    assert UserPreferences(KEY).get_data() == {}
+    for method, args in (
+        (prefs.get_data, ()),
+        (prefs.refresh, ()),
+        (prefs.set_item, ("visible", True)),
+        (prefs.delete_item, ("visible",)),
+        (prefs.clear, ()),
+        (UserPreferences(KEY, project_name="demo").get_data, ()),
+    ):
+        with pytest.raises(UserPreferencesNotSupported):
+            method(*args)
+    assert len(server.calls) == 1
+    # Nothing is stored on this machine instead
+    assert not os.path.exists(os.path.join(local_dir, "tools"))
 
 
 @pytest.mark.unit
@@ -299,8 +342,11 @@ def test_user_preferences_while_server_is_not_reachable(
 
     prefs = UserPreferences(KEY)
     assert prefs.get_item("visible", default=False) is False
-    assert prefs.is_stored_on_server() is None
     assert prefs.refresh() is False
+    # Not known, so asked again
+    calls = len(server.calls)
+    assert UserPreferences.is_supported() is False
+    assert len(server.calls) == calls + 1
 
     # Kept for the session, but not written on this machine
     prefs.set_item("visible", True)
@@ -311,4 +357,4 @@ def test_user_preferences_while_server_is_not_reachable(
     server.status_code = None
     prefs.set_item("sizes", [1])
     assert server.preferences[(KEY, None)] == {"sizes": [1]}
-    assert prefs.is_stored_on_server() is True
+    assert UserPreferences.is_supported() is True

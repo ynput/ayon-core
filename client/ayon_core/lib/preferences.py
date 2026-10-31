@@ -4,8 +4,9 @@
 meant for what depends on the machine, e.g. sizes of windows.
 
 'UserPreferences' follow the AYON user to every machine. They are stored
-on AYON server with its preferences API, globally or per project. On
-servers without that API they are stored on this machine instead.
+on AYON server with its preferences API, globally or per project. Servers
+without that API can't store them, 'UserPreferences.is_supported' tells
+whether the current server can.
 
 Both have 'get_item', 'set_item' and 'delete_item' of the setting
 registries, so a tool can move from one to the other by changing the
@@ -30,7 +31,6 @@ from .local_settings import (
     _PLACEHOLDER,
     ASettingRegistry,
     RegistryItemNotFound,
-    get_ayon_username,
     get_launcher_local_dir,
 )
 
@@ -218,9 +218,16 @@ class LocalPreferences(_JSONPreferences):
         )
 
 
+class UserPreferencesNotSupported(RuntimeError):
+    """AYON server has no preferences API to store user preferences."""
+
+
 class _ServerSupport:
     """Whether servers have the preferences API, by url of the server."""
     lock = threading.Lock()
+    # Held while a server is asked, so threads asking at the same time
+    #   share one request.
+    check_lock = threading.Lock()
     by_url: dict[str, bool] = {}
 
 
@@ -232,7 +239,7 @@ def _get_server_url() -> Optional[str]:
 
 
 def _get_server_support() -> Optional[bool]:
-    """Support of the current server, 'None' when not known yet."""
+    """Cached support of the current server, 'None' when not known."""
     server_url = _get_server_url()
     with _ServerSupport.lock:
         return _ServerSupport.by_url.get(server_url)
@@ -246,6 +253,36 @@ def _set_server_support(supported: bool) -> None:
         _ServerSupport.by_url[server_url] = supported
 
 
+def _list_preferences(query: dict[str, str]) -> Optional[Any]:
+    """Ask the server for preferences of the current user.
+
+    The list endpoint tells whether the server has the preferences API,
+    a single preference could also be just not found. The support of the
+    server is cached when the response tells it.
+
+    Args:
+        query: Query of the request, e.g. 'key_prefix'.
+
+    Returns:
+        Optional[Any]: Response of the server, 'None' if the request
+            failed before the server responded.
+
+    """
+    try:
+        response = ayon_api.raw_get(f"preferences?{urlencode(query)}")
+    except Exception:
+        UserPreferences.log.warning(
+            "Failed to ask the server for user preferences.", exc_info=True
+        )
+        return None
+
+    if response.status_code in _NO_API_STATUS_CODES:
+        _set_server_support(False)
+    elif response.ok:
+        _set_server_support(True)
+    return response
+
+
 class UserPreferences(ASettingRegistry):
     """Preferences of the AYON user, global or of a project.
 
@@ -253,23 +290,20 @@ class UserPreferences(ASettingRegistry):
     user to every machine. Items are the top-level fields of the
     preference. Only the user can read their preferences.
 
-    Whether the server has the preferences API is checked with the first
-    request. Servers without it store nothing, the preferences are stored
-    on this machine instead, in 'tools/user_preferences/<username>' of
-    the launcher local directory. They never mix with 'LocalPreferences'
-    of the same name, nor with preferences of other AYON users.
+    The preferences API is available since AYON server 1.17.3. On older
+    servers every method that reads or changes the preference raises
+    'UserPreferencesNotSupported', use 'is_supported' to check first.
 
     The preference is received on first use and cached, 'refresh'
-    receives it again. Server requests block, a tool should not use the
-    preferences in the main thread where that matters. Errors are logged,
-    not raised: a failed read returns the default and a failed write
-    keeps the value only in the cache.
+    receives it again. Requests block, a tool should not use the
+    preferences in the main thread where that matters. A server that is
+    not reachable is logged, not raised: a failed read returns the
+    default and a failed write keeps the value only in the cache.
 
     Example:
-        >>> preferences = UserPreferences("io.ynput.core.launcher")
-        >>> preferences.set_item("show_history", True)
-        >>> preferences.get_item("show_history", default=False)
-        True
+        >>> if UserPreferences.is_supported():
+        ...     preferences = UserPreferences("io.ynput.core.launcher")
+        ...     preferences.set_item("show_history", True)
 
     Args:
         key: Namespaced key of the preference, e.g.
@@ -281,6 +315,9 @@ class UserPreferences(ASettingRegistry):
 
     """
     log = Logger.get_logger("UserPreferences")
+    # Oldest AYON server with the preferences API, for messages to the
+    #   user. Whether a server has it is asked, not told by its version.
+    min_server_version = "1.17.3"
 
     def __init__(
         self, key: str, project_name: Optional[str] = None
@@ -293,7 +330,33 @@ class UserPreferences(ASettingRegistry):
         self._lock = threading.RLock()
         self._data: dict[str, Any] = {}
         self._loaded = False
-        self._local: Optional[_JSONPreferences] = None
+
+    @staticmethod
+    def is_supported() -> bool:
+        """Whether the current AYON server can store user preferences.
+
+        The server is asked once, the answer is cached for the url of the
+        server. Asking blocks, call it in a thread where that matters.
+
+        Returns:
+            bool: Whether the server has the preferences API. 'False'
+                also when the server could not be asked, that is not
+                cached and the server is asked again on the next call.
+
+        """
+        supported = _get_server_support()
+        if supported is not None:
+            return supported
+
+        with _ServerSupport.check_lock:
+            supported = _get_server_support()
+            if supported is None:
+                # No preference has this key, so the response is empty
+                _list_preferences(
+                    {"key_prefix": "io.ynput.core.support_check"}
+                )
+                supported = _get_server_support()
+        return bool(supported)
 
     @property
     def key(self) -> str:
@@ -305,19 +368,6 @@ class UserPreferences(ASettingRegistry):
         """Project of the preference, 'None' for global preference."""
         return self._project_name
 
-    def is_stored_on_server(self) -> Optional[bool]:
-        """Whether the preference is stored on AYON server.
-
-        Returns:
-            Optional[bool]: 'False' if the server has no preferences API
-                and the preference is stored on this machine. 'None' if
-                the server was not reachable yet.
-
-        """
-        with self._lock:
-            self._ensure_loaded()
-        return _get_server_support()
-
     def refresh(self) -> bool:
         """Receive the preference again, e.g. changed on another machine.
 
@@ -328,10 +378,14 @@ class UserPreferences(ASettingRegistry):
                 replaces a whole item based on what it read should not
                 do so when it was not, e.g. a list of entries.
 
+        Raises:
+            UserPreferencesNotSupported: If the server has no preferences
+                API.
+
         """
         with self._lock:
-            self._loaded = True
             data = self._receive_data()
+            self._loaded = True
             if data is None:
                 return False
             self._data = data
@@ -343,26 +397,30 @@ class UserPreferences(ASettingRegistry):
         Returns:
             dict[str, Any]: Items by name.
 
+        Raises:
+            UserPreferencesNotSupported: If the server has no preferences
+                API.
+
         """
         with self._lock:
             self._ensure_loaded()
             return copy.deepcopy(self._data)
 
     def clear(self) -> None:
-        """Delete the preference with all its items."""
+        """Delete the preference with all its items.
+
+        Raises:
+            UserPreferencesNotSupported: If the server has no preferences
+                API.
+
+        """
         with self._lock:
+            if not self._can_change("deleted"):
+                return
             self._loaded = True
             self._data = {}
-            supported = self._get_support()
-            if supported is None:
-                self._log_unreachable("deleted")
-            elif not supported:
-                local = self._get_local()
-                if local is not None:
-                    local.clear()
-            else:
-                # Not found means there is nothing to delete
-                self._request("delete", ignore_codes={404})
+            # Not found means there is nothing to delete
+            self._request("delete", ignore_codes={404})
 
     def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
         with self._lock:
@@ -379,16 +437,9 @@ class UserPreferences(ASettingRegistry):
         with self._lock:
             self._ensure_loaded()
             self._data[name] = copy.deepcopy(value)
-            supported = self._get_support()
-            if supported is None:
-                self._log_unreachable("stored")
-            elif not supported:
-                local = self._get_local()
-                if local is not None:
-                    local.set_item(name, value)
-            else:
-                # The server merges the item into the stored preference, so
-                #   items changed meanwhile by other processes are kept.
+            if self._can_change("stored"):
+                # The server merges the item into the stored preference,
+                #   so items changed meanwhile by other processes are kept.
                 self._request("patch", payload={name: value})
 
     def _delete_item(self, name: str, ignore_missing: bool = True) -> None:
@@ -399,15 +450,7 @@ class UserPreferences(ASettingRegistry):
                     f"Preference '{self.key}' doesn't contain '{name}'."
                 )
             self._data.pop(name, None)
-            supported = self._get_support()
-            if supported is None:
-                self._log_unreachable("deleted")
-                return
-
-            if not supported:
-                local = self._get_local()
-                if local is not None:
-                    local.delete_item(name)
+            if not self._can_change("deleted"):
                 return
 
             # The server can't delete a single item, the preference is
@@ -425,18 +468,37 @@ class UserPreferences(ASettingRegistry):
         if not self._loaded:
             self.refresh()
 
-    def _get_support(self) -> Optional[bool]:
-        """Support of the server, asks the server if not known yet.
+    def _can_change(self, action: str) -> bool:
+        """Whether the server can be asked to change the preference.
 
-        Expects '_lock' to be held.
+        Args:
+            action: What would be done, for the log message.
+
+        Returns:
+            bool: 'False' if the server is not reachable, which is logged.
+
+        Raises:
+            UserPreferencesNotSupported: If the server has no preferences
+                API.
+
         """
-        supported = _get_server_support()
-        if supported is None:
-            # The server was not reachable before. What is received is
-            #   used only to tell whether the server has the API.
-            self._receive_data()
-            supported = _get_server_support()
-        return supported
+        if self.is_supported():
+            return True
+        self._raise_if_not_supported()
+        self.log.warning(
+            "Preference '%s' was not %s, the server is not reachable.",
+            self.key,
+            action,
+        )
+        return False
+
+    def _raise_if_not_supported(self) -> None:
+        if _get_server_support() is False:
+            raise UserPreferencesNotSupported(
+                f"AYON server '{_get_server_url()}' can't store user"
+                " preferences, it requires AYON server"
+                f" {self.min_server_version} or newer."
+            )
 
     def _receive_data(self) -> Optional[dict[str, Any]]:
         """Receive the items of the preference.
@@ -445,32 +507,24 @@ class UserPreferences(ASettingRegistry):
             Optional[dict[str, Any]]: Items by name, 'None' if they could
                 not be received.
 
-        """
-        if _get_server_support() is False:
-            return self._get_local_data()
+        Raises:
+            UserPreferencesNotSupported: If the server has no preferences
+                API.
 
-        # The list endpoint tells whether the server has the preferences
-        #   API. A single preference could also be just not found.
+        """
+        self._raise_if_not_supported()
         query = {"key_prefix": self.key}
         if self._project_name:
             query["project_name"] = self._project_name
-        try:
-            response = ayon_api.raw_get(f"preferences?{urlencode(query)}")
-        except Exception:
-            self.log.warning(
-                "Failed to receive preference '%s'.", self.key, exc_info=True
-            )
+        response = _list_preferences(query)
+        self._raise_if_not_supported()
+        if response is None:
             return None
-
-        if response.status_code in _NO_API_STATUS_CODES:
-            _set_server_support(False)
-            return self._get_local_data()
 
         if not response.ok:
             self._log_failed_request("receive", response)
             return None
 
-        _set_server_support(True)
         for preference in response.data.get("preferences") or []:
             if preference.get("key") == self.key:
                 data = preference.get("data")
@@ -505,40 +559,6 @@ class UserPreferences(ASettingRegistry):
             ignore_codes or set()
         ):
             self._log_failed_request("change", response)
-
-    def _get_local(self) -> Optional[_JSONPreferences]:
-        """Storage on this machine, for servers without the API."""
-        if self._local is None:
-            try:
-                username = get_ayon_username()
-            except Exception:
-                self.log.warning(
-                    "Failed to get the AYON username for preference '%s'.",
-                    self.key,
-                    exc_info=True,
-                )
-                return None
-            path_parts = ["tools", "user_preferences", username]
-            if self._project_name:
-                path_parts.extend(["projects", self._project_name])
-            path_parts.append(f"{self.key}.json")
-            self._local = _JSONPreferences(
-                self.key, get_launcher_local_dir(*path_parts)
-            )
-        return self._local
-
-    def _get_local_data(self) -> Optional[dict[str, Any]]:
-        local = self._get_local()
-        if local is None:
-            return None
-        return local.get_data()
-
-    def _log_unreachable(self, action: str) -> None:
-        self.log.warning(
-            "Preference '%s' was not %s, the server is not reachable.",
-            self.key,
-            action,
-        )
 
     def _log_failed_request(self, action: str, response: Any) -> None:
         self.log.warning(
