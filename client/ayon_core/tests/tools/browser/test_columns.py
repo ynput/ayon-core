@@ -194,3 +194,114 @@ def test_sitesync_filter_keys_remain_owned_when_provider_is_disabled():
         ACTIVE_FILTER_KEY,
         REMOTE_FILTER_KEY,
     }
+
+
+class _ColumnOnlyProvider(BrowserColumnProvider):
+    identifier = "column_only"
+    column_keys = frozenset({"other:value"})
+
+    def __init__(self) -> None:
+        self.enrich_calls = 0
+
+    def get_columns(self, context):
+        return [TableColumn("other:value", "Other Value")]
+
+    def enrich_rows(self, context, rows):
+        self.enrich_calls += 1
+
+
+def _status_rows() -> list[dict]:
+    return [
+        {"id": "v1", "status": "Keep"},
+        {"id": "v2", "status": "Drop"},
+        {"id": "v3", "status": None},
+    ]
+
+
+def test_filter_rows_skips_providers_without_active_filter():
+    provider = _TestProvider()
+    manager = BrowserColumnManager([provider])
+    rows = _status_rows()
+
+    # A visible column alone does not need the rows filtered.
+    context = _context(enabled={"test:value"})
+
+    assert manager.get_filtering_providers(context) == []
+    assert manager.filter_rows(context, rows) is rows
+    assert provider.enrich_calls == 0
+
+
+def test_filter_rows_applies_only_provider_filters():
+    provider = _TestProvider()
+    column_provider = _ColumnOnlyProvider()
+    manager = BrowserColumnManager([provider, column_provider])
+    enriched_contexts = []
+    original_enrich = provider.enrich_rows
+
+    def enrich_rows(context, rows):
+        enriched_contexts.append(context)
+        original_enrich(context, rows)
+
+    provider.enrich_rows = enrich_rows
+    context = _context(
+        enabled={"other:value"},
+        filters=(
+            BrowserFilter("test:status", ("Keep",)),
+            # Applied by the server, not by the providers.
+            BrowserFilter("status", ("Drop",)),
+        ),
+    )
+
+    assert manager.get_filtering_providers(context) == [provider]
+    rows = manager.filter_rows(context, _status_rows())
+
+    assert [row["id"] for row in rows] == ["v1"]
+    # Providers owning only a visible column are not called.
+    assert column_provider.enrich_calls == 0
+    assert enriched_contexts[0].enabled_column_keys == frozenset()
+
+
+def test_filter_rows_supports_exclude_and_empty_values():
+    manager = BrowserColumnManager([_TestProvider()])
+
+    excluded = manager.filter_rows(
+        _context(filters=(
+            BrowserFilter("test:status", ("Keep",), exclude=True),
+        )),
+        _status_rows(),
+    )
+    without_value = manager.filter_rows(
+        _context(filters=(BrowserFilter("test:status", ("noValue",)),)),
+        _status_rows(),
+    )
+
+    assert [row["id"] for row in excluded] == ["v2", "v3"]
+    assert [row["id"] for row in without_value] == ["v3"]
+
+
+def test_filter_rows_ignores_filters_not_offered():
+    provider = _TestProvider()
+    provider.get_filters = lambda context: []
+    manager = BrowserColumnManager([provider])
+    rows = _status_rows()
+
+    filtered = manager.filter_rows(
+        _context(filters=(BrowserFilter("test:status", ("Keep",)),)),
+        rows,
+    )
+
+    # Like the table, a filter the provider does not offer is ignored.
+    assert filtered == rows
+    assert provider.enrich_calls == 0
+
+
+def test_filter_query_keys_only_of_filtering_providers():
+    manager = BrowserColumnManager([_TestProvider()])
+
+    # The provider's column is visible, but its filter is not active.
+    assert manager.get_filter_query_keys(
+        _context(enabled={"test:value"})
+    ) == set()
+    assert manager.get_filter_query_keys(
+        _context(filters=(BrowserFilter("test:status", ("Keep",)),))
+    ) == {"status"}

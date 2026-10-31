@@ -631,6 +631,31 @@ class BrowserTable(AYContainer):
     # Public methods
     # ------------------------------------------------------------------
 
+    def get_all_child_rows(
+        self, row_id: str
+    ) -> list[dict[str, Any]] | None:
+        """Return the rows under a row when all of them are loaded.
+
+        Only rows passing the table's filters are returned, which
+        includes the filters of column providers applied client-side.
+
+        Args:
+            row_id: Row ``id`` of the parent row.
+
+        Returns:
+            Row-data dicts of the shown children, or ``None`` when not
+            all of them are loaded.
+        """
+        children = self._model.get_children_rows(row_id)
+        if children is None:
+            return None
+        proxy = self._table_filter.filter_model
+        return [
+            row_data
+            for row_data, index in children
+            if proxy.mapFromSource(index).isValid()
+        ]
+
     def reset_data(self) -> None:
         """Reset the underlying model data."""
         self._model.set_fetch_enabled(self._controller.has_selection)
