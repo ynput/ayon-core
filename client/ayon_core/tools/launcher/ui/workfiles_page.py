@@ -291,6 +291,27 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         """Workfiles of any host are nested under the host item."""
         return bool(self._group_host_names & set(self._host_items_by_name))
 
+    def get_index_by_workfile_id(
+        self, workfile_id: str
+    ) -> QtCore.QModelIndex:
+        """Get index of a workfile item by its id.
+
+        Workfiles of a grouped host are nested under the host item.
+
+        Args:
+            workfile_id (str): Workfile id.
+
+        Returns:
+            QtCore.QModelIndex: Index of the workfile item, invalid index
+                if the workfile is not in the model.
+
+        """
+        for items in self._items_by_host_name.values():
+            for item in items:
+                if item.data(WORKFILE_ID_ROLE) == workfile_id:
+                    return self.indexFromItem(item)
+        return QtCore.QModelIndex()
+
     def flags(self, index):
         if index.column() != 0:
             index = self.index(index.row(), 0, index.parent())
@@ -546,6 +567,18 @@ class WorkfilesPage(AYContainer):
         self._resize_counter = 0
         self._indentation = indentation
 
+        # Workfile the expected selection is waiting to select, in a tuple
+        #   as 'None' is a valid expectation - there is no workfile.
+        self._expected_workfile = None
+
+        controller.register_event_callback(
+            "expected_selection_changed",
+            self._on_expected_selection_changed,
+        )
+        workfiles_model.loading_changed.connect(
+            self._on_workfiles_loading_changed
+        )
+
     def showEvent(self, event) -> None:
         super().showEvent(event)
 
@@ -553,6 +586,44 @@ class WorkfilesPage(AYContainer):
 
     def refresh(self) -> None:
         self._workfiles_model.refresh()
+
+    def _on_expected_selection_changed(self, event):
+        workfile_data = event.data.get("workfile")
+        if not workfile_data or not workfile_data["current"]:
+            return
+        self._expected_workfile = (workfile_data["id"],)
+        self._select_expected_workfile()
+
+    def _on_workfiles_loading_changed(self, loading: bool) -> None:
+        if not loading:
+            self._select_expected_workfile()
+
+    def _select_expected_workfile(self) -> None:
+        # Workfiles of the selected task are fetched in the background, the
+        #   model tells when they arrived and are filled in.
+        if (
+            self._expected_workfile is None
+            or self._workfiles_model.is_loading()
+        ):
+            return
+
+        workfile_id = self._expected_workfile[0]
+        self._expected_workfile = None
+        if workfile_id is not None:
+            index = self._workfiles_model.get_index_by_workfile_id(
+                workfile_id
+            )
+            # Not in the model if the workfile is gone. Scrolling to it
+            #   expands the host item of a grouped host.
+            proxy_index = self._workfiles_proxy.mapFromSource(index)
+            if proxy_index.isValid():
+                self._workfiles_view.selectionModel().setCurrentIndex(
+                    proxy_index,
+                    QtCore.QItemSelectionModel.ClearAndSelect
+                    | QtCore.QItemSelectionModel.Rows,
+                )
+                self._workfiles_view.scrollTo(proxy_index)
+        self._controller.expected_workfile_selected(workfile_id)
 
     def deselect(self):
         sel_model = self._workfiles_view.selectionModel()
