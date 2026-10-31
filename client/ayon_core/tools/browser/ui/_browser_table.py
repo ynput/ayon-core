@@ -646,10 +646,15 @@ class BrowserTable(AYContainer):
             Row-data dicts of the shown children, or ``None`` when not
             all of them are loaded.
         """
-        return self._model.get_all_child_rows(
-            row_id,
-            accept_row=self._table_filter.filter_model.filterAcceptsRow,
-        )
+        children = self._model.get_children_rows(row_id)
+        if children is None:
+            return None
+        proxy = self._table_filter.filter_model
+        return [
+            row_data
+            for row_data, index in children
+            if proxy.mapFromSource(index).isValid()
+        ]
 
     def reset_data(self) -> None:
         """Reset the underlying model data."""

@@ -876,26 +876,21 @@ class PaginatedTableModel(QAbstractItemModel):
         )
         return [node.row_data for node in nodes if not node.is_root]
 
-    def get_all_child_rows(
-        self,
-        node_id: str,
-        accept_row: Callable[[int, QModelIndex], bool] | None = None,
-    ) -> list[dict[str, Any]] | None:
-        """Return the row data of all children of a node, when loaded.
+    def get_children_rows(
+        self, node_id: str
+    ) -> list[tuple[dict[str, Any], QModelIndex]] | None:
+        """Return the row data and index of all children of a node.
 
         Lets callers use the children without fetching them again, but
         only when every page of them is in the model already.
 
         Args:
             node_id: Row ``id`` of the parent node.
-            accept_row: Optional check of a child, called with its row
-                and the parent index like
-                ``QSortFilterProxyModel.filterAcceptsRow``. Children it
-                rejects are left out.
 
         Returns:
-            Row-data dicts of the children, or ``None`` when the node is
-            not loaded or more of its children can still be fetched.
+            Row-data dict and index of each child, or ``None`` when the
+            node is not loaded or more of its children can still be
+            fetched.
         """
         for node in self._all_nodes:
             if node.node_id != node_id or node.is_root:
@@ -906,13 +901,9 @@ class PaginatedTableModel(QAbstractItemModel):
                 or node.is_fetching
             ):
                 return None
-            if accept_row is None:
-                return [child.row_data for child in node.children]
-            parent_index = self._index_for_node(node)
             return [
-                child.row_data
+                (child.row_data, self.createIndex(row, 0, child))
                 for row, child in enumerate(node.children)
-                if accept_row(row, parent_index)
             ]
         return None
 

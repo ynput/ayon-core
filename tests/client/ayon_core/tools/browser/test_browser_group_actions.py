@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -15,12 +16,17 @@ from ayon_core.tools.browser.columns import (
     BrowserFilter,
 )
 from ayon_core.tools.browser.ui import browser_controller
+from ayon_core.tools.browser.ui._browser_table import BrowserTable
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
 from ayon_core.tools.browser.ui.browser_group_by import (
     GROUP_BY_PRODUCT_KEY,
     GROUP_BY_STATUS_KEY,
+)
+from ayon_core.ui.components.table_filter import (
+    AYTableFilterProxyModel,
+    FilterCriterion,
 )
 from ayon_core.ui.components.table_model import (
     FilterEntry,
@@ -326,7 +332,18 @@ def _group_index(model: PaginatedTableModel, group_id: str):
     raise AssertionError(f"Missing group row {group_id}")
 
 
-def test_all_child_rows_only_when_fully_loaded(qtbot) -> None:
+def _children_rows(
+    model: PaginatedTableModel, group_id: str
+) -> list[dict[str, Any]] | None:
+    children = model.get_children_rows(group_id)
+    if children is None:
+        return None
+    for row_data, index in children:
+        assert index.internalPointer().row_data is row_data
+    return [row_data for row_data, _ in children]
+
+
+def test_children_rows_only_when_fully_loaded(qtbot) -> None:
     children = {
         "grp:a": [{"id": "v1"}],
         "grp:b": [{"id": "v2"}, {"id": "v3"}, {"id": "v4"}],
@@ -335,35 +352,49 @@ def test_all_child_rows_only_when_fully_loaded(qtbot) -> None:
     model = _make_model(children)
 
     # Not expanded yet.
-    assert model.get_all_child_rows("grp:a") is None
+    assert model.get_children_rows("grp:a") is None
 
     model.fetchMore(_group_index(model, "grp:a"))
-    assert model.get_all_child_rows("grp:a") == [{"id": "v1"}]
+    assert _children_rows(model, "grp:a") == [{"id": "v1"}]
 
     # Only the first page of a larger group is loaded.
     model.fetchMore(_group_index(model, "grp:b"))
-    assert model.get_all_child_rows("grp:b") is None
+    assert model.get_children_rows("grp:b") is None
     model.fetchMore(_group_index(model, "grp:b"))
-    assert model.get_all_child_rows("grp:b") == children["grp:b"]
+    assert _children_rows(model, "grp:b") == children["grp:b"]
 
-    assert model.get_all_child_rows("grp:c") is None
-    assert model.get_all_child_rows("grp:missing") is None
+    assert model.get_children_rows("grp:c") is None
+    assert model.get_children_rows("grp:missing") is None
 
 
-def test_all_child_rows_leave_out_rejected_rows(qtbot) -> None:
-    children = {"grp:a": [{"id": "v1"}, {"id": "v2"}, {"id": "v3"}]}
+def test_table_child_rows_leave_out_filtered_rows(qtbot) -> None:
+    children = {
+        "grp:a": [
+            {"id": "v1", "inScene": "Yes"},
+            {"id": "v2", "inScene": "No"},
+            {"id": "v3", "inScene": "Yes"},
+        ],
+    }
     model = _make_model(children)
     model.fetchMore(_group_index(model, "grp:a"))
     model.fetchMore(_group_index(model, "grp:a"))
-    calls = []
+    proxy = AYTableFilterProxyModel()
+    proxy.setSourceModel(model)
+    proxy.set_row_value_getter(
+        lambda index, key: index.internalPointer().row_data.get(key)
+    )
+    proxy.set_criteria(
+        [FilterCriterion("inScene", "In Scene", values=["Yes"])],
+        [],
+        [FilterEntry("inScene", "In Scene", options=["Yes", "No"])],
+    )
+    table = SimpleNamespace(
+        _model=model,
+        _table_filter=SimpleNamespace(filter_model=proxy),
+    )
 
-    def accept_row(row: int, parent_index) -> bool:
-        calls.append((row, parent_index.internalPointer().node_id))
-        return row != 1
+    rows = BrowserTable.get_all_child_rows(table, "grp:a")
 
-    rows = model.get_all_child_rows("grp:a", accept_row=accept_row)
-
-    assert rows == [{"id": "v1"}, {"id": "v3"}]
-    # Called with the child rows under the parent's index, like the
-    # table filter's `filterAcceptsRow`.
-    assert calls == [(0, "grp:a"), (1, "grp:a"), (2, "grp:a")]
+    # Only the children the table's filter shows.
+    assert [row["id"] for row in rows] == ["v1", "v3"]
+    assert BrowserTable.get_all_child_rows(table, "grp:missing") is None
