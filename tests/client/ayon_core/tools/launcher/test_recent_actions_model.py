@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import os
 import time
 from typing import Any, Optional
 
@@ -86,16 +85,18 @@ class Response:
 
 
 @pytest.fixture
-def server(monkeypatch, tmp_path_factory) -> dict[str, Any]:
+def server(monkeypatch) -> dict[str, Any]:
     """In memory stand-in for the preferences API of AYON server.
 
     Global preferences of the current user by key, in 'preferences'. A
     'status_code' makes every request answer with it, e.g. 404 of a
-    server without the preferences API.
+    server without the preferences API. Requests are counted in
+    'requests'.
     """
-    state = {"preferences": {}, "status_code": None}
+    state = {"preferences": {}, "status_code": None, "requests": 0}
 
     def raw_get(endpoint, **kwargs):
+        state["requests"] += 1
         if state["status_code"]:
             return Response(state["status_code"])
         return Response(200, {"preferences": [
@@ -104,6 +105,7 @@ def server(monkeypatch, tmp_path_factory) -> dict[str, Any]:
         ]})
 
     def raw_patch(endpoint, **kwargs):
+        state["requests"] += 1
         if state["status_code"]:
             return Response(state["status_code"])
         key = endpoint.split("/", 1)[1]
@@ -115,11 +117,6 @@ def server(monkeypatch, tmp_path_factory) -> dict[str, Any]:
     monkeypatch.setattr(ayon_api, "raw_patch", raw_patch)
     monkeypatch.setattr(ayon_api, "get_base_url", lambda: "http://ayon")
     monkeypatch.setattr(preferences._ServerSupport, "by_url", {})
-    # Used on servers without the preferences API
-    local_dir = tmp_path_factory.mktemp("local_dir")
-    monkeypatch.setenv("AYON_LAUNCHER_LOCAL_DIR", str(local_dir))
-    monkeypatch.setattr(preferences, "get_ayon_username", lambda: "tester")
-    state["local_dir"] = str(local_dir)
     return state
 
 
@@ -261,26 +258,28 @@ def test_refresh_does_not_undo_a_change_made_while_it_was_loading(
     assert item.favorite
 
 
-def test_history_is_stored_on_this_machine_without_preferences_api(
+def test_server_support_is_known_after_it_was_checked(model, server):
+    assert model.is_supported() is None
+
+    assert model.check_support() is True
+
+    assert model.is_supported() is True
+
+
+def test_nothing_is_recorded_without_preferences_api(
     controller, model, server
 ):
     server["status_code"] = 404
     trigger(controller, model, folder_id="a")
+    trigger(controller, model, folder_id="b")
+    model.refresh()
 
+    assert model.is_supported() is False
+    assert not model.is_loaded()
+    assert model.get_recent_action_items() == []
     assert server["preferences"] == {}
-    filepath = os.path.join(
-        server["local_dir"],
-        "tools",
-        "user_preferences",
-        "tester",
-        f"{PREFERENCES_KEY}.json",
-    )
-    assert os.path.exists(filepath)
-
-    other_session = RecentActionsModel(FakeController())
-    other_session.refresh()
-    folders = [i.folder_id for i in other_session.get_recent_action_items()]
-    assert folders == ["a"]
+    # Only the first request found out the server has no API
+    assert server["requests"] == 1
 
 
 def test_context_is_stored_with_names_and_type_icons(controller, model):

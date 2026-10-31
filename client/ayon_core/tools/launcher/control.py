@@ -355,6 +355,12 @@ class BaseLauncherController(
     def are_recent_action_items_loaded(self) -> bool:
         return self._recent_actions_model.is_loaded()
 
+    def is_recent_actions_supported(self) -> Optional[bool]:
+        return self._recent_actions_model.is_supported()
+
+    def check_recent_actions_support(self) -> bool:
+        return self._recent_actions_model.check_support()
+
     def refresh_recent_action_items(self):
         self._recent_actions_model.refresh()
 

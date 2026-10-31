@@ -804,6 +804,35 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
+    def is_recent_actions_supported(self) -> Optional[bool]:
+        """Whether the server can store the history, as last checked.
+
+        Does not query anything, so it is safe to call in the main thread.
+
+        Returns:
+            Optional[bool]: 'None' until
+                :meth:`check_recent_actions_support` ran.
+
+        """
+        pass
+
+    @abstractmethod
+    def check_recent_actions_support(self) -> bool:
+        """Ask whether the server can store the history.
+
+        The history is stored with the user preferences, which need the
+        preferences API of AYON server 1.17.3 or newer. The server is
+        asked until it told whether it has it. Blocks while it is asked,
+        so it is expected to be called from a worker thread.
+
+        Returns:
+            bool: Whether the server can store the history. 'False' also
+                while the server is not reachable.
+
+        """
+        pass
+
+    @abstractmethod
     def refresh_recent_action_items(self):
         """Load the recent actions history.
 

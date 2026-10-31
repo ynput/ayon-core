@@ -68,9 +68,9 @@ class RecentActionsModel:
 
     Keeps up to :data:`RECENT_ACTIONS_MAX` entries per user, in the
     ``recent_actions`` item of the ``io.ynput.core.launcher`` user
-    preferences - so the history follows the user to any machine. On AYON
-    servers without the preferences API they are stored on this machine
-    instead, see 'UserPreferences'. Duplicate
+    preferences - so the history follows the user to any machine. AYON
+    servers without the preferences API can't store it, nothing is
+    recorded there, see 'check_support'. Duplicate
     entries (same action in the same context) are deduplicated, the newest
     execution ends up on top. Favorited entries are pinned - they are listed
     first and newer actions never push them out.
@@ -116,6 +116,8 @@ class RecentActionsModel:
         self._saving = False
         self._worker: Optional[threading.Thread] = None
         self._prewarmed = False
+        # Whether the server can store the history, 'None' until checked
+        self._supported: Optional[bool] = None
 
         self._controller.register_event_callback(
             "action.trigger.finished",
@@ -133,6 +135,33 @@ class RecentActionsModel:
     def is_loaded(self) -> bool:
         """Whether the history was loaded at least once."""
         return self._items is not None
+
+    def is_supported(self) -> Optional[bool]:
+        """Whether the server can store the history, as last checked.
+
+        Does not query anything.
+
+        Returns:
+            Optional[bool]: 'None' until 'check_support' ran.
+
+        """
+        return self._supported
+
+    def check_support(self) -> bool:
+        """Ask whether the server can store the history.
+
+        The server is asked only until it told whether it has the
+        preferences API, see 'UserPreferences.is_supported'. Blocks while
+        it is asked, so it is meant to be called from a worker thread.
+
+        Returns:
+            bool: Whether the server has the preferences API. 'False' also
+                while the server is not reachable.
+
+        """
+        supported = UserPreferences.is_supported()
+        self._supported = supported
+        return supported
 
     def get_recent_action_items(self) -> list[RecentActionItem]:
         """Return the loaded history, favorites first.
@@ -274,6 +303,13 @@ class RecentActionsModel:
                 could not be loaded.
 
         """
+        if not self.check_support():
+            self.log.debug(
+                "Recent actions were not loaded, the server can't store"
+                " them or is not reachable."
+            )
+            return None
+
         # Storing replaces the whole history, so an empty history must not
         #   be used when it could not be received.
         if not self._preferences.refresh():
@@ -427,6 +463,15 @@ class RecentActionsModel:
                 )
 
     def _record(self, action_type: str, data: dict) -> None:
+        # Nowhere to store it, so the lookups below can be skipped
+        if not self.check_support():
+            self.log.debug(
+                "Recent action '%s' was not recorded, the server can't"
+                " store it or is not reachable.",
+                data["identifier"],
+            )
+            return
+
         item = RecentActionItem(
             record_id=uuid.uuid4().hex,
             action_type=action_type,

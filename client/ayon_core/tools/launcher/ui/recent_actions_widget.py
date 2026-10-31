@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, UserPreferences
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon, prefetch_qt_icons
@@ -26,6 +26,12 @@ _DEFAULT_FOLDER_ICON = "folder"
 _DEFAULT_TASK_ICON = "task_alt"
 _WORKFILE_ICON = "description"
 _BREADCRUMB_ICON_SIZE = 14
+_TOOLTIP = "Recent Actions"
+# The history is stored with the user preferences
+_NOT_SUPPORTED_MESSAGE = (
+    "Recent actions require AYON server"
+    f" {UserPreferences.min_server_version}+"
+)
 
 log = Logger.get_logger("RecentActionsWidget")
 
@@ -483,11 +489,13 @@ class RecentActionsPopup(AYDropdownPopup):
         if items:
             self._empty_label.setVisible(False)
         else:
-            self._empty_label.setText(
-                "No recent actions..."
-                if self._controller.are_recent_action_items_loaded()
-                else "Loading recent actions..."
-            )
+            if self._controller.is_recent_actions_supported() is False:
+                text = _NOT_SUPPORTED_MESSAGE
+            elif self._controller.are_recent_action_items_loaded():
+                text = "No recent actions..."
+            else:
+                text = "Loading recent actions..."
+            self._empty_label.setText(text)
             self._empty_label.setVisible(True)
         previous_favorite = None
         for action_item in items:
@@ -593,19 +601,61 @@ class RecentActionsPopup(AYDropdownPopup):
 
 
 class RecentActionsButton(AYButton):
-    """Icon-only button that shows/hides the recent-actions popup."""
+    """Icon-only button that shows/hides the recent-actions popup.
+
+    Disabled on AYON servers that can't store the history. The server is
+    asked in a thread after each refresh of the launcher, until it
+    answered. The button stays usable until then, an open popup tells the
+    same once it knows.
+    """
 
     def __init__(self, controller, parent=None):
         super().__init__(
             icon="work_history",
             variant=AYButton.Variants.Surface,
-            tooltip="Recent Actions",
+            tooltip=_TOOLTIP,
             parent=parent,
         )
         self._controller = controller
         # Created when it is first asked for
         self._popup = None
+        self._support_thread = None
         self.clicked.connect(self._on_clicked)
+        controller.register_event_callback(
+            "controller.refresh.finished", self._on_controller_refresh
+        )
+        self._set_supported(controller.is_recent_actions_supported())
+
+    def _on_controller_refresh(self):
+        self._check_support()
+
+    def _check_support(self):
+        # Servers don't lose the API once they have it
+        if (
+            self._support_thread is not None
+            or self._controller.is_recent_actions_supported()
+        ):
+            return
+
+        support_thread = RefreshThread(
+            "recent_actions_support",
+            self._controller.check_recent_actions_support,
+        )
+        support_thread.refresh_finished.connect(self._on_support_checked)
+        self._support_thread = support_thread
+        support_thread.start()
+
+    def _on_support_checked(self):
+        support_thread = self._support_thread
+        self._support_thread = None
+        # 'None' if the check failed, the button is kept as it is then
+        self._set_supported(support_thread.get_result())
+
+    def _set_supported(self, supported):
+        if supported is None:
+            return
+        self.setEnabled(supported)
+        self.setToolTip(_TOOLTIP if supported else _NOT_SUPPORTED_MESSAGE)
 
     def _on_clicked(self):
         if self._popup is None:
