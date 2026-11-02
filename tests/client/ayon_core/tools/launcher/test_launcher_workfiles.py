@@ -15,7 +15,11 @@ from ayon_core.ui.components import user_avatars
 from ayon_core.ui.components.task_queue import shutdown_task_queue
 
 
-def _workfile_item(idx: int, updated_by: str | None) -> WorkfileItem:
+def _workfile_item(
+    idx: int,
+    updated_by: str | None,
+    description: str = "",
+) -> WorkfileItem:
     return WorkfileItem(
         workfile_id=str(idx),
         filename=f"sh010_comp_v{idx:03d}.nk",
@@ -26,6 +30,7 @@ def _workfile_item(idx: int, updated_by: str | None) -> WorkfileItem:
         updated_at_time=1000.0 * idx,
         file_size=1024,
         updated_by=updated_by,
+        description=description,
     )
 
 
@@ -308,6 +313,32 @@ def test_delegate_paints_avatar_in_modified_column(
     assert option.icon.isNull()
 
 
+def test_filename_description_tooltip_and_icon(
+    qtbot, task_queue, avatar_tasks
+):
+    controller = _Controller([
+        _workfile_item(1, "roy", description="Looks good"),
+        _workfile_item(2, "roy"),
+    ])
+    model = workfiles_page.WorkfilesModel(controller)
+    _refresh(qtbot, model)
+    delegate = workfiles_page.WorkfilesDelegate(
+        user_avatars.UserAvatarCache(model)
+    )
+
+    with_desc = _index_by_filename(model, "sh010_comp_v001.nk", 0)
+    assert with_desc.data(workfiles_page.DESCRIPTION_ROLE) == "Looks good"
+    assert with_desc.data(QtCore.Qt.ToolTipRole) == "Looks good"
+    option = QtWidgets.QStyleOptionViewItem()
+    option.rect = QtCore.QRect(0, 0, 200, 28)
+    assert delegate._get_reserved_right_width(option, with_desc) > 0
+
+    without_desc = _index_by_filename(model, "sh010_comp_v002.nk", 0)
+    assert without_desc.data(workfiles_page.DESCRIPTION_ROLE) == ""
+    assert without_desc.data(QtCore.Qt.ToolTipRole) is None
+    assert delegate._get_reserved_right_width(option, without_desc) == 0
+
+
 def test_backend_fills_user_of_last_change(monkeypatch, tmp_path):
     queried_fields = []
 
@@ -327,13 +358,19 @@ def test_backend_fills_user_of_last_change(monkeypatch, tmp_path):
 
     def get_workfiles_info(project_name, task_ids, fields):
         queried_fields.extend(fields)
-        for idx, updated_by in enumerate(("roy", None), 1):
+        entities = (
+            ("roy", {"description": "Artist note"}),
+            (None, {"description": "Incremented by publishing v002"}),
+            ("roy", None),
+        )
+        for idx, (updated_by, attrib) in enumerate(entities, 1):
             yield {
                 "id": str(idx),
                 "path": f"{{root}}/sh010_comp_v{idx:03d}.nk",
                 "data": {"host_name": "nuke", "version": idx},
                 "updatedAt": None,
                 "updatedBy": updated_by,
+                "attrib": attrib,
             }
 
     monkeypatch.setattr(backend_workfiles, "Anatomy", _Anatomy)
@@ -345,4 +382,6 @@ def test_backend_fills_user_of_last_change(monkeypatch, tmp_path):
     items = model.get_workfile_items("demo", "task-id")
 
     assert "updatedBy" in queried_fields
-    assert [item.updated_by for item in items] == ["roy", None]
+    assert "attrib" in queried_fields
+    assert [item.updated_by for item in items] == ["roy", None, "roy"]
+    assert [item.description for item in items] == ["Artist note", "", ""]

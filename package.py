@@ -20,4 +20,5 @@ ayon_compatible_addons = {
     "fusion": ">=0.3.3",
     "openrv": ">=1.0.2",
     "traypublisher": ">=0.3.0",
+    "review_desktop": ">0.0.5",
 }
