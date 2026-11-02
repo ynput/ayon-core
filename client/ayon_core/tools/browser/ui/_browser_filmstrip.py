@@ -6,6 +6,8 @@ top to bottom. While the cursor is over a thumbnail the frame matching the
 horizontal cursor position is shown, so moving the cursor "plays" the video.
 
 Requires a server with the filmstrip endpoints (ynput/ayon-backend#1148).
+Whether the server has them is checked once, on the first hover. Without
+them thumbnails are not scrubbed and nothing else is requested.
 
 The server creates a missing filmstrip on the first request, which can take
 a while. Filmstrips are loaded by their own small worker pool so this does
@@ -20,6 +22,7 @@ import functools
 import math
 import os
 import tempfile
+import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -40,8 +43,8 @@ log = Logger.get_logger(__name__)
 HOVER_INTENT_DELAY_MS = 120
 # Entity filmstrips can change (a new reviewable) without the url changing.
 DEFAULT_MAX_AGE = 300
-# Failed requests (e.g. server without the endpoints, or overloaded with
-# filmstrips to create) are retried later.
+# Failed requests (e.g. server overloaded with filmstrips to create) are
+# retried later.
 FAILED_MAX_AGE = 60
 # The server may still be creating the filmstrip, retry sooner.
 BUSY_MAX_AGE = 10
@@ -225,8 +228,50 @@ def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     return data, DEFAULT_MAX_AGE
 
 
+# Whether the server has the filmstrip endpoints, 'None' until checked.
+# Servers are not expected to get them while the process runs.
+_supported: bool | None = None
+_supported_lock = threading.Lock()
+
+
+def _is_supported(project_name: str) -> bool | None:
+    """Check once whether the server has the filmstrip endpoints.
+
+    Asks for the filmstrip of a version that does not exist: a server with
+    the endpoints answers 204, an older server 404 because the endpoint
+    does not exist. Runs in a worker thread.
+
+    Args:
+        project_name: An existing project, a server with the endpoints
+            answers 404 for a missing project too.
+
+    Returns:
+        ``None`` when the server did not answer, it is checked again later.
+    """
+    global _supported
+    with _supported_lock:
+        if _supported is not None:
+            return _supported
+        con = ayon_api.get_server_api_connection()
+        response = con.raw_get(
+            f"projects/{project_name}/versions/{'0' * 32}/filmstrip",
+            timeout=REQUEST_TIMEOUT,
+        )
+        if response.orig_response is None:
+            return None
+        _supported = response.status_code != 404
+        if not _supported:
+            log.debug("Server does not support filmstrips")
+        return _supported
+
+
 def _load_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     try:
+        supported = _is_supported(key[0])
+        if supported is None:
+            return None, BUSY_MAX_AGE
+        if not supported:
+            return None, DEFAULT_MAX_AGE
         return _fetch_filmstrip(key)
     except _FilmstripChangedError:
         log.debug("Filmstrip of %r changed while loading", key)
@@ -276,6 +321,8 @@ class _FilmstripLoader(QtCore.QObject):
         Every call must be followed by :meth:`release` or by :attr:`loaded`
         emitted for *key*.
         """
+        if _supported is False:
+            return
         request = self._requests.get(key)
         if request is None:
             request = _Request()
@@ -479,6 +526,8 @@ class FilmstripOverlay(QtWidgets.QWidget):
 
     def scrub(self, position: float) -> None:
         """Show the frame at the relative *position* (0-1) of the video."""
+        if _supported is False:
+            return
         if not self._hovering and self._source_getter is not None:
             self.set_source(*(self._source_getter() or ()))
         if self._source is None:
@@ -514,7 +563,7 @@ class FilmstripOverlay(QtWidgets.QWidget):
         Does nothing when the entity has no filmstrip. A filmstrip that is
         not loaded yet is shown once loaded, unless the cursor left.
         """
-        if self._source is None:
+        if self._source is None or _supported is False:
             return
         entry = _peek_filmstrip(self._source)
         if entry is None:
