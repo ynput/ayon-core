@@ -6,75 +6,40 @@ from .exceptions import MissingMethodsError
 
 
 class ILoadHost(AbstractHost):
-    """Implementation requirements to be able use reference of representations.
+    """DEPRECATED Implementation requirements to be load representations.
+
+    The loading logic was moved to load plugins and host does not need any
+        special implementation to use load logic.
+
+    This interface is deprecated and will be removed in future releases.
 
     The load plugins can do referencing even without implementation of methods
     here, but switch and removement of containers would not be possible.
-
-    Questions:
-        - Is list container dependency of host or load plugins?
-        - Should this be directly in HostBase?
-            - how to find out if referencing is available?
-            - do we need to know that?
     """
 
     @staticmethod
-    def get_missing_load_methods(host):
-        """Look for missing methods on "old type" host implementation.
-
-        Method is used for validation of implemented functions related to
-        loading. Checks only existence of methods.
-
-        Args:
-            Union[ModuleType, AbstractHost]: Object of host where to look for
-                required methods.
-
-        Returns:
-            list[str]: Missing method implementations for loading workflow.
-        """
-
-        if isinstance(host, ILoadHost):
-            return []
-
-        required = ["ls"]
-        missing = []
-        for name in required:
-            if not hasattr(host, name):
-                missing.append(name)
-        return missing
-
-    @staticmethod
-    def validate_load_methods(host):
+    def validate_load_methods(host: AbstractHost) -> None:
         """Validate implemented methods of "old type" host for load workflow.
 
         Args:
-            Union[ModuleType, AbstractHost]: Object of host to validate.
+            host (AbstractHost): Object of host to validate.
 
-        Raises:
-            MissingMethodsError: If there are missing methods on host
-                implementation.
         """
-        missing = ILoadHost.get_missing_load_methods(host)
-        if missing:
-            raise MissingMethodsError(host, missing)
+        pass
 
-    @abstractmethod
     def get_containers(self):
         """Retrieve referenced containers from scene.
 
         This can be implemented in hosts where referencing can be used.
 
-        Todo:
-            Rename function to something more self explanatory.
-                Suggestion: 'get_containers'
+        DEPRECATION:
+            Container selection was moved to load plugins.
 
         Returns:
             list[dict]: Information about loaded containers.
         """
+        return []
 
-        pass
-
-    # --- Deprecated method names ---
     def ls(self):
         """Deprecated variant of 'get_containers'.
 

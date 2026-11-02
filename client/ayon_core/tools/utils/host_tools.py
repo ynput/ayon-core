@@ -11,7 +11,7 @@ import ayon_api
 import pyblish.api
 from typing import TYPE_CHECKING, Literal
 
-from ayon_core.host import ILoadHost, IPublishHost
+from ayon_core.host import IPublishHost
 from ayon_core.lib import Logger, env_value_to_bool
 from ayon_core.pipeline import registered_host
 
@@ -99,7 +99,6 @@ class HostToolsHelper:
                 LoaderController = BrowserController
 
             host = registered_host()
-            ILoadHost.validate_load_methods(host)
 
             controller = LoaderController(host=host)
             window_kwargs = {
@@ -137,9 +136,6 @@ class HostToolsHelper:
     def get_scene_inventory_tool(self, parent):
         """Create, cache and return scene inventory tool window."""
         if self._scene_inventory_tool is None:
-            host = registered_host()
-            ILoadHost.validate_load_methods(host)
-
             from ayon_core.tools.sceneinventory.window import (
                 SceneInventoryWindow)
 
