@@ -119,8 +119,10 @@ class PrepareAttachReviewables(pyblish.api.ContextPlugin):
     def _is_reviewable(self, instance):
         families = set(instance.data.get("families") or [])
         families.add(instance.data.get("family"))
-        families.add(instance.data.get("productBaseType"))
-        families.add(instance.data.get("productType"))
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data.get("productType")
+        families.add(product_base_type)
         return bool(families & {"render", "review"})
 
     def _get_target_instances(self, instance, attach_to):
