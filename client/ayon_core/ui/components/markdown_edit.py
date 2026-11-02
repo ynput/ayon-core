@@ -90,7 +90,9 @@ class AYMarkdownEdit(AYTextEdit):
     def setReadOnly(self, read_only: bool) -> None:
         """Make the text read-only or editable with a popup to mention."""
         super().setReadOnly(read_only)
-        if not read_only and self._mentions is None:
+        if self._mentions is not None and read_only:
+            self._mentions.close_popup()
+        elif self._mentions is None and not read_only:
             self._mentions = MentionCompleter(self, self._mention_model)
 
     # MENTIONS ---------------------------------------------------------------

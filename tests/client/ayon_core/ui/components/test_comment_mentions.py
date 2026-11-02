@@ -1029,6 +1029,13 @@ def test_editors_share_mention_model(qtbot):
     assert _completions(text_box.edit_field) == ["Roy Nieterau", "Ayon admin"]
 
 
+def test_popup_closes_when_made_read_only(qtbot, editor):
+    qtbot.keyClicks(editor, "@@")
+    assert editor._mentions.popup_visible()
+    editor.setReadOnly(True)
+    assert not editor._mentions.popup_visible()
+
+
 def test_entities_do_not_open_popup_of_other_editor(qtbot, editor):
     other = AYTextEditor(mention_model=editor.mention_model())
     qtbot.addWidget(other)

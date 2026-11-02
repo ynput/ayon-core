@@ -431,6 +431,11 @@ class MentionCompleter(QObject):
         if self.popup_visible():
             self._update_popup()
 
+    def close_popup(self) -> None:
+        """Close the popup, e.g. when the text is made read-only."""
+        self._entities_requested = False
+        self._completer.popup().hide()
+
     def popup_visible(self) -> bool:
         """Whether the popup to pick a mention is open."""
         return self._completer.popup().isVisible()
