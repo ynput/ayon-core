@@ -4,6 +4,8 @@ from __future__ import annotations
 import copy
 import json
 import os
+import subprocess
+import sys
 import threading
 import time
 from typing import Any, Optional
@@ -12,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 import ayon_api
 import pytest
 
+import ayon_core
 from ayon_core.lib import (
     JSONSettingRegistry,
     LocalPreferences,
@@ -140,7 +143,9 @@ def test_invalid_names_are_refused(name):
 def test_local_preferences_items(local_dir):
     prefs = LocalPreferences(KEY)
 
-    assert prefs.filepath == os.path.join(local_dir, "tools", f"{KEY}.json")
+    assert prefs.filepath == os.path.join(
+        local_dir, "tools", "preferences.db"
+    )
     assert prefs.get_item("sizes", default=[]) == []
     with pytest.raises(RegistryItemNotFound):
         prefs.get_item("sizes")
@@ -151,6 +156,9 @@ def test_local_preferences_items(local_dir):
     prefs.set_item("visible", True)
     assert LocalPreferences(KEY).get_item("sizes") == [200, 400]
     assert prefs.get_data() == {"sizes": [200, 400], "visible": True}
+    # Other preferences are in the same database
+    LocalPreferences(f"{KEY}.other").set_item("sizes", [1, 2])
+    assert prefs.get_item("sizes") == [200, 400]
 
     prefs.delete_item("sizes")
     prefs.delete_item("missing")
@@ -159,23 +167,40 @@ def test_local_preferences_items(local_dir):
     assert LocalPreferences(KEY).get_data() == {"visible": True}
 
     prefs.clear()
-    assert not os.path.exists(prefs.filepath)
+    assert prefs.get_data() == {}
+    assert LocalPreferences(f"{KEY}.other").get_data() == {"sizes": [1, 2]}
 
 
 @pytest.mark.unit
-def test_local_preferences_use_existing_registry():
-    """Registries of tools are read and written without conversion."""
+def test_local_preferences_import_existing_registry():
+    """Registries of tools are imported once, on first use."""
     registry = JSONSettingRegistry("launcher", get_launcher_local_dir("tools"))
     registry.set_item("grouped_hosts", '["maya"]')
 
     prefs = LocalPreferences("launcher")
-    assert prefs.filepath == registry.filepath
+    assert prefs.registry_filepath == registry.filepath
     assert prefs.get_item("grouped_hosts") == '["maya"]'
 
     prefs.set_item("grouped_hosts", '["maya", "nuke"]')
-    content = read_json(registry.filepath)
-    assert "__metadata__" in content
-    assert registry.get_item("grouped_hosts") == '["maya", "nuke"]'
+    prefs.delete_item("grouped_hosts")
+    # Not imported again, by this process or another one
+    assert LocalPreferences("launcher").get_data() == {}
+    assert prefs.import_registry(registry.filepath) is False
+    # The registry is left as it was, for older versions of core
+    assert registry.get_item("grouped_hosts") == '["maya"]'
+
+
+@pytest.mark.unit
+def test_local_preferences_import_keeps_items_that_are_set(local_dir):
+    registry = JSONSettingRegistry("unreal", local_dir)
+    registry.set_item("width", 800)
+    registry.set_item("height", 600)
+
+    prefs = LocalPreferences("unreal")
+    prefs.set_item("width", 1000)
+    assert prefs.import_registry(registry.filepath) is True
+    assert prefs.get_data() == {"width": 1000, "height": 600}
+    assert prefs.import_registry(os.path.join(local_dir, "x.json")) is False
 
 
 @pytest.mark.unit
@@ -191,15 +216,57 @@ def test_json_registry_reads_changes_of_others():
 
 
 @pytest.mark.unit
-def test_local_preferences_ignore_a_broken_file():
+def test_local_preferences_ignore_a_broken_database():
     prefs = LocalPreferences(KEY)
     os.makedirs(os.path.dirname(prefs.filepath))
     with open(prefs.filepath, "w") as stream:
-        stream.write("{not json")
+        stream.write("not a database")
 
     assert prefs.get_item("visible", default=False) is False
+    assert prefs.get_data() == {}
+    # Failed writes are logged, not raised
     prefs.set_item("visible", True)
+    prefs.delete_item("visible", ignore_missing=False)
+    prefs.clear()
+
+
+@pytest.mark.unit
+def test_local_preferences_values_that_are_not_json():
+    prefs = LocalPreferences(KEY)
+    prefs.set_item("visible", True)
+    prefs.set_item("visible", {1, 2})
     assert prefs.get_item("visible") is True
+
+
+@pytest.mark.unit
+def test_local_preferences_changed_by_processes_at_once(local_dir):
+    """Items changed by processes at the same time are all kept."""
+    client_dir = os.path.dirname(os.path.dirname(ayon_core.__file__))
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        path for path in (client_dir, env.get("PYTHONPATH")) if path
+    )
+    script = (
+        "import sys\n"
+        "from ayon_core.lib import LocalPreferences\n"
+        f"prefs = LocalPreferences({KEY!r})\n"
+        "for index in range(20):\n"
+        "    prefs.set_item(f'{sys.argv[1]}_{index}', index)\n"
+    )
+    processes = [
+        subprocess.Popen(
+            [sys.executable, "-c", script, f"process{number}"], env=env
+        )
+        for number in range(4)
+    ]
+    for process in processes:
+        assert process.wait(timeout=60) == 0
+
+    assert LocalPreferences(KEY).get_data() == {
+        f"process{number}_{index}": index
+        for number in range(4)
+        for index in range(20)
+    }
 
 
 @pytest.mark.unit

@@ -2,8 +2,8 @@
 
 Also preferences of tools, of this machine or of the AYON user.
 
-'LocalPreferences' are stored in a JSON file on this machine. They are
-meant for what depends on the machine, e.g. sizes of windows.
+'LocalPreferences' are stored in an SQLite database on this machine. They
+are meant for what depends on the machine, e.g. sizes of windows.
 
 'UserPreferences' follow the AYON user to every machine. They are stored
 on AYON server with its preferences API, globally or per project. Servers
@@ -24,12 +24,14 @@ import platform
 import tempfile
 import threading
 import configparser
+import contextlib
+import sqlite3
 import warnings
 import copy
 from datetime import datetime
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Optional, Any
+from typing import Generator, Optional, Any
 from urllib.parse import urlencode
 
 import platformdirs
@@ -836,18 +838,42 @@ def _validate_preferences_name(name: str) -> None:
         )
 
 
-class LocalPreferences(JSONSettingRegistry):
+# Tables of local preferences. Items are rows, so processes that change
+#   different items at the same time don't overwrite each other.
+_LOCAL_PREFERENCES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS preferences (
+    name  TEXT NOT NULL,
+    item  TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (name, item)
+);
+CREATE TABLE IF NOT EXISTS imported_registries (
+    name     TEXT NOT NULL,
+    filepath TEXT NOT NULL,
+    PRIMARY KEY (name, filepath)
+);
+"""
+
+
+class LocalPreferences(ASettingRegistry):
     """Preferences stored on this machine, of the user of the OS.
 
     Meant for what depends on the machine, e.g. sizes of windows. Use
     'UserPreferences' for what should follow the AYON user to other
     machines.
 
-    Items are stored in '<name>.json' in the 'tools' folder of the
-    launcher local directory, as 'JSONSettingRegistry'. So a registry
-    with the same name in that folder is used as it is, e.g.
-    'LocalPreferences("launcher")' uses the registry the Launcher used
-    before.
+    Items of all local preferences are stored in an SQLite database in
+    the 'tools' folder of the launcher local directory, a row per item.
+    Processes and threads can read and change them at the same time, a
+    change of an item never loses changes of other items. Values are
+    stored as JSON. Errors of the database are logged, not raised: a
+    failed read returns the default and a failed write is lost.
+
+    A 'JSONSettingRegistry' with the same name in that folder, as tools
+    used before, is imported on first use, e.g.
+    'LocalPreferences("launcher")' has the items the Launcher stored
+    before. Older versions of core keep using that file, changes are not
+    written back to it.
 
     Example:
         >>> preferences = LocalPreferences("io.ynput.core.my_tool")
@@ -863,9 +889,221 @@ class LocalPreferences(JSONSettingRegistry):
         ValueError: If the name is not valid.
 
     """
+    log = Logger.get_logger("LocalPreferences")
+    # Seconds to wait for another process that changes the database
+    timeout = 10
+
     def __init__(self, name: str) -> None:
         _validate_preferences_name(name)
-        super().__init__(name, get_launcher_local_dir("tools"))
+        super().__init__(name)
+        self._filepath = get_launcher_local_dir("tools", "preferences.db")
+        self._registry_imported = False
+
+    @property
+    def filepath(self) -> str:
+        """Path to the database, shared by all local preferences."""
+        return self._filepath
+
+    @property
+    def registry_filepath(self) -> str:
+        """Path to the registry imported on first use, may not exist."""
+        return get_launcher_local_dir("tools", f"{self.name}.json")
+
+    def get_data(self) -> dict[str, Any]:
+        """All stored items.
+
+        Returns:
+            dict[str, Any]: Items by name.
+
+        """
+        rows = self._query(
+            "SELECT item, value FROM preferences WHERE name = ?",
+            (self.name,),
+        )
+        data = {}
+        for item, value in rows or []:
+            try:
+                data[item] = json.loads(value)
+            except ValueError:
+                self.log.warning(
+                    "Failed to read item '%s' of preferences '%s'.",
+                    item,
+                    self.name,
+                )
+        return data
+
+    def clear(self) -> None:
+        """Delete all items."""
+        self._change(
+            "DELETE FROM preferences WHERE name = ?", (self.name,)
+        )
+
+    def import_registry(self, filepath: str) -> bool:
+        """Import items of a 'JSONSettingRegistry' file.
+
+        Each file is imported once, it is not imported again when the
+        items are changed or deleted later. Items that are already set
+        are kept.
+
+        Args:
+            filepath: Path to the JSON file of the registry.
+
+        Returns:
+            bool: Whether items were imported now.
+
+        """
+        if not os.path.isfile(filepath):
+            return False
+        try:
+            with open(filepath, "r", encoding="utf-8") as stream:
+                registry = json.load(stream).get("registry")
+            if not isinstance(registry, dict):
+                registry = {}
+            rows = [
+                (self.name, item, json.dumps(value))
+                for item, value in registry.items()
+            ]
+        except (OSError, ValueError, TypeError, AttributeError):
+            self.log.warning(
+                "Failed to read registry file '%s'.", filepath, exc_info=True
+            )
+            return False
+
+        source = os.path.normcase(os.path.abspath(filepath))
+        try:
+            with self._connect() as connection:
+                # Locks the database, so the file is imported once also
+                #   when processes import it at the same time.
+                connection.execute("BEGIN IMMEDIATE")
+                try:
+                    imported = connection.execute(
+                        "SELECT 1 FROM imported_registries"
+                        " WHERE name = ? AND filepath = ?",
+                        (self.name, source),
+                    ).fetchone()
+                    if not imported:
+                        connection.executemany(
+                            "INSERT OR IGNORE INTO preferences"
+                            " (name, item, value) VALUES (?, ?, ?)",
+                            rows,
+                        )
+                        connection.execute(
+                            "INSERT INTO imported_registries"
+                            " (name, filepath) VALUES (?, ?)",
+                            (self.name, source),
+                        )
+                    connection.execute("COMMIT")
+                except BaseException:
+                    connection.execute("ROLLBACK")
+                    raise
+        except (sqlite3.Error, OSError):
+            self.log.warning(
+                "Failed to import registry file '%s' to preferences '%s'.",
+                filepath,
+                self.name,
+                exc_info=True,
+            )
+            return False
+        return not imported
+
+    def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
+        rows = self._query(
+            "SELECT value FROM preferences WHERE name = ? AND item = ?",
+            (self.name, name),
+        )
+        if rows:
+            try:
+                return json.loads(rows[0][0])
+            except ValueError:
+                self.log.warning(
+                    "Failed to read item '%s' of preferences '%s'.",
+                    name,
+                    self.name,
+                )
+        if default is not _PLACEHOLDER:
+            return default
+        raise RegistryItemNotFound(
+            f"Preferences '{self.name}' don't contain '{name}'."
+        )
+
+    def _set_item(self, name: str, value: Any) -> None:
+        try:
+            value = json.dumps(value)
+        except (TypeError, ValueError):
+            self.log.warning(
+                "Failed to store item '%s' of preferences '%s'.",
+                name,
+                self.name,
+                exc_info=True,
+            )
+            return
+        self._change(
+            "INSERT OR REPLACE INTO preferences (name, item, value)"
+            " VALUES (?, ?, ?)",
+            (self.name, name, value),
+        )
+
+    def _delete_item(self, name: str, ignore_missing: bool = True) -> None:
+        deleted = self._change(
+            "DELETE FROM preferences WHERE name = ? AND item = ?",
+            (self.name, name),
+        )
+        if deleted == 0 and not ignore_missing:
+            raise RegistryItemNotFound(
+                f"Preferences '{self.name}' don't contain '{name}'."
+            )
+
+    def _query(
+        self, sql: str, parameters: tuple[str, ...]
+    ) -> Optional[list[tuple[str, ...]]]:
+        """Read rows, 'None' if they could not be read."""
+        self._ensure_registry_imported()
+        # Nothing is created by reading
+        if not os.path.exists(self._filepath):
+            return []
+        try:
+            with self._connect() as connection:
+                return connection.execute(sql, parameters).fetchall()
+        except (sqlite3.Error, OSError):
+            self.log.warning(
+                "Failed to read preferences '%s'.", self.name, exc_info=True
+            )
+            return None
+
+    def _change(self, sql: str, parameters: tuple[str, ...]) -> int:
+        """Change rows, returns how many, '-1' if they were not changed."""
+        self._ensure_registry_imported()
+        try:
+            with self._connect() as connection:
+                return connection.execute(sql, parameters).rowcount
+        except (sqlite3.Error, OSError):
+            self.log.warning(
+                "Failed to change preferences '%s'.", self.name, exc_info=True
+            )
+            return -1
+
+    def _ensure_registry_imported(self) -> None:
+        if not self._registry_imported:
+            self._registry_imported = True
+            self.import_registry(self.registry_filepath)
+
+    @contextlib.contextmanager
+    def _connect(self) -> Generator[sqlite3.Connection, None, None]:
+        """Connection to the database, closed on exit.
+
+        Preferences are used rarely, so a connection is opened for each
+        access. That also makes it safe to use from any thread. Every
+        statement is committed on its own, unless a transaction is begun.
+        """
+        os.makedirs(os.path.dirname(self._filepath), exist_ok=True)
+        connection = sqlite3.connect(
+            self._filepath, timeout=self.timeout, isolation_level=None
+        )
+        try:
+            connection.executescript(_LOCAL_PREFERENCES_SCHEMA)
+            yield connection
+        finally:
+            connection.close()
 
 
 class UserPreferencesNotSupported(RuntimeError):
