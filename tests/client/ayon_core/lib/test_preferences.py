@@ -19,7 +19,7 @@ from ayon_core.lib import (
     UserPreferencesNotSupported,
     get_launcher_local_dir,
 )
-from ayon_core.lib import preferences
+from ayon_core.lib import local_settings
 from ayon_core.lib.local_settings import RegistryItemNotFound
 
 KEY = "io.ynput.core.tests"
@@ -109,7 +109,7 @@ def local_dir(tmp_path_factory, monkeypatch) -> str:
     monkeypatch.setattr(
         ayon_api, "get_base_url", lambda: "http://ayon.server"
     )
-    monkeypatch.setattr(preferences._ServerSupport, "by_url", {})
+    monkeypatch.setattr(local_settings._ServerSupport, "by_url", {})
     return str(tmp_path)
 
 
@@ -175,9 +175,19 @@ def test_local_preferences_use_existing_registry():
     prefs.set_item("grouped_hosts", '["maya", "nuke"]')
     content = read_json(registry.filepath)
     assert "__metadata__" in content
-    # A new registry, the old one caches what it read
-    registry = JSONSettingRegistry("launcher", get_launcher_local_dir("tools"))
     assert registry.get_item("grouped_hosts") == '["maya", "nuke"]'
+
+
+@pytest.mark.unit
+def test_json_registry_reads_changes_of_others():
+    path = get_launcher_local_dir("tools")
+    registry = JSONSettingRegistry("other_tool", path)
+    # Unhashable default, the registry used to cache with 'lru_cache'
+    assert registry.get_item("tabs", default=[]) == []
+    assert registry.get_item("width", default=None) is None
+
+    JSONSettingRegistry("other_tool", path).set_item("width", 800)
+    assert registry.get_item("width", default=None) == 800
 
 
 @pytest.mark.unit
