@@ -6,6 +6,12 @@ top to bottom. While the cursor is over a thumbnail the frame matching the
 horizontal cursor position is shown, so moving the cursor "plays" the video.
 
 Requires a server with the filmstrip endpoints (ynput/ayon-backend#1148).
+
+The server creates a missing filmstrip on the first request, which can take
+a while. Filmstrips are loaded by their own small worker pool so this does
+not hold up the other loading of the Browser, a filmstrip is requested at
+most once at a time, and requests the cursor already left are dropped
+before they are sent.
 """
 
 from __future__ import annotations
@@ -21,9 +27,9 @@ from typing import Callable, Optional, Tuple
 
 import ayon_api
 from ayon_core.ui.components.entity_card import AYEntityCard
-from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.task_queue import AsyncTask, AsyncTaskQueue
 from ayon_core.ui.image_cache import ImageCache
-from qtpy import QtCore, QtGui, QtWidgets, shiboken
+from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib import Logger, get_ffmpeg_tool_args, run_subprocess
 
@@ -34,8 +40,17 @@ log = Logger.get_logger(__name__)
 HOVER_INTENT_DELAY_MS = 120
 # Entity filmstrips can change (a new reviewable) without the url changing.
 DEFAULT_MAX_AGE = 300
-# Failed requests (e.g. server without the endpoints) are retried later.
+# Failed requests (e.g. server without the endpoints, or overloaded with
+# filmstrips to create) are retried later.
 FAILED_MAX_AGE = 60
+# The server may still be creating the filmstrip, retry sooner.
+BUSY_MAX_AGE = 10
+# Creating a filmstrip on the server can take a while. Requests are retried
+# by ayon_api on timeout, which keeps waiting for the same creation.
+REQUEST_TIMEOUT = 20
+# Max filmstrip requests at the same time. The server creates only a few
+# filmstrips at a time anyway (``AYON_FILMSTRIP_CONCURRENCY``).
+FILMSTRIP_WORKERS = 2
 # Every decoded filmstrip is ~10 MB in memory.
 MAX_MEMORY_ENTRIES = 8
 PROGRESS_COLOR = "#8fceff"
@@ -114,6 +129,10 @@ def _qt_supports_avif() -> bool:
     return any(fmt.data().lower() == b"avif" for fmt in formats)
 
 
+class _FilmstripChangedError(Exception):
+    """The filmstrip image of the requested version is gone."""
+
+
 def _download_filmstrip_image(url: str) -> str:
     """Download a filmstrip image to a temp file readable by Qt.
 
@@ -126,7 +145,10 @@ def _download_filmstrip_image(url: str) -> str:
     con = ayon_api.get_server_api_connection()
     if url.startswith("/"):
         url = con.get_base_url().rstrip("/") + url
-    response = con.raw_get(url)
+    response = con.raw_get(url, timeout=REQUEST_TIMEOUT)
+    # The filmstrip was re-created since its info was requested
+    if response.status_code == 404:
+        raise _FilmstripChangedError(url)
     response.raise_for_status()
     with tempfile.NamedTemporaryFile(suffix=".avif", delete=False) as fh:
         fh.write(response.content)
@@ -161,11 +183,17 @@ def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     project_name, entity_type, entity_id = key
     con = ayon_api.get_server_api_connection()
     response = con.raw_get(
-        f"projects/{project_name}/{entity_type}s/{entity_id}/filmstrip"
+        f"projects/{project_name}/{entity_type}s/{entity_id}/filmstrip",
+        timeout=REQUEST_TIMEOUT,
     )
-    # 204 = the entity has no video reviewable
+    # 204 = the entity has no video reviewable, or no filmstrip can be
+    #   created for it
     if response.status_code == 204:
         return None, DEFAULT_MAX_AGE
+    # No answer, e.g. timed out while the filmstrip is being created
+    if response.orig_response is None:
+        log.debug("Filmstrip request of %r failed: %s", key, response.detail)
+        return None, BUSY_MAX_AGE
     response.raise_for_status()
     info = response.data
     url = info["url"]
@@ -200,9 +228,111 @@ def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
 def _load_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     try:
         return _fetch_filmstrip(key)
+    except _FilmstripChangedError:
+        log.debug("Filmstrip of %r changed while loading", key)
+        return None, BUSY_MAX_AGE
     except Exception:
         log.debug("Failed to load filmstrip for %r", key, exc_info=True)
         return None, FAILED_MAX_AGE
+
+
+# Returned by a request nobody waits for anymore, instead of loading
+_SKIPPED = object()
+
+
+@dataclass
+class _Request:
+    """Pending filmstrip request.
+
+    Attributes:
+        waiters: Number of overlays waiting for the filmstrip. Read by the
+            worker thread to skip requests nobody waits for anymore.
+    """
+
+    waiters: int = 0
+
+
+class _FilmstripLoader(QtCore.QObject):
+    """Loads filmstrips in its own worker pool, once per filmstrip.
+
+    The results are stored in the memory cache, and :attr:`loaded` is
+    emitted with the key. Use :func:`_get_loader` to get the instance.
+    """
+
+    loaded = QtCore.Signal(object)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._requests: dict[_SourceKey, _Request] = {}
+        self._queue = AsyncTaskQueue(num_workers=FILMSTRIP_WORKERS)
+        self._queue.start()
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self._queue.stop)
+
+    def request(self, key: _SourceKey) -> None:
+        """Load the filmstrip of *key*, unless it is being loaded already.
+
+        Every call must be followed by :meth:`release` or by :attr:`loaded`
+        emitted for *key*.
+        """
+        request = self._requests.get(key)
+        if request is None:
+            request = _Request()
+            self._requests[key] = request
+            self._enqueue(key, request)
+        request.waiters += 1
+
+    def release(self, key: _SourceKey) -> None:
+        """Stop waiting for the filmstrip of *key*.
+
+        A request nobody waits for is skipped when its turn comes. A request
+        that already started still finishes and caches the filmstrip.
+        """
+        request = self._requests.get(key)
+        if request is not None and request.waiters > 0:
+            request.waiters -= 1
+
+    def _enqueue(self, key: _SourceKey, request: _Request) -> None:
+        def _run():
+            if request.waiters == 0:
+                return _SKIPPED
+            return _load_filmstrip(key)
+
+        def _on_done(result) -> None:
+            if self._requests.get(key) is not request:
+                return
+            if result is _SKIPPED:
+                # Requested again after it was skipped
+                if request.waiters > 0:
+                    self._enqueue(key, request)
+                else:
+                    del self._requests[key]
+                return
+            del self._requests[key]
+            # 'None' when the task itself failed
+            data, max_age = result or (None, FAILED_MAX_AGE)
+            _store_filmstrip(key, data, max_age)
+            self.loaded.emit(key)
+
+        self._queue.enqueue(
+            AsyncTask(
+                name=f"filmstrip_{'/'.join(key)}",
+                function=_run,
+                callback=_on_done,
+                cancellable=False,
+            )
+        )
+
+
+_loader: _FilmstripLoader | None = None
+
+
+def _get_loader() -> _FilmstripLoader:
+    global _loader
+    if _loader is None:
+        _loader = _FilmstripLoader()
+    return _loader
 
 
 def _paint_frame(
@@ -299,6 +429,8 @@ class FilmstripOverlay(QtWidgets.QWidget):
         self._position: float = 0.0
         self._hovering: bool = False
         self._popup_requested: bool = False
+        # Source requested from the loader and not loaded yet
+        self._pending: _SourceKey | None = None
 
         self._intent_timer = QtCore.QTimer(self)
         self._intent_timer.setSingleShot(True)
@@ -309,6 +441,7 @@ class FilmstripOverlay(QtWidgets.QWidget):
         self.setGeometry(host.rect())
         host.setMouseTracking(True)
         host.installEventFilter(self)
+        _get_loader().loaded.connect(self._on_loaded)
 
     def track(self, widget: QtWidgets.QWidget) -> None:
         """Also track the cursor over *widget*, which covers the host.
@@ -371,6 +504,9 @@ class FilmstripOverlay(QtWidgets.QWidget):
         self._intent_timer.stop()
         self._data = None
         self.hide()
+        if self._pending is not None:
+            _get_loader().release(self._pending)
+            self._pending = None
 
     def show_popup(self) -> None:
         """Show the filmstrip at full size in a popup over the host.
@@ -396,36 +532,26 @@ class FilmstripOverlay(QtWidgets.QWidget):
 
     def _request_load(self) -> None:
         source = self._source
-        if source is None:
+        if source is None or self._pending == source:
             return
         if not self._hovering and not self._popup_requested:
             return
-        overlay = self
+        self._pending = source
+        _get_loader().request(source)
 
-        def _on_loaded(result) -> None:
-            if not shiboken.isValid(overlay):
-                return
-            # Task was cancelled or failed
-            if result is None:
-                return
-            data, max_age = result
-            _store_filmstrip(source, data, max_age)
-            if overlay._source != source:
-                return
-            if overlay._popup_requested and data is not None:
-                overlay._open_popup(data)
-            elif overlay._hovering:
-                overlay._data = data
-                overlay.scrub(overlay._position)
-
-        get_task_queue().enqueue(
-            AsyncTask(
-                name=f"filmstrip_{'/'.join(source)}",
-                function=lambda: _load_filmstrip(source),
-                callback=_on_loaded,
-                priority=1,
-            )
-        )
+    def _on_loaded(self, key: _SourceKey) -> None:
+        if key != self._pending:
+            return
+        self._pending = None
+        entry = _peek_filmstrip(key)
+        data = entry.data if entry is not None else None
+        if self._popup_requested:
+            self._popup_requested = False
+            if data is not None:
+                self._open_popup(data)
+        elif self._hovering:
+            self._data = data
+            self.scrub(self._position)
 
     def eventFilter(  # type: ignore[override]
         self, obj: QtCore.QObject, event: QtCore.QEvent
