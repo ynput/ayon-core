@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 import sys
 import copy
-import json
 import itertools
 import shutil
 import contextlib
@@ -31,10 +30,14 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishError,
 )
+from ayon_core.pipeline.load import get_representation_traits
 from ayon_core.pipeline.traits import (
     Persistent,
     Representation,
+    TemplatePath,
+    apply_transfers,
     get_transfers_from_representations,
+    prepare_for_json,
     get_legacy_files_for_representation,
     replace_paths_in_representation,
 )
@@ -569,15 +572,14 @@ class IntegrateHeroVersion(
                 if (
                     repre["active"] is False
                     or self._is_ignored_representation(repre["name"])
-                    or not repre["traits"]
                 ):
                     continue
 
-                representation = Representation.from_dict(
-                    name=repre["name"],
-                    representation_id=None,
-                    trait_data=json.loads(repre["traits"])
-                )
+                representation = get_representation_traits(repre)
+                if representation is None:
+                    continue
+                # new representation entity for the hero version
+                representation.representation_id = create_entity_id()
                 repre_id_map[representation.representation_id] = (
                     representation
                 )
@@ -585,7 +587,6 @@ class IntegrateHeroVersion(
                 new_repre = copy.deepcopy(repre)
                 new_repre["versionId"] = new_hero_version["id"]
                 new_repre["id"] = representation.representation_id
-                new_repre["traits"] = representation.traits_as_dict()
                 new_repre_entities.append(new_repre)
 
             self.log.debug(
@@ -608,6 +609,8 @@ class IntegrateHeroVersion(
                 )
                 for transfer in transfers
             )
+            # traits describe the hero files
+            apply_transfers(transfers, anatomy)
 
             # create new representation entities and prepare legacy file
             #   attrib
@@ -626,13 +629,17 @@ class IntegrateHeroVersion(
                     anatomy=anatomy,
                 )
                 new_repre["files"] = files
+                self._update_hero_representation_entity(
+                    new_repre, representation, transfer_items or transfers
+                )
 
                 # replace original paths with the destination
                 # in representation entity
                 replace_paths_in_representation(new_repre, transfers)
 
                 op_session.create_entity(
-                    project_name, "representation", new_repre
+                    project_name, "representation",
+                    prepare_for_json(new_repre),
                 )
             op_session.commit()
 
@@ -640,6 +647,45 @@ class IntegrateHeroVersion(
             "Hero version integration with representations traits for product"
             f" `{instance.data['productName']}` finished."
         )
+
+    @staticmethod
+    def _update_hero_representation_entity(
+        repre_entity: dict[str, Any],
+        representation: Representation,
+        transfers: list,
+    ) -> None:
+        """Update copy of source representation entity for hero version.
+
+        Same as legacy hero integration - path and template are the hero
+        ones and context is filled by values used by the hero template,
+        without the version.
+
+        Args:
+            repre_entity (dict[str, Any]): Copy of source representation
+                entity.
+            representation (Representation): Representation with traits
+                pointing to the hero files.
+            transfers (list[TransferItem]): Transfers of the
+                representation files (transfers of all representations
+                for `Bundle`).
+
+        """
+        repre_entity["traits"] = representation.traits_as_dict(
+            persistent_only=True)
+        repre_entity["attrib"] = {
+            **repre_entity.get("attrib", {}),
+            "path": transfers[0].destination.as_posix(),
+            "template": str(transfers[0].template),
+        }
+
+        context = copy.deepcopy(repre_entity.get("context") or {})
+        context.pop("version", None)
+        if representation.contains_trait(TemplatePath):
+            context.update(representation.get_trait(TemplatePath).data)
+        data = copy.deepcopy(repre_entity.get("data") or {})
+        data["context"] = context
+        repre_entity["data"] = data
+        repre_entity["context"] = context
 
     def _is_ignored_representation(self, repre_name: str) -> bool:
         return repre_name.lower() in self.ignored_representation_names

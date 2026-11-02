@@ -1,8 +1,6 @@
 """Integrate representations with traits."""
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from pprint import pformat
 from typing import TYPE_CHECKING, Any
 
@@ -36,9 +34,13 @@ from ayon_core.pipeline.publish import (
 from ayon_core.pipeline.traits import (
     Persistent,
     Representation,
+    Slate,
+    TraitValidationError,
 
+    apply_transfers,
+    get_representation_context,
+    prepare_for_json,
     get_transfers_from_representations,
-    get_template_data_from_representation,
     get_legacy_files_for_representation,
     replace_paths_in_representation,
 )
@@ -127,35 +129,6 @@ def get_changed_attributes(
     return changes
 
 
-def prepare_for_json(data: dict[str, Any]) -> dict[str, Any]:
-    """Prepare data for JSON serialization.
-
-    If there are values that json cannot serialize, this function will
-    convert them to strings.
-
-    Args:
-        data (dict[str, Any]): Data to prepare.
-
-    Returns:
-        dict[str, Any]: Prepared data.
-
-    Raises:
-        TypeError: If the data cannot be converted to JSON.
-
-    """
-    prepared = {}
-    for key, value in data.items():
-        if isinstance(value, dict):
-            value = prepare_for_json(value)
-        try:
-            json.dumps(value)
-        except TypeError:
-            value = value.as_posix() if issubclass(
-                value.__class__, Path) else str(value)
-        prepared[key] = value
-    return prepared
-
-
 class IntegrateTraits(pyblish.api.InstancePlugin):
     """Integrate representations with traits."""
 
@@ -240,19 +213,35 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         self.log.debug(
             "Transferred files %s", [file_transactions.transferred])
 
-        # replace original paths with the destination in traits.
-        for transfer in transfers:
-            transfer.related_trait.file_path = transfer.destination
+        # traits describe the published files - paths, size and checksum
+        #   (content is the same) and sequences renamed by the template
+        apply_transfers(transfers, anatomy)
+        try:
+            self.validate_representations(instance, representations)
+        except PublishError:
+            file_transactions.rollback()
+            raise
 
         # 9) Create representation entities
         for representation in representations:
+            representation_transfers = [
+                transfer
+                for transfer in transfers
+                if transfer.representation is representation
+            ]
+            # transfers of Bundle items reference the item representations
+            if not representation_transfers:
+                representation_transfers = transfers
             attributes = {
-                "path": transfers[0].destination,
-                "template": transfers[0].template,
+                "path": representation_transfers[0].destination,
+                "template": representation_transfers[0].template,
             }
 
-            data = {"context": get_template_data_from_representation(
+            data = {"context": get_representation_context(
                 representation, instance)}
+            # loaders read slate frames from representation data
+            if representation.contains_trait(Slate):
+                data["slateFrames"] = representation.get_trait(Slate).frames
 
             # Original integrator at this moment took all additional data
             # on the representation and added them into either attribs or data.
@@ -278,7 +267,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             replace_paths_in_representation(representation_entity, transfers)
 
             # add traits to representation entity
-            representation_entity["traits"] = representation.traits_as_dict()
+            representation_entity["traits"] = representation.traits_as_dict(
+                persistent_only=True)
             op_session.create_entity(
                 project_name=instance.context.data["projectName"],
                 entity_type="representation",
@@ -330,6 +320,45 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         # 8) Transfer files
         # 9) Commit the session to AYON
         # 10) Finalize represetations - add integrated path Trait etc.
+
+    @staticmethod
+    def validate_representations(
+            instance: pyblish.api.Instance,
+            representations: list[Representation]) -> None:
+        """Validate traits of all representations.
+
+        Representations are validated before transfer (see
+        `get_transfers_from_representations`), this is for traits updated
+        after the transfer - invalid traits would be stored on representation
+        entities and fail only later when loaded.
+
+        Args:
+            instance (pyblish.api.Instance): Instance to process.
+            representations (list[Representation]): Representations
+                to validate.
+
+        Raises:
+            PublishError: If any representation is invalid.
+
+        """
+        errors = []
+        for representation in representations:
+            try:
+                representation.validate()
+            except TraitValidationError as exc:
+                errors.append(str(exc))
+
+        if errors:
+            joined_errors = "\n".join(f"- {error}" for error in errors)
+            raise PublishError(
+                f"Instance '{instance.name}' has invalid representation"
+                f" traits:\n{joined_errors}",
+                title="Invalid representation traits",
+                description=(
+                    "Representation traits are not consistent with"
+                    f" the files:\n\n{joined_errors}"
+                ),
+            )
 
     @staticmethod
     def filter_lifecycle(

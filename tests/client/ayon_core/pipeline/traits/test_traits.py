@@ -7,17 +7,22 @@ import pytest
 from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
+    FileLocations,
+    FrameRanged,
+    GapPolicy,
     Image,
     MimeType,
     Overscan,
     PixelBased,
     Planar,
     Representation,
+    Sequence,
     TraitBase,
 )
 from ayon_core.pipeline.traits.representation import (
     IncompatibleTraitVersionError
 )
+from ayon_core.pipeline.traits.trait import UpgradableTraitError
 
 from typing import TypeVar
 
@@ -26,6 +31,7 @@ REPRESENTATION_DATA: dict = {
             "file_path": Path("/path/to/file"),
             "file_size": 1024,
             "file_hash": None,
+            "file_hash_type": None,
             # "persistent": True,
         },
         Image.id: {},
@@ -211,7 +217,7 @@ def test_getting_traits_data(representation: Representation) -> None:
              display_window_height=1080,
              pixel_aspect_ratio=1.0),
          "ayon.2d.Planar.v1": Planar(planar_configuration="RGB"),
-         "ayon.content.FileLocation.v1": FileLocation(
+         "ayon.content.FileLocation.v2": FileLocation(
              file_path=Path("/path/to/file"),
              file_size=1024,
              file_hash=None)
@@ -277,10 +283,11 @@ def test_get_trait_class_by_trait_id() -> None:
     trait_class = Representation.get_trait_class_by_trait_id("ayon.2d.Image")
     assert trait_class == UpgradedImage
 
-    # These both will return FileLocation because only one version exists
-    trait_class = Representation.get_trait_class_by_trait_id(
-        "ayon.content.FileLocation.v1")
-    assert trait_class == FileLocation
+    # older version of trait with upgrade method
+    with pytest.raises(UpgradableTraitError) as error:
+        Representation.get_trait_class_by_trait_id(
+            "ayon.content.FileLocation.v1")
+    assert error.value.trait == FileLocation
 
     trait_class = Representation.get_trait_class_by_trait_id(
         "ayon.content.FileLocation")
@@ -324,7 +331,11 @@ def test_from_dict() -> None:
         "test", trait_data=traits_data)
 
     assert len(representation) == 2
-    assert representation.get_trait_by_id("ayon.content.FileLocation.v1")
+    # version 1 data are upgraded
+    file_location = representation.get_trait_by_id(
+        "ayon.content.FileLocation.v2")
+    assert file_location.file_size == 1024
+    assert file_location.file_hash_type is None
     assert representation.get_trait_by_id("ayon.2d.Image.v1")
 
     traits_data = {
@@ -355,7 +366,7 @@ def test_from_dict() -> None:
         "test", trait_data=traits_data)
 
     assert len(representation) == 1
-    assert representation.get_trait_by_id("ayon.content.FileLocation.v1")
+    assert representation.get_trait_by_id("ayon.content.FileLocation.v2")
 
     # this won't work right now because we would need to somewhat mock
     # the import
@@ -369,6 +380,92 @@ def test_from_dict() -> None:
     representation = Representation.from_dict(
         "test", trait_data=traits_data)
     """
+
+
+def test_from_dict_nested_and_typed_values() -> None:
+    """Nested traits, paths, patterns and enums are restored.
+
+    Both `traits_as_dict()` output and its JSON serialized form (as stored
+    on the server) must produce an equal representation.
+    """
+    import json
+    import re
+
+    from ayon_core.plugins.publish.integrate_traits import prepare_for_json
+
+    representation = Representation(name="exr", traits=[
+        FileLocations(file_paths=[
+            FileLocation(
+                file_path=Path(f"/path/to/render.{frame}.exr"),
+                file_size=1024,
+                file_hash="abc",
+            )
+            for frame in (1001, 1002)
+        ]),
+        FrameRanged(frame_start=1001, frame_end=1002),
+        Sequence(
+            frame_padding=4,
+            gaps_policy=GapPolicy.missing,
+            frame_regex=re.compile(
+                r"render\.(?P<index>(?P<padding>0*)\d+)\.exr$"),
+            frame_spec="1001-1002",
+        ),
+    ])
+    trait_data = representation.traits_as_dict()
+    json_data = json.loads(json.dumps(prepare_for_json(trait_data)))
+
+    for data in (trait_data, json_data):
+        result = Representation.from_dict(
+            "exr",
+            representation_id=representation.representation_id,
+            trait_data=data,
+        )
+        assert result == representation
+        file_paths = result.get_trait(FileLocations).file_paths
+        assert all(isinstance(item, FileLocation) for item in file_paths)
+        assert isinstance(file_paths[0].file_path, Path)
+        sequence = result.get_trait(Sequence)
+        assert sequence.gaps_policy is GapPolicy.missing
+        assert isinstance(sequence.frame_regex, re.Pattern)
+        result.validate()
+
+
+def test_from_dict_bundle() -> None:
+    """Bundle items are restored by their trait ids, also nested."""
+    import json
+
+    from ayon_core.plugins.publish.integrate_traits import prepare_for_json
+
+    representation = Representation(name="bundle", traits=[
+        Bundle(items=[
+            [
+                FileLocation(file_path=Path("/path/to/diffuse.png")),
+                MimeType(mime_type="image/png"),
+            ],
+            [Bundle(items=[
+                [FileLocation(file_path=Path("/path/to/bump.exr"))],
+            ])],
+        ]),
+    ])
+    trait_data = representation.traits_as_dict()
+    assert trait_data[Bundle.id]["items"][0] == {
+        FileLocation.id: {
+            "file_path": Path("/path/to/diffuse.png"),
+            "file_size": None,
+            "file_hash": None,
+            "file_hash_type": None,
+        },
+        MimeType.id: {"mime_type": "image/png"},
+    }
+    json_data = json.loads(json.dumps(prepare_for_json(trait_data)))
+
+    for data in (trait_data, json_data):
+        result = Representation.from_dict(
+            "bundle",
+            representation_id=representation.representation_id,
+            trait_data=data,
+        )
+        assert result == representation
 
 
 def test_representation_equality() -> None:

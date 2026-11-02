@@ -1,23 +1,18 @@
-import os
-import re
-import copy
-import clique
 import pyblish.api
 
 from ayon_core.pipeline import (
     publish,
-    get_temp_dir
 )
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
-from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 from ayon_core.lib import is_oiio_supported
 
-from ayon_core.lib.transcoding import (
-    MissingRGBAChannelsError,
-    oiio_color_convert,
+from ayon_core.plugins.publish.color_transcode_utils import (
+    DEFAULT_SUPPORTED_EXTS,
+    TranscodeRenderer,
+    apply_original_repre_disposition,
+    get_profile_for_instance,
+    repre_is_valid,
 )
-
-from ayon_core.lib.profiles_filtering import filter_profiles
 
 
 class ExtractOIIOTranscode(publish.Extractor):
@@ -53,6 +48,12 @@ class ExtractOIIOTranscode(publish.Extractor):
     'colorspace' denotes target colorspace to be transcoded into. Could be
     empty if transcoding should be only into display and viewer colorspace.
     (In that case both 'display' and 'view' must be filled.)
+
+    The oiiotool pipeline itself lives in
+    `color_transcode_utils.TranscodeRenderer`, shared with the trait-based
+    transcode extractor - this plugin only deals with legacy dict
+    representations: selecting which ones to process and appending the
+    results to `instance.data["representations"]`.
     """
 
     label = "Transcode color spaces"
@@ -63,7 +64,7 @@ class ExtractOIIOTranscode(publish.Extractor):
     optional = True
 
     # Supported extensions
-    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tif", "tiff"}
+    supported_exts = set(DEFAULT_SUPPORTED_EXTS)
 
     # Configurable by Settings
     profiles = None
@@ -86,7 +87,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             self.log.warning("OIIO not supported, no transcoding possible.")
             return
 
-        profile = self._get_profile(instance)
+        profile = get_profile_for_instance(instance, self.profiles, self.log)
         if not profile:
             return
 
@@ -106,190 +107,34 @@ class ExtractOIIOTranscode(publish.Extractor):
         )
         project_settings = instance.context.data["project_settings"]
         review_layers = get_default_reviewable_layers(project_settings)
+        anatomy = instance.context.data["anatomy"]
+        renderer = TranscodeRenderer(self.log, self.supported_exts)
+
         for idx, repre in enumerate(list(repres)):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
-            if not self._repre_is_valid(repre, profile):
+            if not repre_is_valid(
+                repre, profile, self.supported_exts, self.log
+            ):
                 continue
 
-            added_representations = False
-            added_review = False
-
-            colorspace_data = repre["colorspaceData"]
-
-            config_path = get_representation_ocio_config_path(
-                repre,
-                anatomy=instance.context.data["anatomy"],
-                logger=self.log
+            repre_new_representations, added_review = (
+                renderer.render_repre_outputs(
+                    instance,
+                    repre,
+                    profile_output_defs,
+                    anatomy,
+                    scene_display=scene_display,
+                    scene_view=scene_view,
+                    review_layers=review_layers,
+                )
             )
-            if not config_path:
-                self.log.debug(
-                    "Skipping OIIO Color Transcode because no OCIO config"
-                    " path found on representation."
-                )
-                continue
 
-            source_colorspace = colorspace_data["colorspace"]
-            source_display = colorspace_data.get("display")
-            source_view = colorspace_data.get("view")
-
-            # Get representation files to convert
-            if isinstance(repre["files"], list):
-                repre_files_to_convert = copy.deepcopy(repre["files"])
-            else:
-                repre_files_to_convert = [repre["files"]]
-
-            # Process each output definition
-            for output_def in profile_output_defs:
-                # Local copy to avoid accidental mutable changes
-                files_to_convert = list(repre_files_to_convert)
-
-                output_name = output_def["name"]
-                new_repre = copy.deepcopy(repre)
-
-                original_staging_dir = new_repre["stagingDir"]
-                new_staging_dir = get_temp_dir(
-                    project_name=instance.context.data["projectName"],
-                    use_local_temp=True,
-                )
-                new_repre["stagingDir"] = new_staging_dir
-
-                output_extension = output_def["extension"]
-                output_extension = output_extension.replace('.', '')
-                self._rename_in_representation(new_repre,
-                                               files_to_convert,
-                                               output_name,
-                                               output_extension)
-
-                transcoding_type = output_def["transcoding_type"]
-
-                # Set target colorspace/display/view based on transcoding type
-                target_colorspace = None
-                target_view = None
-                target_display = None
-                if transcoding_type == "colorspace":
-                    target_colorspace = output_def["colorspace"]
-                elif transcoding_type == "display_view":
-                    display_view = output_def["display_view"]
-                    # If empty values are provided in output definition,
-                    # fallback to scene display/view that is collected from DCC
-                    target_view = display_view["view"] or scene_view
-                    target_display = display_view["display"] or scene_display
-
-                # both could be already collected by DCC,
-                # but could be overwritten when transcoding
-                if target_view:
-                    new_repre["colorspaceData"]["view"] = target_view
-                if target_display:
-                    new_repre["colorspaceData"]["display"] = target_display
-                if target_colorspace:
-                    new_repre["colorspaceData"]["colorspace"] = \
-                        target_colorspace
-
-                additional_command_args = (output_def["oiiotool_args"]
-                                           ["additional_command_args"])
-
-                sequence_files = self._translate_to_sequence(
-                    files_to_convert)
-                self.log.debug("Files to convert: {}".format(sequence_files))
-                missing_rgba_review_channels = False
-                for file_name in sequence_files:
-                    if isinstance(file_name, clique.Collection):
-                        # Support sequences with holes by supplying
-                        # dedicated `--frames` argument to `oiiotool`
-                        # Create `frames` string like "1001-1002,1004,1010-1012
-                        # Create `filename` string like "file.#.exr"
-                        frames = file_name.format("{ranges}").replace(" ", "")
-                        frame_padding = file_name.padding
-                        file_name = file_name.format("{head}#{tail}")
-                        parallel_frames = True
-                    elif isinstance(file_name, str):
-                        # Single file
-                        frames = None
-                        frame_padding = None
-                        parallel_frames = False
-                    else:
-                        raise TypeError(
-                            f"Unsupported file name type: {type(file_name)}."
-                            " Expected str or clique.Collection."
-                        )
-
-                    self.log.debug("Transcoding file: `{}`".format(file_name))
-                    input_path = os.path.join(original_staging_dir, file_name)
-                    output_path = self._get_output_file_path(input_path,
-                                                             new_staging_dir,
-                                                             output_extension)
-                    try:
-                        oiio_color_convert(
-                            input_path=input_path,
-                            output_path=output_path,
-                            config_path=config_path,
-                            source_colorspace=source_colorspace,
-                            target_colorspace=target_colorspace,
-                            target_display=target_display,
-                            target_view=target_view,
-                            source_display=source_display,
-                            source_view=source_view,
-                            additional_command_args=additional_command_args,
-                            frames=frames,
-                            frame_padding=frame_padding,
-                            parallel_frames=parallel_frames,
-                            review_layers=review_layers,
-                            logger=self.log,
-                        )
-                    except MissingRGBAChannelsError as exc:
-                        missing_rgba_review_channels = True
-                        self.log.error(exc)
-                        self.log.error(
-                            "Skipping OIIO Transcode. Unknown RGBA channels"
-                            f" for colorspace conversion in file: {input_path}"
-                        )
-                        break
-
-                if missing_rgba_review_channels:
-                    # Stop processing this representation
-                    break
-
-                # cleanup temporary transcoded files
-                for file_name in new_repre["files"]:
-                    transcoded_file_path = os.path.join(new_staging_dir,
-                                                        file_name)
-                    instance.context.data["cleanupFullPaths"].append(
-                        transcoded_file_path)
-
-                custom_tags = output_def.get("custom_tags")
-                if custom_tags:
-                    if new_repre.get("custom_tags") is None:
-                        new_repre["custom_tags"] = []
-                    new_repre["custom_tags"].extend(custom_tags)
-
-                # Add additional tags from output definition to representation
-                if new_repre.get("tags") is None:
-                    new_repre["tags"] = []
-                for tag in output_def["tags"]:
-                    if tag not in new_repre["tags"]:
-                        new_repre["tags"].append(tag)
-
-                    if tag == "review":
-                        added_review = True
-
-                # If there is only 1 file outputted then convert list to
-                # string, because that'll indicate that it is not a sequence.
-                if len(new_repre["files"]) == 1:
-                    new_repre["files"] = new_repre["files"][0]
-
-                # If the source representation has "review" tag, but it's not
-                # part of the output definition tags, then both the
-                # representations will be transcoded in ExtractReview and
-                # their outputs will clash in integration.
-                if "review" in repre.get("tags", []):
-                    added_review = True
-
-                new_representations.append(new_repre)
-                added_representations = True
-
-            if added_representations:
-                self._mark_original_repre_for_deletion(
-                    repre, profile, added_review
+            if repre_new_representations:
+                new_representations.extend(repre_new_representations)
+                repre["tags"] = apply_original_repre_disposition(
+                    repre.get("tags") or [],
+                    delete_original=profile["delete_original"],
+                    added_review=added_review,
                 )
 
             tags = repre.get("tags") or []
@@ -312,160 +157,3 @@ class ExtractOIIOTranscode(publish.Extractor):
                 instance.data["families"].append("review")
 
         instance.data["representations"].extend(new_representations)
-
-    def _rename_in_representation(self, new_repre, files_to_convert,
-                                  output_name, output_extension):
-        """Replace old extension with new one everywhere in representation.
-
-        Args:
-            new_repre (dict)
-            files_to_convert (list): of filenames from repre["files"],
-                standardized to always list
-            output_name (str): key of output definition from Settings,
-                if "<passthrough>" token used, keep original repre name
-            output_extension (str): extension from output definition
-        """
-        if output_name != "passthrough":
-            new_repre["name"] = output_name
-        if not output_extension:
-            return
-
-        new_repre["ext"] = output_extension
-        new_repre["outputName"] = output_name
-
-        renamed_files = []
-        for file_name in files_to_convert:
-            file_name, _ = os.path.splitext(file_name)
-            file_name = '{}.{}'.format(file_name,
-                                       output_extension)
-            renamed_files.append(file_name)
-        new_repre["files"] = renamed_files
-
-    def _translate_to_sequence(self, files_to_convert):
-        """Returns original individual filepaths or list of clique.Collection.
-
-        Uses clique to find frame sequence, and return the collections instead.
-        If sequence not detected in input filenames, it returns original list.
-
-        Args:
-            files_to_convert (list[str]): list of file names
-        Returns:
-            list[str | clique.Collection]: List of
-                filepaths ['fileA.exr', 'fileB.exr']
-                or clique.Collection for a sequence.
-
-        """
-        pattern = [clique.PATTERNS["frames"]]
-        collections, _ = clique.assemble(
-            files_to_convert, patterns=pattern,
-            assume_padded_when_ambiguous=True)
-        if collections:
-            if len(collections) > 1:
-                raise ValueError(
-                    "Too many collections {}".format(collections))
-
-            return collections
-
-        return files_to_convert
-
-    def _get_output_file_path(self, input_path, output_dir,
-                              output_extension):
-        """Create output file name path."""
-        file_name = os.path.basename(input_path)
-        file_name, input_extension = os.path.splitext(file_name)
-        if not output_extension:
-            output_extension = input_extension.replace(".", "")
-        new_file_name = '{}.{}'.format(file_name,
-                                       output_extension)
-        return os.path.join(output_dir, new_file_name)
-
-    def _get_profile(self, instance):
-        """Returns profile if and how repre should be color transcoded."""
-        host_name = instance.context.data["hostName"]
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = instance.data["productType"]
-        product_name = instance.data["productName"]
-        task_data = instance.data["anatomyData"].get("task", {})
-        task_name = task_data.get("name")
-        task_type = task_data.get("type")
-        filtering_criteria = {
-            "host_names": host_name,
-            "product_base_types": product_base_type,
-            "product_names": product_name,
-            "task_names": task_name,
-            "task_types": task_type,
-        }
-        profile = filter_profiles(
-            self.profiles,
-            filtering_criteria,
-            logger=self.log
-        )
-
-        if not profile:
-            self.log.debug(
-                "Skipped instance. None of profiles in presets are for"
-                f" Host name: \"{host_name}\""
-                f" | Product base type: \"{product_base_type}\""
-                f" | Product name: \"{product_name}\""
-                f" | Task name \"{task_name}\""
-                f" | Task type \"{task_type}\""
-            )
-
-        return profile
-
-    def _repre_is_valid(self, repre, profile):
-        """Validation if representation should be processed.
-
-        Args:
-            repre (dict): Representation which should be checked.
-
-        Returns:
-            bool: False if can't be processed else True.
-        """
-
-        if repre.get("ext") not in self.supported_exts:
-            self.log.debug((
-                "Representation '{}' has unsupported extension: '{}'. Skipped."
-            ).format(repre["name"], repre.get("ext")))
-            return False
-
-        if not repre.get("files"):
-            self.log.debug((
-                "Representation '{}' has empty files. Skipped."
-            ).format(repre["name"]))
-            return False
-
-        if not repre.get("colorspaceData"):
-            self.log.debug("Representation '{}' has no colorspace data. "
-                           "Skipped.".format(repre["name"]))
-            return False
-
-        representations_names = profile["representation_names"]
-
-        # make sure that positive will be returned if no representations_names
-        if not representations_names:
-            return True
-
-        repre_name = repre["name"]
-
-        # check if any of representation patterns match in repre_name
-        for r_pattern in representations_names:
-            if re.match(r_pattern, repre_name):
-                return True
-
-        return False
-
-    def _mark_original_repre_for_deletion(self, repre, profile, added_review):
-        """If new transcoded representation created, delete old."""
-        if not repre.get("tags"):
-            repre["tags"] = []
-
-        delete_original = profile["delete_original"]
-
-        if delete_original:
-            if "delete" not in repre["tags"]:
-                repre["tags"].append("delete")
-
-        if added_review and "review" in repre["tags"]:
-            repre["tags"].remove("review")

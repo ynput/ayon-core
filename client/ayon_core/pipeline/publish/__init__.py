@@ -49,6 +49,8 @@ from .lib import (
     main_cli_publish,
 
     add_trait_representations,
+    add_trait_representation_files_for_cleanup,
+    convert_legacy_representations,
     get_trait_representations,
     has_trait_representations,
     set_trait_representations,
@@ -130,6 +132,8 @@ __all__ = (
     "AbstractCollectRender",
 
     "add_trait_representations",
+    "add_trait_representation_files_for_cleanup",
+    "convert_legacy_representations",
     "get_trait_representations",
     "has_trait_representations",
     "set_trait_representations",

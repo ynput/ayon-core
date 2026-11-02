@@ -8,8 +8,10 @@ import inspect
 import collections
 import numbers
 import copy
+import json
 from functools import wraps
-from typing import Optional, Union, Any, overload
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional, Union, Any, overload
 
 import ayon_api
 from ayon_api.exceptions import GraphQlQueryFailed
@@ -21,6 +23,9 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.path_templates import TemplateResult
 from ayon_core.pipeline import Anatomy
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.traits import Representation
 
 log = logging.getLogger(__name__)
 
@@ -909,6 +914,109 @@ def get_representation_path(
         ) from exc
 
     return path.normalized()
+
+
+def get_representation_traits(
+    repre_entity: dict[str, Any],
+) -> Optional[Representation]:
+    """Get trait representation from representation entity.
+
+    Representations published with traits store them in "traits" field.
+    Paths stored in the traits are absolute paths at the time of
+    publishing, use 'get_representation_path' to resolve the path with
+    current roots.
+
+    Args:
+        repre_entity (dict[str, Any]): Representation entity.
+
+    Traits that can't be restored (e.g. defined by an addon that is not
+    available) are skipped with a warning, the rest of the traits is
+    still usable.
+
+    Returns:
+        Optional[Representation]: Representation with traits or None
+            if representation does not have traits.
+
+    """
+    from ayon_core.pipeline.traits import Representation
+
+    traits_data = repre_entity.get("traits")
+    if not traits_data:
+        return None
+    if isinstance(traits_data, str):
+        traits_data = json.loads(traits_data)
+
+    name = repre_entity["name"]
+    traits = []
+    for trait_id, trait_data in traits_data.items():
+        try:
+            restored = Representation.from_dict(
+                name=name, trait_data={trait_id: trait_data})
+        except Exception:
+            log.warning(
+                "Skipping trait '%s' of representation '%s',"
+                " it can't be restored.",
+                trait_id,
+                name,
+                exc_info=True,
+            )
+            continue
+        traits.extend(restored.get_traits().values())
+
+    return Representation(
+        name=name,
+        representation_id=repre_entity.get("id"),
+        traits=traits,
+    )
+
+
+def get_representation_file_paths(
+    representation: Representation,
+    anatomy: Anatomy,
+) -> list[str]:
+    """Get paths to files of trait representation with current roots.
+
+    Paths are resolved from `RootlessLocation` trait, so they are valid
+    on any platform. Paths stored in `FileLocation`/`FileLocations` traits
+    (absolute paths at the time of publishing) are used if representation
+    does not have `RootlessLocation`.
+
+    Args:
+        representation (Representation): Representation with traits.
+        anatomy (Anatomy): Project anatomy to fill roots.
+
+    Returns:
+        list[str]: File paths.
+
+    """
+    from ayon_core.pipeline.traits import (
+        FileLocation,
+        FileLocations,
+        RootlessLocation,
+    )
+
+    if representation.contains_trait(FileLocation):
+        file_paths = [
+            Path(representation.get_trait(FileLocation).file_path)]
+        common_root = None
+    elif representation.contains_trait(FileLocations):
+        file_locations = representation.get_trait(FileLocations)
+        file_paths = [Path(path) for path in file_locations.get_files()]
+        common_root = file_locations.get_common_root()
+    else:
+        return []
+
+    if not representation.contains_trait(RootlessLocation):
+        return [path.as_posix() for path in file_paths]
+
+    root_path = Path(anatomy.fill_root(
+        representation.get_trait(RootlessLocation).rootless_path))
+    if common_root is None:
+        return [root_path.as_posix()]
+    return [
+        (root_path / path.relative_to(common_root)).as_posix()
+        for path in file_paths
+    ]
 
 
 def get_representation_path_by_names(

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path  # noqa: TCH003
 from typing import ClassVar, Generator, Optional
 
-from clique import assemble
+from clique import PATTERNS, assemble
 
 from .representation import Representation
 from .temporal import FrameRanged, Handles, Sequence
@@ -85,6 +85,8 @@ class FileLocation(TraitBase):
     LocatableContent trait. It is adding optional file size and file hash
     for easy access to file information.
 
+    Version 2 added `file_hash_type`.
+
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
@@ -92,17 +94,35 @@ class FileLocation(TraitBase):
         file_path (str): File path.
         file_size (Optional[int]): File size in bytes.
         file_hash (Optional[str]): File hash.
+        file_hash_type (Optional[str]): Algorithm used for `file_hash`
+            (e.g. "sha256"), None if unknown.
         persistent (bool): Should the mime type be stored with the
             representation on the server or not.
     """
 
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
-    id: ClassVar[str] = "ayon.content.FileLocation.v1"
+    id: ClassVar[str] = "ayon.content.FileLocation.v2"
     persistent: ClassVar[bool] = True
     file_path: Path
     file_size: Optional[int] = None
     file_hash: Optional[str] = None
+    file_hash_type: Optional[str] = None
+
+    @classmethod
+    def upgrade(cls, data: dict) -> FileLocation:
+        """Upgrade data of version 1 of the trait.
+
+        Algorithm of the hash in version 1 data is unknown.
+
+        Args:
+            data (dict): Data of version 1.
+
+        Returns:
+            FileLocation: Upgraded trait.
+
+        """
+        return cls.from_dict(data)
 
     def validate_trait(self, representation: Representation) -> None:
         """Validate the trait.
@@ -134,6 +154,8 @@ class FileLocations(TraitBase):
     This model defines list of FileLocation traits. It can be
     used for file sequences or more complex hierarchies.
 
+    Version 2 contains `FileLocation` items of version 2.
+
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
@@ -145,9 +167,25 @@ class FileLocations(TraitBase):
 
     name: ClassVar[str] = "FileLocations"
     description: ClassVar[str] = "FileLocations Trait Model"
-    id: ClassVar[str] = "ayon.content.FileLocations.v1"
+    id: ClassVar[str] = "ayon.content.FileLocations.v2"
     persistent: ClassVar[bool] = True
     file_paths: list[FileLocation]
+
+    @classmethod
+    def upgrade(cls, data: dict) -> FileLocations:
+        """Upgrade data of version 1 of the trait.
+
+        Items of version 1 are upgraded the same way as
+        `FileLocation.upgrade()`.
+
+        Args:
+            data (dict): Data of version 1.
+
+        Returns:
+            FileLocations: Upgraded trait.
+
+        """
+        return cls.from_dict(data)
 
     def get_files(self) -> Generator[Path, None, None]:
         """Get all file paths from the trait.
@@ -290,8 +328,11 @@ class FileLocations(TraitBase):
                 representation.
 
         """
-        tmp_frame_ranged: FrameRanged = self.get_sequence_from_files(
-                    [f.file_path for f in self.file_paths])
+        try:
+            tmp_frame_ranged: FrameRanged = self.get_sequence_from_files(
+                [f.file_path for f in self.file_paths])
+        except ValueError as exc:
+            raise TraitValidationError(self.name, str(exc)) from exc
 
         frames_from_spec: list[int] = []
         with contextlib.suppress(MissingTraitError):
@@ -444,8 +485,11 @@ class FileLocations(TraitBase):
             ValueError: If paths cannot be assembled into one collection
 
         """
+        # only frame number right before the extension, other numbers
+        # in file names (e.g. version) must not split the collection
         cols, rems = assemble(
             [path.name for path in paths],
+            patterns=[PATTERNS["frames"]],
             minimum_items=1)
         if rems:
             msg = (
@@ -466,10 +510,7 @@ class FileLocations(TraitBase):
         # Use padding from a collection of the last frame lengths as string
         # padding = max(col.padding, len(str(last_frame)))
 
-        return FrameRanged(
-            frame_start=first_frame, frame_end=last_frame,
-            frames_per_second="25.0"
-        )
+        return FrameRanged(frame_start=first_frame, frame_end=last_frame)
 
 
 @dataclass
@@ -479,6 +520,13 @@ class RootlessLocation(TraitBase):
     RootlessLocation trait is a trait that represents a file path that is
     without a specific root. To get the absolute path, the root needs to be
     resolved by AYON. Rootless path can be used on multiple platforms.
+
+    For representation with `FileLocation` it is the rootless path of
+    the file. For representation with `FileLocations` it is the rootless
+    path of their common root directory
+    (`FileLocations.get_common_root()`) - path of each file is
+    the directory joined with the file path relative to the common root.
+    Use `get_representation_file_paths()` to resolve paths of the files.
 
     Example::
 
@@ -569,6 +617,65 @@ class Bundle(TraitBase):
     id: ClassVar[str] = "ayon.content.Bundle.v1"
     persistent: ClassVar[bool] = True
     items: list[list[TraitBase]]
+
+    def as_dict(self) -> dict:
+        """Return a trait as a dictionary.
+
+        Trait ids are class variables, so they would be lost by
+        `dataclasses.asdict()`. Each item is serialized as a dictionary
+        with trait ids as keys, the same way as
+        `Representation.traits_as_dict()`, so it can be restored by
+        `from_dict()`.
+
+        Returns:
+            dict: Trait as dictionary.
+
+        """
+        return self._items_as_dict(persistent_only=False)
+
+    def as_persistent_dict(self) -> dict:
+        """Return data stored with the representation.
+
+        Items contain only data of their traits stored with
+        the representation.
+
+        Returns:
+            dict: Trait as dictionary.
+
+        """
+        return self._items_as_dict(persistent_only=True)
+
+    def _items_as_dict(self, persistent_only: bool) -> dict:
+        return {
+            "items": [
+                Representation(name=self.name, traits=item).traits_as_dict(
+                    persistent_only=persistent_only)
+                for item in self.items
+            ]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Bundle:
+        """Create a trait from a dictionary.
+
+        Trait classes of items are resolved by their trait ids, including
+        version upgrades, the same way as in `Representation.from_dict()`.
+
+        Args:
+            data (dict): Trait data.
+
+        Returns:
+            Bundle: Trait instance.
+
+        """
+        items = []
+        for item in data.get("items", []):
+            if isinstance(item, dict):
+                representation = Representation.from_dict(
+                    name=cls.name, trait_data=item)
+                item = list(representation.get_traits().values())
+            items.append(item)
+        return cls(items=items)
 
     def to_representations(self) -> Generator[Representation]:
         """Convert a bundle to representations.

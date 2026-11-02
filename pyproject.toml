@@ -48,7 +48,8 @@ test = [
     "pytest-qt",
     "pytest-regressions[image]",
     "usd-core",
-    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git"
+    "pytest-ayon @ git+https://github.com/ynput/pytest-ayon.git",
+    "python-dotenv",
 ]
 
 [tool.codespell]
@@ -72,7 +73,7 @@ log_cli_level = "INFO"
 addopts = "-ra -q -m 'not optional'"
 testpaths = [
     "client/ayon_core/tests",
-    "tests/client/ayon_core/ui",
+    "tests/client/ayon_core",
 ]
 pythonpath = [
     "client",
