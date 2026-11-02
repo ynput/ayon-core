@@ -27,8 +27,9 @@ class SaveAsDialog(QtWidgets.QDialog):
     controller (AbstractWorkfilesFrontend): The control object.
         parent (QtWidgets.QWidget): Parent widget.
         extension (str | None): Limit extensions to specific one.
+        copied_from (str | None): Source path to prefill in the artist note.
     """
-    def __init__(self, controller, parent, extension=None):
+    def __init__(self, controller, parent, extension=None, copied_from=None):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowTitle("Save Workfile As")
         self.setMinimumWidth(330)
@@ -97,6 +98,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         )
         description_input.setPlaceholderText(
             "Provide a note about this workfile.")
+        if copied_from:
+            description_input.setPlainText(f"Copied from: {copied_from}")
         description_input.setMinimumHeight(60)
         description_frame.add_widget(description_input, stretch=1)
 

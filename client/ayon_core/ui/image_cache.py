@@ -11,7 +11,7 @@ import threading
 import time
 import weakref
 from pathlib import Path
-from typing import Callable
+from typing import BinaryIO, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -451,7 +451,11 @@ class ImageCache:
     # Public API
     # ------------------------------------------------------------------
 
-    def get(self, key: str, file_closure: Callable) -> str:
+    def get(
+        self,
+        key: str,
+        file_closure: Callable[[], str | os.PathLike | BinaryIO],
+    ) -> str:
         """Return the cached file path for *key*, caching it if necessary.
 
         Cache hits are served via a fast path that requires no application-
@@ -470,8 +474,13 @@ class ImageCache:
 
         Args:
             key: Unique identifier for the cached file.
-            file_closure: Callable returning the path to the source file.
-                          Called only on a cache miss.
+            file_closure: Callable returning the path to the source file,
+                          or a binary stream (e.g. ``io.BytesIO``) with
+                          the content of the file. Called only on a cache
+                          miss. A seekable stream is stored from its
+                          start, and extension of the cached file is taken
+                          from the ``name`` attribute of the stream when
+                          it has one.
 
         Returns:
             Absolute path to the cached file as a string.
@@ -479,6 +488,8 @@ class ImageCache:
         Raises:
             ValueError: If *key* is empty or *file_closure* returns a path
                         that does not exist.
+            TypeError: If *file_closure* returns neither a path nor a
+                       binary stream.
             IOError: If the file cannot be copied into the cache.
         """
         if not key:
@@ -512,23 +523,32 @@ class ImageCache:
 
             # True miss: call the closure outside any database transaction.
             logger.debug(f"Cache miss for key '{key}', calling file_closure")
-            source_path = Path(file_closure())
-
-            if not source_path.exists():
-                raise ValueError(
-                    f"Loader returned non-existent file: {source_path}"
+            source = file_closure()
+            if isinstance(source, (str, os.PathLike)):
+                source = Path(source)
+                if not source.exists():
+                    raise ValueError(
+                        f"Loader returned non-existent file: {source}"
+                    )
+                source_name = source
+            elif callable(getattr(source, "read", None)):
+                # Stream may have a name, which is used only for extension
+                name = getattr(source, "name", "")
+                source_name = Path(name if isinstance(name, str) else "")
+            else:
+                raise TypeError(
+                    "Loader must return a file path or a binary stream,"
+                    f" got {type(source).__name__}"
                 )
 
-            cache_filename = self._generate_cache_filename(key, source_path)
+            cache_filename = self._generate_cache_filename(key, source_name)
             cached_path = self.cache_path / cache_filename
 
             # Another process may have stored the file of this key
             #   meanwhile. Such file is kept, replacing it would break
             #   the processes that are reading it right now.
             if not os.path.exists(cached_path):
-                self._atomic_copy(
-                    source_path, cached_path, keep_existing=True
-                )
+                self._atomic_copy(source, cached_path, keep_existing=True)
 
             conn = self._get_conn()
             file_size = cached_path.stat().st_size
@@ -580,7 +600,10 @@ class ImageCache:
     # ------------------------------------------------------------------
 
     def _atomic_copy(
-        self, src: Path, dst: Path, keep_existing: bool = False
+        self,
+        src: Path | BinaryIO,
+        dst: Path,
+        keep_existing: bool = False,
     ) -> None:
         """Copy *src* to *dst* atomically using a temp file + os.replace().
 
@@ -593,7 +616,7 @@ class ImageCache:
         process is used instead of failing.
 
         Args:
-            src: Source file path.
+            src: Source file path, or a binary stream with the content.
             dst: Destination file path.
             keep_existing: Keep *dst* if it exists and cannot be replaced.
 
@@ -604,7 +627,13 @@ class ImageCache:
         os.close(fd)
         tmp_path = Path(tmp_name)
         try:
-            shutil.copy2(src, tmp_path)
+            if isinstance(src, Path):
+                shutil.copy2(src, tmp_path)
+            else:
+                if src.seekable():
+                    src.seek(0)
+                with open(tmp_path, "wb") as stream:
+                    shutil.copyfileobj(src, stream)
             os.replace(tmp_path, dst)
         except OSError as exc:
             tmp_path.unlink(missing_ok=True)

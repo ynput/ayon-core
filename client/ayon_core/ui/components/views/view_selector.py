@@ -886,7 +886,7 @@ class AYViewSelector(AYButtonMenu):
             if not name or name in seen or name == self._current_user:
                 continue
 
-            full_name = user.get("ownAttrib", {}).get("fullName", "") or name
+            full_name = user["attrib"].get("fullName") or name
 
             seen.add(name)
             users_data.append({"name": name, "fullName": full_name})

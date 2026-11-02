@@ -1131,6 +1131,10 @@ class IWorkfileHost(AbstractHost):
         data_parser = WorkfileDataParser(file_template, workdir_data)
         items = []
         for filename in filenames:
+            # Skip hidden files, e.g. macOS AppleDouble '._<name>' files
+            #   created on network shares without Apple metadata support
+            if filename.startswith("."):
+                continue
             # TODO add 'default' support for folders
             ext = os.path.splitext(filename)[1].lower()
             if ext not in extensions:

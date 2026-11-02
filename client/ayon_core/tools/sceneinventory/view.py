@@ -2,7 +2,7 @@ import collections
 import logging
 from functools import partial
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style
@@ -20,6 +20,7 @@ from ayon_core.tools.utils.lib import (
     get_qt_icon,
 )
 from ayon_core.tools.utils.delegates import StatusDelegate
+from ayon_core.ui.components import AYMenu
 
 from .switch_dialog import SwitchAssetDialog
 from .model import (
@@ -38,6 +39,9 @@ from .delegates import VersionDelegate
 from .select_version_dialog import SelectVersionDialog, VersionOption
 
 DEFAULT_COLOR = "#fb9c15"
+VERSION_UP_SHORTCUT = "Ctrl+Up"
+VERSION_DOWN_SHORTCUT = "Ctrl+Down"
+VERSION_LATEST_SHORTCUT = "Ctrl+Shift+Up"
 
 log = logging.getLogger("SceneInventory")
 
@@ -104,13 +108,195 @@ class SceneInventoryView(QtWidgets.QTreeView):
             with preserve_selection(
                 tree_view=self,
                 role=ITEM_UNIQUE_NAME_ROLE,
-                current_index=False
+                # Keep current index so keyboard navigation and version
+                # shortcuts continue from the same item after refresh
+                current_index=True
             ):
                 kwargs = {}
                 # TODO do not touch view's inner attribute
                 if self._hierarchy_view:
                     kwargs["selected"] = self._selected
                 self._model.refresh(**kwargs)
+
+    def event(self, event):
+        # Make sure the version shortcuts are not taken by shortcuts of
+        # a host application (e.g. Maya)
+        if (
+            event.type() == QtCore.QEvent.ShortcutOverride
+            and self._get_version_shortcut_callback(event) is not None
+        ):
+            event.accept()
+            return True
+        return super().event(event)
+
+    def keyPressEvent(self, event):
+        callback = self._get_version_shortcut_callback(event)
+        if callback is not None:
+            event.accept()
+            callback()
+            return
+        super().keyPressEvent(event)
+
+    def _get_version_shortcut_callback(self, event):
+        """Get callback for version shortcut matching the key event.
+
+        Shortcuts:
+            Ctrl + Up: Set selected items one version up.
+            Ctrl + Down: Set selected items one version down.
+            Ctrl + Shift + Up: Set selected items to latest version.
+
+        Args:
+            event (QtGui.QKeyEvent): Key event.
+
+        Returns:
+            Optional[Callable]: Callback to trigger or None if the event
+                does not match any version shortcut.
+
+        """
+        modifiers = event.modifiers()
+        if (
+            not modifiers & QtCore.Qt.ControlModifier
+            or modifiers & QtCore.Qt.AltModifier
+        ):
+            return None
+
+        key = event.key()
+        if modifiers & QtCore.Qt.ShiftModifier:
+            if key == QtCore.Qt.Key_Up:
+                return self._on_version_latest_shortcut
+            return None
+
+        if key == QtCore.Qt.Key_Up:
+            return partial(self._on_version_step_shortcut, 1)
+        if key == QtCore.Qt.Key_Down:
+            return partial(self._on_version_step_shortcut, -1)
+        return None
+
+    def _on_version_step_shortcut(self, step):
+        self._step_containers_version(self._get_selected_item_ids(), step)
+
+    def _on_version_latest_shortcut(self):
+        self._step_containers_version(self._get_selected_item_ids(), None)
+
+    def _get_selected_item_ids(self):
+        return [
+            index.data(ITEM_ID_ROLE)
+            for index in self._get_container_indexes(
+                self.selectionModel().selectedRows()
+            )
+        ]
+
+    def _set_action_shortcut_hint(self, action, shortcut):
+        """Show shortcut next to the label of a context menu action.
+
+        The shortcut itself is handled in 'keyPressEvent' of the view.
+        """
+        action.setShortcut(QtGui.QKeySequence(shortcut))
+        action.setShortcutContext(QtCore.Qt.WidgetShortcut)
+        # Qt does not show shortcuts in context menus by default
+        if hasattr(action, "setShortcutVisibleInContextMenu"):
+            action.setShortcutVisibleInContextMenu(True)
+
+    def _step_containers_version(self, item_ids, step):
+        """Update versions of items relative to their current version.
+
+        Each item is updated relative to its own current version so a
+        selection with mixed versions can be stepped up and down again.
+        Versions that do not exist are skipped, so stepping always ends up
+        on the closest existing version. Items which are already on the
+        first or the last version are left untouched.
+
+        The selection is preserved by the refresh of the view.
+
+        Args:
+            item_ids (Iterable[str]): Items to update.
+            step (Optional[int]): Positive number to go to next version,
+                negative number to go to previous version. Use 'None' to
+                update to latest version.
+
+        """
+        item_ids = list(item_ids)
+        if not item_ids:
+            return
+
+        container_items_by_id = self._controller.get_container_items_by_id(
+            item_ids
+        )
+        repre_ids_by_project = collections.defaultdict(set)
+        for container_item in container_items_by_id.values():
+            repre_ids_by_project[container_item.project_name].add(
+                container_item.representation_id
+            )
+
+        repre_info_by_project = {}
+        version_items_by_project = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repre_info_by_id = self._controller.get_representation_info_items(
+                project_name, repre_ids
+            )
+            repre_info_by_project[project_name] = repre_info_by_id
+            product_ids = {
+                repre_info.product_id
+                for repre_info in repre_info_by_id.values()
+                if repre_info.is_valid
+            }
+            version_items_by_project[project_name] = (
+                self._controller.get_version_items(project_name, product_ids)
+            )
+
+        update_item_ids = []
+        update_versions = []
+        for item_id in item_ids:
+            container_item = container_items_by_id.get(item_id)
+            if container_item is None or container_item.version_locked:
+                continue
+
+            project_name = container_item.project_name
+            repre_info = repre_info_by_project[project_name].get(
+                container_item.representation_id
+            )
+            if repre_info is None or not repre_info.is_valid:
+                continue
+
+            version_items_by_id = (
+                version_items_by_project[project_name].get(
+                    repre_info.product_id, {}
+                )
+            )
+            version_item = version_items_by_id.get(repre_info.version_id)
+            if version_item is None:
+                continue
+
+            if step is None:
+                if version_item.is_hero or not version_item.is_latest:
+                    update_item_ids.append(item_id)
+                    update_versions.append(-1)
+                continue
+
+            # Hero version is stepped from the version it represents
+            current_version = abs(version_item.version)
+            versions = sorted(
+                item.version
+                for item in version_items_by_id.values()
+                if not item.is_hero
+            )
+            if step > 0:
+                new_version = next(
+                    (v for v in versions if v > current_version), None
+                )
+            else:
+                new_version = next(
+                    (v for v in reversed(versions) if v < current_version),
+                    None
+                )
+            if new_version is None:
+                continue
+
+            update_item_ids.append(item_id)
+            update_versions.append(new_version)
+
+        if update_item_ids:
+            self._update_containers(update_item_ids, update_versions)
 
     def set_hierarchy_view(self, enabled):
         self._proxy_model.set_hierarchy_view(enabled)
@@ -359,6 +545,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     item_ids, version=-1
                 )
             )
+            self._set_action_shortcut_hint(
+                update_to_latest_action, VERSION_LATEST_SHORTCUT
+            )
 
         change_to_hero = None
         if has_available_hero_version:
@@ -393,6 +582,30 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 lambda: self._show_version_dialog(item_ids, active_repre_id)
             )
 
+        # version up / down
+        version_up_action = QtWidgets.QAction(
+            qtawesome.icon("fa.angle-up", color=DEFAULT_COLOR),
+            "Version up",
+            menu
+        )
+        version_up_action.triggered.connect(
+            lambda: self._step_containers_version(item_ids, 1)
+        )
+        self._set_action_shortcut_hint(
+            version_up_action, VERSION_UP_SHORTCUT
+        )
+        version_down_action = QtWidgets.QAction(
+            qtawesome.icon("fa.angle-down", color=DEFAULT_COLOR),
+            "Version down",
+            menu
+        )
+        version_down_action.triggered.connect(
+            lambda: self._step_containers_version(item_ids, -1)
+        )
+        self._set_action_shortcut_hint(
+            version_down_action, VERSION_DOWN_SHORTCUT
+        )
+
         # switch folder
         switch_folder_icon = qtawesome.icon("fa.sitemap", color=DEFAULT_COLOR)
         switch_folder_action = QtWidgets.QAction(
@@ -418,6 +631,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         if set_version_action is not None:
             menu.addAction(set_version_action)
+        menu.addAction(version_up_action)
+        menu.addAction(version_down_action)
         menu.addAction(switch_folder_action)
 
         menu.addSeparator()
@@ -494,7 +709,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
     def _build_item_menu(self, indexes=None, active_index=None):
         """Create menu for the selected items"""
-        menu = QtWidgets.QMenu(self)
+        menu = AYMenu(self)
 
         # These two actions should be able to work without selection
         # expand all items
@@ -522,7 +737,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         custom_actions = self._get_custom_actions(item_ids)
         if custom_actions:
-            submenu = QtWidgets.QMenu("Actions", self)
+            submenu = AYMenu("Actions", self)
             for action in custom_actions:
                 color = action.color or DEFAULT_COLOR
                 icon_def = action.icon

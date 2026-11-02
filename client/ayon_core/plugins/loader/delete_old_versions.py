@@ -21,10 +21,10 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     ActionForm,
-    LoaderActionPlugin,
     LoaderActionItem,
-    LoaderActionSelection,
+    LoaderActionPlugin,
     LoaderActionResult,
+    LoaderActionSelection,
 )
 
 
@@ -43,6 +43,20 @@ class DeleteOldVersions(LoaderActionPlugin):
         if self.host_name is not None:
             return []
 
+        settings = selection.get_project_settings()
+        actions_settings = settings["core"]["tools"]["loader"].get(
+            "actions", {})
+
+        if not any(
+            actions_settings.setdefault(key, True)
+            for key in (
+                "delete_old_versions",
+                "delete_selected_versions",
+                "calculate_versions_size",
+            )
+        ):
+            return []
+
         versions = selection.get_selected_version_entities()
         if not versions:
             return []
@@ -52,8 +66,9 @@ class DeleteOldVersions(LoaderActionPlugin):
             for version in versions
         }
 
-        return [
-            LoaderActionItem(
+        output = []
+        if actions_settings["delete_old_versions"]:
+            output.append(LoaderActionItem(
                 group_label="Delete Versions",
                 label="Old versions",
                 order=35,
@@ -62,8 +77,10 @@ class DeleteOldVersions(LoaderActionPlugin):
                     "action": "delete-versions",
                 },
                 icon=MaterialSymbolsIcon("delete", color="#d8d8d8"),
-            ),
-            LoaderActionItem(
+            ))
+
+        if actions_settings["delete_selected_versions"]:
+            output.append(LoaderActionItem(
                 group_label="Delete Versions",
                 label="Selected versions",
                 order=35,
@@ -72,8 +89,10 @@ class DeleteOldVersions(LoaderActionPlugin):
                     "action": "delete-selected-version",
                 },
                 icon=MaterialSymbolsIcon("delete_sweep", color="#d8d8d8"),
-            ),
-            LoaderActionItem(
+            ))
+
+        if actions_settings["calculate_versions_size"]:
+            output.append(LoaderActionItem(
                 label="Calculate Versions size",
                 order=34,
                 data={
@@ -81,8 +100,8 @@ class DeleteOldVersions(LoaderActionPlugin):
                     "action": "calculate-versions-size",
                 },
                 icon=MaterialSymbolsIcon("auto_delete", color="#d8d8d8"),
-            )
-        ]
+            ))
+        return output
 
     def execute_action(
         self,

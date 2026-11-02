@@ -1,3 +1,5 @@
+import re
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.ui.components.tree_view import TreeViewItemDelegate
@@ -10,6 +12,62 @@ from ayon_core.tools.utils.delegates import pretty_timestamp
 
 # Login name of the user shown in the 'Author' column
 USERNAME_ROLE = QtCore.Qt.UserRole + 50
+
+_NUMBERS_RE = re.compile(r"(\d+)")
+
+
+def _natural_sort_key(value):
+    return [
+        int(part) if part.isdigit() else part.lower()
+        for part in _NUMBERS_RE.split(value)
+    ]
+
+
+def _natural_compare(left, right):
+    """Pure python natural comparison of two strings."""
+    left_key = _natural_sort_key(left)
+    right_key = _natural_sort_key(right)
+    return (left_key > right_key) - (left_key < right_key)
+
+
+def _get_natural_compare():
+    """Function to compare strings the way file browsers sort names.
+
+    Uses 'QCollator', which compares natively using the same system
+    functions as the file browser of the platform. Numeric mode is not
+    supported by Qt builds without ICU on linux, pure python comparison is
+    used in that case.
+
+    Returns:
+        Callable[[str, str], int]: Function returning negative number, zero
+            or positive number, when first string is lower, equal or higher.
+    """
+    collator = QtCore.QCollator()
+    collator.setNumericMode(True)
+    collator.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+    if collator.compare("v2", "v10") < 0:
+        return collator.compare
+    return _natural_compare
+
+
+class NaturalSortProxyModel(QtCore.QSortFilterProxyModel):
+    """Proxy model sorting strings in natural order.
+
+    Numbers inside of strings are sorted by their value, so 'v2' is before
+    'v10', the same way as in file browsers.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._natural_compare = _get_natural_compare()
+
+    def lessThan(self, left, right):
+        role = self.sortRole()
+        left_value = left.data(role)
+        right_value = right.data(role)
+        if isinstance(left_value, str) and isinstance(right_value, str):
+            return self._natural_compare(left_value, right_value) < 0
+        return super().lessThan(left, right)
 
 
 class WorkfilesDelegate(TreeViewItemDelegate):

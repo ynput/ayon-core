@@ -201,7 +201,11 @@ class BrowserWidget(AYContainer):
             row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
             if row_dict.get("entityType", "") == "Folder":
                 continue
-            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
+            version_id = (
+                row_dict.get("_action_version_id")
+                or row_dict.get("_version_id")
+                or row_dict.get("id", "")
+            )
             if version_id and not version_id.startswith("grp:"):
                 version_ids.add(version_id)
         return version_ids
@@ -315,7 +319,10 @@ class BrowserWidget(AYContainer):
             return
 
         action_items = self._controller.get_action_items(
-            project_name, version_ids, "version"
+            project_name,
+            version_ids,
+            "version",
+            loaders_grouping=self._controller.loaders_grouping,
         )
 
         if not action_items:

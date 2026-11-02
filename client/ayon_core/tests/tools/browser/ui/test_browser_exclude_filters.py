@@ -167,6 +167,8 @@ def test_hero_filter_queries_hero_version_entities():
 
     # 'featuredOnly' would return the regular version the hero points to
     assert query_filters["featured_only"] is None
+    # The product headers still show the featured hero
+    assert query_filters["featured_types"] == ["hero"]
     assert _conditions(query_filters["version_filter"]) == [
         {"key": "version", "value": 0, "operator": "lt"}
     ]
@@ -181,6 +183,7 @@ def test_excluded_hero_filter_is_negated():
     query_filters = controller._get_query_filters()
 
     assert query_filters["featured_only"] is None
+    assert query_filters["featured_types"] is None
     assert _conditions(query_filters["version_filter"]) == [
         {"key": "version", "value": 0, "operator": "gte"}
     ]
@@ -195,4 +198,5 @@ def test_hero_with_other_featured_types_uses_featured_only():
     query_filters = controller._get_query_filters()
 
     assert query_filters["featured_only"] == ["hero", "latest"]
+    assert query_filters["featured_types"] == ["hero", "latest"]
     assert query_filters["version_filter"] == ""
