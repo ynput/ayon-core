@@ -61,7 +61,11 @@ def get_target_version(instance):
 
 
 class PrepareAttachReviewables(pyblish.api.ContextPlugin):
-    """Prepare one review instance for every attached target instance."""
+    """Prepare one review instance for every attached target instance.
+
+    This runs after ``ExtractReview`` so the expensive source extraction is
+    shared, and before target-dependent extraction such as burnins and slates.
+    """
 
     order = pyblish.api.ExtractorOrder + 0.025
     label = "Prepare attached reviewables"

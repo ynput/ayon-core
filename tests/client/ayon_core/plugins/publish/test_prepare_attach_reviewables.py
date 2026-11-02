@@ -3,6 +3,7 @@ import os
 import weakref
 
 import pyblish.api
+import pyblish.util
 
 import ayon_core.plugins.publish.prepare_attach_reviewables as prepare
 from ayon_core.plugins.publish.extract_burnin import ExtractBurnin
@@ -132,6 +133,43 @@ def test_prepare_deep_copies_representations():
     assert "target-specific" not in prepared_instances[1].data[
         "representations"
     ][0]["tags"]
+
+
+def test_prepare_shares_review_extraction_but_splits_target_processing():
+    context, _, _, _ = _create_context()
+    events = []
+
+    class ExtractReview(pyblish.api.InstancePlugin):
+        order = pyblish.api.ExtractorOrder + 0.02
+        families = ["review"]
+
+        def process(self, instance):
+            events.append(("review", instance.name))
+            instance.data["representations"][0]["extracted"] = True
+
+    class ExtractTargetDependent(pyblish.api.InstancePlugin):
+        order = pyblish.api.ExtractorOrder + 0.03
+        families = ["review"]
+
+        def process(self, instance):
+            events.append(("target", instance.name, instance.data["version"]))
+
+    list(
+        pyblish.util.extract_iter(
+            context,
+            plugins=[
+                ExtractReview,
+                PrepareAttachReviewables,
+                ExtractTargetDependent,
+            ],
+        )
+    )
+
+    assert events == [
+        ("review", "reviewMain"),
+        ("target", "reviewMain -> modelMain", 5),
+        ("target", "reviewMain -> renderMain", 8),
+    ]
 
 
 def test_prepare_handles_non_copyable_runtime_data():
