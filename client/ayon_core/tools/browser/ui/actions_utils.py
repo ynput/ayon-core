@@ -72,23 +72,19 @@ def show_actions_menu(
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
         icon = get_qt_icon(action_item.icon)
+        action = AYOptionalAction(
+            label=action_item.label,
+            icon_name=icon,
+            use_option=bool(item_options),
+            parent=menu,
+        )
         if item_options:
-            action = AYOptionalAction(
-                action_item.label,
-                icon,
-                True,
-                menu,
-            )
             action.option_clicked.connect(
                 lambda action=action: _select_option_action(
                     action,
                     option_action,
                 )
             )
-        else:
-            action = QtGui.QAction(action_item.label, menu)
-            if icon is not None:
-                action.setIcon(icon)
 
         tip = action_item.tooltip
         if tip:

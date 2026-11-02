@@ -990,17 +990,7 @@ class AYCardView(QAbstractItemView):
                     self._toggle_group(group.node_id)
                     return
 
-        idx = self.indexAt(pos)
-        if idx.isValid():
-            flags = QItemSelectionModel.SelectionFlag.ClearAndSelect
-            modifiers = event.modifiers()
-            if modifiers & Qt.KeyboardModifier.ControlModifier:
-                flags = QItemSelectionModel.SelectionFlag.Toggle
-            elif modifiers & Qt.KeyboardModifier.ShiftModifier:
-                flags = QItemSelectionModel.SelectionFlag.Select
-            self.selectionModel().select(QItemSelection(idx, idx), flags)
-            self.setCurrentIndex(idx)
-
+        # Selection is handled by Qt's built-in ExtendedSelection behavior
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
