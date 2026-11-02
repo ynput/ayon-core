@@ -8,7 +8,6 @@ from qtpy.QtCore import QPoint, Qt, Signal
 from qtpy.QtGui import QTextCharFormat, QTextCursor, QTextDocument
 from qtpy.QtWidgets import QTextEdit
 
-from ..data_models import User
 from ..variants import QTextEditVariants
 from .checkbox_handler import (
     CHECKBOX_CHECKED_PROP,
@@ -21,7 +20,6 @@ from .comment_completion import (
     MentionHighlighter,
     MentionModel,
     apply_code_block_backgrounds,
-    get_mention_model,
     mentions_to_display,
     mentions_to_storage,
 )
@@ -46,9 +44,6 @@ class AYMarkdownEdit(AYTextEdit):
     Args:
         *args: Forwarded to ``AYTextEdit``.
         read_only: Display the markdown instead of editing it.
-        user_list: Deprecated, kept for backwards compatibility. Pass the
-            users with ``mention_model`` instead. Deprecation added
-            2026/10/30 (1.10.5+dev).
         mention_model: Users, versions and tasks which can be mentioned.
         variant: Text edit variant.
         **kwargs: Forwarded to ``AYTextEdit``.
@@ -67,7 +62,6 @@ class AYMarkdownEdit(AYTextEdit):
         self,
         *args,
         read_only: bool = False,
-        user_list: list[User] | None = None,
         mention_model: MentionModel | None = None,
         variant: Variants = Variants.Default,
         **kwargs,
@@ -85,9 +79,7 @@ class AYMarkdownEdit(AYTextEdit):
         # automatic bullet lists
         self.setAutoFormatting(QTextEdit.AutoFormattingFlag.AutoAll)
 
-        self._mention_model = get_mention_model(
-            self, mention_model, user_list
-        )
+        self._mention_model = mention_model or MentionModel(self)
         self._highlighter = MentionHighlighter(self.document())
         self.setReadOnly(read_only)
         self.document().contentsChanged.connect(self._on_contents_changed)
@@ -106,10 +98,6 @@ class AYMarkdownEdit(AYTextEdit):
     def mention_model(self) -> MentionModel:
         """Users, versions and tasks which can be mentioned."""
         return self._mention_model
-
-    def set_user_list(self, user_list: list[User]) -> None:
-        """Set the users which can be mentioned with ``@``."""
-        self._mention_model.set_users(user_list)
 
     def insert_mention_trigger(self, trigger: str) -> None:
         """Type ``@``, ``@@`` or ``@@@`` at the text cursor to mention."""

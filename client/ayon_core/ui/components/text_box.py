@@ -30,7 +30,6 @@ from qtpy.QtWidgets import (
 from ..data_models import (
     CommentCategory,
     ProjectData,
-    User,
 )
 from ..variants import QFrameVariants
 from .buttons import AYButton
@@ -39,7 +38,6 @@ from .comment_completion import (
     CODE_BG,
     CODE_FG,
     MentionModel,
-    get_mention_model,
 )
 from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
@@ -58,7 +56,6 @@ class AYTextEditor(AYMarkdownEdit):
         *args,
         num_lines: int = 0,
         read_only: bool = False,
-        user_list: list[User] | None = None,
         variant: AYMarkdownEdit.Variants = AYMarkdownEdit.Variants.Default,
         **kwargs,
     ):
@@ -69,7 +66,6 @@ class AYTextEditor(AYMarkdownEdit):
         super().__init__(
             *args,
             read_only=read_only,
-            user_list=user_list,
             variant=variant,
             **kwargs,
         )
@@ -510,9 +506,6 @@ class AYTextBox(AYContainer):
         *args: Forwarded to ``AYContainer``.
         num_lines: Height of the text field in lines.
         show_categories: Show a combo box to pick the comment category.
-        user_list: Deprecated, kept for backwards compatibility. Pass the
-            users with ``mention_model`` instead. Deprecation added
-            2026/10/30 (1.10.5+dev).
         mention_model: Users, versions and tasks which can be mentioned,
             can be shared with other comment editors.
         variant: Background variant.
@@ -544,7 +537,6 @@ class AYTextBox(AYContainer):
         *args,
         num_lines=0,
         show_categories=False,
-        user_list: list[User] | None = None,
         mention_model: MentionModel | None = None,
         variant: Variants = Variants.Default,
         **kwargs,
@@ -561,9 +553,7 @@ class AYTextBox(AYContainer):
         self.show_categories = show_categories
         self.comment_categories: list[dict] = _dict_from_comment_category([])
         self.category = self.comment_categories[0]["text"]
-        self._mention_model = get_mention_model(
-            self, mention_model, user_list
-        )
+        self._mention_model = mention_model or MentionModel(self)
         # Store attachments - unified list for both screenshots and files
         # List of dicts:
         #   {'type': 'screenshot'|'file', 'path': str, 'filename': str}

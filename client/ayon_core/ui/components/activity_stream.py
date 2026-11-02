@@ -17,7 +17,6 @@ from ..data_models import (
     ActivityCategory,
     CommentModel,
     StatusChangeModel,
-    User,
     VersionPublishModel,
 )
 from .buttons import AYButton
@@ -27,7 +26,7 @@ from .comment import (
     AYStatusChange,
     ThumbnailLoader,
 )
-from .comment_completion import MentionModel, get_mention_model
+from .comment_completion import MentionModel
 from .container import AYContainer
 from .label import AYLabel
 from .scroll_area import AYScrollArea
@@ -63,9 +62,6 @@ class AYActivityStream(AYContainer):
         status_definitions: Project statuses as dictionaries with ``text``,
             ``short_text``, ``icon`` and ``color`` keys, used to render
             status changes.
-        user_list: Deprecated, kept for backwards compatibility. Pass the
-            users with ``mention_model`` instead. Deprecation added
-            2026/10/30 (1.10.5+dev).
         mention_model: Users, versions and tasks to mention when editing a
             comment, can be shared with other comment editors.
         thumbnail_loader: Non-blocking loader of thumbnails of published
@@ -112,7 +108,6 @@ class AYActivityStream(AYContainer):
         self,
         *args,
         status_definitions: list[dict[str, Any]] | None = None,
-        user_list: list[User] | None = None,
         mention_model: MentionModel | None = None,
         thumbnail_loader: ThumbnailLoader = None,
         avatar_cache: UserAvatarCache | None = None,
@@ -131,9 +126,7 @@ class AYActivityStream(AYContainer):
             **kwargs,
         )
         self._status_definitions = status_definitions or []
-        self._mention_model = get_mention_model(
-            self, mention_model, user_list
-        )
+        self._mention_model = mention_model or MentionModel(self)
         self._thumbnail_loader = thumbnail_loader
         self._editable = editable
         self._compact = compact
@@ -281,14 +274,6 @@ class AYActivityStream(AYContainer):
     def mention_model(self) -> MentionModel:
         """Users, versions and tasks to mention when editing a comment."""
         return self._mention_model
-
-    def set_user_list(self, user_list: list[User]) -> None:
-        """Set the users to mention when editing a comment.
-
-        Args:
-            user_list: Project users.
-        """
-        self._mention_model.set_users(user_list)
 
     def set_message(self, text: str) -> None:
         """Show a message instead of the feed, e.g. while loading.

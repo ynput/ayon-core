@@ -30,7 +30,6 @@ from qtpy.QtWidgets import QLabel, QLayout, QMessageBox, QTextEdit, QWidget
 from ..data_models import (
     CommentModel,
     StatusChangeModel,
-    User,
     VersionPublishModel,
     relative_date,
 )
@@ -40,7 +39,6 @@ from ..utils import color_blend
 from .buttons import AYButton
 from .comment_completion import (
     MentionModel,
-    get_mention_model,
     is_mention_href,
 )
 from .container import AYContainer
@@ -414,7 +412,6 @@ class AYCommentField(AYMarkdownEdit):
         text: str = "",
         read_only: bool = False,
         num_lines: int = 0,
-        user_list: list[User] | None = None,
         model: CommentModel | None = None,
         variant: AYMarkdownEdit.Variants = AYMarkdownEdit.Variants.Default,
         **kwargs,
@@ -429,7 +426,6 @@ class AYCommentField(AYMarkdownEdit):
         super().__init__(
             *args,
             read_only=read_only,
-            user_list=user_list,
             variant=variant,
             **kwargs,
         )
@@ -802,9 +798,6 @@ class AYComment(AYContainer):
     Args:
         *args: Forwarded to ``AYContainer``.
         data: The comment to display.
-        user_list: Deprecated, kept for backwards compatibility. Pass the
-            users with ``mention_model`` instead. Deprecation added
-            2026/10/30 (1.10.5+dev).
         mention_model: Users, versions and tasks which can be mentioned
             while editing, can be shared with other comment editors.
         **kwargs: Forwarded to ``AYContainer``.
@@ -817,7 +810,6 @@ class AYComment(AYContainer):
         self,
         *args,
         data: CommentModel | None = None,
-        user_list: list[User] | None = None,
         mention_model: MentionModel | None = None,
         **kwargs,
     ):
@@ -836,9 +828,7 @@ class AYComment(AYContainer):
             layout_margin=1,
             **kwargs,
         )
-        self._mention_model = get_mention_model(
-            self, mention_model, user_list
-        )
+        self._mention_model = mention_model or MentionModel(self)
 
         self._build()
 

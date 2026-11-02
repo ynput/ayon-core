@@ -1046,26 +1046,6 @@ def test_entities_do_not_open_popup_of_other_editor(qtbot, editor):
     assert not editor._mentions.popup_visible()
 
 
-@pytest.mark.parametrize(
-    "create_widget",
-    [
-        lambda: AYTextEditor(user_list=USERS),
-        lambda: AYTextBox(user_list=USERS),
-        lambda: AYComment(data=CommentModel(comment="hi"), user_list=USERS),
-        lambda: AYActivityStream(user_list=USERS),
-    ],
-    ids=["AYTextEditor", "AYTextBox", "AYComment", "AYActivityStream"],
-)
-def test_deprecated_user_list(qtbot, create_widget):
-    with pytest.warns(DeprecationWarning, match="user_list") as warned:
-        widget = create_widget()
-    qtbot.addWidget(widget)
-    # Not again for the widgets it creates
-    assert len(warned) == 1
-    field = getattr(widget, "text_field", widget)
-    assert field.mention_model().get_items("@") == USERS
-
-
 def _underlined(editor: AYTextEditor) -> list[str]:
     """Texts of the first block which are underlined."""
     texts = []
