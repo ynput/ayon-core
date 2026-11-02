@@ -26,7 +26,7 @@ from .comment import (
     AYStatusChange,
     ThumbnailLoader,
 )
-from .comment_completion import MentionModel
+from .comment_completion import MentionSource
 from .container import AYContainer
 from .label import AYLabel
 from .scroll_area import AYScrollArea
@@ -62,7 +62,7 @@ class AYActivityStream(AYContainer):
         status_definitions: Project statuses as dictionaries with ``text``,
             ``short_text``, ``icon`` and ``color`` keys, used to render
             status changes.
-        mention_model: Users, versions and tasks to mention when editing a
+        mention_source: Users, versions and tasks to mention when editing a
             comment, can be shared with other comment editors.
         thumbnail_loader: Non-blocking loader of thumbnails of published
             versions, called as ``(key, on_loaded)`` with the
@@ -108,7 +108,7 @@ class AYActivityStream(AYContainer):
         self,
         *args,
         status_definitions: list[dict[str, Any]] | None = None,
-        mention_model: MentionModel | None = None,
+        mention_source: MentionSource | None = None,
         thumbnail_loader: ThumbnailLoader = None,
         avatar_cache: UserAvatarCache | None = None,
         variant: AYContainer.Variants = AYContainer.Variants.Low,
@@ -126,7 +126,7 @@ class AYActivityStream(AYContainer):
             **kwargs,
         )
         self._status_definitions = status_definitions or []
-        self._mention_model = mention_model or MentionModel(self)
+        self._mention_source = mention_source or MentionSource(self)
         self._thumbnail_loader = thumbnail_loader
         self._editable = editable
         self._compact = compact
@@ -271,9 +271,9 @@ class AYActivityStream(AYContainer):
         self._status_definitions = status_definitions
         self._recreate_rows((AYPublish, AYStatusChange))
 
-    def mention_model(self) -> MentionModel:
+    def mention_source(self) -> MentionSource:
         """Users, versions and tasks to mention when editing a comment."""
-        return self._mention_model
+        return self._mention_source
 
     def set_message(self, text: str) -> None:
         """Show a message instead of the feed, e.g. while loading.
@@ -519,7 +519,7 @@ class AYActivityStream(AYContainer):
         return None
 
     def _create_comment(self, activity: CommentModel) -> AYComment:
-        widget = AYComment(data=activity, mention_model=self._mention_model)
+        widget = AYComment(data=activity, mention_source=self._mention_source)
         if self._editable:
             widget.comment_edited.connect(self.comment_edited)
             widget.comment_deleted.connect(self.comment_deleted)

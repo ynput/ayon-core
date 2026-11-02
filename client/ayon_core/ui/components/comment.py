@@ -38,7 +38,7 @@ from ..style_types import get_ayon_style
 from ..utils import color_blend
 from .buttons import AYButton
 from .comment_completion import (
-    MentionModel,
+    MentionSource,
     is_mention_href,
 )
 from .container import AYContainer
@@ -798,7 +798,7 @@ class AYComment(AYContainer):
     Args:
         *args: Forwarded to ``AYContainer``.
         data: The comment to display.
-        mention_model: Users, versions and tasks which can be mentioned
+        mention_source: Users, versions and tasks which can be mentioned
             while editing, can be shared with other comment editors.
         **kwargs: Forwarded to ``AYContainer``.
     """
@@ -810,7 +810,7 @@ class AYComment(AYContainer):
         self,
         *args,
         data: CommentModel | None = None,
-        mention_model: MentionModel | None = None,
+        mention_source: MentionSource | None = None,
         **kwargs,
     ):
         self._data = data if data else CommentModel()
@@ -828,7 +828,7 @@ class AYComment(AYContainer):
             layout_margin=1,
             **kwargs,
         )
-        self._mention_model = mention_model or MentionModel(self)
+        self._mention_source = mention_source or MentionSource(self)
 
         self._build()
 
@@ -931,7 +931,7 @@ class AYComment(AYContainer):
             self,
             text=self._data.comment,
             read_only=True,
-            mention_model=self._mention_model,
+            mention_source=self._mention_source,
             model=self._data,
             variant=AYCommentField.Variants.High,
         )

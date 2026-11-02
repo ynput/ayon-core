@@ -10,7 +10,7 @@ from qtpy.QtWidgets import QStyleOptionViewItem
 from ayon_core.ui.components.activity_stream import AYActivityStream
 from ayon_core.ui.components.comment import AYComment, AYCommentField
 from ayon_core.ui.components.comment_completion import (
-    MentionModel,
+    MentionSource,
     mentions_to_display,
     mentions_to_storage,
 )
@@ -41,16 +41,16 @@ DISPLAYED = (
 )
 
 
-def _mention_model() -> MentionModel:
-    model = MentionModel()
+def _mention_source() -> MentionSource:
+    model = MentionSource()
     model.set_users(USERS)
     return model
 
 
 @pytest.fixture
 def editor(qtbot) -> AYTextEditor:
-    widget = AYTextEditor(num_lines=4, mention_model=_mention_model())
-    widget.mention_model().set_entities(VERSIONS, TASKS)
+    widget = AYTextEditor(num_lines=4, mention_source=_mention_source())
+    widget.mention_source().set_entities(VERSIONS, TASKS)
     qtbot.addWidget(widget)
     widget.show()
     qtbot.waitExposed(widget)
@@ -176,7 +176,7 @@ def test_pick_mention_with_arrow_keys(qtbot, editor):
 
 
 def test_no_entities_to_mention(qtbot, editor):
-    editor.mention_model().set_entities([], [])
+    editor.mention_source().set_entities([], [])
     qtbot.keyClicks(editor, "@@")
     assert _completions(editor) == ["No versions to mention"]
 
@@ -239,8 +239,8 @@ def test_typing_next_to_loaded_mention(qtbot, editor, key):
 
 @pytest.fixture
 def text_box(qtbot) -> AYTextBox:
-    widget = AYTextBox(num_lines=4, mention_model=_mention_model())
-    widget.mention_model().set_entities(VERSIONS, TASKS)
+    widget = AYTextBox(num_lines=4, mention_source=_mention_source())
+    widget.mention_source().set_entities(VERSIONS, TASKS)
     qtbot.addWidget(widget)
     widget.show()
     qtbot.waitExposed(widget)
@@ -528,7 +528,7 @@ def test_unknown_mention_types_are_regular_links(qtbot, editor):
 
 
 def test_same_label_mentions_keep_their_own_id(qtbot, editor):
-    editor.mention_model().set_entities(
+    editor.mention_source().set_entities(
         [
             EntityMention("version", "a1id", "v001", "renderMain"),
             EntityMention("version", "b1id", "v001", "renderBeauty"),
@@ -544,8 +544,8 @@ def test_same_label_mentions_keep_their_own_id(qtbot, editor):
 
 def test_edit_comment_keeps_mentions(qtbot):
     data = CommentModel(comment=STORED)
-    comment = AYComment(data=data, mention_model=_mention_model())
-    comment.text_field.mention_model().set_entities(VERSIONS, TASKS)
+    comment = AYComment(data=data, mention_source=_mention_source())
+    comment.text_field.mention_source().set_entities(VERSIONS, TASKS)
     qtbot.addWidget(comment)
     comment.show()
     qtbot.waitExposed(comment)
@@ -607,7 +607,7 @@ SUFFIX_COLUMNS = range(300, 400)
 
 
 def test_entity_icons_in_type_color(qtbot, editor):
-    editor.mention_model().set_entities(
+    editor.mention_source().set_entities(
         [
             EntityMention(
                 "version", "v3id", "v003", "renderMain",
@@ -665,7 +665,7 @@ def test_entity_icons_in_type_color(qtbot, editor):
 
 
 def test_icons_do_not_change_completion_or_markdown(qtbot, editor):
-    editor.mention_model().set_entities(
+    editor.mention_source().set_entities(
         [
             EntityMention(
                 "version", "v3id", "v003", "renderMain",
@@ -781,7 +781,7 @@ def test_enter_not_swallowed_by_stale_popup(qtbot, editor):
 
 def test_narrow_popup_does_not_paint_label_over_suffix(qtbot, editor):
     suffix = "22 minutes ago"
-    editor.mention_model().set_entities(
+    editor.mention_source().set_entities(
         [
             EntityMention(
                 "version", "v3id", "v003",
@@ -807,7 +807,7 @@ def test_narrow_popup_does_not_paint_label_over_suffix(qtbot, editor):
 
 
 def test_entities_with_missing_values(qtbot, editor):
-    editor.mention_model().set_entities(
+    editor.mention_source().set_entities(
         [
             EntityMention("version", "v3id", "v003", None),
             EntityMention("version", "v2id", None, "renderMain"),
@@ -830,7 +830,7 @@ def test_entities_with_missing_values(qtbot, editor):
 def _count_requests(widget) -> list[int]:
     """Count how often the entities to mention are requested."""
     requests = []
-    widget.mention_model().entities_requested.connect(
+    widget.mention_source().entities_requested.connect(
         lambda: requests.append(1)
     )
     return requests
@@ -904,7 +904,7 @@ def test_entities_not_requested_without_popup(qtbot, editor):
 
 
 def test_entities_loading_until_set(qtbot, editor):
-    editor.mention_model().clear_entities()
+    editor.mention_source().clear_entities()
 
     qtbot.keyClicks(editor, "@@")
     assert _completions(editor) == ["Loading versions..."]
@@ -922,13 +922,13 @@ def test_entities_loading_until_set(qtbot, editor):
 
 
 def test_open_popup_updates_when_entities_arrive(qtbot, editor):
-    editor.mention_model().clear_entities()
+    editor.mention_source().clear_entities()
     qtbot.keyClicks(editor, "see @@v00")
     # Shown as loading while typing, to update it when they arrive
     assert _completions(editor) == ["Loading versions..."]
 
     # The answer to the request comes in while typing
-    editor.mention_model().set_entities(VERSIONS, TASKS)
+    editor.mention_source().set_entities(VERSIONS, TASKS)
     assert _completions(editor) == [
         "renderMain v003",
         "renderMain v002",
@@ -938,17 +938,17 @@ def test_open_popup_updates_when_entities_arrive(qtbot, editor):
     assert _markdown(editor) == "see [v003](version:v3id)"
 
     # Without any they are no longer loading
-    editor.mention_model().clear_entities()
+    editor.mention_source().clear_entities()
     qtbot.keyClicks(editor, "@@")
-    editor.mention_model().set_entities([], [])
+    editor.mention_source().set_entities([], [])
     assert _completions(editor) == ["No versions to mention"]
 
 
 def test_entities_set_while_handling_request(qtbot, editor):
     # A cache answers right away, from within the signal
-    editor.mention_model().clear_entities()
-    editor.mention_model().entities_requested.connect(
-        lambda: editor.mention_model().set_entities(VERSIONS, TASKS)
+    editor.mention_source().clear_entities()
+    editor.mention_source().entities_requested.connect(
+        lambda: editor.mention_source().set_entities(VERSIONS, TASKS)
     )
     qtbot.keyClicks(editor, "@@v002")
     assert _completions(editor) == ["renderMain v002"]
@@ -964,14 +964,14 @@ def test_known_entities_stay_while_refreshing(qtbot, editor):
     assert len(_completions(editor)) == len(VERSIONS)
 
     newer = [EntityMention("version", "v4id", "v004", "renderMain")]
-    editor.mention_model().set_entities(newer + VERSIONS, TASKS)
+    editor.mention_source().set_entities(newer + VERSIONS, TASKS)
     assert _completions(editor)[0] == "renderMain v004"
 
 
 def test_setting_entities_does_not_open_popup(qtbot, editor):
     qtbot.keyClicks(editor, "no mention here")
-    editor.mention_model().set_entities(VERSIONS, TASKS)
-    editor.mention_model().clear_entities()
+    editor.mention_source().set_entities(VERSIONS, TASKS)
+    editor.mention_source().clear_entities()
     assert not editor._mentions.popup_visible()
 
 
@@ -979,17 +979,17 @@ def test_text_box_and_comment_request_entities(qtbot, text_box):
     requests = _count_requests(text_box)
     qtbot.keyClicks(text_box.edit_field, "@@")
     assert len(requests) == 1
-    text_box.mention_model().clear_entities()
+    text_box.mention_source().clear_entities()
     assert _completions(text_box.edit_field) == ["Loading versions..."]
 
     comment = AYComment(
-        data=CommentModel(comment="hi"), mention_model=_mention_model()
+        data=CommentModel(comment="hi"), mention_source=_mention_source()
     )
     qtbot.addWidget(comment)
     comment.show()
     qtbot.waitExposed(comment)
     requests = _count_requests(comment.text_field)
-    comment.text_field.mention_model().clear_entities()
+    comment.text_field.mention_source().clear_entities()
     comment._edit_comment()
     qtbot.keyClick(
         comment.text_field, Qt.Key.Key_End, Qt.KeyboardModifier.ControlModifier
@@ -998,7 +998,7 @@ def test_text_box_and_comment_request_entities(qtbot, text_box):
     assert len(requests) == 1
     assert _completions(comment.text_field) == ["Loading tasks..."]
 
-    comment.text_field.mention_model().set_entities(VERSIONS, TASKS)
+    comment.text_field.mention_source().set_entities(VERSIONS, TASKS)
     assert _completions(comment.text_field) == [
         "sh010 compositing", "sh010 lighting",
     ]
@@ -1006,7 +1006,7 @@ def test_text_box_and_comment_request_entities(qtbot, text_box):
 
 def test_popup_created_when_editing_comment(qtbot):
     comment = AYComment(
-        data=CommentModel(comment=STORED), mention_model=_mention_model()
+        data=CommentModel(comment=STORED), mention_source=_mention_source()
     )
     qtbot.addWidget(comment)
     assert comment.text_field._mentions is None
@@ -1017,11 +1017,11 @@ def test_popup_created_when_editing_comment(qtbot):
     assert comment.text_field._mentions is not None
 
 
-def test_editors_share_mention_model(qtbot):
-    model = MentionModel()
+def test_editors_share_mention_source(qtbot):
+    model = MentionSource()
     model.set_users(USERS)
-    text_box = AYTextBox(num_lines=4, mention_model=model)
-    stream = AYActivityStream(editable=True, mention_model=model)
+    text_box = AYTextBox(num_lines=4, mention_source=model)
+    stream = AYActivityStream(editable=True, mention_source=model)
     stream.set_activities([CommentModel(activity_id="c1", comment="hi")])
     for widget in (text_box, stream):
         qtbot.addWidget(widget)
@@ -1058,7 +1058,7 @@ def test_popup_closes_when_made_read_only(qtbot, editor):
 
 
 def test_entities_do_not_open_popup_of_other_editor(qtbot, editor):
-    other = AYTextEditor(mention_model=editor.mention_model())
+    other = AYTextEditor(mention_source=editor.mention_source())
     qtbot.addWidget(other)
     other.show()
     qtbot.waitExposed(other)
@@ -1069,7 +1069,7 @@ def test_entities_do_not_open_popup_of_other_editor(qtbot, editor):
     assert not editor._mentions.popup_visible()
 
     qtbot.keyClicks(other, "@@")
-    editor.mention_model().set_entities(VERSIONS[:1], TASKS)
+    editor.mention_source().set_entities(VERSIONS[:1], TASKS)
     assert _completions(other) == ["renderMain v003"]
     assert not editor._mentions.popup_visible()
 

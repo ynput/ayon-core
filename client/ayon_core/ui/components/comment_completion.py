@@ -296,17 +296,18 @@ class MentionCompleterDelegate(QStyledItemDelegate):
         return QSize(option.rect.width(), self.icon_size + 8)
 
 
-class MentionModel(QObject):
-    """Users, versions and tasks which can be mentioned in comments.
+class MentionSource(QObject):
+    """Where comment editors get the users, versions and tasks to mention.
 
-    One model is shared by the comment editors of a context, e.g. a comment
-    box and the comments being edited in an activity stream, so they are
-    set once instead of on each editor.
+    One source is shared by the comment editors of a context, e.g. a comment
+    box and the comments being edited in an activity stream, so its owner
+    fills it once instead of each editor.
 
-    The versions and tasks don't have to be known up front:
-    :attr:`entities_requested` is emitted each time an editor opens its
-    popup for them, to answer with :meth:`set_entities` whenever they are
-    available. The model does not fetch anything itself.
+    The source does not fetch anything itself. The users are set up front.
+    The versions and tasks are asked for with :meth:`request_entities` each
+    time an editor opens its popup for them, which emits
+    :attr:`entities_requested` for the owner to answer with
+    :meth:`set_entities` whenever they are available.
 
     Signals:
         changed: The users, versions or tasks changed.
@@ -373,19 +374,19 @@ class MentionCompleter(QObject):
     """Mention completion for a QTextEdit.
 
     Typing ``@``, ``@@`` or ``@@@`` at the start of a word opens a popup
-    listing the users, versions or tasks of a :class:`MentionModel`. The
+    listing the users, versions or tasks of a :class:`MentionSource`. The
     picked item is inserted as a link, e.g. ``@@v003`` linking to
     ``version:<id>``, so the document's markdown contains
     ``[@@v003](version:<id>)``. Use :func:`mentions_to_display` and
     :func:`mentions_to_storage` to convert from and to the markdown stored
     on the server.
 
-    The versions and tasks are requested from the model each time the popup
-    opens for them.
+    The versions and tasks are requested from the source each time the
+    popup opens for them.
 
     Args:
         text_edit: The QTextEdit to complete mentions in.
-        model: Users, versions and tasks which can be mentioned.
+        source: Where the users, versions and tasks to mention come from.
     """
 
     # Events which can type text, to not make it part of a mention's link
@@ -393,10 +394,10 @@ class MentionCompleter(QObject):
         QEvent.Type.KeyPress, QEvent.Type.InputMethod,
     ))
 
-    def __init__(self, text_edit: QTextEdit, model: MentionModel) -> None:
+    def __init__(self, text_edit: QTextEdit, source: MentionSource) -> None:
         super().__init__(text_edit)
         self._text_edit = text_edit
-        self._model = model
+        self._source = source
         # Trigger the completer model is currently populated for
         self._trigger = ""
         # Whether the entities were requested for the open popup
@@ -422,12 +423,12 @@ class MentionCompleter(QObject):
         # Close the popup when the text cursor leaves the mention
         text_edit.cursorPositionChanged.connect(self._update_popup)
         text_edit.installEventFilter(self)
-        model.changed.connect(self._on_model_changed)
+        source.changed.connect(self._on_source_changed)
 
-    def _on_model_changed(self) -> None:
+    def _on_source_changed(self) -> None:
         """Update the popup of this editor, if it is open."""
         self._trigger = ""
-        if self._model.is_loading_entities():
+        if self._source.is_loading_entities():
             # Ask for the entities of the new context
             self._entities_requested = False
         if self.popup_visible():
@@ -591,7 +592,7 @@ class MentionCompleter(QObject):
         self._trigger = trigger
 
         model = QStandardItemModel(self._completer)
-        for item in self._model.get_items(trigger):
+        for item in self._source.get_items(trigger):
             if isinstance(item, User):
                 text = item.full_name
             else:
@@ -602,7 +603,7 @@ class MentionCompleter(QObject):
             model.appendRow(row)
         if not model.rowCount():
             text = f"No {_MENTION_NOUNS[trigger]} to mention"
-            if trigger != "@" and self._model.is_loading_entities():
+            if trigger != "@" and self._source.is_loading_entities():
                 text = f"Loading {_MENTION_NOUNS[trigger]}..."
             row = QStandardItem(text)
             row.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -629,9 +630,9 @@ class MentionCompleter(QObject):
             # Once each time the popup opens for versions or tasks, typing
             # "@@@" passes "@@" and one answer has both of them.
             self._entities_requested = True
-            self._model.request_entities()
+            self._source.request_entities()
         self._populate(trigger)
-        if trigger != "@" and self._model.is_loading_entities():
+        if trigger != "@" and self._source.is_loading_entities():
             # Keep the popup open while typing, to update it when they arrive
             prefix = ""
         self._completer.setCompletionPrefix(prefix)

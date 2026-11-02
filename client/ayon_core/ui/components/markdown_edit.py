@@ -18,7 +18,7 @@ from .checkbox_handler import (
 from .comment_completion import (
     MentionCompleter,
     MentionHighlighter,
-    MentionModel,
+    MentionSource,
     apply_code_block_backgrounds,
     mentions_to_display,
     mentions_to_storage,
@@ -37,14 +37,14 @@ class AYMarkdownEdit(AYTextEdit):
     can be toggled even in read-only mode, and mentions of users (``@``),
     versions (``@@``) and tasks (``@@@``).
 
-    What can be mentioned comes from a :class:`MentionModel`, which can be
+    What can be mentioned comes from a :class:`MentionSource`, which can be
     shared by the editors of a context. The popup to mention is only
     created once the text is editable.
 
     Args:
         *args: Forwarded to ``AYTextEdit``.
         read_only: Display the markdown instead of editing it.
-        mention_model: Users, versions and tasks which can be mentioned.
+        mention_source: Users, versions and tasks which can be mentioned.
         variant: Text edit variant.
         **kwargs: Forwarded to ``AYTextEdit``.
 
@@ -62,7 +62,7 @@ class AYMarkdownEdit(AYTextEdit):
         self,
         *args,
         read_only: bool = False,
-        mention_model: MentionModel | None = None,
+        mention_source: MentionSource | None = None,
         variant: Variants = Variants.Default,
         **kwargs,
     ) -> None:
@@ -79,7 +79,7 @@ class AYMarkdownEdit(AYTextEdit):
         # automatic bullet lists
         self.setAutoFormatting(QTextEdit.AutoFormattingFlag.AutoAll)
 
-        self._mention_model = mention_model or MentionModel(self)
+        self._mention_source = mention_source or MentionSource(self)
         self._highlighter = MentionHighlighter(self.document())
         self.setReadOnly(read_only)
         self.document().contentsChanged.connect(self._on_contents_changed)
@@ -93,13 +93,13 @@ class AYMarkdownEdit(AYTextEdit):
         if self._mentions is not None and read_only:
             self._mentions.close_popup()
         elif self._mentions is None and not read_only:
-            self._mentions = MentionCompleter(self, self._mention_model)
+            self._mentions = MentionCompleter(self, self._mention_source)
 
     # MENTIONS ---------------------------------------------------------------
 
-    def mention_model(self) -> MentionModel:
+    def mention_source(self) -> MentionSource:
         """Users, versions and tasks which can be mentioned."""
-        return self._mention_model
+        return self._mention_source
 
     def insert_mention_trigger(self, trigger: str) -> None:
         """Type ``@``, ``@@`` or ``@@@`` at the text cursor to mention."""

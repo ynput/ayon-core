@@ -37,7 +37,7 @@ from .combo_box import AYComboBox
 from .comment_completion import (
     CODE_BG,
     CODE_FG,
-    MentionModel,
+    MentionSource,
 )
 from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
@@ -506,7 +506,7 @@ class AYTextBox(AYContainer):
         *args: Forwarded to ``AYContainer``.
         num_lines: Height of the text field in lines.
         show_categories: Show a combo box to pick the comment category.
-        mention_model: Users, versions and tasks which can be mentioned,
+        mention_source: Users, versions and tasks which can be mentioned,
             can be shared with other comment editors.
         variant: Background variant.
         **kwargs: Forwarded to ``AYContainer``.
@@ -537,7 +537,7 @@ class AYTextBox(AYContainer):
         *args,
         num_lines=0,
         show_categories=False,
-        mention_model: MentionModel | None = None,
+        mention_source: MentionSource | None = None,
         variant: Variants = Variants.Default,
         **kwargs,
     ):
@@ -553,7 +553,7 @@ class AYTextBox(AYContainer):
         self.show_categories = show_categories
         self.comment_categories: list[dict] = _dict_from_comment_category([])
         self.category = self.comment_categories[0]["text"]
-        self._mention_model = mention_model or MentionModel(self)
+        self._mention_source = mention_source or MentionSource(self)
         # Store attachments - unified list for both screenshots and files
         # List of dicts:
         #   {'type': 'screenshot'|'file', 'path': str, 'filename': str}
@@ -628,7 +628,7 @@ class AYTextBox(AYContainer):
         self.edit_field = AYTextEditor(
             self,
             num_lines=num_lines,
-            mention_model=self._mention_model,
+            mention_source=self._mention_source,
             variant=AYTextEditor.Variants.Default,
         )
         for var in self.style_icons:
@@ -845,11 +845,11 @@ class AYTextBox(AYContainer):
         )
         if self.show_categories:
             self.com_cat.update_items(self.comment_categories)
-        self._mention_model.set_users(data.users)
+        self._mention_source.set_users(data.users)
 
-    def mention_model(self) -> MentionModel:
+    def mention_source(self) -> MentionSource:
         """Users, versions and tasks which can be mentioned."""
-        return self._mention_model
+        return self._mention_source
 
     def _build(self, num_lines):
         self.add_layout(self._build_upper_bar())

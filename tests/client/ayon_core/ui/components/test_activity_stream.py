@@ -342,10 +342,10 @@ def test_setters_update_displayed_rows(qtbot) -> None:
 
     # Users are only used to mention, rows are not created for them
     users = [User(name="roy", short_name="roy", full_name="Roy", email="")]
-    stream.mention_model().set_users(users)
+    stream.mention_source().set_users(users)
     assert stream._widgets[0][1] is comment_row
     assert stream._widgets[1][1] is new_status_row
-    assert stream.mention_model().get_items("@") == users
+    assert stream.mention_source().get_items("@") == users
 
 
 def test_relative_date_of_a_future_date_is_just_now() -> None:
