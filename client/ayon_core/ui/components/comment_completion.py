@@ -401,6 +401,8 @@ class MentionCompleter(QObject):
         self._trigger = ""
         # Whether the entities were requested for the open popup
         self._entities_requested = False
+        # The popup is hidden for having no match, it was not closed
+        self._hidden_unmatched = False
 
         self._completer = QCompleter(self)
         self._completer.setCompletionMode(
@@ -615,9 +617,13 @@ class MentionCompleter(QObject):
             found = self._find_trigger()
         if found is None:
             self._entities_requested = False
+            self._hidden_unmatched = False
             popup.hide()
             return
 
+        if not popup.isVisible() and not self._hidden_unmatched:
+            # Closed, e.g. with Escape, ask again now it opens
+            self._entities_requested = False
         _, trigger, prefix = found
         if trigger != "@" and not self._entities_requested:
             # Once each time the popup opens for versions or tasks, typing
@@ -631,6 +637,7 @@ class MentionCompleter(QObject):
         self._completer.setCompletionPrefix(prefix)
         row_count = self._completer.completionCount()
         if not row_count:
+            self._hidden_unmatched = True
             popup.hide()
             return
 
@@ -646,6 +653,7 @@ class MentionCompleter(QObject):
             self._text_edit.width(),
             height,
         )
+        self._hidden_unmatched = False
         popup.show()
         popup.setCurrentIndex(self._completer.completionModel().index(0, 0))
 

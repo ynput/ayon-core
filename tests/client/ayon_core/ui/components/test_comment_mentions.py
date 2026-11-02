@@ -871,6 +871,27 @@ def test_entities_requested_once_when_typing_task_trigger(qtbot, editor):
     assert len(requests) == 1
 
 
+def test_entities_requested_again_after_closing_popup(qtbot, editor):
+    requests = _count_requests(editor)
+    qtbot.keyClicks(editor, "@@")
+    assert len(requests) == 1
+    qtbot.keyClick(editor._mentions._completer.popup(), Qt.Key.Key_Escape)
+    assert not editor._mentions.popup_visible()
+
+    # Reopened for the same mention, they may have changed meanwhile
+    qtbot.keyClicks(editor, "v")
+    assert editor._mentions.popup_visible()
+    assert len(requests) == 2  # noqa: PLR2004
+
+    # Not when it was only hidden for having no match
+    qtbot.keyClicks(editor, "zz")
+    assert not editor._mentions.popup_visible()
+    qtbot.keyClick(editor, Qt.Key.Key_Backspace)
+    qtbot.keyClick(editor, Qt.Key.Key_Backspace)
+    assert editor._mentions.popup_visible()
+    assert len(requests) == 2  # noqa: PLR2004
+
+
 def test_entities_not_requested_without_popup(qtbot, editor):
     requests = _count_requests(editor)
 
