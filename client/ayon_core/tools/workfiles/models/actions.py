@@ -202,17 +202,17 @@ class WorkfileActionsModel:
             area = WorkfileAreaType.published
             repre_id = selection_data.representation_id
             if repre_id:
-                workfile_info = controller.get_cached_published_workfile_info(
+                workfile_info = controller.get_published_workfile_info(
                     folder_id, repre_id
-                )
-                repre_entity = controller.get_cached_representation_entity(
-                    repre_id
+                ).info
+                repre_entity = controller.get_published_representation_entity(
+                    folder_id, repre_id
                 )
         else:
             area = WorkfileAreaType.workarea
             if selection_data.rootless_path:
-                workfile_info = controller.get_cached_workfile_info(
-                    task_id, selection_data.rootless_path
+                workfile_info = controller.get_workfile_info(
+                    folder_id, task_id, selection_data.rootless_path
                 )
             workfile_entity_id = selection_data.workfile_entity_id
             if workfile_entity_id:

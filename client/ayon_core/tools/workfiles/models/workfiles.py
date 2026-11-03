@@ -329,61 +329,27 @@ class WorkfilesModel:
             mapping = self._workarea_file_items_mapping[task_id]
         return mapping.get(rootless_path)
 
-    def get_cached_workfile_info(
-        self, task_id: str | None, rootless_path: str | None
-    ) -> WorkfileInfo | None:
-        """Workfile info if is already cached.
-
-        Unlike 'get_workfile_info' does not trigger listing of workfiles.
-            It is used to prepare selection for workfile actions, which
-            happens on each selection change and out of the main thread,
-            where the listing (host call and server queries) should not be
-            triggered.
-
-        Args:
-            task_id (str | None): Task id.
-            rootless_path (str | None): Workfile path.
-
-        Returns:
-            WorkfileInfo | None: Workfile info or None if is not cached.
-
-        """
-        mapping = self._workarea_file_items_mapping.get(task_id)
-        if not mapping:
-            return None
-        return mapping.get(rootless_path)
-
-    def get_cached_published_workfile_info(
+    def get_published_representation_entity(
         self, folder_id: str | None, representation_id: str | None
-    ) -> PublishedWorkfileInfo | None:
-        """Published workfile info if is already cached.
+    ) -> dict[str, Any] | None:
+        """Representation entity of a published workfile.
 
-        Unlike 'get_published_workfile_info' does not trigger listing of
-            published workfiles.
+        Published workfiles of the folder are listed if they are not
+            cached or the cache is outdated.
 
         Args:
             folder_id (str | None): Folder id.
             representation_id (str | None): Representation id.
 
         Returns:
-            PublishedWorkfileInfo | None: Published workfile info or None if
-                is not cached.
+            dict[str, Any] | None: Representation entity or None if is not
+                found.
 
         """
         if not folder_id or not representation_id:
             return None
-        cache = self._published_workfile_items_cache[folder_id]
-        if not cache.is_valid:
-            return None
-        for item in cache.get_data():
-            if item.representation_id == representation_id:
-                return item
-        return None
-
-    def get_cached_representation_entity(
-        self, representation_id: str | None
-    ) -> dict[str, Any] | None:
-        """Representation entity of published workfile if is cached."""
+        # Make sure published workfiles of the folder are cached
+        self.get_published_file_items(folder_id, None)
         return self._repre_by_id.get(representation_id)
 
     def save_workfile_info(

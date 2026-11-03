@@ -214,3 +214,44 @@ def test_trigger_action_emits_events(controller):
     controller.trigger_workfile_action("unknown", selection, None, {})
     assert events[-1]["crashed"] is True
     assert events[-1]["result"] is None
+
+
+def test_selection_lists_workfiles_if_not_cached(controller):
+    """Workfile info is available even if the cache was cleared."""
+    selection_data = controller.get_workfile_action_selection(False)
+    workfiles_model = controller._workfiles_model
+    mapping = workfiles_model._workarea_file_items_mapping
+    cached = mapping.pop("task-1")
+
+    def _cache_file_items(_folder_id, task_id):
+        mapping[task_id] = cached
+
+    with mock.patch.object(
+        workfiles_model, "_cache_file_items", side_effect=_cache_file_items
+    ) as cache_mock:
+        selection = controller._actions_model._create_selection(
+            selection_data
+        )
+    cache_mock.assert_called_once_with("folder-1", "task-1")
+    assert selection.workfile_info is cached[ROOTLESS_PATH]
+
+
+def test_published_representation_is_listed_if_not_cached(controller):
+    workfiles_model = controller._workfiles_model
+    repre_entity = {"id": "repre-1", "versionId": "version-1"}
+
+    def _list_published(_folder_id, _task_id):
+        workfiles_model._repre_by_id["repre-1"] = repre_entity
+        return []
+
+    with mock.patch.object(
+        workfiles_model, "get_published_file_items",
+        side_effect=_list_published,
+    ) as list_mock:
+        assert controller.get_published_representation_entity(
+            "folder-1", "repre-1"
+        ) == repre_entity
+    list_mock.assert_called_once_with("folder-1", None)
+    assert controller.get_published_representation_entity(
+        "folder-1", None
+    ) is None

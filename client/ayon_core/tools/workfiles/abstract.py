@@ -221,6 +221,43 @@ class AbstractWorkfilesCommon(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_published_workfile_info(
+        self,
+        folder_id: str | None,
+        representation_id: str | None,
+    ) -> PublishedWorkfileWrap:
+        """Get published workfile info by representation ID.
+
+        Args:
+            folder_id (str | None): Folder id.
+            representation_id (str | None): Representation id.
+
+        Returns:
+            PublishedWorkfileWrap: Published workfile info or None
+                if not found.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_workfile_info(
+        self, folder_id: str, task_id: str, rootless_path: str
+    ) -> WorkfileInfo | None:
+        """Workfile info from database.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            rootless_path (str): Workfile path.
+
+        Returns:
+            WorkfileInfo | None: Workfile info or None if was passed
+                invalid context.
+
+        """
+        pass
+
 
 class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
     # Current context
@@ -380,54 +417,21 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_cached_workfile_info(
-        self, task_id: str | None, rootless_path: str | None
-    ) -> WorkfileInfo | None:
-        """Workarea workfile info if is already cached.
-
-        Does not trigger listing of workfiles.
-
-        Args:
-            task_id (str | None): Task id.
-            rootless_path (str | None): Rootless workfile path.
-
-        Returns:
-            WorkfileInfo | None: Workfile info or None if is not cached.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_cached_published_workfile_info(
+    def get_published_representation_entity(
         self, folder_id: str | None, representation_id: str | None
-    ) -> PublishedWorkfileInfo | None:
-        """Published workfile info if is already cached.
+    ) -> dict[str, Any] | None:
+        """Representation entity of a published workfile.
 
-        Does not trigger listing of published workfiles.
+        Published workfiles of the folder are listed if they are not
+            cached or the cache is outdated.
 
         Args:
             folder_id (str | None): Folder id.
             representation_id (str | None): Representation id.
 
         Returns:
-            PublishedWorkfileInfo | None: Published workfile info or None if
-                is not cached.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_cached_representation_entity(
-        self, representation_id: str | None
-    ) -> dict[str, Any] | None:
-        """Representation entity of published workfile if is cached.
-
-        Args:
-            representation_id (str | None): Representation id.
-
-        Returns:
             dict[str, Any] | None: Representation entity or None if is not
-                cached.
+                found.
 
         """
         pass
@@ -1013,43 +1017,6 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Returns:
             list[PublishedWorkfileInfo]: List of published file items.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_published_workfile_info(
-        self,
-        folder_id: str | None,
-        representation_id: str | None,
-    ) -> PublishedWorkfileWrap:
-        """Get published workfile info by representation ID.
-
-        Args:
-            folder_id (str | None): Folder id.
-            representation_id (str | None): Representation id.
-
-        Returns:
-            PublishedWorkfileWrap: Published workfile info or None
-                if not found.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_workfile_info(
-        self, folder_id: str, task_id: str, rootless_path: str
-    ) -> WorkfileInfo | None:
-        """Workfile info from database.
-
-        Args:
-            folder_id (str): Folder id.
-            task_id (str): Task id.
-            rootless_path (str): Workfile path.
-
-        Returns:
-            WorkfileInfo | None: Workfile info or None if was passed
-                invalid context.
 
         """
         pass
