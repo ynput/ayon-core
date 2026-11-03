@@ -873,11 +873,11 @@ class LocalPreferences(ASettingRegistry):
     'preferences.db.broken-<time>' and a new one is created, so local
     preferences of all tools are reset instead of failing every time.
 
-    A 'JSONSettingRegistry' with the same name in that folder, as tools
-    used before, is imported on first use, e.g.
-    'LocalPreferences("launcher")' has the items the Launcher stored
-    before. Older versions of core keep using that file, changes are not
-    written back to it.
+    The legacy registry, a 'JSONSettingRegistry' file tools used before,
+    is imported once on first use. It is '<name>.json' in that folder if
+    not passed, e.g. 'LocalPreferences("launcher")' has the items the
+    Launcher stored before. Older versions of core keep using that file,
+    changes are not written back to it.
 
     Example:
         >>> preferences = LocalPreferences("io.ynput.core.my_tool")
@@ -888,6 +888,10 @@ class LocalPreferences(ASettingRegistry):
     Args:
         name: Name of the preferences, namespaced like keys of
             'UserPreferences', e.g. 'io.ynput.core.my_tool'.
+        legacy_registry_filepath: Path to the 'JSONSettingRegistry' file
+            the tool used before, to import on first use. Defaults to
+            '<name>.json' in the 'tools' folder of the launcher local
+            directory.
 
     Raises:
         ValueError: If the name is not valid.
@@ -899,11 +903,18 @@ class LocalPreferences(ASettingRegistry):
     # Guards moving a broken database aside in this process
     _recover_lock = threading.Lock()
 
-    def __init__(self, name: str) -> None:
+    def __init__(
+        self, name: str, legacy_registry_filepath: Optional[str] = None
+    ) -> None:
         _validate_preferences_name(name)
         super().__init__(name)
+        if legacy_registry_filepath is None:
+            legacy_registry_filepath = get_launcher_local_dir(
+                "tools", f"{name}.json"
+            )
         self._filepath = get_launcher_local_dir("tools", "preferences.db")
-        self._registry_imported = False
+        self._legacy_registry_filepath = legacy_registry_filepath
+        self._legacy_registry_imported = False
 
     @property
     def filepath(self) -> str:
@@ -911,9 +922,12 @@ class LocalPreferences(ASettingRegistry):
         return self._filepath
 
     @property
-    def registry_filepath(self) -> str:
-        """Path to the registry imported on first use, may not exist."""
-        return get_launcher_local_dir("tools", f"{self.name}.json")
+    def legacy_registry_filepath(self) -> str:
+        """Path to the legacy registry imported on first use.
+
+        It may not exist.
+        """
+        return self._legacy_registry_filepath
 
     def get_data(self) -> dict[str, Any]:
         """All stored items.
@@ -1061,7 +1075,7 @@ class LocalPreferences(ASettingRegistry):
         self, sql: str, parameters: tuple[str, ...]
     ) -> Optional[list[tuple[str, ...]]]:
         """Read rows, 'None' if they could not be read."""
-        self._ensure_registry_imported()
+        self._ensure_legacy_registry_imported()
         # Nothing is created by reading
         if not os.path.exists(self._filepath):
             return []
@@ -1073,17 +1087,17 @@ class LocalPreferences(ASettingRegistry):
 
     def _change(self, sql: str, parameters: tuple[str, ...]) -> int:
         """Change rows, returns how many, '-1' if they were not changed."""
-        self._ensure_registry_imported()
+        self._ensure_legacy_registry_imported()
         success, count = self._run(
             lambda connection: connection.execute(sql, parameters).rowcount,
             "change",
         )
         return count if success else -1
 
-    def _ensure_registry_imported(self) -> None:
-        if not self._registry_imported:
-            self._registry_imported = True
-            self.import_registry(self.registry_filepath)
+    def _ensure_legacy_registry_imported(self) -> None:
+        if not self._legacy_registry_imported:
+            self._legacy_registry_imported = True
+            self.import_registry(self._legacy_registry_filepath)
 
     def _run(
         self,
