@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import sys
 import copy
 from collections import defaultdict
@@ -23,7 +22,7 @@ from ayon_api.operations import (
 )
 from ayon_api.utils import create_entity_id
 
-from ayon_core.lib import source_hash
+from ayon_core.lib import source_hash, Logger
 from ayon_core.lib.file_transaction import (
     FileTransaction,
     DuplicateDestinationError
@@ -40,7 +39,7 @@ from ayon_core.pipeline.anatomy import (
     AnatomyRoot,
 )
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 PublishRepresentation = dict[str, Any]
 
