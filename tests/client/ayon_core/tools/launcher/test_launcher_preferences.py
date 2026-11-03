@@ -26,6 +26,6 @@ def test_grouped_hosts_of_previous_versions_are_used(local_dir):
 
     controller.set_grouped_host_names(["nuke"])
     assert BaseLauncherController().get_grouped_host_names() == ["nuke"]
-    # Previous versions read what is stored now
+    # The registry is left as it was, for older versions of core
     registry = JSONSettingRegistry("launcher", get_launcher_local_dir("tools"))
-    assert registry.get_item("grouped_hosts") == '["nuke"]'
+    assert registry.get_item("grouped_hosts") == '["maya", null]'

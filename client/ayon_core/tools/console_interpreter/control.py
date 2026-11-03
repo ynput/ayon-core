@@ -1,10 +1,7 @@
 from __future__ import annotations
-
-import os
-import shutil
 from typing import Optional
 
-from ayon_core.lib import Logger, LocalPreferences, get_launcher_local_dir
+from ayon_core.lib import LocalPreferences, get_launcher_local_dir
 
 from .abstract import (
     AbstractInterpreterController,
@@ -18,7 +15,11 @@ class InterpreterController(AbstractInterpreterController):
         if name is None:
             name = "python_interpreter_tool"
         self._preferences = LocalPreferences(name)
-        self._copy_previous_registry()
+        # Previous versions stored it in the root of the local directory.
+        #   Imported once, the file is kept for older versions of core.
+        self._preferences.import_registry(
+            get_launcher_local_dir(f"{name}.json")
+        )
 
     def get_config(self) -> InterpreterConfig:
         width = None
@@ -64,28 +65,3 @@ class InterpreterController(AbstractInterpreterController):
         self._preferences.set_item("height", height)
         self._preferences.set_item("splitter_sizes", splitter_sizes)
         self._preferences.set_item("tabs", tabs)
-
-    def _copy_previous_registry(self) -> None:
-        """Use the registry of previous versions of the tool.
-
-        It was in the root of the launcher local directory. It is copied
-        and not moved, older versions of core in other bundles use it.
-        """
-        filepath = self._preferences.filepath
-        previous_filepath = get_launcher_local_dir(
-            f"{self._preferences.name}.json"
-        )
-        if (
-            os.path.exists(filepath)
-            or not os.path.exists(previous_filepath)
-        ):
-            return
-        try:
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            shutil.copyfile(previous_filepath, filepath)
-        except OSError:
-            Logger.get_logger(self.__class__.__name__).warning(
-                "Failed to copy previous registry '%s'.",
-                previous_filepath,
-                exc_info=True,
-            )

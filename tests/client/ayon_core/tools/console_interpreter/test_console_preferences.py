@@ -20,7 +20,7 @@ def local_dir(tmp_path_factory, monkeypatch) -> str:
 
 
 @pytest.mark.unit
-def test_registry_of_previous_versions_is_copied(local_dir):
+def test_registry_of_previous_versions_is_imported(local_dir):
     # Previous versions stored it in the root of the local directory
     registry = JSONSettingRegistry("unreal", get_launcher_local_dir())
     registry.set_item("width", 800)
@@ -35,10 +35,10 @@ def test_registry_of_previous_versions_is_copied(local_dir):
     ]
 
     controller.save_config(1000, 700, [100, 200], [])
-    assert os.path.exists(
+    assert not os.path.exists(
         os.path.join(local_dir, "tools", "unreal.json")
     )
-    # Not copied again, and the previous registry is left as it was
+    # Not imported again, and the previous registry is left as it was
     config = InterpreterController(name="unreal").get_config()
     assert (config.width, config.height) == (1000, 700)
     registry = JSONSettingRegistry("unreal", get_launcher_local_dir())

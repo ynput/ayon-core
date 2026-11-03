@@ -16,8 +16,6 @@ from .local_settings import (
     get_local_site_id,
     get_ayon_user_entity,
     get_ayon_username,
-)
-from .preferences import (
     LocalPreferences,
     UserPreferences,
     UserPreferencesNotSupported,
