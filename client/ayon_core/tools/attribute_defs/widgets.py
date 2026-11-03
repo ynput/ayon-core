@@ -820,8 +820,8 @@ class EnumAttrWidget(BaseAttrDefWidget):
 class UnknownAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = QtWidgets.QLabel(self)
-        self._value = self.attr_def.default
-        input_widget.setText(str(self._value))
+        self._value = str(self.attr_def.default)
+        input_widget.setText(self._value)
 
         self._input_widget = input_widget
 
@@ -834,9 +834,11 @@ class UnknownAttrWidget(BaseAttrDefWidget):
 
     def set_value(self, value, multivalue=False):
         if multivalue:
-            set_value = set(value)
-            if len(set_value) == 1:
-                value = tuple(set_value)[0]
+            # Unknown values can be unhashable (e.g. list or dict) so
+            #   they can't be deduplicated using 'set'
+            values = list(value)
+            if values and all(item == values[0] for item in values):
+                value = values[0]
             else:
                 value = "< Multiselection >"
 

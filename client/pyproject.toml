@@ -1,6 +1,7 @@
 [project]
-name="core"
+name="ayon-core"
 description="AYON core addon."
+dynamic = ["version"]
 
 [tool.poetry.dependencies]
 markdown = "^3.4.1"

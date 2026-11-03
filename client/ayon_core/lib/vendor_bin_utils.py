@@ -508,6 +508,50 @@ def is_ffmpeg_option_supported(option: str) -> bool:
     return option in get_ffmpeg_supported_options()
 
 
+@functools.lru_cache
+def get_ffmpeg_available_encoders() -> set[str]:
+    """Names of video/audio encoders the current FFmpeg build provides.
+
+    Parses ``ffmpeg -encoders``. The encoder (e.g. 'libsvtav1',
+    'libaom-av1', 'av1_nvenc') is the concrete implementation of a codec
+    and is build dependent, unlike the codec name ('av1') reported by
+    ffprobe. Use this to pick an encoder that actually exists instead of
+    hardcoding one that may be missing from a studio's FFmpeg build.
+
+    Returns:
+        set[str]: Available encoder names.
+
+    """
+    result = subprocess.run(
+        get_ffmpeg_tool_args("ffmpeg", "-hide_banner", "-encoders"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+
+    encoders: set[str] = set()
+    # Each encoder line looks like:
+    #   " V....D libsvtav1    SVT-AV1(Scalable Video ...) (codec av1)"
+    # The capability flags block comes first, then the encoder name.
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        flags = parts[0]
+        # Flags are exactly 6 chars, first is the media type (V/A/S).
+        if len(flags) != 6 or flags[0] not in "VAS":
+            continue
+        encoders.add(parts[1])
+
+    return encoders
+
+
+def is_ffmpeg_encoder_available(encoder: str) -> bool:
+    """True if the current FFmpeg build provides the given encoder."""
+    return encoder in get_ffmpeg_available_encoders()
+
+
 def is_oiio_supported():
     """Checks if oiiotool is configured for this platform.
 
