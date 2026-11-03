@@ -35,31 +35,29 @@ class SiteSyncActionPlugin(LoaderActionPlugin):
         self._addon_resolved = False
         # Active and remote site by project name, 'None' if disabled
         self._sites_cache = NestedCacheItem(levels=1, lifetime=60)
+        # Local and remote sync progress by project name and repre id
+        self._repre_status_cache = NestedCacheItem(levels=2, lifetime=20)
 
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        # Called on each right-click, so do not query the server
+        #   unless Site Sync is enabled for the project
         if not selection.representations_selected():
             return []
 
-        project_name = selection.project_name
-        sites = self._get_project_sites(project_name)
+        sites = self._get_project_sites(selection)
         if sites is None:
             return []
-        active_site, remote_site = sites
 
         repre_ids = selection.selected_ids
-        status_by_repre_id = (
-            self._get_sitesync_addon().get_representations_sync_state(
-                project_name, list(repre_ids), active_site, remote_site
-            )
+        status_by_repre_id = self._get_repres_sync_status(
+            selection.project_name, repre_ids, *sites
         )
         download_ids = set()
         local_ids = set()
         for repre_id in repre_ids:
-            local_status, remote_status = status_by_repre_id.get(
-                repre_id, (0, 0)
-            )
+            local_status, remote_status = status_by_repre_id[repre_id]
             if local_status:
                 local_ids.add(repre_id)
             if remote_status:
@@ -86,7 +84,7 @@ class SiteSyncActionPlugin(LoaderActionPlugin):
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         project_name = selection.project_name
-        sites = self._get_project_sites(project_name)
+        sites = self._get_project_sites(selection)
         if sites is None:
             return LoaderActionResult(
                 message="Site Sync is not enabled for the project.",
@@ -97,6 +95,11 @@ class SiteSyncActionPlugin(LoaderActionPlugin):
 
         action = data["action"]
         repre_ids = set(data["representation_ids"])
+        # Sync status changes, query it again on the next right-click
+        project_status_cache = self._repre_status_cache[project_name]
+        for repre_id in repre_ids:
+            project_status_cache[repre_id].set_invalid()
+
         if action == REMOVE_ACTION:
             for repre_id in repre_ids:
                 addon.remove_site(
@@ -163,29 +166,64 @@ class SiteSyncActionPlugin(LoaderActionPlugin):
         return self._sitesync_addon
 
     def _get_project_sites(
-        self, project_name: str
+        self, selection: LoaderActionSelection
     ) -> Optional[tuple[str, str]]:
-        """Active and remote site of a project.
+        """Active and remote site of the selected project.
+
+        Checks if Site Sync is enabled for the project from project settings
+        first. They're cached by ayon-core and usually already received by
+        other action plugins, unlike settings received by the addon.
 
         Returns:
             Optional[tuple[str, str]]: Active and remote site names, or
                 'None' if Site Sync is not enabled for the project.
 
         """
+        addon = self._get_sitesync_addon()
+        if addon is None:
+            return None
+
+        project_name = selection.project_name
         cache = self._sites_cache[project_name]
         if not cache.is_valid:
             sites = None
-            addon = self._get_sitesync_addon()
-            if (
-                addon is not None
-                and addon.is_project_enabled(project_name, single=True)
-            ):
+            project_settings = selection.get_project_settings()
+            sitesync_settings = project_settings.get(addon.name) or {}
+            if sitesync_settings.get("enabled"):
                 sites = (
                     addon.get_active_site(project_name),
                     addon.get_remote_site(project_name),
                 )
             cache.update_data(sites)
         return cache.get_data()
+
+    def _get_repres_sync_status(
+        self,
+        project_name: str,
+        repre_ids: set[str],
+        active_site: str,
+        remote_site: str,
+    ) -> dict[str, tuple[float, float]]:
+        """Local and remote sync progress of representations."""
+        project_cache = self._repre_status_cache[project_name]
+        missing_ids = {
+            repre_id
+            for repre_id in repre_ids
+            if not project_cache[repre_id].is_valid
+        }
+        if missing_ids:
+            addon = self._get_sitesync_addon()
+            status_by_repre_id = addon.get_representations_sync_state(
+                project_name, list(missing_ids), active_site, remote_site
+            )
+            for repre_id in missing_ids:
+                project_cache[repre_id].update_data(
+                    status_by_repre_id.get(repre_id, (0, 0))
+                )
+        return {
+            repre_id: project_cache[repre_id].get_data()
+            for repre_id in repre_ids
+        }
 
     def _get_workfile_repre_ids(
         self,

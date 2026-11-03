@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 
@@ -17,6 +17,7 @@ from ayon_core.plugins.loader.sitesync import SiteSyncActionPlugin
 PROJECT_NAME = "test_project"
 ACTIVE_SITE = "local_site"
 REMOTE_SITE = "studio"
+ENABLED_SETTINGS = {"sitesync": {"enabled": True}}
 
 # Local and remote sync progress by representation id
 SYNC_STATE = {
@@ -28,14 +29,13 @@ SYNC_STATE = {
 
 
 class _FakeSiteSyncAddon:
-    def __init__(self, enabled=True, project_enabled=True):
+    name = "sitesync"
+
+    def __init__(self, enabled=True):
         self.enabled = enabled
-        self.project_enabled = project_enabled
         self.added: list[tuple[str, str]] = []
         self.removed: list[tuple[str, str, bool]] = []
-
-    def is_project_enabled(self, project_name, single=False):
-        return self.project_enabled
+        self.sync_state_queries: list[set[str]] = []
 
     def get_active_site(self, project_name):
         return ACTIVE_SITE
@@ -46,6 +46,7 @@ class _FakeSiteSyncAddon:
     def get_representations_sync_state(
         self, project_name, representation_ids, local_site, remote_site
     ):
+        self.sync_state_queries.append(set(representation_ids))
         return {
             repre_id: SYNC_STATE[repre_id]
             for repre_id in representation_ids
@@ -66,6 +67,17 @@ class _FakeSiteSyncAddon:
         self, project_name, representation_id, site_name
     ):
         return False
+
+
+class _NoQueryAddon(_FakeSiteSyncAddon):
+    """Addon that fails on any call which may query the server."""
+
+    def _fail(self, *args, **kwargs):
+        raise AssertionError("Unexpected Site Sync query")
+
+    get_active_site = _fail
+    get_remote_site = _fail
+    get_representations_sync_state = _fail
 
 
 class _FakeAddonsManager:
@@ -94,7 +106,10 @@ def _make_selection(
     repre_ids: set[str],
     selected_type: str = "representation",
     product_type: str = "render",
+    project_settings: Optional[dict[str, Any]] = None,
 ) -> LoaderActionSelection:
+    if project_settings is None:
+        project_settings = ENABLED_SETTINGS
     representations_by_id = {
         repre_id: {"id": repre_id, "versionId": "version_id"}
         for repre_id in SYNC_STATE
@@ -113,6 +128,7 @@ def _make_selection(
         PROJECT_NAME,
         repre_ids,
         selected_type,
+        project_settings=project_settings,
         entities_cache=entities_cache,
     )
 
@@ -121,22 +137,34 @@ def _items_by_action(items) -> dict[str, Any]:
     return {item.data["action"]: item for item in items}
 
 
-@pytest.mark.parametrize(
-    "addon",
-    [
-        None,
-        _FakeSiteSyncAddon(enabled=False),
-        _FakeSiteSyncAddon(project_enabled=False),
-    ],
-)
-def test_no_items_without_enabled_sitesync(addon):
+@pytest.mark.parametrize("addon", [None, _NoQueryAddon(enabled=False)])
+def test_no_settings_access_without_enabled_addon(addon):
     plugin = SiteSyncActionPlugin(_FakeContext(addon))
     selection = _make_selection(set(SYNC_STATE))
+
+    def _fail():
+        raise AssertionError("Project settings should not be needed")
+
+    selection.get_project_settings = _fail
     assert plugin.get_action_items(selection) == []
 
 
-def test_no_items_for_versions():
-    plugin = SiteSyncActionPlugin(_FakeContext(_FakeSiteSyncAddon()))
+@pytest.mark.parametrize(
+    "project_settings",
+    [{}, {"sitesync": {}}, {"sitesync": {"enabled": False}}],
+)
+def test_no_queries_when_project_disabled(project_settings):
+    plugin = SiteSyncActionPlugin(_FakeContext(_NoQueryAddon()))
+    selection = _make_selection(
+        set(SYNC_STATE), project_settings=project_settings
+    )
+    assert plugin.get_action_items(selection) == []
+    # Disabled state is cached as well
+    assert plugin.get_action_items(selection) == []
+
+
+def test_no_queries_for_versions():
+    plugin = SiteSyncActionPlugin(_FakeContext(_NoQueryAddon()))
     selection = _make_selection({"version_id"}, selected_type="version")
     assert plugin.get_action_items(selection) == []
 
@@ -165,6 +193,25 @@ def test_only_download_when_nothing_is_local():
     plugin = SiteSyncActionPlugin(_FakeContext(_FakeSiteSyncAddon()))
     items = plugin.get_action_items(_make_selection({"repre_remote"}))
     assert set(_items_by_action(items)) == {"download"}
+
+
+def test_sync_state_is_cached_until_action_runs():
+    addon = _FakeSiteSyncAddon()
+    plugin = SiteSyncActionPlugin(_FakeContext(addon))
+
+    plugin.get_action_items(_make_selection({"repre_local"}))
+    plugin.get_action_items(_make_selection({"repre_local"}))
+    # Only uncached representations are queried
+    plugin.get_action_items(_make_selection({"repre_local", "repre_both"}))
+    assert addon.sync_state_queries == [{"repre_local"}, {"repre_both"}]
+
+    plugin.execute_action(
+        _make_selection({"repre_local"}),
+        {"action": "upload", "representation_ids": ["repre_local"]},
+        {},
+    )
+    plugin.get_action_items(_make_selection({"repre_local"}))
+    assert addon.sync_state_queries[-1] == {"repre_local"}
 
 
 @pytest.mark.parametrize(
@@ -200,6 +247,20 @@ def test_execute_remove_from_local():
     )
 
     assert addon.removed == [("repre_local", ACTIVE_SITE, True)]
+    assert addon.added == []
+
+
+def test_execute_fails_when_project_disabled():
+    addon = _NoQueryAddon()
+    plugin = SiteSyncActionPlugin(_FakeContext(addon))
+
+    result = plugin.execute_action(
+        _make_selection({"repre_local"}, project_settings={}),
+        {"action": "download", "representation_ids": ["repre_local"]},
+        {},
+    )
+
+    assert not result.success
     assert addon.added == []
 
 
