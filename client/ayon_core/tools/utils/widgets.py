@@ -864,6 +864,11 @@ class OptionalMenu(QtWidgets.QMenu):
     actions that were instances of `QtWidgets.QWidgetAction`.
 
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Show tooltips of actions
+        self.setToolTipsVisible(True)
+
     def mouseReleaseEvent(self, event):
         """Emit option clicked signal if mouse released on it"""
         active = self.actionAt(event.pos())

@@ -479,6 +479,9 @@ class AYOptionalMenu(AYMenu):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.setMouseTracking(True)
+        # Show tooltips of actions, the row widgets are transparent for
+        #   mouse events so the menu has to show them.
+        self.setToolTipsVisible(True)
         self.hovered.connect(self._apply_action_hover)
         self.aboutToHide.connect(self._clear_action_highlights)
 
