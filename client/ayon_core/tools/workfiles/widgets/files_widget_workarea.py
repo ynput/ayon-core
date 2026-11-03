@@ -295,14 +295,13 @@ class WorkAreaFilesWidget(AYContainer):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        actions_loader (WorkfileActionsLoader): Loader of workfile actions.
         parent (QtWidgets.QWidget): The parent widget.
     """
 
     selection_changed = QtCore.Signal()
     open_current_requested = QtCore.Signal()
 
-    def __init__(self, controller, actions_loader, parent):
+    def __init__(self, controller, parent):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -355,7 +354,6 @@ class WorkAreaFilesWidget(AYContainer):
         self._proxy_model = proxy_model
         self._work_files_delegate = work_files_delegate
         self._controller = controller
-        self._actions_loader = actions_loader
 
         self._published_mode = False
         self._change_selection_on_refresh = True
@@ -430,7 +428,7 @@ class WorkAreaFilesWidget(AYContainer):
         selection = self._controller.get_workfile_action_selection(
             False, with_workfile=on_workfile
         )
-        action_items = self._actions_loader.get_items(selection)
+        action_items = self._controller.get_workfile_action_items(selection)
         if not action_items:
             return
 

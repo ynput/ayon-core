@@ -313,14 +313,13 @@ class PublishedFilesWidget(AYContainer):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        actions_loader (WorkfileActionsLoader): Loader of workfile actions.
         parent (QtWidgets.QWidget): The parent widget.
     """
 
     selection_changed = QtCore.Signal()
     save_as_requested = QtCore.Signal()
 
-    def __init__(self, controller, actions_loader, parent):
+    def __init__(self, controller, parent):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -376,7 +375,6 @@ class PublishedFilesWidget(AYContainer):
         self._proxy_model = proxy_model
         self._work_files_delegate = work_files_delegate
         self._controller = controller
-        self._actions_loader = actions_loader
 
     def set_published_mode(self, published_mode):
         self._model.set_published_mode(published_mode)
@@ -423,7 +421,7 @@ class PublishedFilesWidget(AYContainer):
         selection = self._controller.get_workfile_action_selection(
             True, with_workfile=on_workfile
         )
-        action_items = self._actions_loader.get_items(selection)
+        action_items = self._controller.get_workfile_action_items(selection)
         if not action_items:
             return
 

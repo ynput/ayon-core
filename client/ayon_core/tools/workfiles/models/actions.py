@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 import typing
 from typing import Any
 
@@ -30,9 +29,9 @@ class WorkfileActionsModel:
         already has cached to fill the selection. Action items of plugins
         are converted to 'ActionItem' for the UI.
 
-    Collected action items are cached by the selection. The cache is cleared
-        on reset and when an action is triggered, because available actions
-        might be different afterwards.
+    Action items are collected on each request in the main thread. That is
+        fast, plugins only check the selection and data of the selection are
+        cached by the tool.
 
     Args:
         host (IWorkfileHost): Host integration.
@@ -48,70 +47,22 @@ class WorkfileActionsModel:
         self._host = host
         self._controller = controller
         self._context = WorkfileActionsContext(host)
-        self._lock = threading.RLock()
         self._context_is_reset = False
-        self._items_cache: dict[ActionSelectionData, list[ActionItem]] = {}
-        # Changes on each cache clear, so items collected for older state
-        #   are not cached
-        self._items_generation = 0
 
     def reset(self) -> None:
         """Plugins are discovered again when are needed next time."""
-        with self._lock:
-            self._context_is_reset = False
-            self._clear_items_cache()
-
-    def prepare_plugin_paths(self) -> None:
-        """Prepare settings and plugin paths for the discovery.
-
-        Does not import any plugin, is safe to call out of the main thread.
-
-        """
-        if not self._controller.is_host_valid():
-            return
-        self._reset_context()
-        self._context.prepare_plugin_paths()
-
-    def prepare_plugins(self) -> None:
-        """Discover action plugins.
-
-        Warning:
-            Should be called from the main thread, plugin discovery executes
-                plugin files which may use host APIs.
-
-        """
-        if not self._controller.is_host_valid():
-            return
-        self._reset_context()
-        self._context.prepare_plugins()
-
-    def get_cached_action_items(
-        self, selection_data: ActionSelectionData
-    ) -> list[ActionItem] | None:
-        """Get action items for the selection if are already collected.
-
-        Args:
-            selection_data (ActionSelectionData): Selection in the tool.
-
-        Returns:
-            list[ActionItem] | None: Sorted action items or None if were
-                not collected yet.
-
-        """
-        with self._lock:
-            items = self._items_cache.get(selection_data)
-        if items is None:
-            return None
-        return list(items)
+        self._context_is_reset = False
 
     def get_action_items(
         self, selection_data: ActionSelectionData
     ) -> list[ActionItem]:
         """Get action items for the selection.
 
-        Items are collected if are not cached yet. Can be called out of
-            the main thread if plugins were already prepared with
-            'prepare_plugins'.
+        Plugins are discovered on the first call.
+
+        Warning:
+            Should be called from the main thread, plugin discovery executes
+                plugin files which may use host APIs.
 
         Args:
             selection_data (ActionSelectionData): Selection in the tool.
@@ -120,28 +71,6 @@ class WorkfileActionsModel:
             list[ActionItem]: Sorted action items.
 
         """
-        items = self.get_cached_action_items(selection_data)
-        if items is not None:
-            return items
-
-        with self._lock:
-            generation = self._items_generation
-
-        items = self._collect_action_items(selection_data)
-        with self._lock:
-            # Cache could be cleared in the meantime
-            if generation == self._items_generation:
-                self._items_cache[selection_data] = items
-        return list(items)
-
-    def _clear_items_cache(self) -> None:
-        with self._lock:
-            self._items_generation += 1
-            self._items_cache = {}
-
-    def _collect_action_items(
-        self, selection_data: ActionSelectionData
-    ) -> list[ActionItem]:
         if not self._controller.is_host_valid():
             return []
 
@@ -219,9 +148,6 @@ class WorkfileActionsModel:
                 exc_info=True,
             )
 
-        # Available actions might be different after an action
-        self._clear_items_cache()
-
         event_data["result"] = result
         event_data["crashed"] = crashed
         self._controller.emit_event(
@@ -231,17 +157,16 @@ class WorkfileActionsModel:
         )
 
     def _reset_context(self) -> None:
-        with self._lock:
-            if self._context_is_reset:
-                return
-            project_name = self._controller.get_current_project_name()
-            project_settings = None
-            if project_name:
-                project_settings = self._controller.get_project_settings(
-                    project_name
-                )
-            self._context.reset(project_settings)
-            self._context_is_reset = True
+        if self._context_is_reset:
+            return
+        project_name = self._controller.get_current_project_name()
+        project_settings = None
+        if project_name:
+            project_settings = self._controller.get_project_settings(
+                project_name
+            )
+        self._context.reset(project_settings)
+        self._context_is_reset = True
 
     def _create_selection(
         self, selection_data: ActionSelectionData

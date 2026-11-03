@@ -1224,55 +1224,13 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def prepare_workfile_action_paths(self) -> None:
-        """Prepare paths to workfile action plugins.
-
-        The first step of plugins discovery. Does not import any plugin, so
-            it is safe to call out of the main thread.
-
-        """
-        pass
-
-    @abstractmethod
-    def prepare_workfile_action_plugins(self) -> None:
-        """Discover workfile action plugins.
-
-        Warning:
-            Should be called from the main thread, plugin discovery executes
-                plugin files which may use host APIs.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_cached_workfile_action_items(
-        self, selection: ActionSelectionData
-    ) -> list[ActionItem] | None:
-        """Get workfile action items if are already collected.
-
-        Does not collect the items, so it can be used to find out if
-            'get_workfile_action_items' would have to collect them.
-
-        Args:
-            selection (ActionSelectionData): Selection for which should be
-                actions returned.
-
-        Returns:
-            list[ActionItem] | None: Action items sorted by their order or
-                None if were not collected yet.
-
-        """
-        pass
-
-    @abstractmethod
     def get_workfile_action_items(
         self, selection: ActionSelectionData
     ) -> list[ActionItem]:
         """Get workfile action items for a selection.
 
-        Collected items are cached until reset or until an action is
-            triggered. The method can be called out of the main thread if
-            plugins are already discovered.
+        Plugins are discovered on first call. Should be called from the main
+            thread, plugins may use host APIs.
 
         Args:
             selection (ActionSelectionData): Selection for which should be

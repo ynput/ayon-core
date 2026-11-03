@@ -120,34 +120,22 @@ def test_action_items_are_converted_for_ui(controller):
     assert [ActionItem.from_data(item.to_data()) for item in items] == items
 
 
-def test_action_items_are_cached(controller):
+def test_plugins_are_discovered_once(controller):
     selection = controller.get_workfile_action_selection(False)
-    assert controller.get_cached_workfile_action_items(selection) is None
-
     context = controller._actions_model._context
     with mock.patch.object(
-        context, "get_action_items", wraps=context.get_action_items
-    ) as get_items_mock:
+        context, "_get_plugins", wraps=context._get_plugins
+    ):
         items = controller.get_workfile_action_items(selection)
         assert items
-        assert controller.get_cached_workfile_action_items(selection) == items
+        plugins = context._plugins
         assert controller.get_workfile_action_items(selection) == items
-        assert get_items_mock.call_count == 1
+        assert context._plugins is plugins
 
-        # Available actions might be different after an action
-        with mock.patch("subprocess.Popen"), mock.patch(
-            "os.startfile", create=True
-        ):
-            controller.trigger_workfile_action(
-                "core.explore-here", selection, None, {}
-            )
-        assert controller.get_cached_workfile_action_items(selection) is None
-        assert controller.get_workfile_action_items(selection) == items
-        assert get_items_mock.call_count == 2
-
-    # Reset of the model does clear the cache too
+    # Reset of the model does discover plugins again
     controller._actions_model.reset()
-    assert controller.get_cached_workfile_action_items(selection) is None
+    assert controller.get_workfile_action_items(selection) == items
+    assert context._plugins is not plugins
 
 
 def test_copy_file_to_clipboard(controller, qapp):

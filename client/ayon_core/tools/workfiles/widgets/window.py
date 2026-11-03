@@ -25,7 +25,6 @@ from ayon_core.ui.components import (
     AYLineEdit
 )
 
-from .actions_widgets import WorkfileActionsLoader
 from .files_widget import FilesWidget
 from .side_panel import SidePanelWidget
 from .utils import BaseOverlayFrame
@@ -102,8 +101,6 @@ class WorkfilesToolWindow(AYContainer):
         self._controller = controller
         # Result of workfile action that requested to open a workfile
         self._action_result_on_open = None
-        # Loader of workfile actions shared across widgets
-        self._actions_loader = WorkfileActionsLoader(controller, self)
 
         # Create pages widget and set it as central widget
         pages_widget = QtWidgets.QStackedWidget(self)
@@ -117,9 +114,7 @@ class WorkfilesToolWindow(AYContainer):
         )
         tasks_widget.set_status_column_visible(True)
         col_3_widget = self._create_col_3_widget(controller, home_body_widget)
-        side_panel = SidePanelWidget(
-            controller, self._actions_loader, home_body_widget
-        )
+        side_panel = SidePanelWidget(controller, home_body_widget)
 
         pages_widget.addWidget(home_page_widget)
 
@@ -275,9 +270,7 @@ class WorkfilesToolWindow(AYContainer):
         header_layout.addWidget(files_filter_input, 1)
         header_layout.addWidget(published_checkbox, 0)
 
-        files_widget = FilesWidget(
-            controller, self._actions_loader, col_widget
-        )
+        files_widget = FilesWidget(controller, col_widget)
 
         col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)

@@ -20,11 +20,10 @@ class FilesWidget(AYContainer):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        actions_loader (WorkfileActionsLoader): Loader of workfile actions.
         parent (QtWidgets.QWidget): The parent widget.
     """
 
-    def __init__(self, controller, actions_loader, parent):
+    def __init__(self, controller, parent):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -34,12 +33,8 @@ class FilesWidget(AYContainer):
         )
 
         files_widget = QtWidgets.QStackedWidget(self)
-        workarea_widget = WorkAreaFilesWidget(
-            controller, actions_loader, files_widget
-        )
-        published_widget = PublishedFilesWidget(
-            controller, actions_loader, files_widget
-        )
+        workarea_widget = WorkAreaFilesWidget(controller, files_widget)
+        published_widget = PublishedFilesWidget(controller, files_widget)
         files_widget.addWidget(workarea_widget)
         files_widget.addWidget(published_widget)
 

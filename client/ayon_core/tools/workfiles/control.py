@@ -762,17 +762,6 @@ class BaseWorkfileController(
             **kwargs
         )
 
-    def prepare_workfile_action_paths(self) -> None:
-        self._actions_model.prepare_plugin_paths()
-
-    def prepare_workfile_action_plugins(self) -> None:
-        self._actions_model.prepare_plugins()
-
-    def get_cached_workfile_action_items(
-        self, selection: ActionSelectionData
-    ) -> list[ActionItem] | None:
-        return self._actions_model.get_cached_action_items(selection)
-
     def get_workfile_action_items(
         self, selection: ActionSelectionData
     ) -> list[ActionItem]:

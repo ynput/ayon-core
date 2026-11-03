@@ -23,7 +23,6 @@ class SidePanelWidget(AYContainer):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-        actions_loader (WorkfileActionsLoader): Loader of workfile actions.
         parent (QtWidgets.QWidget): The parent widget.
     """
 
@@ -32,7 +31,7 @@ class SidePanelWidget(AYContainer):
         " temp directory on your machine. Current temp size: <b>{}</b>."
     )
 
-    def __init__(self, controller, actions_loader, parent):
+    def __init__(self, controller, parent):
         super().__init__(
             parent,
             layout=AYContainer.Layout.VBox,
@@ -69,7 +68,7 @@ class SidePanelWidget(AYContainer):
 
         # Quick actions for the selection
         # - the row always takes its space, the buttons fade in and out
-        actions_row = WorkfileActionsRow(controller, actions_loader, self)
+        actions_row = WorkfileActionsRow(controller, self)
         self.add_widget(actions_row, stretch=0)
 
         # ── Note/Comment section reused for both ────────────

@@ -50,11 +50,11 @@ Settings of a plugin are looked for in
     to disable the plugin.
 
 Important:
-    Method 'get_action_items' can be called out of the main thread, so the
-        UI is not blocked while the actions are collected. Do not call
-        DCC api that is not thread-safe there. Use information from
-        the selection instead. Method 'execute_action' is always called in
-        the main thread.
+    Method 'get_action_items' is called in the main thread on each
+        selection change in the workfiles tool, so it should be fast. Use
+        information from the selection instead of slow queries, the data of
+        the selection are cached by the tool. Method 'execute_action' is
+        called in the main thread too.
 
 NOTE: It is possible to trigger 'execute_action' without ever calling
     'get_action_items', that can be handy in automations.
@@ -70,7 +70,6 @@ from __future__ import annotations
 import os
 import copy
 import logging
-import threading
 from abc import ABC, abstractmethod
 import typing
 from typing import Any
@@ -806,7 +805,8 @@ class WorkfileActionPlugin(ABC):
         """Action items for the selection.
 
         Warning:
-            The method can be called out of the main thread.
+            The method is called on each selection change, it should be
+                fast.
 
         Args:
             selection (WorkfileActionSelection): Selection.
@@ -926,11 +926,9 @@ class WorkfileActionsContext:
 
         self._host = host
         self._addons_manager = addons_manager
-        self._lock = threading.RLock()
 
         # Attributes that are re-cached on reset
         self._project_settings = project_settings
-        self._plugin_paths = None
         self._plugins = None
 
     def reset(self, project_settings: dict[str, Any] | None = None) -> None:
@@ -947,16 +945,13 @@ class WorkfileActionsContext:
                 the current project.
 
         """
-        with self._lock:
-            self._project_settings = project_settings
-            self._plugin_paths = None
-            self._plugins = None
+        self._project_settings = project_settings
+        self._plugins = None
 
     def get_addons_manager(self) -> AddonsManager:
-        with self._lock:
-            if self._addons_manager is None:
-                self._addons_manager = AddonsManager()
-            return self._addons_manager
+        if self._addons_manager is None:
+            self._addons_manager = AddonsManager()
+        return self._addons_manager
 
     def get_host(self) -> IWorkfileHost:
         """Host integration of the actions.
@@ -986,22 +981,11 @@ class WorkfileActionsContext:
             dict[str, Any]: Project settings.
 
         """
-        with self._lock:
-            if self._project_settings is None:
-                self._project_settings = get_project_settings(
-                    self.get_project_name()
-                )
-            return copy.deepcopy(self._project_settings)
-
-    def prepare_plugin_paths(self) -> None:
-        """Prepare everything needed for the plugins discovery.
-
-        Does prepare settings, addons and collect plugin paths. Does not
-            import plugin files, so it is safe to call out of the main
-            thread.
-
-        """
-        self._get_plugin_paths()
+        if self._project_settings is None:
+            self._project_settings = get_project_settings(
+                self.get_project_name()
+            )
+        return copy.deepcopy(self._project_settings)
 
     def prepare_plugins(self) -> None:
         """Discover and initialize plugins if not done yet.
@@ -1074,70 +1058,55 @@ class WorkfileActionsContext:
             result = WorkfileActionResult()
         return result
 
-    def _get_plugin_paths(self) -> list[str]:
-        with self._lock:
-            if self._plugin_paths is not None:
-                return self._plugin_paths
-
-            # Make sure settings are cached
-            self.get_project_settings()
-
-            host_name = self.get_host_name()
-            addons_manager = self.get_addons_manager()
-            all_paths = [
-                os.path.join(AYON_CORE_ROOT, "plugins", "workfile_actions")
-            ]
-            for addon in addons_manager.addons:
-                if not isinstance(addon, IPluginPaths):
-                    continue
-
-                try:
-                    paths = addon.get_workfile_action_plugin_paths(host_name)
-                except Exception:
-                    self._log.warning(
-                        "Failed to get plugin paths for addon",
-                        exc_info=True
-                    )
-                    continue
-
-                if paths:
-                    all_paths.extend(paths)
-
-            self._plugin_paths = all_paths
-            return self._plugin_paths
-
     def _get_plugins(self) -> dict[str, WorkfileActionPlugin]:
-        with self._lock:
-            if self._plugins is not None:
-                return self._plugins
-
-            result = discover_plugins(
-                WorkfileActionPlugin, self._get_plugin_paths()
-            )
-            result.log_report()
-            plugins = {}
-            for cls in result.plugins:
-                try:
-                    plugin = cls(self)
-                    if not plugin.enabled:
-                        continue
-
-                    plugin_id = plugin.identifier
-                    if plugin_id not in plugins:
-                        plugins[plugin_id] = plugin
-                        continue
-
-                    self._log.warning(
-                        f"Duplicated plugins identifier found '{plugin_id}'."
-                    )
-
-                except Exception:
-                    self._log.warning(
-                        f"Failed to initialize plugin '{cls.__name__}'",
-                        exc_info=True,
-                    )
-            self._plugins = plugins
+        if self._plugins is not None:
             return self._plugins
+
+        host_name = self.get_host_name()
+        all_paths = [
+            os.path.join(AYON_CORE_ROOT, "plugins", "workfile_actions")
+        ]
+        for addon in self.get_addons_manager().addons:
+            if not isinstance(addon, IPluginPaths):
+                continue
+
+            try:
+                paths = addon.get_workfile_action_plugin_paths(host_name)
+            except Exception:
+                self._log.warning(
+                    "Failed to get plugin paths for addon",
+                    exc_info=True
+                )
+                continue
+
+            if paths:
+                all_paths.extend(paths)
+
+        result = discover_plugins(WorkfileActionPlugin, all_paths)
+        result.log_report()
+        plugins = {}
+        for cls in result.plugins:
+            try:
+                plugin = cls(self)
+                if not plugin.enabled:
+                    continue
+
+                plugin_id = plugin.identifier
+                if plugin_id not in plugins:
+                    plugins[plugin_id] = plugin
+                    continue
+
+                self._log.warning(
+                    f"Duplicated plugins identifier found '{plugin_id}'."
+                )
+
+            except Exception:
+                self._log.warning(
+                    f"Failed to initialize plugin '{cls.__name__}'",
+                    exc_info=True,
+                )
+        self._plugins = plugins
+        return self._plugins
 
 
 def _action_items_sorter(item: WorkfileActionItem) -> tuple[int, str, str]:
@@ -1181,7 +1150,8 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
         """Check if plugin is compatible with selection.
 
         Warning:
-            The method can be called out of the main thread.
+            The method is called on each selection change, it should be
+                fast.
 
         Args:
             selection (WorkfileActionSelection): Selection information.

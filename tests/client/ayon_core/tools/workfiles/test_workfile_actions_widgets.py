@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import collections
 import dataclasses
-import threading
 
 from qtpy import QtCore, QtWidgets
 
@@ -13,7 +12,6 @@ from ayon_core.tools.workfiles.abstract import (
     ActionSelectionData,
 )
 from ayon_core.tools.workfiles.widgets.actions_widgets import (
-    WorkfileActionsLoader,
     WorkfileActionsRow,
     add_actions_to_menu,
 )
@@ -44,9 +42,8 @@ class _FakeController:
             rootless_path="{root[work]}/file_v001.ma",
         )
         self.triggered = []
-        self.threads_by_call = collections.defaultdict(list)
+        self.collect_count = 0
         self._callbacks = collections.defaultdict(list)
-        self._items_cache = {}
 
     def register_event_callback(self, topic, callback):
         self._callbacks[topic].append(callback)
@@ -63,34 +60,14 @@ class _FakeController:
             )
         return selection
 
-    def prepare_workfile_action_paths(self):
-        self._store_call("paths")
-
-    def prepare_workfile_action_plugins(self):
-        self._store_call("plugins")
-
-    def finish_action(self):
-        # Controller does clear cached items when an action is finished
-        self._items_cache = {}
-        self.emit("workfile_action.finished")
-
-    def get_cached_workfile_action_items(self, selection):
-        return self._items_cache.get(selection)
-
     def get_workfile_action_items(self, selection):
-        items = self._items_cache.get(selection)
-        if items is None:
-            self._store_call("items")
-            items = self._items_cache[selection] = list(self.items)
-        return items
+        self.collect_count += 1
+        return list(self.items)
 
     def trigger_workfile_action(
         self, identifier, selection, data, form_values
     ):
         self.triggered.append((identifier, selection, data, form_values))
-
-    def _store_call(self, name):
-        self.threads_by_call[name].append(threading.current_thread())
 
 
 def _is_faded_in(row) -> bool:
@@ -102,48 +79,33 @@ def _create_row(qtbot, controller, width=400):
     qtbot.addWidget(parent)
     layout = QtWidgets.QVBoxLayout(parent)
     layout.setContentsMargins(0, 0, 0, 0)
-    loader = WorkfileActionsLoader(controller, parent)
-    row = WorkfileActionsRow(controller, loader, parent)
+    row = WorkfileActionsRow(controller, parent)
     layout.addWidget(row)
     layout.addStretch(1)
     parent.resize(width, 200)
     parent.show()
-    return parent, loader, row
+    return parent, row
 
 
-def test_loader_collects_items_in_background(qtbot):
+def test_row_collects_items_once_for_related_changes(qtbot):
     controller = _FakeController(_create_items(2))
-    loader = WorkfileActionsLoader(controller)
-    selection = controller.selection
+    _parent, row = _create_row(qtbot, controller)
 
-    assert loader.get_cached_items(selection) is None
-    with qtbot.waitSignal(loader.items_changed, timeout=5000):
-        loader.request_items(selection)
+    # Change of task does select a workfile at the same time
+    controller.emit("selection.task.changed")
+    controller.emit("selection.workarea.changed")
+    assert controller.collect_count == 0
+    qtbot.waitUntil(lambda: _is_faded_in(row), timeout=5000)
+    assert controller.collect_count == 1
 
-    assert loader.get_cached_items(selection) == controller.items
-    main_thread = threading.main_thread()
-    # Only import of plugins should happen in the main thread
-    assert controller.threads_by_call["paths"][0] is not main_thread
-    assert controller.threads_by_call["plugins"] == [main_thread]
-    assert controller.threads_by_call["items"][0] is not main_thread
-
-    # Cached items are not collected again
-    with qtbot.waitSignal(loader.items_changed, timeout=5000):
-        loader.request_items(selection)
-    assert len(controller.threads_by_call["items"]) == 1
-
-    # Cache of the controller is cleared when an action finished
-    controller.finish_action()
-    assert loader.get_cached_items(selection) is None
-
-    # Items can be received right away, e.g. for context menu
-    assert loader.get_items(selection) == controller.items
-    assert controller.threads_by_call["items"][-1] is main_thread
+    # Available actions are collected again after an action
+    controller.emit("workfile_action.finished")
+    qtbot.waitUntil(lambda: controller.collect_count == 2, timeout=5000)
 
 
 def test_row_shows_buttons_and_triggers_action(qtbot):
     controller = _FakeController(_create_items(2))
-    _parent, _loader, row = _create_row(qtbot, controller)
+    _parent, row = _create_row(qtbot, controller)
     # Space of the row is reserved even if actions are not known yet
     assert row.isVisible()
     assert row.height() > 0
@@ -169,7 +131,7 @@ def test_row_shows_buttons_and_triggers_action(qtbot):
 
 def test_row_hides_actions_that_do_not_fit(qtbot):
     controller = _FakeController(_create_items(12))
-    parent, _loader, row = _create_row(qtbot, controller, width=150)
+    parent, row = _create_row(qtbot, controller, width=150)
 
     controller.emit("selection.workarea.changed")
     qtbot.waitUntil(lambda: _is_faded_in(row), timeout=5000)
@@ -194,7 +156,7 @@ def test_row_shows_only_quick_actions(qtbot):
     items = _create_items(3)
     items[1].quick_action = False
     controller = _FakeController(items)
-    _parent, loader, row = _create_row(qtbot, controller)
+    _parent, row = _create_row(qtbot, controller)
 
     controller.emit("selection.workarea.changed")
     qtbot.waitUntil(lambda: _is_faded_in(row), timeout=5000)
@@ -204,12 +166,12 @@ def test_row_shows_only_quick_actions(qtbot):
     assert "Action 2" in row._buttons[1].toolTip()
     assert not row._more_btn.isVisible()
     # All actions are available for context menu
-    assert loader.get_items(controller.selection) == items
+    assert controller.get_workfile_action_items(controller.selection) == items
 
 
 def test_row_stays_steady_on_selection_change(qtbot):
     controller = _FakeController(_create_items(2))
-    _parent, loader, row = _create_row(qtbot, controller)
+    _parent, row = _create_row(qtbot, controller)
 
     controller.emit("selection.workarea.changed")
     qtbot.waitUntil(lambda: _is_faded_in(row), timeout=5000)
@@ -249,7 +211,7 @@ def test_row_stays_steady_on_selection_change(qtbot):
 
 def test_row_fades_out_without_actions(qtbot):
     controller = _FakeController(_create_items(1))
-    _parent, loader, row = _create_row(qtbot, controller)
+    _parent, row = _create_row(qtbot, controller)
 
     controller.emit("selection.workarea.changed")
     qtbot.waitUntil(lambda: _is_faded_in(row), timeout=5000)
@@ -261,8 +223,7 @@ def test_row_fades_out_without_actions(qtbot):
     controller.selection = dataclasses.replace(
         controller.selection, filepath=None, rootless_path=None
     )
-    with qtbot.waitSignal(loader.items_changed, timeout=5000):
-        controller.emit("selection.workarea.changed")
+    controller.emit("selection.workarea.changed")
 
     # Button that fades out cannot be triggered
     qtbot.mouseClick(button, QtCore.Qt.LeftButton)
