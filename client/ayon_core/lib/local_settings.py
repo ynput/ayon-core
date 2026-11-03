@@ -31,7 +31,7 @@ import copy
 from datetime import datetime
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Generator, Optional, Any
+from typing import Callable, Generator, Optional, Any
 from urllib.parse import urlencode
 
 import platformdirs
@@ -869,6 +869,10 @@ class LocalPreferences(ASettingRegistry):
     stored as JSON. Errors of the database are logged, not raised: a
     failed read returns the default and a failed write is lost.
 
+    A database that SQLite reports as broken is moved aside to
+    'preferences.db.broken-<time>' and a new one is created, so local
+    preferences of all tools are reset instead of failing every time.
+
     A 'JSONSettingRegistry' with the same name in that folder, as tools
     used before, is imported on first use, e.g.
     'LocalPreferences("launcher")' has the items the Launcher stored
@@ -892,6 +896,8 @@ class LocalPreferences(ASettingRegistry):
     log = Logger.get_logger("LocalPreferences")
     # Seconds to wait for another process that changes the database
     timeout = 10
+    # Guards moving a broken database aside in this process
+    _recover_lock = threading.Lock()
 
     def __init__(self, name: str) -> None:
         _validate_preferences_name(name)
@@ -970,41 +976,39 @@ class LocalPreferences(ASettingRegistry):
             return False
 
         source = os.path.normcase(os.path.abspath(filepath))
-        try:
-            with self._connect() as connection:
-                # Locks the database, so the file is imported once also
-                #   when processes import it at the same time.
-                connection.execute("BEGIN IMMEDIATE")
-                try:
-                    imported = connection.execute(
-                        "SELECT 1 FROM imported_registries"
-                        " WHERE name = ? AND filepath = ?",
+
+        def _import(connection: sqlite3.Connection) -> bool:
+            # Locks the database, so the file is imported once also when
+            #   processes import it at the same time.
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                imported = connection.execute(
+                    "SELECT 1 FROM imported_registries"
+                    " WHERE name = ? AND filepath = ?",
+                    (self.name, source),
+                ).fetchone()
+                if not imported:
+                    connection.executemany(
+                        "INSERT OR IGNORE INTO preferences"
+                        " (name, item, value) VALUES (?, ?, ?)",
+                        rows,
+                    )
+                    connection.execute(
+                        "INSERT INTO imported_registries"
+                        " (name, filepath) VALUES (?, ?)",
                         (self.name, source),
-                    ).fetchone()
-                    if not imported:
-                        connection.executemany(
-                            "INSERT OR IGNORE INTO preferences"
-                            " (name, item, value) VALUES (?, ?, ?)",
-                            rows,
-                        )
-                        connection.execute(
-                            "INSERT INTO imported_registries"
-                            " (name, filepath) VALUES (?, ?)",
-                            (self.name, source),
-                        )
-                    connection.execute("COMMIT")
-                except BaseException:
+                    )
+                connection.execute("COMMIT")
+            except BaseException:
+                with contextlib.suppress(sqlite3.Error):
                     connection.execute("ROLLBACK")
-                    raise
-        except (sqlite3.Error, OSError):
-            self.log.warning(
-                "Failed to import registry file '%s' to preferences '%s'.",
-                filepath,
-                self.name,
-                exc_info=True,
-            )
-            return False
-        return not imported
+                raise
+            return not imported
+
+        success, imported = self._run(
+            _import, f"import registry file '{filepath}' to"
+        )
+        return success and imported
 
     def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
         rows = self._query(
@@ -1061,31 +1065,132 @@ class LocalPreferences(ASettingRegistry):
         # Nothing is created by reading
         if not os.path.exists(self._filepath):
             return []
-        try:
-            with self._connect() as connection:
-                return connection.execute(sql, parameters).fetchall()
-        except (sqlite3.Error, OSError):
-            self.log.warning(
-                "Failed to read preferences '%s'.", self.name, exc_info=True
-            )
-            return None
+        _, rows = self._run(
+            lambda connection: connection.execute(sql, parameters).fetchall(),
+            "read",
+        )
+        return rows
 
     def _change(self, sql: str, parameters: tuple[str, ...]) -> int:
         """Change rows, returns how many, '-1' if they were not changed."""
         self._ensure_registry_imported()
-        try:
-            with self._connect() as connection:
-                return connection.execute(sql, parameters).rowcount
-        except (sqlite3.Error, OSError):
-            self.log.warning(
-                "Failed to change preferences '%s'.", self.name, exc_info=True
-            )
-            return -1
+        success, count = self._run(
+            lambda connection: connection.execute(sql, parameters).rowcount,
+            "change",
+        )
+        return count if success else -1
 
     def _ensure_registry_imported(self) -> None:
         if not self._registry_imported:
             self._registry_imported = True
             self.import_registry(self.registry_filepath)
+
+    def _run(
+        self,
+        function: Callable[[sqlite3.Connection], Any],
+        action: str,
+    ) -> tuple[bool, Any]:
+        """Run a function with a connection, failures are logged.
+
+        A broken database is moved aside and the function is run again
+        with a new database.
+
+        Args:
+            function: Function that uses the connection.
+            action: What the function does, for the log message.
+
+        Returns:
+            tuple[bool, Any]: Whether the function succeeded and what it
+                returned.
+
+        """
+        for attempt in range(2):
+            try:
+                with self._connect() as connection:
+                    return True, function(connection)
+            except sqlite3.Error as exc:
+                # Exactly 'DatabaseError' when the file is not a database
+                #   or is malformed. Its subclasses are other errors, e.g.
+                #   'OperationalError' of a locked database.
+                if (
+                    attempt == 0
+                    and type(exc) is sqlite3.DatabaseError
+                    and self._move_broken_database()
+                ):
+                    continue
+                error = exc
+            except OSError as exc:
+                error = exc
+            break
+
+        self.log.warning(
+            "Failed to %s preferences '%s'.",
+            action,
+            self.name,
+            exc_info=error,
+        )
+        return False, None
+
+    def _move_broken_database(self) -> bool:
+        """Move a broken database aside, so a new one is created.
+
+        Items of all local preferences are lost with it. The file is kept
+        next to the database, e.g. for support.
+
+        Returns:
+            bool: Whether the database can be used again, also when it was
+                moved meanwhile by another thread or process.
+
+        """
+        with self._recover_lock:
+            # Another process may have replaced it since it failed
+            if not self._is_database_broken():
+                return True
+
+            now = datetime.now().strftime("%Y%m%d-%H%M%S")
+            broken_path = f"{self._filepath}.broken-{now}"
+            # Journal first, it would be applied to the new database
+            for suffix in ("-journal", "-wal", "-shm", ""):
+                try:
+                    os.replace(
+                        f"{self._filepath}{suffix}",
+                        f"{broken_path}{suffix}",
+                    )
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    # E.g. opened by another process on Windows
+                    self.log.warning(
+                        "Failed to move broken preferences database '%s'.",
+                        self._filepath,
+                        exc_info=True,
+                    )
+                    return False
+
+        self.log.warning(
+            "Preferences database '%s' was broken, local preferences of"
+            " all tools are reset. It was moved to '%s'.",
+            self._filepath,
+            broken_path,
+        )
+        return True
+
+    def _is_database_broken(self) -> bool:
+        """Whether the database exists and is broken."""
+        if not os.path.exists(self._filepath):
+            return False
+        try:
+            connection = sqlite3.connect(self._filepath, timeout=self.timeout)
+            try:
+                result = connection.execute("PRAGMA quick_check").fetchall()
+            finally:
+                connection.close()
+        except sqlite3.OperationalError:
+            # E.g. locked, that does not tell it is broken
+            return False
+        except sqlite3.DatabaseError:
+            return True
+        return result != [("ok",)]
 
     @contextlib.contextmanager
     def _connect(self) -> Generator[sqlite3.Connection, None, None]:

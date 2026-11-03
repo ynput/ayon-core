@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -215,19 +216,101 @@ def test_json_registry_reads_changes_of_others():
     assert registry.get_item("width", default=None) == 800
 
 
+def broken_databases(prefs: LocalPreferences) -> list[str]:
+    dirpath = os.path.dirname(prefs.filepath)
+    return sorted(
+        filename
+        for filename in os.listdir(dirpath)
+        if filename.startswith("preferences.db.broken-")
+    )
+
+
+def fill_database(prefs: LocalPreferences) -> None:
+    """Items for pages after the first one, in one transaction."""
+    prefs.set_item("first", True)
+    connection = sqlite3.connect(prefs.filepath)
+    with connection:
+        connection.executemany(
+            "INSERT INTO preferences (name, item, value) VALUES (?, ?, ?)",
+            [(KEY, f"item_{index}", '"' + "x" * 200 + '"')
+             for index in range(200)],
+        )
+    connection.close()
+
+
+def damage_database(prefs: LocalPreferences) -> None:
+    """Overwrite pages after the header, SQLite reports it malformed."""
+    with open(prefs.filepath, "rb") as stream:
+        content = bytearray(stream.read())
+    content[4096:] = b"\xab" * (len(content) - 4096)
+    with open(prefs.filepath, "wb") as stream:
+        stream.write(content)
+
+
 @pytest.mark.unit
-def test_local_preferences_ignore_a_broken_database():
+def test_local_preferences_replace_a_file_that_is_not_a_database():
     prefs = LocalPreferences(KEY)
     os.makedirs(os.path.dirname(prefs.filepath))
     with open(prefs.filepath, "w") as stream:
-        stream.write("not a database")
+        stream.write("not a database" * 100)
 
     assert prefs.get_item("visible", default=False) is False
-    assert prefs.get_data() == {}
-    # Failed writes are logged, not raised
+    assert len(broken_databases(prefs)) == 1
     prefs.set_item("visible", True)
-    prefs.delete_item("visible", ignore_missing=False)
-    prefs.clear()
+    assert LocalPreferences(KEY).get_item("visible") is True
+
+
+@pytest.mark.unit
+def test_local_preferences_replace_a_malformed_database():
+    prefs = LocalPreferences(KEY)
+    fill_database(prefs)
+    damage_database(prefs)
+
+    prefs.set_item("visible", True)
+    assert prefs.get_data() == {"visible": True}
+    assert len(broken_databases(prefs)) == 1
+
+
+@pytest.mark.unit
+def test_local_preferences_keep_a_locked_database(monkeypatch):
+    prefs = LocalPreferences(KEY)
+    prefs.set_item("visible", True)
+    monkeypatch.setattr(LocalPreferences, "timeout", 0.1)
+
+    other = sqlite3.connect(prefs.filepath, isolation_level=None)
+    try:
+        other.execute("BEGIN EXCLUSIVE")
+        # Failed, logged and not raised
+        prefs.set_item("visible", False)
+        assert prefs.get_item("visible", default=None) is None
+    finally:
+        other.close()
+
+    assert broken_databases(prefs) == []
+    assert prefs.get_item("visible") is True
+
+
+@pytest.mark.unit
+def test_local_preferences_broken_database_that_cannot_be_moved(
+    monkeypatch,
+):
+    prefs = LocalPreferences(KEY)
+    fill_database(prefs)
+    damage_database(prefs)
+
+    def replace(src, dst):
+        raise PermissionError("Used by another process")
+
+    with monkeypatch.context() as context:
+        context.setattr(os, "replace", replace)
+        assert prefs.get_item("visible", default=False) is False
+        prefs.set_item("visible", True)
+    assert broken_databases(prefs) == []
+
+    # Moved on the next access that can move it
+    prefs.set_item("visible", True)
+    assert prefs.get_data() == {"visible": True}
+    assert len(broken_databases(prefs)) == 1
 
 
 @pytest.mark.unit
