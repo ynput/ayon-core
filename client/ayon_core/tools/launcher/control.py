@@ -444,8 +444,10 @@ class BaseLauncherController(
         if item is None:
             return
 
+        # Tasks are selected by name, which may have changed since the
+        #   entry was stored.
         task_name = item.task_name
-        if task_name is None and item.project_name and item.task_id:
+        if item.project_name and item.task_id:
             task_entity = self.get_task_entity(
                 item.project_name, item.task_id
             )
