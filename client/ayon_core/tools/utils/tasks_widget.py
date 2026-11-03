@@ -743,17 +743,21 @@ class TasksWidget(QtWidgets.QWidget):
         model_folder_id = self._tasks_model.get_last_folder_id()
         if folder_id != model_folder_id:
             return False
+        index = QtCore.QModelIndex()
         if task_name is not None:
             index = self._tasks_model.get_index_by_name(task_name)
-            if index.isValid():
-                proxy_index = self._tasks_proxy_model.mapFromSource(index)
-                self._tasks_view.setCurrentIndex(proxy_index)
-                # The view does not report a change when a task of the same
-                #   name was already selected in the previous folder - the
-                #   item is reused. Tell the controller in any case, and
-                #   before confirming, as the confirmation moves on to what
-                #   depends on the selected task.
-                self._on_selection_change()
+        if index.isValid():
+            proxy_index = self._tasks_proxy_model.mapFromSource(index)
+            self._tasks_view.setCurrentIndex(proxy_index)
+            # The view does not report a change when a task of the same
+            #   name was already selected in the previous folder - the
+            #   item is reused. Tell the controller in any case, and
+            #   before confirming, as the confirmation moves on to what
+            #   depends on the selected task.
+            self._on_selection_change()
+        else:
+            # Do not keep a task selected before, the view reports it
+            self._tasks_view.clearSelection()
         self._controller.expected_task_selected(folder_id, task_name)
         return True
 
