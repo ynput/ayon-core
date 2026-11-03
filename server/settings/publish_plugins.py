@@ -1293,10 +1293,10 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
         default_factory=list,
         title="Input arguments",
         description=(
-            "FFmpeg arguments placed before the input file. Color"
-            " changes such as `-apply_trc` are"
-            " not reflected in the output's colorspace data; convert"
-            " colors with *Extract OIIO Transcode* instead."
+            "FFmpeg arguments placed before the input file. Some"
+            " arguments change colors (e.g. `-apply_trc gamma22`), but"
+            " color conversion is best done in *Extract OIIO Transcode*"
+            " so the output's colorspace data stays accurate."
         ),
     )
     output: list[str] = SettingsField(
