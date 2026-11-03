@@ -211,6 +211,7 @@ class HierarchyPage(QtWidgets.QWidget):
         shown there too.
         """
         self._projects_combobox.set_selection(project_name)
+        self._project_name = project_name
 
     def refresh(self):
         self._folders_widget.refresh()
