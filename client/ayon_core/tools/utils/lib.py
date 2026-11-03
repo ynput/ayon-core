@@ -536,13 +536,18 @@ class _IconsCache:
         return QtGui.QIcon(pix)
 
     @classmethod
-    def prefetch(cls, icon_defs) -> None:
+    def prefetch(cls, icon_defs) -> set[str]:
         """Download content of icons which need it.
 
         Meant to be called from a worker thread so that 'get_icon' on the
         UI thread does not wait for network. Invalid icon definitions are
         skipped, 'get_icon' handles them.
+
+        Returns:
+            set[str]: Urls of icons that are downloaded.
+
         """
+        urls = set()
         for icon_def in icon_defs:
             if icon_def is None:
                 continue
@@ -553,8 +558,9 @@ class _IconsCache:
                     "Invalid icon definition %s", icon_def, exc_info=True
                 )
                 continue
-            if info is not None:
-                cls._get_url_content(*info)
+            if info is not None and cls._get_url_content(*info):
+                urls.add(info[1])
+        return urls
 
     @classmethod
     def _get_cache_key(cls, icon_def):
@@ -767,7 +773,7 @@ def get_qt_icon(
     return _IconsCache.get_icon(icon_def, default=default)
 
 
-def prefetch_qt_icons(icon_defs) -> None:
+def prefetch_qt_icons(icon_defs) -> set[str]:
     """Download content of icons so 'get_qt_icon' does not wait for network.
 
     Safe to call from worker threads, does not create any Qt objects. Use it
@@ -777,8 +783,12 @@ def prefetch_qt_icons(icon_defs) -> None:
         icon_defs (Iterable[IconBase | dict[str, Any] | None]): Icon
             definitions.
 
+    Returns:
+        set[str]: Urls of icons that are downloaded. 'get_qt_icon' tries
+            a failed download again, on the thread it is called from.
+
     """
-    _IconsCache.prefetch(icon_defs)
+    return _IconsCache.prefetch(icon_defs)
 
 
 def get_qta_icon_by_name_and_color(icon_name, icon_color):

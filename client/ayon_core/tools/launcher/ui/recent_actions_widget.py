@@ -427,22 +427,20 @@ class RecentActionsPopup(AYDropdownPopup):
         self._controller.refresh_recent_action_items()
         items = self._controller.get_recent_action_items()
         # Download url icons here so building the rows does not wait
-        prefetch_qt_icons([item.icon for item in items])
-        return items
+        return prefetch_qt_icons([item.icon for item in items])
 
     def _on_refresh_finished(self):
         refresh_thread = self._refresh_thread
         self._refresh_thread = None
         # 'RefreshThread' logs its own traceback, a failed refresh simply
         # leaves the previously prepared items on screen.
-        items = refresh_thread.get_result()
-        if items is None:
+        fetched_icon_urls = refresh_thread.get_result()
+        if fetched_icon_urls is None:
             return
 
-        for item in items:
-            icon_url = _get_icon_url(item.icon)
-            if icon_url:
-                self._fetched_icon_urls.add(icon_url)
+        # Icons that failed to download keep the default icon, asking for
+        #   them would download them again here.
+        self._fetched_icon_urls |= fetched_icon_urls
         # The history may have changed while the icons were downloaded,
         #   e.g. an entry was removed, so show it as it is now.
         self._rebuild_rows(self._controller.get_recent_action_items())
