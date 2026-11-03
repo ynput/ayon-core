@@ -1,5 +1,4 @@
 import collections
-import logging
 
 import ayon_api
 from qtpy import QtWidgets, QtCore
@@ -14,6 +13,7 @@ from ayon_core.pipeline.load import (
     IncompatibleLoaderError,
     LoaderNotFoundError
 )
+from ayon_core.lib import Logger
 
 from .widgets import (
     ButtonWithMenu,
@@ -21,7 +21,7 @@ from .widgets import (
 )
 from .folders_input import FoldersField
 
-log = logging.getLogger("SwitchAssetDialog")
+log = Logger.get_logger("SwitchAssetDialog")
 
 
 class ValidationState:
