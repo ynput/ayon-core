@@ -77,6 +77,53 @@ query GetVersions(
 }
 """
 
+# Only the ids, so the server adds none of the joins the output fields of
+# the table need (product, folder, task, latest/hero versions).
+GET_VERSION_IDS_QUERY = """
+query GetVersionIds(
+  $projectName: String!,
+  $productIds: [String!],
+  $versionFilter: String,
+  $productFilter: String,
+  $taskFilter: String,
+  __OPTIONAL_VARIABLES__
+  $featuredOnly: [String!],
+  $hasReviewables: Boolean,
+  $folderIds: [String!],
+  $includeFolderChildren: Boolean,
+  $search: String,
+  $after: String,
+  $first: Int
+) {
+  project(name: $projectName) {
+    versions(
+      productIds: $productIds
+      filter: $versionFilter
+      productFilter: $productFilter
+      taskFilter: $taskFilter
+      __OPTIONAL_ARGUMENTS__
+      featuredOnly: $featuredOnly
+      hasReviewables: $hasReviewables
+      folderIds: $folderIds
+      includeFolderChildren: $includeFolderChildren
+      search: $search
+      after: $after
+      first: $first
+    ) {
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+      edges {
+        node {
+          id
+        }
+      }
+    }
+  }
+}
+"""
+
 GET_VERSION_GROUP_COUNTS_QUERY = """
 query GetVersionGroupCounts(
   $projectName: String!,
@@ -191,6 +238,11 @@ def _resolve_optional_versions_arguments(query: str) -> str:
         _OPTIONAL_VERSIONS_ARGUMENTS,
         get_server_query_arguments("versions"),
     )
+
+
+def get_version_ids_query() -> str:
+    """Build the version ids query for the arguments the server accepts."""
+    return _resolve_optional_versions_arguments(GET_VERSION_IDS_QUERY)
 
 
 def get_version_group_counts_query(include_product: bool = False) -> str:
