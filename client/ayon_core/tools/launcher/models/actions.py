@@ -485,14 +485,22 @@ class ActionsModel:
             entity_subtypes = []
 
         elif selection.is_task_selected:
+            task_entity = selection.task_entity
+            # Task does not exist anymore
+            if task_entity is None:
+                return None
             entity_type = "task"
-            entity_id = selection.task_entity["id"]
-            entity_subtypes = [selection.task_entity["taskType"]]
+            entity_id = task_entity["id"]
+            entity_subtypes = [task_entity["taskType"]]
 
         elif selection.is_folder_selected:
+            folder_entity = selection.folder_entity
+            # Folder does not exist anymore
+            if folder_entity is None:
+                return None
             entity_type = "folder"
-            entity_id = selection.folder_entity["id"]
-            entity_subtypes = [selection.folder_entity["folderType"]]
+            entity_id = folder_entity["id"]
+            entity_subtypes = [folder_entity["folderType"]]
 
         elif selection.is_project_selected:
             # Project actions are supported since AYON 1.9.1
