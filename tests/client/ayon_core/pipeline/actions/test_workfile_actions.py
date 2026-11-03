@@ -371,34 +371,52 @@ def test_increment_and_open(tmp_path):
 
     dst_path = str(tmp_path / "file_v002.ma")
     plugin = context._get_plugins()[identifier]
+    plugin_module = sys.modules[plugin.__module__]
+
+    # Unsaved changes: a user is asked first and nothing is copied yet,
+    #   cancel of the form does not trigger the action again
+    host.workfile_has_unsaved_changes.return_value = True
     with mock.patch.object(
-        sys.modules[plugin.__module__],
-        "copy_workfile_to_context",
-        return_value=dst_path,
+        plugin_module, "copy_workfile_to_context", return_value=dst_path
+    ) as copy_mock:
+        result = context.execute_action(identifier, _selection(), None, {})
+    assert isinstance(result.form, ActionForm)
+    assert not result.close_tool
+    assert result.open_workfile is None
+    copy_mock.assert_not_called()
+    host.save_workfile.assert_not_called()
+
+    # User decided to not save the changes
+    with mock.patch.object(
+        plugin_module, "copy_workfile_to_context", return_value=dst_path
+    ) as copy_mock:
+        result = context.execute_action(
+            identifier,
+            _selection(),
+            None,
+            {workfile_actions.SAVE_CHANGES_FORM_KEY: False},
+        )
+    host.save_workfile.assert_not_called()
+    copy_mock.assert_called_once()
+    assert result.close_tool is True
+
+    # No unsaved changes: copied and opened right away
+    host.workfile_has_unsaved_changes.return_value = False
+    with mock.patch.object(
+        plugin_module, "copy_workfile_to_context", return_value=dst_path
     ) as copy_mock:
         result = context.execute_action(identifier, _selection(), None, {})
 
     assert result.success is True
-    # Workfile is only duplicated, the scene is not saved and the action
-    #   does not ask for unsaved changes
+    assert result.form is None
     args, kwargs = copy_mock.call_args
     assert args == (str(workfile_path), folder_entity, task_entity)
     assert kwargs["comment"] == "blocking"
-    assert kwargs["open_workfile"] is False
-    assert result.form is None
+    # The copy is opened by the host and the tool is closed
+    assert kwargs["open_workfile"] is True
+    assert result.close_tool is True
+    assert result.open_workfile is None
     host.save_workfile.assert_not_called()
-    host.workfile_has_unsaved_changes.assert_not_called()
-    # The tool is asked to open the duplicated workfile
-    assert result.close_tool is False
-    assert result.open_workfile == WorkfileActionOpenWorkfile(
-        filepath=dst_path, folder_id="folder-1", task_id="task-1"
-    )
-    # New workfile is selected if a user cancels the opening
-    assert result.redirect == WorkfileActionRedirect(
-        folder_id="folder-1",
-        task_name="comp",
-        workfile_name="file_v002.ma",
-    )
 
 
 def test_project_name_comes_from_host(tmp_path):

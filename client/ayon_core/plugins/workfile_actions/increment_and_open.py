@@ -16,9 +16,10 @@ from ayon_core.pipeline.actions import (
 class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
     """Duplicate selected workfile to next version and open the copy.
 
-    The workfile is duplicated on disk, the current scene is not saved to
-        the new version. The duplicated workfile is opened by the workfiles
-        tool the same way as any other workfile.
+    A user is asked what to do with unsaved changes of the current workfile
+        before anything happens, so cancelling does not leave a new version
+        on disk. The selected workfile is then copied to the next version
+        and the copy is opened.
     """
     identifier = "core.increment-and-open"
     settings_category = "core"
@@ -64,31 +65,28 @@ class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
                 success=False,
             )
 
+        # Ask about unsaved changes before the copy is created, cancel of
+        #   the form does not trigger the action again
+        result = self.ask_to_save_changes(form_values)
+        if result is not None:
+            return result
+
         # Keep the comment of the source workfile
         comment = None
         workfile_info = selection.workfile_info
         if workfile_info is not None:
             comment = workfile_info.comment
 
-        dst_path = copy_workfile_to_context(
+        copy_workfile_to_context(
             src_path,
             folder_entity,
             task_entity,
             comment=comment,
-            open_workfile=False,
+            open_workfile=True,
             prepared_data=CopyWorkfileOptionalData(
                 project_entity=selection.get_project_entity(),
                 anatomy=selection.get_project_anatomy(),
                 project_settings=selection.get_project_settings(),
             ),
         )
-        # Let the tool open the workfile as any other workfile and show
-        #   the new workfile if it was not opened
-        return (
-            WorkfileActionResult()
-            .set_open_workfile(dst_path, task_entity=task_entity)
-            .set_redirect(
-                task_entity=task_entity,
-                workfile_name=os.path.basename(dst_path),
-            )
-        )
+        return WorkfileActionResult(close_tool=True)
