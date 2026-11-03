@@ -443,7 +443,9 @@ class RecentActionsPopup(AYDropdownPopup):
             icon_url = _get_icon_url(item.icon)
             if icon_url:
                 self._fetched_icon_urls.add(icon_url)
-        self._rebuild_rows(items)
+        # The history may have changed while the icons were downloaded,
+        #   e.g. an entry was removed, so show it as it is now.
+        self._rebuild_rows(self._controller.get_recent_action_items())
 
         if self.isVisible() and self._anchor_widget is not None:
             self._place(self._anchor_widget)
