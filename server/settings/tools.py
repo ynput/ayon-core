@@ -314,11 +314,56 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
     )
 
 
+class LoaderActionsModel(BaseSettingsModel):
+    copy_file_path: bool = SettingsField(
+        True,
+        title="Copy file path",
+        description=(
+            "Show the action for copying a published file path to the "
+            "clipboard in the loader."
+        ),
+    )
+    copy_file: bool = SettingsField(
+        True,
+        title="Copy file",
+        description="Show the action for copying a published file.",
+    )
+    open_file: bool = SettingsField(
+        True,
+        title="Open file action",
+        description="Show the action for opening a published file.",
+    )
+    delete_old_versions: bool = SettingsField(
+        True,
+        title="Delete old versions",
+        description="Show the action for deleting old versions.",
+    )
+    delete_selected_versions: bool = SettingsField(
+        True,
+        title="Delete selected versions",
+        description="Show the action for deleting selected versions.",
+    )
+    calculate_versions_size: bool = SettingsField(
+        True,
+        title="Calculate versions size",
+        description="Show the action for calculating versions size.",
+    )
+    create_hero_version: bool = SettingsField(
+        True,
+        title="Create hero version",
+        description="Show the action for creating a hero version.",
+    )
+
+
 class LoaderToolModel(BaseSettingsModel):
     use_legacy_loader: bool = SettingsField(
         False,
         title="Use legacy loader",
         description="Use legacy loader UI.",
+    )
+    actions: LoaderActionsModel = SettingsField(
+        default_factory=LoaderActionsModel,
+        title="Actions",
     )
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
@@ -681,6 +726,15 @@ DEFAULT_TOOLS_VALUES = {
     },
     "loader": {
         "use_legacy_loader": False,
+        "actions": {
+            "copy_file_path": True,
+            "copy_file": True,
+            "open_file": True,
+            "delete_old_versions": True,
+            "delete_selected_versions": True,
+            "calculate_versions_size": True,
+            "create_hero_version": True
+        },
         "product_type_filter_profiles": []
     },
     "publish": {

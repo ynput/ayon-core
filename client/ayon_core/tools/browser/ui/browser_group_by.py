@@ -89,6 +89,11 @@ class GroupByOption:
     icon: str = "label"
     source: GroupBySource = GroupBySource.BUILTIN
     attribute_name: str | None = None
+    # Entity type the attribute lives on, ``"version"`` or ``"product"``.
+    attribute_scope: str = "version"
+    # Submenu of the Group By menu the option is listed in, e.g.
+    # ``"Version"``. Options without one are listed at the top level.
+    menu_group: str | None = None
 
 
 # Keys for the built-in group-by options.
@@ -109,14 +114,48 @@ BUILTIN_GROUPS: list[GroupByOption] = [
 ]
 
 
-def build_attribute_groups(
-    version_attributes: dict[str, dict[str, Any]],
-) -> list[GroupByOption]:
-    """Build attribute-based group-by options from project version attributes.
+# Key prefixes of attribute-based group-by options. Version attributes
+# keep the plain ``attr:`` prefix so stored view settings stay valid.
+ATTRIBUTE_GROUP_PREFIXES: dict[str, str] = {
+    "version": "attr",
+    "product": "product_attr",
+}
+
+
+def parse_attribute_group_key(key: str) -> tuple[str, str] | None:
+    """Split an attribute group-by key into its scope and attribute name.
 
     Args:
-        version_attributes: Dict mapping attribute name to its definition
+        key: Group-by option key, e.g. ``"attr:fps"`` or
+            ``"product_attr:productGroup"``.
+
+    Returns:
+        Tuple of ``(scope, attribute_name)``, or ``None`` when the key
+        is not an attribute group-by key.
+    """
+    prefix, sep, attr_name = key.partition(":")
+    if not sep:
+        return None
+    for scope, scope_prefix in ATTRIBUTE_GROUP_PREFIXES.items():
+        if prefix == scope_prefix:
+            return scope, attr_name
+    return None
+
+
+def build_attribute_groups(
+    attributes: dict[str, dict[str, Any]],
+    scope: str = "version",
+    menu_group: str | None = None,
+) -> list[GroupByOption]:
+    """Build attribute-based group-by options from project attributes.
+
+    Args:
+        attributes: Dict mapping attribute name to its definition
             dict (as returned by ``ayon_api.get_attributes_for_type``).
+        scope: Entity type the attributes belong to, ``"version"`` or
+            ``"product"``.
+        menu_group: Submenu of the Group By menu to list the options
+            in, e.g. ``"Product"``.
 
     Returns:
         List of :class:`GroupByOption` instances, one per attribute.
@@ -128,9 +167,13 @@ def build_attribute_groups(
         "integer",
         "string",
     }
-    return [
-        GroupByOption(
-            key=f"attr:{attr_name}",
+    prefix = ATTRIBUTE_GROUP_PREFIXES[scope]
+    options = []
+    for attr_name, attr_def in attributes.items():
+        if attr_def.get("type") not in supported_types:
+            continue
+        options.append(GroupByOption(
+            key=f"{prefix}:{attr_name}",
             label=attr_def.get("title") or attr_name,
             icon=get_attribute_icon(
                 attr_name,
@@ -139,7 +182,7 @@ def build_attribute_groups(
             ),
             source=GroupBySource.ATTRIBUTE,
             attribute_name=attr_name,
-        )
-        for attr_name, attr_def in version_attributes.items()
-        if attr_def.get("type") in supported_types
-    ]
+            attribute_scope=scope,
+            menu_group=menu_group,
+        ))
+    return options

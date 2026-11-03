@@ -13,7 +13,7 @@ from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
-from ayon_core.tools.browser.abstract import RepreItem
+from ayon_core.tools.browser.abstract import LoadersGrouping, RepreItem
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
@@ -47,6 +47,14 @@ class ReviewInspector(AYContainer):
         self._controller = controller
         self._view: QtWidgets.QAbstractItemView | None = None
         self._current_thumb_key: str = ""
+        # Key of the latest representations request, older results are
+        #   ignored
+        self._repre_request_key: str = ""
+        # Requests of the same key can overlap after a forced refresh, the
+        #   ids tell them apart
+        self._repre_request_id: int = 0
+        self._thumb_request_id: int = 0
+        self._repre_context_id: str = f"inspector_repres_{id(self)}"
         # Use a dict as an ordered set to track the currently selected indices
         self._current_selection: dict[QtCore.QModelIndex, None] = {}
         # Track if mouse is currently pressed for drag selection
@@ -247,6 +255,9 @@ class ReviewInspector(AYContainer):
 
     def refresh_selection(self) -> None:
         """Refresh the inspector after selected row data changes."""
+        # Force a reload even if the selection itself did not change
+        self._repre_request_key = ""
+        self._current_thumb_key = ""
         self._update()
 
     def _on_selection_changed(
@@ -338,7 +349,7 @@ class ReviewInspector(AYContainer):
             pname = d.get("project_name", "")
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
-            version_ids.append(vid)
+            version_ids.append(d.get("_action_version_id") or vid)
 
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses
@@ -349,15 +360,66 @@ class ReviewInspector(AYContainer):
 
         # Fetch and display representations for all selected versions.
         if self._controller and project_name and version_ids:
-            repre_items = self._controller.get_representation_items(
-                project_name, version_ids
-            )
-            self._representations.set_items(
-                repre_items,
-                multi_version=len(version_ids) > 1,
-            )
+            self._load_representations(project_name, version_ids)
         else:
+            self._repre_request_key = ""
             self._representations.set_items([])
+
+    def _load_representations(
+        self, project_name: str, version_ids: list[str]
+    ) -> None:
+        """Fetch representations in the background and display them.
+
+        Fetching on the main thread would block the UI, e.g. delaying the
+        context menu on right-click which also changes the selection.
+
+        Args:
+            project_name: Project name.
+            version_ids: Selected version ids.
+        """
+        request_key = f"{project_name}|{','.join(sorted(version_ids))}"
+        # Already loaded or loading, e.g. click on already selected version
+        if request_key == self._repre_request_key:
+            return
+        self._repre_request_key = request_key
+        self._repre_request_id += 1
+        request_id = self._repre_request_id
+        multi_version = len(version_ids) > 1
+        controller = self._controller
+        inspector = self
+
+        def _on_loaded(repre_items: list[RepreItem] | None) -> None:
+            if not shiboken.isValid(inspector):
+                return
+            # Selection changed or was refreshed in the meantime
+            if (
+                inspector._repre_request_key != request_key
+                or inspector._repre_request_id != request_id
+            ):
+                return
+            if repre_items is None:
+                # Task failed, allow the same selection to retry
+                inspector._repre_request_key = ""
+            inspector._representations.set_items(
+                repre_items or [],
+                multi_version=multi_version,
+            )
+
+        task_queue = get_task_queue()
+        # Only the latest selection is relevant
+        task_queue.clear_context_tasks(self._repre_context_id)
+        task_queue.enqueue(
+            AsyncTask(
+                name="inspector_representations",
+                function=lambda: controller.get_representation_items(
+                    project_name, version_ids
+                ),
+                callback=_on_loaded,
+                priority=1,
+                context_id=self._repre_context_id,
+                cancellable=True,
+            )
+        )
 
     def _load_thumbnail(self, keys: list[str]) -> None:
         """Load and display thumbnails for *keys* as a composite image.
@@ -373,7 +435,12 @@ class ReviewInspector(AYContainer):
                 ``"<project_name>/<version_id>/<thumbnail_id>"``.
         """
         combined_key = ",".join(keys)
+        # Already shown or loading, e.g. click on already selected version
+        if combined_key == self._current_thumb_key:
+            return
         self._current_thumb_key = combined_key
+        self._thumb_request_id += 1
+        request_id = self._thumb_request_id
 
         ic = ImageCache.get_instance()
         resolved: dict[str, str] = {}
@@ -401,8 +468,14 @@ class ReviewInspector(AYContainer):
                 pending["count"] -= 1
                 if pending["count"] > 0:
                     return
-                if inspector._current_thumb_key != combined_key:
+                if (
+                    inspector._current_thumb_key != combined_key
+                    or inspector._thumb_request_id != request_id
+                ):
                     return
+                if not all(resolved.get(key) for key in keys):
+                    # Load failed, allow the same selection to retry
+                    inspector._current_thumb_key = ""
                 paths = ",".join(resolved.get(key, "") for key in keys)
                 inspector._thumbnail.set_thumbnail(paths)
 
@@ -494,8 +567,13 @@ class Representations(AYContainer):
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         selected_ids = self._get_selected_ids()
+        # The representations are already picked, so there is nothing to
+        #   list in a submenu per loader
         action_items = self._controller.get_action_items(
-            self._current_project_name, selected_ids, "representation"
+            self._current_project_name,
+            selected_ids,
+            "representation",
+            LoadersGrouping.UNGROUPED,
         )
         global_point = self._table.mapToGlobal(pos)
         result = show_actions_menu(

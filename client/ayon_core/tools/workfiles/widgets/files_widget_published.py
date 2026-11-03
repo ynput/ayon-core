@@ -16,7 +16,13 @@ from ayon_core.ui.components import (
 )
 from ayon_core.ui.style_types import get_ayon_style
 
-from .utils import BaseOverlayFrame, WorkfilesDelegate
+from .utils import (
+    USERNAME_ROLE,
+    NaturalSortProxyModel,
+    BaseOverlayFrame,
+    WorkfilesDelegate,
+    create_avatar_cache,
+)
 
 REPRE_ID_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -220,17 +226,19 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
             else:
                 flags = QtCore.Qt.NoItemFlags
 
-            author = file_item.author
-            user_item = user_items_by_name.get(author)
+            username = file_item.author
+            user_label = username
+            user_item = user_items_by_name.get(username)
             if user_item is not None and user_item.full_name:
-                author = user_item.full_name
+                user_label = user_item.full_name
 
             filename = os.path.basename(file_item.filepath)
 
             item.setFlags(flags)
             item.setData(filename, QtCore.Qt.DisplayRole)
             item.setData(file_item.filepath, FILEPATH_ROLE)
-            item.setData(author, AUTHOR_ROLE)
+            item.setData(user_label, AUTHOR_ROLE)
+            item.setData(username, USERNAME_ROLE)
             item.setData(file_item.file_modified, DATE_MODIFIED_ROLE)
 
             self._items_by_id[repre_id] = item
@@ -286,7 +294,7 @@ class SelectContextOverlay(BaseOverlayFrame):
         super(SelectContextOverlay, self).__init__(parent)
 
         label_widget = AYLabel(
-            "Please choose context on the left<br/>&lt",
+            "Please choose context on the left.",
             self
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
@@ -327,14 +335,14 @@ class PublishedFilesWidget(AYContainer):
         view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = PublishedFilesModel(controller)
-        proxy_model = QtCore.QSortFilterProxyModel()
+        proxy_model = NaturalSortProxyModel()
         proxy_model.setSourceModel(model)
-        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         proxy_model.setDynamicSortFilter(True)
 
         view.setModel(proxy_model)
 
         work_files_delegate = WorkfilesDelegate(
+            create_avatar_cache(view),
             parent=view,
             style_model=get_ayon_style().model
         )

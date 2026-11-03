@@ -12,6 +12,9 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
+    ThumbnailsModel,
+    UserItem,
 )
 
 from .abstract import (
@@ -49,9 +52,11 @@ class BaseLauncherController(
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._actions_model = ActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -87,6 +92,15 @@ class BaseLauncherController(
 
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
 
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
@@ -133,6 +147,17 @@ class BaseLauncherController(
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._hierarchy_model.get_task_items(
             project_name, folder_id, sender
+        )
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     # Project settings for applications actions
@@ -197,6 +222,11 @@ class BaseLauncherController(
             task_id,
         )
 
+    def get_user_items_by_name(
+        self, project_name: Optional[str]
+    ) -> dict[str, UserItem]:
+        return self._users_model.get_user_items_by_name(project_name)
+
     # Actions
     def get_action_items(
         self, project_name, folder_id, task_id, workfile_id
@@ -239,6 +269,7 @@ class BaseLauncherController(
         self._settings_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._users_model.reset()
 
         self._actions_model.refresh()

@@ -60,12 +60,15 @@ class LogStreamHandler(logging.StreamHandler):
         except (KeyboardInterrupt, SystemExit):
             raise
 
-        except OSError:
-            self.handleError(record)
-
         except Exception:
-            print(repr(record))
-            self.handleError(record)
+            # Logging must never break the caller. Some hosts replace
+            # 'sys.stdout' and 'sys.stderr' with streams that raise when
+            # written to from a non-main thread, in which case reporting
+            # the error through 'handleError' fails as well.
+            try:
+                self.handleError(record)
+            except Exception:
+                pass
 
 
 class LogFormatter(logging.Formatter):

@@ -17,6 +17,8 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     ProjectsModel,
     UsersModel,
+    WSEventsModel,
+    ThumbnailsModel,
 )
 
 from .abstract import (
@@ -181,7 +183,9 @@ class BaseWorkfileController(
         self._selection_model = self._create_selection_model()
         self._projects_model = self._create_projects_model()
         self._hierarchy_model = self._create_hierarchy_model()
+        self._thumbnails_model = ThumbnailsModel()
         self._workfiles_model = self._create_workfiles_model()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self) -> logging.Logger:
@@ -191,6 +195,15 @@ class BaseWorkfileController(
         if self._host is None:
             return None
         return self._host.name
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
 
     def is_host_valid(self) -> bool:
         return self._host_is_valid
@@ -454,6 +467,17 @@ class BaseWorkfileController(
             project_name, folder_id, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     def get_workarea_dir_by_context(
         self, folder_id: str, task_id: str
     ) -> str | None:
@@ -577,6 +601,7 @@ class BaseWorkfileController(
         self._users_model.reset()
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._workfiles_model.reset()
 
         if not expected_folder_id:

@@ -1,6 +1,6 @@
 name = "core"
 title = "Core"
-version = "1.9.14+dev"
+version = "1.10.6+dev"
 
 client_dir = "ayon_core"
 
@@ -8,7 +8,7 @@ plugin_for = ["ayon_server"]
 
 project_can_override_addon_version = True
 
-ayon_server_version = ">=1.8.4,<2.0.0"
+ayon_server_version = ">=1.14.0,<2.0.0"
 ayon_launcher_version = ">=1.5.4"
 ayon_required_addons = {}
 ayon_compatible_addons = {
@@ -20,4 +20,5 @@ ayon_compatible_addons = {
     "fusion": ">=0.3.3",
     "openrv": ">=1.0.2",
     "traypublisher": ">=0.3.0",
+    "review_desktop": ">0.0.5",
 }

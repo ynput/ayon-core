@@ -191,6 +191,14 @@ class BrowserFoldersModel(QStandardItemModel):
         )
         get_task_queue().enqueue(task)
 
+    def get_project_name(self) -> str | None:
+        """Project name of folders in the model.
+
+        Returns:
+            str | None: Project name.
+        """
+        return self._last_project_name
+
     def get_index_by_id(self, item_id: str) -> QModelIndex:
         """Get index by folder id.
 

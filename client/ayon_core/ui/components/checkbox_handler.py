@@ -397,8 +397,7 @@ class CheckboxHandler(QObject):
         doc = self._text_edit.document()
         cb = self._checkboxes[index]
 
-        # Block signals to prevent triggering format_comment_on_change
-        # which would clear all formatting including checkboxes
+        # Block signals to prevent re-formatting the document
         doc.blockSignals(True)
 
         try:
@@ -515,20 +514,6 @@ class CheckboxHandler(QObject):
         finally:
             cursor.endEditBlock()
             doc.blockSignals(False)
-
-    def remove_last_checkbox(self) -> bool:
-        """Remove the last checkbox from the tracked list.
-
-        Used when the user presses Enter on an empty checkbox line to
-        terminate the list.
-
-        Returns:
-            True if a checkbox was removed, False if the list was empty.
-        """
-        if not self._checkboxes:
-            return False
-        self._checkboxes.pop()
-        return True
 
     def to_markdown(self) -> str:
         """Reconstruct markdown with current checkbox states.

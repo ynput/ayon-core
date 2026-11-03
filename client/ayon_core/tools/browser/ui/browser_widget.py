@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from ayon_core.ui.components.container import AYContainer
-from qtpy import QtCore, QtWidgets
+from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
@@ -17,6 +18,7 @@ from ayon_core.tools.browser.control import BrowserController
 from ._browser_slicer import BrowserSlicer
 from ._browser_table import BrowserTable
 from .browser_inspector import ReviewInspector
+from .product_group_dialog import ProductGroupDialog
 
 log = Logger.get_logger(__name__)
 
@@ -25,6 +27,12 @@ class BrowserWidget(AYContainer):
     """Top-level widget combining the slicer panel and version table."""
 
     default_view_message = QtCore.Signal(str, bool)
+
+    # Max selected versions for which context menu data are prefetched
+    prefetch_selection_limit = 50
+    # Versions of selected group headers above which actions are only
+    # shown after confirmation
+    group_versions_confirm_limit = 500
 
     def __init__(
         self,
@@ -62,6 +70,9 @@ class BrowserWidget(AYContainer):
         self._table.card_view.customContextMenuRequested.connect(
             self._on_context_menu
         )
+        self._prefetch_context_id = f"browser_prefetch_{id(self)}"
+        for view in (self._table.table, self._table.card_view):
+            view.selection_changed.connect(self._on_view_selection_changed)
         self._inspector = ReviewInspector(self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._table.default_view_message.connect(
@@ -69,6 +80,24 @@ class BrowserWidget(AYContainer):
         )
         self._inspector.set_view(self._table.active_view)
         self._build()
+
+        # Grouping products on pressing Ctrl + G
+        self._group_dialog = ProductGroupDialog(self._controller, self)
+        self._controller.products_group_changed.connect(
+            self._on_product_group_changed
+        )
+        self._group_dialog.group_change_failed.connect(
+            self._on_product_group_change_failed
+        )
+        group_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence("Ctrl+G"), self
+        )
+        group_shortcut.setContext(
+            QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
+        )
+        group_shortcut.setAutoRepeat(False)
+        group_shortcut.activated.connect(self._show_group_dialog)
+        self._group_shortcut = group_shortcut
 
         self._controller.project_changed.connect(self._on_project_changed)
         self._controller.selection_changed.connect(self._on_folder_selected)
@@ -116,6 +145,10 @@ class BrowserWidget(AYContainer):
         self._table.clear_expansion_state()
         self._table.reset_data()
         self._slicer.set_task_names([])
+        # Discover action plugins before the first context menu, deferred
+        #   to not block the project change. Plugins may use host APIs so
+        #   it must run in the main thread.
+        QtCore.QTimer.singleShot(0, self._warm_up_action_items)
 
     def _on_task_names_changed(self, names: list[str]) -> None:
         """Apply task-list selection to the table's Task criterion."""
@@ -161,6 +194,242 @@ class BrowserWidget(AYContainer):
         self._table.set_auto_expand(auto_expand)
         self._table.reset_data()
 
+    @staticmethod
+    def _get_row_version_id(row_dict: dict[str, Any]) -> str | None:
+        """Return the version id actions of a row apply to.
+
+        Product group headers resolve to their featured version, other
+        group headers and folders have none.
+        """
+        if row_dict.get("entityType", "") == "Folder":
+            return None
+        version_id = (
+            row_dict.get("_action_version_id")
+            or row_dict.get("_version_id")
+            or row_dict.get("id", "")
+        )
+        if version_id and not version_id.startswith("grp:"):
+            return version_id
+        return None
+
+    def _get_selected_rows(self) -> list[dict[str, Any]]:
+        """Return row data of the rows selected in the active view."""
+        selection_model = self._table.active_view.selectionModel()
+        rows: list[dict[str, Any]] = []
+        for proxy_idx in selection_model.selectedIndexes():
+            if proxy_idx.column() != 0:
+                continue
+            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole)
+            if row_dict:
+                rows.append(row_dict)
+        return rows
+
+    def _get_selected_version_ids(self) -> set[str]:
+        """Return version IDs of the rows selected in the active view.
+
+        Group headers other than Product are skipped, their versions are
+        resolved only when a context menu is requested.
+        """
+        version_ids: set[str] = set()
+        for row_dict in self._get_selected_rows():
+            version_id = self._get_row_version_id(row_dict)
+            if version_id:
+                version_ids.add(version_id)
+        return version_ids
+
+    @staticmethod
+    def _is_versions_group_row(row_dict: dict[str, Any]) -> bool:
+        """Return whether actions of the row apply to all its versions.
+
+        That is every group header except Product, which stands for its
+        featured version only (Product headers carry ``_product_id``).
+        """
+        row_id = row_dict.get("id") or ""
+        return (
+            row_id.startswith("grp:")
+            and not row_dict.get("_product_id")
+        )
+
+    def _confirm_group_versions(self, count: int) -> bool:
+        """Ask whether to show actions for many versions of groups."""
+        result = QtWidgets.QMessageBox.question(
+            self,
+            "Many versions selected",
+            (
+                f"The selected groups contain {count} versions.\n"
+                "Show the actions for all of them?"
+            ),
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.Cancel,
+            QtWidgets.QMessageBox.StandardButton.Cancel,
+        )
+        return result == QtWidgets.QMessageBox.StandardButton.Yes
+
+    def _get_group_version_ids(
+        self, group_rows: list[dict[str, Any]]
+    ) -> set[str] | None:
+        """Return the version ids listed under group headers.
+
+        Groups with all their versions loaded in the table use those,
+        others query only the version ids from the server. Groups with
+        more than :attr:`group_versions_confirm_limit` versions in total
+        ask for confirmation first.
+
+        Args:
+            group_rows: Row data of the group headers.
+
+        Returns:
+            Version ids of the groups, or ``None`` when cancelled or the
+            query failed.
+        """
+        version_ids: set[str] = set()
+        query_group_ids: list[str] = []
+        unknown_count = False
+        query_count = 0
+        for row_dict in group_rows:
+            group_id = row_dict["id"]
+            child_rows = self._table.get_all_child_rows(group_id)
+            if child_rows is not None:
+                for child_row in child_rows:
+                    version_id = self._get_row_version_id(child_row)
+                    if version_id:
+                        version_ids.add(version_id)
+                continue
+            child_count = row_dict.get("child_count")
+            if child_count is None:
+                unknown_count = True
+            elif child_count == 0:
+                continue
+            else:
+                query_count += child_count
+            query_group_ids.append(group_id)
+
+        limit = self.group_versions_confirm_limit
+        confirmed = False
+        expected_count = len(version_ids) + query_count
+        if expected_count > limit:
+            if not self._confirm_group_versions(expected_count):
+                return None
+            confirmed = True
+
+        if query_group_ids:
+            QtWidgets.QApplication.setOverrideCursor(
+                QtCore.Qt.CursorShape.WaitCursor
+            )
+            try:
+                for group_id in query_group_ids:
+                    version_ids |= self._controller.get_group_version_ids(
+                        group_id
+                    )
+            except Exception:
+                log.warning(
+                    "Failed to query versions of groups", exc_info=True
+                )
+                self.default_view_message.emit(
+                    "Failed to query versions of the groups", False
+                )
+                return None
+            finally:
+                QtWidgets.QApplication.restoreOverrideCursor()
+
+        if (
+            unknown_count
+            and not confirmed
+            and len(version_ids) > limit
+            and not self._confirm_group_versions(len(version_ids))
+        ):
+            return None
+        return version_ids
+
+    def _get_selected_product_ids(self) -> set[str]:
+        """Return product IDs of the rows selected in the active view.
+
+        Covers version rows and the group headers of the Product
+        group-by, other group headers and folders have no product.
+        """
+        selection_model = self._table.active_view.selectionModel()
+        product_ids: set[str] = set()
+        for proxy_idx in selection_model.selectedIndexes():
+            if proxy_idx.column() != 0:
+                continue
+            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+            product_id = (
+                row_dict.get("_product_id") or row_dict.get("productId")
+            )
+            if product_id:
+                product_ids.add(product_id)
+        return product_ids
+
+    def _show_group_dialog(self) -> None:
+        """Ask for a product group to set on the selected products."""
+        project_name = self._controller.current_project
+        product_ids = self._get_selected_product_ids()
+        if not project_name or not product_ids:
+            return
+
+        try:
+            if not self._controller.can_change_products_group(project_name):
+                self.default_view_message.emit(
+                    "You don't have permissions to set"
+                    " the product group attribute",
+                    False,
+                )
+                return
+            self._group_dialog.set_product_ids(project_name, product_ids)
+        except Exception:
+            log.warning("Failed to query product groups", exc_info=True)
+            self.default_view_message.emit(
+                "Failed to query product groups", False
+            )
+            return
+        self._group_dialog.show()
+
+    def _on_product_group_changed(self) -> None:
+        self._table.reset_data()
+
+    def _on_product_group_change_failed(self, message: str) -> None:
+        log.warning(message)
+        self.default_view_message.emit(message, False)
+
+    def _on_view_selection_changed(self, *args: Any) -> None:
+        """Prefetch context menu data for the new selection.
+
+        A right-click selects the row on mouse press but the context menu
+        is requested on release, so the data is usually ready in time.
+        """
+        project_name = self._controller.current_project
+        version_ids = self._get_selected_version_ids()
+        task_queue = get_task_queue()
+        # Only the latest selection is relevant
+        task_queue.clear_context_tasks(self._prefetch_context_id)
+        # Don't query large selections that may never get a context menu
+        if (
+            not project_name
+            or not version_ids
+            or len(version_ids) > self.prefetch_selection_limit
+        ):
+            return
+
+        controller = self._controller
+        task_queue.enqueue(
+            AsyncTask(
+                name="browser_prefetch_action_contexts",
+                function=lambda: (
+                    controller.prefetch_version_action_contexts(
+                        project_name, version_ids
+                    )
+                ),
+                callback=lambda _result: None,
+                priority=1,
+                context_id=self._prefetch_context_id,
+            )
+        )
+
+    def _warm_up_action_items(self) -> None:
+        project_name = self._controller.current_project
+        if project_name:
+            self._controller.warm_up_action_items(project_name)
+
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         """Show a contextual actions menu for the selected rows.
 
@@ -172,27 +441,33 @@ class BrowserWidget(AYContainer):
             pos: Cursor position in viewport coordinates.
         """
         project_name = self._controller.current_project
-        selection_model = self._table.active_view.selectionModel()
+        global_point = self._table.active_view.viewport().mapToGlobal(pos)
 
         version_ids: set[str] = set()
-        for proxy_idx in selection_model.selectedIndexes():
-            if proxy_idx.column() != 0:
+        group_rows: list[dict[str, Any]] = []
+        for row_dict in self._get_selected_rows():
+            if self._is_versions_group_row(row_dict):
+                group_rows.append(row_dict)
                 continue
-            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-            if row_dict.get("entityType", "") == "Folder":
-                continue
-            version_id = row_dict.get("_version_id") or row_dict.get("id", "")
-            if version_id and not version_id.startswith("grp:"):
+            version_id = self._get_row_version_id(row_dict)
+            if version_id:
                 version_ids.add(version_id)
 
-        global_point = self._table.active_view.viewport().mapToGlobal(pos)
+        if project_name and group_rows:
+            group_version_ids = self._get_group_version_ids(group_rows)
+            if group_version_ids is None:
+                return
+            version_ids |= group_version_ids
 
         if not version_ids or not project_name:
             log.debug("No version ids or project name")
             return
 
         action_items = self._controller.get_action_items(
-            project_name, version_ids, "version"
+            project_name,
+            version_ids,
+            "version",
+            loaders_grouping=self._controller.loaders_grouping,
         )
 
         if not action_items:

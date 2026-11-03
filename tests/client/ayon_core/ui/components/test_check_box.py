@@ -36,5 +36,11 @@ class CheckBoxTest(WidgetTest):
         for cb in self._checkboxes:
             cb.setChecked(False)
 
+    def wait_loaded(self, qtbot) -> None:
+        # Let the toggle animation finish before the snapshot is taken.
+        qtbot.waitUntil(
+            lambda: not any(cb.is_animating() for cb in self._checkboxes)
+        )
+
     def steps(self):
         return [self.check_all, self.uncheck_all]

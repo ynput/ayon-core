@@ -10,3 +10,18 @@ class BrowserSlicerCategory(Enum):
 
     HIERARCHY = "Hierarchy"
     REVIEWS = "Reviews"
+    LISTS = "Lists"
+
+
+#: Slicer categories whose tree holds entity lists instead of folders.
+ENTITY_LIST_CATEGORIES = frozenset({
+    BrowserSlicerCategory.REVIEWS.value,
+    BrowserSlicerCategory.LISTS.value,
+})
+
+#: Slicer categories that can narrow the versions by folders, for which
+#: including the versions of their child folders applies.
+FOLDER_SLICER_CATEGORIES = frozenset({
+    BrowserSlicerCategory.HIERARCHY.value,
+    BrowserSlicerCategory.LISTS.value,
+})
