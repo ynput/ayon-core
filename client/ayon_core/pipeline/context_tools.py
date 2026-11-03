@@ -155,6 +155,13 @@ def install_ayon_plugins(project_name=None, host_name=None):
     if host_name is None:
         host_name = get_current_host_name()
 
+    if project_name is None:
+        project_name = os.environ.get("AYON_PROJECT_NAME")
+
+    if project_name:
+        anatomy = Anatomy(project_name)
+        anatomy.set_root_environments()
+
     addons_manager = _get_addons_manager()
 
     # Loader plugin paths are registered without a host name too. Tools that
