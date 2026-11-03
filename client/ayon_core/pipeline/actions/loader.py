@@ -511,7 +511,6 @@ class LoaderActionItem:
     data: Optional[DataType] = None
     # Is filled automatically
     identifier: str = None
-    # Added last to keep backwards compatibility of positional arguments
     tooltip: Optional[str] = None
 
 
