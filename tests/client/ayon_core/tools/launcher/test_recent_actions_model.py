@@ -10,7 +10,7 @@ import pytest
 
 import ayon_api
 
-from ayon_core.lib import preferences
+from ayon_core.lib import local_settings
 from ayon_core.tools.launcher.abstract import (
     RECENT_ACTIONS_MAX,
     WorkfileItem,
@@ -116,7 +116,7 @@ def server(monkeypatch) -> dict[str, Any]:
     monkeypatch.setattr(ayon_api, "raw_get", raw_get)
     monkeypatch.setattr(ayon_api, "raw_patch", raw_patch)
     monkeypatch.setattr(ayon_api, "get_base_url", lambda: "http://ayon")
-    monkeypatch.setattr(preferences._ServerSupport, "by_url", {})
+    monkeypatch.setattr(local_settings._ServerSupport, "by_url", {})
     return state
 
 
