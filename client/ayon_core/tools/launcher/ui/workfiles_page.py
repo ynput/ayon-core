@@ -609,20 +609,25 @@ class WorkfilesPage(AYContainer):
 
         workfile_id = self._expected_workfile[0]
         self._expected_workfile = None
+        proxy_index = QtCore.QModelIndex()
         if workfile_id is not None:
             index = self._workfiles_model.get_index_by_workfile_id(
                 workfile_id
             )
-            # Not in the model if the workfile is gone. Scrolling to it
-            #   expands the host item of a grouped host.
             proxy_index = self._workfiles_proxy.mapFromSource(index)
-            if proxy_index.isValid():
-                self._workfiles_view.selectionModel().setCurrentIndex(
-                    proxy_index,
-                    QtCore.QItemSelectionModel.ClearAndSelect
-                    | QtCore.QItemSelectionModel.Rows,
-                )
-                self._workfiles_view.scrollTo(proxy_index)
+
+        # Not in the model if the workfile is gone. Scrolling to it
+        #   expands the host item of a grouped host.
+        if proxy_index.isValid():
+            self._workfiles_view.selectionModel().setCurrentIndex(
+                proxy_index,
+                QtCore.QItemSelectionModel.ClearAndSelect
+                | QtCore.QItemSelectionModel.Rows,
+            )
+            self._workfiles_view.scrollTo(proxy_index)
+        else:
+            # Do not keep a workfile selected before
+            self.deselect()
         self._controller.expected_workfile_selected(workfile_id)
 
     def deselect(self):
