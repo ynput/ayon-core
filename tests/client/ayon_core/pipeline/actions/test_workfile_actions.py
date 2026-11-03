@@ -325,6 +325,64 @@ def test_explore_here_compatibility(tmp_path):
     ))
 
 
+def test_set_context(tmp_path):
+    identifier = "core.set-context"
+    host = _create_host()
+    host.get_current_context.return_value = {
+        "project_name": "test_project",
+        "folder_path": "/shots/sh010",
+        "task_name": "comp",
+    }
+    folder_entity = {"id": "folder-1", "path": "/shots/sh020"}
+    task_entity = {
+        "id": "task-1", "folderId": "folder-1", "name": "comp",
+        "label": "Compositing",
+    }
+
+    def _selection(**kwargs):
+        kwargs.setdefault("folder_entity", folder_entity)
+        kwargs.setdefault("task_entity", task_entity)
+        return _create_selection(
+            project_entity={"name": "test_project"},
+            project_anatomy=mock.Mock(),
+            **kwargs
+        )
+
+    # Disabled by default
+    context = _create_context(tmp_path, host=host)
+    assert identifier not in context._get_plugins()
+
+    context = _create_context(tmp_path, host=host, project_settings={
+        "core": {
+            "workfile_actions": {"SetContextAction": {"enabled": True}}
+        },
+    })
+
+    def _is_available(selection):
+        return any(
+            item.identifier == identifier
+            for item in context.get_action_items(selection)
+        )
+
+    # Available for a task with or without selected workfile, in both areas
+    assert _is_available(_selection())
+    assert _is_available(_selection(filepath="/work/file_v001.ma"))
+    assert _is_available(_selection(area="published"))
+    assert not _is_available(_selection(task_id=None))
+    # Hidden if the task is the current context
+    assert not _is_available(_selection(
+        folder_entity={"id": "folder-1", "path": "/shots/sh010"}
+    ))
+
+    result = context.execute_action(identifier, _selection(), None, {})
+    args, kwargs = host.set_current_context.call_args
+    assert args == (folder_entity, task_entity)
+    assert kwargs["project_entity"] == {"name": "test_project"}
+    assert result.success is True
+    assert result.refresh is True
+    assert "Compositing" in result.message
+
+
 def test_increment_and_open(tmp_path):
     host = mock.MagicMock(spec=IWorkfileHost)
     host.name = "testhost"

@@ -38,6 +38,14 @@ class WorkfileActionsModel(BaseSettingsModel):
             " and open it."
         ),
     )
+    SetContextAction: WorkfileActionPluginModel = SettingsField(
+        default_factory=lambda: WorkfileActionPluginModel(enabled=False),
+        title="Set context",
+        description=(
+            "Change current context to the selected task without opening"
+            " a workfile."
+        ),
+    )
 
 
 DEFAULT_WORKFILE_ACTIONS_VALUES = {
@@ -52,5 +60,8 @@ DEFAULT_WORKFILE_ACTIONS_VALUES = {
     },
     "IncrementAndOpenAction": {
         "enabled": True
+    },
+    "SetContextAction": {
+        "enabled": False
     },
 }
