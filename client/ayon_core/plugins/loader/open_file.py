@@ -318,6 +318,10 @@ class OpenFileAction(LoaderActionPlugin):
                 label=repre_name,
                 group_label="Open file",
                 order=30,
+                tooltip=(
+                    f"Open the '{repre_name}' representation file"
+                    " with the default application."
+                ),
                 data={"representation_ids": list(repre_ids)},
                 icon=MaterialSymbolsIcon(
                     "file_open",

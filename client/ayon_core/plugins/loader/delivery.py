@@ -14,6 +14,10 @@ class DeliveryAction(LoaderSimpleActionPlugin):
     label = "Deliver Versions"
     order = 35
     icon = MaterialSymbolsIcon("upload", color="#d8d8d8")
+    tooltip = (
+        "Deliver the selected versions to a target location"
+        " using a delivery template."
+    )
 
     def is_compatible(self, selection: LoaderActionSelection) -> bool:
         if self.host_name is not None:

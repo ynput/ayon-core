@@ -500,6 +500,8 @@ class LoaderActionItem:
         identifier (Optional[str]): Identifier of the plugin which
             created the action item. Is filled automatically. Is not changed
             if is filled -> can lead to different plugin.
+        tooltip (Optional[str]): Tooltip shown in UI when hovering over
+            the action.
 
     """
     label: str
@@ -509,6 +511,8 @@ class LoaderActionItem:
     data: Optional[DataType] = None
     # Is filled automatically
     identifier: str = None
+    # Added last to keep backwards compatibility of positional arguments
+    tooltip: Optional[str] = None
 
 
 @dataclass
@@ -819,6 +823,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         order: Order of the action item.
         group_label: Label of the group to which the action belongs.
         icon: Icon definition shown next to label.
+        tooltip: Tooltip shown when hovering over the action item.
 
     """
 
@@ -826,6 +831,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     order: int = 0
     group_label: Optional[str] = None
     icon: Optional[dict[str, Any]] = None
+    tooltip: Optional[str] = None
     skip_discovery: bool = True
 
     @abstractmethod
@@ -870,6 +876,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
                     order=self.order,
                     group_label=self.group_label,
                     icon=self.icon,
+                    tooltip=self.tooltip,
                 )
             ]
         return []

@@ -804,7 +804,7 @@ class LoaderActionsModel:
                 label=action.label,
                 group_label=action.group_label,
                 icon=action.icon,
-                tooltip=None,  # action.tooltip,
+                tooltip=action.tooltip,
                 order=action.order,
                 data=action.data,
                 options=None,  # action.options,

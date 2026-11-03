@@ -98,6 +98,10 @@ class CreateHeroVersion(LoaderActionPlugin):
             LoaderActionItem(
                 label="Create Hero Version",
                 order=36,
+                tooltip=(
+                    "Create or update the hero version of the selected"
+                    " versions by copying their files."
+                ),
                 icon={
                     "type": "awesome-font",
                     "name": "fa5.star",

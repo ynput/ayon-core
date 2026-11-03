@@ -43,6 +43,7 @@ class ExportOTIO(LoaderSimpleActionPlugin):
     group_label = None
     order = 35
     icon = MaterialSymbolsIcon("save", "#d8d8d8")
+    tooltip = "Export the selected versions as an OpenTimelineIO file."
 
     def is_compatible(
         self, selection: LoaderActionSelection

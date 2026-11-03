@@ -72,6 +72,10 @@ class DeleteOldVersions(LoaderActionPlugin):
                 group_label="Delete Versions",
                 label="Old versions",
                 order=35,
+                tooltip=(
+                    "Delete old versions of the selected products,"
+                    " keeping a chosen number of latest versions."
+                ),
                 data={
                     "product_ids": list(product_ids),
                     "action": "delete-versions",
@@ -84,6 +88,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                 group_label="Delete Versions",
                 label="Selected versions",
                 order=35,
+                tooltip="Delete the selected versions.",
                 data={
                     "version_ids": [version["id"] for version in versions],
                     "action": "delete-selected-version",
@@ -95,6 +100,10 @@ class DeleteOldVersions(LoaderActionPlugin):
             output.append(LoaderActionItem(
                 label="Calculate Versions size",
                 order=34,
+                tooltip=(
+                    "Calculate the total size of all versions"
+                    " of the selected products."
+                ),
                 data={
                     "product_ids": list(product_ids),
                     "action": "calculate-versions-size",

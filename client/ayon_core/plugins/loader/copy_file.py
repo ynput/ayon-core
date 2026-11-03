@@ -57,6 +57,10 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                     LoaderActionItem(
                         label=repre_name,
                         order=32,
+                        tooltip=(
+                            f"Copy the file path of the '{repre_name}'"
+                            " representation to the clipboard."
+                        ),
                         group_label="Copy file path",
                         data={
                             "representation_id": repre_id,
@@ -73,6 +77,10 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                     LoaderActionItem(
                         label=repre_name,
                         order=33,
+                        tooltip=(
+                            f"Copy the file of the '{repre_name}'"
+                            " representation to the clipboard."
+                        ),
                         group_label="Copy file",
                         data={
                             "representation_id": repre_id,

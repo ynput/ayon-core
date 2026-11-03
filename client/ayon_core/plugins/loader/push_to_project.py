@@ -17,6 +17,9 @@ class PushToProject(LoaderSimpleActionPlugin):
     label = "Push to project"
     order = 35
     icon = MaterialSymbolsIcon("send", color="#d8d8d8")
+    tooltip = (
+        "Push the selected versions to another project."
+    )
 
     def is_compatible(
         self, selection: LoaderActionSelection
