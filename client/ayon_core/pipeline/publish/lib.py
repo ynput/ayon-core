@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 
 TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 def get_template_name_profiles(
