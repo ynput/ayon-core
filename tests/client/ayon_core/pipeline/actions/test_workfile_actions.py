@@ -533,9 +533,9 @@ def test_duplicate_workfile(tmp_path):
         filepath="/publish/file_v001.ma",
     )) is None
 
-    # The tool is asked to duplicate the workfile
+    # The tool is asked to show the duplicate dialog
     result = context.execute_action(identifier, selection, None, {})
-    assert result.duplicate_workfile == "/work/file_v001.ma"
+    assert result.show_duplicate_dialog == "/work/file_v001.ma"
 
 
 def test_result_json_conversion():
@@ -543,7 +543,7 @@ def test_result_json_conversion():
         message="Message",
         success=False,
         refresh=True,
-        duplicate_workfile="/work/file_v001.ma",
+        show_duplicate_dialog="/work/file_v001.ma",
         redirect=WorkfileActionRedirect(
             folder_id="folder-1",
             task_name="comp",

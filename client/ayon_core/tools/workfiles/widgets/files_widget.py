@@ -238,10 +238,11 @@ class FilesWidget(AYContainer):
         #   under mouse
         self._on_workarea_open_clicked()
 
-    def duplicate_workfile(self, filepath):
-        """Duplicate a workfile to selected context.
+    def show_duplicate_dialog(self, filepath):
+        """Show dialog to duplicate a workfile to selected context.
 
-        User is asked for version and comment of the new workfile.
+        User is asked for version and comment of the new workfile, the
+            workfile is duplicated when the dialog is accepted.
 
         Args:
             filepath (str): Path to the workfile to duplicate.

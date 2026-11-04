@@ -481,8 +481,10 @@ class WorkfilesToolWindow(AYContainer):
             self.close()
             return
 
-        if result.duplicate_workfile:
-            self._files_widget.duplicate_workfile(result.duplicate_workfile)
+        if result.show_duplicate_dialog:
+            self._files_widget.show_duplicate_dialog(
+                result.show_duplicate_dialog
+            )
 
         redirect = result.redirect
         # Redirect does refresh too, so files created by the action can be

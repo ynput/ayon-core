@@ -42,5 +42,7 @@ class DuplicateWorkfileAction(WorkfileSimpleActionPlugin):
         selection: WorkfileActionSelection,
         form_values: dict[str, Any],
     ) -> WorkfileActionResult | None:
-        # Let the tool duplicate the workfile as with any other workfile
-        return WorkfileActionResult(duplicate_workfile=selection.filepath)
+        # The tool asks for the version and comment of the new workfile
+        return WorkfileActionResult(
+            show_duplicate_dialog=selection.filepath
+        )

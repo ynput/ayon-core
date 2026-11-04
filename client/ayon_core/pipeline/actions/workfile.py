@@ -29,7 +29,7 @@ Using 'WorkfileActionResult' as the output of 'execute_action' can trigger
     to show a message in UI, to show an additional form ('ActionForm') which
     would retrigger the action with the values from the form on submitting,
     to refresh the tool, to redirect the tool to a different context, to
-    let the tool duplicate a workfile or to close the tool.
+    let the tool show the duplicate dialog or to close the tool.
 
     The result has helper method 'set_redirect' to define the context
     by entities.
@@ -516,9 +516,10 @@ class WorkfileActionResult:
         refresh (bool): The tool should refresh its content.
         redirect (WorkfileActionRedirect | None): Context to which should
             be the tool redirected.
-        duplicate_workfile (str | None): Path to a workfile that should
-            be duplicated by the tool. The tool does ask a user for
-            the version and comment of the new workfile.
+        show_duplicate_dialog (str | None): Path to a workfile for which
+            the tool should show the duplicate dialog, the same as for
+            the 'Duplicate' of a workfile. A user picks the version and
+            comment of the new workfile in the dialog.
         close_tool (bool): The tool should be closed, e.g. because
             a workfile was opened by the action itself.
 
@@ -529,7 +530,7 @@ class WorkfileActionResult:
     form_values: dict[str, Any] | None = None
     refresh: bool = False
     redirect: WorkfileActionRedirect | None = None
-    duplicate_workfile: str | None = None
+    show_duplicate_dialog: str | None = None
     close_tool: bool = False
 
     def to_json_data(self) -> dict[str, Any]:
@@ -546,7 +547,7 @@ class WorkfileActionResult:
             "form_values": self.form_values,
             "refresh": self.refresh,
             "redirect": redirect,
-            "duplicate_workfile": self.duplicate_workfile,
+            "show_duplicate_dialog": self.show_duplicate_dialog,
             "close_tool": self.close_tool,
         }
 
