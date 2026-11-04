@@ -39,8 +39,36 @@ def test_quote_shell_command_keeps_quoted_argument_together():
     command = '/bin/tool -i "/tmp/a (2)/b&w.exr" -y'
 
     assert shlex.split(_quote_shell_command(command)) == [
-        "/bin/tool", "-i", "/tmp/a (2)/b&w.exr", "-y"
+        "/bin/tool",
+        "-i",
+        "/tmp/a (2)/b&w.exr",
+        "-y",
     ]
+
+
+@posix_only
+def test_quote_shell_command_keeps_filter_graph_and_apostrophe():
+    command = (
+        '/bin/ffmpeg -i "/tmp/it\'s (2).%04d.exr" '
+        '-filter:v "scale=1920x1080:flags=lanczos,pad=1920:1080:#000000" -y'
+    )
+
+    assert shlex.split(_quote_shell_command(command)) == [
+        "/bin/ffmpeg",
+        "-i",
+        "/tmp/it's (2).%04d.exr",
+        "-filter:v",
+        "scale=1920x1080:flags=lanczos,pad=1920:1080:#000000",
+        "-y",
+    ]
+
+
+@posix_only
+def test_run_subprocess_list_arguments_are_untouched(tmp_path):
+    path = tmp_path / "a (2)&b.txt"
+    path.write_text("content")
+
+    assert run_subprocess(["cat", str(path)]) == "content"
 
 
 def test_quote_shell_command_unbalanced_quote_is_unchanged():

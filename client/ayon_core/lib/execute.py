@@ -103,6 +103,13 @@ def run_subprocess(*args, **kwargs):
     On windows are 'creationflags' filled with flags that should cause ignore
     creation of new window.
 
+    With `shell=True` and a single string command on Linux and macOS, every
+    argument of the string is quoted before it runs (quotes already in the
+    string are honoured). Special characters in paths are safe, but shell
+    syntax like `~`, globs, pipes or redirections is passed on as literal
+    text. A string that cannot be split (e.g. unbalanced quotes) is passed
+    on unchanged.
+
     Args:
         *args: Variable length argument list passed to Popen.
         **kwargs : Arbitrary keyword arguments passed to Popen. Is possible to
