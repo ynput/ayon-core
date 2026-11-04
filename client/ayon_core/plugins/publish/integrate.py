@@ -91,6 +91,32 @@ def get_frame_padded(frame, padding):
     return "{frame:0{padding}d}".format(padding=padding, frame=frame)
 
 
+def get_colorspace_template_value(colorspace_data):
+    """Get the `colorspace` template value from representation data.
+
+    Only a real colorspace name is used. Display and view are not a
+    colorspace, so they are never turned into one.
+
+    Args:
+        colorspace_data (Optional[dict[str, Any]]): Representation
+            `colorspaceData`.
+
+    Returns:
+        Optional[str]: Colorspace name with spaces replaced by
+            underscores, or None when there is no colorspace.
+
+    """
+    if not colorspace_data:
+        return None
+    colorspace = colorspace_data.get("colorspace")
+    if not colorspace:
+        return None
+    # replace spaces with underscores
+    # pipeline.colorspace.parse_colorspace_from_filepath
+    # is checking it with underscores too
+    return colorspace.replace(" ", "_")
+
+
 class IntegrateAsset(pyblish.api.InstancePlugin):
     """Register publish in the database and transfer files to destinations.
 
@@ -621,18 +647,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         template_data["version"] = version_entity["version"]
 
         # add template data for colorspaceData
-        if repre.get("colorspaceData"):
-            colorspace = repre["colorspaceData"].get("colorspace")
-            display = repre["colorspaceData"].get("display")
-            view = repre["colorspaceData"].get("view")
-            if not colorspace and (display and view):
-                colorspace = f"{display}_{view}"
-            elif not colorspace and not display and view:
-                colorspace = view
-            # replace spaces with underscores
-            # pipeline.colorspace.parse_colorspace_from_filepath
-            # is checking it with underscores too
-            colorspace = colorspace.replace(" ", "_")
+        colorspace = get_colorspace_template_value(
+            repre.get("colorspaceData")
+        )
+        if colorspace:
             template_data["colorspace"] = colorspace
 
         stagingdir = repre.get("stagingDir")
