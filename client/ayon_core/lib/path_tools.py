@@ -1,12 +1,13 @@
 import os
 import re
-import logging
 import platform
 import subprocess
 
 import clique
 
-log = logging.getLogger(__name__)
+from .log import Logger
+
+log = Logger.get_logger(__name__)
 
 
 def format_file_size(file_size, suffix=None):
