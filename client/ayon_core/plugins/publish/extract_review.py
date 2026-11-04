@@ -69,7 +69,7 @@ def is_sequence_output(
     # Input is sequence or video
     return (
         isinstance(repre_files, (list, tuple))
-        input_ext.lower() not in image_exts
+        and input_ext.lower() not in image_exts
     )
 
 
