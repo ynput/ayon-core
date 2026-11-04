@@ -5,12 +5,35 @@ import subprocess
 import platform
 import json
 import tempfile
+import shlex
 
 from .log import Logger
 from .vendor_bin_utils import find_executable
 
 # MSDN process creation flag (Windows only)
 CREATE_NO_WINDOW = 0x08000000
+
+
+def _quote_shell_command(command: str) -> str:
+    """Quote every argument of a shell command string for a POSIX shell.
+
+    The command is split with the quotes it already contains (so a path
+    wrapped in double quotes stays one argument) and joined again with each
+    argument quoted. Special characters like `&`, `(` or `$` in a path then
+    reach the program unchanged, whether or not the command quoted them.
+
+    Args:
+        command (str): Command with its arguments as one string.
+
+    Returns:
+        str: Command that is safe to pass to the shell. The original string
+            if it cannot be split (e.g. unbalanced quotes).
+
+    """
+    try:
+        return shlex.join(shlex.split(command))
+    except ValueError:
+        return command
 
 
 def execute(args, silent=False, cwd=None, env=None, shell=None):
@@ -115,20 +138,9 @@ def run_subprocess(*args, **kwargs):
         and len(args) == 1
         and isinstance(args[0], str)
     ):
-        # Escape parentheses for bash
+        # Quote special characters for POSIX shells
         if platform.system().lower() != "windows":
-            new_arg = (
-                args[0]
-                .replace("&", "\\&")
-                .replace(";", "\\;")
-                .replace("|", "\\|")
-                .replace("$", "\\$")
-                .replace(">", "\\>")
-                .replace("<", "\\<")
-                .replace("(", "\\(")
-                .replace(")", "\\)")
-            )
-            args = (new_arg,)
+            args = (_quote_shell_command(args[0]),)
         # Escape & on Windows in shell with `cmd.exe` using ^&
         elif (
             platform.system().lower() == "windows"
