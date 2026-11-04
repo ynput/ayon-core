@@ -14,6 +14,7 @@ from ayon_core.tools.workfile_template_build.abstract import (
     PLACEHOLDER_UPDATED_TOPIC,
 )
 from ayon_core.tools.workfile_template_build.control import (
+    MAX_BUILD_HISTORY,
     WorkfileTemplateBuilderController,
 )
 
@@ -330,6 +331,58 @@ class TestTemplateBuild:
 
         results = controller.get_last_build_results()
         assert "run boom" in results[0][2]
+
+    def test_build_steps_are_recorded(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+
+        controller.run_template_build()
+
+        steps = controller.get_build_steps()
+        assert len(steps) == 1
+        step = steps[0]
+        assert step.scene_identifier == "node_1"
+        assert step.label == "one"
+        assert step.status == "succeeded"
+        assert step.error == ""
+        assert step.duration >= 0
+
+    def test_failed_build_step_is_recorded(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+
+        _Plugin.fail_on = "run"
+        try:
+            controller.run_template_build()
+        finally:
+            _Plugin.fail_on = None
+
+        step = controller.get_build_steps()[0]
+        assert step.status == "failed"
+        assert "run boom" in step.error
+
+    def test_build_steps_are_copies(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+        controller.run_template_build()
+
+        steps = controller.get_build_steps()
+        steps[0].status = "changed"
+
+        assert controller.get_build_steps()[0].status == "succeeded"
+
+    def test_build_history_is_limited(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+        for _ in range(MAX_BUILD_HISTORY + 2):
+            controller.run_template_build()
+
+        history = controller.get_build_history()
+        assert len(history) == MAX_BUILD_HISTORY
+        assert history[-1][0].scene_identifier == "node_1"
+
+    def test_build_log_is_available(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+
+        controller.run_template_build()
+
+        assert isinstance(controller.get_build_log(), list)
 
 
 class TestPlaceholderData:

@@ -13,6 +13,7 @@ about its progress.
 from __future__ import annotations
 import os
 import re
+import time
 import collections
 import copy
 from abc import ABC, abstractmethod
@@ -929,6 +930,15 @@ class AbstractTemplateBuilder(ABC):
 
         for placeholder in placeholders:
             plugin = placeholder.plugin
+            self.emit_event(
+                topic="template.placeholder_started",
+                data={
+                    "scene_identifier": placeholder.scene_identifier,
+                    "order": placeholder.order,
+                },
+                source="builder",
+            )
+            start = time.perf_counter()
             try:
                 plugin.repopulate_placeholder(placeholder)
             except Exception as exc:
@@ -939,7 +949,18 @@ class AbstractTemplateBuilder(ABC):
                     exc_info=True,
                 )
                 placeholder.set_failed(exc)
-            placeholder.set_finished()
+            finally:
+                placeholder.set_finished()
+                self.emit_event(
+                    topic="template.placeholder_finished",
+                    data={
+                        "scene_identifier": placeholder.scene_identifier,
+                        "order": placeholder.order,
+                        "duration": time.perf_counter() - start,
+                        "error": "\n".join(placeholder.get_errors()),
+                    },
+                    source="builder",
+                )
 
         self.clear_shared_populate_data()
         return placeholders

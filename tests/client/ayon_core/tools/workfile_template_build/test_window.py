@@ -16,6 +16,9 @@ from ayon_core.tools.workfile_template_build import (
     WorkfileTemplateBuilderController,
     WorkfileTemplateBuilderWindow,
 )
+from ayon_core.tools.workfile_template_build.ui.build_report import (
+    BuildReportDialog,
+)
 
 HINT_PAGE = 0
 EDITOR_PAGE = 1
@@ -261,26 +264,6 @@ class TestEdit:
         assert widget._proxy_model.rowCount() == 0
 
 
-class TestRun:
-    def test_run_button_is_disabled_without_selection(self, window):
-        assert not window._placeholders_widget._run_btn.isEnabled()
-
-    def test_run_button_is_enabled_for_supported_placeholder(self, window):
-        window._on_create_request()
-        window._on_create_confirmed("fake", {"name": "one"})
-
-        assert window._placeholders_widget._run_btn.isEnabled()
-
-    def test_run_does_not_ask_for_confirmation(self, window, builder):
-        window._on_create_request()
-        window._on_create_confirmed("fake", {"name": "one"})
-        window._select_silently("node_1")
-
-        window._on_run_request()
-
-        assert builder.runs == ["node_1"]
-
-
 class TestEditorActions:
     def test_actions_are_hidden_in_create_mode(self, window):
         window._on_create_request()
@@ -317,47 +300,41 @@ class TestEditorActions:
         assert window._pages_widget.currentIndex() == HINT_PAGE
 
 
-class TestBuild:
-    def test_build_button_is_disabled_without_placeholders(self, window):
-        assert not window._build_btn.isEnabled()
+class TestBuildReport:
+    """Build report of the last controller build.
 
-    def test_build_asks_for_confirmation(self, window, builder, answers):
+    The tool no longer has a build button (the build is triggered from the
+    host menu), so the dialog is tested against the controller directly.
+
+    """
+
+    def test_build_report_lists_steps(self, window):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
-        builder.runs.clear()
+        window._controller.run_template_build()
 
-        answers.queue.append(QtWidgets.QMessageBox.No)
-        window._on_run_template_build_request()
-        assert builder.runs == []
+        dialog = BuildReportDialog(window._controller, parent=window)
+        try:
+            assert dialog._model.rowCount() == 1
+            assert dialog._model.item(0, 1).text() == "one"
+            assert dialog._model.item(0, 2).text() == "OK"
+            assert "1 placeholder(s) processed" in dialog.get_report_text()
+        finally:
+            dialog.close()
 
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
-        window._on_run_template_build_request()
-        assert builder.runs == ["node_1"]
-
-    def test_build_reports_processed_placeholders(self, window, answers):
-        window._on_create_request()
-        window._on_create_confirmed("fake", {"name": "one"})
-
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
-        window._on_run_template_build_request()
-
-        label = window._build_status_label
-        assert label.isVisible()
-        assert label.text() == "Build: 1 placeholder(s) processed"
-        assert "[OK]" in label.toolTip()
-
-    def test_build_reports_failed_placeholder(self, window, answers):
+    def test_build_report_shows_failure(self, window):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
 
         _Plugin.fail_on = "run"
         try:
-            answers.queue.append(QtWidgets.QMessageBox.Yes)
-            window._on_run_template_build_request()
+            window._controller.run_template_build()
         finally:
             _Plugin.fail_on = None
 
-        label = window._build_status_label
-        assert label.isVisible()
-        assert "1 of 1 failed" in label.text()
-        assert "run boom" in label.toolTip()
+        dialog = BuildReportDialog(window._controller, parent=window)
+        try:
+            assert dialog._model.item(0, 2).text() == "FAILED"
+            assert "run boom" in dialog.get_report_text()
+        finally:
+            dialog.close()

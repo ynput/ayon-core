@@ -6,6 +6,7 @@ data that the UI can consume.
 
 from __future__ import annotations
 
+import logging
 import os
 import traceback
 from typing import Any, Callable, Optional
@@ -27,9 +28,38 @@ from .abstract import (
     PLACEHOLDER_DELETED_TOPIC,
     AbstractTemplateBuilderController,
     ActionResult,
+    BuildStep,
     PlaceholderItemInfo,
     PlaceholderPluginItem,
 )
+
+# Maximum number of log lines kept from a single build
+MAX_BUILD_LOG_LINES = 2000
+
+# Maximum number of builds kept in the history
+MAX_BUILD_HISTORY = 5
+
+
+class _BuildLogHandler(logging.Handler):
+    """Collect log records emitted during a template build.
+
+    Args:
+        lines (list[str]): List the formatted records are appended to.
+
+    """
+
+    def __init__(self, lines: list[str]):
+        super().__init__()
+        self._lines = lines
+        self.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+
+    def emit(self, record):
+        try:
+            message = self.format(record)
+        except Exception:
+            return
+        self._lines.append(message)
+        del self._lines[:-MAX_BUILD_LOG_LINES]
 
 
 class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
@@ -52,7 +82,18 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self._placeholders_by_id = None
 
         # Results of the last template build
-        self._last_build_results: list[tuple[str, str, str]] = []
+        self._build_steps: list[BuildStep] = []
+        self._build_log: list[str] = []
+        self._build_history: list[list[BuildStep]] = []
+        self._build_durations: dict[str, float] = {}
+
+        if builder is not None:
+            # Builder events are emitted synchronously during the build and
+            #   are used to measure duration of each placeholder.
+            builder.add_event_callback(
+                "template.placeholder_finished",
+                self._on_placeholder_finished,
+            )
 
     # --- Events -------------------------------------------------------
     def register_event_callback(self, topic: str, callback: Callable) -> None:
@@ -279,26 +320,34 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                 error_title="Template builder is not available.",
             )
 
+        self._build_steps = []
+        self._build_log = []
+        self._build_durations = {}
+
+        log_handler = _BuildLogHandler(self._build_log)
+        root_logger = Logger.get_root_logger()
+        root_logger.addHandler(log_handler)
         try:
             # Re-populates the placeholders that are already in the scene.
             #   The template file is not imported again, so this can be used
             #   to test the template that is currently opened.
             placeholders = self._builder.rebuild_template() or []
         except Exception:
-            self._last_build_results = []
             return self._action_failed("Failed to run template build")
+        finally:
+            root_logger.removeHandler(log_handler)
 
-        self._last_build_results = [
-            self._create_build_result(placeholder)
+        self._build_steps = [
+            self._create_build_step(placeholder)
             for placeholder in placeholders
         ]
+        if self._build_steps:
+            self._store_build_history()
 
         # The build can change or remove placeholders in the scene.
         self._invalidate_placeholders()
 
-        failed = [
-            result for result in self._last_build_results if result[2]
-        ]
+        failed = [step for step in self._build_steps if step.error]
         if failed:
             return ActionResult(
                 success=False,
@@ -306,11 +355,38 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                     len(failed)
                 ),
                 error_detail="\n\n".join(
-                    "{} ({}):\n{}".format(label, identifier, error)
-                    for identifier, label, error in failed
+                    "{} ({}):\n{}".format(step.label, step.scene_identifier,
+                                          step.error)
+                    for step in failed
                 ),
             )
         return ActionResult(success=True)
+
+    def get_build_steps(self) -> list[BuildStep]:
+        """Steps of the last template build.
+
+        Returns:
+            list[BuildStep]: Processed placeholders with status, duration and
+                error.
+
+        """
+        return [
+            BuildStep.from_data(step.to_data()) for step in self._build_steps
+        ]
+
+    def get_build_log(self) -> list[str]:
+        """Log lines captured during the last template build."""
+        return list(self._build_log)
+
+    def get_build_history(self) -> list[list[BuildStep]]:
+        """Last build results, oldest first, limited to 5 builds."""
+        return [
+            [
+                BuildStep.from_data(step.to_data())
+                for step in build_steps
+            ]
+            for build_steps in self._build_history
+        ]
 
     def get_last_build_results(self) -> list[tuple[str, str, str]]:
         """Results of the last template build.
@@ -321,28 +397,44 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                 the placeholder was processed successfully.
 
         """
-        return list(self._last_build_results)
+        return [
+            (step.scene_identifier, step.label, step.error)
+            for step in self._build_steps
+        ]
 
-    @staticmethod
-    def _create_build_result(placeholder) -> tuple[str, str, str]:
-        """Create a build result entry for a placeholder.
+    def _on_placeholder_finished(self, event):
+        """Store duration of a finished placeholder from builder event."""
+        data = event.data or {}
+        scene_identifier = data.get("scene_identifier")
+        if scene_identifier is None:
+            return
+        self._build_durations[scene_identifier] = data.get("duration", 0.0)
 
-        Args:
-            placeholder (PlaceholderItem): Processed placeholder.
-
-        Returns:
-            tuple[str, str, str]: Scene identifier, label and error message.
-
-        """
+    def _create_build_step(self, placeholder) -> BuildStep:
+        """Create a build step for a processed placeholder."""
         try:
             label = placeholder.plugin.get_placeholder_label(placeholder)
         except Exception:
             label = placeholder.scene_identifier
-        return (
-            placeholder.scene_identifier,
-            label or placeholder.scene_identifier,
-            "\n".join(placeholder.get_errors()),
+
+        errors = placeholder.get_errors()
+        return BuildStep(
+            scene_identifier=placeholder.scene_identifier,
+            label=label or placeholder.scene_identifier,
+            order=placeholder.order,
+            status="failed" if errors else "succeeded",
+            duration=self._build_durations.get(
+                placeholder.scene_identifier, 0.0
+            ),
+            error="\n".join(errors),
         )
+
+    def _store_build_history(self) -> None:
+        """Keep results of the last few builds."""
+        self._build_history.append(
+            [BuildStep.from_data(step.to_data()) for step in self._build_steps]
+        )
+        del self._build_history[:-MAX_BUILD_HISTORY]
 
     # --- Implementation -----------------------------------------------
     def _get_plugins(self) -> dict[str, PlaceholderPlugin]:

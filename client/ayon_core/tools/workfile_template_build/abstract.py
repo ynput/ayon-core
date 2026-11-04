@@ -26,6 +26,43 @@ PLACEHOLDER_DELETED_TOPIC = "placeholder.deleted"
 
 
 @dataclass
+class BuildStep:
+    """Step of a template build for a single placeholder.
+
+    Attributes:
+        scene_identifier (str): Scene identifier of the placeholder.
+        label (str): Label of the placeholder.
+        order (int): Order in which the placeholder was processed.
+        status (str): Status of the step, one of 'pending', 'running',
+            'succeeded' or 'failed'.
+        duration (float): Duration of the step in seconds.
+        error (str): Error message when the step failed.
+
+    """
+
+    scene_identifier: str
+    label: str
+    order: int
+    status: str = "pending"     # pending | running | succeeded | failed
+    duration: float = 0.0
+    error: str = ""
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "scene_identifier": self.scene_identifier,
+            "label": self.label,
+            "order": self.order,
+            "status": self.status,
+            "duration": self.duration,
+            "error": self.error,
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> BuildStep:
+        return cls(**data)
+
+
+@dataclass
 class PlaceholderPluginItem:
     """Placeholder plugin available in the current host.
 
