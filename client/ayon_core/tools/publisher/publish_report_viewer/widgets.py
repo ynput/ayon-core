@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import bisect
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 import logging
 from math import ceil
+import time
 import typing
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -245,13 +247,18 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         self._widgets_by_filepath[filepath] = (widget, index)
 
 
-class ZoomPlainText(QtWidgets.QTextEdit):
+class ZoomPlainText(QtWidgets.QPlainTextEdit):
+    """Read-only text output which can be zoomed with Ctrl + mouse wheel.
+
+    Uses 'QPlainTextEdit' because 'QTextEdit' cannot lay out documents
+        taller than ~8.4 million pixels (Qt's 'QFIXED_MAX'), so the end
+        of very long logs would not be rendered at all.
+    """
     min_point_size = 1.0
     max_point_size = 200.0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setAcceptRichText(False)
 
         anim_timer = QtCore.QTimer()
         anim_timer.setInterval(20)
@@ -390,6 +397,68 @@ def _format_timestamp(created: float) -> str:
     return datetime.fromtimestamp(created).strftime("%Y/%m/%d %H:%M:%S ")
 
 
+@dataclass
+class _LogEntry:
+    """Log message in the logs document.
+
+    Attributes:
+        position (int): Document position of the start of the message.
+        message (str): Log message.
+        level (str): Log level of the message.
+        source (str): Plugin and instance which logged the message.
+        mapped (bool): Offsets in the message have to be mapped to
+            document positions, as document counts some characters
+            differently (e.g. characters outside of BMP or CRLF).
+
+    """
+    position: int
+    message: str
+    level: str
+    source: str
+    mapped: bool
+
+    def get_position(self, offset: int) -> int:
+        """Document position of an offset in the message."""
+        if not self.mapped:
+            return self.position + offset
+        text = self.message[:offset].replace("\r\n", "\n")
+        return self.position + len(text.encode("utf-16-le")) // 2
+
+    def iter_matches(self, search_text: str) -> typing.Iterator[_LogMatch]:
+        """Find matches of the search text in the message.
+
+        Args:
+            search_text (str): Already casefolded text to search for.
+
+        """
+        message = self.message
+        start = 0
+        for match_start, match_end in _iter_search_matches(
+            message, search_text
+        ):
+            # Matches may share a character expanded by case folding
+            match_start = max(match_start, start)
+            if match_start >= match_end:
+                continue
+            start = match_end
+            # Text around the match on the same line
+            before = message[
+                max(0, match_start - MATCH_CONTEXT_LENGTH):match_start
+            ].rpartition("\n")[2]
+            after = message[
+                match_end:match_end + MATCH_CONTEXT_LENGTH
+            ].partition("\n")[0]
+            yield _LogMatch(
+                self.get_position(match_start),
+                self.get_position(match_end),
+                self.level,
+                before,
+                message[match_start:match_end],
+                after,
+                self.source,
+            )
+
+
 class _LogFiller:
     _color_mapping = (
         ("TRACEBACK", QtGui.QColor(255, 74, 74)),
@@ -404,16 +473,15 @@ class _LogFiller:
 
     def __init__(
         self,
-        output_widget: QtWidgets.QTextEdit,
+        output_widget: QtWidgets.QPlainTextEdit,
         logs: list[tuple[str, ReportLog]],
         show_timestamp: bool,
-        search_text: str = "",
     ) -> None:
         self.output_widget = output_widget
         self.show_timestamp = show_timestamp
         self.logs = logs
-        self.search_text = search_text
-        self.matches: list[_LogMatch] = []
+        # Messages with their positions in the document for searching
+        self.entries: list[_LogEntry] = []
         self.first_line = True
         self.cursor = None
         # Do not use the widget's current char format, it is the format
@@ -443,52 +511,27 @@ class _LogFiller:
             self.cursor.insertText(
                 f"{timestamp}{log_level}: ", fmt
             )
-        if not self.search_text:
-            self.cursor.insertText(message, self.default_fmt)
-            return
+        position = self.cursor.position()
+        self.cursor.insertText(message, self.default_fmt)
+        self.entries.append(_LogEntry(
+            position,
+            message,
+            log_level,
+            source,
+            self.cursor.position() - position != len(message),
+        ))
 
-        start = 0
-        for match_start, match_end in _iter_search_matches(
-            message, self.search_text
-        ):
-            # Matches may share a character expanded by case folding
-            match_start = max(match_start, start)
-            if match_start >= match_end:
-                continue
-            self.cursor.insertText(
-                message[start:match_start], self.default_fmt
-            )
-            match_text = message[match_start:match_end]
-            highlight_fmt = QtGui.QTextCharFormat(self.default_fmt)
-            highlight_fmt.setBackground(MATCH_BG_COLOR)
-            highlight_fmt.setForeground(MATCH_FG_COLOR)
-            position = self.cursor.position()
-            self.cursor.insertText(match_text, highlight_fmt)
-            start = match_end
-            # Text around the match on the same line
-            before = message[
-                max(0, match_start - MATCH_CONTEXT_LENGTH):match_start
-            ].rpartition("\n")[2]
-            after = message[
-                start:start + MATCH_CONTEXT_LENGTH
-            ].partition("\n")[0]
-            self.matches.append(_LogMatch(
-                position,
-                self.cursor.position(),
-                log_level,
-                before,
-                match_text,
-                after,
-                source,
-            ))
+    def iter_fill(self) -> typing.Iterator[None]:
+        """Fill the output widget with the logs.
 
-        self.cursor.insertText(message[start:], self.default_fmt)
+        The current logs stay visible until the new document is filled.
+            Yields after each log so the filling can be split into steps
+            and stopped.
 
-    def fill(self) -> None:
-        self.output_widget.clear()
+        """
         # Create copy of a document to avoid live updates in UI
         src_doc = self.output_widget.document()
-        document = QtGui.QTextDocument()
+        document = QtGui.QTextDocument(self.output_widget)
         document.setDefaultStyleSheet(src_doc.defaultStyleSheet())
         document.setDefaultFont(src_doc.defaultFont())
         document.setDefaultTextOption(
@@ -516,32 +559,99 @@ class _LogFiller:
 
             else:
                 print(log.type)
+            yield
 
-        self.cursor.select(QtGui.QTextCursor.Document)
-        fmt = QtGui.QTextBlockFormat()
-        fmt.setLeftMargin(20)
-        fmt.setTextIndent(-20)
-        self.cursor.mergeBlockFormat(fmt)
+        # Plain text edit requires the plain text layout which, unlike the
+        #   rich text layout, can handle documents of any height. Set it
+        #   after filling, otherwise each insert would lay out its block.
+        document.setDocumentLayout(
+            QtWidgets.QPlainTextDocumentLayout(document)
+        )
+        # Delete the previous logs, the widget deletes only the document
+        #   it created itself
+        old_document = self.output_widget.document()
+        if old_document.parent() is not self.output_widget:
+            old_document = None
         self.output_widget.setDocument(document)
+        if old_document is not None:
+            old_document.deleteLater()
 
 
 class _LogMatchesModel(QtCore.QAbstractListModel):
-    """Search matches of the logs, the match is in 'UserRole' data."""
+    """Search matches of the logs, the match is in 'UserRole' data.
+
+    While the search is running the last row shows that, it has no match.
+    """
 
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._matches: list[_LogMatch] = []
+        # Start positions of the matches for searching by position
+        self._match_starts: list[int] = []
+        self._searching = False
+
+    def get_matches(self) -> list[_LogMatch]:
+        return self._matches
+
+    def get_match_count(self) -> int:
+        return len(self._matches)
+
+    def get_matches_in_range(
+        self, start: int, end: int, limit: int
+    ) -> list[_LogMatch]:
+        """Matches starting in the document range, sorted by position."""
+        first = bisect.bisect_left(self._match_starts, start)
+        last = bisect.bisect_right(self._match_starts, end)
+        return self._matches[first:min(last, first + limit)]
 
     def set_matches(self, matches: list[_LogMatch]) -> None:
         self.beginResetModel()
-        self._matches = matches
+        self._matches = list(matches)
+        self._match_starts = [match.start for match in self._matches]
         self.endResetModel()
 
+    def add_matches(self, matches: list[_LogMatch]) -> None:
+        """Add matches found after the current ones."""
+        if not matches:
+            return
+        count = len(self._matches)
+        self.beginInsertRows(
+            QtCore.QModelIndex(), count, count + len(matches) - 1
+        )
+        self._matches.extend(matches)
+        self._match_starts.extend(match.start for match in matches)
+        self.endInsertRows()
+
+    def is_searching(self) -> bool:
+        return self._searching
+
+    def set_searching(self, searching: bool) -> None:
+        if self._searching is searching:
+            return
+        row = len(self._matches)
+        if searching:
+            self.beginInsertRows(QtCore.QModelIndex(), row, row)
+            self._searching = True
+            self.endInsertRows()
+        else:
+            self.beginRemoveRows(QtCore.QModelIndex(), row, row)
+            self._searching = False
+            self.endRemoveRows()
+
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
-        return 0 if parent.isValid() else len(self._matches)
+        if parent.isValid():
+            return 0
+        return len(self._matches) + int(self._searching)
+
+    def flags(self, index):
+        if index.row() >= len(self._matches):
+            return QtCore.Qt.NoItemFlags
+        return super().flags(index)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if role == QtCore.Qt.UserRole and index.isValid():
+        if not index.isValid() or index.row() >= len(self._matches):
+            return None
+        if role == QtCore.Qt.UserRole:
             return self._matches[index.row()]
         return None
 
@@ -566,7 +676,7 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
             painter,
             option.widget,
         )
-        match: _LogMatch = index.data(QtCore.Qt.UserRole)
+        match: _LogMatch | None = index.data(QtCore.Qt.UserRole)
         metrics = option.fontMetrics
         rect = option.rect.adjusted(8, 0, -8, 0)
         text_color = option.palette.color(QtGui.QPalette.Text)
@@ -575,6 +685,14 @@ class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
 
         painter.save()
         painter.setFont(option.font)
+        # Row after the matches while the search is running
+        if match is None:
+            painter.setPen(dimmed_color)
+            painter.drawText(
+                rect, QtCore.Qt.AlignCenter, "Searching..."
+            )
+            painter.restore()
+            return
         # Log level on the left in the color it has in the logs
         painter.setPen(self._level_colors.get(match.level, dimmed_color))
         painter.drawText(
@@ -654,6 +772,8 @@ class _LogMatchesView(QtWidgets.QListView):
 class DetailsWidget(QtWidgets.QWidget):
     # Max rows of the search matches list visible without scrolling
     max_visible_matches = 6
+    # Max matches highlighted at once in the visible part of logs
+    max_highlighted_matches = 2000
 
     def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
@@ -772,7 +892,25 @@ class DetailsWidget(QtWidgets.QWidget):
         # Do not refresh the logs on each typed character
         search_timer = QtCore.QTimer(self)
         search_timer.setSingleShot(True)
-        search_timer.setInterval(100)
+        search_timer.setInterval(300)
+
+        # Refresh of logs is done in steps to keep the UI responsive
+        logs_job_timer = QtCore.QTimer(self)
+        logs_job_timer.setSingleShot(True)
+        logs_job_timer.setInterval(0)
+        logs_job_timer.timeout.connect(self._on_logs_job_timer)
+
+        # Only matches in the visible part of logs are highlighted
+        highlight_timer = QtCore.QTimer(self)
+        highlight_timer.setSingleShot(True)
+        highlight_timer.setInterval(0)
+        highlight_timer.timeout.connect(self._update_highlights)
+        # Scrolling to text cursor does not always change the scrollbar
+        output_widget.updateRequest.connect(lambda: highlight_timer.start())
+
+        highlight_fmt = QtGui.QTextCharFormat()
+        highlight_fmt.setBackground(MATCH_BG_COLOR)
+        highlight_fmt.setForeground(MATCH_FG_COLOR)
 
         timestamp_check.stateChanged.connect(self._on_timestamp_check)
         search_field.textChanged.connect(lambda: search_timer.start())
@@ -794,6 +932,16 @@ class DetailsWidget(QtWidgets.QWidget):
 
         self._is_active: bool = True
         self._need_refresh: bool = False
+        self._logs_job_timer = logs_job_timer
+        self._logs_job: typing.Iterator[None] | None = None
+        # Refresh of logs, the search waits for it
+        self._logs_job_is_refresh = False
+        self._highlight_timer = highlight_timer
+        self._highlight_fmt = highlight_fmt
+        # Visible range and matches of the current highlights
+        self._highlight_state: tuple[int, int, int, int] | None = None
+        # Messages in the logs document
+        self._log_entries: list[_LogEntry] = []
 
         self._timestamp_check = timestamp_check
         self._search_field = search_field
@@ -893,10 +1041,14 @@ class DetailsWidget(QtWidgets.QWidget):
         self._output_widget.setFocus(QtCore.Qt.OtherFocusReason)
 
     def _go_to_match(self, step: int) -> None:
-        count = self._matches_model.rowCount()
+        count = self._matches_model.get_match_count()
         if not count:
             return
-        row = (self._matches_view.currentIndex().row() + step) % count
+        row = self._matches_view.currentIndex().row()
+        if 0 <= row < count:
+            row = (row + step) % count
+        else:
+            row = 0 if step > 0 else count - 1
         self._matches_view.setCurrentIndex(self._matches_model.index(row))
 
     def _on_match_changed(self, index: QtCore.QModelIndex) -> None:
@@ -909,11 +1061,51 @@ class DetailsWidget(QtWidgets.QWidget):
         self._output_widget.setTextCursor(cursor)
         self._output_widget.ensureCursorVisible()
 
-    def _set_matches(self, matches: list[_LogMatch]) -> None:
-        self._matches_model.set_matches(matches)
+    def _add_matches(self, matches: list[_LogMatch]) -> None:
+        if not matches:
+            return
+        is_first = not self._matches_model.get_match_count()
+        self._matches_model.add_matches(matches)
         self._update_matches_view()
-        if self._search_mode:
+        if is_first and self._search_mode:
             self._go_to_match(1)
+        self._highlight_timer.start()
+
+    def _update_highlights(self) -> None:
+        """Highlight the search matches in the visible part of logs."""
+        output_widget = self._output_widget
+        match_count = self._matches_model.get_match_count()
+        start = end = 0
+        if match_count:
+            viewport = output_widget.viewport()
+            first_block = output_widget.firstVisibleBlock()
+            last_block = output_widget.cursorForPosition(
+                QtCore.QPoint(viewport.width(), viewport.height())
+            ).block()
+            start = first_block.position()
+            end = last_block.position() + last_block.length()
+
+        # Setting the highlights requests update of the widget again
+        state = (id(output_widget.document()), match_count, start, end)
+        if state == self._highlight_state:
+            return
+        self._highlight_state = state
+
+        selections = []
+        if match_count:
+            matches = self._matches_model.get_matches_in_range(
+                start, end, self.max_highlighted_matches
+            )
+            document = output_widget.document()
+            for match in matches:
+                cursor = QtGui.QTextCursor(document)
+                cursor.setPosition(match.start)
+                cursor.setPosition(match.end, QtGui.QTextCursor.KeepAnchor)
+                selection = QtWidgets.QTextEdit.ExtraSelection()
+                selection.cursor = cursor
+                selection.format = self._highlight_fmt
+                selections.append(selection)
+        output_widget.setExtraSelections(selections)
 
     def _can_show_matches(self) -> bool:
         return bool(
@@ -938,9 +1130,20 @@ class DetailsWidget(QtWidgets.QWidget):
         view.show()
 
     def _on_search_changed(self) -> None:
-        self._search_text = self._search_field.text().strip().casefold()
-        self._need_refresh = True
-        self._update_logs()
+        search_text = self._search_field.text().strip().casefold()
+        if search_text == self._search_text:
+            return
+        self._search_text = search_text
+        # Filter mode shows only the matching logs
+        if not self._search_mode:
+            self._need_refresh = True
+            self._update_logs()
+            return
+
+        # Running refresh of logs searches the new logs when it is done
+        if self._logs_job is not None and self._logs_job_is_refresh:
+            return
+        self._start_logs_job(self._iter_search(), is_refresh=False)
 
     def _on_level_filter_changed(self) -> None:
         self._level_filter = set(self._level_filter_widget.value())
@@ -953,12 +1156,17 @@ class DetailsWidget(QtWidgets.QWidget):
         self._update_logs()
 
     def clear(self) -> None:
+        self._logs_job = None
+        self._log_entries = []
         self._output_widget.setPlainText("")
 
     def set_active(self, is_active: bool) -> None:
         if self._is_active is is_active:
             return
         self._is_active = is_active
+        # Continue the refresh which was paused while inactive
+        if is_active and self._logs_job is not None:
+            self._logs_job_timer.start()
         self._update_logs()
 
     def set_report(self, report: PublishReport | None) -> None:
@@ -985,13 +1193,76 @@ class DetailsWidget(QtWidgets.QWidget):
     def _update_logs(self) -> None:
         if not self._is_active or not self._need_refresh:
             return
+        self._need_refresh = False
+
+        # Matches of the current logs would be misleading
+        self._matches_model.set_matches([])
+        self._matches_model.set_searching(bool(self._search_text))
+        self._update_matches_view()
+        self._update_highlights()
 
         report = self._report_item
         if report is None:
+            self._logs_job = None
+            self._log_entries = []
+            self._matches_model.set_searching(False)
             self._output_widget.setPlainText("")
-            self._set_matches([])
             return
 
+        # Replace the job in progress, it is for outdated filters
+        self._start_logs_job(self._iter_update_logs(report), is_refresh=True)
+
+    def _start_logs_job(
+        self, job: typing.Iterator[None], is_refresh: bool
+    ) -> None:
+        self._logs_job = job
+        self._logs_job_is_refresh = is_refresh
+        self._logs_job_timer.start()
+
+    def _on_logs_job_timer(self) -> None:
+        """Run the job for a short time and continue later."""
+        job = self._logs_job
+        if job is None or not self._is_active:
+            return
+        # Process input events often enough to keep typing smooth
+        end_time = time.perf_counter() + 0.03
+        try:
+            while time.perf_counter() < end_time:
+                next(job)
+        except StopIteration:
+            if self._logs_job is job:
+                self._logs_job = None
+            return
+        self._logs_job_timer.start()
+
+    def _iter_search(self) -> typing.Iterator[None]:
+        """Search the logs, found matches are shown during the search."""
+        search_text = self._search_text
+        self._matches_model.set_matches([])
+        self._matches_model.set_searching(bool(search_text))
+        self._update_matches_view()
+        self._update_highlights()
+        if not search_text:
+            return
+
+        found = []
+        last_add_time = time.perf_counter()
+        for entry in self._log_entries:
+            found.extend(entry.iter_matches(search_text))
+            # Do not update the matches list too often
+            if found and time.perf_counter() - last_add_time > 0.1:
+                self._add_matches(found)
+                found = []
+                last_add_time = time.perf_counter()
+            yield
+
+        self._add_matches(found)
+        self._matches_model.set_searching(False)
+        self._update_matches_view()
+
+    def _iter_update_logs(
+        self, report: PublishReport
+    ) -> typing.Iterator[None]:
         # Logs with their source: the plugin and the instance if it has one
         plugin_labels = {
             plugin.id: plugin.label for plugin in report.plugins_info
@@ -1000,25 +1271,25 @@ class DetailsWidget(QtWidgets.QWidget):
             instance_id: f" | {instance.label or 'No label'}"
             for instance_id, instance in report.instances_by_id.items()
         }
-        filtered_logs = [
-            (
-                plugin_labels.get(plugin_id, "")
-                + instance_labels.get(instance_id, ""),
-                log,
-            )
-            for plugin_id, instance_id, log in report.iter_logs(
-                plugin_ids_filter=self._plugin_filter or None,
-                instance_ids_filter=self._instance_filter or None,
-            )
-            if not self._level_filter or self._log_matches_level(log)
-        ]
+        filtered_logs = []
+        for plugin_id, instance_id, log in report.iter_logs(
+            plugin_ids_filter=self._plugin_filter or None,
+            instance_ids_filter=self._instance_filter or None,
+        ):
+            if not self._level_filter or self._log_matches_level(log):
+                filtered_logs.append((
+                    plugin_labels.get(plugin_id, "")
+                    + instance_labels.get(instance_id, ""),
+                    log,
+                ))
+            yield
 
         if self._search_text and not self._search_mode:
-            matching_indices = {
-                index
-                for index, (_, log) in enumerate(filtered_logs)
-                if self._log_matches_search(log)
-            }
+            matching_indices = set()
+            for index, (_, log) in enumerate(filtered_logs):
+                if self._log_matches_search(log):
+                    matching_indices.add(index)
+                yield
             if self._surrounding_line_count:
                 matching_indices = {
                     context_index
@@ -1042,10 +1313,13 @@ class DetailsWidget(QtWidgets.QWidget):
             self._output_widget,
             filtered_logs,
             show_timestamp,
-            self._search_text,
         )
-        filler.fill()
-        self._set_matches(filler.matches)
+        yield from filler.iter_fill()
+        self._log_entries = filler.entries
+        # Search in the new logs, changes of search text do not have to
+        #   wait for the refresh anymore
+        self._logs_job_is_refresh = False
+        yield from self._iter_search()
 
     def _log_matches_search(self, log: ReportLog) -> bool:
         if log.type == "record":
@@ -1054,7 +1328,7 @@ class DetailsWidget(QtWidgets.QWidget):
             searchable_texts = (log.traceback,)
         else:
             return False
-        # Use the same matching as highlighting in '_LogFiller'
+        # Use the same matching as the search in '_LogEntry.iter_matches'
         return any(
             next(_iter_search_matches(text, self._search_text), None)
             for text in searchable_texts
