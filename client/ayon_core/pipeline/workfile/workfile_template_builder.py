@@ -2219,15 +2219,11 @@ class PlaceholderLoadMixin(object):
                 )
 
             except Exception:
+                repre_name = representation["name"]
                 self.log.warning(
-                    "Failed to load representation '{}' of {} from {}"
-                    " with loader {} for placeholder {}".format(
-                        representation["name"],
-                        product_name,
-                        folder_path,
-                        loader_name,
-                        placeholder.scene_identifier,
-                    ),
+                    f"Placeholder {placeholder.scene_identifier}: Failed to"
+                    f" load {folder_path}/{product_name} ('{repre_name}')"
+                    f" with {loader_name}",
                     exc_info=True
                 )
                 self.load_failed(placeholder, representation)
@@ -2239,9 +2235,9 @@ class PlaceholderLoadMixin(object):
         self.post_placeholder_process(placeholder, failed)
 
         if failed:
-            self.log.warning(
+            self.log.info(
                 "Placeholder cleanup skipped due to failed placeholder "
-                "population: {}".format(placeholder.scene_identifier)
+                f"population: {placeholder.scene_identifier}"
             )
             return
         if not placeholder.data.get("keep_placeholder", True):
