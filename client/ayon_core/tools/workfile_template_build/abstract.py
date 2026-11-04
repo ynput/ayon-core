@@ -74,6 +74,8 @@ class PlaceholderItemInfo:
         order (int): Order in which the placeholder is populated.
         icon (Optional[dict[str, Any]]): Icon definition of the plugin.
         data (dict[str, Any]): Placeholder options stored in the scene.
+        delete_supported (bool): Placeholder can be removed from the scene.
+        run_supported (bool): Placeholder can be re-run in the scene.
 
     """
     scene_identifier: str
@@ -83,6 +85,8 @@ class PlaceholderItemInfo:
     order: int = 0
     icon: Optional[dict[str, Any]] = None
     data: dict[str, Any] = field(default_factory=dict)
+    delete_supported: bool = False
+    run_supported: bool = False
 
     def to_data(self) -> dict[str, Any]:
         return {
@@ -93,6 +97,8 @@ class PlaceholderItemInfo:
             "order": self.order,
             "icon": self.icon,
             "data": self.data,
+            "delete_supported": self.delete_supported,
+            "run_supported": self.run_supported,
         }
 
     @classmethod

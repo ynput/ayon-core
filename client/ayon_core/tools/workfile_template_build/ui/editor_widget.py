@@ -28,6 +28,8 @@ from ..abstract import (
 from .placeholders_widget import (
     COLUMN_PADDING,
     CREATE_ICON,
+    DELETE_ICON,
+    RUN_ICON,
     get_placeholder_icon,
 )
 
@@ -184,11 +186,15 @@ class PlaceholderEditorWidget(AYContainer):
         save_requested: Save options (dict) to placeholder scene identifier
             (str).
         cancel_requested: Leave create mode without creating anything.
+        run_requested: Run placeholder with the scene identifier (str).
+        remove_requested: Remove placeholder with the scene identifier (str).
 
     """
     create_requested = QtCore.Signal(str, object)
     save_requested = QtCore.Signal(str, object)
     cancel_requested = QtCore.Signal()
+    run_requested = QtCore.Signal(str)
+    remove_requested = QtCore.Signal(str)
 
     def __init__(
         self,
@@ -254,12 +260,28 @@ class PlaceholderEditorWidget(AYContainer):
             variant=AYButton.Variants.Surface,
             icon="close",
         )
+        remove_btn = AYButton(
+            "Remove",
+            parent=btns_widget,
+            variant=AYButton.Variants.Danger,
+            icon=DELETE_ICON,
+        )
+        run_btn = AYButton(
+            "Run placeholder",
+            parent=btns_widget,
+            variant=AYButton.Variants.Surface,
+            icon=RUN_ICON,
+        )
         confirm_btn = AYButton(
             "Create placeholder",
             parent=btns_widget,
             variant=AYButton.Variants.Filled,
             icon=CREATE_ICON,
         )
+        remove_btn.setVisible(False)
+        run_btn.setVisible(False)
+        btns_widget.add_widget(remove_btn)
+        btns_widget.add_widget(run_btn)
         btns_widget.addStretch(1)
         btns_widget.add_widget(cancel_btn)
         btns_widget.add_widget(confirm_btn)
@@ -279,6 +301,8 @@ class PlaceholderEditorWidget(AYContainer):
         type_combo.currentIndexChanged.connect(self._on_type_change)
         confirm_btn.clicked.connect(self._on_confirm_click)
         cancel_btn.clicked.connect(self._on_cancel_click)
+        run_btn.clicked.connect(self._on_run_click)
+        remove_btn.clicked.connect(self._on_remove_click)
 
         self._title_label = title_label
         self._subtitle_label = subtitle_label
@@ -289,6 +313,8 @@ class PlaceholderEditorWidget(AYContainer):
         self._preview_widget = preview_widget
         self._confirm_btn = confirm_btn
         self._cancel_btn = cancel_btn
+        self._run_btn = run_btn
+        self._remove_btn = remove_btn
         self._dynamic_timer = dynamic_timer
 
         self._mode = CREATE_MODE
@@ -325,6 +351,8 @@ class PlaceholderEditorWidget(AYContainer):
         self._confirm_btn.set_icon(CREATE_ICON)
         self._cancel_btn.setText("Cancel")
         self._cancel_btn.set_icon("close")
+        self._run_btn.setVisible(False)
+        self._remove_btn.setVisible(False)
 
         self._fill_plugin_items(plugin_items, plugin_identifier)
 
@@ -348,11 +376,43 @@ class PlaceholderEditorWidget(AYContainer):
         self._confirm_btn.set_icon("save")
         self._cancel_btn.setText("Revert")
         self._cancel_btn.set_icon("undo")
+        self._set_placeholder_action_state(placeholder_item)
 
         self._set_header_icon(placeholder_item.icon)
         self._set_plugin(
             placeholder_item.plugin_identifier,
             copy.deepcopy(placeholder_item.data),
+        )
+
+    def _set_placeholder_action_state(
+        self, placeholder_item: PlaceholderItemInfo
+    ) -> None:
+        """Show the placeholder actions its plugin supports.
+
+        Args:
+            placeholder_item (PlaceholderItemInfo): The edited placeholder.
+
+        """
+        self._run_btn.setVisible(True)
+        self._run_btn.setEnabled(placeholder_item.run_supported)
+        self._run_btn.setToolTip(
+            "Run this placeholder"
+            if placeholder_item.run_supported
+            else (
+                "Running a placeholder is not implemented for this"
+                " placeholder type."
+            )
+        )
+
+        self._remove_btn.setVisible(True)
+        self._remove_btn.setEnabled(placeholder_item.delete_supported)
+        self._remove_btn.setToolTip(
+            "Remove this placeholder from the scene"
+            if placeholder_item.delete_supported
+            else (
+                "Removing placeholders is not implemented for this"
+                " placeholder type."
+            )
         )
 
     def has_unsaved_changes(self) -> bool:
@@ -528,6 +588,14 @@ class PlaceholderEditorWidget(AYContainer):
         if self._attrs_widget is not None:
             self._attrs_widget.set_value(copy.deepcopy(self._original_values))
             self._update_confirm_state()
+
+    def _on_run_click(self) -> None:
+        if self._scene_identifier is not None:
+            self.run_requested.emit(self._scene_identifier)
+
+    def _on_remove_click(self) -> None:
+        if self._scene_identifier is not None:
+            self.remove_requested.emit(self._scene_identifier)
 
 
 class PlaceholderHintWidget(AYContainer):

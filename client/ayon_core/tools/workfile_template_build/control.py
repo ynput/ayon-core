@@ -360,6 +360,8 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             order=placeholder.order,
             icon=plugin.icon,
             data=placeholder.to_dict(),
+            delete_supported=plugin.is_delete_placeholder_supported(),
+            run_supported=plugin.is_run_placeholder_supported(),
         )
 
     def _action_failed(

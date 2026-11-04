@@ -236,13 +236,11 @@ class TestEdit:
 
         assert window._pages_widget.currentIndex() == HINT_PAGE
 
-    def test_delete_asks_for_confirmation(self, window, builder, answers):
-        answers.queue.append(QtWidgets.QMessageBox.No)
-        window._on_delete_request()
-        assert "node_1" in builder.nodes
+    def test_remove_deletes_placeholder_without_confirmation(
+        self, window, builder
+    ):
+        window._on_remove_request()
 
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
-        window._on_delete_request()
         assert "node_1" not in builder.nodes
         assert window._pages_widget.currentIndex() == HINT_PAGE
 
@@ -268,15 +266,47 @@ class TestRun:
 
         assert window._placeholders_widget._run_btn.isEnabled()
 
-    def test_run_asks_for_confirmation(self, window, builder, answers):
+    def test_run_does_not_ask_for_confirmation(self, window, builder):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
         window._select_silently("node_1")
 
-        answers.queue.append(QtWidgets.QMessageBox.No)
         window._on_run_request()
-        assert builder.runs == []
 
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
-        window._on_run_request()
         assert builder.runs == ["node_1"]
+
+
+class TestEditorActions:
+    def test_actions_are_hidden_in_create_mode(self, window):
+        window._on_create_request()
+
+        editor = window._editor_widget
+        assert not editor._run_btn.isVisible()
+        assert not editor._remove_btn.isVisible()
+
+    def test_actions_are_enabled_in_edit_mode(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        editor = window._editor_widget
+        assert editor._run_btn.isVisible()
+        assert editor._run_btn.isEnabled()
+        assert editor._remove_btn.isVisible()
+        assert editor._remove_btn.isEnabled()
+
+    def test_run_button_runs_the_placeholder(self, window, builder):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        window._editor_widget._run_btn.click()
+
+        assert builder.runs == ["node_1"]
+
+    def test_remove_button_removes_the_placeholder(self, window, builder):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        window._editor_widget._remove_btn.click()
+
+        assert "node_1" not in builder.nodes
+        assert window._pages_widget.currentIndex() == HINT_PAGE

@@ -98,7 +98,9 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         )
         placeholders_widget.create_requested.connect(self._on_create_request)
         placeholders_widget.run_requested.connect(self._on_run_request)
-        placeholders_widget.delete_requested.connect(self._on_delete_request)
+        placeholders_widget.delete_requested.connect(
+            self._on_remove_request
+        )
         placeholders_widget.select_in_scene_requested.connect(
             self._on_select_in_scene_request
         )
@@ -107,6 +109,8 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         editor_widget.create_requested.connect(self._on_create_confirmed)
         editor_widget.save_requested.connect(self._on_save_confirmed)
         editor_widget.cancel_requested.connect(self._on_create_cancelled)
+        editor_widget.run_requested.connect(self._on_run_request)
+        editor_widget.remove_requested.connect(self._on_remove_request)
         build_btn.clicked.connect(self._on_run_template_build_request)
 
         controller.register_event_callback(
@@ -396,8 +400,11 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._update_placeholders()
         self._show_editor_page(scene_identifier)
 
-    def _on_run_request(self):
-        scene_identifier = self._placeholders_widget.get_selected_identifier()
+    def _on_run_request(self, scene_identifier=None):
+        if scene_identifier is None:
+            scene_identifier = (
+                self._placeholders_widget.get_selected_identifier()
+            )
         if scene_identifier is None:
             return
 
@@ -415,24 +422,6 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             )
             return
 
-        placeholder_item = self._placeholder_items_by_id.get(scene_identifier)
-        label = scene_identifier
-        if placeholder_item is not None:
-            label = placeholder_item.label
-
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "Run placeholder?",
-            (
-                "Do you want to run placeholder \"{}\" in the current"
-                " scene?".format(label)
-            ),
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No,
-        )
-        if answer != QtWidgets.QMessageBox.Yes:
-            return
-
         result = self._controller.run_placeholder(scene_identifier)
         if self._show_action_error(result):
             return
@@ -440,27 +429,12 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         # The placeholder may have been removed by running it.
         self._update_placeholders()
 
-    def _on_delete_request(self):
-        scene_identifier = self._placeholders_widget.get_selected_identifier()
+    def _on_remove_request(self, scene_identifier=None):
         if scene_identifier is None:
-            return
-
-        placeholder_item = self._placeholder_items_by_id.get(scene_identifier)
-        label = scene_identifier
-        if placeholder_item is not None:
-            label = placeholder_item.label
-
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "Delete placeholder?",
-            (
-                "Are you sure you want to delete placeholder"
-                " \"{}\" from the scene?".format(label)
-            ),
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No,
-        )
-        if answer != QtWidgets.QMessageBox.Yes:
+            scene_identifier = (
+                self._placeholders_widget.get_selected_identifier()
+            )
+        if scene_identifier is None:
             return
 
         result = self._controller.delete_placeholder(scene_identifier)

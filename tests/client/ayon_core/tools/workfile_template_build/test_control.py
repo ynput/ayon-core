@@ -302,6 +302,8 @@ class TestPlaceholderData:
         assert item.order == 5
         assert item.icon == _Plugin.icon
         assert item.data["name"] == "one"
+        assert item.delete_supported
+        assert item.run_supported
 
     def test_item_info_is_serializable(self, controller):
         controller.create_placeholder("fake", {"name": "one"})
