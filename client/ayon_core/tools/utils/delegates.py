@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-import logging
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 
 def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):
@@ -54,6 +55,24 @@ def pretty_date(t, now=None, strftime="%b %d %Y %H:%M"):
             return f"{hours}:{minutes:02d} hours ago"
 
     return t.strftime(strftime)
+
+
+def file_size_to_string(file_size):
+    if file_size is None:
+        return "N/A"
+    size = 0
+    size_ending_mapping = {
+        "KB": 1024 ** 1,
+        "MB": 1024 ** 2,
+        "GB": 1024 ** 3,
+    }
+    ending = "B"
+    for _ending, _size in size_ending_mapping.items():
+        if file_size < _size:
+            break
+        size = file_size / _size
+        ending = _ending
+    return "{:.2f} {}".format(size, ending)
 
 
 def pretty_timestamp(t, now=None):

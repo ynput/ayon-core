@@ -360,6 +360,15 @@ def create_skeleton_instance(
         if item in instance.data.get("families", []):
             instance_skeleton_data["families"] += [item]
 
+    slate_representation_ext = instance.data.get(
+        "slateRepresentationExt")
+    if (
+        "slate" in families_transfer
+        and slate_representation_ext
+    ):
+        instance_skeleton_data["slateRepresentationExt"] = \
+            slate_representation_ext
+
     # transfer specific properties from original instance based on
     # mapping dictionary `instance_transfer`
     for key, values in instance_transfer.items():
@@ -428,6 +437,7 @@ def prepare_representations(
 
     """
     representations = []
+    slate_representation_ext = skeleton_data.get("slateRepresentationExt", [])
     host_name = os.environ.get("AYON_HOST_NAME", "")
     collections, remainders = clique.assemble(exp_files)
 
@@ -503,6 +513,9 @@ def prepare_representations(
         # poor man exclusion
         if ext in skip_integration_repre_list:
             rep["tags"].append("delete")
+
+        if ext == slate_representation_ext:
+            rep["tags"].append("slate-frame")
 
         if skeleton_data.get("multipartExr", False):
             rep["tags"].append("multipartExr")

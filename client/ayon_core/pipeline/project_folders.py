@@ -55,7 +55,7 @@ def fill_paths(path_list: list[str], anatomy: Anatomy):
     filled_paths = []
 
     for path in path_list:
-        new_path = path.format(**format_data)
+        new_path = path.format_map(format_data)
         filled_paths.append(new_path)
 
     return filled_paths

@@ -16,6 +16,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
     discover,
+    discover_with_report,
     register_plugin,
     register_plugin_path,
 )
@@ -29,6 +30,7 @@ from .structures import CreatedInstance, ProductTypeItem
 if TYPE_CHECKING:
     import logging
 
+    from ayon_core.pipeline.plugin_discover import DiscoverResult
     from ayon_core.host import IPublishHost
     from ayon_core.pipeline import Anatomy
     from ayon_core.lib import AbstractAttrDef, IconBase
@@ -1120,11 +1122,47 @@ class AutoCreator(BaseCreator):
         """Skip removal."""
 
 
+def discover_create_plugins() -> tuple[DiscoverResult, DiscoverResult]:
+    """Discover both creator and convertor plugins.
+
+    Creator plugins and convertor plugins are registered using the same paths
+        and are discovered together. This function does import the modules
+        only once and returns both results.
+
+    Returns:
+        tuple[DiscoverResult, DiscoverResult]: Tuple of discovery results for
+            creator and convertor plugins.
+
+    """
+    result = discover_with_report(
+        (BaseCreator, ProductConvertorPlugin),
+    )
+    return result[BaseCreator], result[ProductConvertorPlugin]
+
+
 def discover_creator_plugins(*args, **kwargs):
+    """DEPRECATED Discover creator plugins.
+
+    Use `discover_create_plugins` instead which discovers both creator and
+        convertor plugins together.
+
+    Returns:
+        DiscoverResult: Discovery result for creator plugins.
+
+    """
     return discover(BaseCreator, *args, **kwargs)
 
 
 def discover_convertor_plugins(*args, **kwargs):
+    """DEPRECATED Discover convertor plugins.
+
+    Use `discover_create_plugins` instead which discovers both creator and
+        convertor plugins together.
+
+    Returns:
+        DiscoverResult: Discovery result for creator plugins.
+
+    """
     return discover(ProductConvertorPlugin, *args, **kwargs)
 
 

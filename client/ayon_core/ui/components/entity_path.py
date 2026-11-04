@@ -18,8 +18,8 @@ class AYEntityPathSegment(AYLabel):
         parent=None,
         variant: AYLabel.Variants = AYLabel.Variants.Default,
     ):
-        super().__init__(text, dim=True, rel_text_size=-2, parent=parent)
-        get_ayon_style().style_widget(self)
+        super().__init__(text, dim=True, rel_text_size=-1, parent=parent)
+        self.ensurePolished()
         self.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )

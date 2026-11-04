@@ -797,7 +797,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if not value:
                 continue
             try:
-                value = value.format(**fill_data)
+                value = value.format_map(fill_data)
             except Exception:
                 self.log.warning(
                     "Failed to format ffmpeg argument: {}".format(value),
@@ -1304,22 +1304,33 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            offset_seconds = 0
-            if offset_seconds > 0:
-                audio_in_args.append(
-                    "-ss {}".format(offset_seconds)
+            # 'offset' was set only by maya addon and it used frame offset
+            #     instead of seconds offset. To prevent issues the value is
+            #     ignored and logged as skipped.
+            if audio.get("offset"):
+                self.log.warning(
+                    "Ignored deprecated audio input attribute 'offset'. "
+                    "Use 'offset_in_seconds' instead."
                 )
 
+            offset_seconds = audio.get("offset_in_seconds", 0)
+            # Delay audio start to match its timeline position.
+            if offset_seconds > 0:
+                # "all=1" applies to every channel (mono, stereo, 5.1…).
+                delay_ms = int(round(offset_seconds * 1000))
+                audio_filters.append(
+                    "adelay={}:all=1".format(delay_ms)
+                )
+            # Crop audio file input.
             elif offset_seconds < 0:
                 audio_in_args.append(
-                    "-itsoffset {}".format(abs(offset_seconds))
+                    "-ss {}".format(abs(offset_seconds))
                 )
 
-            # Audio duration is offset from `-ss`
-            audio_duration = duration_seconds + offset_seconds
-
-            # Set audio duration
-            audio_in_args.append("-to {:0.10f}".format(audio_duration))
+            # Audio duration
+            audio_in_args.append(
+                "-to {:0.10f}".format(duration_seconds - offset_seconds)
+            )
 
             # Ignore video data from audio input
             audio_in_args.append("-vn")
@@ -1335,6 +1346,23 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if len(audio_inputs) > 1:
             audio_out_args.append("-filter_complex amerge")
             audio_out_args.append("-ac {}".format(len(audio_inputs)))
+
+        # Resample audio to ensure block duration from AAC
+        # encoder never exceeds one video frame duration.
+        # Pick the lowest video standard rate satisfying this constraint.
+        # For non-AAC codecs, this has no negative effect.
+
+        # TODO: Replace with once https://trac.ffmpeg.org/ticket/11668 is fixed
+        # audio_filters.append("apad")
+        # audio_out_args.append("-shortest")
+
+        standard_audio_rates = (48000, 96000, 192000)
+        min_audio_rate = 1024 * temp_data.fps  # 1 AAC block = 1024 samples
+        sample_rate = next(
+            (rate for rate in standard_audio_rates if rate > min_audio_rate),
+            standard_audio_rates[-1]
+        )
+        audio_out_args.append(f"-ar {sample_rate}")
 
         return audio_in_args, audio_filters, audio_out_args
 
@@ -2043,14 +2071,22 @@ class OverscanCrop:
 
     Resolution: 2000px 1000px
 
-    | String        | Output        |
-    |---------------|---------------|
-    | "100px 120px" | 2100px 1120px |
-    | "-10% -200px" | 1800px 800px  |
+    | String          | Output        |
+    |-----------------|---------------|
+    | "+100px +120px" | 2100px 1120px |
+    | "-10% -200px"   | 1800px 800px  |
+    | "3072px 1728px" | 3072px 1728px |
+    | "3072 1728"     | 3072px 1728px |
+    | "+100 -200"     | 2100px 800px  |
+    | "50% 300"       | 1000px 300px  |
+
+    Only suffixes "px", "%", "%+" and "%-" are supported, where "%+" and "%-"
+    are valid only for relative values (with sign). Any other suffix,
+    e.g. "300p" or "10%+", or more than two values raise 'ValueError'.
     """
 
-    item_regex = re.compile(r"([\+\-])?([0-9]+)(.+)?")
-    relative_source_regex = re.compile(r"%([\+\-])")
+    # Optional sign, number and optional suffix "px", "%", "%+" or "%-"
+    item_regex = re.compile(r"([\+\-])?([0-9]+)(px|%[\+\-]?)?")
 
     def __init__(
         self, input_width, input_height, string_value, overscan_color=None
@@ -2139,9 +2175,8 @@ class OverscanCrop:
         if not string_value:
             return [PixValueRelative(0), PixValueRelative(0)]
 
-        # Replace "px" (and spaces before) with single space
-        string_value = re.sub(r"([ ]+)?px", " ", string_value)
-        string_value = re.sub(r"([ ]+)%", "%", string_value)
+        # Remove spaces before "px" and "%" suffix
+        string_value = re.sub(r"[ ]+(px|%)", r"\g<1>", string_value)
         # Make sure +/- sign at the beginning of string is next to number
         string_value = re.sub(r"^([\+\-])[ ]+", r"\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
@@ -2160,35 +2195,42 @@ class OverscanCrop:
         error_msg = "Invalid string for rescaling \"{}\"".format(
             orig_string_value
         )
-        if 1 > len(string_parts) > 2:
+        if not 1 <= len(string_parts) <= 2:
             raise ValueError(error_msg)
 
         output = []
         for item in string_parts:
-            groups = self.item_regex.findall(item)
-            if not groups:
+            match = self.item_regex.fullmatch(item)
+            if not match:
                 raise ValueError(error_msg)
 
-            relative_sign, value, ending = groups[0]
+            relative_sign, value, ending = match.groups()
+            # Value without suffix is the same as value with "px"
+            if ending == "px":
+                ending = None
             if not relative_sign:
+                # Value without suffix is explicit pixel size
                 if not ending:
                     output.append(PixValueExplicit(value))
-                else:
+                elif ending == "%":
                     output.append(PercentValueExplicit(value))
-            else:
-                source_sign_group = self.relative_source_regex.findall(ending)
-                if not ending:
-                    output.append(PixValueRelative(int(relative_sign + value)))
-
-                elif source_sign_group:
-                    source_sign = source_sign_group[0]
-                    output.append(PercentValueRelativeSource(
-                        float(relative_sign + value), source_sign
-                    ))
                 else:
-                    output.append(
-                        PercentValueRelative(float(relative_sign + value))
-                    )
+                    # Suffix "%+" and "%-" is valid only for relative value
+                    raise ValueError(error_msg)
+
+            elif not ending:
+                output.append(PixValueRelative(int(relative_sign + value)))
+
+            elif ending == "%":
+                output.append(
+                    PercentValueRelative(float(relative_sign + value))
+                )
+
+            else:
+                source_sign = ending[-1]
+                output.append(PercentValueRelativeSource(
+                    float(relative_sign + value), source_sign
+                ))
 
         if len(output) == 1:
             width = output.pop(0)

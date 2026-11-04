@@ -84,7 +84,10 @@ class SiteSyncModel:
         for repre_entity in repre_entities:
             repre_output = output[repre_entity["id"]]
             result = sitesync_addon.get_progress_for_repre(
-                repre_entity, active_site, remote_site
+                project_name,
+                repre_entity,
+                active_site,
+                remote_site,
             )
             repre_output["active_site"] = result[active_site]
             repre_output["remote_site"] = result[remote_site]
