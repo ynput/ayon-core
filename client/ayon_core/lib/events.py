@@ -4,11 +4,11 @@ import re
 import copy
 import inspect
 import collections
-import logging
 import weakref
 from uuid import uuid4
 
 from .python_module_tools import is_func_signature_supported
+from .log import Logger
 
 
 class MissingEventSystem(Exception):
@@ -223,7 +223,7 @@ class EventCallback:
     @property
     def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     @property
