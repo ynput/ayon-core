@@ -164,9 +164,9 @@ class PlaceholdersWidget(AYContainer):
         btns_widget.add_widget(select_btn)
         btns_widget.add_widget(refresh_btn)
 
+        self.add_widget(btns_widget)
         self.add_widget(filter_input)
         self.add_widget(view, stretch=1)
-        self.add_widget(btns_widget)
 
         filter_input.textChanged.connect(self._on_filter_change)
         view.selection_changed.connect(self._on_selection_change)
