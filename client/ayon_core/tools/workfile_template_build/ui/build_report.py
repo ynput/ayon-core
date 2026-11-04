@@ -190,7 +190,13 @@ class BuildReportDialog(QtWidgets.QDialog):
 
         self._details_view.setPlainText("")
         if steps:
-            self._view.selectRow(0)
+            index = self._model.index(0, 0)
+            self._view.setCurrentIndex(index)
+            self._view.selectionModel().select(
+                index,
+                QtCore.QItemSelectionModel.ClearAndSelect
+                | QtCore.QItemSelectionModel.Rows,
+            )
 
     def get_report_text(self) -> str:
         """Plain text report of the last build."""
