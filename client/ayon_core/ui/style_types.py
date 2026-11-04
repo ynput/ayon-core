@@ -19,19 +19,20 @@ from __future__ import annotations
 
 import copy
 import json
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from qtpy.QtGui import QColor, QFont, QPalette
 from qtpy.QtWidgets import QWidget
 
+from ayon_core.lib import Logger
+
 from .drawers._utils import style_font
 
 if TYPE_CHECKING:
     from .style import AYONStyle
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +205,8 @@ class StyleData:
             QPalette.ColorRole.Dark: "qt-active-dark",
             QPalette.ColorRole.Mid: "qt-active-mid",
             QPalette.ColorRole.Shadow: "qt-active-shadow",
+            QPalette.ColorRole.ToolTipBase: "qt-active-tooltip-base",
+            QPalette.ColorRole.ToolTipText: "qt-active-tooltip-text",
         }
         p = QPalette()
         for role, color_name in bp.items():

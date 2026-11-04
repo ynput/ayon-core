@@ -213,9 +213,11 @@ class CreateHeroVersion(LoaderActionPlugin):
             src_representations = {}
             for repre in repres_by_version_id[version_id]:
                 repre_template_data = copy.deepcopy(template_data)
-                ext = repre.get("context", {}).get("ext")
-                if ext:
-                    repre_template_data["ext"] = ext
+                repre_context = repre.get("context") or {}
+                for key in ("ext", "output"):
+                    value = repre_context.get(key)
+                    if value:
+                        repre_template_data[key] = value
 
                 src_representations[repre["id"]] = {
                     "representation": repre,

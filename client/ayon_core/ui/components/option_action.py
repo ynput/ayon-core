@@ -126,6 +126,7 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
     def _style_option(self) -> QtWidgets.QStyleOptionMenuItem:
         option = QtWidgets.QStyleOptionMenuItem()
         option.initFrom(self)
+        option.font = self.font()
         option.menuItemType = (
             QtWidgets.QStyleOptionMenuItem.MenuItemType.Normal
         )

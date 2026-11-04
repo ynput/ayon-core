@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QWidget
 
 from widget_test import WidgetTest
@@ -228,3 +229,78 @@ class CardViewTreeTest(WidgetTest):
 
     def steps(self):
         return [self.collapse_first_group]
+
+
+def _make_flat_view(qtbot) -> AYCardView:
+    """Create a shown flat card view with all cards in a single row."""
+    model = PaginatedTableModel(
+        fetch_page=_make_fetch(_FLAT_ROWS),
+        columns=_TREE_COLUMNS,
+        page_size=50,
+        no_async=True,
+    )
+    view = AYCardView(card_width=120, card_data_mapper=_make_card_mapper)
+    view.setModel(model)
+    qtbot.addWidget(view)
+    view.resize(800, 400)
+    view.show()
+    qtbot.waitExposed(view)
+    return view
+
+
+def _click_card(
+    qtbot,
+    view: AYCardView,
+    row: int,
+    button: Qt.MouseButton = Qt.MouseButton.LeftButton,
+    modifier: Qt.KeyboardModifier = Qt.KeyboardModifier.NoModifier,
+) -> None:
+    pos = view.visualRect(view.model().index(row, 0)).center()
+    qtbot.mouseClick(view.viewport(), button, modifier, pos)
+
+
+def _selected_rows(view: AYCardView) -> list[int]:
+    indexes = view.selectionModel().selectedIndexes()
+    return sorted(index.row() for index in indexes)
+
+
+def _select_rows(qtbot, view: AYCardView, rows: list[int]) -> None:
+    _click_card(qtbot, view, rows[0])
+    for row in rows[1:]:
+        _click_card(
+            qtbot, view, row, modifier=Qt.KeyboardModifier.ControlModifier
+        )
+    assert _selected_rows(view) == rows
+
+
+def test_right_click_on_selected_card_keeps_selection(qtbot) -> None:
+    view = _make_flat_view(qtbot)
+    _select_rows(qtbot, view, [0, 1, 2])
+
+    _click_card(qtbot, view, 1, Qt.MouseButton.RightButton)
+
+    assert _selected_rows(view) == [0, 1, 2]
+
+
+def test_right_click_on_unselected_card_selects_only_it(qtbot) -> None:
+    view = _make_flat_view(qtbot)
+    _select_rows(qtbot, view, [0, 1, 2])
+
+    _click_card(qtbot, view, 4, Qt.MouseButton.RightButton)
+
+    assert _selected_rows(view) == [4]
+
+
+def test_ctrl_right_click_keeps_selection(qtbot) -> None:
+    view = _make_flat_view(qtbot)
+    _select_rows(qtbot, view, [0, 1])
+
+    _click_card(
+        qtbot,
+        view,
+        3,
+        Qt.MouseButton.RightButton,
+        Qt.KeyboardModifier.ControlModifier,
+    )
+
+    assert _selected_rows(view) == [0, 1]

@@ -322,6 +322,9 @@ class ExtractReviewSlate(publish.Extractor):
                 "-i", input_path,
             )
             concat_args.extend(fmap)
+            # Use metadata of the source instead of the slate which is
+            #   the first input
+            concat_args.extend(["-map_metadata", "1"])
             if offset_timecode:
                 concat_args.extend(["-timecode", offset_timecode])
             # NOTE: Added because of OP Atom demuxers
