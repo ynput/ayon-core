@@ -26,6 +26,9 @@ class _Plugin(PlaceholderPlugin):
     identifier = "fake"
     icon = {"type": "material-symbols", "name": "download", "color": "#fff"}
 
+    # Set by tests to make an action fail
+    fail_on = None
+
     def __init__(self, builder):
         super().__init__(builder)
         self.nodes = builder.nodes
@@ -73,6 +76,8 @@ class _Plugin(PlaceholderPlugin):
         self.nodes.pop(placeholder_item.scene_identifier, None)
 
     def repopulate_placeholder(self, placeholder):
+        if self.fail_on == "run":
+            raise RuntimeError("run boom")
         self.builder.runs.append(placeholder.scene_identifier)
 
 
@@ -310,3 +315,49 @@ class TestEditorActions:
 
         assert "node_1" not in builder.nodes
         assert window._pages_widget.currentIndex() == HINT_PAGE
+
+
+class TestBuild:
+    def test_build_button_is_disabled_without_placeholders(self, window):
+        assert not window._build_btn.isEnabled()
+
+    def test_build_asks_for_confirmation(self, window, builder, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        builder.runs.clear()
+
+        answers.queue.append(QtWidgets.QMessageBox.No)
+        window._on_run_template_build_request()
+        assert builder.runs == []
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        window._on_run_template_build_request()
+        assert builder.runs == ["node_1"]
+
+    def test_build_reports_processed_placeholders(self, window, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        window._on_run_template_build_request()
+
+        label = window._build_status_label
+        assert label.isVisible()
+        assert label.text() == "Build: 1 placeholder(s) processed"
+        assert "[OK]" in label.toolTip()
+
+    def test_build_reports_failed_placeholder(self, window, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        _Plugin.fail_on = "run"
+        try:
+            answers.queue.append(QtWidgets.QMessageBox.Yes)
+            window._on_run_template_build_request()
+        finally:
+            _Plugin.fail_on = None
+
+        label = window._build_status_label
+        assert label.isVisible()
+        assert "1 of 1 failed" in label.text()
+        assert "run boom" in label.toolTip()

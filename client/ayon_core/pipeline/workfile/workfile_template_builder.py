@@ -912,22 +912,37 @@ class AbstractTemplateBuilder(ABC):
         Question:
             Should this also handle subloops as it is possible that another
                 template is loaded during processing?
+
+        Returns:
+            list[PlaceholderItem]: Placeholders that were processed, failed
+                placeholders have errors in 'get_errors()'.
         """
 
         if not self.placeholder_plugins:
             self.log.info("There are no placeholder plugins available.")
-            return
+            return []
 
         placeholders = self.get_placeholders()
         if not placeholders:
             self.log.info("No placeholders were found.")
-            return
+            return []
 
         for placeholder in placeholders:
             plugin = placeholder.plugin
-            plugin.repopulate_placeholder(placeholder)
+            try:
+                plugin.repopulate_placeholder(placeholder)
+            except Exception as exc:
+                self.log.warning(
+                    "Failed to run placeholder '{}'".format(
+                        placeholder.scene_identifier
+                    ),
+                    exc_info=True,
+                )
+                placeholder.set_failed(exc)
+            placeholder.set_finished()
 
         self.clear_shared_populate_data()
+        return placeholders
 
     def open_template(
         self,

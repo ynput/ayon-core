@@ -7,7 +7,7 @@ from typing import Optional
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
-from ayon_core.ui.components import AYButton, AYContainer
+from ayon_core.ui.components import AYButton, AYContainer, AYLabel
 
 from ..abstract import (
     PLACEHOLDERS_REFRESHED_TOPIC,
@@ -73,12 +73,19 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             tooltip="Populate the placeholders in the current scene",
         )
         build_btn.setEnabled(False)
+        build_status_label = AYLabel(
+            parent=self,
+            dim=True,
+            elide_mode=QtCore.Qt.ElideRight,
+        )
+        build_status_label.setVisible(False)
         header_widget = AYContainer(
             self,
             layout=AYContainer.Layout.HBox,
             layout_margin=0,
         )
         header_widget.addStretch(1)
+        header_widget.add_widget(build_status_label)
         header_widget.add_widget(build_btn)
 
         content_widget.add_widget(header_widget)
@@ -123,6 +130,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._hint_widget = hint_widget
         self._editor_widget = editor_widget
         self._build_btn = build_btn
+        self._build_status_label = build_status_label
 
         self._first_show = True
         self._ignore_selection_change = False
@@ -354,11 +362,45 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             return
 
         result = self._controller.run_template_build()
-        if self._show_action_error(result):
-            return
 
         # Placeholders may have been removed or changed by the build.
         self._update_placeholders()
+        self._update_build_status(result)
+
+        # Show a dialog only when the build itself could not run, per
+        #   placeholder failures are shown next to the build button.
+        has_results = bool(self._controller.get_last_build_results())
+        if not result.success and not has_results:
+            self._show_action_error(result)
+
+    def _update_build_status(self, result: ActionResult) -> None:
+        """Show the outcome of the last template build.
+
+        Args:
+            result (ActionResult): Result of the build action.
+
+        """
+        results = self._controller.get_last_build_results()
+        if not results:
+            self._build_status_label.setVisible(False)
+            return
+
+        failed = [entry for entry in results if entry[2]]
+        if result.success:
+            text = "Build: {} placeholder(s) processed".format(len(results))
+        else:
+            text = "Build: {} of {} failed".format(len(failed), len(results))
+
+        details = []
+        for identifier, label, error in results:
+            status = "FAILED" if error else "OK"
+            details.append("[{}] {} ({})".format(status, label, identifier))
+            if error:
+                details.append(error)
+
+        self._build_status_label.setText(text)
+        self._build_status_label.setToolTip("\n".join(details))
+        self._build_status_label.setVisible(True)
 
     def _on_create_request(self):
         if not self._controller.is_builder_available():

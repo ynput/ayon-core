@@ -51,6 +51,9 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         #   'reset' and after any action that changes the scene.
         self._placeholders_by_id = None
 
+        # Results of the last template build
+        self._last_build_results: list[tuple[str, str, str]] = []
+
     # --- Events -------------------------------------------------------
     def register_event_callback(self, topic: str, callback: Callable) -> None:
         self._event_system.add_callback(topic, callback)
@@ -280,13 +283,66 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             # Re-populates the placeholders that are already in the scene.
             #   The template file is not imported again, so this can be used
             #   to test the template that is currently opened.
-            self._builder.rebuild_template()
+            placeholders = self._builder.rebuild_template() or []
         except Exception:
+            self._last_build_results = []
             return self._action_failed("Failed to run template build")
+
+        self._last_build_results = [
+            self._create_build_result(placeholder)
+            for placeholder in placeholders
+        ]
 
         # The build can change or remove placeholders in the scene.
         self._invalidate_placeholders()
+
+        failed = [
+            result for result in self._last_build_results if result[2]
+        ]
+        if failed:
+            return ActionResult(
+                success=False,
+                error_title="{} placeholder(s) failed during build".format(
+                    len(failed)
+                ),
+                error_detail="\n\n".join(
+                    "{} ({}):\n{}".format(label, identifier, error)
+                    for identifier, label, error in failed
+                ),
+            )
         return ActionResult(success=True)
+
+    def get_last_build_results(self) -> list[tuple[str, str, str]]:
+        """Results of the last template build.
+
+        Returns:
+            list[tuple[str, str, str]]: Scene identifier, label and error
+                message of each placeholder. The error message is empty when
+                the placeholder was processed successfully.
+
+        """
+        return list(self._last_build_results)
+
+    @staticmethod
+    def _create_build_result(placeholder) -> tuple[str, str, str]:
+        """Create a build result entry for a placeholder.
+
+        Args:
+            placeholder (PlaceholderItem): Processed placeholder.
+
+        Returns:
+            tuple[str, str, str]: Scene identifier, label and error message.
+
+        """
+        try:
+            label = placeholder.plugin.get_placeholder_label(placeholder)
+        except Exception:
+            label = placeholder.scene_identifier
+        return (
+            placeholder.scene_identifier,
+            label or placeholder.scene_identifier,
+            "\n".join(placeholder.get_errors()),
+        )
 
     # --- Implementation -----------------------------------------------
     def _get_plugins(self) -> dict[str, PlaceholderPlugin]:

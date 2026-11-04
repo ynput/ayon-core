@@ -92,6 +92,8 @@ class _Plugin(PlaceholderPlugin):
         self.scene.selected = [placeholder_item.scene_identifier]
 
     def repopulate_placeholder(self, placeholder):
+        if self.fail_on == "run":
+            raise RuntimeError("run boom")
         self.scene.ran.append(placeholder.scene_identifier)
 
 
@@ -289,6 +291,45 @@ class TestRunPlaceholder:
 
         assert result.success
         assert controller._builder.scene.ran == [identifier]
+
+
+class TestTemplateBuild:
+    def test_build_processes_all_placeholders(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+        controller.create_placeholder("fake", {"name": "two"})
+
+        result = controller.run_template_build()
+
+        assert result.success
+        assert len(controller._builder.scene.ran) == 2
+
+    def test_build_results_are_stored(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+
+        controller.run_template_build()
+
+        results = controller.get_last_build_results()
+        assert len(results) == 1
+        identifier, label, error = results[0]
+        assert identifier == "node_1"
+        assert label == "one"
+        assert error == ""
+
+    def test_build_failure_is_reported(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+
+        _Plugin.fail_on = "run"
+        try:
+            result = controller.run_template_build()
+        finally:
+            _Plugin.fail_on = None
+
+        assert not result.success
+        assert "1 placeholder(s) failed" in result.error_title
+        assert "run boom" in result.error_detail
+
+        results = controller.get_last_build_results()
+        assert "run boom" in results[0][2]
 
 
 class TestPlaceholderData:
