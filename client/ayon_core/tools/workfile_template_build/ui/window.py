@@ -7,7 +7,7 @@ from typing import Optional
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
-from ayon_core.ui.components import AYContainer
+from ayon_core.ui.components import AYButton, AYContainer
 
 from ..abstract import (
     PLACEHOLDERS_REFRESHED_TOPIC,
@@ -64,6 +64,24 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             layout=AYContainer.Layout.VBox,
             layout_margin=6,
         )
+
+        build_btn = AYButton(
+            "Populate placeholders",
+            parent=self,
+            variant=AYButton.Variants.Filled,
+            icon="play_arrow",
+            tooltip="Populate the placeholders in the current scene",
+        )
+        build_btn.setEnabled(False)
+        header_widget = AYContainer(
+            self,
+            layout=AYContainer.Layout.HBox,
+            layout_margin=0,
+        )
+        header_widget.addStretch(1)
+        header_widget.add_widget(build_btn)
+
+        content_widget.add_widget(header_widget)
         content_widget.add_widget(pages_widget, stretch=1)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
@@ -88,6 +106,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         editor_widget.create_requested.connect(self._on_create_confirmed)
         editor_widget.save_requested.connect(self._on_save_confirmed)
         editor_widget.cancel_requested.connect(self._on_create_cancelled)
+        build_btn.clicked.connect(self._on_run_template_build_request)
 
         controller.register_event_callback(
             PLACEHOLDERS_REFRESHED_TOPIC, self._on_placeholders_refreshed
@@ -98,6 +117,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._pages_widget = pages_widget
         self._hint_widget = hint_widget
         self._editor_widget = editor_widget
+        self._build_btn = build_btn
 
         self._first_show = True
         self._ignore_selection_change = False
@@ -105,6 +125,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._plugin_items: list[PlaceholderPluginItem] = []
         self._placeholder_items_by_id: dict[str, PlaceholderItemInfo] = {}
 
+        self._update_build_state()
         self.resize(1020, 620)
 
     # --- Qt overrides -------------------------------------------------
@@ -130,6 +151,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._placeholder_items_by_id = {
             item.scene_identifier: item for item in placeholder_items
         }
+        self._update_build_state()
 
         self._ignore_selection_change = True
         self._placeholders_widget.set_plugin_items(self._plugin_items)
@@ -152,6 +174,14 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
         if self._pages_widget.currentIndex() == HINT_PAGE:
             self._update_hint_message()
+
+    def _update_build_state(self):
+        """Enable building only when the host supports it and there is
+        something to build."""
+        self._build_btn.setEnabled(
+            bool(self._placeholder_items_by_id)
+            and self._controller.is_builder_available()
+        )
 
     def _update_hint_message(self):
         if not self._controller.is_builder_available():
@@ -289,6 +319,41 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if not self._confirm_discard_changes():
             return
         self.refresh()
+
+    def _on_run_template_build_request(self):
+        if (
+            self._pages_widget.currentIndex() == EDITOR_PAGE
+            and self._editor_widget.has_unsaved_changes()
+        ):
+            QtWidgets.QMessageBox.information(
+                self,
+                "Unsaved changes",
+                (
+                    "Save or revert the placeholder changes before building"
+                    " the template."
+                ),
+            )
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Build template?",
+            (
+                "This will populate the placeholders in the current scene."
+                "\nDo you want to continue?"
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = self._controller.run_template_build()
+        if self._show_action_error(result):
+            return
+
+        # Placeholders may have been removed or changed by the build.
+        self._update_placeholders()
 
     def _on_create_request(self):
         if not self._controller.is_builder_available():

@@ -316,6 +316,20 @@ class AbstractTemplateBuilderController(ABC):
         """
         pass
 
+    @abstractmethod
+    def run_template_build(self) -> ActionResult:
+        """Populate the placeholders of the opened workfile.
+
+        Re-runs the placeholders that are already in the scene, the template
+        file is not imported again. It can be used to test the template that
+        is currently being worked on.
+
+        Returns:
+            ActionResult: Result of the action.
+
+        """
+        pass
+
 
 __all__ = (
     "PLACEHOLDERS_REFRESHED_TOPIC",

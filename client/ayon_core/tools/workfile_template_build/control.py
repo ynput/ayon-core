@@ -252,6 +252,25 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             )
         return ActionResult(success=True, scene_identifier=scene_identifier)
 
+    def run_template_build(self) -> ActionResult:
+        if self._builder is None:
+            return ActionResult(
+                success=False,
+                error_title="Template builder is not available.",
+            )
+
+        try:
+            # Re-populates the placeholders that are already in the scene.
+            #   The template file is not imported again, so this can be used
+            #   to test the template that is currently opened.
+            self._builder.rebuild_template()
+        except Exception:
+            return self._action_failed("Failed to run template build")
+
+        # The build can change or remove placeholders in the scene.
+        self._invalidate_placeholders()
+        return ActionResult(success=True)
+
     # --- Implementation -----------------------------------------------
     def _get_plugins(self) -> dict[str, PlaceholderPlugin]:
         if self._builder is None:
