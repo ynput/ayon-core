@@ -21,4 +21,5 @@ ayon_compatible_addons = {
     "openrv": ">=1.0.2",
     "traypublisher": ">=0.3.0",
     "review_desktop": ">0.0.5",
+    "sitesync": ">=1.4.1",
 }
