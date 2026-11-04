@@ -24,6 +24,7 @@ class _FakeScene:
     def __init__(self):
         self.nodes = {}
         self.selected = []
+        self.ran = []
         self._counter = 0
 
     def add(self, data):
@@ -90,14 +91,18 @@ class _Plugin(PlaceholderPlugin):
     def select_placeholder(self, placeholder_item):
         self.scene.selected = [placeholder_item.scene_identifier]
 
+    def repopulate_placeholder(self, placeholder):
+        self.scene.ran.append(placeholder.scene_identifier)
+
 
 class _ReadOnlyPlugin(_Plugin):
-    """Plugin without delete and select support."""
+    """Plugin without delete, select and run support."""
     label = "Read only"
     identifier = "fake.readonly"
 
     delete_placeholder = PlaceholderPlugin.delete_placeholder
     select_placeholder = PlaceholderPlugin.select_placeholder
+    repopulate_placeholder = PlaceholderPlugin.repopulate_placeholder
 
     def collect_placeholders(self):
         return []
@@ -164,8 +169,10 @@ class TestPluginItems:
         }
         assert items_by_id["fake"].delete_supported
         assert items_by_id["fake"].select_supported
+        assert items_by_id["fake"].run_supported
         assert not items_by_id["fake.readonly"].delete_supported
         assert not items_by_id["fake.readonly"].select_supported
+        assert not items_by_id["fake.readonly"].run_supported
 
     def test_items_are_sorted_by_label(self, controller):
         labels = [
@@ -259,7 +266,7 @@ class TestUpdateDeleteSelect:
 
     @pytest.mark.parametrize(
         "action", ["update_placeholder", "delete_placeholder",
-                   "select_placeholder"]
+                   "select_placeholder", "run_placeholder"]
     )
     def test_missing_placeholder_is_reported(self, controller, action):
         method = getattr(controller, action)
@@ -270,6 +277,18 @@ class TestUpdateDeleteSelect:
 
         assert not result.success
         assert "not available" in result.error_title
+
+
+class TestRunPlaceholder:
+    def test_run_reaches_the_host(self, controller):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+
+        result = controller.run_placeholder(identifier)
+
+        assert result.success
+        assert controller._builder.scene.ran == [identifier]
 
 
 class TestPlaceholderData:

@@ -97,6 +97,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             self._on_selection_change
         )
         placeholders_widget.create_requested.connect(self._on_create_request)
+        placeholders_widget.run_requested.connect(self._on_run_request)
         placeholders_widget.delete_requested.connect(self._on_delete_request)
         placeholders_widget.select_in_scene_requested.connect(
             self._on_select_in_scene_request
@@ -394,6 +395,50 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
         self._update_placeholders()
         self._show_editor_page(scene_identifier)
+
+    def _on_run_request(self):
+        scene_identifier = self._placeholders_widget.get_selected_identifier()
+        if scene_identifier is None:
+            return
+
+        if (
+            self._pages_widget.currentIndex() == EDITOR_PAGE
+            and self._editor_widget.has_unsaved_changes()
+        ):
+            QtWidgets.QMessageBox.information(
+                self,
+                "Unsaved changes",
+                (
+                    "Save or revert the placeholder changes before running"
+                    " the placeholder."
+                ),
+            )
+            return
+
+        placeholder_item = self._placeholder_items_by_id.get(scene_identifier)
+        label = scene_identifier
+        if placeholder_item is not None:
+            label = placeholder_item.label
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Run placeholder?",
+            (
+                "Do you want to run placeholder \"{}\" in the current"
+                " scene?".format(label)
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = self._controller.run_placeholder(scene_identifier)
+        if self._show_action_error(result):
+            return
+
+        # The placeholder may have been removed by running it.
+        self._update_placeholders()
 
     def _on_delete_request(self):
         scene_identifier = self._placeholders_widget.get_selected_identifier()

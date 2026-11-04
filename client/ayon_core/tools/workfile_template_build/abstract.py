@@ -44,6 +44,7 @@ class PlaceholderPluginItem:
     icon: Optional[dict[str, Any]] = None
     delete_supported: bool = False
     select_supported: bool = False
+    run_supported: bool = False
 
     def to_data(self) -> dict[str, Any]:
         return {
@@ -52,6 +53,7 @@ class PlaceholderPluginItem:
             "icon": self.icon,
             "delete_supported": self.delete_supported,
             "select_supported": self.select_supported,
+            "run_supported": self.run_supported,
         }
 
     @classmethod
@@ -306,6 +308,23 @@ class AbstractTemplateBuilderController(ABC):
     @abstractmethod
     def select_placeholder(self, scene_identifier: str) -> ActionResult:
         """Select placeholder in the host scene.
+
+        Args:
+            scene_identifier (str): Scene identifier of the placeholder.
+
+        Returns:
+            ActionResult: Result of the action.
+
+        """
+        pass
+
+    @abstractmethod
+    def run_placeholder(self, scene_identifier: str) -> ActionResult:
+        """Re-run a single placeholder in the host scene.
+
+        The placeholder scene content is updated without running the other
+        placeholders. Plugins that do not implement 'repopulate_placeholder'
+        cannot be run this way.
 
         Args:
             scene_identifier (str): Scene identifier of the placeholder.

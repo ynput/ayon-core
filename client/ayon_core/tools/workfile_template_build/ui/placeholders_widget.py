@@ -30,6 +30,7 @@ DEFAULT_PLACEHOLDER_ICON = {
 
 CREATE_ICON = "add"
 DELETE_ICON = "delete"
+RUN_ICON = "play_arrow"
 SELECT_ICON = "my_location"
 REFRESH_ICON = "refresh"
 
@@ -83,6 +84,7 @@ class PlaceholdersWidget(AYContainer):
     Signals:
         selection_changed: Selected placeholder changed.
         create_requested: User wants to create a new placeholder.
+        run_requested: User wants to run the selected placeholder.
         delete_requested: User wants to delete selected placeholder.
         select_in_scene_requested: User wants to select the placeholder in
             the host scene.
@@ -91,6 +93,7 @@ class PlaceholdersWidget(AYContainer):
     """
     selection_changed = QtCore.Signal()
     create_requested = QtCore.Signal()
+    run_requested = QtCore.Signal()
     delete_requested = QtCore.Signal()
     select_in_scene_requested = QtCore.Signal()
     refresh_requested = QtCore.Signal()
@@ -143,6 +146,11 @@ class PlaceholdersWidget(AYContainer):
             icon=CREATE_ICON,
             tooltip="Create a new placeholder",
         )
+        run_btn = AYButton(
+            parent=btns_widget,
+            variant=AYButton.Variants.Surface,
+            icon=RUN_ICON,
+        )
         delete_btn = AYButton(
             parent=btns_widget,
             variant=AYButton.Variants.Surface,
@@ -160,6 +168,7 @@ class PlaceholdersWidget(AYContainer):
             tooltip="Collect placeholders from the scene again",
         )
         btns_widget.add_widget(create_btn, stretch=1)
+        btns_widget.add_widget(run_btn)
         btns_widget.add_widget(delete_btn)
         btns_widget.add_widget(select_btn)
         btns_widget.add_widget(refresh_btn)
@@ -172,6 +181,7 @@ class PlaceholdersWidget(AYContainer):
         view.selection_changed.connect(self._on_selection_change)
         view.customContextMenuRequested.connect(self._on_context_menu)
         create_btn.clicked.connect(self.create_requested)
+        run_btn.clicked.connect(self.run_requested)
         delete_btn.clicked.connect(self.delete_requested)
         select_btn.clicked.connect(self.select_in_scene_requested)
         refresh_btn.clicked.connect(self.refresh_requested)
@@ -182,10 +192,12 @@ class PlaceholdersWidget(AYContainer):
         self._filter_input = filter_input
 
         self._create_btn = create_btn
+        self._run_btn = run_btn
         self._delete_btn = delete_btn
         self._select_btn = select_btn
 
         # Action support by plugin identifier
+        self._run_support: dict[str, bool] = {}
         self._delete_support: dict[str, bool] = {}
         self._select_support: dict[str, bool] = {}
 
@@ -270,6 +282,10 @@ class PlaceholdersWidget(AYContainer):
             plugin_item.identifier: plugin_item.select_supported
             for plugin_item in plugin_items
         }
+        self._run_support = {
+            plugin_item.identifier: plugin_item.run_supported
+            for plugin_item in plugin_items
+        }
         self._update_btns_state()
 
     def get_selected_plugin_identifier(self) -> Optional[str]:
@@ -340,6 +356,13 @@ class PlaceholdersWidget(AYContainer):
         plugin_identifier = index.data(PLUGIN_IDENTIFIER_ROLE)
 
         menu = AYMenu(self._view)
+        if self._run_support.get(plugin_identifier):
+            action = menu.addAction("Run placeholder")
+            icon = get_action_icon(RUN_ICON)
+            if icon is not None:
+                action.setIcon(icon)
+            action.triggered.connect(self.run_requested)
+
         if self._select_support.get(plugin_identifier):
             action = menu.addAction("Select in scene")
             icon = get_action_icon(SELECT_ICON)
@@ -360,15 +383,23 @@ class PlaceholdersWidget(AYContainer):
 
     def _update_btns_state(self) -> None:
         plugin_identifier = self.get_selected_plugin_identifier()
+        run_enabled = bool(self._run_support.get(plugin_identifier))
         delete_enabled = bool(self._delete_support.get(plugin_identifier))
         select_enabled = bool(self._select_support.get(plugin_identifier))
 
+        self._run_btn.setEnabled(run_enabled)
         self._delete_btn.setEnabled(delete_enabled)
         self._select_btn.setEnabled(select_enabled)
 
+        run_tooltip = "Run selected placeholder"
         delete_tooltip = "Delete selected placeholder"
         select_tooltip = "Select placeholder in the scene"
         if plugin_identifier is not None:
+            if not run_enabled:
+                run_tooltip = (
+                    "Running a single placeholder is not implemented for this"
+                    " placeholder type."
+                )
             if not delete_enabled:
                 delete_tooltip = (
                     "Deleting placeholders is not implemented for this"
@@ -379,5 +410,6 @@ class PlaceholdersWidget(AYContainer):
                     "Selecting placeholders in the scene is not implemented"
                     " for this placeholder type."
                 )
+        self._run_btn.setToolTip(run_tooltip)
         self._delete_btn.setToolTip(delete_tooltip)
         self._select_btn.setToolTip(select_tooltip)

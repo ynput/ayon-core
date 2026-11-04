@@ -72,11 +72,15 @@ class _Plugin(PlaceholderPlugin):
     def delete_placeholder(self, placeholder_item):
         self.nodes.pop(placeholder_item.scene_identifier, None)
 
+    def repopulate_placeholder(self, placeholder):
+        self.builder.runs.append(placeholder.scene_identifier)
+
 
 class _Builder(AbstractTemplateBuilder):
     def __init__(self, host=None):
         super().__init__(host)
         self.nodes = {}
+        self.runs = []
 
     def get_placeholder_plugin_classes(self):
         return [_Plugin]
@@ -252,3 +256,27 @@ class TestEdit:
 
         widget._filter_input.setText("nothing")
         assert widget._proxy_model.rowCount() == 0
+
+
+class TestRun:
+    def test_run_button_is_disabled_without_selection(self, window):
+        assert not window._placeholders_widget._run_btn.isEnabled()
+
+    def test_run_button_is_enabled_for_supported_placeholder(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        assert window._placeholders_widget._run_btn.isEnabled()
+
+    def test_run_asks_for_confirmation(self, window, builder, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._select_silently("node_1")
+
+        answers.queue.append(QtWidgets.QMessageBox.No)
+        window._on_run_request()
+        assert builder.runs == []
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        window._on_run_request()
+        assert builder.runs == ["node_1"]

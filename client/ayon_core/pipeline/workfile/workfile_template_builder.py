@@ -663,6 +663,15 @@ class AbstractTemplateBuilder(ABC):
         """
         placeholder_item.plugin.select_placeholder(placeholder_item)
 
+    def repopulate_placeholder(self, placeholder_item):
+        """Re-run placeholder in the host scene.
+
+        Args:
+            placeholder_item (PlaceholderItem): Placeholder item to re-run.
+
+        """
+        placeholder_item.plugin.repopulate_placeholder(placeholder_item)
+
     def _backwards_compatibility_build_template(func):
         """Decorator for backwards compatibility of build_template method.
 
@@ -1661,6 +1670,15 @@ class PlaceholderPlugin(ABC):
 
         """
         return self._is_method_implemented("select_placeholder")
+
+    def is_run_placeholder_supported(self):
+        """Plugin implements re-running of placeholders in the scene.
+
+        Returns:
+            bool: Placeholder can be re-run using 'repopulate_placeholder'.
+
+        """
+        return self._is_method_implemented("repopulate_placeholder")
 
     @classmethod
     def _is_method_implemented(cls, method_name):

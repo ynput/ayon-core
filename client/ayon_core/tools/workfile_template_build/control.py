@@ -91,6 +91,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                 icon=plugin.icon,
                 delete_supported=plugin.is_delete_placeholder_supported(),
                 select_supported=plugin.is_select_placeholder_supported(),
+                run_supported=plugin.is_run_placeholder_supported(),
             )
             for identifier, plugin in self._get_plugins().items()
         ]
@@ -250,6 +251,22 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             return self._action_failed(
                 "Failed to select placeholder in scene", scene_identifier
             )
+        return ActionResult(success=True, scene_identifier=scene_identifier)
+
+    def run_placeholder(self, scene_identifier: str) -> ActionResult:
+        placeholder = self._get_placeholder(scene_identifier)
+        if placeholder is None:
+            return self._placeholder_not_found(scene_identifier)
+
+        try:
+            self._builder.repopulate_placeholder(placeholder)
+        except Exception:
+            return self._action_failed(
+                "Failed to run placeholder", scene_identifier
+            )
+
+        # Running a placeholder can change or remove it from the scene.
+        self._invalidate_placeholders()
         return ActionResult(success=True, scene_identifier=scene_identifier)
 
     def run_template_build(self) -> ActionResult:
