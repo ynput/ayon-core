@@ -2222,7 +2222,7 @@ class PlaceholderLoadMixin(object):
                 repre_name = representation["name"]
                 self.log.warning(
                     f"Placeholder {placeholder.scene_identifier}: Failed to"
-                    f" load {folder_path}/{product_name} ('{repre_name}')"
+                    f" load {folder_path} > {product_name} ('{repre_name}')"
                     f" with {loader_name}",
                     exc_info=True
                 )
