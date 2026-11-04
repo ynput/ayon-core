@@ -7,7 +7,7 @@ from typing import Optional
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
-from ayon_core.ui.components import AYContainer
+from ayon_core.ui.components import AYButton, AYContainer, AYLabel
 
 from ..abstract import (
     PLACEHOLDERS_REFRESHED_TOPIC,
@@ -16,6 +16,7 @@ from ..abstract import (
     PlaceholderItemInfo,
     PlaceholderPluginItem,
 )
+from .build_report import BuildReportDialog
 from .editor_widget import PlaceholderEditorWidget, PlaceholderHintWidget
 from .placeholders_widget import PlaceholdersWidget
 
@@ -65,6 +66,39 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             layout_margin=6,
         )
 
+        build_btn = AYButton(
+            "Populate placeholders",
+            parent=self,
+            variant=AYButton.Variants.Filled,
+            icon="play_arrow",
+            tooltip="Populate the placeholders in the current scene",
+        )
+        build_btn.setEnabled(False)
+        build_status_label = AYLabel(
+            parent=self,
+            dim=True,
+            elide_mode=QtCore.Qt.ElideRight,
+        )
+        build_status_label.setVisible(False)
+        build_report_btn = AYButton(
+            "Report",
+            parent=self,
+            variant=AYButton.Variants.Text,
+            icon="description",
+            tooltip="Show the report of the last template build",
+        )
+        build_report_btn.setVisible(False)
+        header_widget = AYContainer(
+            self,
+            layout=AYContainer.Layout.HBox,
+            layout_margin=0,
+        )
+        header_widget.addStretch(1)
+        header_widget.add_widget(build_status_label)
+        header_widget.add_widget(build_report_btn)
+        header_widget.add_widget(build_btn)
+
+        content_widget.add_widget(header_widget)
         content_widget.add_widget(pages_widget, stretch=1)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
@@ -90,6 +124,8 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         editor_widget.cancel_requested.connect(self._on_create_cancelled)
         editor_widget.run_requested.connect(self._on_run_request)
         editor_widget.remove_requested.connect(self._on_remove_request)
+        build_btn.clicked.connect(self._on_run_template_build_request)
+        build_report_btn.clicked.connect(self._on_show_build_report)
 
         controller.register_event_callback(
             PLACEHOLDERS_REFRESHED_TOPIC, self._on_placeholders_refreshed
@@ -100,6 +136,9 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._pages_widget = pages_widget
         self._hint_widget = hint_widget
         self._editor_widget = editor_widget
+        self._build_btn = build_btn
+        self._build_status_label = build_status_label
+        self._build_report_btn = build_report_btn
 
         self._first_show = True
         self._ignore_selection_change = False
@@ -107,6 +146,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._plugin_items: list[PlaceholderPluginItem] = []
         self._placeholder_items_by_id: dict[str, PlaceholderItemInfo] = {}
 
+        self._update_build_state()
         self.resize(1020, 620)
 
     # --- Qt overrides -------------------------------------------------
@@ -132,6 +172,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._placeholder_items_by_id = {
             item.scene_identifier: item for item in placeholder_items
         }
+        self._update_build_state()
 
         self._ignore_selection_change = True
         self._placeholders_widget.set_plugin_items(self._plugin_items)
@@ -154,6 +195,14 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
         if self._pages_widget.currentIndex() == HINT_PAGE:
             self._update_hint_message()
+
+    def _update_build_state(self):
+        """Enable building only when the host supports it and there is
+        something to build."""
+        self._build_btn.setEnabled(
+            bool(self._placeholder_items_by_id)
+            and self._controller.is_builder_available()
+        )
 
     def _update_hint_message(self):
         if not self._controller.is_builder_available():
@@ -291,6 +340,82 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if not self._confirm_discard_changes():
             return
         self.refresh()
+
+    def _on_run_template_build_request(self):
+        if (
+            self._pages_widget.currentIndex() == EDITOR_PAGE
+            and self._editor_widget.has_unsaved_changes()
+        ):
+            QtWidgets.QMessageBox.information(
+                self,
+                "Unsaved changes",
+                (
+                    "Save or revert the placeholder changes before building"
+                    " the template."
+                ),
+            )
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Build template?",
+            (
+                "This will populate the placeholders in the current scene."
+                "\nDo you want to continue?"
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        result = self._controller.run_template_build()
+
+        # Placeholders may have been removed or changed by the build.
+        self._update_placeholders()
+        self._update_build_status(result)
+
+        # Show a dialog only when the build itself could not run, per
+        #   placeholder failures are shown next to the build button.
+        has_results = bool(self._controller.get_last_build_results())
+        if not result.success and not has_results:
+            self._show_action_error(result)
+
+    def _update_build_status(self, result: ActionResult) -> None:
+        """Show the outcome of the last template build.
+
+        Args:
+            result (ActionResult): Result of the build action.
+
+        """
+        results = self._controller.get_last_build_results()
+        if not results:
+            self._build_status_label.setVisible(False)
+            self._build_report_btn.setVisible(False)
+            return
+
+        failed = [entry for entry in results if entry[2]]
+        if result.success:
+            text = "Build: {} placeholder(s) processed".format(len(results))
+        else:
+            text = "Build: {} of {} failed".format(len(failed), len(results))
+
+        details = []
+        for identifier, label, error in results:
+            status = "FAILED" if error else "OK"
+            details.append("[{}] {} ({})".format(status, label, identifier))
+            if error:
+                details.append(error)
+
+        self._build_status_label.setText(text)
+        self._build_status_label.setToolTip("\n".join(details))
+        self._build_status_label.setVisible(True)
+        self._build_report_btn.setVisible(True)
+        self._build_report_btn.setEnabled(True)
+
+    def _on_show_build_report(self):
+        dialog = BuildReportDialog(self._controller, parent=self)
+        dialog.exec_()
 
     def _on_create_request(self):
         if not self._controller.is_builder_available():

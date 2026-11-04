@@ -300,13 +300,64 @@ class TestEditorActions:
         assert window._pages_widget.currentIndex() == HINT_PAGE
 
 
+class TestBuild:
+    def test_build_button_is_disabled_without_placeholders(self, window):
+        assert not window._build_btn.isEnabled()
+
+    def test_build_asks_for_confirmation(self, window, builder, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        builder.runs.clear()
+
+        answers.queue.append(QtWidgets.QMessageBox.No)
+        window._on_run_template_build_request()
+        assert builder.runs == []
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        window._on_run_template_build_request()
+        assert builder.runs == ["node_1"]
+
+    def test_build_reports_processed_placeholders(self, window, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        window._on_run_template_build_request()
+
+        label = window._build_status_label
+        assert label.isVisible()
+        assert label.text() == "Build: 1 placeholder(s) processed"
+        assert "[OK]" in label.toolTip()
+
+    def test_build_reports_failed_placeholder(self, window, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        _Plugin.fail_on = "run"
+        try:
+            answers.queue.append(QtWidgets.QMessageBox.Yes)
+            window._on_run_template_build_request()
+        finally:
+            _Plugin.fail_on = None
+
+        label = window._build_status_label
+        assert label.isVisible()
+        assert "1 of 1 failed" in label.text()
+        assert "run boom" in label.toolTip()
+
+    def test_build_shows_report_button(self, window, answers):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        window._on_run_template_build_request()
+
+        assert window._build_report_btn.isVisible()
+        assert window._build_report_btn.isEnabled()
+
+
 class TestBuildReport:
-    """Build report of the last controller build.
-
-    The tool no longer has a build button (the build is triggered from the
-    host menu), so the dialog is tested against the controller directly.
-
-    """
+    """Report dialog of the last build."""
 
     def test_build_report_lists_steps(self, window):
         window._on_create_request()
