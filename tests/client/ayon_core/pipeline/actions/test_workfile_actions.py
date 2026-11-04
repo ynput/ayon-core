@@ -12,7 +12,6 @@ from ayon_core.pipeline.actions import (
     ActionForm,
     WorkfileAreaType,
     WorkfileActionItem,
-    WorkfileActionOpenWorkfile,
     WorkfileActionPlugin,
     WorkfileActionRedirect,
     WorkfileActionResult,
@@ -194,17 +193,10 @@ def test_execute_returns_result(tmp_path):
 
 def test_result_helpers():
     task_entity = {"id": "task-1", "folderId": "folder-1", "name": "comp"}
-    result = (
-        WorkfileActionResult("Copied")
-        .set_open_workfile("/work/file_v002.ma", task_entity=task_entity)
-        .set_redirect(task_entity=task_entity, workfile_name="file_v002.ma")
+    result = WorkfileActionResult("Copied").set_redirect(
+        task_entity=task_entity, workfile_name="file_v002.ma"
     )
     assert result.message == "Copied"
-    assert result.open_workfile == WorkfileActionOpenWorkfile(
-        filepath="/work/file_v002.ma",
-        folder_id="folder-1",
-        task_id="task-1",
-    )
     assert result.redirect == WorkfileActionRedirect(
         folder_id="folder-1",
         task_name="comp",
@@ -221,10 +213,6 @@ def test_result_helpers():
         folder_id="folder-2",
         representation_id="repre-1",
         area=WorkfileAreaType.published,
-    )
-    result = WorkfileActionResult().set_open_workfile("/work/file.ma")
-    assert result.open_workfile == WorkfileActionOpenWorkfile(
-        filepath="/work/file.ma"
     )
 
 
@@ -440,7 +428,6 @@ def test_increment_and_open(tmp_path):
         result = context.execute_action(identifier, _selection(), None, {})
     assert isinstance(result.form, ActionForm)
     assert not result.close_tool
-    assert result.open_workfile is None
     copy_mock.assert_not_called()
     host.save_workfile.assert_not_called()
 
@@ -473,7 +460,6 @@ def test_increment_and_open(tmp_path):
     # The copy is opened by the host and the tool is closed
     assert kwargs["open_workfile"] is True
     assert result.close_tool is True
-    assert result.open_workfile is None
     host.save_workfile.assert_not_called()
 
 
@@ -557,9 +543,6 @@ def test_result_json_conversion():
         message="Message",
         success=False,
         refresh=True,
-        open_workfile=WorkfileActionOpenWorkfile(
-            filepath="/work/file_v002.ma", task_id="task-1"
-        ),
         duplicate_workfile="/work/file_v001.ma",
         redirect=WorkfileActionRedirect(
             folder_id="folder-1",

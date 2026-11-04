@@ -214,38 +214,15 @@ class FilesWidget(AYContainer):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def open_workfile(self, filepath, folder_id=None, task_id=None):
-        """Open a workfile the same way as with 'Open' button.
-
-        User is asked what to do with unsaved changes of current workfile.
-
-        Args:
-            filepath (str): Path to the workfile.
-            folder_id (Optional[str]): Folder id of workfile context.
-                Selected folder is used if is not passed.
-            task_id (Optional[str]): Task id of workfile context. Selected
-                task is used if is not passed.
-
-        Returns:
-            bool: False if user cancelled the opening.
-
-        """
-        if not folder_id:
-            folder_id = self._selected_folder_id
-        if not task_id:
-            task_id = self._selected_task_id
-        return self._open_workfile(folder_id, task_id, filepath)
-
     def _open_workfile(self, folder_id, task_id, filepath):
         if self._controller.has_unsaved_changes():
             result = self._save_changes_prompt()
             if result is None:
-                return False
+                return
 
             if result:
                 self._controller.save_current_workfile()
         self._controller.open_workfile(folder_id, task_id, filepath)
-        return True
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()

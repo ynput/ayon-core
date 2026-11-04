@@ -99,8 +99,6 @@ class WorkfilesToolWindow(AYContainer):
         self._host_is_valid = None
 
         self._controller = controller
-        # Result of workfile action that requested to open a workfile
-        self._action_result_on_open = None
 
         # Create pages widget and set it as central widget
         pages_widget = QtWidgets.QStackedWidget(self)
@@ -439,15 +437,11 @@ class WorkfilesToolWindow(AYContainer):
             )
 
     def _on_open_finished(self, event):
-        action_result = self._action_result_on_open
-        self._action_result_on_open = None
         if event["failed"]:
             self._overlay_messages_widget.add_message(
                 "Failed to open workfile",
                 "error",
             )
-            if action_result is not None:
-                self._apply_action_result_context(action_result)
         else:
             self.close()
 
@@ -487,25 +481,9 @@ class WorkfilesToolWindow(AYContainer):
             self.close()
             return
 
-        open_workfile = result.open_workfile
-        if open_workfile is not None:
-            # Refresh and redirect are applied if the workfile is not opened
-            self._action_result_on_open = result
-            if self._files_widget.open_workfile(
-                open_workfile.filepath,
-                open_workfile.folder_id,
-                open_workfile.task_id,
-            ):
-                return
-            # User cancelled the opening
-            self._action_result_on_open = None
-
         if result.duplicate_workfile:
             self._files_widget.duplicate_workfile(result.duplicate_workfile)
 
-        self._apply_action_result_context(result)
-
-    def _apply_action_result_context(self, result):
         redirect = result.redirect
         # Redirect does refresh too, so files created by the action can be
         #   selected

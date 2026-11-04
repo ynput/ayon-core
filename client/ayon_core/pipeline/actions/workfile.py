@@ -29,10 +29,10 @@ Using 'WorkfileActionResult' as the output of 'execute_action' can trigger
     to show a message in UI, to show an additional form ('ActionForm') which
     would retrigger the action with the values from the form on submitting,
     to refresh the tool, to redirect the tool to a different context, to
-    let the tool open or duplicate a workfile or to close the tool.
+    let the tool duplicate a workfile or to close the tool.
 
-    The result has helper methods 'set_redirect' and 'set_open_workfile'
-    to define the context by entities.
+    The result has helper method 'set_redirect' to define the context
+    by entities.
 
     Example:
         >>> return (
@@ -502,40 +502,6 @@ class WorkfileActionRedirect:
 
 
 @dataclass
-class WorkfileActionOpenWorkfile:
-    """Workfile that should be opened by the workfiles tool.
-
-    The tool does open the workfile the same way as if a user would open
-        it, so the user is asked what to do with unsaved changes and
-        the tool is closed when the workfile is opened.
-
-    Attributes:
-        filepath (str): Path to the workfile to open.
-        folder_id (str | None): Folder id of the workfile context.
-            Folder of the selection is used if is not filled.
-        task_id (str | None): Task id of the workfile context. Task of
-            the selection is used if is not filled.
-
-    """
-    filepath: str
-    folder_id: str | None = None
-    task_id: str | None = None
-
-    def to_json_data(self) -> dict[str, Any]:
-        return {
-            "filepath": self.filepath,
-            "folder_id": self.folder_id,
-            "task_id": self.task_id,
-        }
-
-    @classmethod
-    def from_json_data(
-        cls, data: dict[str, Any]
-    ) -> WorkfileActionOpenWorkfile:
-        return cls(**data)
-
-
-@dataclass
 class WorkfileActionResult:
     """Result of workfile action execution.
 
@@ -550,10 +516,6 @@ class WorkfileActionResult:
         refresh (bool): The tool should refresh its content.
         redirect (WorkfileActionRedirect | None): Context to which should
             be the tool redirected.
-        open_workfile (WorkfileActionOpenWorkfile | None): Workfile that
-            should be opened by the tool. Refresh and redirect are applied
-            only if the workfile was not opened, e.g. because a user
-            cancelled it.
         duplicate_workfile (str | None): Path to a workfile that should
             be duplicated by the tool. The tool does ask a user for
             the version and comment of the new workfile.
@@ -567,7 +529,6 @@ class WorkfileActionResult:
     form_values: dict[str, Any] | None = None
     refresh: bool = False
     redirect: WorkfileActionRedirect | None = None
-    open_workfile: WorkfileActionOpenWorkfile | None = None
     duplicate_workfile: str | None = None
     close_tool: bool = False
 
@@ -578,9 +539,6 @@ class WorkfileActionResult:
         redirect = self.redirect
         if redirect is not None:
             redirect = redirect.to_json_data()
-        open_workfile = self.open_workfile
-        if open_workfile is not None:
-            open_workfile = open_workfile.to_json_data()
         return {
             "message": self.message,
             "success": self.success,
@@ -588,7 +546,6 @@ class WorkfileActionResult:
             "form_values": self.form_values,
             "refresh": self.refresh,
             "redirect": redirect,
-            "open_workfile": open_workfile,
             "duplicate_workfile": self.duplicate_workfile,
             "close_tool": self.close_tool,
         }
@@ -602,11 +559,6 @@ class WorkfileActionResult:
         redirect = data.get("redirect")
         if redirect is not None:
             data["redirect"] = WorkfileActionRedirect.from_json_data(redirect)
-        open_workfile = data.get("open_workfile")
-        if open_workfile is not None:
-            data["open_workfile"] = (
-                WorkfileActionOpenWorkfile.from_json_data(open_workfile)
-            )
         return cls(**data)
 
     def set_redirect(
@@ -666,51 +618,6 @@ class WorkfileActionResult:
             workfile_name=workfile_name,
             representation_id=representation_id,
             area=area,
-        )
-        return self
-
-    def set_open_workfile(
-        self,
-        filepath: str,
-        *,
-        folder_id: str | None = None,
-        task_id: str | None = None,
-        folder_entity: dict[str, Any] | None = None,
-        task_entity: dict[str, Any] | None = None,
-    ) -> WorkfileActionResult:
-        """Let the tool open a workfile.
-
-        The workfile is opened the same way as if a user would open it in
-            the tool, so the tool does ask what to do with unsaved changes
-            and is closed when the workfile is opened. Context of
-            the selection is used if the context is not defined.
-
-        Refresh and redirect of the result are applied only if the workfile
-            was not opened, e.g. because a user cancelled it.
-
-        Args:
-            filepath (str): Path to the workfile to open.
-            folder_id (str | None): Folder id of the workfile context.
-            task_id (str | None): Task id of the workfile context.
-            folder_entity (dict[str, Any] | None): Folder of the workfile
-                context.
-            task_entity (dict[str, Any] | None): Task of the workfile
-                context.
-
-        Returns:
-            WorkfileActionResult: The result, so calls can be chained.
-
-        """
-        if task_entity is not None:
-            folder_id = task_entity["folderId"]
-            task_id = task_entity["id"]
-        elif folder_entity is not None:
-            folder_id = folder_entity["id"]
-
-        self.open_workfile = WorkfileActionOpenWorkfile(
-            filepath=filepath,
-            folder_id=folder_id,
-            task_id=task_id,
         )
         return self
 
@@ -844,9 +751,8 @@ class WorkfileActionPlugin(ABC):
         """Make sure a user decided what to do with unsaved changes.
 
         Helper for actions which do open a different workfile on their
-            own. Use 'WorkfileActionResult.set_open_workfile' if
-            the workfile can be opened by the tool, which takes care about
-            unsaved changes too.
+            own. Should be called before the action changes anything, so
+            cancelling does not leave anything behind.
 
         Returns
             a result with a form if the current workfile has unsaved changes
