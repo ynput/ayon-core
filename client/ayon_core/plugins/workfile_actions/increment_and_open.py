@@ -68,7 +68,7 @@ class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
         # Ask about unsaved changes before the copy is created, cancel of
         #   the form does not trigger the action again
         result = self.ask_to_save_changes(form_values)
-        if result is not None:
+        if isinstance(result, WorkfileActionResult):
             return result
 
         # Keep the comment of the source workfile

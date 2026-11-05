@@ -854,24 +854,28 @@ class WorkfileActionPlugin(ABC):
 
     def ask_to_save_changes(
         self, form_values: dict[str, Any]
-    ) -> WorkfileActionResult | None:
+    ) -> WorkfileActionResult | bool:
         """Make sure a user decided what to do with unsaved changes.
 
         Helper for actions which do open a different workfile on their
             own. Should be called before the action changes anything, so
             cancelling does not leave anything behind.
 
-        Returns
-            a result asking a user to save the changes if the current
-            workfile has unsaved changes and the user did not decide what to
-            do with them yet. The result should be returned from
-            'execute_action'. Current workfile is saved when the user asked
-            for it. Nothing happens when the user cancels.
+        Returns a result if the action should stop and return it from
+            'execute_action'. That is when the user did not decide what to
+            do with the unsaved changes yet (the result asks the user), or
+            when saving of the current workfile failed. Nothing happens
+            when the user cancels.
+
+        Returns a boolean if the action can continue. It is 'True' if
+            the current workfile was saved. It is 'False' if it was not
+            saved, either because the user did not want to save it or
+            because there were no unsaved changes at all.
 
         Example:
             >>> def execute_action(self, selection, data, form_values):
             ...     result = self.ask_to_save_changes(form_values)
-            ...     if result is not None:
+            ...     if isinstance(result, WorkfileActionResult):
             ...         return result
             ...     # Changes are handled, a workfile can be opened
 
@@ -880,18 +884,30 @@ class WorkfileActionPlugin(ABC):
                 'execute_action'.
 
         Returns:
-            WorkfileActionResult | None: Result asking to save changes or
-                None if the action can continue.
+            WorkfileActionResult | bool: Result to return from
+                'execute_action', or if the current workfile was saved
+                when the action can continue. 'False' also means there
+                were no unsaved changes.
 
         """
         host = self.host
         if SAVE_CHANGES_FORM_KEY in form_values:
-            if form_values[SAVE_CHANGES_FORM_KEY]:
+            if not form_values[SAVE_CHANGES_FORM_KEY]:
+                return False
+
+            try:
                 host.save_workfile(host.get_current_workfile())
-            return None
+            except Exception:
+                self.log.warning(
+                    "Failed to save current workfile", exc_info=True
+                )
+                return WorkfileActionResult(
+                    "Failed to save current workfile", success=False
+                )
+            return True
 
         if not host.workfile_has_unsaved_changes():
-            return None
+            return False
 
         return WorkfileActionResult(show_save_changes_form=True)
 

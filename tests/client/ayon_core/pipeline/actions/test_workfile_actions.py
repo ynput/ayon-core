@@ -62,9 +62,9 @@ class SaveChangesAction(WorkfileSimpleActionPlugin):
 
     def execute_simple_action(self, selection, form_values):
         result = self.ask_to_save_changes(form_values)
-        if result is not None:
+        if isinstance(result, WorkfileActionResult):
             return result
-        return WorkfileActionResult(message="done")
+        return WorkfileActionResult(message=f"saved: {result}")
 
 
 class CrashingAction(WorkfileActionPlugin):
@@ -226,9 +226,10 @@ def test_ask_to_save_changes(tmp_path):
     context = _create_context(tmp_path, host=host)
     selection = _create_selection(filepath="/work/file_v001.ma")
 
+    # No unsaved changes, nothing is saved
     host.workfile_has_unsaved_changes.return_value = False
     result = context.execute_action("test.save-changes", selection, None, {})
-    assert result.message == "done"
+    assert result.message == "saved: False"
     assert result.show_save_changes_form is False
 
     host.workfile_has_unsaved_changes.return_value = True
@@ -244,7 +245,7 @@ def test_ask_to_save_changes(tmp_path):
         None,
         {workfile_actions.SAVE_CHANGES_FORM_KEY: False},
     )
-    assert result.message == "done"
+    assert result.message == "saved: False"
     host.save_workfile.assert_not_called()
 
     result = context.execute_action(
@@ -253,8 +254,19 @@ def test_ask_to_save_changes(tmp_path):
         None,
         {workfile_actions.SAVE_CHANGES_FORM_KEY: True},
     )
-    assert result.message == "done"
+    assert result.message == "saved: True"
     host.save_workfile.assert_called_once_with("/work/current.ma")
+
+    # Failed save stops the action with a failure message
+    host.save_workfile.side_effect = RuntimeError("Save failed")
+    result = context.execute_action(
+        "test.save-changes",
+        selection,
+        None,
+        {workfile_actions.SAVE_CHANGES_FORM_KEY: True},
+    )
+    assert result.success is False
+    assert result.message == "Failed to save current workfile"
 
 
 def test_selection_areas():
