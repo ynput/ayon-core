@@ -10,7 +10,7 @@ from ayon_core.pipeline.actions import (
     WorkfileSimpleActionPlugin,
     WorkfileActionSelection,
     WorkfileActionResult,
-    WorkfileActionSaveAsDialog,
+    WorkfileActionSaveAsFormInputs,
     WorkfileActionSaveAsValues,
 )
 
@@ -52,8 +52,10 @@ class DuplicateWorkfileAction(WorkfileSimpleActionPlugin):
         if values is None:
             # Let a user pick the version and comment of the new workfile
             return WorkfileActionResult(
-                show_save_as_dialog=WorkfileActionSaveAsDialog(
-                    copied_from=selection.filepath,
+                show_save_as_dialog=WorkfileActionSaveAsFormInputs(
+                    folder_id=selection.folder_id,
+                    task_id=selection.task_id,
+                    description=f"Copied from: {selection.filepath}",
                 )
             )
 

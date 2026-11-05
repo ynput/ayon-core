@@ -35,8 +35,10 @@ Using 'WorkfileActionResult' as the output of 'execute_action' can trigger
     by entities.
 
     The Save As dialog lets a user pick version and comment of a new
-    workfile. The action is triggered again with the values of the dialog,
-    use 'WorkfileActionSaveAsValues.from_form_values' to get them.
+    workfile. Its inputs, e.g. context of the new workfile, are defined
+    with 'WorkfileActionSaveAsFormInputs'. The action is triggered again
+    with the values of the dialog, use
+    'WorkfileActionSaveAsValues.from_form_values' to get them.
 
     Example:
         >>> return (
@@ -77,7 +79,7 @@ import logging
 from abc import ABC, abstractmethod
 import typing
 from typing import Any
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, asdict, fields
 
 import ayon_api
 
@@ -507,33 +509,43 @@ class WorkfileActionRedirect:
 
 
 @dataclass
-class WorkfileActionSaveAsDialog:
-    """Save As dialog the workfiles tool should show.
+class WorkfileActionSaveAsFormInputs:
+    """Inputs of the Save As dialog the workfiles tool should show.
 
-    The dialog uses the context selected in the tool. The action is
-        triggered again with the values of the dialog when a user accepts
-        it, see 'WorkfileActionSaveAsValues'. Nothing happens on cancel.
+    All inputs are optional, the dialog uses its defaults for inputs that
+        are not set. A user can still change version, comment, extension
+        and note in the dialog. The action is triggered again with
+        the values of the dialog when a user accepts it, see
+        'WorkfileActionSaveAsValues'. Nothing happens on cancel.
 
     Attributes:
-        copied_from (str | None): Path to the source workfile, it is
-            mentioned in the artist note of the new workfile.
+        folder_id (str | None): Folder id of the new workfile. Folder
+            selected in the tool is used if is not set.
+        task_id (str | None): Task id of the new workfile, has to be a task
+            of the folder. Task selected in the tool is used if is not set.
+        version (int | None): Version of the new workfile. Next available
+            version is used if is not set.
+        comment (str | None): Comment of the new workfile. Comment of
+            the last workfile of the context is used if is not set.
+        description (str | None): Artist note of the new workfile.
         extension (str | None): Allow only this extension of the new
-            workfile.
+            workfile. All extensions of the host are allowed if is not set.
 
     """
-    copied_from: str | None = None
+    folder_id: str | None = None
+    task_id: str | None = None
+    version: int | None = None
+    comment: str | None = None
+    description: str | None = None
     extension: str | None = None
 
     def to_json_data(self) -> dict[str, Any]:
-        return {
-            "copied_from": self.copied_from,
-            "extension": self.extension,
-        }
+        return asdict(self)
 
     @classmethod
     def from_json_data(
         cls, data: dict[str, Any]
-    ) -> WorkfileActionSaveAsDialog:
+    ) -> WorkfileActionSaveAsFormInputs:
         return cls(**data)
 
 
@@ -551,7 +563,9 @@ class WorkfileActionSaveAsValues:
         ...     )
         ...     if values is None:
         ...         return WorkfileActionResult(
-        ...             show_save_as_dialog=WorkfileActionSaveAsDialog()
+        ...             show_save_as_dialog=(
+        ...                 WorkfileActionSaveAsFormInputs(version=1)
+        ...             )
         ...         )
         ...     # Save the workfile to 'values.filepath'
 
@@ -623,9 +637,10 @@ class WorkfileActionResult:
         refresh (bool): The tool should refresh its content.
         redirect (WorkfileActionRedirect | None): Context to which should
             be the tool redirected.
-        show_save_as_dialog (WorkfileActionSaveAsDialog | None): Show
-            the Save As dialog of the tool. The action is triggered again
-            with the values of the dialog when a user accepts it.
+        show_save_as_dialog (WorkfileActionSaveAsFormInputs | None): Show
+            the Save As dialog of the tool with the inputs. The action is
+            triggered again with the values of the dialog when a user
+            accepts it.
         close_tool (bool): The tool should be closed, e.g. because
             a workfile was opened by the action itself.
 
@@ -636,7 +651,7 @@ class WorkfileActionResult:
     form_values: dict[str, Any] | None = None
     refresh: bool = False
     redirect: WorkfileActionRedirect | None = None
-    show_save_as_dialog: WorkfileActionSaveAsDialog | None = None
+    show_save_as_dialog: WorkfileActionSaveAsFormInputs | None = None
     close_tool: bool = False
 
     def to_json_data(self) -> dict[str, Any]:
@@ -672,7 +687,9 @@ class WorkfileActionResult:
         save_as_dialog = data.get("show_save_as_dialog")
         if save_as_dialog is not None:
             data["show_save_as_dialog"] = (
-                WorkfileActionSaveAsDialog.from_json_data(save_as_dialog)
+                WorkfileActionSaveAsFormInputs.from_json_data(
+                    save_as_dialog
+                )
             )
         return cls(**data)
 

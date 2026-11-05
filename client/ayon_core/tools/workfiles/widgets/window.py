@@ -488,12 +488,16 @@ class WorkfilesToolWindow(AYContainer):
         if redirect is not None:
             self._redirect(redirect)
 
-    def _exec_save_as_dialog(self, save_as_dialog):
+    def _exec_save_as_dialog(self, form_inputs):
         dialog = SaveAsDialog(
             self._controller,
             self,
-            extension=save_as_dialog.extension,
-            copied_from=save_as_dialog.copied_from,
+            extension=form_inputs.extension,
+            folder_id=form_inputs.folder_id,
+            task_id=form_inputs.task_id,
+            version=form_inputs.version,
+            comment=form_inputs.comment,
+            description=form_inputs.description,
         )
         dialog.update_context()
         dialog.exec_()
