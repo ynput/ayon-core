@@ -456,9 +456,9 @@ class WorkfilesToolWindow(AYContainer):
             form_values = self._exec_action_form(
                 result.form, result.form_values
             )
-        elif result.show_save_as_dialog is not None:
+        elif result.show_save_as_form is not None:
             save_as_values = self._exec_save_as_dialog(
-                result.show_save_as_dialog
+                result.show_save_as_form
             )
             if save_as_values is not None:
                 form_values = {SAVE_AS_FORM_KEY: save_as_values}

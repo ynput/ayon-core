@@ -563,7 +563,7 @@ class WorkfileActionSaveAsValues:
         ...     )
         ...     if values is None:
         ...         return WorkfileActionResult(
-        ...             show_save_as_dialog=(
+        ...             show_save_as_form=(
         ...                 WorkfileActionSaveAsFormInputs(version=1)
         ...             )
         ...         )
@@ -637,7 +637,7 @@ class WorkfileActionResult:
         refresh (bool): The tool should refresh its content.
         redirect (WorkfileActionRedirect | None): Context to which should
             be the tool redirected.
-        show_save_as_dialog (WorkfileActionSaveAsFormInputs | None): Show
+        show_save_as_form (WorkfileActionSaveAsFormInputs | None): Show
             the Save As dialog of the tool with the inputs. The action is
             triggered again with the values of the dialog when a user
             accepts it.
@@ -651,7 +651,7 @@ class WorkfileActionResult:
     form_values: dict[str, Any] | None = None
     refresh: bool = False
     redirect: WorkfileActionRedirect | None = None
-    show_save_as_dialog: WorkfileActionSaveAsFormInputs | None = None
+    show_save_as_form: WorkfileActionSaveAsFormInputs | None = None
     close_tool: bool = False
 
     def to_json_data(self) -> dict[str, Any]:
@@ -661,9 +661,9 @@ class WorkfileActionResult:
         redirect = self.redirect
         if redirect is not None:
             redirect = redirect.to_json_data()
-        save_as_dialog = self.show_save_as_dialog
-        if save_as_dialog is not None:
-            save_as_dialog = save_as_dialog.to_json_data()
+        save_as_form = self.show_save_as_form
+        if save_as_form is not None:
+            save_as_form = save_as_form.to_json_data()
         return {
             "message": self.message,
             "success": self.success,
@@ -671,7 +671,7 @@ class WorkfileActionResult:
             "form_values": self.form_values,
             "refresh": self.refresh,
             "redirect": redirect,
-            "show_save_as_dialog": save_as_dialog,
+            "show_save_as_form": save_as_form,
             "close_tool": self.close_tool,
         }
 
@@ -684,11 +684,11 @@ class WorkfileActionResult:
         redirect = data.get("redirect")
         if redirect is not None:
             data["redirect"] = WorkfileActionRedirect.from_json_data(redirect)
-        save_as_dialog = data.get("show_save_as_dialog")
-        if save_as_dialog is not None:
-            data["show_save_as_dialog"] = (
+        save_as_form = data.get("show_save_as_form")
+        if save_as_form is not None:
+            data["show_save_as_form"] = (
                 WorkfileActionSaveAsFormInputs.from_json_data(
-                    save_as_dialog
+                    save_as_form
                 )
             )
         return cls(**data)

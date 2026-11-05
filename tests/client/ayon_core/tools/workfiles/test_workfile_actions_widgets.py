@@ -271,7 +271,7 @@ def test_window_passes_save_as_values_to_action():
         "selection": selection.to_data(),
         "data": {"key": "value"},
         "result": WorkfileActionResult(
-            show_save_as_dialog=WorkfileActionSaveAsFormInputs(
+            show_save_as_form=WorkfileActionSaveAsFormInputs(
                 task_id="task-2"
             ),
         ),

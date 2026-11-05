@@ -52,7 +52,7 @@ class DuplicateWorkfileAction(WorkfileSimpleActionPlugin):
         if values is None:
             # Let a user pick the version and comment of the new workfile
             return WorkfileActionResult(
-                show_save_as_dialog=WorkfileActionSaveAsFormInputs(
+                show_save_as_form=WorkfileActionSaveAsFormInputs(
                     folder_id=selection.folder_id,
                     task_id=selection.task_id,
                     description=f"Copied from: {selection.filepath}",

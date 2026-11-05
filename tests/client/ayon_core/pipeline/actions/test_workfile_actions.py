@@ -538,7 +538,7 @@ def test_duplicate_workfile(tmp_path):
 
     # The tool is asked to show the Save As dialog first, nothing is copied
     result = context.execute_action(identifier, selection, None, {})
-    assert result.show_save_as_dialog == WorkfileActionSaveAsFormInputs(
+    assert result.show_save_as_form == WorkfileActionSaveAsFormInputs(
         folder_id="folder-1",
         task_id="task-1",
         description="Copied from: /work/file_v001.ma",
@@ -625,7 +625,7 @@ def test_result_json_conversion():
         message="Message",
         success=False,
         refresh=True,
-        show_save_as_dialog=WorkfileActionSaveAsFormInputs(
+        show_save_as_form=WorkfileActionSaveAsFormInputs(
             folder_id="folder-2",
             task_id="task-2",
             version=3,
