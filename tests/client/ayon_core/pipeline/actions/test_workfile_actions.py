@@ -15,6 +15,8 @@ from ayon_core.pipeline.actions import (
     WorkfileActionPlugin,
     WorkfileActionRedirect,
     WorkfileActionResult,
+    WorkfileActionSaveAsDialog,
+    WorkfileActionSaveAsValues,
     WorkfileActionSelection,
     WorkfileActionsContext,
 )
@@ -508,7 +510,8 @@ def test_copy_file_items(tmp_path):
 
 
 def test_duplicate_workfile(tmp_path):
-    context = _create_context(tmp_path)
+    host = _create_host()
+    context = _create_context(tmp_path, host=host)
     identifier = "core.duplicate-workfile"
 
     def _get_item(selection):
@@ -533,9 +536,86 @@ def test_duplicate_workfile(tmp_path):
         filepath="/publish/file_v001.ma",
     )) is None
 
-    # The tool is asked to show the duplicate dialog
+    # The tool is asked to show the Save As dialog first, nothing is copied
     result = context.execute_action(identifier, selection, None, {})
-    assert result.show_duplicate_dialog == "/work/file_v001.ma"
+    assert result.show_save_as_dialog == WorkfileActionSaveAsDialog(
+        copied_from="/work/file_v001.ma"
+    )
+    host.copy_workfile.assert_not_called()
+
+    # The action is triggered again with values of the accepted dialog
+    folder_entity = {"id": "folder-1"}
+    task_entity = {"id": "task-1", "folderId": "folder-1", "name": "comp"}
+    project_anatomy = mock.Mock()
+    selection = _create_selection(
+        filepath="/work/file_v001.ma",
+        folder_entity=folder_entity,
+        task_entity=task_entity,
+        project_entity={"name": "test_project"},
+        project_anatomy=project_anatomy,
+        project_settings={},
+    )
+    form_values = {
+        workfile_actions.SAVE_AS_FORM_KEY: {
+            "folder_id": "folder-1",
+            "task_id": "task-1",
+            "workdir": str(tmp_path),
+            "rootless_workdir": "{root[work]}/comp",
+            "filename": "file_v005_note.ma",
+            "template_key": "default",
+            "version": 5,
+            "comment": "note",
+            "description": "Copied from: /work/file_v001.ma",
+        }
+    }
+    result = context.execute_action(identifier, selection, None, form_values)
+
+    args, kwargs = host.copy_workfile.call_args
+    assert args == (
+        "/work/file_v001.ma",
+        str(tmp_path / "file_v005_note.ma"),
+        folder_entity,
+        task_entity,
+    )
+    assert kwargs["version"] == 5
+    assert kwargs["comment"] == "note"
+    assert kwargs["description"] == "Copied from: /work/file_v001.ma"
+    assert kwargs["open_workfile"] is False
+    prepared_data = kwargs["prepared_data"]
+    assert prepared_data.rootless_path == "{root[work]}/comp/file_v005_note.ma"
+    assert prepared_data.anatomy is project_anatomy
+    # The new workfile is selected in the tool
+    assert result.success is True
+    assert result.redirect == WorkfileActionRedirect(
+        folder_id="folder-1",
+        task_name="comp",
+        workfile_name="file_v005_note.ma",
+    )
+
+    # Failed copy is reported
+    host.copy_workfile.side_effect = RuntimeError("Copy failed")
+    result = context.execute_action(identifier, selection, None, form_values)
+    assert result.success is False
+    assert result.redirect is None
+
+
+def test_save_as_values_from_form_values():
+    assert WorkfileActionSaveAsValues.from_form_values({}) is None
+    values = WorkfileActionSaveAsValues.from_form_values({
+        workfile_actions.SAVE_AS_FORM_KEY: {
+            "folder_id": "folder-1",
+            "task_id": "task-1",
+            "workdir": "/work/comp",
+            "rootless_workdir": "{root[work]}/comp",
+            "filename": "file_v002.ma",
+            "version": 2,
+            # Additional values of the dialog are ignored
+            "template_key": "default",
+        }
+    })
+    assert values.comment is None
+    assert values.filepath.replace("\\", "/") == "/work/comp/file_v002.ma"
+    assert values.rootless_path == "{root[work]}/comp/file_v002.ma"
 
 
 def test_result_json_conversion():
@@ -543,7 +623,9 @@ def test_result_json_conversion():
         message="Message",
         success=False,
         refresh=True,
-        show_duplicate_dialog="/work/file_v001.ma",
+        show_save_as_dialog=WorkfileActionSaveAsDialog(
+            copied_from="/work/file_v001.ma", extension=".ma"
+        ),
         redirect=WorkfileActionRedirect(
             folder_id="folder-1",
             task_name="comp",

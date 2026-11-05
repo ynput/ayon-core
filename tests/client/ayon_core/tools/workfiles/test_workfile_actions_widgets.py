@@ -3,10 +3,16 @@ from __future__ import annotations
 
 import collections
 import dataclasses
+from unittest import mock
 
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.pipeline.actions import (
+    WorkfileActionResult,
+    WorkfileActionSaveAsDialog,
+)
+from ayon_core.pipeline.actions.workfile import SAVE_AS_FORM_KEY
 from ayon_core.tools.workfiles.abstract import (
     ActionItem,
     ActionSelectionData,
@@ -15,6 +21,7 @@ from ayon_core.tools.workfiles.widgets.actions_widgets import (
     WorkfileActionsRow,
     add_actions_to_menu,
 )
+from ayon_core.tools.workfiles.widgets.window import WorkfilesToolWindow
 
 
 def _create_items(count: int) -> list[ActionItem]:
@@ -252,3 +259,51 @@ def test_actions_menu_groups_items(qtbot):
     assert [action.text() for action in group_menu.actions()] == [
         "Action 1", "Action 2"
     ]
+
+
+def test_window_passes_save_as_values_to_action():
+    selection = ActionSelectionData(
+        published=False, folder_id="folder-1", task_id="task-1"
+    )
+    event = {
+        "crashed": False,
+        "identifier": "test.save-as",
+        "selection": selection.to_data(),
+        "data": {"key": "value"},
+        "result": WorkfileActionResult(
+            show_save_as_dialog=WorkfileActionSaveAsDialog(
+                copied_from="/work/file_v001.ma"
+            ),
+        ),
+    }
+    values = {"filename": "file_v002.ma", "version": 2}
+    window = mock.Mock()
+    window._exec_save_as_dialog.return_value = values
+
+    WorkfilesToolWindow._on_workfile_action_finished(window, event)
+
+    window._exec_save_as_dialog.assert_called_once_with(
+        WorkfileActionSaveAsDialog(copied_from="/work/file_v001.ma")
+    )
+    # The action continues with values of the dialog
+    window._controller.trigger_workfile_action.assert_called_once_with(
+        "test.save-as",
+        selection,
+        {"key": "value"},
+        {SAVE_AS_FORM_KEY: values},
+    )
+    window._apply_action_result.assert_not_called()
+
+    # Cancelled dialog does not trigger the action again
+    window.reset_mock()
+    window._exec_save_as_dialog.return_value = None
+    WorkfilesToolWindow._on_workfile_action_finished(window, event)
+    window._controller.trigger_workfile_action.assert_not_called()
+    window._apply_action_result.assert_not_called()
+
+    # Result without form or dialog is applied right away
+    window.reset_mock()
+    event["result"] = WorkfileActionResult(refresh=True)
+    WorkfilesToolWindow._on_workfile_action_finished(window, event)
+    window._controller.trigger_workfile_action.assert_not_called()
+    window._apply_action_result.assert_called_once_with(event["result"])

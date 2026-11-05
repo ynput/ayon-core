@@ -29,10 +29,14 @@ Using 'WorkfileActionResult' as the output of 'execute_action' can trigger
     to show a message in UI, to show an additional form ('ActionForm') which
     would retrigger the action with the values from the form on submitting,
     to refresh the tool, to redirect the tool to a different context, to
-    let the tool show the duplicate dialog or to close the tool.
+    show the Save As dialog of the tool or to close the tool.
 
     The result has helper method 'set_redirect' to define the context
     by entities.
+
+    The Save As dialog lets a user pick version and comment of a new
+    workfile. The action is triggered again with the values of the dialog,
+    use 'WorkfileActionSaveAsValues.from_form_values' to get them.
 
     Example:
         >>> return (
@@ -73,7 +77,7 @@ import logging
 from abc import ABC, abstractmethod
 import typing
 from typing import Any
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 import ayon_api
 
@@ -99,6 +103,7 @@ if typing.TYPE_CHECKING:
 
 _PLACEHOLDER = object()
 SAVE_CHANGES_FORM_KEY = "save_current_workfile"
+SAVE_AS_FORM_KEY = "save_as_values"
 
 
 class WorkfileAreaType(StrEnum):
@@ -502,6 +507,108 @@ class WorkfileActionRedirect:
 
 
 @dataclass
+class WorkfileActionSaveAsDialog:
+    """Save As dialog the workfiles tool should show.
+
+    The dialog uses the context selected in the tool. The action is
+        triggered again with the values of the dialog when a user accepts
+        it, see 'WorkfileActionSaveAsValues'. Nothing happens on cancel.
+
+    Attributes:
+        copied_from (str | None): Path to the source workfile, it is
+            mentioned in the artist note of the new workfile.
+        extension (str | None): Allow only this extension of the new
+            workfile.
+
+    """
+    copied_from: str | None = None
+    extension: str | None = None
+
+    def to_json_data(self) -> dict[str, Any]:
+        return {
+            "copied_from": self.copied_from,
+            "extension": self.extension,
+        }
+
+    @classmethod
+    def from_json_data(
+        cls, data: dict[str, Any]
+    ) -> WorkfileActionSaveAsDialog:
+        return cls(**data)
+
+
+@dataclass
+class WorkfileActionSaveAsValues:
+    """Values of the Save As dialog accepted by a user.
+
+    The values are passed to 'execute_action' in form values under
+        'SAVE_AS_FORM_KEY'.
+
+    Example:
+        >>> def execute_action(self, selection, data, form_values):
+        ...     values = WorkfileActionSaveAsValues.from_form_values(
+        ...         form_values
+        ...     )
+        ...     if values is None:
+        ...         return WorkfileActionResult(
+        ...             show_save_as_dialog=WorkfileActionSaveAsDialog()
+        ...         )
+        ...     # Save the workfile to 'values.filepath'
+
+    Attributes:
+        folder_id (str): Folder id of the new workfile.
+        task_id (str): Task id of the new workfile.
+        workdir (str): Directory of the new workfile.
+        rootless_workdir (str): Directory of the new workfile with root
+            placeholders.
+        filename (str): Filename of the new workfile.
+        version (int): Version of the new workfile.
+        comment (str | None): Comment of the new workfile.
+        description (str | None): Artist note of the new workfile.
+
+    """
+    folder_id: str
+    task_id: str
+    workdir: str
+    rootless_workdir: str
+    filename: str
+    version: int
+    comment: str | None = None
+    description: str | None = None
+
+    @property
+    def filepath(self) -> str:
+        return os.path.join(self.workdir, self.filename)
+
+    @property
+    def rootless_path(self) -> str:
+        return f"{self.rootless_workdir}/{self.filename}"
+
+    @classmethod
+    def from_form_values(
+        cls, form_values: dict[str, Any]
+    ) -> WorkfileActionSaveAsValues | None:
+        """Values of the Save As dialog from form values of an action.
+
+        Args:
+            form_values (dict[str, Any]): Form values passed to
+                'execute_action'.
+
+        Returns:
+            WorkfileActionSaveAsValues | None: Values of the dialog or None
+                if the dialog was not shown yet.
+
+        """
+        data = form_values.get(SAVE_AS_FORM_KEY)
+        if not data:
+            return None
+        return cls(**{
+            field.name: data.get(field.name)
+            for field in fields(cls)
+        })
+
+
+@dataclass
 class WorkfileActionResult:
     """Result of workfile action execution.
 
@@ -516,10 +623,9 @@ class WorkfileActionResult:
         refresh (bool): The tool should refresh its content.
         redirect (WorkfileActionRedirect | None): Context to which should
             be the tool redirected.
-        show_duplicate_dialog (str | None): Path to a workfile for which
-            the tool should show the duplicate dialog, the same as for
-            the 'Duplicate' of a workfile. A user picks the version and
-            comment of the new workfile in the dialog.
+        show_save_as_dialog (WorkfileActionSaveAsDialog | None): Show
+            the Save As dialog of the tool. The action is triggered again
+            with the values of the dialog when a user accepts it.
         close_tool (bool): The tool should be closed, e.g. because
             a workfile was opened by the action itself.
 
@@ -530,7 +636,7 @@ class WorkfileActionResult:
     form_values: dict[str, Any] | None = None
     refresh: bool = False
     redirect: WorkfileActionRedirect | None = None
-    show_duplicate_dialog: str | None = None
+    show_save_as_dialog: WorkfileActionSaveAsDialog | None = None
     close_tool: bool = False
 
     def to_json_data(self) -> dict[str, Any]:
@@ -540,6 +646,9 @@ class WorkfileActionResult:
         redirect = self.redirect
         if redirect is not None:
             redirect = redirect.to_json_data()
+        save_as_dialog = self.show_save_as_dialog
+        if save_as_dialog is not None:
+            save_as_dialog = save_as_dialog.to_json_data()
         return {
             "message": self.message,
             "success": self.success,
@@ -547,7 +656,7 @@ class WorkfileActionResult:
             "form_values": self.form_values,
             "refresh": self.refresh,
             "redirect": redirect,
-            "show_duplicate_dialog": self.show_duplicate_dialog,
+            "show_save_as_dialog": save_as_dialog,
             "close_tool": self.close_tool,
         }
 
@@ -560,6 +669,11 @@ class WorkfileActionResult:
         redirect = data.get("redirect")
         if redirect is not None:
             data["redirect"] = WorkfileActionRedirect.from_json_data(redirect)
+        save_as_dialog = data.get("show_save_as_dialog")
+        if save_as_dialog is not None:
+            data["show_save_as_dialog"] = (
+                WorkfileActionSaveAsDialog.from_json_data(save_as_dialog)
+            )
         return cls(**data)
 
     def set_redirect(

@@ -238,36 +238,6 @@ class FilesWidget(AYContainer):
         #   under mouse
         self._on_workarea_open_clicked()
 
-    def show_duplicate_dialog(self, filepath):
-        """Show dialog to duplicate a workfile to selected context.
-
-        User is asked for version and comment of the new workfile, the
-            workfile is duplicated when the dialog is accepted.
-
-        Args:
-            filepath (str): Path to the workfile to duplicate.
-
-        """
-        if not filepath:
-            return
-
-        result = self._exec_save_as_dialog(copied_from=filepath)
-        if result is None:
-            return
-        folder_id = self._selected_folder_id
-        task_id = self._selected_task_id
-        self._controller.duplicate_workfile(
-            folder_id,
-            task_id,
-            filepath,
-            result["rootless_workdir"],
-            result["workdir"],
-            result["filename"],
-            version=result["version"],
-            comment=result["comment"],
-            description=result["description"]
-        )
-
     def _on_workarea_browse_clicked(self):
         extnsions = self._controller.get_workfile_extensions()
         ext_filter = "Work File (*{0})".format(

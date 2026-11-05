@@ -4,6 +4,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources
 from ayon_core.pipeline.actions import WorkfileAreaType
+from ayon_core.pipeline.actions.workfile import SAVE_AS_FORM_KEY
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils import (
     FoldersWidget,
@@ -26,6 +27,7 @@ from ayon_core.ui.components import (
 )
 
 from .files_widget import FilesWidget
+from .save_as_dialog import SaveAsDialog
 from .side_panel import SidePanelWidget
 from .utils import BaseOverlayFrame
 
@@ -463,28 +465,34 @@ class WorkfilesToolWindow(AYContainer):
                 result.message, message_type
             )
 
+        # Action continues when the form or Save As dialog is accepted
+        form_values = None
         if result.form is not None:
-            # Action continues when the form is submitted
             form_values = self._exec_action_form(
                 result.form, result.form_values
             )
-            if form_values is not None:
-                self._controller.trigger_workfile_action(
-                    event["identifier"],
-                    ActionSelectionData.from_data(event["selection"]),
-                    event["data"],
-                    form_values,
-                )
+        elif result.show_save_as_dialog is not None:
+            save_as_values = self._exec_save_as_dialog(
+                result.show_save_as_dialog
+            )
+            if save_as_values is not None:
+                form_values = {SAVE_AS_FORM_KEY: save_as_values}
+        else:
+            self._apply_action_result(result)
             return
 
+        if form_values is not None:
+            self._controller.trigger_workfile_action(
+                event["identifier"],
+                ActionSelectionData.from_data(event["selection"]),
+                event["data"],
+                form_values,
+            )
+
+    def _apply_action_result(self, result):
         if result.close_tool:
             self.close()
             return
-
-        if result.show_duplicate_dialog:
-            self._files_widget.show_duplicate_dialog(
-                result.show_duplicate_dialog
-            )
 
         redirect = result.redirect
         # Redirect does refresh too, so files created by the action can be
@@ -494,6 +502,17 @@ class WorkfilesToolWindow(AYContainer):
 
         if redirect is not None:
             self._redirect(redirect)
+
+    def _exec_save_as_dialog(self, save_as_dialog):
+        dialog = SaveAsDialog(
+            self._controller,
+            self,
+            extension=save_as_dialog.extension,
+            copied_from=save_as_dialog.copied_from,
+        )
+        dialog.update_context()
+        dialog.exec_()
+        return dialog.get_result()
 
     def _exec_action_form(self, form, form_values):
         dialog = AttributeDefinitionsDialog(
