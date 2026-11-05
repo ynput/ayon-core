@@ -338,6 +338,12 @@ MATCH_CONTEXT_LENGTH = 200
 @dataclass
 class _LogMatch:
     """Search match in the logs document with the text around it."""
+    # Search can find many matches, 'slots=True' of dataclass requires
+    #   Python 3.10
+    __slots__ = (
+        "start", "end", "level", "before", "text", "after", "source"
+    )
+
     start: int
     end: int
     level: str
