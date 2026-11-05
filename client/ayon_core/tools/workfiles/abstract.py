@@ -1141,36 +1141,6 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """
         pass
 
-    @abstractmethod
-    def duplicate_workfile(
-        self,
-        folder_id: str,
-        task_id: str,
-        src_filepath: str,
-        rootless_workdir: str,
-        workdir: str,
-        filename: str,
-        version: int,
-        comment: str | None,
-        description: str | None,
-    ) -> None:
-        """Duplicate workfile.
-
-        Workfiles is not opened when done.
-
-        Args:
-            folder_id (str): Folder id.
-            task_id (str): Task id.
-            src_filepath (str): Source workfile path.
-            rootless_workdir (str): Rootless workdir.
-            workdir (str): Destination workdir.
-            filename (str): Destination filename.
-            version (int): Workfile version.
-            comment (str): User's comment (subversion).
-            description (str): Workfile description.
-        """
-        pass
-
     # Workfile actions
     @abstractmethod
     def get_workfile_action_selection(

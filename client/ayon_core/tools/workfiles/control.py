@@ -691,30 +691,6 @@ class BaseWorkfileController(
             description,
         )
 
-    def duplicate_workfile(
-        self,
-        folder_id: str,
-        task_id: str,
-        src_filepath: str,
-        rootless_workdir: str,
-        workdir: str,
-        filename: str,
-        version: int,
-        comment: str | None,
-        description: str | None,
-    ) -> None:
-        self._workfiles_model.duplicate_workfile(
-            folder_id,
-            task_id,
-            src_filepath,
-            rootless_workdir,
-            workdir,
-            filename,
-            version,
-            comment,
-            description,
-        )
-
     # Workfile actions
     def get_workfile_action_selection(
         self, published: bool, with_workfile: bool = True

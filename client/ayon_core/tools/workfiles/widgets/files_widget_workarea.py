@@ -58,10 +58,6 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             self._on_task_changed
         )
         controller.register_event_callback(
-            "workfile_duplicate.finished",
-            self._on_duplicate_finished
-        )
-        controller.register_event_callback(
             "save_as.finished",
             self._on_save_as_finished
         )
@@ -166,13 +162,6 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
     def _on_task_changed(self, event):
         self._selected_folder_id = event["folder_id"]
         self._selected_task_name = event["task_name"]
-        if not self._published_mode:
-            self._fill_items()
-
-    def _on_duplicate_finished(self, event):
-        if event["failed"]:
-            return
-
         if not self._published_mode:
             self._fill_items()
 

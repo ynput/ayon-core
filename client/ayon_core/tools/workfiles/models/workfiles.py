@@ -23,7 +23,6 @@ from ayon_core.host.interfaces import (
     ListWorkfilesOptionalData,
     ListPublishedWorkfilesOptionalData,
     SaveWorkfileOptionalData,
-    CopyWorkfileOptionalData,
     CopyPublishedWorkfileOptionalData,
 )
 from ayon_core.pipeline.template_data import (
@@ -242,61 +241,6 @@ class WorkfilesModel:
 
         self._emit_event(
             "copy_representation.finished",
-            {"failed": failed},
-        )
-
-    def duplicate_workfile(
-        self,
-        folder_id: str,
-        task_id: str,
-        src_filepath: str,
-        rootless_workdir: str,
-        workdir: str,
-        filename: str,
-        version: int,
-        comment: str | None,
-        description: str | None,
-    ) -> None:
-        self._emit_event("workfile_duplicate.started")
-
-        project_name = self._controller.get_current_project_name()
-        project_entity = self._controller.get_project_entity(project_name)
-        folder_entity = self._controller.get_folder_entity(
-            project_name, folder_id
-        )
-        task_entity = self._controller.get_task_entity(project_name, task_id)
-        workfile_entities = self.get_workfile_entities(task_id)
-        rootless_path = f"{rootless_workdir}/{filename}"
-        workfile_path = os.path.join(workdir, filename)
-
-        prepared_data = CopyWorkfileOptionalData(
-            project_entity=project_entity,
-            project_settings=self._controller.project_settings,
-            anatomy=self._controller.project_anatomy,
-            rootless_path=rootless_path,
-            workfile_entities=workfile_entities,
-        )
-        failed = False
-        try:
-            self._host.copy_workfile(
-                src_filepath,
-                workfile_path,
-                folder_entity,
-                task_entity,
-                version=version,
-                comment=comment,
-                description=description,
-                # Duplicated workfile should not be opened
-                open_workfile=False,
-                prepared_data=prepared_data,
-            )
-
-        except Exception:
-            failed = True
-            self._log.warning("Duplication of workfile failed", exc_info=True)
-
-        self._emit_event(
-            "workfile_duplicate.finished",
             {"failed": failed},
         )
 
