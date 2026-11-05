@@ -340,10 +340,17 @@ class ImageCache:
         ``_set_wal_mode``.  Once set, WAL mode is stored in the database
         file header and all subsequent connections inherit it automatically.
 
+        The connection is used only by the thread that opened it, see
+        ``_get_conn``. ``check_same_thread`` is disabled only so that
+        ``_close_all_connections`` can close it from another thread, e.g.
+        from the ``atexit`` handler after worker threads have ended.
+
         Returns:
             A new ``sqlite3.Connection`` configured with busy_timeout.
         """
-        return sqlite3.connect(str(self._db_path), timeout=10)
+        return sqlite3.connect(
+            str(self._db_path), timeout=10, check_same_thread=False
+        )
 
     def _get_conn(self) -> sqlite3.Connection:
         """Return the per-thread SQLite connection, creating it if needed.
