@@ -25,7 +25,7 @@ time.
 from __future__ import annotations
 
 import concurrent.futures
-import logging
+import contextvars
 import queue
 import threading
 import time
@@ -42,7 +42,9 @@ from qtpy.QtCore import (
 )
 from qtpy.QtWidgets import QApplication
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 # Number of parallel pool workers created by default.
 _DEFAULT_NUM_WORKERS: int = 4
@@ -93,6 +95,15 @@ class AsyncTask:
     # Internal state
     _counter: int = field(default=0, init=False, compare=True)
     _cancelled: bool = field(default=False, init=False, repr=False)
+    # Context of the code creating the task. The function runs in it, so
+    #   logs of the task keep context variables of the requester, e.g.
+    #   'trace_id' of the span that created the task, see 'log_span'.
+    _context: contextvars.Context = field(
+        default_factory=contextvars.copy_context,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def cancel(self) -> None:
         """Mark this task as cancelled.
@@ -389,7 +400,7 @@ class AsyncTaskQueue(QThread):
         # delivering or logging a successful result must not be reported
         # as a task failure, which would deliver a second callback.
         try:
-            result = task.function()
+            result = task._context.run(task.function)
         except Exception as e:
             # Deliver the failure before logging it. Logging may itself
             # raise (e.g. a host stream that is unusable from a worker

@@ -1481,11 +1481,26 @@ AttributeDefinitionsWidget QAbstractSpinBox, AttributeDefinitionsWidget QLineEdi
 AttributeDefinitionsWidget QComboBox {
     padding: 1px 1px 1px 0.2em;
 }
-InViewButton, InViewButton:disabled {
+FilesView::item {
+    /* Item widgets define their own size, padding would cut them */
+    padding: 0px;
+}
+FilesOverlay {
     background: transparent;
 }
+InViewButton {
+    background: {color:bg-buttons};
+}
 InViewButton:hover {
-    background: rgba(255, 255, 255, 37);
+    background: {color:bg-buttons-hover};
+}
+InViewButton:disabled {
+    background: {color:bg-buttons-disabled};
+}
+WarningLabel {
+    color: {color:publisher:warning};
+    background: {color:bg-view};
+    padding: 2px 4px;
 }
 SupportLabel {
     color: {color:font-disabled};

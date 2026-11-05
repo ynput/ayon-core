@@ -17,15 +17,17 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     ProjectsModel,
     UsersModel,
+    WSEventsModel,
     ThumbnailsModel,
 )
 
 from .abstract import (
+    ActionSelectionData,
     AbstractWorkfilesBackend,
     AbstractWorkfilesFrontend,
 )
 
-from .models import SelectionModel, WorkfilesModel
+from .models import SelectionModel, WorkfilesModel, WorkfileActionsModel
 
 if typing.TYPE_CHECKING:
     import logging
@@ -44,6 +46,7 @@ if typing.TYPE_CHECKING:
     )
 
     from .abstract import (
+        ActionItem,
         PublishedWorkfileWrap,
         PublishedWorkfileInfo,
     )
@@ -185,6 +188,8 @@ class BaseWorkfileController(
         self._hierarchy_model = self._create_hierarchy_model()
         self._thumbnails_model = ThumbnailsModel()
         self._workfiles_model = self._create_workfiles_model()
+        self._actions_model = self._create_actions_model()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self) -> logging.Logger:
@@ -195,6 +200,15 @@ class BaseWorkfileController(
             return None
         return self._host.name
 
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
+
     def is_host_valid(self) -> bool:
         return self._host_is_valid
 
@@ -203,6 +217,9 @@ class BaseWorkfileController(
 
     def _create_workfiles_model(self):
         return WorkfilesModel(self._host, self)
+
+    def _create_actions_model(self):
+        return WorkfileActionsModel(self._host, self)
 
     def _create_expected_selection_obj(self):
         return WorkfilesToolExpectedSelection(self)
@@ -553,6 +570,13 @@ class BaseWorkfileController(
     def get_workfile_entities(self, task_id):
         return self._workfiles_model.get_workfile_entities(task_id)
 
+    def get_published_representation_entity(
+        self, folder_id: str | None, representation_id: str | None
+    ) -> dict[str, Any] | None:
+        return self._workfiles_model.get_published_representation_entity(
+            folder_id, representation_id
+        )
+
     def reset(self) -> None:
         if not self._host_is_valid:
             self._emit_event("controller.reset.started")
@@ -593,6 +617,7 @@ class BaseWorkfileController(
         self._hierarchy_model.reset()
         self._thumbnails_model.reset()
         self._workfiles_model.reset()
+        self._actions_model.reset()
 
         if not expected_folder_id:
             expected_folder_id = folder_id
@@ -679,28 +704,50 @@ class BaseWorkfileController(
             description,
         )
 
-    def duplicate_workfile(
+    # Workfile actions
+    def get_workfile_action_selection(
+        self, published: bool, with_workfile: bool = True
+    ) -> ActionSelectionData:
+        folder_id = self.get_selected_folder_id()
+        task_id = self.get_selected_task_id()
+        kwargs = {}
+        if with_workfile and published:
+            repre_id = self.get_selected_representation_id()
+            info = self.get_published_workfile_info(folder_id, repre_id).info
+            if info is not None:
+                kwargs["representation_id"] = repre_id
+                kwargs["filepath"] = info.filepath
+
+        elif with_workfile:
+            workfile_data = self._selection_model.get_selected_workfile_data()
+            if workfile_data["path"]:
+                kwargs["filepath"] = workfile_data["path"]
+                kwargs["rootless_path"] = workfile_data["rootless_path"]
+                kwargs["workfile_entity_id"] = (
+                    workfile_data["workfile_entity_id"]
+                )
+
+        return ActionSelectionData(
+            published=published,
+            folder_id=folder_id,
+            task_id=task_id,
+            **kwargs
+        )
+
+    def get_workfile_action_items(
+        self, selection: ActionSelectionData
+    ) -> list[ActionItem]:
+        return self._actions_model.get_action_items(selection)
+
+    def trigger_workfile_action(
         self,
-        folder_id: str,
-        task_id: str,
-        src_filepath: str,
-        rootless_workdir: str,
-        workdir: str,
-        filename: str,
-        version: int,
-        comment: str | None,
-        description: str | None,
+        identifier: str,
+        selection: ActionSelectionData,
+        data: dict[str, Any] | None,
+        form_values: dict[str, Any],
     ) -> None:
-        self._workfiles_model.duplicate_workfile(
-            folder_id,
-            task_id,
-            src_filepath,
-            rootless_workdir,
-            workdir,
-            filename,
-            version,
-            comment,
-            description,
+        self._actions_model.trigger_action(
+            identifier, selection, data, form_values
         )
 
     def get_my_tasks_entity_ids(

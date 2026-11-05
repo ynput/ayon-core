@@ -19,19 +19,20 @@ from __future__ import annotations
 
 import copy
 import json
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from qtpy.QtGui import QColor, QFont, QPalette
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QApplication, QWidget
+
+from ayon_core.lib import Logger
 
 from .drawers._utils import style_font
 
 if TYPE_CHECKING:
     from .style import AYONStyle
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +205,8 @@ class StyleData:
             QPalette.ColorRole.Dark: "qt-active-dark",
             QPalette.ColorRole.Mid: "qt-active-mid",
             QPalette.ColorRole.Shadow: "qt-active-shadow",
+            QPalette.ColorRole.ToolTipBase: "qt-active-tooltip-base",
+            QPalette.ColorRole.ToolTipText: "qt-active-tooltip-text",
         }
         p = QPalette()
         for role, color_name in bp.items():
@@ -517,6 +520,11 @@ def get_ayon_style() -> AYONStyle:
     The ``AYONStyle`` class is imported lazily on the first call to avoid
     a circular import at module load time.
 
+    The style is parented to the ``QApplication`` so it outlives the
+    widgets using it. Widgets with a stylesheet keep a raw pointer to it,
+    and on exit PySide deletes all objects owned by Python in random
+    order. Deleting the style before those widgets crashes Qt.
+
     Returns:
         The singleton ``AYONStyle`` instance.
     """
@@ -526,6 +534,9 @@ def get_ayon_style() -> AYONStyle:
     from .style import AYONStyle
 
     instance = AYONStyle()
+    app = QApplication.instance()
+    if app is not None:
+        instance.setParent(app)
     _LocalContext.ayon_style_instance = instance
     return instance
 
