@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from qtpy.QtGui import QColor, QFont, QPalette
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QApplication, QWidget
 
 from ayon_core.lib import Logger
 
@@ -520,6 +520,11 @@ def get_ayon_style() -> AYONStyle:
     The ``AYONStyle`` class is imported lazily on the first call to avoid
     a circular import at module load time.
 
+    The style is parented to the ``QApplication`` so it outlives the
+    widgets using it. Widgets with a stylesheet keep a raw pointer to it,
+    and on exit PySide deletes all objects owned by Python in random
+    order. Deleting the style before those widgets crashes Qt.
+
     Returns:
         The singleton ``AYONStyle`` instance.
     """
@@ -529,6 +534,9 @@ def get_ayon_style() -> AYONStyle:
     from .style import AYONStyle
 
     instance = AYONStyle()
+    app = QApplication.instance()
+    if app is not None:
+        instance.setParent(app)
     _LocalContext.ayon_style_instance = instance
     return instance
 
