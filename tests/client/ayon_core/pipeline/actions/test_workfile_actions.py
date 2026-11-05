@@ -115,6 +115,7 @@ def _create_context(tmp_path, project_settings=None, host=None):
 def _create_selection(**kwargs):
     kwargs.setdefault("folder_id", "folder-1")
     kwargs.setdefault("task_id", "task-1")
+    kwargs.setdefault("project_settings", {})
     area = kwargs.pop("area", WorkfileAreaType.workarea)
     return WorkfileActionSelection("test_project", area, **kwargs)
 
@@ -150,25 +151,26 @@ def test_discovery_and_sorting(tmp_path):
 
 
 def test_settings_can_disable_plugins(tmp_path):
-    context = _create_context(tmp_path, project_settings={
-        "core": {
-            "workfile_actions": {"ExploreHereAction": {"enabled": False}}
+    context = _create_context(tmp_path)
+    items = context.get_action_items(_create_selection(
+        filepath="/work/file_v001.ma",
+        project_settings={
+            "core": {
+                "workfile_actions": {
+                    "ExploreHereAction": {"enabled": False}
+                }
+            },
         },
-        "test_addon": {
-            "workfile_actions": {"RedirectAction": {"order": 100}}
-        },
-    })
-    items = context.get_action_items(
-        _create_selection(filepath="/work/file_v001.ma")
-    )
-    assert [(item.identifier, item.order) for item in items] == [
-        ("test.save-changes", -10),
-        ("core.increment-and-open", 20),
-        ("core.duplicate-workfile", 30),
-        ("core.copy-file", 40),
-        ("core.copy-file", 41),
-        ("test.redirect", 100),
-        ("test.redirect", 100),
+    ))
+    # Settings of the selection project are used
+    assert [item.identifier for item in items] == [
+        "test.save-changes",
+        "test.redirect",
+        "test.redirect",
+        "core.increment-and-open",
+        "core.duplicate-workfile",
+        "core.copy-file",
+        "core.copy-file",
     ]
 
 
@@ -332,27 +334,27 @@ def test_set_context(tmp_path):
     def _selection(**kwargs):
         kwargs.setdefault("folder_entity", folder_entity)
         kwargs.setdefault("task_entity", task_entity)
+        kwargs.setdefault("project_settings", {
+            "core": {
+                "workfile_actions": {"SetContextAction": {"enabled": True}}
+            },
+        })
         return _create_selection(
             project_entity={"name": "test_project"},
             project_anatomy=mock.Mock(),
             **kwargs
         )
 
-    # Disabled by default
     context = _create_context(tmp_path, host=host)
-    assert identifier not in context._get_plugins()
-
-    context = _create_context(tmp_path, host=host, project_settings={
-        "core": {
-            "workfile_actions": {"SetContextAction": {"enabled": True}}
-        },
-    })
 
     def _is_available(selection):
         return any(
             item.identifier == identifier
             for item in context.get_action_items(selection)
         )
+
+    # Disabled by default
+    assert not _is_available(_selection(project_settings={}))
 
     # Available for a task with or without selected workfile, in both areas
     assert _is_available(_selection())

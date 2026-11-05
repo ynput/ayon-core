@@ -51,9 +51,11 @@ It is also recommended that the plugin does override the 'identifier'
     Class name is used by default.
 
 Settings of a plugin are looked for in
-    '<settings_category>/workfile_actions/<class name>' of project settings.
-    All values are set as attributes on the plugin, so 'enabled' can be used
-    to disable the plugin.
+    '<settings_category>/workfile_actions/<class name>' of project settings
+    of the selection. The plugin is disabled when 'enabled' is set to
+    'False' there, see 'is_enabled'. 'WorkfileSimpleActionPlugin' does check
+    it on its own, other plugins should call 'is_enabled' at the start of
+    'get_action_items'.
 
 Important:
     Method 'get_action_items' is called in the main thread on each
@@ -760,7 +762,8 @@ class WorkfileActionPlugin(ABC):
     Plugin is responsible for getting action items and executing actions.
 
     Attributes:
-        enabled (bool): Plugin is not used if is disabled.
+        enabled (bool): Plugin is enabled if the project settings do not
+            say otherwise.
         settings_category (str | None): Settings category (addon name)
             where to look for settings of the plugin. Settings are expected
             under '<settings_category>/workfile_actions/<class name>'.
@@ -773,38 +776,32 @@ class WorkfileActionPlugin(ABC):
 
     def __init__(self, context: WorkfileActionsContext) -> None:
         self._context = context
-        self.apply_settings(context.get_project_settings())
 
-    def apply_settings(self, project_settings: dict[str, Any]) -> None:
-        """Apply project settings to the plugin.
+    def is_enabled(self, selection: WorkfileActionSelection) -> bool:
+        """Plugin is enabled for the project of the selection.
 
-        Default implementation does look for plugin settings in
-            '<settings_category>/workfile_actions/<class name>' and set all
-            values as attributes of the plugin.
+        Value 'enabled' is looked for in
+            '<settings_category>/workfile_actions/<class name>' of project
+            settings of the selection. Attribute 'enabled' is used if
+            the value is not set.
 
         Args:
-            project_settings (dict[str, Any]): Project settings.
+            selection (WorkfileActionSelection): Selection.
+
+        Returns:
+            bool: Plugin is enabled.
 
         """
         if not self.settings_category:
-            return
+            return self.enabled
 
         plugin_settings = (
-            project_settings
+            selection.get_project_settings()
             .get(self.settings_category, {})
             .get("workfile_actions", {})
-            .get(self.__class__.__name__)
+            .get(self.__class__.__name__, {})
         )
-        if not plugin_settings:
-            return
-
-        for key, value in plugin_settings.items():
-            try:
-                setattr(self, key, value)
-            except AttributeError:
-                self.log.debug(
-                    f"Failed to set attribute '{key}' from settings."
-                )
+        return plugin_settings.get("enabled", self.enabled)
 
     @property
     def log(self) -> logging.Logger:
@@ -944,8 +941,8 @@ class WorkfileActionsContext:
         like discovery and initialization of plugins.
 
     Actions are related to a host integration with workfiles and to its
-        current project. Project settings of the project are used to set up
-        the plugins.
+        current project. Plugins read their settings from the project
+        settings of the selection.
 
     Args:
         host (IWorkfileHost): Host integration.
@@ -1013,7 +1010,7 @@ class WorkfileActionsContext:
         return self._host.get_current_project_name()
 
     def get_project_settings(self) -> dict[str, Any]:
-        """Project settings used to set up the plugins.
+        """Project settings of the current project.
 
         Returns:
             dict[str, Any]: Project settings.
@@ -1126,9 +1123,6 @@ class WorkfileActionsContext:
         for cls in result.plugins:
             try:
                 plugin = cls(self)
-                if not plugin.enabled:
-                    continue
-
                 plugin_id = plugin.identifier
                 if plugin_id not in plugins:
                     plugins[plugin_id] = plugin
@@ -1221,6 +1215,9 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
     def get_action_items(
         self, selection: WorkfileActionSelection
     ) -> list[WorkfileActionItem]:
+        if not self.is_enabled(selection):
+            return []
+
         if self.is_compatible(selection):
             label = self.label or self.__class__.__name__
             return [
