@@ -14,11 +14,11 @@ class InterpreterController(AbstractInterpreterController):
     def __init__(self, name: Optional[str] = None) -> None:
         if name is None:
             name = "python_interpreter_tool"
-        self._preferences = LocalPreferences(name)
         # Previous versions stored it in the root of the local directory.
         #   Imported once, the file is kept for older versions of core.
-        self._preferences.import_registry(
-            get_launcher_local_dir(f"{name}.json")
+        self._preferences = LocalPreferences(
+            name,
+            legacy_registry_filepath=get_launcher_local_dir(f"{name}.json"),
         )
 
     def get_config(self) -> InterpreterConfig:

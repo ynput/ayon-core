@@ -873,11 +873,11 @@ class LocalPreferences(ASettingRegistry):
     'preferences.db.broken-<time>' and a new one is created, so local
     preferences of all tools are reset instead of failing every time.
 
-    A 'JSONSettingRegistry' with the same name in that folder, as tools
-    used before, is imported on first use, e.g.
-    'LocalPreferences("launcher")' has the items the Launcher stored
-    before. Older versions of core keep using that file, changes are not
-    written back to it.
+    The legacy registry, a 'JSONSettingRegistry' file tools used before,
+    is imported once on first use. It is '<name>.json' in that folder if
+    not passed, e.g. 'LocalPreferences("launcher")' has the items the
+    Launcher stored before. Older versions of core keep using that file,
+    changes are not written back to it.
 
     Example:
         >>> preferences = LocalPreferences("io.ynput.core.my_tool")
@@ -888,6 +888,10 @@ class LocalPreferences(ASettingRegistry):
     Args:
         name: Name of the preferences, namespaced like keys of
             'UserPreferences', e.g. 'io.ynput.core.my_tool'.
+        legacy_registry_filepath: Path to the 'JSONSettingRegistry' file
+            the tool used before, to import on first use. Defaults to
+            '<name>.json' in the 'tools' folder of the launcher local
+            directory.
 
     Raises:
         ValueError: If the name is not valid.
@@ -899,11 +903,18 @@ class LocalPreferences(ASettingRegistry):
     # Guards moving a broken database aside in this process
     _recover_lock = threading.Lock()
 
-    def __init__(self, name: str) -> None:
+    def __init__(
+        self, name: str, legacy_registry_filepath: Optional[str] = None
+    ) -> None:
         _validate_preferences_name(name)
         super().__init__(name)
+        if legacy_registry_filepath is None:
+            legacy_registry_filepath = get_launcher_local_dir(
+                "tools", f"{name}.json"
+            )
         self._filepath = get_launcher_local_dir("tools", "preferences.db")
-        self._registry_imported = False
+        self._legacy_registry_filepath = legacy_registry_filepath
+        self._legacy_registry_imported = False
 
     @property
     def filepath(self) -> str:
@@ -911,9 +922,12 @@ class LocalPreferences(ASettingRegistry):
         return self._filepath
 
     @property
-    def registry_filepath(self) -> str:
-        """Path to the registry imported on first use, may not exist."""
-        return get_launcher_local_dir("tools", f"{self.name}.json")
+    def legacy_registry_filepath(self) -> str:
+        """Path to the legacy registry imported on first use.
+
+        It may not exist.
+        """
+        return self._legacy_registry_filepath
 
     def get_data(self) -> dict[str, Any]:
         """All stored items.
@@ -1061,7 +1075,7 @@ class LocalPreferences(ASettingRegistry):
         self, sql: str, parameters: tuple[str, ...]
     ) -> Optional[list[tuple[str, ...]]]:
         """Read rows, 'None' if they could not be read."""
-        self._ensure_registry_imported()
+        self._ensure_legacy_registry_imported()
         # Nothing is created by reading
         if not os.path.exists(self._filepath):
             return []
@@ -1073,17 +1087,17 @@ class LocalPreferences(ASettingRegistry):
 
     def _change(self, sql: str, parameters: tuple[str, ...]) -> int:
         """Change rows, returns how many, '-1' if they were not changed."""
-        self._ensure_registry_imported()
+        self._ensure_legacy_registry_imported()
         success, count = self._run(
             lambda connection: connection.execute(sql, parameters).rowcount,
             "change",
         )
         return count if success else -1
 
-    def _ensure_registry_imported(self) -> None:
-        if not self._registry_imported:
-            self._registry_imported = True
-            self.import_registry(self.registry_filepath)
+    def _ensure_legacy_registry_imported(self) -> None:
+        if not self._legacy_registry_imported:
+            self._legacy_registry_imported = True
+            self.import_registry(self._legacy_registry_filepath)
 
     def _run(
         self,
@@ -1299,12 +1313,12 @@ class UserPreferences(ASettingRegistry):
         ...     preferences.set_item("show_history", True)
 
     Args:
-        key: Namespaced key of the preference, e.g.
-            'io.ynput.core.launcher'.
+        name: Name of the preferences, the namespaced key of the preference
+            on the server, e.g. 'io.ynput.core.launcher'.
         project_name: Project of the preference, global if not passed.
 
     Raises:
-        ValueError: If the key is not valid.
+        ValueError: If the name is not valid.
 
     """
     log = Logger.get_logger("UserPreferences")
@@ -1313,10 +1327,10 @@ class UserPreferences(ASettingRegistry):
     min_server_version = "1.17.3"
 
     def __init__(
-        self, key: str, project_name: Optional[str] = None
+        self, name: str, project_name: Optional[str] = None
     ) -> None:
-        _validate_preferences_name(key)
-        super().__init__(key)
+        _validate_preferences_name(name)
+        super().__init__(name)
         self._project_name = project_name or None
         # Requests are done while holding the lock, so an item is never
         #   stored while an older value is on its way to the server.
@@ -1350,11 +1364,6 @@ class UserPreferences(ASettingRegistry):
                 )
                 supported = _get_server_support()
         return bool(supported)
-
-    @property
-    def key(self) -> str:
-        """Key of the preference."""
-        return self.name
 
     @property
     def project_name(self) -> Optional[str]:
@@ -1423,7 +1432,7 @@ class UserPreferences(ASettingRegistry):
         if default is not _PLACEHOLDER:
             return default
         raise RegistryItemNotFound(
-            f"Preference '{self.key}' doesn't contain '{name}'."
+            f"Preference '{self.name}' doesn't contain '{name}'."
         )
 
     def _set_item(self, name: str, value: Any) -> None:
@@ -1440,7 +1449,7 @@ class UserPreferences(ASettingRegistry):
             self._ensure_loaded()
             if name not in self._data and not ignore_missing:
                 raise RegistryItemNotFound(
-                    f"Preference '{self.key}' doesn't contain '{name}'."
+                    f"Preference '{self.name}' doesn't contain '{name}'."
                 )
             self._data.pop(name, None)
             if not self._can_change("deleted"):
@@ -1480,7 +1489,7 @@ class UserPreferences(ASettingRegistry):
         self._raise_if_not_supported()
         self.log.warning(
             "Preference '%s' was not %s, the server is not reachable.",
-            self.key,
+            self.name,
             action,
         )
         return False
@@ -1506,7 +1515,7 @@ class UserPreferences(ASettingRegistry):
 
         """
         self._raise_if_not_supported()
-        query = {"key_prefix": self.key}
+        query = {"key_prefix": self.name}
         if self._project_name:
             query["project_name"] = self._project_name
         response = _list_preferences(query)
@@ -1519,7 +1528,7 @@ class UserPreferences(ASettingRegistry):
             return None
 
         for preference in response.data.get("preferences") or []:
-            if preference.get("key") == self.key:
+            if preference.get("key") == self.name:
                 data = preference.get("data")
                 if isinstance(data, dict):
                     return data
@@ -1532,7 +1541,7 @@ class UserPreferences(ASettingRegistry):
         ignore_codes: Optional[set[int]] = None,
     ) -> None:
         """Change the preference on the server, failures are logged."""
-        endpoint = f"preferences/{self.key}"
+        endpoint = f"preferences/{self.name}"
         if self._project_name:
             query = urlencode({"project_name": self._project_name})
             endpoint = f"{endpoint}?{query}"
@@ -1545,7 +1554,7 @@ class UserPreferences(ASettingRegistry):
             response = function(endpoint, **kwargs)
         except Exception:
             self.log.warning(
-                "Failed to change preference '%s'.", self.key, exc_info=True
+                "Failed to change preference '%s'.", self.name, exc_info=True
             )
             return
         if not response.ok and response.status_code not in (
@@ -1557,7 +1566,7 @@ class UserPreferences(ASettingRegistry):
         self.log.warning(
             "Failed to %s preference '%s'. Server responded %s: %s",
             action,
-            self.key,
+            self.name,
             response.status_code,
             response.detail,
         )

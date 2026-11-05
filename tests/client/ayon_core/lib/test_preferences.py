@@ -179,7 +179,7 @@ def test_local_preferences_import_existing_registry():
     registry.set_item("grouped_hosts", '["maya"]')
 
     prefs = LocalPreferences("launcher")
-    assert prefs.registry_filepath == registry.filepath
+    assert prefs.legacy_registry_filepath == registry.filepath
     assert prefs.get_item("grouped_hosts") == '["maya"]'
 
     prefs.set_item("grouped_hosts", '["maya", "nuke"]')
@@ -202,6 +202,22 @@ def test_local_preferences_import_keeps_items_that_are_set(local_dir):
     assert prefs.import_registry(registry.filepath) is True
     assert prefs.get_data() == {"width": 1000, "height": 600}
     assert prefs.import_registry(os.path.join(local_dir, "x.json")) is False
+
+
+@pytest.mark.unit
+def test_local_preferences_import_passed_legacy_registry(local_dir):
+    registry = JSONSettingRegistry("unreal", local_dir)
+    registry.set_item("width", 800)
+
+    prefs = LocalPreferences(
+        "unreal", legacy_registry_filepath=registry.filepath
+    )
+    assert prefs.legacy_registry_filepath == registry.filepath
+    assert prefs.get_item("width") == 800
+    # The default legacy registry is not imported instead
+    assert LocalPreferences("unreal").legacy_registry_filepath == (
+        os.path.join(local_dir, "tools", "unreal.json")
+    )
 
 
 @pytest.mark.unit
