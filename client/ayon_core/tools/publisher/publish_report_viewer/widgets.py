@@ -411,6 +411,10 @@ class _LogEntry:
             differently (e.g. characters outside of BMP or CRLF).
 
     """
+    # There is an entry for each log message, 'slots=True' of dataclass
+    #   requires Python 3.10
+    __slots__ = ("position", "message", "level", "source", "mapped")
+
     position: int
     message: str
     level: str
