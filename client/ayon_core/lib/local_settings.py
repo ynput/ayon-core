@@ -1313,12 +1313,12 @@ class UserPreferences(ASettingRegistry):
         ...     preferences.set_item("show_history", True)
 
     Args:
-        key: Namespaced key of the preference, e.g.
-            'io.ynput.core.launcher'.
+        name: Name of the preferences, the namespaced key of the preference
+            on the server, e.g. 'io.ynput.core.launcher'.
         project_name: Project of the preference, global if not passed.
 
     Raises:
-        ValueError: If the key is not valid.
+        ValueError: If the name is not valid.
 
     """
     log = Logger.get_logger("UserPreferences")
@@ -1327,10 +1327,10 @@ class UserPreferences(ASettingRegistry):
     min_server_version = "1.17.3"
 
     def __init__(
-        self, key: str, project_name: Optional[str] = None
+        self, name: str, project_name: Optional[str] = None
     ) -> None:
-        _validate_preferences_name(key)
-        super().__init__(key)
+        _validate_preferences_name(name)
+        super().__init__(name)
         self._project_name = project_name or None
         # Requests are done while holding the lock, so an item is never
         #   stored while an older value is on its way to the server.
@@ -1364,11 +1364,6 @@ class UserPreferences(ASettingRegistry):
                 )
                 supported = _get_server_support()
         return bool(supported)
-
-    @property
-    def key(self) -> str:
-        """Key of the preference."""
-        return self.name
 
     @property
     def project_name(self) -> Optional[str]:
@@ -1437,7 +1432,7 @@ class UserPreferences(ASettingRegistry):
         if default is not _PLACEHOLDER:
             return default
         raise RegistryItemNotFound(
-            f"Preference '{self.key}' doesn't contain '{name}'."
+            f"Preference '{self.name}' doesn't contain '{name}'."
         )
 
     def _set_item(self, name: str, value: Any) -> None:
@@ -1454,7 +1449,7 @@ class UserPreferences(ASettingRegistry):
             self._ensure_loaded()
             if name not in self._data and not ignore_missing:
                 raise RegistryItemNotFound(
-                    f"Preference '{self.key}' doesn't contain '{name}'."
+                    f"Preference '{self.name}' doesn't contain '{name}'."
                 )
             self._data.pop(name, None)
             if not self._can_change("deleted"):
@@ -1494,7 +1489,7 @@ class UserPreferences(ASettingRegistry):
         self._raise_if_not_supported()
         self.log.warning(
             "Preference '%s' was not %s, the server is not reachable.",
-            self.key,
+            self.name,
             action,
         )
         return False
@@ -1520,7 +1515,7 @@ class UserPreferences(ASettingRegistry):
 
         """
         self._raise_if_not_supported()
-        query = {"key_prefix": self.key}
+        query = {"key_prefix": self.name}
         if self._project_name:
             query["project_name"] = self._project_name
         response = _list_preferences(query)
@@ -1533,7 +1528,7 @@ class UserPreferences(ASettingRegistry):
             return None
 
         for preference in response.data.get("preferences") or []:
-            if preference.get("key") == self.key:
+            if preference.get("key") == self.name:
                 data = preference.get("data")
                 if isinstance(data, dict):
                     return data
@@ -1546,7 +1541,7 @@ class UserPreferences(ASettingRegistry):
         ignore_codes: Optional[set[int]] = None,
     ) -> None:
         """Change the preference on the server, failures are logged."""
-        endpoint = f"preferences/{self.key}"
+        endpoint = f"preferences/{self.name}"
         if self._project_name:
             query = urlencode({"project_name": self._project_name})
             endpoint = f"{endpoint}?{query}"
@@ -1559,7 +1554,7 @@ class UserPreferences(ASettingRegistry):
             response = function(endpoint, **kwargs)
         except Exception:
             self.log.warning(
-                "Failed to change preference '%s'.", self.key, exc_info=True
+                "Failed to change preference '%s'.", self.name, exc_info=True
             )
             return
         if not response.ok and response.status_code not in (
@@ -1571,7 +1566,7 @@ class UserPreferences(ASettingRegistry):
         self.log.warning(
             "Failed to %s preference '%s'. Server responded %s: %s",
             action,
-            self.key,
+            self.name,
             response.status_code,
             response.detail,
         )
