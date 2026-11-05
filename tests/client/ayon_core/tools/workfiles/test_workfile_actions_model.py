@@ -138,7 +138,23 @@ def test_plugins_are_discovered_once(controller):
     assert context._plugins is not plugins
 
 
-def test_copy_file_to_clipboard(controller, qapp):
+@pytest.fixture
+def clipboard(qapp):
+    """Application clipboard which is cleared after the test.
+
+    On 'offscreen' and 'minimal' Qt platforms the clipboard content lives
+    in a global static object which is destroyed after the Python
+    interpreter is finalized. PySide6 then crashes (exit code 139) while
+    deleting the 'QMimeData' created from Python, so the content must be
+    removed while the interpreter is still alive.
+    """
+    clipboard = qapp.clipboard()
+    clipboard.clear()
+    yield clipboard
+    clipboard.clear()
+
+
+def test_copy_file_to_clipboard(controller, clipboard):
     selection = controller.get_workfile_action_selection(False)
     filepath = os.path.normpath(selection.filepath)
     events = []
@@ -148,8 +164,6 @@ def test_copy_file_to_clipboard(controller, qapp):
 
     controller.register_event_callback("workfile_action.finished", _on_event)
 
-    clipboard = qapp.clipboard()
-    clipboard.clear()
     controller.trigger_workfile_action(
         "core.copy-file", selection, {"action": "copy-path"}, {}
     )
