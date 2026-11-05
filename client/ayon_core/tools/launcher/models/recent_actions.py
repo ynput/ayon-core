@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 # User preferences of the launcher and the item of the history in them
-PREFERENCES_KEY = "io.ynput.core.launcher"
+PREFERENCES_NAME = "io.ynput.core.launcher"
 PREFERENCES_ITEM = "recent_actions"
 
 
@@ -102,7 +102,7 @@ class RecentActionsModel:
     ) -> None:
         self._controller = controller
         # Thread safe, requests of the threads using it are serialized.
-        self._preferences = UserPreferences(PREFERENCES_KEY)
+        self._preferences = UserPreferences(PREFERENCES_NAME)
 
         # Guards everything below. It is touched by the recording worker,
         # by the threads loading the history and by the main thread.

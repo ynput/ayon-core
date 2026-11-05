@@ -17,7 +17,7 @@ from ayon_core.tools.launcher.abstract import (
 )
 from ayon_core.tools.launcher.models.recent_actions import (
     PREFERENCES_ITEM,
-    PREFERENCES_KEY,
+    PREFERENCES_NAME,
     RecentActionsModel,
 )
 
@@ -121,7 +121,7 @@ def server(monkeypatch) -> dict[str, Any]:
 
 
 def stored_items(server) -> list[dict[str, Any]]:
-    return server["preferences"][PREFERENCES_KEY][PREFERENCES_ITEM]
+    return server["preferences"][PREFERENCES_NAME][PREFERENCES_ITEM]
 
 
 @pytest.fixture
