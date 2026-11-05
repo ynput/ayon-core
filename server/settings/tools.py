@@ -399,8 +399,11 @@ class BrowserDefaultActionProfile(BaseSettingsModel):
             " preference. The first action available for the version is"
             " used. Use the label of the action as shown in the context"
             " menu, e.g. 'Open file' or 'Open file / exr' to target"
-            " a single entry of a submenu. A loader plugin name or action"
-            " identifier works too. Leave empty to do nothing."
+            " a single entry of a submenu. A loader matches with or"
+            " without grouping of loaders in the menu, e.g. 'Load image',"
+            " 'Load image / exr' or 'Load image (exr)'. A loader plugin"
+            " name or action identifier works too. Leave empty to do"
+            " nothing."
         ),
     )
     spacebar_actions: list[str] = SettingsField(

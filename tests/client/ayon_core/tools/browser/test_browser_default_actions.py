@@ -35,12 +35,14 @@ def _action_item(
 
 
 def _make_action_items() -> list[ActionItem]:
+    """Action items as the model gives them with grouped loaders."""
     return [
         _action_item("core.open-file", "h264", "Open file", order=30),
         _action_item("core.open-file", "exr", "Open file", order=30),
         _action_item(
             LOADER_PLUGIN_ID,
-            "Load image (exr)",
+            "exr",
+            "Load image",
             order=10,
             data={"loader": "LoadImage"},
         ),
@@ -52,13 +54,19 @@ def _make_action_items() -> list[ActionItem]:
     "name, expected_label",
     [
         # Group label uses the first item in the context menu order
-        ("Open file", "exr"),
-        ("open FILE ", "exr"),
-        ("Open file / h264", "h264"),
-        ("core.open-file", "exr"),
+        ("Open file", "Open file / exr"),
+        ("open FILE ", "Open file / exr"),
+        ("Open file / h264", "Open file / h264"),
+        ("core.open-file", "Open file / exr"),
         ("Copy file path", "Copy file path"),
-        ("Load image (exr)", "Load image (exr)"),
-        ("LoadImage", "Load image (exr)"),
+        # Loader entries match the grouped and the ungrouped menu label
+        ("Load image", "Load image / exr"),
+        ("Load image / exr", "Load image / exr"),
+        ("Load image (exr)", "Load image / exr"),
+        ("LoadImage", "Load image / exr"),
+        # The label of a submenu entry alone is ambiguous
+        ("exr", None),
+        ("Open file (exr)", None),
         ("Missing action", None),
         ("", None),
         # Internal identifier shared by all loader plugins
@@ -69,7 +77,7 @@ def test_find_action_item_by_name(
     name: str, expected_label: str | None
 ) -> None:
     item = find_action_item_by_name(_make_action_items(), name)
-    label = None if item is None else item.label
+    label = None if item is None else item.full_label
     assert label == expected_label
 
 
@@ -86,7 +94,7 @@ RENDER_PROFILE = {
     "task_types": [],
     "task_names": [],
     "product_base_types": ["render"],
-    "double_click_actions": ["Load image"],
+    "double_click_actions": ["Load model"],
     "spacebar_actions": [],
 }
 
@@ -181,7 +189,7 @@ def test_more_specific_profile_is_used(model: LoaderActionsModel) -> None:
     )
     assert action is not None
     # The action is set but no available action item has that name
-    assert action.names == ["Load image"]
+    assert action.names == ["Load model"]
     assert action.item is None
     assert model.get_default_action(
         "demo", "v1", "spacebar", profiles, "maya"

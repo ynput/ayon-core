@@ -73,14 +73,17 @@ def find_action_item_by_name(
 ) -> ActionItem | None:
     """Find the action item an admin refers to by a name in settings.
 
-    The name is compared case insensitively with the label, the group
-    label and the full label (e.g. 'Open file / exr') of the action,
-    the loader action identifier and the loader plugin name. When more
-    actions match, e.g. all representations of a group, the first one
+    The name is compared case insensitively with the menu label of the
+    action, the submenu label (e.g. 'Open file') or the full label of
+    a submenu entry (e.g. 'Open file / exr'), the loader action
+    identifier and the loader plugin name. A loader entry also matches
+    its label in the ungrouped menu, e.g. 'Load image (exr)'. When more
+    actions match, e.g. all representations of a submenu, the first one
     in the context menu order is used.
 
     Args:
-        action_items (list[ActionItem]): Available action items.
+        action_items (list[ActionItem]): Available action items, with
+            loaders grouped by 'LoadersGrouping.GROUPED'.
         name (str): Action name from settings.
 
     Returns:
@@ -97,15 +100,15 @@ def find_action_item_by_name(
             item.order, item.group_label or item.label, item.label
         ),
     ):
-        names = {
-            action_item.label,
-            action_item.group_label,
-            action_item.full_label,
-        }
+        names = {action_item.group_label, action_item.full_label}
         if action_item.identifier != LOADER_PLUGIN_ID:
             names.add(action_item.identifier)
         elif action_item.data:
             names.add(action_item.data.get("loader"))
+            if action_item.group_label:
+                names.add(
+                    f"{action_item.group_label} ({action_item.label})"
+                )
         if name in {value.lower() for value in names if value}:
             return action_item
     return None
