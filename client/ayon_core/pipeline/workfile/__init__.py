@@ -15,6 +15,10 @@ from .path_resolving import (
     create_workdir_extra_folders,
 
     get_comments_from_workfile_paths,
+
+    WorkfileCustomKey,
+    get_workfile_custom_keys,
+    resolve_workfile_custom_data,
 )
 
 from .utils import (
@@ -60,6 +64,10 @@ __all__ = (
     "create_workdir_extra_folders",
 
     "get_comments_from_workfile_paths",
+
+    "WorkfileCustomKey",
+    "get_workfile_custom_keys",
+    "resolve_workfile_custom_data",
 
     "should_use_last_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",

@@ -158,6 +158,26 @@ class StringTemplate:
     def template(self) -> str:
         return self._template
 
+    def get_formatting_parts(self) -> list[tuple[FormattingPart, bool]]:
+        """Formatting parts of the template in order of appearance.
+
+        Returns:
+            list[tuple[FormattingPart, bool]]: Formatting parts with
+                information if the part is inside optional part.
+
+        """
+        output = []
+        parts_stack = [(part, False) for part in reversed(self._parts)]
+        while parts_stack:
+            part, optional = parts_stack.pop()
+            if isinstance(part, FormattingPart):
+                output.append((part, optional))
+            elif isinstance(part, OptionalPart):
+                parts_stack.extend(
+                    (subpart, True) for subpart in reversed(part.parts)
+                )
+        return output
+
     def format(self, data: dict[str, Any]) -> "TemplateResult":
         """ Figure out with whole formatting.
 
@@ -605,6 +625,15 @@ class FormattingPart:
     @property
     def template(self) -> str:
         return self._template
+
+    @property
+    def field_name(self) -> str:
+        return self._field_name
+
+    @property
+    def format_spec(self) -> str:
+        """Format specification without leading colon."""
+        return self._format_spec[1:]
 
     def __repr__(self) -> str:
         return "<Format:{}>".format(self._template)

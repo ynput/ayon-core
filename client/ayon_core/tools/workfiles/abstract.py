@@ -816,6 +816,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         use_last_version: bool,
         version: int,
         comment: str | None,
+        custom_data: dict[str, Any] | None = None,
     ):
         """Calculate workfile path for passed context.
 
@@ -826,6 +827,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             use_last_version (bool): Use last version.
             version (int): Version used if 'use_last_version' if 'False'.
             comment (str | None): User's comment (subversion).
+            custom_data (dict[str, Any] | None): Values of custom keys
+                used in the file template.
 
         Returns:
             WorkareaFilepathResult: Result of the operation.
@@ -956,6 +959,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         version: int,
         comment: str | None,
         description: str | None,
+        custom_data: dict[str, Any] | None = None,
     ) -> None:
         """Save current state of workfile to workarea.
 
@@ -985,6 +989,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         version: int,
         comment: str | None,
         description: str | None,
+        custom_data: dict[str, Any] | None = None,
     ) -> None:
         """Action to copy published workfile representation to workarea.
 
@@ -1018,6 +1023,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         version: int,
         comment: str | None,
         description: str | None,
+        custom_data: dict[str, Any] | None = None,
     ) -> None:
         """Duplicate workfile.
 
