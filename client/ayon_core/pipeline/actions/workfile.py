@@ -29,7 +29,8 @@ Using 'WorkfileActionResult' as the output of 'execute_action' can trigger
     to show a message in UI, to show an additional form ('ActionForm') which
     would retrigger the action with the values from the form on submitting,
     to refresh the tool, to redirect the tool to a different context, to
-    show the Save As dialog of the tool or to close the tool.
+    show the Save As dialog of the tool, to ask a user to save unsaved
+    changes of the current workfile or to close the tool.
 
     The result has helper method 'set_redirect' to define the context
     by entities.
@@ -50,12 +51,12 @@ It is also recommended that the plugin does override the 'identifier'
     attribute. The identifier has to be unique across all plugins.
     Class name is used by default.
 
-Settings of a plugin are looked for in
-    '<settings_category>/workfile_actions/<class name>' of project settings
-    of the selection. The plugin is disabled when 'enabled' is set to
-    'False' there, see 'is_enabled'. 'WorkfileSimpleActionPlugin' does check
-    it on its own, other plugins should call 'is_enabled' at the start of
-    'get_action_items'.
+Settings of a plugin are expected in
+    '<settings_category>/workfile_actions/<class name>' of project settings.
+    Plugins read them from 'selection.get_project_settings()' in
+    'get_action_items', so a plugin with multiple action items can have
+    a toggle per item. 'WorkfileSimpleActionPlugin' does not show its item
+    when 'enabled' is set to 'False' there.
 
 Important:
     Method 'get_action_items' is called in the main thread on each
@@ -87,7 +88,6 @@ import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import StrEnum, Logger
-from ayon_core.lib.attribute_definitions import UILabelDef, BoolDef
 from ayon_core.lib.icon_definitions import IconBase
 from ayon_core.host import IWorkfileHost
 from ayon_core.addon import AddonsManager, IPluginPaths
@@ -643,6 +643,11 @@ class WorkfileActionResult:
             the Save As dialog of the tool with the inputs. The action is
             triggered again with the values of the dialog when a user
             accepts it.
+        show_save_changes_form (bool): Ask a user if unsaved changes of
+            the current workfile should be saved, with the same prompt
+            the tool uses on open. The action is triggered again with
+            the answer under 'SAVE_CHANGES_FORM_KEY' unless the user
+            cancels. See 'WorkfileActionPlugin.ask_to_save_changes'.
         close_tool (bool): The tool should be closed, e.g. because
             a workfile was opened by the action itself.
 
@@ -654,6 +659,7 @@ class WorkfileActionResult:
     refresh: bool = False
     redirect: WorkfileActionRedirect | None = None
     show_save_as_form: WorkfileActionSaveAsFormInputs | None = None
+    show_save_changes_form: bool = False
     close_tool: bool = False
 
     def to_json_data(self) -> dict[str, Any]:
@@ -674,6 +680,7 @@ class WorkfileActionResult:
             "refresh": self.refresh,
             "redirect": redirect,
             "show_save_as_form": save_as_form,
+            "show_save_changes_form": self.show_save_changes_form,
             "close_tool": self.close_tool,
         }
 
@@ -762,46 +769,17 @@ class WorkfileActionPlugin(ABC):
     Plugin is responsible for getting action items and executing actions.
 
     Attributes:
-        enabled (bool): Plugin is enabled if the project settings do not
-            say otherwise.
         settings_category (str | None): Settings category (addon name)
             where to look for settings of the plugin. Settings are expected
             under '<settings_category>/workfile_actions/<class name>'.
 
     """
     _log: logging.Logger | None = None
-    enabled: bool = True
     skip_discovery: bool = True
     settings_category: str | None = None
 
     def __init__(self, context: WorkfileActionsContext) -> None:
         self._context = context
-
-    def is_enabled(self, selection: WorkfileActionSelection) -> bool:
-        """Plugin is enabled for the project of the selection.
-
-        Value 'enabled' is looked for in
-            '<settings_category>/workfile_actions/<class name>' of project
-            settings of the selection. Attribute 'enabled' is used if
-            the value is not set.
-
-        Args:
-            selection (WorkfileActionSelection): Selection.
-
-        Returns:
-            bool: Plugin is enabled.
-
-        """
-        if not self.settings_category:
-            return self.enabled
-
-        plugin_settings = (
-            selection.get_project_settings()
-            .get(self.settings_category, {})
-            .get("workfile_actions", {})
-            .get(self.__class__.__name__, {})
-        )
-        return plugin_settings.get("enabled", self.enabled)
 
     @property
     def log(self) -> logging.Logger:
@@ -884,10 +862,11 @@ class WorkfileActionPlugin(ABC):
             cancelling does not leave anything behind.
 
         Returns
-            a result with a form if the current workfile has unsaved changes
-            and a user did not decide what to do with them yet. The result
-            should be returned from 'execute_action'. Current workfile is
-            saved when the user asked for it by the form.
+            a result asking a user to save the changes if the current
+            workfile has unsaved changes and the user did not decide what to
+            do with them yet. The result should be returned from
+            'execute_action'. Current workfile is saved when the user asked
+            for it. Nothing happens when the user cancels.
 
         Example:
             >>> def execute_action(self, selection, data, form_values):
@@ -901,8 +880,8 @@ class WorkfileActionPlugin(ABC):
                 'execute_action'.
 
         Returns:
-            WorkfileActionResult | None: Result with form to show or None
-                if the action can continue.
+            WorkfileActionResult | None: Result asking to save changes or
+                None if the action can continue.
 
         """
         host = self.host
@@ -914,24 +893,7 @@ class WorkfileActionPlugin(ABC):
         if not host.workfile_has_unsaved_changes():
             return None
 
-        return WorkfileActionResult(
-            form=ActionForm(
-                title="Unsaved changes",
-                fields=[
-                    UILabelDef(
-                        "There are unsaved changes to the current workfile.",
-                        key="unsaved_changes_label",
-                    ),
-                    BoolDef(
-                        SAVE_CHANGES_FORM_KEY,
-                        default=True,
-                        label="Save current workfile",
-                    ),
-                ],
-                submit_label="Continue",
-                cancel_label="Cancel",
-            ),
-        )
+        return WorkfileActionResult(show_save_changes_form=True)
 
 
 class WorkfileActionsContext:
@@ -1165,6 +1127,8 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
         description: Longer description of the action.
         quick_action: The action can be shown as a quick action button.
             Is available only in the context menu if is set to 'False'.
+        enabled: The action item is shown if 'enabled' is not set to
+            'False' in project settings of the plugin.
 
     """
 
@@ -1175,6 +1139,7 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
     tooltip: str | None = None
     description: str | None = None
     quick_action: bool = True
+    enabled: bool = True
     skip_discovery: bool = True
 
     @abstractmethod
@@ -1215,7 +1180,16 @@ class WorkfileSimpleActionPlugin(WorkfileActionPlugin):
     def get_action_items(
         self, selection: WorkfileActionSelection
     ) -> list[WorkfileActionItem]:
-        if not self.is_enabled(selection):
+        enabled = self.enabled
+        if self.settings_category:
+            enabled = (
+                selection.get_project_settings()
+                .get(self.settings_category, {})
+                .get("workfile_actions", {})
+                .get(self.__class__.__name__, {})
+                .get("enabled", enabled)
+            )
+        if not enabled:
             return []
 
         if self.is_compatible(selection):

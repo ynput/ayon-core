@@ -9,7 +9,6 @@ import pytest
 from ayon_core.addon import IPluginPaths
 from ayon_core.host import IWorkfileHost
 from ayon_core.pipeline.actions import (
-    ActionForm,
     WorkfileAreaType,
     WorkfileActionItem,
     WorkfileActionPlugin,
@@ -230,11 +229,12 @@ def test_ask_to_save_changes(tmp_path):
     host.workfile_has_unsaved_changes.return_value = False
     result = context.execute_action("test.save-changes", selection, None, {})
     assert result.message == "done"
-    assert result.form is None
+    assert result.show_save_changes_form is False
 
     host.workfile_has_unsaved_changes.return_value = True
     result = context.execute_action("test.save-changes", selection, None, {})
-    assert isinstance(result.form, ActionForm)
+    assert result.show_save_changes_form is True
+    assert result.form is None
     assert result.message is None
     host.save_workfile.assert_not_called()
 
@@ -430,7 +430,8 @@ def test_increment_and_open(tmp_path):
         plugin_module, "copy_workfile_to_context", return_value=dst_path
     ) as copy_mock:
         result = context.execute_action(identifier, _selection(), None, {})
-    assert isinstance(result.form, ActionForm)
+    assert result.show_save_changes_form is True
+    assert result.form is None
     assert not result.close_tool
     copy_mock.assert_not_called()
     host.save_workfile.assert_not_called()
@@ -635,6 +636,7 @@ def test_result_json_conversion():
             description="Note",
             extension=".ma",
         ),
+        show_save_changes_form=True,
         redirect=WorkfileActionRedirect(
             folder_id="folder-1",
             task_name="comp",

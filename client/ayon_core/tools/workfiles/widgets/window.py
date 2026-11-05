@@ -4,7 +4,10 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources
 from ayon_core.pipeline.actions import WorkfileAreaType
-from ayon_core.pipeline.actions.workfile import SAVE_AS_FORM_KEY
+from ayon_core.pipeline.actions.workfile import (
+    SAVE_AS_FORM_KEY,
+    SAVE_CHANGES_FORM_KEY,
+)
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils import (
     FoldersWidget,
@@ -29,7 +32,7 @@ from ayon_core.ui.components import (
 from .files_widget import FilesWidget
 from .save_as_dialog import SaveAsDialog
 from .side_panel import SidePanelWidget
-from .utils import BaseOverlayFrame
+from .utils import BaseOverlayFrame, save_changes_prompt
 
 WORKFILE_CSS_PATH = Path(__file__).parent / "workfiles_style.css"
 
@@ -450,7 +453,8 @@ class WorkfilesToolWindow(AYContainer):
                 result.message, message_type
             )
 
-        # Action continues when the form or Save As dialog is accepted
+        # Action continues when the form, Save As dialog or save changes
+        #   prompt is accepted
         form_values = None
         if result.form is not None:
             form_values = self._exec_action_form(
@@ -462,6 +466,10 @@ class WorkfilesToolWindow(AYContainer):
             )
             if save_as_values is not None:
                 form_values = {SAVE_AS_FORM_KEY: save_as_values}
+        elif result.show_save_changes_form:
+            save_changes = save_changes_prompt(self)
+            if save_changes is not None:
+                form_values = {SAVE_CHANGES_FORM_KEY: save_changes}
         else:
             self._apply_action_result(result)
             return

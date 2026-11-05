@@ -12,7 +12,10 @@ from ayon_core.pipeline.actions import (
     WorkfileActionResult,
     WorkfileActionSaveAsFormInputs,
 )
-from ayon_core.pipeline.actions.workfile import SAVE_AS_FORM_KEY
+from ayon_core.pipeline.actions.workfile import (
+    SAVE_AS_FORM_KEY,
+    SAVE_CHANGES_FORM_KEY,
+)
 from ayon_core.tools.workfiles.abstract import (
     ActionItem,
     ActionSelectionData,
@@ -21,6 +24,7 @@ from ayon_core.tools.workfiles.widgets.actions_widgets import (
     WorkfileActionsRow,
     add_actions_to_menu,
 )
+from ayon_core.tools.workfiles.widgets import window as window_module
 from ayon_core.tools.workfiles.widgets.window import WorkfilesToolWindow
 
 
@@ -307,3 +311,39 @@ def test_window_passes_save_as_values_to_action():
     WorkfilesToolWindow._on_workfile_action_finished(window, event)
     window._controller.trigger_workfile_action.assert_not_called()
     window._apply_action_result.assert_called_once_with(event["result"])
+
+
+def test_window_passes_save_changes_answer_to_action():
+    selection = ActionSelectionData(
+        published=False, folder_id="folder-1", task_id="task-1"
+    )
+    event = {
+        "crashed": False,
+        "identifier": "test.open",
+        "selection": selection.to_data(),
+        "data": None,
+        "result": WorkfileActionResult(show_save_changes_form=True),
+    }
+    window = mock.Mock()
+
+    # Same Yes/No/Cancel prompt as on workfile open of the tool
+    for answer in (True, False):
+        window.reset_mock()
+        with mock.patch.object(
+            window_module, "save_changes_prompt", return_value=answer
+        ) as prompt_mock:
+            WorkfilesToolWindow._on_workfile_action_finished(window, event)
+        prompt_mock.assert_called_once_with(window)
+        window._controller.trigger_workfile_action.assert_called_once_with(
+            "test.open", selection, None, {SAVE_CHANGES_FORM_KEY: answer}
+        )
+        window._apply_action_result.assert_not_called()
+
+    # Cancel does not trigger the action again
+    window.reset_mock()
+    with mock.patch.object(
+        window_module, "save_changes_prompt", return_value=None
+    ):
+        WorkfilesToolWindow._on_workfile_action_finished(window, event)
+    window._controller.trigger_workfile_action.assert_not_called()
+    window._apply_action_result.assert_not_called()
