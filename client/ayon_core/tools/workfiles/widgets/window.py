@@ -3,12 +3,21 @@ from pathlib import Path
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources
+from ayon_core.pipeline.actions import WorkfileAreaType
+from ayon_core.pipeline.actions.workfile import (
+    SAVE_AS_FORM_KEY,
+    SAVE_CHANGES_FORM_KEY,
+)
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils import (
     FoldersWidget,
     MessageOverlayObject,
     TasksWidget,
     FoldersFiltersWidget,
+    get_qt_icon,
+    ConnectionOverlay,
 )
+from ayon_core.tools.workfiles.abstract import ActionSelectionData
 from ayon_core.tools.workfiles.control import BaseWorkfileController
 from ayon_core.ui.components import (
     AYButton,
@@ -21,8 +30,9 @@ from ayon_core.ui.components import (
 )
 
 from .files_widget import FilesWidget
+from .save_as_dialog import SaveAsDialog
 from .side_panel import SidePanelWidget
-from .utils import BaseOverlayFrame
+from .utils import BaseOverlayFrame, save_changes_prompt
 
 WORKFILE_CSS_PATH = Path(__file__).parent / "workfiles_style.css"
 
@@ -131,6 +141,7 @@ class WorkfilesToolWindow(AYContainer):
         overlay_messages_widget = MessageOverlayObject(self)
         overlay_invalid_host = InvalidHostOverlay(self)
         overlay_invalid_host.setVisible(False)
+        connection_overlay = ConnectionOverlay(controller, self)
 
         show_timer = QtCore.QTimer()
         show_timer.setSingleShot(True)
@@ -147,12 +158,12 @@ class WorkfilesToolWindow(AYContainer):
             self._on_copy_representation_finished,
         )
         controller.register_event_callback(
-            "workfile_duplicate.finished",
-            self._on_duplicate_finished
-        )
-        controller.register_event_callback(
             "open_workfile.finished",
             self._on_open_finished
+        )
+        controller.register_event_callback(
+            "workfile_action.finished",
+            self._on_workfile_action_finished
         )
         controller.register_event_callback(
             "controller.reset.started",
@@ -162,9 +173,16 @@ class WorkfilesToolWindow(AYContainer):
             "controller.reset.finished",
             self._on_controller_refresh_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
 
         self._overlay_messages_widget = overlay_messages_widget
         self._overlay_invalid_host = overlay_invalid_host
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
         self._home_page_widget = home_page_widget
         self._pages_widget = pages_widget
         self._home_body_widget = home_body_widget
@@ -333,7 +351,16 @@ class WorkfilesToolWindow(AYContainer):
         pass
 
     def _on_show(self):
-        self.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self.refresh()
+        else:
+            self._refresh_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self.refresh()
 
     def _on_file_text_filter_change(self, text):
         self._files_widget.set_text_filter(text)
@@ -399,17 +426,6 @@ class WorkfilesToolWindow(AYContainer):
                 "Publish workfile saved"
             )
 
-    def _on_duplicate_finished(self, event):
-        if event["failed"]:
-            self._overlay_messages_widget.add_message(
-                "Failed to duplicate workfile",
-                "error",
-            )
-        else:
-            self._overlay_messages_widget.add_message(
-                "Workfile duplicated"
-            )
-
     def _on_open_finished(self, event):
         if event["failed"]:
             self._overlay_messages_widget.add_message(
@@ -418,6 +434,133 @@ class WorkfilesToolWindow(AYContainer):
             )
         else:
             self.close()
+
+    def _on_workfile_action_finished(self, event):
+        if event["crashed"]:
+            self._overlay_messages_widget.add_message(
+                "Action failed",
+                "error",
+            )
+            return
+
+        result = event["result"]
+        if result is None:
+            return
+
+        if result.message:
+            message_type = None if result.success else "error"
+            self._overlay_messages_widget.add_message(
+                result.message, message_type
+            )
+
+        # Action continues when the form, Save As dialog or save changes
+        #   prompt is accepted
+        form_values = None
+        if result.form is not None:
+            form_values = self._exec_action_form(
+                result.form, result.form_values
+            )
+        elif result.show_save_as_form is not None:
+            save_as_values = self._exec_save_as_dialog(
+                result.show_save_as_form
+            )
+            if save_as_values is not None:
+                form_values = {SAVE_AS_FORM_KEY: save_as_values}
+        elif result.show_save_changes_form:
+            save_changes = save_changes_prompt(self)
+            if save_changes is not None:
+                form_values = {SAVE_CHANGES_FORM_KEY: save_changes}
+        else:
+            self._apply_action_result(result)
+            return
+
+        if form_values is not None:
+            self._controller.trigger_workfile_action(
+                event["identifier"],
+                ActionSelectionData.from_data(event["selection"]),
+                event["data"],
+                form_values,
+            )
+
+    def _apply_action_result(self, result):
+        if result.close_tool:
+            self.close()
+            return
+
+        redirect = result.redirect
+        # Redirect does refresh too, so files created by the action can be
+        #   selected
+        if result.refresh or redirect is not None:
+            self.refresh()
+
+        if redirect is not None:
+            self._redirect(redirect)
+
+    def _exec_save_as_dialog(self, form_inputs):
+        dialog = SaveAsDialog(
+            self._controller,
+            self,
+            extension=form_inputs.extension,
+            folder_id=form_inputs.folder_id,
+            task_id=form_inputs.task_id,
+            version=form_inputs.version,
+            comment=form_inputs.comment,
+            description=form_inputs.description,
+        )
+        dialog.update_context()
+        dialog.exec_()
+        return dialog.get_result()
+
+    def _exec_action_form(self, form, form_values):
+        dialog = AttributeDefinitionsDialog(
+            form.fields,
+            title=form.title,
+            parent=self,
+        )
+        if form_values:
+            dialog.set_values(form_values)
+
+        if form.submit_label:
+            dialog.set_submit_label(form.submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if form.submit_icon:
+            dialog.set_submit_icon(get_qt_icon(form.submit_icon))
+
+        if form.cancel_label:
+            dialog.set_cancel_label(form.cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if form.cancel_icon:
+            dialog.set_cancel_icon(get_qt_icon(form.cancel_icon))
+
+        dialog.setMinimumSize(300, 140)
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+            return None
+        return dialog.get_values()
+
+    def _redirect(self, redirect):
+        if redirect.area is not None:
+            self._published_checkbox.setChecked(
+                redirect.area == WorkfileAreaType.published
+            )
+
+        # Use current selection if the context is not defined
+        folder_id = redirect.folder_id
+        task_name = redirect.task_name
+        if not folder_id:
+            folder_id = self._controller.get_selected_folder_id()
+            if not task_name:
+                task_name = self._controller.get_selected_task_name()
+
+        self._controller.set_expected_selection(
+            folder_id,
+            task_name,
+            workfile_name=redirect.workfile_name,
+            representation_id=redirect.representation_id,
+        )
 
     def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
         folder_ids = None

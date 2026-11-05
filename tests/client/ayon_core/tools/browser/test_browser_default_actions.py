@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from ayon_core.tools.browser.abstract import ActionItem
+from ayon_core.tools.browser.abstract import ActionItem, LoadersGrouping
 from ayon_core.tools.browser.models import actions as actions_module
 from ayon_core.tools.browser.models.actions import (
     LOADER_PLUGIN_ID,
@@ -139,11 +139,18 @@ def model(monkeypatch: pytest.MonkeyPatch) -> LoaderActionsModel:
             for task_id in task_ids
         ],
     )
-    monkeypatch.setattr(
-        model,
-        "_get_action_items",
-        lambda *_args: _make_action_items(),
-    )
+
+    def _get_action_items(
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        loaders_grouping: LoadersGrouping,
+    ) -> list[ActionItem]:
+        # Names in settings must not depend on the user's menu grouping
+        assert loaders_grouping is LoadersGrouping.GROUPED
+        return _make_action_items()
+
+    monkeypatch.setattr(model, "_get_action_items", _get_action_items)
     return model
 
 
