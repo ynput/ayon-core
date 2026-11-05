@@ -22,6 +22,7 @@ from ayon_core.lib.attribute_definitions import (
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib import (
+    Logger,
     is_func_signature_supported,
     IconBase,
     get_icon_def_from_data,
@@ -501,7 +502,7 @@ class CreateModel:
     @property
     def log(self) -> logging.Logger:
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def is_host_valid(self) -> bool:
