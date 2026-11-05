@@ -293,9 +293,12 @@ class BrowserWidget(AYContainer):
         return None
 
     def _on_double_click(self, index: QtCore.QModelIndex) -> None:
+        row_dict = self._get_index_row(index)
+        # Double click on a group header expands or collapses it
+        if (row_dict.get("id") or "").startswith("grp:"):
+            return
         self._trigger_default_action(
-            self._get_row_version_id(self._get_index_row(index)),
-            "double_click",
+            self._get_row_version_id(row_dict), "double_click"
         )
 
     def _trigger_default_action(

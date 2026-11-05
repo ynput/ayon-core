@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from qtpy import QtCore, QtGui
 
 from ayon_core.tools.browser.abstract import ActionItem, LoadersGrouping
 from ayon_core.tools.browser.models import actions as actions_module
@@ -13,6 +14,7 @@ from ayon_core.tools.browser.models.actions import (
     LoaderActionsModel,
     find_action_item_by_name,
 )
+from ayon_core.tools.browser.ui.browser_widget import BrowserWidget
 
 
 def _action_item(
@@ -300,3 +302,59 @@ def test_trigger_unavailable_default_action_only_emits_event(
     assert data["action_names"] == ["Missing action"]
     assert data["action_label"] is None
     assert not triggered
+
+
+class BrowserWidgetStub:
+    """Run the double click handling of 'BrowserWidget' on its own."""
+
+    _get_index_row = staticmethod(BrowserWidget._get_index_row)
+    _get_row_version_id = staticmethod(BrowserWidget._get_row_version_id)
+    _on_double_click = BrowserWidget._on_double_click
+
+    def __init__(self) -> None:
+        self.triggered: list[tuple[str | None, str]] = []
+
+    def _trigger_default_action(
+        self, version_id: str | None, trigger: str
+    ) -> bool:
+        self.triggered.append((version_id, trigger))
+        return True
+
+
+@pytest.mark.parametrize(
+    "row_dict, expected",
+    [
+        ({"id": "v1", "entityType": "Version"}, [("v1", "double_click")]),
+        # Row of a version in a folder hierarchy
+        (
+            {"id": "f1:v1", "_version_id": "v1", "entityType": "Version"},
+            [("v1", "double_click")],
+        ),
+        # Folders have no version to act on
+        ({"id": "f1", "entityType": "Folder"}, [(None, "double_click")]),
+        # Group headers expand or collapse on double click
+        (
+            {
+                "id": "grp:product:p1",
+                "_product_id": "p1",
+                "_version_id": "v1",
+                "_action_version_id": "hero1",
+            },
+            [],
+        ),
+        ({"id": "grp:status:Approved"}, []),
+    ],
+)
+def test_double_click_row(
+    qtbot, row_dict: dict[str, Any], expected: list[tuple[str, str]]
+) -> None:
+    model = QtGui.QStandardItemModel()
+    item = QtGui.QStandardItem()
+    item.setData(row_dict, QtCore.Qt.ItemDataRole.UserRole)
+    model.appendRow([item, QtGui.QStandardItem()])
+    widget = BrowserWidgetStub()
+
+    # Any column of the row can be double clicked
+    widget._on_double_click(model.index(0, 1))
+
+    assert widget.triggered == expected
