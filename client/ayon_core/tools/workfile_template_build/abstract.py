@@ -23,6 +23,7 @@ PLACEHOLDERS_REFRESHED_TOPIC = "placeholders.refreshed"
 PLACEHOLDER_CREATED_TOPIC = "placeholder.created"
 PLACEHOLDER_UPDATED_TOPIC = "placeholder.updated"
 PLACEHOLDER_DELETED_TOPIC = "placeholder.deleted"
+BUILD_CONTEXT_CHANGED_TOPIC = "build_context.changed"
 
 
 @dataclass
@@ -172,6 +173,42 @@ class ActionResult:
         return cls(**data)
 
 
+@dataclass
+class BuildContextItem:
+    """Context in which placeholders are previewed and populated.
+
+    Attributes:
+        folder_path (Optional[str]): Folder path.
+        task_name (Optional[str]): Task name.
+        is_override (bool): Context was chosen in the tool and is different
+            from the context of the host.
+
+    """
+    folder_path: Optional[str] = None
+    task_name: Optional[str] = None
+    is_override: bool = False
+
+    @property
+    def label(self) -> str:
+        """Label of the context shown in UI."""
+        if not self.folder_path:
+            return "No context"
+        if not self.task_name:
+            return self.folder_path
+        return "{} \u00b7 {}".format(self.folder_path, self.task_name)
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "folder_path": self.folder_path,
+            "task_name": self.task_name,
+            "is_override": self.is_override,
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "BuildContextItem":
+        return cls(**data)
+
+
 class AbstractTemplateBuilderController(ABC):
     """Backend of workfile template builder tool."""
 
@@ -221,6 +258,57 @@ class AbstractTemplateBuilderController(ABC):
 
         Returns:
             bool: Template builder is available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_project_name(self) -> Optional[str]:
+        """Name of the project the tool works in.
+
+        Returns:
+            Optional[str]: Project name.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_workfile_name(self) -> Optional[str]:
+        """File name of the workfile opened in the host.
+
+        Returns:
+            Optional[str]: File name, None when the scene is not saved.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_build_context(self) -> BuildContextItem:
+        """Context in which placeholders are previewed and populated.
+
+        Returns:
+            BuildContextItem: Context chosen in the tool, or the context of
+                the host when none was chosen.
+
+        """
+        pass
+
+    @abstractmethod
+    def set_build_context(
+        self,
+        folder_path: Optional[str] = None,
+        task_name: Optional[str] = None,
+    ) -> None:
+        """Preview and populate placeholders in a different context.
+
+        Allows to test a template with production data while it is opened
+        in a different context, e.g. a library folder. The context of the
+        host is not changed.
+
+        Args:
+            folder_path (Optional[str]): Folder path. The context of the
+                host is used again when not passed.
+            task_name (Optional[str]): Task name.
 
         """
         pass
@@ -392,12 +480,51 @@ class AbstractTemplateBuilderController(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_template_path(self) -> Optional[str]:
+        """Path to the template file of the build context.
+
+        Returns:
+            Optional[str]: Path from the template profile in settings. None
+                when no profile matches the build context.
+
+        """
+        pass
+
+    @abstractmethod
+    def open_template(self) -> ActionResult:
+        """Open the template file of the build context in the host.
+
+        Unsaved changes of the current scene are lost.
+
+        Returns:
+            ActionResult: Result of the action.
+
+        """
+        pass
+
+    @abstractmethod
+    def build_template(self) -> ActionResult:
+        """Import the template of the build context and populate it.
+
+        The template file is imported into the current scene and all its
+        placeholders are populated.
+
+        Returns:
+            ActionResult: Result of the action.
+
+        """
+        pass
+
 
 __all__ = (
     "PLACEHOLDERS_REFRESHED_TOPIC",
     "PLACEHOLDER_CREATED_TOPIC",
     "PLACEHOLDER_UPDATED_TOPIC",
     "PLACEHOLDER_DELETED_TOPIC",
+    "BUILD_CONTEXT_CHANGED_TOPIC",
+
+    "BuildContextItem",
 
     "PlaceholderPluginItem",
     "PlaceholderItemInfo",
