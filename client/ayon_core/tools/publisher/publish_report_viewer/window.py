@@ -626,7 +626,7 @@ class LoadedFilesView(QtWidgets.QTreeView):
         self._fill_selection()
 
     def get_current_report(self) -> PublishReport | None:
-        index = self.currentIndex()
+        index = self._get_selected_index()
         item_id = index.data(ITEM_ID_ROLE)
         return self._model.get_report_by_id(item_id)
 
@@ -649,8 +649,20 @@ class LoadedFilesView(QtWidgets.QTreeView):
     def _on_selection_change(self):
         self.selection_changed.emit()
 
+    def _get_selected_index(self) -> QtCore.QModelIndex:
+        """Index of the selected report.
+
+        Do not rely on the current index only, on mouse drag the view
+            changes the selection first and the current index after it, so
+            on selection change the current index is still the previous one.
+        """
+        selected = self.selectionModel().selectedRows()
+        if selected:
+            return selected[0]
+        return self.currentIndex()
+
     def _on_remove_clicked(self):
-        index = self.currentIndex()
+        index = self._get_selected_index()
         item_id = index.data(ITEM_ID_ROLE)
         self.remove_item_by_id(item_id)
 
