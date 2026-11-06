@@ -1,9 +1,8 @@
 import platform
-import shlex
 
 import pytest
 
-from ayon_core.lib.execute import _quote_shell_command, run_subprocess
+from ayon_core.lib.execute import run_subprocess
 
 posix_only = pytest.mark.skipif(
     platform.system().lower() == "windows",
@@ -35,32 +34,14 @@ def test_run_subprocess_shell_special_characters(tmp_path, file_name, quoted):
 
 
 @posix_only
-def test_quote_shell_command_keeps_quoted_argument_together():
-    command = '/bin/tool -i "/tmp/a (2)/b&w.exr" -y'
+def test_run_subprocess_shell_command_keeps_quoted_argument_together(
+    tmp_path,
+):
+    path = tmp_path / "it's (2)&b.txt"
+    path.write_text("content")
 
-    assert shlex.split(_quote_shell_command(command)) == [
-        "/bin/tool",
-        "-i",
-        "/tmp/a (2)/b&w.exr",
-        "-y",
-    ]
-
-
-@posix_only
-def test_quote_shell_command_keeps_filter_graph_and_apostrophe():
-    command = (
-        '/bin/ffmpeg -i "/tmp/it\'s (2).%04d.exr" '
-        '-filter:v "scale=1920x1080:flags=lanczos,pad=1920:1080:#000000" -y'
-    )
-
-    assert shlex.split(_quote_shell_command(command)) == [
-        "/bin/ffmpeg",
-        "-i",
-        "/tmp/it's (2).%04d.exr",
-        "-filter:v",
-        "scale=1920x1080:flags=lanczos,pad=1920:1080:#000000",
-        "-y",
-    ]
+    command = f'python3 -c \'import sys; print(sys.argv[1], end="")\' "{path}"'
+    assert run_subprocess(command, shell=True) == str(path)
 
 
 @posix_only
@@ -71,7 +52,18 @@ def test_run_subprocess_list_arguments_are_untouched(tmp_path):
     assert run_subprocess(["cat", str(path)]) == "content"
 
 
-def test_quote_shell_command_unbalanced_quote_is_unchanged():
-    command = 'tool -i "/tmp/unbalanced'
+@posix_only
+def test_run_subprocess_unbalanced_quote_raises():
+    with pytest.raises(ValueError):
+        run_subprocess('cat "/tmp/unbalanced', shell=True)
 
-    assert _quote_shell_command(command) == command
+
+@posix_only
+def test_run_subprocess_does_not_run_injected_command(tmp_path):
+    marker = tmp_path / "injected"
+    command = f"cat clip;touch${{IFS}}{marker};#'.mp4"
+
+    with pytest.raises(ValueError):
+        run_subprocess(command, shell=True)
+
+    assert not marker.exists()

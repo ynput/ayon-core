@@ -14,28 +14,6 @@ from .vendor_bin_utils import find_executable
 CREATE_NO_WINDOW = 0x08000000
 
 
-def _quote_shell_command(command: str) -> str:
-    """Quote every argument of a shell command string for a POSIX shell.
-
-    The command is split with the quotes it already contains (so a path
-    wrapped in double quotes stays one argument) and joined again with each
-    argument quoted. Special characters like `&`, `(` or `$` in a path then
-    reach the program unchanged, whether or not the command quoted them.
-
-    Args:
-        command (str): Command with its arguments as one string.
-
-    Returns:
-        str: Command that is safe to pass to the shell. The original string
-            if it cannot be split (e.g. unbalanced quotes).
-
-    """
-    try:
-        return shlex.join(shlex.split(command))
-    except ValueError:
-        return command
-
-
 def execute(args, silent=False, cwd=None, env=None, shell=None):
     """Execute command as process.
 
@@ -103,12 +81,12 @@ def run_subprocess(*args, **kwargs):
     On windows are 'creationflags' filled with flags that should cause ignore
     creation of new window.
 
-    With `shell=True` and a single string command on Linux and macOS, every
-    argument of the string is quoted before it runs (quotes already in the
-    string are honoured). Special characters in paths are safe, but shell
-    syntax like `~`, globs, pipes or redirections is passed on as literal
-    text. A string that cannot be split (e.g. unbalanced quotes) is passed
-    on unchanged.
+    With `shell=True` and a single string command on Linux and macOS, the
+    string is split into arguments with `shlex.split` (quotes already in the
+    string are honoured) and run without a shell. Special characters in paths
+    are safe, but shell syntax like `~`, globs, pipes or redirections is not
+    interpreted. A string that cannot be split (e.g. unbalanced quotes)
+    raises `ValueError` instead of being run.
 
     Args:
         *args: Variable length argument list passed to Popen.
@@ -122,6 +100,8 @@ def run_subprocess(*args, **kwargs):
     Raises:
         RuntimeError: Exception is raised if process finished with nonzero
             return code.
+        ValueError: Single string command with `shell=True` on Linux and
+            macOS that cannot be split into arguments.
 
     """
     # Modify creation flags on windows to hide console window if in UI mode
@@ -145,9 +125,11 @@ def run_subprocess(*args, **kwargs):
         and len(args) == 1
         and isinstance(args[0], str)
     ):
-        # Quote special characters for POSIX shells
+        # Split the command and run it without a shell on POSIX, so special
+        # characters in paths are not interpreted
         if platform.system().lower() != "windows":
-            args = (_quote_shell_command(args[0]),)
+            args = (shlex.split(args[0]),)
+            kwargs["shell"] = False
         # Escape & on Windows in shell with `cmd.exe` using ^&
         elif (
             platform.system().lower() == "windows"
