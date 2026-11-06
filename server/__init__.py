@@ -17,10 +17,14 @@ from .settings import (
     DEFAULT_VALUES,
     convert_settings_overrides,
 )
+from .task_usage import register_task_usage_endpoints
 
 
 class CoreAddon(BaseServerAddon):
     settings_model = CoreSettings
+
+    def initialize(self) -> None:
+        register_task_usage_endpoints(self)
 
     async def get_default_settings(self):
         settings_model_cls = self.get_settings_model()

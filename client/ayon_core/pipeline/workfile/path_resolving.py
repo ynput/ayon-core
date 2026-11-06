@@ -447,6 +447,65 @@ def get_last_workfile_with_version_from_paths(
     return output_filepath, version
 
 
+def get_next_workfile_version_path(
+    filepath: str,
+    file_template: str,
+    template_data: dict[str, Any],
+) -> tuple[str, int, Optional[str]]:
+    """Path for next version of an existing workfile.
+
+    The version is higher than version of any workfile with the same
+    extension in the directory of the workfile. Comment and extension of
+    the workfile are kept.
+
+    Args:
+        filepath (str): Path to existing workfile.
+        file_template (str): Template of file name.
+        template_data (dict[str, Any]): Data for filling template.
+
+    Returns:
+        tuple[str, int, Optional[str]]: Path, version and comment of the
+            next version of the workfile.
+
+    Raises:
+        ValueError: If version of the workfile can't be resolved.
+
+    """
+    workdir, filename = os.path.split(filepath)
+    ext = os.path.splitext(filename)[1]
+
+    data = copy.deepcopy(template_data)
+    data.pop("comment", None)
+    data["ext"] = ext.lstrip(".")
+
+    parsed_data = parse_dynamic_data_from_workfile(
+        filename, file_template, data
+    )
+    _, last_version = get_last_workfile_with_version(
+        workdir, file_template, data, {ext}
+    )
+    versions = [
+        version
+        for version in (parsed_data.version, last_version)
+        if version is not None
+    ]
+    if not versions:
+        raise ValueError(
+            f"Failed to resolve version of workfile '{filename}'."
+        )
+
+    version = max(versions) + 1
+    data["version"] = version
+    if parsed_data.comment:
+        data["comment"] = parsed_data.comment
+    new_filename = StringTemplate.format_strict_template(file_template, data)
+    return (
+        os.path.join(workdir, str(new_filename)),
+        version,
+        parsed_data.comment,
+    )
+
+
 def get_last_workfile_from_paths(
     filepaths: list[str],
     file_template: str,
