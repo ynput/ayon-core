@@ -3,12 +3,16 @@ import os
 import platform
 import uuid
 import typing
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Any
 
 import ayon_api
 from ayon_api.operations import OperationsSession
 
+from ayon_core.host.interfaces.workfiles import deprecated
 from ayon_core.lib import filter_profiles, get_ayon_username
+from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_core.host.interfaces import (
     SaveWorkfileOptionalData,
@@ -30,6 +34,15 @@ if typing.TYPE_CHECKING:
 class MissingWorkdirError(Exception):
     """Raised when accessing a work directory not found on disk."""
     pass
+
+
+@dataclass
+class WorkfileOnLaunchProfile:
+    """Resolved launch behavior from last_workfile_on_startup profile."""
+
+    enabled: bool
+    use_last_published_workfile: bool
+    profile: Optional[dict[str, Any]] = None
 
 
 def get_workfiles_info(
@@ -79,35 +92,27 @@ def get_workfiles_info(
     return None
 
 
-def should_use_last_workfile_on_launch(
+def get_workfile_on_launch_profile(
     project_name: str,
     host_name: str,
     task_name: str,
     task_type: str,
-    default_output: bool = False,
     project_settings: Optional[dict[str, Any]] = None,
-) -> bool:
-    """Define if host should start last version workfile if possible.
+) -> Optional[WorkfileOnLaunchProfile]:
+    """Get matched last_workfile_on_startup profile for the context.
 
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
+    Returns object with 'enabled' and 'use_last_published_workfile',
+    or None if no profile matches.
 
     Args:
         project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
+        host_name (str): Name of host which is launched. Not case sensitive.
+        task_name (str): Name of task. Not case sensitive.
         task_type (str): Task type.
-        default_output (Optional[bool]): Default output value if no profile
-            is found.
         project_settings (Optional[dict[str, Any]]): Project settings.
 
     Returns:
-        bool: True if host should start workfile.
-
+        Optional[WorkfileOnLaunchProfile]: Matched profile object or None.
     """
     if project_settings is None:
         project_settings = get_project_settings(project_name)
@@ -118,24 +123,140 @@ def should_use_last_workfile_on_launch(
         ["Workfiles"]
         ["last_workfile_on_startup"]
     )
-
     if not profiles:
-        return default_output
-
+        return None
     filter_data = {
         "task_names": task_name,
         "task_types": task_type,
         "host_names": host_name,
     }
-    matching_item = filter_profiles(profiles, filter_data)
+    profile = filter_profiles(profiles, filter_data)
+    if profile is None:
+        return None
+    return WorkfileOnLaunchProfile(
+        enabled=bool(profile.get("enabled", False)),
+        use_last_published_workfile=bool(
+            profile.get("use_last_published_workfile", False)
+        ),
+        profile=profile,
+    )
 
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
 
-    if output is None:
-        return default_output
-    return output
+@deprecated("Use get_workfile_on_launch_profile() instead.")
+def should_use_last_workfile_on_launch(
+    project_name: str,
+    host_name: str,
+    task_name: str,
+    task_type: str,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> bool:
+    """Check if published workfile should be copied to workdir on launch.
+
+    Backwards-compatible wrapper around get_workfile_on_launch_profile().
+    Default output is False if no profile matches. Can be overridden with
+    environment variable AYON_OPEN_LAST_WORKFILE.
+
+    Args:
+        project_name (str): Name of project.
+        host_name (str): Name of launched host. Not case sensitive.
+        task_name (str): Name of launched task.
+            Not case sensitive.
+        task_type (str): Type of launched task.
+        project_settings (Optional[dict[str, Any]]): Project settings.
+
+    Returns:
+        bool: True if last published workfile should be copied to workdir
+            before opening. None if no profile is found.
+    """
+    profile = get_workfile_on_launch_profile(
+        project_name, host_name, task_name, task_type,
+        project_settings=project_settings,
+    )
+    if profile is None:
+
+        return False
+    return profile.enabled
+
+
+def get_last_published_workfile_representation(
+    project_name: str,
+    folder_id: str,
+    task_id: str,
+    extensions: Optional[typing.Iterable[str]] = None,
+    anatomy: Optional["Anatomy"] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+) -> Optional[dict[str, Any]]:
+    """Resolve latest published workfile representation for the context.
+
+    Args:
+        project_name (str): Project name.
+        folder_id (str): Folder id.
+        task_id (str): Task id (used to filter published versions).
+        extensions (Optional[Iterable[str]]): Allowed workfile extensions.
+            If None, first representation with an existing path is used.
+        anatomy (Optional[Anatomy]): Project anatomy. Resolved from
+            project_name if not provided.
+        project_settings (Optional[dict[str, Any]]): Project settings.
+            Resolved from project_name if not provided.
+
+    Returns:
+        Optional[dict[str, Any]]: Representation entity, or None.
+    """
+    if not extensions:
+        return None
+
+    if anatomy is None:
+        from ayon_core.pipeline import Anatomy
+        anatomy = Anatomy(project_name)
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+
+    extensions = {str(ext).lstrip(".").lower() for ext in extensions}
+
+    product_ids = {
+        product_entity["id"]
+        for product_entity in ayon_api.get_products(
+            project_name,
+            folder_ids={folder_id},
+            product_types={"workfile"},
+            fields={"id"},
+        )
+    }
+    if not product_ids:
+        return None
+
+    latest_version = next(
+        ayon_api.get_versions(
+            project_name,
+            product_ids=product_ids,
+            task_ids={task_id},
+            latest=True,
+            standard=True,
+            fields={"id"},
+        ),
+        None,
+    )
+    if latest_version is None:
+        return None
+
+    repre_entities = ayon_api.get_representations(
+        project_name,
+        version_ids={latest_version["id"]},
+    )
+    for repre in repre_entities:
+        representation_path = Path(get_representation_path(
+            project_name,
+            repre,
+            anatomy=anatomy,
+        ))
+        if not representation_path.exists():
+            continue
+
+        ext = representation_path.suffix.lower().lstrip(".")
+        if ext in extensions:
+            return repre
+
+    return None
 
 
 def should_open_workfiles_tool_on_launch(
