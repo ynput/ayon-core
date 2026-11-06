@@ -510,7 +510,10 @@ class CreateWidget(QtWidgets.QWidget):
         self._context_widget.refresh()
         self._refresh_product_name()
 
-        self._refresh_subtask_products()
+        # NOTE Subtask products are not refreshed here. Disabling context
+        #   above already did it, and they are refreshed again once
+        #   context is enabled and selected.
+
         # Then refresh creators which may trigger callbacks using refreshed
         #   data
         self._refresh_creators()
