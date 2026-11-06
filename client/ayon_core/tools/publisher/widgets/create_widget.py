@@ -419,6 +419,9 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._current_subtask_product = None
         self._subtask_products_threads: dict[str, RefreshThread] = {}
+        # Subtask products are refreshed only when the widget is visible,
+        #   this tells that refresh is needed when it is shown
+        self._subtask_products_stale = False
         self._last_current_context_folder_path = None
         self._last_current_context_task = None
         self._use_current_context = True
@@ -578,6 +581,13 @@ class CreateWidget(QtWidgets.QWidget):
             self.product_name_input.setText("< Folder is not set >")
 
     def _refresh_subtask_products(self) -> None:
+        # Don't query server when user is not on 'Create' tab, refresh
+        #   when the widget is shown
+        if not self.isVisible():
+            self._subtask_products_stale = True
+            return
+        self._subtask_products_stale = False
+
         folder_id = self._get_folder_id()
         folder_path = self._get_folder_path()
         task_name = self._get_task_name()
@@ -1089,6 +1099,9 @@ class CreateWidget(QtWidgets.QWidget):
         if self._first_show:
             self._first_show = False
             self._on_first_show()
+
+        if self._subtask_products_stale:
+            self._refresh_subtask_products()
 
     def _on_creator_basics_resize(self) -> None:
         self._thumbnail_widget.set_height(
