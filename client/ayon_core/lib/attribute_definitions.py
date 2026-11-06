@@ -1065,6 +1065,8 @@ class FileDef(AbstractAttrDef):
         extensions(List[str]): Allow files with extensions. Empty list will
             allow all extensions and None will disable files completely.
         extensions_label(str): Custom label shown instead of extensions in UI.
+        drop_label(str): Custom text of the label above the 'Browse...'
+            button, 'Drop files here or' by default.
         default(str, List[str]): Default value.
     """
 
@@ -1075,6 +1077,7 @@ class FileDef(AbstractAttrDef):
         "extensions",
         "allow_sequences",
         "extensions_label",
+        "drop_label",
     ]
 
     def __init__(
@@ -1085,6 +1088,7 @@ class FileDef(AbstractAttrDef):
         extensions: Optional[Iterable[str]] = None,
         allow_sequences: Optional[bool] = True,
         extensions_label: Optional[str] = None,
+        drop_label: Optional[str] = None,
         default: Optional["Union[FileDefItemDict, List[str]]"] = None,
         **kwargs
     ):
@@ -1129,6 +1133,7 @@ class FileDef(AbstractAttrDef):
         self.extensions: Set[str] = set(extensions)
         self.allow_sequences: bool = allow_sequences
         self.extensions_label: Optional[str] = extensions_label
+        self.drop_label: Optional[str] = drop_label
         super().__init__(key, default=default, **kwargs)
 
     def __eq__(self, other: Any) -> bool:
