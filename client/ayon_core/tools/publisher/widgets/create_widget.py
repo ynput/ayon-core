@@ -568,11 +568,12 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _refresh_subtask_products(self) -> None:
         folder_id = self._get_folder_id()
+        folder_path = self._get_folder_path()
         task_name = self._get_task_name()
         subtask_products = []
-        if folder_id and task_name:
+        if folder_id and folder_path and task_name:
             subtask_products = self._controller.get_subtask_products(
-                folder_id, task_name
+                folder_id, folder_path, task_name
             )
 
         root_item = self._subtask_products_model.invisibleRootItem()

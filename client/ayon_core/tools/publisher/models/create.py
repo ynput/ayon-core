@@ -1116,7 +1116,7 @@ class CreateModel:
         )
 
     def get_subtask_products(
-        self, folder_id: str, task_name: str
+        self, folder_id: str, folder_path: str, task_name: str
     ) -> list[SubtaskProduct]:
         # Subtask features are available only with planner addon
         if not self._is_planner_available():
@@ -1132,19 +1132,12 @@ class CreateModel:
         if not subtask_products:
             return subtask_products
 
-        # Filter subtask products based on existing instances
-        # - skip products that are already created in the scene
-        folder_item = self._controller.get_folder_item(
-            project_name, folder_id
-        )
-        if folder_item is None:
-            return subtask_products
-
+        # Mark subtask products that are already created in the scene
         context_instances = [
             instance
             for instance in self._create_context.instances
             if (
-                instance["folderPath"] == folder_item.path
+                instance["folderPath"] == folder_path
                 and instance["task"] == task_name
             )
         ]

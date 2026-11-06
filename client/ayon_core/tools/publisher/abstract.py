@@ -516,12 +516,6 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_folder_item(
-        self, project_name: str, folder_id: str
-    ) -> FolderItem | None:
-        pass
-
-    @abstractmethod
     def get_folder_item_by_path(
         self, project_name: str, folder_path: str
     ) -> FolderItem | None:
@@ -1148,6 +1142,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def get_subtask_products(
-        self, folder_id: str, task_name: str
+        self, folder_id: str, folder_path: str, task_name: str
     ) -> list[SubtaskProduct]:
-        """Get subtask products for a given folder and task."""
+        """Get subtask products for a given folder and task.
+
+        Args:
+            folder_id (str): Folder id.
+            folder_path (str): Folder path, used to find out which
+                products are already created.
+            task_name (str): Task name.
+
+        """
