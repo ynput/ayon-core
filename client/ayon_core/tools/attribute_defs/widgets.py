@@ -878,7 +878,6 @@ class FileAttrWidget(BaseAttrDefWidget):
             self.attr_def.allow_sequences,
             self.attr_def.extensions_label,
             self,
-            self.attr_def.drop_label,
         )
 
         if self.attr_def.tooltip:
