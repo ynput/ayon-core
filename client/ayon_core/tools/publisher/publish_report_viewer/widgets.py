@@ -986,6 +986,8 @@ class DetailsWidget(QtWidgets.QWidget):
         self._highlight_state: tuple[int, int, int, int] | None = None
         # Messages in the logs document
         self._log_entries: list[_LogEntry] = []
+        # Rows of the matches list visible without scrolling
+        self._matches_view_rows = 0
 
         self._timestamp_check = timestamp_check
         self._search_field = search_field
@@ -1163,12 +1165,18 @@ class DetailsWidget(QtWidgets.QWidget):
         view = self._matches_view
         if not self._can_show_matches():
             view.hide()
+            self._matches_view_rows = 0
             return
         # Keep one row for the 'No matches' placeholder
         rows = min(
             max(self._matches_model.rowCount(), 1),
             self.max_visible_matches,
         )
+        # Do not shrink the list until all matches are found, it would
+        #   jump on each change of the search text
+        if self._matches_model.is_searching():
+            rows = max(rows, self._matches_view_rows)
+        self._matches_view_rows = rows
         row_height = _LogMatchDelegate.row_height(view.fontMetrics())
         view.setFixedHeight(rows * row_height + 2 * view.frameWidth())
         view.show()
