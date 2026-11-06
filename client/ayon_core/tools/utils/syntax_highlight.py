@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import os
+from typing import Optional
 
 from qtpy import QtGui
+import pygments.lexer
 import pygments.lexers
 import pygments.styles
 import pygments.token
@@ -11,9 +13,26 @@ from pygments.util import ClassNotFound
 from .code_style import AYONCodeStyle
 
 
-class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
-    def __init__(self, document, style_name: str = ""):
-        self.lexer = pygments.lexers.PythonLexer()
+class SyntaxHighlighter(QtGui.QSyntaxHighlighter):
+    """Highlight a text document using a pygments lexer.
+
+    The style defaults to 'AYONCodeStyle' and can be overridden with the
+    'AYON_CONSOLE_INTERPRETER_STYLE' environment variable.
+
+    Args:
+        document (QtGui.QTextDocument): Document to highlight.
+        lexer (pygments.lexer.Lexer): Lexer used to tokenize the text.
+
+    Raises:
+        ValueError: When the style from the environment does not exist.
+
+    """
+    def __init__(
+        self,
+        document: QtGui.QTextDocument,
+        lexer: pygments.lexer.Lexer,
+    ):
+        self.lexer = lexer
         self.style = AYONCodeStyle
 
         # Allow to override style by environment variable
@@ -91,3 +110,49 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
             formats[token] = token_format
 
         return formats
+
+
+class PythonSyntaxHighlighter(SyntaxHighlighter):
+    """Highlight Python code."""
+    def __init__(self, document: QtGui.QTextDocument):
+        super().__init__(document, pygments.lexers.PythonLexer())
+
+
+def get_lexer(syntax: str) -> Optional[pygments.lexer.Lexer]:
+    """Get a pygments lexer by its name or alias, e.g. 'python'.
+
+    Args:
+        syntax (str): Name or alias of the lexer.
+
+    Returns:
+        Optional[pygments.lexer.Lexer]: Lexer or None if not found.
+
+    """
+    try:
+        return pygments.lexers.get_lexer_by_name(syntax)
+    except ClassNotFound:
+        return None
+
+
+def create_syntax_highlighter(
+    document: QtGui.QTextDocument,
+    syntax: str,
+) -> Optional[SyntaxHighlighter]:
+    """Create a syntax highlighter for a document.
+
+    Args:
+        document (QtGui.QTextDocument): Document to highlight.
+        syntax (str): Name or alias of a pygments lexer, e.g. 'python'.
+
+    Returns:
+        Optional[SyntaxHighlighter]: Highlighter or None if the syntax
+            is not supported.
+
+    Raises:
+        ValueError: When the style from the environment does not exist.
+
+    """
+    lexer = get_lexer(syntax)
+    if lexer is None:
+        return None
+    return SyntaxHighlighter(document, lexer)
