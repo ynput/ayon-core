@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 import traceback
@@ -29,6 +30,8 @@ else:
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 ITEM_CREATED_AT_ROLE = QtCore.Qt.UserRole + 2
+# Bytes read from start and end of report file to get its label and id
+REPORT_INFO_READ_SIZE = 64 * 1024
 
 
 def get_reports_dir():
@@ -43,46 +46,139 @@ def get_reports_dir():
     return report_dir
 
 
-class PublishReportItem:
-    """Report item representing one file in report directory."""
+def _read_report_info(filepath: str) -> tuple[str, str, str] | None:
+    """Read label, id and creation time of a report file.
 
+    Reading only the start and the end of the file is much faster than
+        parsing the whole report. Reports stored by the viewer have the
+        label as the first key and the creation time with the id as the
+        last keys. Older reports have all of them as the last keys.
+
+    Args:
+        filepath (str): Path to report file.
+
+    Returns:
+        tuple[str, str, str] | None: Label, id and creation time, or None
+            if they could not be read without parsing the whole report.
+
+    """
+    try:
+        with open(filepath, "rb") as stream:
+            head = stream.read(REPORT_INFO_READ_SIZE)
+            stream.seek(0, os.SEEK_END)
+            stream.seek(max(0, stream.tell() - REPORT_INFO_READ_SIZE))
+            tail = stream.read()
+    except OSError:
+        return None
+
+    # The read data may end in the middle of a character
+    head_text = head.decode("utf-8", errors="ignore")
+    tail_text = tail.decode("utf-8", errors="ignore")
+    # Last occurrences are the top level keys, the logs are before them
+    key_positions = [
+        tail_text.rfind(key) for key in ('"created_at": ', '"id": ')
+    ]
+    if -1 in key_positions:
+        return None
+
+    try:
+        tail_data = json.loads("{" + tail_text[min(key_positions):])
+    except ValueError:
+        return None
+    if not isinstance(tail_data, dict):
+        return None
+
+    label = tail_data.get("label")
+    label_prefix = '{"label": '
+    if label is None and head_text.startswith(label_prefix):
+        try:
+            label, _ = json.JSONDecoder().raw_decode(
+                head_text, len(label_prefix)
+            )
+        except ValueError:
+            return None
+
+    report_id = tail_data.get("id")
+    created_at = tail_data.get("created_at")
+    values = (label, report_id, created_at)
+    if all(value and isinstance(value, str) for value in values):
+        return values
+    return None
+
+
+class PublishReportItem:
+    """Report item representing one file in report directory.
+
+    Report of a stored file is loaded on first access, until then only its
+        label, id and creation time are known.
+
+    """
     def __init__(
         self,
-        report: PublishReport | None,
+        report_id: str,
+        label: str | None,
+        created_at: float,
         report_path: str | None,
-    ) -> str:
-        label_changed = False
-        if report is None:
-            created_at_obj = arrow.utcnow()
-            report_id = uuid.uuid4().hex
-        else:
-            created_at_obj = arrow.get(report.created_at).to("local")
-            label = report.label
-            if not label:
-                date_str = created_at_obj.strftime("%Y-%m-%d %H:%M:%S")
-                report.label = date_str
-                label_changed = True
-            report_id = report.id
-
+        report: PublishReport | None = None,
+        report_loaded: bool = True,
+        label_changed: bool = False,
+    ) -> None:
         self.report_id = report_id
         self.report_path = report_path
-        self.report = report
-        self.created_at = float(created_at_obj.float_timestamp)
+        self.created_at = created_at
 
+        self._label = label
+        self._report = report
+        self._report_loaded = report_loaded
         self._label_changed = label_changed
+
+    @classmethod
+    def from_report(
+        cls, report: PublishReport | None, report_path: str | None
+    ) -> PublishReportItem:
+        """Create report item from loaded report.
+
+        Args:
+            report (PublishReport | None): Report or None if it failed
+                to load.
+            report_path (str | None): Path where report is stored.
+
+        """
+        if report is None:
+            return cls(
+                uuid.uuid4().hex,
+                None,
+                float(arrow.utcnow().float_timestamp),
+                report_path,
+            )
+
+        created_at_obj = arrow.get(report.created_at).to("local")
+        label_changed = False
+        if not report.label:
+            report.label = created_at_obj.strftime("%Y-%m-%d %H:%M:%S")
+            label_changed = True
+        return cls(
+            report.id,
+            report.label,
+            float(created_at_obj.float_timestamp),
+            report_path,
+            report,
+            label_changed=label_changed,
+        )
 
     @classmethod
     def from_filepath(
         cls, filepath: str, report_path: str | None = None
-    ) -> "PublishReportItem":
+    ) -> PublishReportItem:
         """Create report item from file path.
 
         Args:
             filepath (str): Path to report file.
+            report_path (str | None): Path where report is stored. Report
+                is stored to reports directory if not passed.
 
         """
         report = None
-        new_label = None
         try:
             report = PublishReport.from_filepath(filepath)
             if report_path is None:
@@ -93,10 +189,60 @@ class PublishReportItem:
             traceback.print_exception(*sys.exc_info())
             print(f"Failed to load report from file: {filepath}. {exc}")
 
-        obj = cls(report, report_path)
-        if new_label:
-            obj.label = new_label
-        return obj
+        return cls.from_report(report, report_path)
+
+    @classmethod
+    def from_stored_file(cls, filepath: str) -> PublishReportItem:
+        """Create report item from file in reports directory.
+
+        The report is loaded when it is used for the first time.
+
+        Args:
+            filepath (str): Path to report file.
+
+        """
+        report_info = _read_report_info(filepath)
+        if report_info is not None:
+            label, report_id, created_at = report_info
+            try:
+                created_at_obj = arrow.get(created_at).to("local")
+            except Exception:
+                created_at_obj = None
+
+            if created_at_obj is not None:
+                return cls(
+                    report_id,
+                    label,
+                    float(created_at_obj.float_timestamp),
+                    filepath,
+                    report_loaded=False,
+                )
+        return cls.from_filepath(filepath, report_path=filepath)
+
+    @property
+    def is_loaded(self) -> bool:
+        """Report was already loaded from the file."""
+        return self._report_loaded
+
+    @property
+    def report(self) -> PublishReport | None:
+        """Publish report, loaded from the file on first access.
+
+        Returns:
+            PublishReport | None: Report or None if it failed to load.
+
+        """
+        if not self._report_loaded:
+            self._report_loaded = True
+            try:
+                self._report = PublishReport.from_filepath(self.report_path)
+            except Exception as exc:
+                traceback.print_exception(*sys.exc_info())
+                print(
+                    "Failed to load report from file:"
+                    f" {self.report_path}. {exc}"
+                )
+        return self._report
 
     @property
     def id(self):
@@ -115,9 +261,11 @@ class PublishReportItem:
             str: Publish report label showed in UI.
 
         """
-        if self.report is None:
+        if self._report is not None:
+            return self._report.label
+        if self._report_loaded:
             return "!!! Failed to load !!!"
-        return self.report.label
+        return self._label
 
     def set_label(self, label: str) -> None:
         """Set publish report label.
@@ -126,20 +274,23 @@ class PublishReportItem:
             label (str): New publish report label.
 
         """
-        if self.report is None:
+        # Report is needed to store the label
+        report = self.report
+        if report is None:
             return
 
-        if self.report.label == label:
+        if report.label == label:
             return
 
-        self.report.label = label
+        report.label = label
         self._label_changed = True
 
     label = property(get_label, set_label)
 
     def save(self):
         """Save publish report to file."""
-        if self.report_path is None or self.report is None:
+        # Report which was not loaded did not change
+        if self.report_path is None or self._report is None:
             return
 
         save = False
@@ -152,7 +303,7 @@ class PublishReportItem:
         if not save:
             return
 
-        self.report.store_to_file(self.report_path)
+        self._report.store_to_file(self.report_path)
 
         self._label_changed = False
 
@@ -219,9 +370,7 @@ class PublisherReportHandler:
         report_dir = get_reports_dir()
         for filename in os.listdir(report_dir):
             filepath = os.path.join(report_dir, filename)
-            item = PublishReportItem.from_filepath(
-                filepath, report_path=filepath
-            )
+            item = PublishReportItem.from_stored_file(filepath)
             reports_by_id[item.id] = item
 
         self._reports_loaded = True
@@ -315,9 +464,17 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
 
         return item
 
-    def add_filepaths(self, filepaths):
+    def add_filepaths(self, filepaths) -> list[str]:
+        """Add report files.
+
+        Returns:
+            list[str]: Ids of the added reports, including reports which
+                were added before.
+
+        """
+        report_ids = []
         if not filepaths:
-            return
+            return report_ids
 
         if isinstance(filepaths, str):
             filepaths = [filepaths]
@@ -332,7 +489,7 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
                 filtered_paths.append(normalized_path)
 
         if not filtered_paths:
-            return
+            return report_ids
 
         new_items = []
         for normalized_path in filtered_paths:
@@ -343,6 +500,7 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
             # Skip already added report items
             # QUESTION: Should we replace existing or skip the item?
             if report_item.id in self._items_by_id:
+                report_ids.append(report_item.id)
                 continue
 
             item = self._create_item(report_item)
@@ -350,12 +508,20 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
                 continue
 
             new_items.append(item)
+            report_ids.append(report_item.id)
             self._items_by_id[report_item.id] = item
             self._report_items_by_id[report_item.id] = report_item
 
         if new_items:
             root_item = self.invisibleRootItem()
             root_item.appendRows(new_items)
+        return report_ids
+
+    def get_index_by_id(self, item_id: str) -> QtCore.QModelIndex:
+        item = self._items_by_id.get(item_id)
+        if item is None:
+            return QtCore.QModelIndex()
+        return item.index()
 
     def remove_item_by_id(self, item_id):
         self._handler.remove_report_item(item_id)
@@ -370,7 +536,23 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
         item: PublishReportItem | None = self._report_items_by_id.get(item_id)
         if item is None:
             return None
-        return item.report
+
+        if item.is_loaded:
+            return item.report
+
+        # Parsing of big report takes a while
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        try:
+            report = item.report
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+
+        if report is None:
+            # Show that the report failed to load
+            std_item = self._items_by_id.get(item_id)
+            if std_item is not None:
+                std_item.setText(item.label)
+        return report
 
 
 class LoadedFilesView(QtWidgets.QTreeView):
@@ -427,7 +609,16 @@ class LoadedFilesView(QtWidgets.QTreeView):
         self._update_remove_btn()
 
     def add_filepaths(self, filepaths):
-        self._model.add_filepaths(filepaths)
+        report_ids = self._model.add_filepaths(filepaths)
+        # Select the last added report
+        if report_ids:
+            index = self._proxy_model.mapFromSource(
+                self._model.get_index_by_id(report_ids[-1])
+            )
+            if index.isValid():
+                self.setCurrentIndex(index)
+                self.scrollTo(index)
+                return
         self._fill_selection()
 
     def remove_item_by_id(self, item_id):
@@ -435,7 +626,7 @@ class LoadedFilesView(QtWidgets.QTreeView):
         self._fill_selection()
 
     def get_current_report(self) -> PublishReport | None:
-        index = self.currentIndex()
+        index = self._get_selected_index()
         item_id = index.data(ITEM_ID_ROLE)
         return self._model.get_report_by_id(item_id)
 
@@ -458,8 +649,20 @@ class LoadedFilesView(QtWidgets.QTreeView):
     def _on_selection_change(self):
         self.selection_changed.emit()
 
+    def _get_selected_index(self) -> QtCore.QModelIndex:
+        """Index of the selected report.
+
+        Do not rely on the current index only, on mouse drag the view
+            changes the selection first and the current index after it, so
+            on selection change the current index is still the previous one.
+        """
+        selected = self.selectionModel().selectedRows()
+        if selected:
+            return selected[0]
+        return self.currentIndex()
+
     def _on_remove_clicked(self):
-        index = self.currentIndex()
+        index = self._get_selected_index()
         item_id = index.data(ITEM_ID_ROLE)
         self.remove_item_by_id(item_id)
 

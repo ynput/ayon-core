@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import os
 
+import ayon_api
 import pyblish.api
 from typing import TYPE_CHECKING, Literal
 
 from ayon_core.host import ILoadHost, IPublishHost
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, env_value_to_bool
 from ayon_core.pipeline import registered_host
 
 from .lib import qt_app_context
@@ -87,17 +88,25 @@ class HostToolsHelper:
     def get_loader_tool(self, parent):
         """Create, cache and return loader tool window."""
         if self._loader_tool is None:
-            from ayon_core.tools.loader.ui import LoaderWindow
-            from ayon_core.tools.loader import LoaderController
+            if use_legacy_loader():
+                from ayon_core.tools.loader.ui import LoaderWindow
+                from ayon_core.tools.loader import LoaderController
+            else:
+                from ayon_core.tools.browser.ui import BrowserWindow
+                from ayon_core.tools.browser import BrowserController
+
+                LoaderWindow = BrowserWindow
+                LoaderController = BrowserController
 
             host = registered_host()
             ILoadHost.validate_load_methods(host)
 
             controller = LoaderController(host=host)
-            loader_window = LoaderWindow(
-                controller=controller,
-                parent=parent or self._parent
-            )
+            window_kwargs = {
+                "controller": controller,
+                "parent": parent or self._parent,
+            }
+            loader_window = LoaderWindow(**window_kwargs)
 
             self._loader_tool = loader_window
 
@@ -456,8 +465,8 @@ def show_loader(
     """Show loader tool.
 
     Args:
-        parent: tool parent,
-        use_context: use context,
+        parent: tool parent
+        use_context: use context
 
     Returns:
         QWidget of the tool
@@ -540,3 +549,51 @@ def get_pyblish_icon():
     if os.path.exists(icon_path):
         return icon_path
     return None
+
+
+def use_legacy_loader() -> bool:
+    """Check if legacy loader should be used.
+
+    The legacy loader is always used on AYON servers too old for the
+    Browser, whatever the environment variable or settings say.
+
+    Returns:
+        bool: True if legacy loader should be used, False otherwise.
+    """
+    # TODO: Backwards compatibility for AYON server < 1.15.0.
+    #   Remove this once 1.15.0 is the minimum supported server.
+    from ayon_core.tools.browser.server_capabilities import (
+        BROWSER_MINIMUM_SERVER_VERSION,
+        server_supports_browser,
+    )
+
+    if not server_supports_browser():
+        Logger.get_logger(__name__).warning(
+            "The Browser requires AYON server %s or newer, this server"
+            " is %s. Using the legacy Loader instead.",
+            ".".join(str(part) for part in BROWSER_MINIMUM_SERVER_VERSION),
+            ayon_api.get_server_version(),
+        )
+        return True
+
+    use_legacy = env_value_to_bool(
+        "AYON_USE_LEGACY_LOADER",
+        default=None,
+    )
+    if use_legacy is not None:
+        return use_legacy
+
+    from ayon_core.pipeline import get_current_project_name
+    from ayon_core.settings import (
+        get_project_settings,
+        get_studio_settings,
+    )
+
+    project_name = get_current_project_name()
+    if project_name:
+        settings = get_project_settings(project_name)
+    else:
+        settings = get_studio_settings()
+    return settings["core"]["tools"]["loader"].get(
+        "use_legacy_loader", False
+    )

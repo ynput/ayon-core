@@ -1,4 +1,3 @@
-import logging
 import warnings
 
 import ayon_api
@@ -9,6 +8,7 @@ from ayon_core.pipeline.plugin_discover import (
     register_plugin,
     register_plugin_path,
 )
+from ayon_core.lib import Logger
 
 
 class LauncherActionSelection:
@@ -66,11 +66,11 @@ class LauncherActionSelection:
             ),
             category=DeprecationWarning
         )
-        if key in {"AYON_PROJECT_NAME", "AVALON_PROJECT"}:
+        if key == "AYON_PROJECT_NAME":
             return self.project_name
-        if key in {"AYON_FOLDER_PATH", "AVALON_ASSET"}:
+        if key == "AYON_FOLDER_PATH":
             return self.folder_path
-        if key in {"AYON_TASK_NAME", "AVALON_TASK"}:
+        if key == "AYON_TASK_NAME":
             return self.task_name
         raise KeyError(f"Key: {key} not found")
 
@@ -88,20 +88,11 @@ class LauncherActionSelection:
             category=DeprecationWarning
         )
         # Fake missing keys check for backwards compatibility
-        if key in {
-            "AYON_PROJECT_NAME",
-            "AVALON_PROJECT",
-        }:
+        if key == "AYON_PROJECT_NAME":
             return self._project_name is not None
-        if key in {
-            "AYON_FOLDER_PATH",
-            "AVALON_ASSET",
-        }:
+        if key == "AYON_FOLDER_PATH":
             return self._folder_id is not None
-        if key in {
-            "AYON_TASK_NAME",
-            "AVALON_TASK",
-        }:
+        if key == "AYON_TASK_NAME":
             return self._task_id is not None
         return False
 
@@ -363,8 +354,7 @@ class LauncherAction(object):
     color = None
     order = 0
 
-    log = logging.getLogger("LauncherAction")
-    log.propagate = True
+    log = Logger.get_logger("LauncherAction")
 
     def is_compatible(self, selection):
         """Return whether the class is compatible with the Session.

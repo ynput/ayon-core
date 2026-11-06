@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import logging
 import uuid
+import typing
 from typing import Optional, Any
 
 import ayon_api
 
 from ayon_core.pipeline import get_current_host_name
 from ayon_core.lib import (
+    Logger,
     NestedCacheItem,
     CacheItem,
     filter_profiles,
@@ -23,6 +24,7 @@ from ayon_core.tools.common_models import (
     TagItem,
     ProductTypeIconMapping,
     UsersModel,
+    WSEventsModel,
 )
 
 from .abstract import (
@@ -37,6 +39,10 @@ from .models import (
     LoaderActionsModel,
     SiteSyncModel
 )
+
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
 NOT_SET = object()
 
@@ -136,11 +142,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._sitesync_model = SiteSyncModel(self)
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     # ---------------------------------
@@ -277,6 +284,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_project_settings(self, project_name: str | None) -> dict:
         return self._settings_model.get_settings(project_name)
 
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
         return self._projects_model.get_project_anatomy_tags(project_name)
 
@@ -306,24 +316,15 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids, sender
         )
 
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
-        return self._thumbnails_model.get_folder_thumbnail_ids(
-            project_name, folder_ids
-        )
-
-    def get_version_thumbnail_ids(self, project_name, version_ids):
-        return self._thumbnails_model.get_version_thumbnail_ids(
-            project_name, version_ids
-        )
-
     def get_thumbnail_paths(
         self,
         project_name,
         entity_type,
         entity_ids,
+        use_server_fallback=True,
     ):
         return self._thumbnails_model.get_thumbnail_paths(
-            project_name, entity_type, entity_ids
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     def change_products_group(self, project_name, product_ids, group_name):
@@ -337,15 +338,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         entity_ids: set[str],
         entity_type: str,
     ) -> list[ActionItem]:
-        action_items = self._loader_actions_model.get_action_items(
+        return self._loader_actions_model.get_action_items(
             project_name, entity_ids, entity_type
         )
-
-        site_sync_items = self._sitesync_model.get_sitesync_action_items(
-            project_name, entity_ids, entity_type
-        )
-        action_items.extend(site_sync_items)
-        return action_items
 
     def trigger_action_item(
         self,
@@ -357,13 +352,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
-        if self._sitesync_model.is_sitesync_action(identifier):
-            self._sitesync_model.trigger_action_item(
-                project_name,
-                data,
-            )
-            return
-
         self._loader_actions_model.trigger_action_item(
             identifier=identifier,
             project_name=project_name,
@@ -574,6 +562,15 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 product_types=profile["filter_product_types"]
             )
         return output
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> Optional[bool]:
+        return self._ws_events_model.get_connection_state()
 
     def _create_event_system(self):
         return QueuedEventSystem()

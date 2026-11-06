@@ -1,6 +1,8 @@
-from qtpy import QtWidgets, QtCore
+from __future__ import annotations
 
-from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+import typing
+
+from qtpy import QtWidgets, QtCore
 
 from .widgets import (
     StopBtn,
@@ -9,6 +11,12 @@ from .widgets import (
     PublishBtn,
     PublishReportBtn,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.publisher.abstract import (
+        AbstractPublisherFrontend,
+        UIFailInfo,
+    )
 
 
 class PublishFrame(QtWidgets.QWidget):
@@ -116,6 +124,10 @@ class PublishFrame(QtWidgets.QWidget):
         validate_btn = ValidateBtn(footer_widget)
         publish_btn = PublishBtn(footer_widget)
 
+        stop_btn.setEnabled(False)
+        validate_btn.setEnabled(False)
+        publish_btn.setEnabled(False)
+
         report_btn.add_action("Go to details", "go_to_report")
         report_btn.add_action("Copy report", "copy_report")
         report_btn.add_action("Export report", "export_report")
@@ -171,7 +183,7 @@ class PublishFrame(QtWidgets.QWidget):
             "publish.process.started", self._on_publish_start
         )
         controller.register_event_callback(
-            "publish.has_validated.changed", self._on_publish_validated_change
+            "publish.has_validated", self._on_publish_validated
         )
         controller.register_event_callback(
             "publish.process.stopped", self._on_publish_stop
@@ -347,9 +359,8 @@ class PublishFrame(QtWidgets.QWidget):
 
         self.set_shrunk_state(False)
 
-    def _on_publish_validated_change(self, event):
-        if event["value"]:
-            self._validate_btn.setEnabled(False)
+    def _on_publish_validated(self):
+        self._validate_btn.setEnabled(False)
 
     def _on_instance_change(self, event):
         """Change instance label when instance is going to be processed."""
@@ -397,7 +408,7 @@ class PublishFrame(QtWidgets.QWidget):
 
     def _set_stopped(self):
         main_label = "Publish paused"
-        if self._controller.publish_has_validated:
+        if self._controller.publish_has_validated():
             main_label += " - Validation passed"
 
         self._set_main_label(main_label)
@@ -411,11 +422,13 @@ class PublishFrame(QtWidgets.QWidget):
         """Show error message to artist on publish crash."""
 
         self._set_main_label("Error happened")
-        error_info = self._controller.get_publish_error_info()
+        fail_info: UIFailInfo | None = (
+            self._controller.get_publish_fail_info()
+        )
 
         error_message = "Unknown error happened"
-        if error_info is not None:
-            error_message = error_info.message
+        if fail_info is not None:
+            error_message = fail_info.message
 
         self._message_label_top.setText(error_message)
 

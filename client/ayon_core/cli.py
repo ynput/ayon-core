@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """Package for handling AYON command line arguments."""
+
 import os
 import sys
-import logging
 import code
-import traceback
 from pathlib import Path
 
 import click
@@ -195,6 +194,28 @@ def interactive():
     code.interact(banner)
 
 
+@main_cli.command(context_settings={"ignore_unknown_options": True})
+def browser():
+    """Show Browser tool."""
+    from ayon_core.tools.utils import get_ayon_qt_app
+    from ayon_core.tools.utils.host_tools import use_legacy_loader
+
+    if use_legacy_loader():
+        from ayon_core.tools.loader.ui import LoaderWindow
+
+        window_class = LoaderWindow
+    else:
+        from ayon_core.tools.browser.ui import BrowserWindow
+
+        window_class = BrowserWindow
+
+    app = get_ayon_qt_app()
+    browser_window = window_class()
+    browser_window.setWindowTitle("AYON Browser")
+    browser_window.show()
+    app.exec_()
+
+
 @main_cli.command()
 @click.option("--build", help="Print only build version",
               is_flag=True, default=False)
@@ -262,10 +283,8 @@ def deliver(
         version_ids (str): Comma separated version ids.
 
     """
-
-    print(f">>> Launching browser for Delivery action '{project}'.")
-
     log = Logger.get_logger("delivery")
+    log.debug(f"Launching browser for Delivery action for '{project}'.")
 
     try:
         from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
@@ -388,8 +407,7 @@ def _cleanup_project_args():
 
 
 def main(*args, **kwargs):
-    logging.basicConfig()
-
+    logger = Logger.get_logger("main")
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
@@ -406,10 +424,9 @@ def main(*args, **kwargs):
             sys.path.insert(0, path)
     os.environ["PYTHONPATH"] = os.pathsep.join(split_paths)
 
-    print(">>> loading environments ...")
-    print("  - global AYON ...")
+    logger.debug("Loading environment for AYON.")
     _set_global_environments()
-    print("  - for addons ...")
+    logger.debug("Loading environment for addons.")
     addons_manager = AddonsManager()
     _set_addons_environments(addons_manager)
     _add_addons(addons_manager)
@@ -423,7 +440,5 @@ def main(*args, **kwargs):
             args=(sys.argv[1:]),
         )
     except Exception:  # noqa
-        exc_info = sys.exc_info()
-        print("!!! AYON crashed:")
-        traceback.print_exception(*exc_info)
+        logger.exception("AYON crashed")
         sys.exit(1)

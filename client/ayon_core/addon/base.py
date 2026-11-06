@@ -25,6 +25,7 @@ from ayon_core.lib import (
     is_dev_mode_enabled,
     get_launcher_storage_dir,
     is_headless_mode_enabled,
+    get_settings_variant,
 )
 from ayon_core.settings import get_studio_settings
 
@@ -173,6 +174,7 @@ def _load_bundle_information() -> BundleInformation:
     key_values = {
         "summary": "true",
         "bundle_name": studio_bundle["name"],
+        "variant": get_settings_variant(),
     }
     if project_bundle:
         key_values["project_bundle_name"] = project_bundle["name"]
@@ -672,7 +674,7 @@ class AddonsManager:
         # Make sure modules are loaded
         load_addons()
 
-        self.log.debug("*** AYON addons initialization.")
+        self.log.debug("AYON addons initialization.")
 
         # Prepare settings for addons
         settings = self._settings
@@ -926,6 +928,17 @@ class AddonsManager:
                     f" from '{method_name}'."
                     f" Got 'str' expected 'list[str]'."
                 )
+
+            # TODO remove when the addons stop using LoaderPlugin for actions
+            if method_name == "get_load_plugin_paths":
+                host_name = next(iter(args))
+                if not host_name:
+                    self.log.warning(
+                        f"DeprecationWarning: Addon {addon.name} returns"
+                        " Loader Plugins when no host is present. These won’t"
+                        " be listed in future core versions and should"
+                        " be Loader Actions instead."
+                    )
             output.extend(paths)
         return output
 
@@ -1054,7 +1067,7 @@ class AddonsManager:
             report_row
             for report_row in sorted(
                 self._report_by_name.values(),
-                key=lambda item: (int(item.server_addon), item.name)
+                key=lambda item: item.name
             )
         ]
         sorted_rows.append(self._total_row)
@@ -1097,7 +1110,7 @@ class AddonsManager:
         ]
 
         # Convert columns to rows for print
-        rows = list(zip(*cols, strict=True))
+        rows = list(zip(*cols))
         # Top row contains labels
         top_row = rows.pop(0)
         # Last row contains totals

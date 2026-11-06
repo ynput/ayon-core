@@ -190,17 +190,27 @@ class CheckboxDrawer:
         # get style data
         checked = bool(option.state & QStyle.StateFlag.State_On)
         variant = getattr(w, "_variant_str", "default")
-        style = self.model.get_style(
-            "QCheckBox",
-            variant=variant,
-            state="checked" if checked else "base",
-        )
-        style.set_context(w)
+        styles = {}
+        for state in ("base", "checked"):
+            styles[state] = self.model.get_style(
+                "QCheckBox", variant=variant, state=state
+            )
+            styles[state].set_context(w)
+        style = styles["checked" if checked else "base"]
+
+        # 0.0 is unchecked, 1.0 is checked; animated by the widget if it
+        # supports it.
+        progress = getattr(w, "_toggle_progress", 1.0 if checked else 0.0)
+
+        def _color(key: str) -> QColor:
+            base = styles["base"].get(key) or styles["checked"][key]
+            checked_ = styles["checked"].get(key) or base
+            return self._mix(QColor(base), QColor(checked_), progress)
 
         # draw toggle background
-        painter.setBrush(QColor(style["indicator-background-color"]))
+        painter.setBrush(_color("indicator-background-color"))
         if style.get("indicator-border-width", 0):
-            pen = QPen(QColor(style["indicator-border-color"]))
+            pen = QPen(_color("indicator-border-color"))
             pen.setWidth(style.get("indicator-border-width", 0))
             painter.setPen(pen)
         else:
@@ -210,14 +220,30 @@ class CheckboxDrawer:
         painter.drawRoundedRect(frame_rect, radius, radius)
 
         # draw toggle knob
-        painter.setBrush(QColor(style["indicator-color"]))
+        painter.setBrush(_color("indicator-color"))
         offset = frame_rect.height() * 0.125
         state_rect: QRectF = frame_rect.adjusted(
             offset, offset, -offset, -offset
         )
         state_rect.setWidth(state_rect.height())
-        if checked:
-            state_rect.moveRight(frame_rect.right() - offset)
+        travel = frame_rect.width() - 2 * offset - state_rect.width()
+        state_rect.moveLeft(state_rect.left() + travel * progress)
         painter.drawEllipse(state_rect)
 
         painter.restore()
+
+    @staticmethod
+    def _mix(color_a: QColor, color_b: QColor, ratio: float) -> QColor:
+        """Linearly interpolate two colors (including alpha)."""
+        if ratio <= 0.0:
+            return color_a
+        if ratio >= 1.0:
+            return color_b
+        return QColor.fromRgbF(
+            *(
+                a + (b - a) * ratio
+                for a, b in zip(
+                    color_a.getRgbF(), color_b.getRgbF()
+                )
+            )
+        )

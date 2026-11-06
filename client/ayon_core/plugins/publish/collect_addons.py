@@ -1,7 +1,6 @@
 """Collect AYON addons."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
 
 import pyblish.api
@@ -16,12 +15,18 @@ from ayon_core.lib.ayon_info import (
 from ayon_core.addon import AddonsManager, get_bundle_information
 
 
-@dataclass
 class AddonInfo:
-    name: str
-    version: str | None
-    server_version: str | None
-    label: str | None = None
+    def __init__(
+        self,
+        name: str,
+        version: str | None,
+        server_version: str | None,
+        label: str | None = None,
+    ) -> None:
+        self.name = name
+        self.version = version
+        self.server_version = server_version
+        self.label = label
 
     def get_row(
         self, name_width: int, version_width: int, server_version_width: int
@@ -89,21 +94,19 @@ class CollectAddons(pyblish.api.ContextPlugin):
                 label,
             ))
 
-        server_items = []
         for addon_name in server_only_addons:
             server_version = server_version_by_name[addon_name]
             name_width = max(name_width, len(addon_name))
             server_version_width = max(
                 server_version_width, len(server_version)
             )
-            server_items.append(AddonInfo(
+            items.append(AddonInfo(
                 addon_name,
                 None,
                 server_version,
             ))
 
         items.sort(key=lambda x: x.name)
-        server_items.sort(key=lambda x: x.name)
 
         title = (
             f"{title_name:<{name_width}}"
@@ -140,12 +143,6 @@ class CollectAddons(pyblish.api.ContextPlugin):
             item.get_row(name_width, version_width, server_version_width)
             for item in items
         )
-        if server_items:
-            lines.append(sep_line)
-            lines.extend(
-                item.get_row(name_width, version_width, server_version_width)
-                for item in server_items
-            )
-            lines.append(sep_line)
+        lines.append(sep_line)
 
         self.log.debug("\n".join(lines))

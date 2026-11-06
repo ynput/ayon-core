@@ -11,7 +11,14 @@ with and without option boxes:
 
 from __future__ import annotations
 
-from ayon_core.ui.components import AYButton, AYMenu, AYOptionalAction
+from ayon_core.style import load_stylesheet
+from ayon_core.ui.components import (
+    AYButton,
+    AYMenu,
+    AYOptionalAction,
+    AYOptionalMenu,
+)
+from ayon_core.ui.style_types import get_ayon_style
 from qtpy import QtCore, QtWidgets
 from utils.composite_widget import CompositeWidget
 from widget_test import WidgetTest
@@ -37,7 +44,7 @@ class OptionalMenuTest(WidgetTest):
         Returns:
             The root ``CompositeWidget`` for snapshot comparison.
         """
-        self._menu = AYMenu()
+        self._menu = AYOptionalMenu()
 
         self._action_with_option = AYOptionalAction(
             "Open File",
@@ -112,8 +119,8 @@ class OptionalMenuTest(WidgetTest):
         assert self._qbot is not None
         self._open_menu()
         QtWidgets.QApplication.processEvents()
-        self._qbot.mouseMove(self._menu.actions()[0].widget)
-        self._qbot.mouseMove(self._menu.actions()[0].widget.option)
+        widget = self._menu.actions()[0].widget
+        self._qbot.mouseMove(widget, widget._option_rect().center())
         QtWidgets.QApplication.processEvents()
 
     def cleanup(self, step_name: str) -> None:
@@ -129,3 +136,135 @@ class OptionalMenuTest(WidgetTest):
 
     def steps(self) -> list:
         return [self.show_menu, self.hover_action_body, self.hover_option_box]
+
+
+def test_optional_action_main_and_option_hit_regions(qtbot) -> None:
+    menu = AYOptionalMenu()
+    action = AYOptionalAction("Load", use_option=True, parent=menu)
+    menu.addAction(action)
+    qtbot.addWidget(menu)
+
+    triggered = []
+    optioned = []
+    action.triggered.connect(lambda: triggered.append(True))
+    action.option_clicked.connect(lambda: optioned.append(True))
+
+    menu.popup(QtCore.QPoint(100, 100))
+    qtbot.waitExposed(menu)
+    widget = action.widget
+    qtbot.mouseClick(
+        widget,
+        QtCore.Qt.MouseButton.LeftButton,
+        pos=QtCore.QPoint(4, widget.height() // 2),
+    )
+
+    menu.popup(QtCore.QPoint(100, 100))
+    qtbot.waitExposed(menu)
+    widget = action.widget
+    qtbot.mouseClick(
+        widget,
+        QtCore.Qt.MouseButton.LeftButton,
+        pos=widget._option_rect().center(),
+    )
+
+    assert triggered == [True]
+    assert optioned == [True]
+
+
+def test_optional_menu_updates_explicit_hover_state(qtbot) -> None:
+    menu = AYOptionalMenu()
+    action = AYOptionalAction("Load", use_option=True, parent=menu)
+    menu.addAction(action)
+    qtbot.addWidget(menu)
+
+    menu.popup(QtCore.QPoint(100, 100))
+    qtbot.waitExposed(menu)
+    menu.hovered.emit(action)
+
+    assert action.widget._hovered is True
+
+
+def test_optional_menu_uses_ayon_style(qtbot) -> None:
+    menu = AYOptionalMenu()
+    qtbot.addWidget(menu)
+
+    # AYMenu forces AYONStyle so rows are measured and painted by the
+    # same style, regardless of the application style.
+    assert menu.style() is get_ayon_style()
+    assert "paintEvent" not in AYOptionalMenu.__dict__
+    assert AYOptionalMenu.paintEvent is AYMenu.paintEvent
+
+
+def test_menu_rows_fit_ayon_painting_with_parent_stylesheet(qtbot) -> None:
+    # A stylesheet on the parent makes Qt measure the rows with the
+    # stylesheet's 'QMenu::item' rules instead of the AYON style.
+    parent = QtWidgets.QWidget()
+    qtbot.addWidget(parent)
+    parent.setStyleSheet("QMenu::item { padding: 6px 25px 6px 10px; }")
+
+    menu = AYMenu(parent)
+    submenu = AYMenu("Set frame range (with handles)", parent=menu)
+    submenu.addAction("Sub-action")
+    submenu_action = menu.addMenu(submenu)
+    assert menu.style() is not get_ayon_style()
+
+    opt = QtWidgets.QStyleOptionMenuItem()
+    menu.initStyleOption(opt, submenu_action)
+    painted_size = get_ayon_style().sizeFromContents(
+        QtWidgets.QStyle.ContentsType.CT_MenuItem,
+        opt,
+        QtCore.QSize(0, 0),
+        menu,
+    )
+
+    # Without enough width the label is painted into the submenu arrow
+    row_width = menu.actionGeometry(submenu_action).width()
+    assert row_width >= painted_size.width()
+
+
+def test_menu_rows_measure_rich_text_labels(qtbot) -> None:
+    # Labels may use the Qt rich text subset, the row must be sized by
+    # the rendered text and not by the markup.
+    menu = AYMenu()
+    qtbot.addWidget(menu)
+    plain_action = menu.addAction("Load (exr)")
+    rich_action = menu.addAction("<b>Load</b> <i>(exr)</i>")
+
+    def row_width(action: QtWidgets.QAction) -> int:
+        opt = QtWidgets.QStyleOptionMenuItem()
+        menu.initStyleOption(opt, action)
+        return get_ayon_style().sizeFromContents(
+            QtWidgets.QStyle.ContentsType.CT_MenuItem,
+            opt,
+            QtCore.QSize(0, 0),
+            menu,
+        ).width()
+
+    markup_width = menu.fontMetrics().horizontalAdvance("<b></b><i></i>")
+    width_diff = row_width(rich_action) - row_width(plain_action)
+    assert 0 <= width_diff < markup_width
+
+
+def test_rich_text_rows_with_tools_stylesheet(qtbot) -> None:
+    # Under the tools stylesheet Qt measures normal rows itself, by the
+    # label text including its markup. Widget rows are measured by the
+    # AYON style, so rich text rows are not sized by their markup.
+    parent = QtWidgets.QWidget()
+    qtbot.addWidget(parent)
+    parent.setStyleSheet(load_stylesheet())
+
+    def popup_row(label: str) -> QtCore.QRect:
+        menu = AYOptionalMenu(parent)
+        action = AYOptionalAction(label, use_option=False, parent=menu)
+        menu.addAction(action)
+        menu.popup(QtCore.QPoint(0, 0))
+        qtbot.waitExposed(menu)
+        geometry = menu.actionGeometry(action)
+        menu.close()
+        return geometry
+
+    plain_row = popup_row("Load coloured text")
+    rich_row = popup_row("Load <font color='#e5a50a'>coloured</font> text")
+
+    assert rich_row.height() == plain_row.height()
+    assert rich_row.width() == plain_row.width()
