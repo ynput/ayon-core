@@ -268,6 +268,35 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
         self._anim_timer = anim_timer
         self._scheduled_scalings = 0
         self._point_size = None
+        self._loading_text: str | None = None
+
+    def set_loading_text(self, text: str | None) -> None:
+        """Show text over the output while its content is being loaded.
+
+        Args:
+            text (str | None): Text to show, or None to hide it.
+
+        """
+        if text == self._loading_text:
+            return
+        self._loading_text = text
+        self.viewport().update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._loading_text:
+            return
+        viewport = self.viewport()
+        # Dim the previous content which is replaced by the loaded one
+        bg_color = QtGui.QColor(self.palette().color(QtGui.QPalette.Base))
+        bg_color.setAlphaF(0.8)
+        painter = QtGui.QPainter(viewport)
+        painter.fillRect(viewport.rect(), bg_color)
+        painter.setPen(self.palette().color(QtGui.QPalette.Text))
+        painter.drawText(
+            viewport.rect(), QtCore.Qt.AlignCenter, self._loading_text
+        )
+        painter.end()
 
     def wheelEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -531,14 +560,18 @@ class _LogFiller:
             self.cursor.position() - position != len(message),
         ))
 
-    def iter_fill(self) -> typing.Iterator[None]:
+    def iter_fill(self) -> typing.Iterator[float]:
         """Fill the output widget with the logs.
 
         The current logs stay visible until the new document is filled.
             Yields after each log so the filling can be split into steps
             and stopped.
 
+        Yields:
+            float: Progress of the filling from 0.0 to 1.0.
+
         """
+        log_count = max(len(self.logs), 1)
         # Create copy of a document to avoid live updates in UI
         src_doc = self.output_widget.document()
         document = QtGui.QTextDocument(self.output_widget)
@@ -549,7 +582,7 @@ class _LogFiller:
         )
         self.cursor = QtGui.QTextCursor(document)
 
-        for source, log in self.logs:
+        for index, (source, log) in enumerate(self.logs):
             timestamp = ""
             if self.show_timestamp and log.created is not None:
                 timestamp = _format_timestamp(log.created)
@@ -569,7 +602,7 @@ class _LogFiller:
 
             else:
                 print(log.type)
-            yield
+            yield (index + 1) / log_count
 
         # Plain text edit requires the plain text layout which, unlike the
         #   rich text layout, can handle documents of any height. Set it
@@ -943,7 +976,8 @@ class DetailsWidget(QtWidgets.QWidget):
         self._is_active: bool = True
         self._need_refresh: bool = False
         self._logs_job_timer = logs_job_timer
-        self._logs_job: typing.Iterator[None] | None = None
+        # Job yields progress of loading the logs, or None
+        self._logs_job: typing.Iterator[float | None] | None = None
         # Refresh of logs, the search waits for it
         self._logs_job_is_refresh = False
         self._highlight_timer = highlight_timer
@@ -1168,6 +1202,7 @@ class DetailsWidget(QtWidgets.QWidget):
     def clear(self) -> None:
         self._logs_job = None
         self._log_entries = []
+        self._output_widget.set_loading_text(None)
         self._output_widget.setPlainText("")
 
     def set_active(self, is_active: bool) -> None:
@@ -1216,14 +1251,16 @@ class DetailsWidget(QtWidgets.QWidget):
             self._logs_job = None
             self._log_entries = []
             self._matches_model.set_searching(False)
+            self._output_widget.set_loading_text(None)
             self._output_widget.setPlainText("")
             return
 
         # Replace the job in progress, it is for outdated filters
+        self._output_widget.set_loading_text("Loading logs...")
         self._start_logs_job(self._iter_update_logs(report), is_refresh=True)
 
     def _start_logs_job(
-        self, job: typing.Iterator[None], is_refresh: bool
+        self, job: typing.Iterator[float | None], is_refresh: bool
     ) -> None:
         self._logs_job = job
         self._logs_job_is_refresh = is_refresh
@@ -1236,13 +1273,21 @@ class DetailsWidget(QtWidgets.QWidget):
             return
         # Process input events often enough to keep typing smooth
         end_time = time.perf_counter() + 0.03
+        progress = None
         try:
             while time.perf_counter() < end_time:
-                next(job)
+                value = next(job)
+                if value is not None:
+                    progress = value
         except StopIteration:
             if self._logs_job is job:
                 self._logs_job = None
             return
+
+        if self._logs_job_is_refresh and progress is not None:
+            self._output_widget.set_loading_text(
+                f"Loading logs... {int(progress * 100)}%"
+            )
         self._logs_job_timer.start()
 
     def _iter_search(self) -> typing.Iterator[None]:
@@ -1272,7 +1317,7 @@ class DetailsWidget(QtWidgets.QWidget):
 
     def _iter_update_logs(
         self, report: PublishReport
-    ) -> typing.Iterator[None]:
+    ) -> typing.Iterator[float | None]:
         # Logs with their source: the plugin and the instance if it has one
         plugin_labels = {
             plugin.id: plugin.label for plugin in report.plugins_info
@@ -1326,6 +1371,7 @@ class DetailsWidget(QtWidgets.QWidget):
         )
         yield from filler.iter_fill()
         self._log_entries = filler.entries
+        self._output_widget.set_loading_text(None)
         # Search in the new logs, changes of search text do not have to
         #   wait for the refresh anymore
         self._logs_job_is_refresh = False
