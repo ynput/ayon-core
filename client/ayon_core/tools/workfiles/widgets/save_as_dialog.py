@@ -24,18 +24,45 @@ class SaveAsDialog(QtWidgets.QDialog):
     The filename is calculated in controller where UI sends values from
     dialog inputs.
 
-    controller (AbstractWorkfilesFrontend): The control object.
+    Inputs which are not passed use defaults of the dialog: context selected
+        in the tool, next available version and comment of the last
+        workfile of the context.
+
+    Args:
+        controller (AbstractWorkfilesFrontend): The control object.
         parent (QtWidgets.QWidget): Parent widget.
         extension (str | None): Limit extensions to specific one.
         copied_from (str | None): Source path to prefill in the artist note.
+        folder_id (str | None): Folder id of the new workfile.
+        task_id (str | None): Task id of the new workfile.
+        version (int | None): Version of the new workfile.
+        comment (str | None): Comment of the new workfile.
+        description (str | None): Artist note of the new workfile, is used
+            instead of 'copied_from' note.
+
     """
-    def __init__(self, controller, parent, extension=None, copied_from=None):
+    def __init__(
+        self,
+        controller,
+        parent,
+        extension=None,
+        copied_from=None,
+        folder_id=None,
+        task_id=None,
+        version=None,
+        comment=None,
+        description=None,
+    ):
         super(SaveAsDialog, self).__init__(parent=parent)
         self.setWindowTitle("Save Workfile As")
         self.setMinimumWidth(330)
 
         self._controller = controller
         self._extension = extension
+        self._input_folder_id = folder_id
+        self._input_task_id = task_id
+        self._input_version = version
+        self._input_comment = comment
 
         self._folder_id = None
         self._task_id = None
@@ -98,7 +125,9 @@ class SaveAsDialog(QtWidgets.QDialog):
         )
         description_input.setPlaceholderText(
             "Provide a note about this workfile.")
-        if copied_from:
+        if description is not None:
+            description_input.setPlainText(description)
+        elif copied_from:
             description_input.setPlainText(f"Copied from: {copied_from}")
         description_input.setMinimumHeight(60)
         description_frame.add_widget(description_input, stretch=1)
@@ -228,12 +257,17 @@ class SaveAsDialog(QtWidgets.QDialog):
         # Add version only if template contains version key
         # - since the version can be padded with "{version:0>4}" we only search
         #   for "{version".
-        selected_context = self._controller.get_selected_context()
-        folder_id = selected_context["folder_id"]
-        task_id = selected_context["task_id"]
+        folder_id = self._input_folder_id
+        task_id = self._input_task_id
+        if not folder_id or not task_id:
+            selected_context = self._controller.get_selected_context()
+            folder_id = folder_id or selected_context["folder_id"]
+            task_id = task_id or selected_context["task_id"]
         data = self._controller.get_workarea_save_as_data(folder_id, task_id)
         last_version = data["last_version"]
         comment = data["comment"]
+        if self._input_comment is not None:
+            comment = self._input_comment
         comment_hints = data["comment_hints"]
 
         template_has_version = data["template_has_version"]
@@ -243,7 +277,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._task_id = task_id
         self._workdir = data["workdir"]
         self._rootless_workdir = data["rootless_workdir"]
-        self._comment_value = data["comment"]
+        self._comment_value = comment
         self._ext_value = data["ext"]
         self._template_key = data["template_key"]
         self._last_version = data["last_version"]
@@ -256,6 +290,9 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_combobox.addItems(extensions)
 
         self._version_input.setValue(last_version)
+        if self._input_version is not None and template_has_version:
+            self._version_input.setValue(self._input_version)
+            self._last_version_check.setChecked(False)
 
         vw_idx = self._inputs_layout.indexOf(self._versions_layout)
         self._version_label.setVisible(template_has_version)

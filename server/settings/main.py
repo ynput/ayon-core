@@ -10,6 +10,10 @@ from ayon_server.exceptions import BadRequestException
 
 from .publish_plugins import PublishPuginsModel, DEFAULT_PUBLISH_VALUES
 from .tools import GlobalToolsModel, DEFAULT_TOOLS_VALUES
+from .workfile_actions import (
+    WorkfileActionsModel,
+    DEFAULT_WORKFILE_ACTIONS_VALUES,
+)
 
 
 class DiskMappingItemModel(BaseSettingsModel):
@@ -439,6 +443,11 @@ class CoreSettings(BaseSettingsModel):
         default_factory=PublishPuginsModel,
         title="Publish plugins"
     )
+    workfile_actions: WorkfileActionsModel = SettingsField(
+        default_factory=WorkfileActionsModel,
+        title="Workfile actions",
+        description="Actions available in the Workfiles tool.",
+    )
     project_folder_structure: str = SettingsField(
         "{}",
         widget="textarea",
@@ -547,6 +556,7 @@ DEFAULT_VALUES = {
         ]
     },
     "publish": DEFAULT_PUBLISH_VALUES,
+    "workfile_actions": DEFAULT_WORKFILE_ACTIONS_VALUES,
     "project_folder_structure": json.dumps(
         {
             "__project_root__": {
