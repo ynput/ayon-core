@@ -52,6 +52,38 @@ from ayon_core.tools.publisher.abstract import (
 )
 
 CREATE_EVENT_SOURCE = "publisher.create.model"
+SUBTASK_PRODUCT_LINK_TYPE = "subtask_product"
+# Subtask products of all tasks in a folder, the linked product data are
+#   received from the link node so no other query is needed.
+SUBTASK_PRODUCTS_QUERY = """
+query SubtaskProducts(
+    $projectName: String!,
+    $folderIds: [String!]!,
+    $linkTypes: [String!]!,
+    $tasksAfter: String
+) {
+  project(name: $projectName) {
+    tasks(folderIds: $folderIds, first: 500, after: $tasksAfter) {
+      pageInfo { hasNextPage endCursor }
+      edges { node {
+        id
+        name
+        links(linkTypes: $linkTypes, first: 500) {
+          pageInfo { hasNextPage }
+          edges {
+            entityType
+            node {
+              ... on ProductNode {
+                id name productType productBaseType active
+              }
+            }
+          }
+        }
+      } }
+    }
+  }
+}
+"""
 _DEFAULT_VALUE = object()
 
 
@@ -1173,7 +1205,12 @@ class CreateModel:
     ) -> list[SubtaskProduct]:
         """Get subtask products for passed folder and task.
 
+        Subtask products are queried for all tasks of the folder at once,
+            so switching between tasks of the same folder does not
+            trigger another query.
+
         Args:
+            project_name (str): Project name.
             folder_id (str): Folder entity id.
             task_name (str): Task name.
 
@@ -1181,24 +1218,106 @@ class CreateModel:
         # Cache only the queried data. Callers get their own copy, so they
         #   can change the items (e.g. 'created' state) without affecting
         #   what is cached.
-        cache_key = (folder_id, task_name)
-        output = self._subtask_products_cache.get(cache_key)
-        if output is None:
-            output = self._query_subtask_products(
-                project_name, folder_id, task_name
+        folder_cache = self._subtask_products_cache.get(folder_id)
+        if folder_cache is None:
+            folder_cache = self._query_subtask_products(
+                project_name, folder_id
             )
-            self._subtask_products_cache[cache_key] = output
-        return copy.deepcopy(output)
+            self._subtask_products_cache[folder_id] = folder_cache
+        return copy.deepcopy(folder_cache.get(task_name, []))
 
     def _query_subtask_products(
-        self, project_name: str, folder_id: str, task_name: str
-    ) -> list[SubtaskProduct]:
-        """Query subtask products from server.
+        self, project_name: str, folder_id: str
+    ) -> dict[str, list[SubtaskProduct]]:
+        """Query subtask products of all tasks in a folder from server.
+
+        Products are received in a single GraphQl query using the link
+            node. Tasks are paginated, links fallback to separate queries
+            for a task that has more links than fit to a single page.
 
         Args:
             project_name (str): Project name.
             folder_id (str): Folder entity id.
-            task_name (str): Task name.
+
+        Returns:
+            dict[str, list[SubtaskProduct]]: Subtask products by task name.
+                The 'created' state is not filled.
+
+        """
+        output = {}
+        variables = {
+            "projectName": project_name,
+            "folderIds": [folder_id],
+            "linkTypes": [SUBTASK_PRODUCT_LINK_TYPE],
+            "tasksAfter": None,
+        }
+        while True:
+            response = ayon_api.query_graphql(
+                SUBTASK_PRODUCTS_QUERY, variables
+            )
+            if response.errors:
+                raise RuntimeError(
+                    "Failed to query subtask products: {}".format(
+                        response.errors
+                    )
+                )
+            tasks_data = response.data["data"]["project"]["tasks"]
+            for edge in tasks_data["edges"]:
+                task = edge["node"]
+                links = task["links"]
+                if links["pageInfo"]["hasNextPage"]:
+                    subtask_products = self._query_task_subtask_products(
+                        project_name, task["id"]
+                    )
+                else:
+                    subtask_products = self._subtask_products_from_links(
+                        links["edges"]
+                    )
+                if subtask_products:
+                    output[task["name"]] = subtask_products
+
+            page_info = tasks_data["pageInfo"]
+            if not page_info["hasNextPage"]:
+                break
+            variables["tasksAfter"] = page_info["endCursor"]
+        return output
+
+    @staticmethod
+    def _subtask_products_from_links(
+        link_edges: list[dict[str, Any]]
+    ) -> list[SubtaskProduct]:
+        subtask_products = []
+        product_ids = set()
+        for link in link_edges:
+            product = link["node"]
+            if (
+                link["entityType"] != "product"
+                or not product
+                # Match 'ayon_api.get_products' which skips inactive
+                or not product["active"]
+                or product["id"] in product_ids
+            ):
+                continue
+            product_ids.add(product["id"])
+            subtask_products.append(
+                SubtaskProduct(
+                    product_name=product["name"],
+                    product_base_type=product["productBaseType"],
+                    product_type=product["productType"],
+                )
+            )
+        return subtask_products
+
+    def _query_task_subtask_products(
+        self, project_name: str, task_id: str
+    ) -> list[SubtaskProduct]:
+        """Query subtask products of a single task from server.
+
+        Fallback for a task with more links than fit to a single page.
+
+        Args:
+            project_name (str): Project name.
+            task_id (str): Task entity id.
 
         Returns:
             list[SubtaskProduct]: Subtask products. The 'created' state
@@ -1206,18 +1325,12 @@ class CreateModel:
 
         """
         subtask_products = []
-        task_item = self._controller.get_task_item_by_name(
-            project_name, folder_id, task_name
-        )
-        if not task_item:
-            return subtask_products
-
         product_ids = set()
         for links in ayon_api.get_entities_links(
             project_name,
             "task",
-            {task_item.task_id},
-            link_types={"subtask_product"},
+            {task_id},
+            link_types={SUBTASK_PRODUCT_LINK_TYPE},
         ).values():
             product_ids |= {
                 link["entityId"]
