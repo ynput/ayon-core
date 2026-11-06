@@ -1,6 +1,7 @@
 """Functions for handling product names."""
 from __future__ import annotations
 
+import re
 import warnings
 from functools import wraps
 from typing import Any, Optional, Union, overload
@@ -10,7 +11,6 @@ import ayon_api
 from ayon_core.lib import (
     StringTemplate,
     filter_profiles,
-    prepare_template_data,
     Logger,
     is_func_signature_supported,
 )
@@ -21,6 +21,14 @@ from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
 
 log = Logger.get_logger(__name__)
+# Deprecated keys replaced in product name templates
+_DEPRECATED_KEYS_REGEX = re.compile(r"\{(task|family|asset)(?=[:!}])")
+_DEPRECATED_TASK_REGEX = re.compile(r"\{task(?=[:!}])")
+_DEPRECATED_KEYS_REPLACEMENT = {
+    "task": "{task[name]",
+    "family": "{product[type]",
+    "asset": "{folder[name]",
+}
 
 
 def get_product_name_template(
@@ -70,17 +78,11 @@ def get_product_name_template(
     template = None
     if matching_profile:
         # TODO remove formatting keys replacement
-        template = (
+        # Replace '{task}' -> '{task[name]}', '{family:upper}'
+        #   -> '{product[type]:upper}' etc.
+        template = _DEPRECATED_KEYS_REGEX.sub(
+            lambda match: _DEPRECATED_KEYS_REPLACEMENT[match.group(1)],
             matching_profile["template"]
-            .replace("{task}", "{task[name]}")
-            .replace("{Task}", "{Task[name]}")
-            .replace("{TASK}", "{TASK[NAME]}")
-            .replace("{family}", "{product[type]}")
-            .replace("{Family}", "{Product[type]}")
-            .replace("{FAMILY}", "{PRODUCT[TYPE]}")
-            .replace("{asset}", "{folder[name]}")
-            .replace("{Asset}", "{Folder[name]}")
-            .replace("{ASSET}", "{FOLDER[NAME]}")
         )
 
     # Make sure template is set (matching may have empty string)
@@ -132,7 +134,7 @@ def _get_product_name_old(
         "name": task_name,
         "type": task_type,
     }
-    if "{task}" in template_low:
+    if _DEPRECATED_TASK_REGEX.search(template_low):
         task_value = task_name
         # NOTE this is message for TDs and Admins -> not really for users
         # TODO validate this in settings and not allow it
@@ -141,7 +143,7 @@ def _get_product_name_old(
             " Please use '{task[name]}' instead."
         )
 
-    elif "{task[short]}" in template_low:
+    elif "{task[short]" in template_low:
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
@@ -151,7 +153,7 @@ def _get_product_name_old(
         task_short = task_types_by_name.get(task_type, {}).get("shortName")
         task_value["short"] = task_short
 
-    if not product_base_type and "{product[basetype]}" in template.lower():
+    if not product_base_type and "{product[basetype]" in template_low:
         warn(
             "You have Product base type in product name template, "
             "but it is not provided by the creator, please update your "
@@ -181,7 +183,7 @@ def _get_product_name_old(
     try:
         return StringTemplate.format_strict_template(
             template=template,
-            data=prepare_template_data(fill_pairs)
+            data=fill_pairs
         )
     except KeyError as exp:
         msg = (
@@ -445,7 +447,7 @@ def get_product_name(
         "name": task_name,
         "type": task_type,
     }
-    if "{task}" in template_low:
+    if _DEPRECATED_TASK_REGEX.search(template_low):
         task_value = task_name
         # NOTE this is message for TDs and Admins -> not really for users
         # TODO validate this in settings and not allow it
@@ -454,7 +456,7 @@ def get_product_name(
             " Please use '{task[name]}' instead."
         )
 
-    elif "{task[short]}" in template_low:
+    elif "{task[short]" in template_low:
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
@@ -496,7 +498,7 @@ def get_product_name(
     try:
         return StringTemplate.format_strict_template(
             template=template,
-            data=prepare_template_data(fill_pairs)
+            data=fill_pairs
         )
     except KeyError as exp:
         msg = (
