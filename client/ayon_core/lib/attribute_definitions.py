@@ -545,16 +545,10 @@ class TextDef(AbstractAttrDef):
         multiline(bool): Text has single or multiline support.
         regex(str, re.Pattern): Regex validation.
         placeholder(str): UI placeholder for attribute.
-        default(str, None): Default value. Empty string used when not defined.
         syntax(Optional[str]): Name of the syntax used to highlight
             the text in UI, e.g. 'python'. Accepts pygments lexer names
             and aliases. Only used when 'multiline' is enabled.
-
-    Note:
-        'syntax' is serialized only when set, so definitions without it
-        still deserialize in older ayon-core versions. Definitions with
-        'syntax' fail to deserialize in ayon-core versions that do not
-        support the argument.
+        default(str, None): Default value. Empty string used when not defined.
 
     """
     type = "text"
@@ -569,8 +563,8 @@ class TextDef(AbstractAttrDef):
         multiline: Optional[bool] = None,
         regex: Optional[str] = None,
         placeholder: Optional[str] = None,
-        default: Optional[str] = None,
         syntax: Optional[str] = None,
+        default: Optional[str] = None,
         **kwargs
     ):
         if default is None:
@@ -592,7 +586,7 @@ class TextDef(AbstractAttrDef):
         self.multiline: bool = multiline
         self.placeholder: Optional[str] = placeholder
         self.regex: Optional["Pattern"] = regex
-        self.syntax: Optional[str] = syntax or None
+        self.syntax: Optional[str] = syntax
 
     def is_value_valid(self, value: Any) -> bool:
         if not isinstance(value, str):
@@ -614,9 +608,7 @@ class TextDef(AbstractAttrDef):
         data["regex"] = regex
         data["multiline"] = self.multiline
         data["placeholder"] = self.placeholder
-        # Store only when set to keep data compatible with older versions
-        if self.syntax:
-            data["syntax"] = self.syntax
+        data["syntax"] = self.syntax
         return data
 
     def _def_type_compare(self, other: "TextDef") -> bool:

@@ -12,11 +12,6 @@ def test_text_def_syntax_default_is_none():
     assert attr_def.syntax is None
 
 
-def test_text_def_syntax_empty_string_is_none():
-    attr_def = TextDef("script", multiline=True, syntax="")
-    assert attr_def.syntax is None
-
-
 def test_text_def_syntax_roundtrip():
     attr_def = TextDef("script", multiline=True, syntax="python")
     data = attr_def.serialize()
@@ -28,10 +23,10 @@ def test_text_def_syntax_roundtrip():
     assert restored == attr_def
 
 
-def test_text_def_without_syntax_does_not_serialize_key():
-    """Older ayon-core versions fail on unknown 'syntax' argument."""
+def test_text_def_without_syntax_serializes_none():
     data = TextDef("script", multiline=True).serialize()
-    assert "syntax" not in data
+    assert data["syntax"] is None
+    assert deserialize_attr_def(data).syntax is None
 
 
 def test_text_def_clone_keeps_syntax():
