@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import sys
 import copy
 from typing import Iterable, Any
@@ -22,7 +21,7 @@ from ayon_api.operations import (
 )
 from ayon_api.utils import create_entity_id
 
-from ayon_core.lib import source_hash
+from ayon_core.lib import source_hash, Logger
 from ayon_core.lib.file_transaction import (
     FileTransaction,
     DuplicateDestinationError
@@ -39,7 +38,7 @@ from ayon_core.pipeline.anatomy import (
     AnatomyRoot,
 )
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 def prepare_changes(old_entity, new_entity):
@@ -90,6 +89,32 @@ def get_instance_families(instance):
 def get_frame_padded(frame, padding):
     """Return frame number as string with `padding` amount of padded zeros"""
     return "{frame:0{padding}d}".format(padding=padding, frame=frame)
+
+
+def get_colorspace_template_value(colorspace_data):
+    """Get the `colorspace` template value from representation data.
+
+    Only a real colorspace name is used. Display and view are not a
+    colorspace, so they are never turned into one.
+
+    Args:
+        colorspace_data (Optional[dict[str, Any]]): Representation
+            `colorspaceData`.
+
+    Returns:
+        Optional[str]: Colorspace name with spaces replaced by
+            underscores, or None when there is no colorspace.
+
+    """
+    if not colorspace_data:
+        return None
+    colorspace = colorspace_data.get("colorspace")
+    if not colorspace:
+        return None
+    # replace spaces with underscores
+    # pipeline.colorspace.parse_colorspace_from_filepath
+    # is checking it with underscores too
+    return colorspace.replace(" ", "_")
 
 
 class IntegrateAsset(pyblish.api.InstancePlugin):
@@ -622,12 +647,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         template_data["version"] = version_entity["version"]
 
         # add template data for colorspaceData
-        if repre.get("colorspaceData"):
-            colorspace = repre["colorspaceData"]["colorspace"]
-            # replace spaces with underscores
-            # pipeline.colorspace.parse_colorspace_from_filepath
-            # is checking it with underscores too
-            colorspace = colorspace.replace(" ", "_")
+        colorspace = get_colorspace_template_value(
+            repre.get("colorspaceData")
+        )
+        if colorspace:
             template_data["colorspace"] = colorspace
 
         stagingdir = repre.get("stagingDir")
