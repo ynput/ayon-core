@@ -1143,8 +1143,10 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_subtask_products(
         self, folder_id: str, folder_path: str, task_name: str
-    ) -> list[SubtaskProduct]:
-        """Get subtask products for a given folder and task.
+    ) -> list[SubtaskProduct] | None:
+        """Get cached subtask products for a given folder and task.
+
+        Does not query the server, use 'fetch_subtask_products' to do so.
 
         Args:
             folder_id (str): Folder id.
@@ -1152,4 +1154,24 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
                 products are already created.
             task_name (str): Task name.
 
+        Returns:
+            list[SubtaskProduct] | None: Subtask products, or None if
+                they were not fetched yet.
+
         """
+        pass
+
+    @abstractmethod
+    def fetch_subtask_products(
+        self, project_name: str, folder_id: str
+    ) -> None:
+        """Query subtask products of a folder from server and cache them.
+
+        Can be called from other than main thread.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder id.
+
+        """
+        pass

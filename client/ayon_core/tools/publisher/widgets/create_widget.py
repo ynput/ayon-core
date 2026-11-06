@@ -26,6 +26,7 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_VSPACING,
 )
 from ayon_core.tools.utils import HintedLineEdit, ListView, get_qt_icon
+from ayon_core.tools.utils.lib import RefreshThread
 
 from .thumbnail_widget import ThumbnailWidget
 from .widgets import (
@@ -46,6 +47,15 @@ SUBTASK_PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 2
 SUBTASK_PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 3
 SUBTASK_PRODUCT_CREATED_ROLE = QtCore.Qt.UserRole + 4
 SUBTASK_PRODUCT_SORT_ROLE = QtCore.Qt.UserRole + 5
+
+# Keep reference to running threads until they finish, so Qt does not
+#   destroy a running thread if the widget is deleted meanwhile.
+_ACTIVE_THREADS: set[RefreshThread] = set()
+
+
+def _track_thread(thread: RefreshThread) -> None:
+    _ACTIVE_THREADS.add(thread)
+    thread.finished.connect(lambda: _ACTIVE_THREADS.discard(thread))
 
 
 class ResizeControlWidget(QtWidgets.QWidget):
@@ -408,6 +418,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._last_thumbnail_path = None
 
         self._current_subtask_product = None
+        self._subtask_products_threads: dict[str, RefreshThread] = {}
         self._last_current_context_folder_path = None
         self._last_current_context_task = None
         self._use_current_context = True
@@ -575,6 +586,10 @@ class CreateWidget(QtWidgets.QWidget):
             subtask_products = self._controller.get_subtask_products(
                 folder_id, folder_path, task_name
             )
+            if subtask_products is None:
+                # Not fetched yet, show them once they are loaded
+                self._fetch_subtask_products(folder_id)
+                subtask_products = []
 
         root_item = self._subtask_products_model.invisibleRootItem()
         if not subtask_products:
@@ -640,6 +655,33 @@ class CreateWidget(QtWidgets.QWidget):
         self._subtask_products_proxy_model.sort(0)
 
         self._update_subtask_selection()
+
+    def _fetch_subtask_products(self, folder_id: str) -> None:
+        """Query subtask products of a folder in a thread."""
+        if folder_id in self._subtask_products_threads:
+            return
+
+        thread = RefreshThread(
+            folder_id,
+            self._controller.fetch_subtask_products,
+            self._controller.get_current_project_name(),
+            folder_id,
+        )
+        self._subtask_products_threads[folder_id] = thread
+        _track_thread(thread)
+        thread.refresh_finished.connect(self._on_subtask_products_fetched)
+        thread.start()
+
+    def _on_subtask_products_fetched(self, folder_id: str) -> None:
+        thread = self._subtask_products_threads.pop(folder_id, None)
+        # Don't refresh on failure, that would start the query again
+        #   right away. It is retried on next refresh.
+        if thread is None or thread.failed:
+            return
+
+        # Selection might have changed meanwhile
+        if folder_id == self._get_folder_id():
+            self._refresh_subtask_products()
 
     def _update_subtask_selection(self) -> None:
         selected_index = next(

@@ -717,3 +717,8 @@ class PublisherController(
         return self._create_model.get_subtask_products(
             folder_id, folder_path, task_name
         )
+
+    def fetch_subtask_products(
+        self, project_name: str, folder_id: str
+    ) -> None:
+        self._create_model.fetch_subtask_products(project_name, folder_id)

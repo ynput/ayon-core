@@ -1117,18 +1117,33 @@ class CreateModel:
 
     def get_subtask_products(
         self, folder_id: str, folder_path: str, task_name: str
-    ) -> list[SubtaskProduct]:
+    ) -> list[SubtaskProduct] | None:
+        """Get subtask products of a task from cache.
+
+        Does not query the server. Use 'fetch_subtask_products' to fill
+            the cache.
+
+        Args:
+            folder_id (str): Folder entity id.
+            folder_path (str): Folder path.
+            task_name (str): Task name.
+
+        Returns:
+            list[SubtaskProduct] | None: Subtask products with filled
+                'created' state, or None if they were not fetched yet.
+
+        """
         # Subtask features are available only with planner addon
         if not self._is_planner_available():
             return []
 
-        project_name = self._controller.get_current_project_name()
-        if project_name is None:
-            return []
+        folder_cache = self._subtask_products_cache.get(folder_id)
+        if folder_cache is None:
+            return None
 
-        subtask_products = self._get_subtask_products(
-            project_name, folder_id, task_name
-        )
+        # Callers get their own copy, so they can change the items
+        #   (e.g. 'created' state) without affecting what is cached.
+        subtask_products = copy.deepcopy(folder_cache.get(task_name, []))
         if not subtask_products:
             return subtask_products
 
@@ -1158,6 +1173,35 @@ class CreateModel:
             subtask_product.created = matching_instance is not None
 
         return subtask_products
+
+    def fetch_subtask_products(
+        self, project_name: str, folder_id: str
+    ) -> None:
+        """Query subtask products of all tasks in a folder and cache them.
+
+        Safe to call from a thread other than main thread. It does not
+            touch the create context nor emit events.
+
+        Subtask products are queried for all tasks of the folder at once,
+            so switching between tasks of the same folder does not
+            trigger another query.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder entity id.
+
+        """
+        if not self._is_planner_available():
+            return
+        # Keep reference to the cache this query belongs to. Reset
+        #   replaces the cache, so a result of a query started before
+        #   reset is dropped with the old cache.
+        cache = self._subtask_products_cache
+        if folder_id in cache:
+            return
+        cache[folder_id] = self._query_subtask_products(
+            project_name, folder_id
+        )
 
     def _emit_event(
         self,
@@ -1192,32 +1236,6 @@ class CreateModel:
                 break
         self._planner_available = available
         return available
-
-    def _get_subtask_products(
-        self, project_name: str, folder_id: str, task_name: str
-    ) -> list[SubtaskProduct]:
-        """Get subtask products for passed folder and task.
-
-        Subtask products are queried for all tasks of the folder at once,
-            so switching between tasks of the same folder does not
-            trigger another query.
-
-        Args:
-            project_name (str): Project name.
-            folder_id (str): Folder entity id.
-            task_name (str): Task name.
-
-        """
-        # Cache only the queried data. Callers get their own copy, so they
-        #   can change the items (e.g. 'created' state) without affecting
-        #   what is cached.
-        folder_cache = self._subtask_products_cache.get(folder_id)
-        if folder_cache is None:
-            folder_cache = self._query_subtask_products(
-                project_name, folder_id
-            )
-            self._subtask_products_cache[folder_id] = folder_cache
-        return copy.deepcopy(folder_cache.get(task_name, []))
 
     def _query_subtask_products(
         self, project_name: str, folder_id: str
