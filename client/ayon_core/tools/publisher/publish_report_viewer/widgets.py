@@ -24,13 +24,18 @@ from ayon_core.tools.utils import (
 from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
-from ayon_core.ui.components import AYButton, AYLineEdit, AYSpinBox
+from ayon_core.ui.components import AYButton, AYLineEdit, AYMenu, AYSpinBox
 
 from .constants import (
     ITEM_ID_ROLE,
-    ITEM_IS_GROUP_ROLE
+    ITEM_IS_GROUP_ROLE,
+    PLUGIN_STATE_SKIPPED,
+    PLUGIN_STATE_PENDING,
+    PLUGIN_STATE_SUCCESSFUL,
+    PLUGIN_STATE_FAILED,
 )
 from .delegates import GroupItemDelegate
+from .lib import get_pretty_milliseconds
 from .model import (
     InstancesModel,
     InstanceProxyModel,
@@ -47,21 +52,6 @@ if typing.TYPE_CHECKING:
 FILEPATH_ROLE = QtCore.Qt.UserRole + 1
 TRACEBACK_ROLE = QtCore.Qt.UserRole + 2
 IS_DETAIL_ITEM_ROLE = QtCore.Qt.UserRole + 3
-
-
-def get_pretty_milliseconds(value: int) -> str:
-    if value < 1000:
-        return f"{value:.3f}ms"
-    value /= 1000
-    if value < 60:
-        return f"{value:.2f}s"
-    seconds = int(value % 60)
-    value /= 60
-    if value < 60:
-        return f"{value:.2f}m {seconds:.2f}s"
-    minutes = int(value % 60)
-    value /= 60
-    return f"{value:.2f}h {minutes:.2f}m"
 
 
 class PluginLoadReportModel(QtGui.QStandardItemModel):
@@ -1000,7 +990,8 @@ class DetailsWidget(QtWidgets.QWidget):
         self._output_widget: ZoomPlainText = output_widget
         self._report_item: PublishReport | None = None
         self._instance_filter: set[str] = set()
-        self._plugin_filter: set[str] = set()
+        # 'None' means no filter, empty set means nothing passes
+        self._plugin_filter: set[str] | None = None
         self._level_filter: set[int] = set()
         self._search_text = ""
         self._surrounding_line_count = 0
@@ -1225,7 +1216,7 @@ class DetailsWidget(QtWidgets.QWidget):
 
     def set_report(self, report: PublishReport | None) -> None:
         self._report_item = report
-        self._plugin_filter = set()
+        self._plugin_filter = None
         self._instance_filter = set()
         self._level_filter_widget.set_value([])
         self._level_filter = set()
@@ -1234,7 +1225,16 @@ class DetailsWidget(QtWidgets.QWidget):
         self._need_refresh = True
         self._update_logs()
 
-    def set_plugin_filter(self, plugin_filter: set[str]) -> None:
+    def set_plugin_filter(self, plugin_filter: set[str] | None) -> None:
+        """Set plugin ids for which logs are shown.
+
+        Args:
+            plugin_filter (set[str] | None): Plugin ids to show logs for.
+                'None' shows logs of all plugins, empty set shows nothing.
+
+        """
+        if plugin_filter == self._plugin_filter:
+            return
         self._plugin_filter = plugin_filter
         self._need_refresh = True
         self._update_logs()
@@ -1337,7 +1337,7 @@ class DetailsWidget(QtWidgets.QWidget):
         }
         filtered_logs = []
         for plugin_id, instance_id, log in report.iter_logs(
-            plugin_ids_filter=self._plugin_filter or None,
+            plugin_ids_filter=self._plugin_filter,
             instance_ids_filter=self._instance_filter or None,
         ):
             if not self._level_filter or self._log_matches_level(log):
@@ -1652,6 +1652,45 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._empty_label.setVisible(not any_visible)
 
 
+class _KeepOpenMenu(AYMenu):
+    """Menu that stays open when a checkable action is toggled.
+
+    Allows to toggle multiple options without re-opening the menu.
+    """
+
+    def _trigger_checkable(self) -> bool:
+        action = self.activeAction()
+        if (
+            action is None
+            or not action.isEnabled()
+            or not action.isCheckable()
+            or action.menu() is not None
+        ):
+            return False
+        action.trigger()
+        return True
+
+    def mouseReleaseEvent(self, event):
+        if (
+            event.button() == QtCore.Qt.LeftButton
+            and self._trigger_checkable()
+        ):
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        if (
+            event.key() in (
+                QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter, QtCore.Qt.Key_Space
+            )
+            and self._trigger_checkable()
+        ):
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
 class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
 
@@ -1747,14 +1786,64 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         instances_delegate = GroupItemDelegate(instances_view)
         instances_view.setItemDelegate(instances_delegate)
 
-        skipped_plugins_check = NiceCheckbox(parent=self)
-        skipped_plugins_check.setChecked(plugins_proxy.ignore_skipped)
-        skipped_plugins_label = QtWidgets.QLabel("Hide skipped plugins", self)
+        plugins_filter_input = AYLineEdit(
+            parent=self,
+            placeholder="Filter plugins...",
+            variant=AYLineEdit.Variants.Search_Field,
+            name_id="PublishPluginsFilter",
+            clear_button=True,
+        )
+        # Keep plugins column wide enough for labels and process times
+        plugins_filter_input.setMinimumWidth(220)
+        plugins_filter_input.setToolTip(
+            "Filter plugins by label, class name or file path."
+            "\nText matches anywhere, case-insensitive."
+            "\nUse wildcards '*' or '?' to match the whole value,"
+            " e.g. 'collect*'."
+        )
+
+        plugins_filter_timer = QtCore.QTimer(self)
+        plugins_filter_timer.setSingleShot(True)
+        plugins_filter_timer.setInterval(200)
+
+        plugins_settings_btn = AYButton(
+            parent=self,
+            variant=AYButton.Variants.Nav,
+            icon="settings",
+            tooltip="Plugins list settings",
+        )
+        plugins_settings_menu = _KeepOpenMenu(plugins_settings_btn)
+        show_plugin_times_action = plugins_settings_menu.addAction(
+            "Show plugin times"
+        )
+        show_plugin_times_action.setCheckable(True)
+        show_plugin_times_action.setChecked(False)
+        show_time_bars_action = plugins_settings_menu.addAction(
+            "Show plugin time bars"
+        )
+        show_time_bars_action.setCheckable(True)
+        show_time_bars_action.setChecked(False)
+
+        plugins_settings_menu.addSeparator()
+        show_header_action = plugins_settings_menu.addAction("Show")
+        show_header_action.setEnabled(False)
+        state_actions_by_state = {}
+        for state, label in (
+            (PLUGIN_STATE_SKIPPED, "Skipped"),
+            (PLUGIN_STATE_PENDING, "Pending"),
+            (PLUGIN_STATE_SUCCESSFUL, "Successful"),
+            (PLUGIN_STATE_FAILED, "Failed"),
+        ):
+            state_action = plugins_settings_menu.addAction(label)
+            state_action.setCheckable(True)
+            state_action.setChecked(plugins_proxy.is_state_visible(state))
+            state_action.setData(state)
+            state_actions_by_state[state] = state_action
 
         skipped_plugins_layout = QtWidgets.QHBoxLayout()
         skipped_plugins_layout.setContentsMargins(0, 0, 0, 0)
-        skipped_plugins_layout.addWidget(skipped_plugins_check, 0)
-        skipped_plugins_layout.addWidget(skipped_plugins_label, 1)
+        skipped_plugins_layout.addWidget(plugins_filter_input, 1)
+        skipped_plugins_layout.addWidget(plugins_settings_btn, 0)
 
         plugins_view = DeselectableTreeView(self)
         plugins_view.setObjectName("PublishDetailViews")
@@ -1834,9 +1923,15 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             self._on_plugin_change
         )
 
-        skipped_plugins_check.stateChanged.connect(
-            self._on_skipped_plugin_check
+        for state_action in state_actions_by_state.values():
+            state_action.toggled.connect(self._on_plugin_state_toggle)
+        show_time_bars_action.toggled.connect(self._on_time_bars_toggle)
+        plugins_filter_input.textChanged.connect(plugins_filter_timer.start)
+        plugins_settings_btn.clicked.connect(self._on_plugins_settings_click)
+        show_plugin_times_action.toggled.connect(
+            self._on_show_plugin_times_toggle
         )
+        plugins_filter_timer.timeout.connect(self._on_plugins_filter_timer)
         removed_instances_check.stateChanged.connect(
             self._on_removed_instances_check
         )
@@ -1858,7 +1953,13 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._instances_delegate = instances_delegate
         self._plugins_delegate = plugins_delegate
 
-        self._skipped_plugins_check = skipped_plugins_check
+        self._show_time_bars_action = show_time_bars_action
+        self._state_actions_by_state = state_actions_by_state
+        self._plugins_filter_input = plugins_filter_input
+        self._plugins_settings_btn = plugins_settings_btn
+        self._plugins_settings_menu = plugins_settings_menu
+        self._show_plugin_times_action = show_plugin_times_action
+        self._plugins_filter_timer = plugins_filter_timer
         self._plugins_view = plugins_view
         self._plugins_model = plugins_model
         self._plugins_proxy = plugins_proxy
@@ -1921,6 +2022,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
 
         self._instances_view.expandAll()
         self._plugins_view.expandAll()
+        self._update_plugin_filter()
 
     def _on_tab_change(self, new_idx):
         if self._current_tab_idx == new_idx:
@@ -1945,19 +2047,69 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
     def _on_plugin_change(self, *_args):
         if self._ignore_selection_changes:
             return
+        self._update_plugin_filter()
 
+    def _get_visible_plugin_ids(self) -> set[str]:
         plugin_ids = set()
-        for index in self._plugins_view.selectedIndexes():
-            if index.isValid():
+        proxy = self._plugins_proxy
+        for group_row in range(proxy.rowCount()):
+            group_index = proxy.index(group_row, 0)
+            for row in range(proxy.rowCount(group_index)):
+                index = proxy.index(row, 0, group_index)
                 plugin_ids.add(index.data(ITEM_ID_ROLE))
+        return plugin_ids
 
-        self._logs_text_widget.set_plugin_filter(plugin_ids)
+    def _update_plugin_filter(self) -> None:
+        """Update plugin filter of details widgets.
+
+        Selected plugins are used if there is any selection. Otherwise,
+            plugins visible in the view are used when any filter is
+            active. Without filter logs of all plugins are shown.
+
+        """
+        plugin_ids = {
+            index.data(ITEM_ID_ROLE)
+            for index in self._plugins_view.selectedIndexes()
+            if index.isValid() and not index.data(ITEM_IS_GROUP_ROLE)
+        }
+        if not plugin_ids and self._plugins_proxy.has_active_filter():
+            plugin_ids = self._get_visible_plugin_ids()
+            logs_plugin_filter = plugin_ids
+        else:
+            logs_plugin_filter = plugin_ids or None
+
+        self._logs_text_widget.set_plugin_filter(logs_plugin_filter)
         self._plugins_details_widget.set_plugin_filter(plugin_ids)
 
-    def _on_skipped_plugin_check(self):
-        self._plugins_proxy.set_ignore_skipped(
-            self._skipped_plugins_check.isChecked()
+    def _on_plugins_filter_timer(self) -> None:
+        self._plugins_proxy.set_filter_text(
+            self._plugins_filter_input.text()
         )
+        self._on_plugins_proxy_filter_change()
+
+    def _on_plugins_settings_click(self) -> None:
+        btn = self._plugins_settings_btn
+        self._plugins_settings_menu.popup(
+            btn.mapToGlobal(QtCore.QPoint(0, btn.height()))
+        )
+
+    def _on_show_plugin_times_toggle(self, checked: bool) -> None:
+        self._plugins_delegate.set_show_process_time(checked)
+        self._plugins_view.viewport().update()
+
+    def _on_time_bars_toggle(self, checked: bool) -> None:
+        self._plugins_delegate.set_show_time_bars(checked)
+        self._plugins_view.viewport().update()
+
+    def _on_plugin_state_toggle(self) -> None:
+        for state, action in self._state_actions_by_state.items():
+            self._plugins_proxy.set_state_visible(state, action.isChecked())
+        self._on_plugins_proxy_filter_change()
+
+    def _on_plugins_proxy_filter_change(self) -> None:
+        self._plugins_view.expandAll()
+        if not self._ignore_selection_changes:
+            self._update_plugin_filter()
 
     def _on_removed_instances_check(self):
         self._instances_proxy.set_ignore_removed(
