@@ -602,3 +602,22 @@ class TestTemplateMenu:
         answers.queue.append(QtWidgets.QMessageBox.Yes)
         getattr(window, callback)()
         assert calls == [action]
+
+
+class TestSelectPlaceholder:
+    def test_placeholder_is_selected_and_shown(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "two"})
+
+        assert window.select_placeholder("node_1")
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert window._editor_widget.get_scene_identifier() == "node_1"
+        assert (
+            window._placeholders_widget.get_selected_identifier() == "node_1"
+        )
+
+    def test_unknown_placeholder_is_ignored(self, window):
+        assert not window.select_placeholder("missing")
+        assert window._pages_widget.currentIndex() == HINT_PAGE

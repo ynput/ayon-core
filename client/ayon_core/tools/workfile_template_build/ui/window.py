@@ -268,6 +268,24 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         """Collect placeholders from the scene and update the UI."""
         self._controller.reset()
 
+    def select_placeholder(self, scene_identifier: str) -> bool:
+        """Select a placeholder and show its options.
+
+        Hosts can use it to show the placeholder that is selected in the
+        scene when the tool is opened.
+
+        Args:
+            scene_identifier (str): Scene identifier of the placeholder.
+
+        Returns:
+            bool: Placeholder was found and selected.
+
+        """
+        if scene_identifier not in self._placeholder_items_by_id:
+            return False
+        self._placeholders_widget.select_identifier(scene_identifier)
+        return self._current_identifier == scene_identifier
+
     # --- Implementation -----------------------------------------------
     def _on_placeholders_refreshed(self):
         self._context_bar.set_workfile(
