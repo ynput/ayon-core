@@ -7,11 +7,13 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderItem,
     PlaceholderPlugin,
     PlaceholderPreview,
+    TemplatePreset,
 )
 from ayon_core.tools.workfile_template_build.abstract import (
     BuildContextItem,
     BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDER_CREATED_TOPIC,
+    PLACEHOLDERS_REFRESHED_TOPIC,
     PLACEHOLDER_DELETED_TOPIC,
     PLACEHOLDER_UPDATED_TOPIC,
 )
@@ -385,6 +387,104 @@ class TestTemplateBuild:
         controller.run_template_build()
 
         assert isinstance(controller.get_build_log(), list)
+
+
+class TestTemplateFile:
+    @pytest.fixture
+    def template_path(self, tmp_path_factory):
+        path = tmp_path_factory.mktemp("template") / "template.ma"
+        path.write_text("")
+        return str(path)
+
+    @staticmethod
+    def _set_preset(controller, monkeypatch, preset):
+        monkeypatch.setattr(
+            controller._builder, "get_template_preset", lambda: preset
+        )
+
+    def test_missing_profile_is_reported(self, controller, monkeypatch):
+        self._set_preset(controller, monkeypatch, TemplatePreset())
+
+        assert controller.get_template_path() is None
+        for result in (
+            controller.open_template(),
+            controller.build_template(),
+        ):
+            assert not result.success
+            assert "No template" in result.error_title
+
+    def test_missing_file_is_reported(self, controller, monkeypatch):
+        self._set_preset(controller, monkeypatch, TemplatePreset(
+            path="/does/not/exist.ma", profile={"path": "x"}
+        ))
+
+        assert controller.get_template_path() == "/does/not/exist.ma"
+        result = controller.build_template()
+        assert not result.success
+        assert result.error_detail == "/does/not/exist.ma"
+
+    def test_open_template_opens_and_resets(
+        self, controller, monkeypatch, template_path
+    ):
+        preset = TemplatePreset(path=template_path, profile={"path": "x"})
+        self._set_preset(controller, monkeypatch, preset)
+        opened = []
+        monkeypatch.setattr(
+            controller._builder, "open_template", opened.append
+        )
+        events = _EventCollector()
+        controller.register_event_callback(
+            PLACEHOLDERS_REFRESHED_TOPIC, events.collect
+        )
+        refresh_count = controller._builder.refresh_count
+
+        result = controller.open_template()
+
+        assert result.success
+        assert opened == [preset]
+        assert controller._builder.refresh_count == refresh_count + 1
+        assert events.events
+
+    def test_build_template_imports_and_populates(
+        self, controller, monkeypatch, template_path
+    ):
+        self._set_preset(controller, monkeypatch, TemplatePreset(
+            path=template_path, profile={"path": "x"}
+        ))
+        imported = []
+
+        def import_template(path):
+            imported.append(path)
+            controller._builder.scene.add({"name": "from_template"})
+
+        monkeypatch.setattr(
+            controller._builder, "import_template", import_template
+        )
+
+        result = controller.build_template()
+
+        assert result.success
+        assert imported == [template_path]
+        assert len(controller.get_placeholder_items()) == 1
+
+    def test_build_failure_is_reported(
+        self, controller, monkeypatch, template_path
+    ):
+        self._set_preset(controller, monkeypatch, TemplatePreset(
+            path=template_path, profile={"path": "x"}
+        ))
+
+        def import_template(path):
+            raise RuntimeError("Broken template")
+
+        monkeypatch.setattr(
+            controller._builder, "import_template", import_template
+        )
+
+        result = controller.build_template()
+
+        assert not result.success
+        assert "Broken template" in result.error_detail
 
 
 class TestPlaceholderData:

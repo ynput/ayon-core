@@ -19,6 +19,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderItem,
     PlaceholderPlugin,
     PlaceholderPreview,
+    TemplatePreset,
 )
 
 from .abstract import (
@@ -405,6 +406,41 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             )
         return ActionResult(success=True)
 
+    def get_template_path(self) -> Optional[str]:
+        preset = self._get_template_preset()
+        if preset is None or not preset.profile:
+            return None
+        return preset.path
+
+    def open_template(self) -> ActionResult:
+        preset, result = self._get_valid_template_preset()
+        if result is not None:
+            return result
+
+        try:
+            self._builder.open_template(preset)
+        except Exception:
+            return self._action_failed("Failed to open the template")
+
+        # Another scene is opened, everything has to be collected again.
+        self.reset()
+        return ActionResult(success=True)
+
+    def build_template(self) -> ActionResult:
+        preset, result = self._get_valid_template_preset()
+        if result is not None:
+            return result
+
+        try:
+            self._builder.build_template(preset=preset)
+        except Exception:
+            return self._action_failed("Failed to build from the template")
+
+        # The template added placeholders to the scene.
+        self._invalidate_placeholders()
+        self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
+        return ActionResult(success=True)
+
     def get_build_steps(self) -> list[BuildStep]:
         """Steps of the last template build.
 
@@ -565,6 +601,53 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             error_title=error_title,
             error_detail=traceback.format_exc(),
         )
+
+    def _get_template_preset(self) -> Optional[TemplatePreset]:
+        if self._builder is None:
+            return None
+        try:
+            return self._builder.get_template_preset()
+        except Exception:
+            self._log.warning(
+                "Failed to get template preset.", exc_info=True
+            )
+            return None
+
+    def _get_valid_template_preset(
+        self,
+    ) -> tuple[Optional[TemplatePreset], Optional[ActionResult]]:
+        """Template preset of the build context that can be used.
+
+        Returns:
+            tuple[Optional[TemplatePreset], Optional[ActionResult]]: The
+                preset, or result with the reason why there is none.
+
+        """
+        if self._builder is None:
+            return None, ActionResult(
+                success=False,
+                error_title="Template builder is not available.",
+            )
+
+        preset = self._get_template_preset()
+        context_label = self.get_build_context().label
+        if preset is None or not preset.profile:
+            return None, ActionResult(
+                success=False,
+                error_title=(
+                    "No template is set in settings for {}.".format(
+                        context_label
+                    )
+                ),
+            )
+
+        if not preset.has_valid_path():
+            return None, ActionResult(
+                success=False,
+                error_title="Template file does not exist.",
+                error_detail=str(preset.path),
+            )
+        return preset, None
 
     def _placeholder_not_found(self, scene_identifier: str) -> ActionResult:
         return ActionResult(

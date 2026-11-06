@@ -554,3 +554,51 @@ class TestContextBar:
 
         assert editor._last_dynamic_values is None
         assert editor._dynamic_timer.isActive()
+
+
+class TestTemplateMenu:
+    @pytest.fixture
+    def calls(self, window, monkeypatch):
+        from ayon_core.tools.workfile_template_build import ActionResult
+
+        output = []
+        controller = window._controller
+        monkeypatch.setattr(
+            controller, "get_template_path", lambda: "/templates/shot.ma"
+        )
+        for name in ("open_template", "build_template"):
+            monkeypatch.setattr(
+                controller,
+                name,
+                lambda name=name: (
+                    output.append(name) or ActionResult(success=True)
+                ),
+            )
+        window._update_template_path()
+        return output
+
+    def test_disabled_without_template(self, window):
+        assert not window._context_bar._template_btn.isEnabled()
+
+    def test_enabled_with_template(self, window, calls):
+        template_btn = window._context_bar._template_btn
+        assert template_btn.isEnabled()
+        assert "/templates/shot.ma" in template_btn.toolTip()
+
+    @pytest.mark.parametrize(
+        "callback, action",
+        [
+            ("_on_open_template_request", "open_template"),
+            ("_on_build_from_template_request", "build_template"),
+        ],
+    )
+    def test_actions_ask_for_confirmation(
+        self, window, calls, answers, callback, action
+    ):
+        answers.queue.append(QtWidgets.QMessageBox.No)
+        getattr(window, callback)()
+        assert calls == []
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        getattr(window, callback)()
+        assert calls == [action]

@@ -20,11 +20,16 @@ class ContextBarWidget(AYContainer):
         context_change_requested: User wants to choose a different context.
         context_reset_requested: User wants to use the context of the scene.
         test_build_requested: User wants to populate all placeholders.
+        open_template_requested: User wants to open the template file.
+        build_from_template_requested: User wants to import the template
+            into the current scene and populate it.
 
     """
     context_change_requested = QtCore.Signal()
     context_reset_requested = QtCore.Signal()
     test_build_requested = QtCore.Signal()
+    open_template_requested = QtCore.Signal()
+    build_from_template_requested = QtCore.Signal()
 
     def __init__(
         self,
@@ -74,6 +79,29 @@ class ContextBarWidget(AYContainer):
             ),
         )
         test_build_btn.setEnabled(False)
+        template_btn = AYButton(
+            "Template",
+            parent=self,
+            variant=AYButton.Variants.Surface,
+            icon="description",
+            tooltip=(
+                "Open or build the template set in settings for the"
+                " \"Preview as\" context"
+            ),
+        )
+        template_btn.setEnabled(False)
+
+        template_menu = QtWidgets.QMenu(template_btn)
+        open_action = template_menu.addAction("Open template\u2026")
+        open_action.setToolTip(
+            "Open the template file. Unsaved changes in the scene are lost."
+        )
+        build_action = template_menu.addAction("Build from template\u2026")
+        build_action.setToolTip(
+            "Import the template into the current scene and populate its"
+            " placeholders."
+        )
+        template_menu.setToolTipsVisible(True)
 
         self.add_widget(icon_label)
         self.add_widget(workfile_label)
@@ -83,17 +111,23 @@ class ContextBarWidget(AYContainer):
         self.add_widget(context_btn)
         self.add_widget(reset_btn)
         self.layout().addSpacing(6)
+        self.add_widget(template_btn)
         self.add_widget(test_build_btn)
 
         context_btn.clicked.connect(self.context_change_requested)
         reset_btn.clicked.connect(self.context_reset_requested)
         test_build_btn.clicked.connect(self.test_build_requested)
+        template_btn.clicked.connect(self._on_template_click)
+        open_action.triggered.connect(self.open_template_requested)
+        build_action.triggered.connect(self.build_from_template_requested)
 
         self._workfile_label = workfile_label
         self._host_label = host_label
         self._context_btn = context_btn
         self._reset_btn = reset_btn
         self._test_build_btn = test_build_btn
+        self._template_btn = template_btn
+        self._template_menu = template_menu
 
     def set_workfile(
         self, workfile_name: Optional[str], host_name: str
@@ -143,3 +177,31 @@ class ContextBarWidget(AYContainer):
 
         """
         self._test_build_btn.setEnabled(enabled)
+
+    def set_template_path(self, template_path: Optional[str]) -> None:
+        """Show the template set in settings for the build context.
+
+        Args:
+            template_path (Optional[str]): Path to the template file. None
+                when no template is set for the build context.
+
+        """
+        self._template_btn.setEnabled(bool(template_path))
+        if template_path:
+            tooltip = "Template: {}".format(template_path)
+        else:
+            tooltip = (
+                "No template is set in settings for the \"Preview as\""
+                " context"
+            )
+        self._template_btn.setToolTip(tooltip)
+
+    def _on_template_click(self) -> None:
+        self._template_menu.exec_(
+            self._template_btn.mapToGlobal(
+                QtCore.QPoint(0, self._template_btn.height())
+            )
+        )
+        # The button would stay pressed when the menu was closed by click
+        #   on the button.
+        self._template_btn.setDown(False)

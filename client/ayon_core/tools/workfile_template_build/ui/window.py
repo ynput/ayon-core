@@ -203,6 +203,12 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         context_bar.test_build_requested.connect(
             self._on_run_template_build_request
         )
+        context_bar.open_template_requested.connect(
+            self._on_open_template_request
+        )
+        context_bar.build_from_template_requested.connect(
+            self._on_build_from_template_request
+        )
         placeholders_widget.selection_changed.connect(
             self._on_selection_change
         )
@@ -268,6 +274,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             self._controller.get_workfile_name(),
             self._controller.get_host_name(),
         )
+        self._update_template_path()
         self._update_placeholders()
 
     def _on_build_context_changed(self):
@@ -282,6 +289,12 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             self._controller.is_builder_available()
         )
         self._editor_widget.set_build_context_label(context_item.label)
+        self._update_template_path()
+
+    def _update_template_path(self):
+        self._context_bar.set_template_path(
+            self._controller.get_template_path()
+        )
 
     def _update_placeholders(self):
         self._plugin_items = self._controller.get_placeholder_plugin_items()
@@ -500,6 +513,52 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         has_results = bool(self._controller.get_last_build_results())
         if not result.success and not has_results:
             self._show_action_error(result)
+
+    def _on_open_template_request(self):
+        if not self._confirm_discard_changes():
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Open template?",
+            (
+                "This opens the template of {}:\n{}\n\n"
+                "Unsaved changes in the current scene are lost."
+                "\nDo you want to continue?"
+            ).format(
+                self._controller.get_build_context().label,
+                self._controller.get_template_path(),
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        self._show_action_error(self._controller.open_template())
+
+    def _on_build_from_template_request(self):
+        if not self._confirm_discard_changes():
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Build from template?",
+            (
+                "This imports the template of {} into the current scene"
+                " and populates its placeholders:\n{}\n\n"
+                "Do you want to continue?"
+            ).format(
+                self._controller.get_build_context().label,
+                self._controller.get_template_path(),
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        self._show_action_error(self._controller.build_template())
 
     def _update_build_status(self, result: ActionResult) -> None:
         """Show the outcome of the last template build.

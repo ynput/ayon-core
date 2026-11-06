@@ -480,6 +480,42 @@ class AbstractTemplateBuilderController(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_template_path(self) -> Optional[str]:
+        """Path to the template file of the build context.
+
+        Returns:
+            Optional[str]: Path from the template profile in settings. None
+                when no profile matches the build context.
+
+        """
+        pass
+
+    @abstractmethod
+    def open_template(self) -> ActionResult:
+        """Open the template file of the build context in the host.
+
+        Unsaved changes of the current scene are lost.
+
+        Returns:
+            ActionResult: Result of the action.
+
+        """
+        pass
+
+    @abstractmethod
+    def build_template(self) -> ActionResult:
+        """Import the template of the build context and populate it.
+
+        The template file is imported into the current scene and all its
+        placeholders are populated.
+
+        Returns:
+            ActionResult: Result of the action.
+
+        """
+        pass
+
 
 __all__ = (
     "PLACEHOLDERS_REFRESHED_TOPIC",
