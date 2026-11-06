@@ -5,7 +5,13 @@ from .constants import (
     ITEM_ERRORED_ROLE,
     PLUGIN_SKIPPED_ROLE,
     PLUGIN_PASSED_ROLE,
-    INSTANCE_REMOVED_ROLE
+    INSTANCE_REMOVED_ROLE,
+    PLUGIN_PROCESS_TIME_ROLE,
+    PLUGIN_PROCESS_TIME_RATIO_ROLE,
+)
+from .lib import (
+    get_pretty_milliseconds,
+    get_process_time_rgb,
 )
 
 colors = {
@@ -37,6 +43,19 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
     _item_border_size = 1.0 / 7.0
     _group_pix_offset_ratio = 1.0 / 3.0
     _group_pix_stroke_size_ratio = 1.0 / 7.0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._show_process_time: bool = False
+        self._show_time_bars: bool = False
+
+    def set_show_process_time(self, show: bool) -> None:
+        """Show process time on the right side of plugin items."""
+        self._show_process_time = show
+
+    def set_show_time_bars(self, show: bool) -> None:
+        """Show bar behind plugin items based on process time."""
+        self._show_time_bars = show
 
     @classmethod
     def _get_path_stroker(cls):
@@ -210,6 +229,10 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
         bg_rect.setY(_rect.y())
         bg_rect.setHeight(_rect.height())
 
+        process_time = index.data(PLUGIN_PROCESS_TIME_ROLE)
+        if self._show_time_bars and process_time:
+            self._paint_time_bar(painter, bg_rect, index, process_time)
+
         expander_rect = QtCore.QRectF(bg_rect)
         expander_rect.setWidth(expander_rect.height() + 5)
 
@@ -232,9 +255,19 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
         else:
             expander_icon = self._get_icon("", icon_size)
 
+        time_text, time_rect = None, None
+        if not index.data(PLUGIN_SKIPPED_ROLE):
+            # Same padding as group items to align times in a column
+            time_text, time_rect = self._layout_time(
+                option,
+                label_rect,
+                process_time,
+                right_padding=(bg_rect.height() / 2) - 0.01,
+            )
+
         label = index.data(QtCore.Qt.DisplayRole)
         label = option.fontMetrics.elidedText(
-            label, QtCore.Qt.ElideRight, label_rect.width()
+            label, QtCore.Qt.ElideRight, int(label_rect.width())
         )
 
         painter.save()
@@ -249,7 +282,86 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
         painter.setFont(option.font)
         painter.drawText(label_rect, QtCore.Qt.AlignVCenter, label)
 
+        self._draw_time(painter, time_text, time_rect, process_time)
+
         # Ok, we're done, tidy up.
+        painter.restore()
+
+    def _layout_time(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        label_rect: QtCore.QRectF,
+        process_time: float | None,
+        right_padding: float = 0.0,
+    ) -> tuple[str | None, QtCore.QRectF | None]:
+        """Prepare process time text and rect, shrinks 'label_rect'."""
+        if not self._show_process_time or process_time is None:
+            return None, None
+        time_text = get_pretty_milliseconds(process_time)
+        time_width = option.fontMetrics.horizontalAdvance(time_text) + 8
+        time_rect = QtCore.QRectF(
+            label_rect.right() - time_width - right_padding,
+            label_rect.y(),
+            time_width,
+            label_rect.height()
+        )
+        label_rect.setWidth(
+            max(0.0, label_rect.width() - time_width - right_padding)
+        )
+        return time_text, time_rect
+
+    @staticmethod
+    def _draw_time(
+        painter: QtGui.QPainter,
+        time_text: str | None,
+        time_rect: QtCore.QRectF | None,
+        process_time: float | None,
+    ) -> None:
+        if not (time_text and process_time):
+            return
+        painter.save()
+        painter.setPen(QtGui.QColor(*get_process_time_rgb(process_time)))
+        painter.drawText(
+            time_rect,
+            QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight,
+            time_text
+        )
+        painter.restore()
+
+    @staticmethod
+    def _get_group_process_time(index: QtCore.QModelIndex) -> float | None:
+        """Sum process time of visible plugins in group."""
+        model = index.model()
+        total = None
+        for row in range(model.rowCount(index)):
+            child_index = model.index(row, 0, index)
+            if child_index.data(PLUGIN_SKIPPED_ROLE):
+                continue
+            process_time = child_index.data(PLUGIN_PROCESS_TIME_ROLE)
+            if process_time is not None:
+                total = (total or 0.0) + process_time
+        return total
+
+    def _paint_time_bar(
+        self,
+        painter: QtGui.QPainter,
+        rect: QtCore.QRectF,
+        index: QtCore.QModelIndex,
+        process_time: float,
+    ) -> None:
+        ratio = index.data(PLUGIN_PROCESS_TIME_RATIO_ROLE) or 0.0
+        width = rect.width() * min(max(ratio, 0.0), 1.0)
+        if width < 1.0:
+            return
+        bar_rect = QtCore.QRectF(rect.x(), rect.y(), width, rect.height())
+        color = QtGui.QColor(*get_process_time_rgb(process_time))
+        color.setAlpha(50)
+        radius = min(4.0, bar_rect.height() / 2, width / 2)
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(color)
+        painter.drawRoundedRect(bar_rect, radius, radius)
         painter.restore()
 
     def group_item_paint(self, painter, option, index):
@@ -310,9 +422,14 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
         else:
             expander_icon = self._get_plus_pixmap(expander_height)
 
+        group_process_time = self._get_group_process_time(index)
+        time_text, time_rect = self._layout_time(
+            option, label_rect, group_process_time, right_padding=radius
+        )
+
         label = index.data(QtCore.Qt.DisplayRole)
         label = option.fontMetrics.elidedText(
-            label, QtCore.Qt.ElideRight, label_rect.width()
+            label, QtCore.Qt.ElideRight, int(label_rect.width())
         )
 
         # Maintain reference to state, so we can restore it once we're done
@@ -326,6 +443,8 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
         # Draw label
         painter.setFont(option.font)
         painter.drawText(label_rect, QtCore.Qt.AlignVCenter, label)
+
+        self._draw_time(painter, time_text, time_rect, group_process_time)
 
         # Ok, we're done, tidy up.
         painter.restore()
