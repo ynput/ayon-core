@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import fnmatch
+from fnmatch import fnmatchcase
 import math
 import typing
 
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable
 
-_WILDCARD_CHARS = ("*", "?", "[")
+_WILDCARD_CHARS = ("*", "?")
 
 
 def get_pretty_milliseconds(value: float) -> str:
@@ -64,8 +64,9 @@ def text_filter_matches(
 
     Matching is case-insensitive. Filter text without wildcard characters
     matches anywhere in a value (substring). If the filter text contains
-    any of '*', '?' or '[', 'fnmatch' is used against the whole value,
-    e.g. 'foo*' matches only values starting with 'foo'.
+    '*' or '?', it is matched against the whole value, e.g. 'foo*'
+    matches only values starting with 'foo'. Other characters, including
+    '[' and ']', are matched literally.
 
     Args:
         filter_text (str): Text to filter by. Empty text matches anything.
@@ -81,12 +82,14 @@ def text_filter_matches(
         return True
 
     use_fnmatch = any(char in filter_text for char in _WILDCARD_CHARS)
+    # Escape '[' so it is matched literally, only '*' and '?' are wildcards
+    pattern = filter_text.replace("[", "[[]")
     for value in values:
         if not value:
             continue
         value = value.lower()
         if use_fnmatch:
-            if fnmatch.fnmatchcase(value, filter_text):
+            if fnmatchcase(value, pattern):
                 return True
         elif filter_text in value:
             return True

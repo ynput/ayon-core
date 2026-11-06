@@ -233,6 +233,7 @@ class PluginsModel(QtGui.QStandardItemModel):
                 continue
 
             items = []
+            group_process_time = None
             for plugin_item in plugin_items:
                 errored = plugin_item.id in errored_plugin_ids
                 label = plugin_item.label or plugin_item.name
@@ -257,7 +258,13 @@ class PluginsModel(QtGui.QStandardItemModel):
                 items.append(item)
                 self._items_by_id[plugin_item.id] = item
                 self._plugin_items_by_id[plugin_item.id] = item
+
+                if process_time is not None and not plugin_item.skipped:
+                    group_process_time = (
+                        (group_process_time or 0.0) + process_time
+                    )
             group_item.appendRows(items)
+            group_item.setData(group_process_time, PLUGIN_PROCESS_TIME_ROLE)
 
         max_process_time = max(
             (
@@ -288,6 +295,14 @@ class PluginProxyModel(QtCore.QSortFilterProxyModel):
             PLUGIN_STATE_FAILED,
         }
         self._filter_text: str = ""
+        self.setRecursiveFilteringEnabled(True)
+
+    @property
+    def ignore_skipped(self) -> bool:
+        return not self.is_state_visible(PLUGIN_STATE_SKIPPED)
+
+    def set_ignore_skipped(self, value: bool) -> None:
+        self.set_state_visible(PLUGIN_STATE_SKIPPED, not value)
 
     def is_state_visible(self, state: str) -> bool:
         return state in self._visible_states
@@ -309,6 +324,26 @@ class PluginProxyModel(QtCore.QSortFilterProxyModel):
 
         if self.sourceModel():
             self.invalidateFilter()
+
+    def has_active_filter(self) -> bool:
+        """Check if any filter hides plugins that could have logs.
+
+        Skipped plugins did not run, so hiding them does not count.
+
+        Returns:
+            bool: Text filter is set or any non-skipped state is hidden.
+
+        """
+        if self._filter_text:
+            return True
+        return any(
+            state not in self._visible_states
+            for state in (
+                PLUGIN_STATE_PENDING,
+                PLUGIN_STATE_SUCCESSFUL,
+                PLUGIN_STATE_FAILED,
+            )
+        )
 
     @property
     def filter_text(self) -> str:
@@ -334,12 +369,10 @@ class PluginProxyModel(QtCore.QSortFilterProxyModel):
         model = self.sourceModel()
         source_index = model.index(row, 0, parent)
 
-        # handle group visibility
+        # Groups are visible only if any plugin is accepted, handled by
+        #   recursive filtering.
         if source_index.data(ITEM_IS_GROUP_ROLE):
-            return any(
-                self._plugin_accepted(model.index(child_row, 0, source_index))
-                for child_row in range(model.rowCount(source_index))
-            )
+            return False
 
         # handle plugin visibility
         return self._plugin_accepted(source_index)

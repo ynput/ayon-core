@@ -9,7 +9,6 @@ from math import ceil
 import time
 import typing
 
-from qtmaterialsymbols import get_icon
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
@@ -25,8 +24,7 @@ from ayon_core.tools.utils import (
 from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
-from ayon_core.ui.components import AYButton, AYLineEdit, AYSpinBox
-from ayon_core.ui.components.option_action import AYMenu
+from ayon_core.ui.components import AYButton, AYLineEdit, AYMenu, AYSpinBox
 
 from .constants import (
     ITEM_ID_ROLE,
@@ -1791,21 +1789,16 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         plugins_filter_input = AYLineEdit(
             parent=self,
             placeholder="Filter plugins...",
-            variant=AYLineEdit.Variants.Low,
+            variant=AYLineEdit.Variants.Search_Field,
             name_id="PublishPluginsFilter",
+            clear_button=True,
         )
         # Keep plugins column wide enough for labels and process times
         plugins_filter_input.setMinimumWidth(220)
-        plugins_filter_clear_action = plugins_filter_input.addAction(
-            get_icon("close", color="#a0a0a0"),
-            QtWidgets.QLineEdit.TrailingPosition,
-        )
-        plugins_filter_clear_action.setToolTip("Clear filter")
-        plugins_filter_clear_action.setVisible(False)
         plugins_filter_input.setToolTip(
             "Filter plugins by label, class name or file path."
             "\nText matches anywhere, case-insensitive."
-            "\nUse wildcards '*', '?' or '[...]' to match the whole value,"
+            "\nUse wildcards '*' or '?' to match the whole value,"
             " e.g. 'collect*'."
         )
 
@@ -1824,7 +1817,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             "Show plugin times"
         )
         show_plugin_times_action.setCheckable(True)
-        show_plugin_times_action.setChecked(True)
+        show_plugin_times_action.setChecked(False)
         show_time_bars_action = plugins_settings_menu.addAction(
             "Show plugin time bars"
         )
@@ -1934,12 +1927,6 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             state_action.toggled.connect(self._on_plugin_state_toggle)
         show_time_bars_action.toggled.connect(self._on_time_bars_toggle)
         plugins_filter_input.textChanged.connect(plugins_filter_timer.start)
-        plugins_filter_input.textChanged.connect(
-            self._on_plugins_filter_text_change
-        )
-        plugins_filter_clear_action.triggered.connect(
-            plugins_filter_input.clear
-        )
         plugins_settings_btn.clicked.connect(self._on_plugins_settings_click)
         show_plugin_times_action.toggled.connect(
             self._on_show_plugin_times_toggle
@@ -1969,7 +1956,6 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._show_time_bars_action = show_time_bars_action
         self._state_actions_by_state = state_actions_by_state
         self._plugins_filter_input = plugins_filter_input
-        self._plugins_filter_clear_action = plugins_filter_clear_action
         self._plugins_settings_btn = plugins_settings_btn
         self._plugins_settings_menu = plugins_settings_menu
         self._show_plugin_times_action = show_plugin_times_action
@@ -2077,8 +2063,8 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         """Update plugin filter of details widgets.
 
         Selected plugins are used if there is any selection. Otherwise,
-            plugins visible in the view are used when text filter is
-            active. Without text filter logs of all plugins are shown.
+            plugins visible in the view are used when any filter is
+            active. Without filter logs of all plugins are shown.
 
         """
         plugin_ids = {
@@ -2086,7 +2072,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             for index in self._plugins_view.selectedIndexes()
             if index.isValid() and not index.data(ITEM_IS_GROUP_ROLE)
         }
-        if not plugin_ids and self._plugins_proxy.filter_text:
+        if not plugin_ids and self._plugins_proxy.has_active_filter():
             plugin_ids = self._get_visible_plugin_ids()
             logs_plugin_filter = plugin_ids
         else:
@@ -2100,9 +2086,6 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             self._plugins_filter_input.text()
         )
         self._on_plugins_proxy_filter_change()
-
-    def _on_plugins_filter_text_change(self, text: str) -> None:
-        self._plugins_filter_clear_action.setVisible(bool(text))
 
     def _on_plugins_settings_click(self) -> None:
         btn = self._plugins_settings_btn

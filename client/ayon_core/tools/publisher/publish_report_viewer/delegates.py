@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 from qtpy import QtWidgets, QtCore, QtGui
 from .constants import (
@@ -317,7 +319,7 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
         time_rect: QtCore.QRectF | None,
         process_time: float | None,
     ) -> None:
-        if not (time_text and process_time):
+        if not time_text or process_time is None:
             return
         painter.save()
         painter.setPen(QtGui.QColor(*get_process_time_rgb(process_time)))
@@ -327,20 +329,6 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
             time_text
         )
         painter.restore()
-
-    @staticmethod
-    def _get_group_process_time(index: QtCore.QModelIndex) -> float | None:
-        """Sum process time of visible plugins in group."""
-        model = index.model()
-        total = None
-        for row in range(model.rowCount(index)):
-            child_index = model.index(row, 0, index)
-            if child_index.data(PLUGIN_SKIPPED_ROLE):
-                continue
-            process_time = child_index.data(PLUGIN_PROCESS_TIME_ROLE)
-            if process_time is not None:
-                total = (total or 0.0) + process_time
-        return total
 
     def _paint_time_bar(
         self,
@@ -422,7 +410,7 @@ class GroupItemDelegate(QtWidgets.QStyledItemDelegate):
         else:
             expander_icon = self._get_plus_pixmap(expander_height)
 
-        group_process_time = self._get_group_process_time(index)
+        group_process_time = index.data(PLUGIN_PROCESS_TIME_ROLE)
         time_text, time_rect = self._layout_time(
             option, label_rect, group_process_time, right_padding=radius
         )
