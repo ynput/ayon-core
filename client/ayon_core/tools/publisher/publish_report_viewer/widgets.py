@@ -1048,7 +1048,8 @@ class DetailsWidget(QtWidgets.QWidget):
                 return True
         return super().eventFilter(obj, event)
 
-    def _on_timestamp_check(self):
+    def _on_timestamp_check(self) -> None:
+        self._need_refresh = True
         self._update_logs()
 
     def _set_search_mode(self, search_mode: bool) -> None:
