@@ -113,7 +113,7 @@ class DropEmpty(QtWidgets.QWidget):
     def __init__(self, single_item, allow_sequences, extensions_label, parent):
         super(DropEmpty, self).__init__(parent)
 
-        drop_label_widget = QtWidgets.QLabel("Drag & Drop here or", self)
+        drop_label_widget = QtWidgets.QLabel("Drop files here or", self)
 
         browse_btn = QtWidgets.QPushButton("Browse...", self)
         browse_btn.setCursor(QtCore.Qt.PointingHandCursor)
