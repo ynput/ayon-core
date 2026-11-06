@@ -22,12 +22,14 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
 )
 
 from .abstract import (
+    BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDERS_REFRESHED_TOPIC,
     PLACEHOLDER_CREATED_TOPIC,
     PLACEHOLDER_UPDATED_TOPIC,
     PLACEHOLDER_DELETED_TOPIC,
     AbstractTemplateBuilderController,
     ActionResult,
+    BuildContextItem,
     BuildStep,
     PlaceholderItemInfo,
     PlaceholderPluginItem,
@@ -119,6 +121,47 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
 
     def is_builder_available(self) -> bool:
         return self._builder is not None
+
+    def get_project_name(self) -> Optional[str]:
+        if self._builder is not None:
+            return self._builder.project_name
+        return os.getenv("AYON_PROJECT_NAME")
+
+    def get_workfile_name(self) -> Optional[str]:
+        if self._builder is None:
+            return None
+        get_current_workfile = getattr(
+            self._builder.host, "get_current_workfile", None
+        )
+        if get_current_workfile is None:
+            return None
+        try:
+            filepath = get_current_workfile()
+        except Exception:
+            self._log.debug("Failed to get current workfile.", exc_info=True)
+            return None
+        if not filepath:
+            return None
+        return os.path.basename(filepath)
+
+    def get_build_context(self) -> BuildContextItem:
+        if self._builder is None:
+            return BuildContextItem()
+        return BuildContextItem(
+            folder_path=self._builder.current_folder_path,
+            task_name=self._builder.current_task_name,
+            is_override=self._builder.get_context_override() is not None,
+        )
+
+    def set_build_context(
+        self,
+        folder_path: Optional[str] = None,
+        task_name: Optional[str] = None,
+    ) -> None:
+        if self._builder is None:
+            return
+        self._builder.set_context_override(folder_path, task_name)
+        self.emit_event(BUILD_CONTEXT_CHANGED_TOPIC)
 
     def reset(self) -> None:
         self._placeholders_by_id = None

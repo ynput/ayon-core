@@ -150,7 +150,25 @@ class TestFirstShow:
         window._on_create_request()
 
         assert window._pages_widget.currentIndex() == HINT_PAGE
-        assert window._hint_widget._create_btn.isHidden()
+        assert window._hint_widget._steps_widget.isHidden()
+        assert window._hint_widget._pointer_widget.isHidden()
+        assert not window._context_bar._context_btn.isEnabled()
+
+    def test_add_button_is_enabled_with_placeholder_types(self, window):
+        assert window._placeholders_widget._create_btn.isEnabled()
+
+    def test_empty_list_is_replaced_by_message(self, window):
+        placeholders_widget = window._placeholders_widget
+        assert placeholders_widget._view.isHidden()
+        assert not placeholders_widget._empty_widget.isHidden()
+
+    def test_list_is_shown_with_placeholders(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        placeholders_widget = window._placeholders_widget
+        assert not placeholders_widget._view.isHidden()
+        assert placeholders_widget._empty_widget.isHidden()
 
 
 class TestCreate:
@@ -168,6 +186,19 @@ class TestCreate:
         assert (
             window._placeholders_widget.get_selected_identifier() == "node_1"
         )
+
+    def test_create_placeholder_of_requested_type(self, window, builder):
+        window._on_create_request("fake")
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+
+        window._editor_widget._on_confirm_click()
+
+        assert list(builder.nodes) == ["node_1"]
+
+    def test_unknown_type_is_ignored(self, window):
+        window._on_create_request("unknown")
+
+        assert window._pages_widget.currentIndex() == HINT_PAGE
 
     def test_cancel_returns_to_hint_page(self, window, builder):
         window._on_create_request()
@@ -252,6 +283,37 @@ class TestEdit:
         assert "node_1" not in builder.nodes
         assert window._pages_widget.currentIndex() == HINT_PAGE
 
+    def test_header_shows_label_and_scene_identifier(self, window):
+        editor = window._editor_widget
+        assert editor._header_widget._title_label.text() == "one"
+        assert editor._header_widget._subtitle_label.text() == "Fake - node_1"
+
+    def test_header_does_not_repeat_scene_identifier(self, window):
+        # Label of the placeholder is the same as its scene identifier
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "node_3"})
+
+        editor = window._editor_widget
+        assert editor._header_widget._title_label.text() == "node_3"
+        assert editor._header_widget._subtitle_label.text() == "Fake"
+
+    def test_select_in_scene_is_disabled_when_not_supported(self, window):
+        select_btn = window._editor_widget._select_btn
+        assert not select_btn.isHidden()
+        assert not select_btn.isEnabled()
+
+    def test_placeholders_are_listed_in_build_order(self, window, builder):
+        builder.nodes["node_1"]["order"] = 20
+        builder.nodes["node_2"]["order"] = 10
+        window.refresh()
+
+        proxy_model = window._placeholders_widget._proxy_model
+        labels = [
+            proxy_model.index(row, 1).data()
+            for row in range(proxy_model.rowCount())
+        ]
+        assert labels == ["two", "one"]
+
     def test_filter_matches_label_and_type(self, window):
         widget = window._placeholders_widget
         widget._filter_input.setText("two")
@@ -282,6 +344,20 @@ class TestEditorActions:
         assert editor._remove_btn.isVisible()
         assert editor._remove_btn.isEnabled()
 
+    def test_actions_are_next_to_the_name(self, window):
+        window.resize(1200, 600)
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        assert not window._editor_widget._header_widget.are_actions_below()
+
+    def test_actions_move_below_a_long_name(self, window):
+        window.resize(1200, 600)
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "a" * 120})
+
+        assert window._editor_widget._header_widget.are_actions_below()
+
     def test_run_button_runs_the_placeholder(self, window, builder):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
@@ -302,7 +378,13 @@ class TestEditorActions:
 
 class TestBuild:
     def test_build_button_is_disabled_without_placeholders(self, window):
-        assert not window._build_btn.isEnabled()
+        assert not window._context_bar._test_build_btn.isEnabled()
+
+    def test_build_button_is_enabled_with_placeholders(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        assert window._context_bar._test_build_btn.isEnabled()
 
     def test_build_asks_for_confirmation(self, window, builder, answers):
         window._on_create_request()
@@ -324,10 +406,10 @@ class TestBuild:
         answers.queue.append(QtWidgets.QMessageBox.Yes)
         window._on_run_template_build_request()
 
-        label = window._build_status_label
-        assert label.isVisible()
-        assert label.text() == "Build: 1 placeholder(s) processed"
-        assert "[OK]" in label.toolTip()
+        status_btn = window._build_status_btn
+        assert status_btn.isVisible()
+        assert status_btn.text() == "1 populated"
+        assert "[OK]" in status_btn.toolTip()
 
     def test_build_reports_failed_placeholder(self, window, answers):
         window._on_create_request()
@@ -340,20 +422,13 @@ class TestBuild:
         finally:
             _Plugin.fail_on = None
 
-        label = window._build_status_label
-        assert label.isVisible()
-        assert "1 of 1 failed" in label.text()
-        assert "run boom" in label.toolTip()
+        status_btn = window._build_status_btn
+        assert status_btn.isVisible()
+        assert status_btn.text() == "1 of 1 failed"
+        assert "run boom" in status_btn.toolTip()
 
-    def test_build_shows_report_button(self, window, answers):
-        window._on_create_request()
-        window._on_create_confirmed("fake", {"name": "one"})
-
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
-        window._on_run_template_build_request()
-
-        assert window._build_report_btn.isVisible()
-        assert window._build_report_btn.isEnabled()
+    def test_build_status_is_hidden_before_build(self, window):
+        assert window._build_status_btn.isHidden()
 
 
 class TestBuildReport:
@@ -389,3 +464,93 @@ class TestBuildReport:
             assert "run boom" in dialog.get_report_text()
         finally:
             dialog.close()
+
+
+class TestGuide:
+    def test_guide_points_to_add_without_placeholders(self, window):
+        guide = window._hint_widget
+
+        assert not guide._pointer_widget.isHidden()
+        assert guide._steps_widget.get_states() == [
+            "active", "todo", "todo"
+        ]
+
+    def test_guide_moves_on_with_placeholders(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._select_silently(None)
+        window._show_hint_page()
+
+        guide = window._hint_widget
+        assert guide._pointer_widget.isHidden()
+        assert guide._steps_widget.get_states() == [
+            "done", "active", "todo"
+        ]
+
+    def test_add_is_highlighted_without_placeholders(self, window):
+        add_btn = window._placeholders_widget._create_btn
+        assert add_btn.is_highlighted()
+
+    def test_add_is_not_highlighted_while_creating(self, window):
+        window._on_create_request()
+
+        add_btn = window._placeholders_widget._create_btn
+        assert not add_btn.is_highlighted()
+
+    def test_add_is_not_highlighted_with_placeholders(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._select_silently(None)
+        window._show_hint_page()
+
+        add_btn = window._placeholders_widget._create_btn
+        assert not add_btn.is_highlighted()
+
+
+class TestContextBar:
+    def test_unsaved_scene_is_shown(self, window):
+        label = window._context_bar._workfile_label
+        assert label.text() == "Unsaved scene"
+
+    def test_chosen_context_is_shown(self, window, monkeypatch):
+        monkeypatch.setattr(
+            window,
+            "_ask_for_build_context",
+            lambda: ("/shots/sh010", "animation"),
+        )
+        window._on_context_change_request()
+
+        context_bar = window._context_bar
+        assert context_bar._context_btn.text() == (
+            "/shots/sh010 \u00b7 animation"
+        )
+        assert not context_bar._reset_btn.isHidden()
+        preview = window._editor_widget._preview_widget
+        assert "/shots/sh010" in preview._context_label.text()
+
+    def test_cancelled_context_dialog_changes_nothing(
+        self, window, monkeypatch
+    ):
+        monkeypatch.setattr(window, "_ask_for_build_context", lambda: None)
+        window._on_context_change_request()
+
+        assert not window._controller.get_build_context().is_override
+
+    def test_reset_uses_scene_context(self, window):
+        window._controller.set_build_context("/shots/sh010", "animation")
+        window._on_context_reset_request()
+
+        assert not window._controller.get_build_context().is_override
+        assert window._context_bar._reset_btn.isHidden()
+
+    def test_context_change_recalculates_preview(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        editor = window._editor_widget
+        editor._on_dynamic_timer()
+        assert editor._last_dynamic_values is not None
+
+        window._controller.set_build_context("/shots/sh010", None)
+
+        assert editor._last_dynamic_values is None
+        assert editor._dynamic_timer.isActive()

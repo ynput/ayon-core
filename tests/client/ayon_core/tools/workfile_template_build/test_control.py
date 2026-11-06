@@ -9,6 +9,8 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderPreview,
 )
 from ayon_core.tools.workfile_template_build.abstract import (
+    BuildContextItem,
+    BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDER_CREATED_TOPIC,
     PLACEHOLDER_DELETED_TOPIC,
     PLACEHOLDER_UPDATED_TOPIC,
@@ -441,3 +443,77 @@ class TestReset:
             item.label for item in controller.get_placeholder_items()
         )
         assert labels == ["added elsewhere", "one"]
+
+
+class _WorkfileHost:
+    """Host stand-in with a saved workfile."""
+
+    def get_current_workfile(self):
+        return "/work/library/modeling_template.ma"
+
+
+class TestBuildContext:
+    @pytest.fixture(autouse=True)
+    def _host_context(self, monkeypatch):
+        monkeypatch.setenv("AYON_FOLDER_PATH", "/assets/bob")
+        monkeypatch.setenv("AYON_TASK_NAME", "modeling")
+
+    def test_host_context_is_used_by_default(self, controller):
+        context_item = controller.get_build_context()
+
+        assert context_item.folder_path == "/assets/bob"
+        assert context_item.task_name == "modeling"
+        assert not context_item.is_override
+        assert context_item.label == "/assets/bob \u00b7 modeling"
+
+    def test_chosen_context_is_used(self, controller):
+        collector = _EventCollector()
+        controller.register_event_callback(
+            BUILD_CONTEXT_CHANGED_TOPIC, collector.collect
+        )
+        controller.set_build_context("/shots/sh010", "animation")
+
+        context_item = controller.get_build_context()
+        assert context_item.folder_path == "/shots/sh010"
+        assert context_item.task_name == "animation"
+        assert context_item.is_override
+        assert controller._builder.current_folder_path == "/shots/sh010"
+        assert len(collector.events) == 1
+
+    def test_chosen_context_survives_reset(self, controller):
+        controller.set_build_context("/shots/sh010", "animation")
+        controller.reset()
+
+        assert controller.get_build_context().is_override
+
+    def test_host_context_is_used_again(self, controller):
+        controller.set_build_context("/shots/sh010", "animation")
+        controller.set_build_context(None)
+
+        context_item = controller.get_build_context()
+        assert not context_item.is_override
+        assert context_item.folder_path == "/assets/bob"
+
+    def test_context_item_serialization(self):
+        context_item = BuildContextItem("/shots/sh010", None, True)
+
+        assert BuildContextItem.from_data(
+            context_item.to_data()
+        ) == context_item
+        assert context_item.label == "/shots/sh010"
+
+
+class TestWorkfileName:
+    def test_name_of_saved_workfile(self):
+        controller = WorkfileTemplateBuilderController(
+            _Builder(_WorkfileHost())
+        )
+        assert controller.get_workfile_name() == "modeling_template.ma"
+
+    def test_host_without_workfiles(self, controller):
+        assert controller.get_workfile_name() is None
+
+    def test_without_builder(self):
+        controller = WorkfileTemplateBuilderController(None)
+        assert controller.get_workfile_name() is None
+        assert controller.get_build_context().label == "No context"
