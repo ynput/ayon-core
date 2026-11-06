@@ -7,7 +7,6 @@ Supports collapsible grouping in tree mode.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -42,13 +41,15 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from ayon_core.lib import Logger
+
 from ..style_types import get_ayon_style
 from ..variants import AYCardViewVariants
 from .entity_card import AYEntityCard, card_height_for_width
 from .scroll_area import AYScrollBar
 from .table_model import PaginatedTableModel
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 @dataclass
@@ -990,17 +991,7 @@ class AYCardView(QAbstractItemView):
                     self._toggle_group(group.node_id)
                     return
 
-        idx = self.indexAt(pos)
-        if idx.isValid():
-            flags = QItemSelectionModel.SelectionFlag.ClearAndSelect
-            modifiers = event.modifiers()
-            if modifiers & Qt.KeyboardModifier.ControlModifier:
-                flags = QItemSelectionModel.SelectionFlag.Toggle
-            elif modifiers & Qt.KeyboardModifier.ShiftModifier:
-                flags = QItemSelectionModel.SelectionFlag.Select
-            self.selectionModel().select(QItemSelection(idx, idx), flags)
-            self.setCurrentIndex(idx)
-
+        # Selection is handled by Qt's built-in ExtendedSelection behavior
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:

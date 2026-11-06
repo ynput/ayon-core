@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from functools import partial
 
@@ -27,21 +26,25 @@ from qtpy.QtWidgets import (
     QSizePolicy,
 )
 
+from ayon_core.lib import Logger
+
 from ..data_models import (
     CommentCategory,
-    EntityMention,
     ProjectData,
-    User,
 )
 from ..variants import QFrameVariants
 from .buttons import AYButton
 from .combo_box import AYComboBox
-from .comment_completion import CODE_BG, CODE_FG
+from .comment_completion import (
+    CODE_BG,
+    CODE_FG,
+    MentionSource,
+)
 from .container import AYContainer
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .markdown_edit import AYMarkdownEdit
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class AYTextEditor(AYMarkdownEdit):
@@ -54,7 +57,6 @@ class AYTextEditor(AYMarkdownEdit):
         *args,
         num_lines: int = 0,
         read_only: bool = False,
-        user_list: list[User] | None,
         variant: AYMarkdownEdit.Variants = AYMarkdownEdit.Variants.Default,
         **kwargs,
     ):
@@ -63,7 +65,10 @@ class AYTextEditor(AYMarkdownEdit):
         self._read_only: bool = read_only
 
         super().__init__(
-            *args, user_list=user_list, variant=variant, **kwargs
+            *args,
+            read_only=read_only,
+            variant=variant,
+            **kwargs,
         )
 
         if self.num_lines:
@@ -91,7 +96,6 @@ class AYTextEditor(AYMarkdownEdit):
             self.setPlaceholderText(
                 "Comment or mention with @user, @@version, @@@task..."
             )
-        self.setReadOnly(self._read_only)
         palette = self.palette()
         palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("white"))
         self.setPalette(palette)
@@ -101,7 +105,7 @@ class AYTextEditor(AYMarkdownEdit):
         if (
             event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter}
             and event.modifiers() & Qt.KeyboardModifier.ControlModifier
-            and not self._mentions.popup_visible()
+            and not self._mention_popup_visible()
         ):
             self.submitted.emit()
             event.accept()
@@ -497,9 +501,19 @@ class AYTextBoxSignals(QObject):
 
 
 class AYTextBox(AYContainer):
+    """Comment box with formatting, mentions and attachments.
+
+    Args:
+        *args: Forwarded to ``AYContainer``.
+        num_lines: Height of the text field in lines.
+        show_categories: Show a combo box to pick the comment category.
+        mention_source: Users, versions and tasks which can be mentioned,
+            can be shared with other comment editors.
+        variant: Background variant.
+        **kwargs: Forwarded to ``AYContainer``.
+    """
+
     signals = AYTextBoxSignals()
-    # The popup to mention a version or task opened
-    mention_entities_requested = Signal()
     Variants = QFrameVariants
     style_icons = {
         "stl_h1": "format_h1",
@@ -524,7 +538,7 @@ class AYTextBox(AYContainer):
         *args,
         num_lines=0,
         show_categories=False,
-        user_list: list[User] | None = None,
+        mention_source: MentionSource | None = None,
         variant: Variants = Variants.Default,
         **kwargs,
     ):
@@ -540,7 +554,7 @@ class AYTextBox(AYContainer):
         self.show_categories = show_categories
         self.comment_categories: list[dict] = _dict_from_comment_category([])
         self.category = self.comment_categories[0]["text"]
-        self._user_list: list[User] = user_list or []
+        self._mention_source = mention_source or MentionSource(self)
         # Store attachments - unified list for both screenshots and files
         # List of dicts:
         #   {'type': 'screenshot'|'file', 'path': str, 'filename': str}
@@ -615,7 +629,7 @@ class AYTextBox(AYContainer):
         self.edit_field = AYTextEditor(
             self,
             num_lines=num_lines,
-            user_list=self._user_list,
+            mention_source=self._mention_source,
             variant=AYTextEditor.Variants.Default,
         )
         for var in self.style_icons:
@@ -628,9 +642,6 @@ class AYTextBox(AYContainer):
             )
 
         self.edit_field.submitted.connect(self._on_comment_clicked)
-        self.edit_field.mention_entities_requested.connect(
-            self.mention_entities_requested
-        )
 
         return self.edit_field
 
@@ -835,24 +846,11 @@ class AYTextBox(AYContainer):
         )
         if self.show_categories:
             self.com_cat.update_items(self.comment_categories)
-        self._user_list = data.users
-        self.edit_field.set_user_list(data.users)
+        self._mention_source.set_users(data.users)
 
-    def set_mention_entities(
-        self,
-        versions: list[EntityMention] | None = None,
-        tasks: list[EntityMention] | None = None,
-    ) -> None:
-        """Set the versions (``@@``) and tasks (``@@@``) to mention.
-
-        Either up front or in response to
-        :attr:`mention_entities_requested`.
-        """
-        self.edit_field.set_mention_entities(versions, tasks)
-
-    def clear_mention_entities(self) -> None:
-        """Forget the versions and tasks, they show as loading until set."""
-        self.edit_field.clear_mention_entities()
+    def mention_source(self) -> MentionSource:
+        """Users, versions and tasks which can be mentioned."""
+        return self._mention_source
 
     def _build(self, num_lines):
         self.add_layout(self._build_upper_bar())

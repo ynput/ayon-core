@@ -37,8 +37,9 @@ class StyleMixin:
 
         # Initialize with our style's default font and palette.
         _style = get_ayon_style()
-        self._style_font: QFont = _style.model.base_font
-        self._style_palette: QPalette = _style.model.base_palette
+        # Copy them, changes of the widget must not affect other widgets
+        self._style_font: QFont = QFont(_style.model.base_font)
+        self._style_palette: QPalette = QPalette(_style.model.base_palette)
 
     def font(self) -> QFont:
         """Override to return our custom style font and circumvent the
