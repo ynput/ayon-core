@@ -26,6 +26,7 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_VSPACING,
 )
 from ayon_core.tools.utils import HintedLineEdit, ListView, get_qt_icon
+from ayon_core.tools.utils.lib import RefreshThread
 
 from .thumbnail_widget import ThumbnailWidget
 from .widgets import (
@@ -46,6 +47,15 @@ SUBTASK_PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 2
 SUBTASK_PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 3
 SUBTASK_PRODUCT_CREATED_ROLE = QtCore.Qt.UserRole + 4
 SUBTASK_PRODUCT_SORT_ROLE = QtCore.Qt.UserRole + 5
+
+# Keep reference to running threads until they finish, so Qt does not
+#   destroy a running thread if the widget is deleted meanwhile.
+_ACTIVE_THREADS: set[RefreshThread] = set()
+
+
+def _track_thread(thread: RefreshThread) -> None:
+    _ACTIVE_THREADS.add(thread)
+    thread.finished.connect(lambda: _ACTIVE_THREADS.discard(thread))
 
 
 class ResizeControlWidget(QtWidgets.QWidget):
@@ -408,6 +418,10 @@ class CreateWidget(QtWidgets.QWidget):
         self._last_thumbnail_path = None
 
         self._current_subtask_product = None
+        self._subtask_products_threads: dict[str, RefreshThread] = {}
+        # Subtask products are refreshed only when the widget is visible,
+        #   this tells that refresh is needed when it is shown
+        self._subtask_products_stale = False
         self._last_current_context_folder_path = None
         self._last_current_context_task = None
         self._use_current_context = True
@@ -496,7 +510,10 @@ class CreateWidget(QtWidgets.QWidget):
         self._context_widget.refresh()
         self._refresh_product_name()
 
-        self._refresh_subtask_products()
+        # NOTE Subtask products are not refreshed here. Disabling context
+        #   above already did it, and they are refreshed again once
+        #   context is enabled and selected.
+
         # Then refresh creators which may trigger callbacks using refreshed
         #   data
         self._refresh_creators()
@@ -567,13 +584,25 @@ class CreateWidget(QtWidgets.QWidget):
             self.product_name_input.setText("< Folder is not set >")
 
     def _refresh_subtask_products(self) -> None:
+        # Don't query server when user is not on 'Create' tab, refresh
+        #   when the widget is shown
+        if not self.isVisible():
+            self._subtask_products_stale = True
+            return
+        self._subtask_products_stale = False
+
         folder_id = self._get_folder_id()
+        folder_path = self._get_folder_path()
         task_name = self._get_task_name()
         subtask_products = []
-        if folder_id and task_name:
+        if folder_id and folder_path and task_name:
             subtask_products = self._controller.get_subtask_products(
-                folder_id, task_name
+                folder_id, folder_path, task_name
             )
+            if subtask_products is None:
+                # Not fetched yet, show them once they are loaded
+                self._fetch_subtask_products(folder_id)
+                subtask_products = []
 
         root_item = self._subtask_products_model.invisibleRootItem()
         if not subtask_products:
@@ -639,6 +668,33 @@ class CreateWidget(QtWidgets.QWidget):
         self._subtask_products_proxy_model.sort(0)
 
         self._update_subtask_selection()
+
+    def _fetch_subtask_products(self, folder_id: str) -> None:
+        """Query subtask products of a folder in a thread."""
+        if folder_id in self._subtask_products_threads:
+            return
+
+        thread = RefreshThread(
+            folder_id,
+            self._controller.fetch_subtask_products,
+            self._controller.get_current_project_name(),
+            folder_id,
+        )
+        self._subtask_products_threads[folder_id] = thread
+        _track_thread(thread)
+        thread.refresh_finished.connect(self._on_subtask_products_fetched)
+        thread.start()
+
+    def _on_subtask_products_fetched(self, folder_id: str) -> None:
+        thread = self._subtask_products_threads.pop(folder_id, None)
+        # Don't refresh on failure, that would start the query again
+        #   right away. It is retried on next refresh.
+        if thread is None or thread.failed:
+            return
+
+        # Selection might have changed meanwhile
+        if folder_id == self._get_folder_id():
+            self._refresh_subtask_products()
 
     def _update_subtask_selection(self) -> None:
         selected_index = next(
@@ -1046,6 +1102,9 @@ class CreateWidget(QtWidgets.QWidget):
         if self._first_show:
             self._first_show = False
             self._on_first_show()
+
+        if self._subtask_products_stale:
+            self._refresh_subtask_products()
 
     def _on_creator_basics_resize(self) -> None:
         self._thumbnail_widget.set_height(
