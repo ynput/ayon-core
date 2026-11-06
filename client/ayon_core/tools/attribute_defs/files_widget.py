@@ -110,10 +110,21 @@ class DropEmpty(QtWidgets.QWidget):
 
     browse_requested = QtCore.Signal()
 
-    def __init__(self, single_item, allow_sequences, extensions_label, parent):
+    _default_drop_label = "Drop files here or"
+
+    def __init__(
+        self,
+        single_item,
+        allow_sequences,
+        extensions_label,
+        parent,
+        drop_label=None,
+    ):
         super(DropEmpty, self).__init__(parent)
 
-        drop_label_widget = QtWidgets.QLabel("Drop files here or", self)
+        drop_label_widget = QtWidgets.QLabel(
+            drop_label or self._default_drop_label, self
+        )
 
         browse_btn = QtWidgets.QPushButton("Browse...", self)
         browse_btn.setCursor(QtCore.Qt.PointingHandCursor)
@@ -922,14 +933,25 @@ class FilesWidget(QtWidgets.QFrame):
     # Widgets by model id, used to remove items moved to other widget
     _widgets_by_model_id = weakref.WeakValueDictionary()
 
-    def __init__(self, single_item, allow_sequences, extensions_label, parent):
+    def __init__(
+        self,
+        single_item,
+        allow_sequences,
+        extensions_label,
+        parent,
+        drop_label=None,
+    ):
         super().__init__(parent)
         self.setAcceptDrops(True)
 
         wrapper_widget = QtWidgets.QWidget(self)
 
         empty_widget = DropEmpty(
-            single_item, allow_sequences, extensions_label, wrapper_widget
+            single_item,
+            allow_sequences,
+            extensions_label,
+            wrapper_widget,
+            drop_label,
         )
 
         files_model = FilesModel(single_item, allow_sequences)
