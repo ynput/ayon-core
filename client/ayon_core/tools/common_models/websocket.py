@@ -12,6 +12,7 @@ import re
 import socket
 import ssl
 import threading
+import time
 import typing
 from typing import Any, Callable
 import weakref
@@ -25,7 +26,7 @@ except ImportError:
         pass
 
 import requests
-from websocket import ABNF, create_connection
+from websocket import ABNF, WebSocketTimeoutException, create_connection
 
 if typing.TYPE_CHECKING:
     from websocket import WebSocket
@@ -495,9 +496,14 @@ class EventCallback:
             self._partial_func = None
 
 
-# Server sends 'heartbeat' message to authorized clients when there was no
-#   other message for ~5 seconds. If nothing arrives for this amount of time
-#   the connection is considered dead.
+# Server sends 'heartbeat' message only when it did not publish any other
+#   message for 2 seconds, and sends messages only to clients subscribed to
+#   their topic. So a client might not receive anything for a long time
+#   while server is busy (e.g. many events during a sync). Ping the server
+#   when nothing was received for this amount of time.
+_PING_INTERVAL: float = 5.0
+# Connection is considered dead if nothing (not even pong) was received
+#   for this amount of time.
 _RECV_TIMEOUT: float = 15.0
 # Timeout for opening websocket connection and for the auth check request.
 _CONNECT_TIMEOUT: float = 5.0
@@ -593,6 +599,9 @@ class _LoopState:
     auth_required: bool = False
     # Some message was received with current websocket connection
     received_message: bool = False
+    # When last frame (message, ping or pong) was received
+    #   ('time.monotonic')
+    last_received: float = 0.0
     # Connection state reported via events
     #   - 'None' means unknown (nothing was reported yet)
     connected: bool | None = None
@@ -940,9 +949,9 @@ class EventHub:
             ws_con = self._connection.create_websocket("ws")
         else:
             ws_con = self._create_websocket("ws", timeout=_CONNECT_TIMEOUT)
-        # Server sends heartbeat periodically, so timeout on receive means
-        #   that the connection is dead.
-        ws_con.settimeout(_RECV_TIMEOUT)
+        # Timeout on receive does not mean that the connection is dead,
+        #   the server is pinged on timeout (see '_loop').
+        ws_con.settimeout(_PING_INTERVAL)
         return ws_con
 
     def _close_ws_connection(self) -> None:
@@ -1080,6 +1089,7 @@ class EventHub:
                         break
                     self._ws_connection = ws_con
                 state.received_message = False
+                state.last_received = time.monotonic()
                 state.auth_required = True
 
             if state.auth_required:
@@ -1096,14 +1106,33 @@ class EventHub:
                 continue
 
             try:
-                op_code, message = ws_con.recv_data()
+                op_code, message = ws_con.recv_data(control_frame=True)
+            except WebSocketTimeoutException as exc:
+                elapsed = time.monotonic() - state.last_received
+                if elapsed >= _RECV_TIMEOUT:
+                    # Server did not respond to ping
+                    self._on_connection_lost(stop_event, exc)
+                    continue
+                # Nothing received for a while, server might be busy and
+                #   not sending heartbeat. Pong will confirm it is alive.
+                try:
+                    ws_con.ping()
+                except Exception as ping_exc:
+                    self._on_connection_lost(stop_event, ping_exc)
+                continue
             except Exception as exc:
-                # Timeout (no heartbeat), closed connection, socket error...
+                # Closed connection, socket error...
                 self._on_connection_lost(stop_event, exc)
                 continue
 
+            state.last_received = time.monotonic()
             if op_code == ABNF.OPCODE_CLOSE:
                 self._on_connection_lost(stop_event)
+                continue
+
+            # Ping and pong only confirm that the connection is alive, they
+            #   don't tell if the client is authorized.
+            if op_code in (ABNF.OPCODE_PING, ABNF.OPCODE_PONG):
                 continue
 
             if not state.received_message:
