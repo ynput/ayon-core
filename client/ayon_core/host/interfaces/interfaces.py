@@ -74,6 +74,24 @@ class ILoadHost(AbstractHost):
 
         pass
 
+    def filtered_outdated_containers(
+        self, containers: list[dict]
+    ) -> list[dict]:
+        """Filter containers that should be reported as outdated.
+
+        Hosts can override this to exclude outdated containers that should
+        not be reported to the artist. Default implementation returns
+        containers unchanged.
+
+        Args:
+            containers (list[dict]): Outdated containers.
+
+        Returns:
+            list[dict]: Outdated containers to report.
+        """
+
+        return containers
+
     # --- Deprecated method names ---
     def ls(self):
         """Deprecated variant of 'get_containers'.

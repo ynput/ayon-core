@@ -1071,6 +1071,9 @@ def get_outdated_containers(
         project_name (Optional[str]): Name of project in which context we are.
         ignore_locked_versions (bool): Locked versions are ignored.
 
+    Returns:
+        list[dict]: Outdated containers.
+
     """
     from ayon_core.pipeline import registered_host, get_current_project_name
 
@@ -1093,6 +1096,11 @@ def get_outdated_containers(
         ):
             continue
         outdated_containers.append(container)
+
+    # Support also "old type" hosts that are not 'ILoadHost' subclasses
+    filter_func = getattr(host, "filtered_outdated_containers", None)
+    if callable(filter_func):
+        outdated_containers = filter_func(outdated_containers)
     return outdated_containers
 
 
