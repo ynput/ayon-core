@@ -1,12 +1,16 @@
 from typing import Any
-
-from ayon_server.addons import BaseServerAddon
 from ayon_server.actions import (
     ActionExecutor,
     ExecuteResponseModel,
     SimpleActionManifest,
 )
+from ayon_server.addons import BaseServerAddon
+from ayon_server.api.dependencies import CurrentUser
+from ayon_server.entities import ProjectEntity
+from ayon_server.types import OPModel
+from ayon_server.lib.postgres import Postgres
 from ayon_server.events import dispatch_event
+
 try:
     from ayon_server.logging import logger
 except ImportError:
@@ -17,6 +21,14 @@ from .settings import (
     DEFAULT_VALUES,
     convert_settings_overrides,
 )
+
+
+class CleanupFolderThumbnailsRequestModel(OPModel):
+    folder_ids: list[str] | None = None
+
+
+class CleanupFolderThumbnailsResponseModel(OPModel):
+    count: int
 
 
 class CoreAddon(BaseServerAddon):
@@ -35,6 +47,13 @@ class CoreAddon(BaseServerAddon):
         # Use super conversion
         return await super().convert_settings_overrides(
             source_version, overrides
+        )
+
+    def initialize(self) -> None:
+        self.add_endpoint(
+            "cleanupFolderThumbnails/{project_name}",
+            self._cleanup_folder_thumbnails,
+            method="POST",
         )
 
     async def get_simple_actions(
@@ -173,3 +192,69 @@ class CoreAddon(BaseServerAddon):
             return await executor.get_simple_response(
                 "Unknown action", success=False
             )
+
+    async def _cleanup_folder_thumbnails(
+        self,
+        user: CurrentUser,
+        project_name: str,
+        payload: CleanupFolderThumbnailsRequestModel,
+    ) -> CleanupFolderThumbnailsResponseModel:
+        """Remove thumbnail ids from folders sharing thumbnail with a version.
+
+        Args:
+            project_name (str): Name of the project.
+            payload (CleanupFolderThumbnailsRequestModel): Request payload
+                containing folder ids.
+
+        """
+        # Validate the project exists
+        _project = await ProjectEntity.load(project_name)
+
+        # Validate user has permissions to access the project
+        await user.ensure_project_access(project_name)
+
+        async with Postgres.transaction():
+            if payload.folder_ids is None:
+                res = await Postgres.fetch(
+                    UPDATE_THUMBNAILS_QUERY.format(project_name=project_name),
+                )
+            else:
+                res = await Postgres.fetch(
+                    UPDATE_THUMBNAILS_BY_IDS_QUERY.format(
+                        project_name=project_name
+                    ),
+                    payload.folder_ids,
+                )
+
+            filtered_folder_ids = [row["id"] for row in res]
+
+        return CleanupFolderThumbnailsResponseModel(
+            count=len(filtered_folder_ids)
+        )
+
+
+UPDATE_THUMBNAILS_QUERY = """
+UPDATE project_{project_name}.folders AS f
+SET thumbnail_id = NULL
+WHERE f.thumbnail_id IS NOT NULL
+    AND EXISTS (
+        SELECT 1
+        FROM project_{project_name}.versions AS v
+        WHERE v.thumbnail_id = f.thumbnail_id
+    )
+RETURNING f.id AS id;
+"""
+
+
+UPDATE_THUMBNAILS_BY_IDS_QUERY = """
+UPDATE project_{project_name}.folders AS f
+SET thumbnail_id = NULL
+WHERE f.thumbnail_id IS NOT NULL
+    AND f.id = ANY($1)
+    AND EXISTS (
+        SELECT 1
+        FROM project_{project_name}.versions AS v
+        WHERE v.thumbnail_id = f.thumbnail_id
+    )
+RETURNING f.id AS id;
+"""
