@@ -24,6 +24,10 @@ from ayon_core.pipeline.publish.lib import (
     add_repre_files_for_cleanup,
     get_default_reviewable_layers
 )
+from ayon_core.plugins.publish.prepare_attach_reviewables import (
+    ATTACH_TARGET_ID_KEY,
+    get_target_version,
+)
 
 
 class ExtractBurnin(publish.Extractor):
@@ -195,6 +199,10 @@ class ExtractBurnin(publish.Extractor):
             return
 
         burnin_options = self._get_burnin_options()
+        target_instance = self._get_attached_target(instance)
+        target_version = None
+        if target_instance is not None:
+            target_version = get_target_version(target_instance)
 
         # Prepare basic data for processing
         _burnin_data, _temp_data = self.prepare_basic_data(instance)
@@ -275,6 +283,8 @@ class ExtractBurnin(publish.Extractor):
 
             # Add data members.
             burnin_data.update(instance.data.get("burninDataMembers", {}))
+            if target_version is not None:
+                burnin_data["version"] = int(target_version)
 
             # Add source camera name to burnin data
             camera_name = repre.get("camera_name")
@@ -477,6 +487,12 @@ class ExtractBurnin(publish.Extractor):
         if version is None:
             version = context.data.get("version")
 
+        target_instance = self._get_attached_target(instance)
+        if target_instance is not None:
+            target_version = get_target_version(target_instance)
+            if target_version is not None:
+                version = target_version
+
         frame_start = instance.data.get("frameStart")
         if frame_start is None:
             self.log.warning(
@@ -536,6 +552,20 @@ class ExtractBurnin(publish.Extractor):
         )
 
         return burnin_data, temp_data
+
+    def _get_attached_target(self, instance):
+        target_id = instance.data.get(ATTACH_TARGET_ID_KEY)
+        if not target_id:
+            return None
+
+        return next(
+            (
+                candidate
+                for candidate in instance.context
+                if candidate.data.get("instance_id") == target_id
+            ),
+            None,
+        )
 
     def repres_is_valid(self, repre):
         """Validation if representation should be processed.
