@@ -10,7 +10,7 @@ import click
 import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.addon import AddonsManager
+from ayon_core.addon import get_addons_manager
 from ayon_core.settings import get_general_environments
 from ayon_core.lib import (
     initialize_ayon_connection,
@@ -427,7 +427,7 @@ def main(*args, **kwargs):
     logger.debug("Loading environment for AYON.")
     _set_global_environments()
     logger.debug("Loading environment for addons.")
-    addons_manager = AddonsManager()
+    addons_manager = get_addons_manager()
     _set_addons_environments(addons_manager)
     _add_addons(addons_manager)
 

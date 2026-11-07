@@ -16,7 +16,7 @@ from ayon_core.lib import (
     CacheItem,
     NestedCacheItem,
 )
-from ayon_core.addon import AddonsManager
+from ayon_core.addon import get_addons_manager
 
 from .exceptions import RootCombinationError, ProjectNotSet
 from .roots import AnatomyRoots
@@ -454,7 +454,7 @@ class Anatomy(BaseAnatomy):
     @classmethod
     def get_sitesync_addon(cls):
         if not cls._sitesync_addon_cache.is_valid:
-            manager = AddonsManager()
+            manager = get_addons_manager()
             cls._sitesync_addon_cache.update_data(
                 manager.get_enabled_addon("sitesync")
             )

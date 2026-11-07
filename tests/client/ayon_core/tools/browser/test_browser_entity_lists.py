@@ -21,7 +21,7 @@ def _mock_sitesync_addon(monkeypatch):
     addon_manager = Mock()
     addon_manager.get.return_value = None
     monkeypatch.setattr(
-        "ayon_core.tools.browser.sitesync_columns.AddonsManager",
+        "ayon_core.tools.browser.sitesync_columns.get_addons_manager",
         lambda: addon_manager,
     )
 

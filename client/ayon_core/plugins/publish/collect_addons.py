@@ -12,7 +12,7 @@ from ayon_core.lib.ayon_info import (
     get_ayon_info,
     is_dev_mode_enabled,
 )
-from ayon_core.addon import AddonsManager, get_bundle_information
+from ayon_core.addon import get_addons_manager, get_bundle_information
 
 
 class AddonInfo:
@@ -50,7 +50,7 @@ class CollectAddons(pyblish.api.ContextPlugin):
     label = "AYON Addons"
 
     def process(self, context):
-        manager = AddonsManager()
+        manager = get_addons_manager()
         context.data["ayonAddonsManager"] = manager
         context.data["ayonAddons"] = manager.addons_by_name
 

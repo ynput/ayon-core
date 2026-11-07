@@ -73,7 +73,7 @@ from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import StrEnum, Logger, is_func_signature_supported
 from ayon_core.lib.icon_definitions import IconBase
 from ayon_core.host import AbstractHost
-from ayon_core.addon import AddonsManager, IPluginPaths
+from ayon_core.addon import AddonsManager, IPluginPaths, get_addons_manager
 from ayon_core.settings import get_studio_settings, get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import discover_plugins
@@ -659,9 +659,7 @@ class LoaderActionsContext:
 
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
-            self._addons_manager = AddonsManager(
-                settings=self.get_studio_settings()
-            )
+            self._addons_manager = get_addons_manager()
         return self._addons_manager
 
     def get_host(self) -> Optional[AbstractHost]:

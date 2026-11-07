@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ayon_core.lib import Logger, NestedCacheItem
-from ayon_core.addon import AddonsManager
+from ayon_core.addon import get_addons_manager
 
 log = Logger.get_logger(__name__)
 
@@ -48,7 +48,7 @@ class SiteSyncModel:
             lifetime=self.status_lifetime
         )
 
-        manager = AddonsManager()
+        manager = get_addons_manager()
         self._sitesync_addon = manager.get("sitesync")
 
     def reset(self):

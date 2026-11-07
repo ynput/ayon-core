@@ -20,7 +20,7 @@ from ayon_core.tools.browser.ui.browser_controller import (
 @pytest.fixture
 def controller(monkeypatch):
     monkeypatch.setattr(
-        "ayon_core.tools.browser.sitesync_columns.AddonsManager", Mock()
+        "ayon_core.tools.browser.sitesync_columns.get_addons_manager", Mock()
     )
     # Collect queued tasks instead of running them in the task queue
     tasks = []

@@ -6,7 +6,7 @@ from typing import Optional
 
 from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.addon import AddonsManager
+from ayon_core.addon import AddonsManager, get_addons_manager
 from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
@@ -104,7 +104,7 @@ class BaseLauncherController(
 
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
-            self._addons_manager = AddonsManager()
+            self._addons_manager = get_addons_manager()
         return self._addons_manager
 
     def get_grouped_host_names(self) -> list[str | None]:

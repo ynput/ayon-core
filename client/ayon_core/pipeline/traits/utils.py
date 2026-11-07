@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from ayon_core.addon import AddonsManager, ITraits
+from ayon_core.addon import AddonsManager, ITraits, get_addons_manager
 
 if TYPE_CHECKING:
 
@@ -26,8 +26,8 @@ def get_available_traits(
 
     """
     if addons_manager is None:
-        # Create a new instance of AddonsManager
-        addons_manager = AddonsManager()
+        # Use the shared AddonsManager of the process
+        addons_manager = get_addons_manager()
 
     # Get active addons
     enabled_addons = addons_manager.get_enabled_addons()

@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 import platform
 
 from ayon_core.lib import Logger
-from ayon_core.addon import AddonsManager
+from ayon_core.addon import get_addons_manager
 from ayon_core.settings import get_project_settings
 
 
@@ -46,7 +46,7 @@ class HostDirmap(ABC):
     def sitesync_addon(self):
         if not self._sitesync_addon_discovered:
             self._sitesync_addon_discovered = True
-            manager = AddonsManager()
+            manager = get_addons_manager()
             self._sitesync_addon = manager.get("sitesync")
         return self._sitesync_addon
 

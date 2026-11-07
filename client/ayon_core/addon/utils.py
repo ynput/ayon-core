@@ -9,7 +9,12 @@ from typing import Optional
 
 from ayon_core.lib import run_ayon_launcher_process
 
-from .base import AddonsManager, ProcessContext, ProcessPreparationError
+from .base import (
+    AddonsManager,
+    ProcessContext,
+    ProcessPreparationError,
+    get_addons_manager,
+)
 
 
 def _handle_error(
@@ -96,7 +101,7 @@ def ensure_addons_are_process_context_ready(
 
     """
     if addons_manager is None:
-        addons_manager = AddonsManager()
+        addons_manager = get_addons_manager()
 
     message = None
     failed = False

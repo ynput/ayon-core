@@ -1140,3 +1140,56 @@ class AddonsManager:
 
         output = "\n".join(lines)
         print(output)
+
+
+class _AddonsManagerCache:
+    # Re-entrant so an addon can call 'get_addons_manager' while it is
+    #   being initialized by it
+    lock = threading.RLock()
+    # Fully initialized manager
+    manager: AddonsManager | None = None
+    # Manager that is being initialized, visible only to the thread holding
+    #   the lock
+    initializing: AddonsManager | None = None
+
+
+def get_addons_manager() -> AddonsManager:
+    """Get the shared addons manager of the current process.
+
+    The manager is created and initialized on the first call and the same
+    instance is returned on every following call. Addons are loaded from
+    the bundle, which does not change during the lifetime of a process,
+    so there is no need to initialize addons again each time.
+
+    Create 'AddonsManager' directly only when a separate manager is needed,
+    e.g. with custom settings.
+
+    Returns:
+        AddonsManager: Shared initialized addons manager.
+
+    """
+    # Fast path without locking once the manager is ready
+    manager = _AddonsManagerCache.manager
+    if manager is not None:
+        return manager
+
+    with _AddonsManagerCache.lock:
+        # Another thread may have finished it while we waited for the lock
+        if _AddonsManagerCache.manager is not None:
+            return _AddonsManagerCache.manager
+
+        # Called again from the same thread during initialization
+        #   (e.g. from an addon's 'initialize') - return the manager that is
+        #   being initialized instead of creating another one.
+        if _AddonsManagerCache.initializing is not None:
+            return _AddonsManagerCache.initializing
+
+        manager = AddonsManager(initialize=False)
+        _AddonsManagerCache.initializing = manager
+        try:
+            manager.initialize_addons()
+            manager.connect_addons()
+        finally:
+            _AddonsManagerCache.initializing = None
+        _AddonsManagerCache.manager = manager
+    return manager

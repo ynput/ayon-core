@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ayon_core.addon import AddonsManager
+from ayon_core.addon import get_addons_manager
 from ayon_core.lib import NestedCacheItem
 from ayon_core.ui.components.table_model import FilterEntry, TableColumn
 
@@ -64,7 +64,7 @@ class SiteSyncBrowserColumnProvider(BrowserColumnProvider):
             default_factory=_default_version_availability,
             lifetime=self.status_lifetime
         )
-        addons_manager = AddonsManager()
+        addons_manager = get_addons_manager()
         self._sitesync_addon = addons_manager.get("sitesync")
 
     def get_columns(

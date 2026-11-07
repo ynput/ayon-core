@@ -19,7 +19,7 @@ from ayon_core.lib import (
     register_event_callback,
 )
 from ayon_core.lib.log import set_process_context
-from ayon_core.addon import load_addons, AddonsManager
+from ayon_core.addon import load_addons, get_addons_manager
 from ayon_core.settings import get_project_settings
 
 from .publish.lib import filter_pyblish_plugins
@@ -38,9 +38,6 @@ _process_id = None
 # Callback updating log context on context change, see '_set_log_context'
 _log_context_callback = None
 _registered_host = {"_": None}
-# Keep modules manager (and it's modules) in memory
-# - that gives option to register modules' callbacks
-_addons_manager = None
 
 log = Logger.get_logger(__name__)
 
@@ -49,23 +46,6 @@ PLUGINS_DIR = os.path.join(AYON_CORE_ROOT, "plugins")
 # Global plugin paths
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
-
-
-def _get_addons_manager():
-    """Get or create modules manager for host installation.
-
-    This is not meant for public usage. Reason is to keep modules
-    in memory of process to be able trigger their event callbacks if they
-    need any.
-
-    Returns:
-        AddonsManager: Manager wrapping discovered modules.
-    """
-
-    global _addons_manager
-    if _addons_manager is None:
-        _addons_manager = AddonsManager()
-    return _addons_manager
 
 
 def install_host(host: AbstractHost) -> None:
@@ -87,7 +67,7 @@ def install_host(host: AbstractHost) -> None:
     # Make sure global AYON connection has set site id and version
     initialize_ayon_connection()
 
-    addons_manager = _get_addons_manager()
+    addons_manager = get_addons_manager()
 
     project_name = os.getenv("AYON_PROJECT_NAME")
     # WARNING: This might be an issue
@@ -238,7 +218,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
         anatomy = Anatomy(project_name)
         anatomy.set_root_environments()
 
-    addons_manager = _get_addons_manager()
+    addons_manager = get_addons_manager()
 
     # Loader plugin paths are registered without a host name too. Tools that
     # run without a host (the tray Browser) rely on addons returning their

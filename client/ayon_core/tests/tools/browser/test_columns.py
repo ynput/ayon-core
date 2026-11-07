@@ -60,7 +60,7 @@ def _sitesync_provider(
     sitesync_addon: Mock,
 ) -> SiteSyncBrowserColumnProvider:
     with patch(
-        "ayon_core.tools.browser.sitesync_columns.AddonsManager"
+        "ayon_core.tools.browser.sitesync_columns.get_addons_manager"
     ) as addons_manager:
         addons_manager.return_value.get.return_value = sitesync_addon
         return SiteSyncBrowserColumnProvider(services)
