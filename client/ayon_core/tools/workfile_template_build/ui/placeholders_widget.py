@@ -25,6 +25,10 @@ SCENE_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 1
 PLUGIN_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 2
 ORDER_ROLE = QtCore.Qt.UserRole + 3
 LABEL_ROLE = QtCore.Qt.UserRole + 4
+PENDING_ROLE = QtCore.Qt.UserRole + 5
+
+# Order of the row of a placeholder that is being created, keeps it on top
+PENDING_ORDER = -(2 ** 31)
 
 # Put before the name of a placeholder with unsaved changes. Before, so
 #   it stays visible when a long name is elided.
@@ -349,6 +353,8 @@ class PlaceholdersWidget(AYContainer):
         # Action support by plugin identifier
         self._select_support: dict[str, bool] = {}
         self._unsaved_identifier: Optional[str] = None
+        self._pending_plugin_item: Optional[PlaceholderPluginItem] = None
+        self._has_placeholders = False
 
     def set_placeholder_items(
         self, placeholder_items: list[PlaceholderItemInfo]
@@ -399,13 +405,66 @@ class PlaceholdersWidget(AYContainer):
         self._count_label.setText(
             str(len(placeholder_items)) if placeholder_items else ""
         )
-        self._view.setVisible(bool(placeholder_items))
-        self._empty_widget.setVisible(not placeholder_items)
+        self._has_placeholders = bool(placeholder_items)
+        self._add_pending_row()
+        self._update_view_visibility()
         self._update_unsaved_mark()
         self._resize_columns()
 
         if selected_identifier is not None:
             self.select_identifier(selected_identifier)
+
+    def set_pending_item(
+        self, plugin_item: Optional[PlaceholderPluginItem]
+    ) -> None:
+        """Show a row for a placeholder that is being created.
+
+        The row is on top of the list and is selected when no other
+        placeholder is, so the list shows what the editor is working on.
+
+        Args:
+            plugin_item (Optional[PlaceholderPluginItem]): Plugin of the new
+                placeholder. None removes the row.
+
+        """
+        self._remove_pending_row()
+        self._pending_plugin_item = plugin_item
+        self._add_pending_row()
+        self._update_view_visibility()
+        self._resize_columns()
+        if plugin_item is not None:
+            self.select_identifier(None)
+
+    def _remove_pending_row(self) -> None:
+        for row in reversed(range(self._model.rowCount())):
+            if self._model.item(row, LABEL_COLUMN).data(PENDING_ROLE):
+                self._model.removeRow(row)
+
+    def _add_pending_row(self) -> None:
+        plugin_item = self._pending_plugin_item
+        if plugin_item is None:
+            return
+
+        order_item = QtGui.QStandardItem()
+        label_item = QtGui.QStandardItem("New placeholder")
+        label_item.setData("New placeholder", LABEL_ROLE)
+        icon = get_placeholder_icon(plugin_item.icon)
+        if icon is not None:
+            label_item.setIcon(icon)
+        type_item = QtGui.QStandardItem(plugin_item.label)
+        for item in (order_item, label_item, type_item):
+            item.setEditable(False)
+            item.setToolTip("Not created yet")
+            item.setData(True, PENDING_ROLE)
+            item.setData(PENDING_ORDER, ORDER_ROLE)
+        self._model.appendRow([order_item, label_item, type_item])
+
+    def _update_view_visibility(self) -> None:
+        has_rows = (
+            self._has_placeholders or self._pending_plugin_item is not None
+        )
+        self._view.setVisible(has_rows)
+        self._empty_widget.setVisible(not has_rows)
 
     def set_unsaved_identifier(
         self, scene_identifier: Optional[str]
@@ -425,6 +484,8 @@ class PlaceholdersWidget(AYContainer):
     def _update_unsaved_mark(self) -> None:
         for row in range(self._model.rowCount()):
             item = self._model.item(row, LABEL_COLUMN)
+            if item.data(PENDING_ROLE):
+                continue
             label = item.data(LABEL_ROLE)
             is_unsaved = (
                 self._unsaved_identifier is not None
@@ -442,7 +503,7 @@ class PlaceholdersWidget(AYContainer):
             text_width = max(
                 (
                     font_metrics.horizontalAdvance(
-                        str(self._model.index(row, column).data())
+                        str(self._model.index(row, column).data() or "")
                     )
                     for row in range(self._model.rowCount())
                 ),
@@ -486,6 +547,8 @@ class PlaceholdersWidget(AYContainer):
 
         """
         for index in self._view.selectionModel().selectedIndexes():
+            if index.data(PENDING_ROLE):
+                return None
             return index.data(PLUGIN_IDENTIFIER_ROLE)
         return None
 
@@ -505,17 +568,19 @@ class PlaceholdersWidget(AYContainer):
 
         Args:
             scene_identifier (Optional[str]): Scene identifier to select.
-                Selection is cleared when None is passed.
+                None selects the placeholder that is being created, or
+                clears the selection when there is none.
 
         """
         if scene_identifier is None:
-            self._view.selectionModel().clearSelection()
-            return
+            role, value = PENDING_ROLE, True
+        else:
+            role, value = SCENE_IDENTIFIER_ROLE, scene_identifier
 
         matches = self._proxy_model.match(
             self._proxy_model.index(0, 0),
-            SCENE_IDENTIFIER_ROLE,
-            scene_identifier,
+            role,
+            value,
             1,
             QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive,
         )
@@ -538,12 +603,14 @@ class PlaceholdersWidget(AYContainer):
         self.selection_changed.emit()
 
     def _on_double_click(self, index: QtCore.QModelIndex) -> None:
+        if index.data(PENDING_ROLE):
+            return
         if self._select_support.get(index.data(PLUGIN_IDENTIFIER_ROLE)):
             self.select_in_scene_requested.emit()
 
     def _on_context_menu(self, point: QtCore.QPoint) -> None:
         index = self._view.indexAt(point)
-        if not index.isValid():
+        if not index.isValid() or index.data(PENDING_ROLE):
             return
 
         plugin_identifier = index.data(PLUGIN_IDENTIFIER_ROLE)

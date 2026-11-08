@@ -388,6 +388,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
     def _show_hint_page(self):
         self._current_identifier = None
+        self._set_pending_item(None)
         self._update_hint_message()
         self._pages_widget.setCurrentIndex(HINT_PAGE)
 
@@ -407,6 +408,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
         plugin_item = self._get_plugin_item(placeholder_item.plugin_identifier)
         self._current_identifier = scene_identifier
+        self._set_pending_item(None)
         self._editor_widget.set_edit_mode(
             placeholder_item,
             select_supported=(
@@ -417,8 +419,17 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
     def _show_create_page(self, plugin_item: PlaceholderPluginItem):
         self._current_identifier = None
+        self._set_pending_item(plugin_item)
         self._editor_widget.set_create_mode(plugin_item)
         self._pages_widget.setCurrentIndex(EDITOR_PAGE)
+
+    def _set_pending_item(
+        self, plugin_item: Optional[PlaceholderPluginItem]
+    ) -> None:
+        """Show the placeholder that is being created in the list."""
+        self._ignore_selection_change = True
+        self._placeholders_widget.set_pending_item(plugin_item)
+        self._ignore_selection_change = False
 
     def _select_silently(self, scene_identifier):
         self._ignore_selection_change = True

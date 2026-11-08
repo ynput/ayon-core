@@ -211,6 +211,46 @@ class TestCreate:
         assert window._pages_widget.currentIndex() == HINT_PAGE
         assert builder.nodes == {}
 
+    def test_new_placeholder_is_shown_in_list(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._on_create_request()
+
+        placeholders_widget = window._placeholders_widget
+        assert _list_labels(window) == ["New placeholder", "one"]
+        # The new placeholder is selected, it has no scene identifier yet
+        assert placeholders_widget._view.selectionModel().hasSelection()
+        assert placeholders_widget.get_selected_identifier() is None
+        # It does not count as a placeholder of the scene
+        assert placeholders_widget._count_label.text() == "1"
+
+    def test_new_placeholder_row_is_removed_on_cancel(self, window):
+        window._on_create_request()
+        assert _list_labels(window) == ["New placeholder"]
+
+        window._on_create_cancelled()
+
+        assert _list_labels(window) == []
+        assert window._placeholders_widget._empty_widget.isVisibleTo(window)
+
+    def test_new_placeholder_row_is_replaced_on_create(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        assert _list_labels(window) == ["one"]
+
+    def test_new_placeholder_row_is_removed_on_other_selection(
+        self, window
+    ):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._on_create_request()
+
+        window._placeholders_widget.select_identifier("node_1")
+
+        assert window._current_identifier == "node_1"
+        assert _list_labels(window) == ["one"]
+
 
 def _list_labels(window):
     model = window._placeholders_widget._model
