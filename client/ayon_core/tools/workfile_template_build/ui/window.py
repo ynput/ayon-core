@@ -509,7 +509,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         context_label = self._controller.get_build_context().label
         answer = QtWidgets.QMessageBox.question(
             self,
-            "Test build?",
+            "Run all placeholders?",
             (
                 "This will populate all placeholders in the current scene"
                 " for {}.\nDo you want to continue?".format(context_label)

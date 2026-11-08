@@ -37,8 +37,8 @@ GUIDE_STEPS = (
     (
         "Test the template",
         (
-            "Test build populates all placeholders in this scene for the"
-            " \"Preview as\" context."
+            "Run all populates every placeholder in the open scene for the"
+            " \"Preview as\" context. Reopen the template to undo it."
         ),
     ),
 )

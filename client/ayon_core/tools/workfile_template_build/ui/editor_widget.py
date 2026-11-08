@@ -468,7 +468,7 @@ class PlaceholderEditorWidget(AYContainer):
             icon=SELECT_ICON,
         )
         run_btn = AYButton(
-            "Test run",
+            "Run this one",
             parent=actions_widget,
             variant=AYButton.Variants.Surface,
             icon=RUN_ICON,
@@ -698,8 +698,8 @@ class PlaceholderEditorWidget(AYContainer):
         self._run_btn.setEnabled(placeholder_item.run_supported)
         self._run_btn.setToolTip(
             (
-                "Populate only this placeholder in the scene for the"
-                " \"Preview as\" context. Use \"Test build\" to populate"
+                "Populate only this placeholder in the open scene for the"
+                " \"Preview as\" context. Use \"Run all\" to populate"
                 " all of them."
             )
             if placeholder_item.run_supported

@@ -69,13 +69,14 @@ class ContextBarWidget(AYContainer):
         )
         reset_btn.setVisible(False)
         test_build_btn = AYButton(
-            "Test build",
+            "Run all",
             parent=self,
             variant=AYButton.Variants.Surface,
             icon=RUN_ICON,
             tooltip=(
-                "Populate all placeholders in this scene for the"
-                " \"Preview as\" context"
+                "Populate every placeholder in the open scene for the"
+                " \"Preview as\" context.\n"
+                "This changes the scene: reopen the template to undo it."
             ),
         )
         test_build_btn.setEnabled(False)
@@ -170,10 +171,10 @@ class ContextBarWidget(AYContainer):
         self._context_btn.setEnabled(enabled)
 
     def set_test_build_enabled(self, enabled: bool) -> None:
-        """Allow to run a test build.
+        """Allow to run all placeholders.
 
         Args:
-            enabled (bool): Test build can be run.
+            enabled (bool): All placeholders can be run.
 
         """
         self._test_build_btn.setEnabled(enabled)
