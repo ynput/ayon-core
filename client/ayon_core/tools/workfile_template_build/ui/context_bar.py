@@ -104,12 +104,14 @@ class ContextBarWidget(AYContainer):
                 "Click to choose a different context."
             ),
         )
+        # Icon only, so the bar still fits a narrow window
         reset_btn = AYButton(
-            "Reset",
             parent=self,
             variant=AYButton.Variants.Surface,
             icon="undo",
-            tooltip="Preview and run in the context of the scene again",
+            tooltip=(
+                "Reset: preview and run in the context of the scene again"
+            ),
         )
         reset_btn.setVisible(False)
         test_build_btn = AYButton(
