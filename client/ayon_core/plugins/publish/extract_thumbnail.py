@@ -521,6 +521,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 oiio_default_display = display_and_view["display"]
                 oiio_default_view = display_and_view["view"]
 
+        # A display or view without its pair is not used
+        if not (repre_display and repre_view):
+            repre_display = repre_view = None
+
         # Source is either display + view pair or colorspace
         source_colorspace = colorspace_data.get("colorspace")
         source_display = repre_display

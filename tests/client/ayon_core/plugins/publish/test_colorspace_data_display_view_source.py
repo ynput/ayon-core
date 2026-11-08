@@ -26,8 +26,20 @@ DISPLAY_VIEW = {"display": "sRGB", "view": "ACES 1.0 - SDR Video"}
             ("ACES - ACEScg", None, None),
         ),
         (dict(DISPLAY_VIEW), (None, "sRGB", "ACES 1.0 - SDR Video")),
-        ({}, None),
-        ({"display": "sRGB"}, None),
+        # All three: the display and view are the source
+        (
+            {"colorspace": "ACES - ACEScg", **DISPLAY_VIEW},
+            (None, "sRGB", "ACES 1.0 - SDR Video"),
+        ),
+        # Only the config: reaches the new guard and is skipped
+        ({"config": {"path": "config.ocio"}}, None),
+        ({"config": {"path": "config.ocio"}, "display": "sRGB"}, None),
+        ({"config": {"path": "config.ocio"}, "view": "Raw"}, None),
+        # A colorspace with a single display: the colorspace is the source
+        (
+            {"colorspace": "ACES - ACEScg", "display": "sRGB"},
+            ("ACES - ACEScg", None, None),
+        ),
     ],
 )
 def test_transcode_source(colorspace_data, expected):
@@ -99,6 +111,15 @@ def test_transcode_source(colorspace_data, expected):
             ("ACES - ACEScg", None, None),
         ),
         (dict(DISPLAY_VIEW), (None, "sRGB", "ACES 1.0 - SDR Video")),
+        (
+            {"colorspace": "ACES - ACEScg", **DISPLAY_VIEW},
+            (None, "sRGB", "ACES 1.0 - SDR Video"),
+        ),
+        # A single display is not paired with a default view
+        (
+            {"colorspace": "ACES - ACEScg", "display": "sRGB"},
+            ("ACES - ACEScg", None, None),
+        ),
         ({}, None),
     ],
 )
@@ -132,3 +153,9 @@ def test_thumbnail_source(colorspace_data, expected):
         kwargs["source_display"],
         kwargs["source_view"],
     ) == expected
+    # The target is the display and view of the representation when both
+    #   are set, else the thumbnail defaults (none here)
+    assert (kwargs["target_display"], kwargs["target_view"]) == (
+        expected[1],
+        expected[2],
+    )
