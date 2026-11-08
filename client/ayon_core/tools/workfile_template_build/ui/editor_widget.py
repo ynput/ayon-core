@@ -11,6 +11,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderPreview,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsWidget
+from ayon_core.tools.attribute_defs.widgets import LabelAttrWidget
 from ayon_core.ui.components import (
     AYButton,
     AYContainer,
@@ -32,6 +33,7 @@ from .placeholders_widget import (
     SELECT_ICON,
     get_placeholder_icon,
 )
+from .utils import INPUT_COLOR, PANEL_COLOR, get_palette_color
 
 # Delay between last change of an option and re-calculation of preview and
 #   completions. Both may query the AYON server so they are not calculated
@@ -52,6 +54,76 @@ OPTIONS_CONTENT_OBJECT_NAME = "PlaceholderOptionsContent"
 
 CREATE_MODE = "create"
 EDIT_MODE = "edit"
+
+
+class _HintingFilter(QtCore.QObject):
+    """Keep the default font hinting of a widget.
+
+    The AYON style sets its font again whenever the widget is polished,
+    so the hinting is set again after each font change.
+    """
+
+    @classmethod
+    def install(cls, widget: QtWidgets.QWidget) -> None:
+        """Use the default hinting for the widget font.
+
+        Args:
+            widget (QtWidgets.QWidget): Widget to change.
+
+        """
+        hinting_filter = cls(widget)
+        widget.installEventFilter(hinting_filter)
+        cls._set_hinting(widget)
+
+    @staticmethod
+    def _set_hinting(widget: QtWidgets.QWidget) -> None:
+        hinting = QtGui.QFont.HintingPreference.PreferDefaultHinting
+        font = widget.font()
+        if font.hintingPreference() == hinting:
+            return
+        font = QtGui.QFont(font)
+        font.setHintingPreference(hinting)
+        widget.setFont(font)
+
+    def eventFilter(self, obj, event):
+        if event.type() in (
+            QtCore.QEvent.Type.Polish,
+            QtCore.QEvent.Type.FontChange,
+        ):
+            self._set_hinting(obj)
+        return False
+
+
+def _polish_options(attrs_widget: AttributeDefinitionsWidget) -> None:
+    """Fix how option widgets look in the tool.
+
+    - The AYON font disables hinting. Qt on Windows then renders bold rich
+        text, like the bold section labels of the options, with the regular
+        weight. Labels of the options use the default hinting instead.
+    - Multiline text inputs paint their text on a viewport which the
+        stylesheet of the window does not reach, so they would show no
+        background at all. The viewport gets the color of the other inputs.
+
+    Args:
+        attrs_widget (AttributeDefinitionsWidget): Widget with the options.
+
+    """
+    for label_widget in attrs_widget.findChildren(LabelAttrWidget):
+        for label in label_widget.findChildren(QtWidgets.QLabel):
+            _HintingFilter.install(label)
+
+    viewport_stylesheet = (
+        "QWidget {{ background: {}; }}"
+        " QWidget:disabled {{ background: {}; }}"
+    ).format(
+        get_palette_color(INPUT_COLOR), get_palette_color(PANEL_COLOR)
+    )
+    multiline_inputs = (
+        attrs_widget.findChildren(QtWidgets.QPlainTextEdit)
+        + attrs_widget.findChildren(QtWidgets.QTextEdit)
+    )
+    for input_widget in multiline_inputs:
+        input_widget.viewport().setStyleSheet(viewport_stylesheet)
 
 
 class PreviewWidget(AYContainer):
@@ -388,8 +460,7 @@ class PlaceholderEditorWidget(AYContainer):
         header_widget = PlaceholderHeaderWidget(self)
         actions_widget = header_widget.get_actions_widget()
         # Actions of the placeholder sit next to its name, so they don't read
-        #   as actions of the whole template. Removing is not confirmed, so
-        #   it is labeled but kept quiet.
+        #   as actions of the whole template.
         select_btn = AYButton(
             "Select in scene",
             parent=actions_widget,
@@ -405,7 +476,7 @@ class PlaceholderEditorWidget(AYContainer):
         remove_btn = AYButton(
             "Remove",
             parent=actions_widget,
-            variant=AYButton.Variants.Text,
+            variant=AYButton.Variants.Surface,
             icon=DELETE_ICON,
         )
         actions_widget.add_widget(select_btn)
@@ -676,6 +747,7 @@ class PlaceholderEditorWidget(AYContainer):
         if placeholder_data:
             attrs_widget.set_value(placeholder_data)
         attrs_widget.value_changed.connect(self._on_value_change)
+        _polish_options(attrs_widget)
 
         # Keep the stretch at the end of the layout
         self._attrs_wrapper_layout.insertWidget(0, attrs_widget, 0)
