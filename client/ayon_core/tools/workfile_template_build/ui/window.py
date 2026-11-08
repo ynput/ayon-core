@@ -226,6 +226,9 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         editor_widget.select_in_scene_requested.connect(
             self._on_select_in_scene_request
         )
+        editor_widget.unsaved_changes_changed.connect(
+            self._on_unsaved_changes_change
+        )
         build_status_btn.clicked.connect(self._on_show_build_report)
 
         controller.register_event_callback(
@@ -644,6 +647,13 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if not folder_path:
             return None
         return folder_path, context.get("task_name")
+
+    def _on_unsaved_changes_change(self, has_changes: bool):
+        self._placeholders_widget.set_unsaved_identifier(
+            self._editor_widget.get_scene_identifier()
+            if has_changes
+            else None
+        )
 
     def _on_show_build_report(self):
         dialog = BuildReportDialog(self._controller, parent=self)

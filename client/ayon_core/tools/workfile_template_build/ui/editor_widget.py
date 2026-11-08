@@ -434,6 +434,8 @@ class PlaceholderEditorWidget(AYContainer):
         remove_requested: Remove placeholder with the scene identifier (str).
         select_in_scene_requested: Select the placeholder with the scene
             identifier (str) in the host scene.
+        unsaved_changes_changed: Edited placeholder got or lost unsaved
+            changes (bool).
 
     """
     create_requested = QtCore.Signal(str, object)
@@ -442,6 +444,7 @@ class PlaceholderEditorWidget(AYContainer):
     run_requested = QtCore.Signal(str)
     remove_requested = QtCore.Signal(str)
     select_in_scene_requested = QtCore.Signal(str)
+    unsaved_changes_changed = QtCore.Signal(bool)
 
     def __init__(
         self,
@@ -510,6 +513,16 @@ class PlaceholderEditorWidget(AYContainer):
             layout=AYContainer.Layout.HBox,
             layout_spacing=6,
         )
+        unsaved_label = AYLabel(
+            "Unsaved changes",
+            parent=btns_widget,
+            icon="circle",
+            icon_fill=True,
+            icon_size=10,
+            icon_color=WARNING_COLOR,
+            text_color=WARNING_COLOR,
+        )
+        unsaved_label.setVisible(False)
         cancel_btn = AYButton(
             "Cancel",
             parent=btns_widget,
@@ -522,6 +535,7 @@ class PlaceholderEditorWidget(AYContainer):
             variant=AYButton.Variants.Filled,
             icon=CREATE_ICON,
         )
+        btns_widget.add_widget(unsaved_label)
         btns_widget.addStretch(1)
         btns_widget.add_widget(cancel_btn)
         btns_widget.add_widget(confirm_btn)
@@ -549,6 +563,7 @@ class PlaceholderEditorWidget(AYContainer):
         self._preview_widget = preview_widget
         self._confirm_btn = confirm_btn
         self._cancel_btn = cancel_btn
+        self._unsaved_label = unsaved_label
         self._run_btn = run_btn
         self._remove_btn = remove_btn
         self._dynamic_timer = dynamic_timer
@@ -559,6 +574,7 @@ class PlaceholderEditorWidget(AYContainer):
         self._attrs_widget: Optional[AttributeDefinitionsWidget] = None
         self._original_values: dict[str, Any] = {}
         self._last_dynamic_values: Optional[dict[str, Any]] = None
+        self._had_unsaved_changes = False
 
     # --- Public API ---------------------------------------------------
     def set_create_mode(self, plugin_item: PlaceholderPluginItem) -> None:
@@ -770,12 +786,17 @@ class PlaceholderEditorWidget(AYContainer):
         self._original_values = {}
 
     def _update_confirm_state(self) -> None:
+        has_changes = self.has_unsaved_changes()
+        self._unsaved_label.setVisible(has_changes)
+        if has_changes != self._had_unsaved_changes:
+            self._had_unsaved_changes = has_changes
+            self.unsaved_changes_changed.emit(has_changes)
+
         if self._mode == CREATE_MODE:
             self._confirm_btn.setEnabled(self._attrs_widget is not None)
             self._cancel_btn.setEnabled(True)
             return
 
-        has_changes = self.has_unsaved_changes()
         self._confirm_btn.setEnabled(has_changes)
         self._cancel_btn.setEnabled(has_changes)
 

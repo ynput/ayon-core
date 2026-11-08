@@ -19,6 +19,10 @@ from ayon_core.tools.workfile_template_build import (
 from ayon_core.tools.workfile_template_build.ui.build_report import (
     BuildReportDialog,
 )
+from ayon_core.tools.workfile_template_build.ui.placeholders_widget import (
+    LABEL_COLUMN,
+    UNSAVED_MARK,
+)
 
 HINT_PAGE = 0
 EDITOR_PAGE = 1
@@ -208,6 +212,14 @@ class TestCreate:
         assert builder.nodes == {}
 
 
+def _list_labels(window):
+    model = window._placeholders_widget._model
+    return sorted(
+        model.item(row, LABEL_COLUMN).text()
+        for row in range(model.rowCount())
+    )
+
+
 class TestEdit:
     @pytest.fixture(autouse=True)
     def _placeholders(self, window):
@@ -268,6 +280,24 @@ class TestEdit:
 
         assert not window._editor_widget.has_unsaved_changes()
         assert _name_input(window).text() == "one"
+
+    def test_unsaved_changes_are_shown(self, window):
+        editor = window._editor_widget
+        _name_input(window).setText("changed")
+
+        assert not editor._unsaved_label.isHidden()
+        assert _list_labels(window) == sorted([UNSAVED_MARK + "one", "two"])
+
+        editor._on_cancel_click()
+
+        assert editor._unsaved_label.isHidden()
+        assert _list_labels(window) == ["one", "two"]
+
+    def test_unsaved_mark_survives_list_refresh(self, window):
+        _name_input(window).setText("changed")
+        window._update_placeholders()
+
+        assert _list_labels(window) == sorted([UNSAVED_MARK + "one", "two"])
 
     def test_placeholder_removed_outside_of_tool(self, window, builder):
         builder.nodes.pop("node_1")

@@ -24,6 +24,11 @@ from ..abstract import PlaceholderItemInfo, PlaceholderPluginItem
 SCENE_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 1
 PLUGIN_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 2
 ORDER_ROLE = QtCore.Qt.UserRole + 3
+LABEL_ROLE = QtCore.Qt.UserRole + 4
+
+# Put before the name of a placeholder with unsaved changes. Before, so
+#   it stays visible when a long name is elided.
+UNSAVED_MARK = "\u25cf "
 
 DEFAULT_PLACEHOLDER_ICON = {
     "type": "material-symbols",
@@ -343,6 +348,7 @@ class PlaceholdersWidget(AYContainer):
 
         # Action support by plugin identifier
         self._select_support: dict[str, bool] = {}
+        self._unsaved_identifier: Optional[str] = None
 
     def set_placeholder_items(
         self, placeholder_items: list[PlaceholderItemInfo]
@@ -366,6 +372,7 @@ class PlaceholdersWidget(AYContainer):
             order_item = QtGui.QStandardItem()
             order_item.setData(placeholder_item.order, QtCore.Qt.DisplayRole)
             label_item = QtGui.QStandardItem(placeholder_item.label)
+            label_item.setData(placeholder_item.label, LABEL_ROLE)
             icon = get_placeholder_icon(placeholder_item.icon)
             if icon is not None:
                 label_item.setIcon(icon)
@@ -394,10 +401,37 @@ class PlaceholdersWidget(AYContainer):
         )
         self._view.setVisible(bool(placeholder_items))
         self._empty_widget.setVisible(not placeholder_items)
+        self._update_unsaved_mark()
         self._resize_columns()
 
         if selected_identifier is not None:
             self.select_identifier(selected_identifier)
+
+    def set_unsaved_identifier(
+        self, scene_identifier: Optional[str]
+    ) -> None:
+        """Mark the placeholder that has unsaved changes.
+
+        Args:
+            scene_identifier (Optional[str]): Scene identifier of the
+                placeholder, None when no placeholder has unsaved changes.
+
+        """
+        if scene_identifier == self._unsaved_identifier:
+            return
+        self._unsaved_identifier = scene_identifier
+        self._update_unsaved_mark()
+
+    def _update_unsaved_mark(self) -> None:
+        for row in range(self._model.rowCount()):
+            item = self._model.item(row, LABEL_COLUMN)
+            label = item.data(LABEL_ROLE)
+            is_unsaved = (
+                self._unsaved_identifier is not None
+                and item.data(SCENE_IDENTIFIER_ROLE)
+                == self._unsaved_identifier
+            )
+            item.setText(UNSAVED_MARK + label if is_unsaved else label)
 
     def _resize_columns(self) -> None:
         """Fit "Order" and "Type" columns to their content."""
