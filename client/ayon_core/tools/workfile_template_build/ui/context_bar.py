@@ -4,12 +4,55 @@ from __future__ import annotations
 
 from typing import Optional
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.ui.components import AYButton, AYContainer, AYLabel
 
 from ..abstract import BuildContextItem
 from .placeholders_widget import RUN_ICON
+
+
+MENU_ARROW_SIZE = 16
+MENU_ARROW_GAP = 2
+# Space between the arrow and the right edge of the menu button
+MENU_ARROW_MARGIN = 6
+
+
+class _MenuButton(AYButton):
+    """Button with an arrow after its label, so it reads as a menu."""
+
+    def sizeHint(self) -> QtCore.QSize:
+        size = super().sizeHint()
+        return QtCore.QSize(
+            size.width() + MENU_ARROW_SIZE + MENU_ARROW_GAP, size.height()
+        )
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        super().paintEvent(event)
+        color = self._icon_color.name()
+        icon = get_qt_icon({
+            "type": "material-symbols",
+            "name": "expand_more",
+            "color": color,
+        })
+        # The label is drawn from the left, the arrow takes the space
+        #   added in 'sizeHint' at the right.
+        rect = self.rect()
+        arrow_rect = QtCore.QRect(
+            rect.right() - MENU_ARROW_MARGIN - MENU_ARROW_SIZE,
+            rect.center().y() - (MENU_ARROW_SIZE // 2) + 1,
+            MENU_ARROW_SIZE,
+            MENU_ARROW_SIZE,
+        )
+        painter = QtGui.QPainter(self)
+        mode = (
+            QtGui.QIcon.Mode.Normal
+            if self.isEnabled()
+            else QtGui.QIcon.Mode.Disabled
+        )
+        icon.paint(painter, arrow_rect, QtCore.Qt.AlignCenter, mode)
+        painter.end()
 
 
 class ContextBarWidget(AYContainer):
@@ -80,7 +123,7 @@ class ContextBarWidget(AYContainer):
             ),
         )
         test_build_btn.setEnabled(False)
-        template_btn = AYButton(
+        template_btn = _MenuButton(
             "Template",
             parent=self,
             variant=AYButton.Variants.Surface,
@@ -90,9 +133,16 @@ class ContextBarWidget(AYContainer):
                 " \"Preview as\" context"
             ),
         )
-        template_btn.setEnabled(False)
 
         template_menu = QtWidgets.QMenu(template_btn)
+        # Says why the actions are disabled. Shown only when no template
+        #   is set, the button stays enabled so the reason can be found.
+        missing_action = template_menu.addAction(
+            "No template is set in settings for the \"Preview as\""
+            " context"
+        )
+        missing_action.setEnabled(False)
+        missing_action.setVisible(False)
         open_action = template_menu.addAction("Open template\u2026")
         open_action.setToolTip(
             "Open the template file. Unsaved changes in the scene are lost."
@@ -129,6 +179,8 @@ class ContextBarWidget(AYContainer):
         self._test_build_btn = test_build_btn
         self._template_btn = template_btn
         self._template_menu = template_menu
+        self._template_missing_action = missing_action
+        self._template_actions = (open_action, build_action)
 
     def set_workfile(
         self, workfile_name: Optional[str], host_name: str
@@ -187,8 +239,11 @@ class ContextBarWidget(AYContainer):
                 when no template is set for the build context.
 
         """
-        self._template_btn.setEnabled(bool(template_path))
-        if template_path:
+        has_template = bool(template_path)
+        self._template_missing_action.setVisible(not has_template)
+        for action in self._template_actions:
+            action.setEnabled(has_template)
+        if has_template:
             tooltip = "Template: {}".format(template_path)
         else:
             tooltip = (

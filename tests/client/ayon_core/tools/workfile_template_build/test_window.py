@@ -577,13 +577,22 @@ class TestTemplateMenu:
         window._update_template_path()
         return output
 
-    def test_disabled_without_template(self, window):
-        assert not window._context_bar._template_btn.isEnabled()
+    def test_actions_disabled_without_template(self, window):
+        context_bar = window._context_bar
+        # The button stays enabled so the menu can say why
+        assert context_bar._template_btn.isEnabled()
+        assert context_bar._template_missing_action.isVisible()
+        assert not any(
+            action.isEnabled() for action in context_bar._template_actions
+        )
 
-    def test_enabled_with_template(self, window, calls):
-        template_btn = window._context_bar._template_btn
-        assert template_btn.isEnabled()
-        assert "/templates/shot.ma" in template_btn.toolTip()
+    def test_actions_enabled_with_template(self, window, calls):
+        context_bar = window._context_bar
+        assert not context_bar._template_missing_action.isVisible()
+        assert all(
+            action.isEnabled() for action in context_bar._template_actions
+        )
+        assert "/templates/shot.ma" in context_bar._template_btn.toolTip()
 
     @pytest.mark.parametrize(
         "callback, action",
