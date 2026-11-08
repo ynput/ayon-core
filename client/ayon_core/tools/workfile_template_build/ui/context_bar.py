@@ -93,7 +93,7 @@ class ContextBarWidget(AYContainer):
         host_label = AYLabel(parent=self, dim=True)
 
         context_label = AYLabel("Preview as", parent=self, dim=True)
-        context_btn = AYButton(
+        context_btn = _MenuButton(
             "",
             parent=self,
             variant=AYButton.Variants.Surface,
@@ -107,8 +107,9 @@ class ContextBarWidget(AYContainer):
         reset_btn = AYButton(
             "Reset",
             parent=self,
-            variant=AYButton.Variants.Text,
-            tooltip="Use the context of the scene again",
+            variant=AYButton.Variants.Surface,
+            icon="undo",
+            tooltip="Preview and run in the context of the scene again",
         )
         reset_btn.setVisible(False)
         test_build_btn = AYButton(
@@ -206,8 +207,10 @@ class ContextBarWidget(AYContainer):
 
         """
         self._context_btn.setText(context_item.label)
+        # A different context changes what all previews and runs do, so
+        #   it uses the accent color until it is reset.
         self._context_btn.set_variant(
-            AYButton.Variants.Tonal
+            AYButton.Variants.Filled
             if context_item.is_override
             else AYButton.Variants.Surface
         )
