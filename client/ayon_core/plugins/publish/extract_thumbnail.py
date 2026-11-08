@@ -521,14 +521,29 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 oiio_default_display = display_and_view["display"]
                 oiio_default_view = display_and_view["view"]
 
+        # Source is either display + view pair or colorspace
+        source_colorspace = colorspace_data.get("colorspace")
+        source_display = repre_display
+        source_view = repre_view
+        if source_display and source_view:
+            source_colorspace = None
+        else:
+            source_display = source_view = None
+            if not source_colorspace:
+                self.log.debug(
+                    "Representation colorspace data has neither colorspace"
+                    " nor display and view."
+                )
+                return False
+
         try:
             oiio_color_convert(
                 src_path,
                 dst_path,
                 ocio_config_path,
-                colorspace_data["colorspace"],
-                source_display=colorspace_data.get("display"),
-                source_view=colorspace_data.get("view"),
+                source_colorspace,
+                source_display=source_display,
+                source_view=source_view,
                 target_display=repre_display or oiio_default_display,
                 target_view=repre_view or oiio_default_view,
                 target_colorspace=oiio_default_colorspace,
