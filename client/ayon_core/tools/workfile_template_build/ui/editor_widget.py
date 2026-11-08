@@ -473,8 +473,9 @@ class PlaceholderEditorWidget(AYContainer):
             variant=AYButton.Variants.Surface,
             icon=RUN_ICON,
         )
+        # Icon only, kept apart from the other actions so it is not
+        #   clicked by accident.
         remove_btn = AYButton(
-            "Remove",
             parent=actions_widget,
             variant=AYButton.Variants.Surface,
             icon=DELETE_ICON,
@@ -482,6 +483,7 @@ class PlaceholderEditorWidget(AYContainer):
         actions_widget.add_widget(select_btn)
         actions_widget.add_widget(run_btn)
         actions_widget.addStretch(1)
+        actions_widget.layout().addSpacing(6)
         actions_widget.add_widget(remove_btn)
 
         # --- Options ---
