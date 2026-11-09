@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import ayon_api
+
+from .cache import NestedCacheItem
+
+log = logging.getLogger(__name__)
 
 ACTIVITY_TYPES = ("comment", "version.publish", "status.change")
 # 'origin' are activities made on the entity itself, 'mention' are comments
@@ -16,6 +21,8 @@ ACTIVITY_FIELDS = (
     "activityId",
     "activityType",
     "activityData",
+    "referenceType",
+    "entityType",
     "body",
     "createdAt",
     "updatedAt",
@@ -23,6 +30,8 @@ ACTIVITY_FIELDS = (
     "files.id",
     "files.mime",
 )
+# Color of a category that is not configured anymore, as on the frontend
+UNKNOWN_CATEGORY_COLOR = "#c5c5c5"
 
 
 @dataclass
@@ -82,6 +91,7 @@ class ActivityItem:
         created_at: Date of creation in ISO format.
         updated_at: Date of the last change in ISO format.
         category: Category of a comment.
+        category_color: Color of the category of a comment.
         product_name: Product of the version that was published or that
             has changed its status.
         version_name: Name of the published version, or of the entity
@@ -103,6 +113,7 @@ class ActivityItem:
     created_at: str | None = None
     updated_at: str | None = None
     category: str | None = None
+    category_color: str | None = None
     product_name: str | None = None
     version_name: str | None = None
     version_id: str | None = None
@@ -197,6 +208,17 @@ class ActivitiesModel:
     'UsersModel'.
     """
 
+    # Lifetime of the cached comment categories in seconds
+    categories_lifetime = 60
+
+    def __init__(self) -> None:
+        self._category_colors_cache = NestedCacheItem(
+            levels=1, default_factory=dict, lifetime=self.categories_lifetime
+        )
+
+    def reset(self) -> None:
+        self._category_colors_cache.reset()
+
     def get_activity_items(
         self,
         project_name: str,
@@ -236,6 +258,13 @@ class ActivitiesModel:
         ):
             if len(activities_by_id) >= limit:
                 break
+            # Activities of entities related to a version are not about
+            #   the version, the frontend does not show them either
+            if (
+                activity.get("referenceType") == "relation"
+                and activity.get("entityType") == "version"
+            ):
+                continue
             activities_by_id.setdefault(activity["activityId"], activity)
 
         activity_items = [
@@ -246,7 +275,48 @@ class ActivitiesModel:
             key=lambda item: item.created_at or "", reverse=True
         )
         self._fill_published_version_items(project_name, activity_items)
+        self._fill_category_colors(project_name, activity_items)
         return activity_items
+
+    def _fill_category_colors(
+        self, project_name: str, activity_items: list[ActivityItem]
+    ) -> None:
+        """Fill colors of the categories of comments."""
+        if not any(item.category for item in activity_items):
+            return
+        colors = self._get_category_colors(project_name)
+        for item in activity_items:
+            if item.category:
+                item.category_color = colors.get(
+                    item.category, UNKNOWN_CATEGORY_COLOR
+                )
+
+    def _get_category_colors(self, project_name: str) -> dict[str, str]:
+        """Colors of the comment categories by their names.
+
+        The server returns only the categories the user can access, and
+        does not return comments of the others.
+        """
+        cache = self._category_colors_cache[project_name]
+        if cache.is_valid:
+            return cache.get_data()
+        colors = {}
+        try:
+            response = ayon_api.get(
+                f"projects/{project_name}/activityCategories"
+            )
+            response.raise_for_status()
+            for category in (response.data or {}).get("categories") or []:
+                colors[category["name"]] = category.get("color") or ""
+        except Exception:
+            # Older servers do not have the endpoint
+            log.debug(
+                "Failed to get activity categories of %r",
+                project_name,
+                exc_info=True,
+            )
+        cache.update_data(colors)
+        return colors
 
     @staticmethod
     def _fill_published_version_items(

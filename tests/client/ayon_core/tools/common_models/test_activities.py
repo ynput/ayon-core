@@ -69,9 +69,19 @@ ACTIVITIES = [
 ]
 
 
+class FakeResponse:
+    def __init__(self, data: Any, status: int = 200) -> None:
+        self.data = data
+        self.status = status
+
+    def raise_for_status(self) -> None:
+        if self.status != 200:
+            raise RuntimeError(f"Status {self.status}")
+
+
 @pytest.fixture
 def fake_server(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    calls: dict[str, Any] = {"activities": [], "other": []}
+    calls: dict[str, Any] = {"activities": [], "other": [], "rest": []}
 
     def get_activities(project_name: str, **kwargs: Any):
         # 'limit' argument fails in ayon_api
@@ -84,12 +94,20 @@ def fake_server(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         calls["versions"] = kwargs
         yield {"id": "version_id", "status": "Approved", "thumbnailId": "t1"}
 
+    def get(entrypoint: str, **kwargs: Any):
+        calls["rest"].append(entrypoint)
+        # Only categories the user can access are returned
+        return FakeResponse(
+            {"categories": [{"name": "Feedback", "color": "#ff8800"}]}
+        )
+
     def unexpected_query(*args: Any, **kwargs: Any):
         calls["other"].append((args, kwargs))
         return []
 
     monkeypatch.setattr(activities.ayon_api, "get_activities", get_activities)
     monkeypatch.setattr(activities.ayon_api, "get_versions", get_versions)
+    monkeypatch.setattr(activities.ayon_api, "get", get)
     # Users and statuses are not a concern of the activities
     for name in ("get_users", "get_project", "get_rest_project"):
         monkeypatch.setattr(activities.ayon_api, name, unexpected_query)
@@ -113,6 +131,7 @@ def test_items_are_deduplicated_and_newest_first(fake_server):
         created_at="2026-10-03T10:00:00+00:00",
         updated_at="2026-10-03T11:00:00+00:00",
         category="Feedback",
+        category_color="#ff8800",
         files=[ActivityFileItem("file_id", "image/png")],
         annotations=[
             ActivityAnnotationItem(
@@ -140,7 +159,51 @@ def test_items_are_deduplicated_and_newest_first(fake_server):
     assert publish.version_id == "version_id"
     assert publish.version_status == "Approved"
     assert publish.thumbnail_id == "t1"
+    assert fake_server["rest"] == ["projects/demo/activityCategories"]
     assert fake_server["other"] == []
+
+
+def test_category_colors_are_cached_and_have_a_fallback(
+    fake_server, monkeypatch: pytest.MonkeyPatch
+):
+    model = ActivitiesModel()
+    model.get_activity_items("demo", ["version_id"])
+    model.get_activity_items("demo", ["version_id"])
+    assert fake_server["rest"] == ["projects/demo/activityCategories"]
+
+    # Category that is not configured anymore, or a server without them
+    def get(entrypoint: str, **kwargs: Any):
+        return FakeResponse({}, status=404)
+
+    monkeypatch.setattr(activities.ayon_api, "get", get)
+    model.reset()
+    comment = model.get_activity_items("demo", ["version_id"])[0]
+    assert comment.category == "Feedback"
+    assert comment.category_color == activities.UNKNOWN_CATEGORY_COLOR
+
+
+def test_activities_of_entities_related_to_a_version_are_skipped(
+    fake_server, monkeypatch: pytest.MonkeyPatch
+):
+    def get_activities(project_name: str, **kwargs: Any):
+        for activity_id, reference_type, entity_type in (
+            ("on_version", "origin", "version"),
+            ("of_related", "relation", "version"),
+            ("of_task", "relation", "task"),
+        ):
+            yield {
+                "activityId": activity_id,
+                "activityType": "comment",
+                "activityData": {},
+                "referenceType": reference_type,
+                "entityType": entity_type,
+                "createdAt": "2026-10-01T10:00:00+00:00",
+            }
+
+    monkeypatch.setattr(activities.ayon_api, "get_activities", get_activities)
+    items = ActivitiesModel().get_activity_items("demo", ["a"])
+
+    assert {item.activity_id for item in items} == {"on_version", "of_task"}
 
 
 def test_items_are_limited_and_handle_missing_author(

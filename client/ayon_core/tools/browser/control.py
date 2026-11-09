@@ -111,6 +111,7 @@ class BrowserController(AbstractBrowserController):
         self._products_model.reset()
         self._hierarchy_model.reset()
         self._thumbnails_model.reset()
+        self._activities_model.reset()
         self._loader_actions_model.reset()
         self._projects_model.reset()
         self._users_model.reset()

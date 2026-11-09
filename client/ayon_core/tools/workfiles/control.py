@@ -644,6 +644,7 @@ class BaseWorkfileController(
         self._projects_model.reset()
         self._hierarchy_model.reset()
         self._thumbnails_model.reset()
+        self._activities_model.reset()
         self._workfiles_model.reset()
         self._actions_model.reset()
 
