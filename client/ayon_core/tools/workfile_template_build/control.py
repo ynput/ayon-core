@@ -14,6 +14,10 @@ from typing import Any, Callable, Optional
 from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.pipeline import (
+    get_current_host_name,
+    get_current_project_name,
+)
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     AbstractTemplateBuilder,
     PlaceholderItem,
@@ -118,7 +122,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             host_name = self._builder.host_name
             if host_name:
                 return host_name
-        return os.getenv("AYON_HOST_NAME") or "NA"
+        return get_current_host_name() or "NA"
 
     def is_builder_available(self) -> bool:
         return self._builder is not None
@@ -126,7 +130,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
     def get_project_name(self) -> Optional[str]:
         if self._builder is not None:
             return self._builder.project_name
-        return os.getenv("AYON_PROJECT_NAME")
+        return get_current_project_name()
 
     def get_workfile_name(self) -> Optional[str]:
         if self._builder is None:

@@ -50,7 +50,7 @@ from ayon_core.pipeline.workfile.path_resolving import (
 )
 
 from ayon_core.lib.attribute_definitions import get_attributes_keys
-from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline import Anatomy, context_tools
 from ayon_core.pipeline.load import (
     get_loaders_by_name,
     get_representation_contexts,
@@ -279,38 +279,29 @@ class AbstractTemplateBuilder(ABC):
     def project_name(self):
         if isinstance(self._host, AbstractHost):
             return self._host.get_current_project_name()
-        return os.getenv("AYON_PROJECT_NAME")
+        return context_tools.get_current_project_name()
 
     @property
     def current_folder_path(self):
-        if self._context_override is not None:
-            return self._context_override[0]
-        if isinstance(self._host, AbstractHost):
-            return self._host.get_current_folder_path()
-        return os.getenv("AYON_FOLDER_PATH")
+        return self.get_current_context()["folder_path"]
 
     @property
     def current_task_name(self):
-        if self._context_override is not None:
-            return self._context_override[1]
-        if isinstance(self._host, AbstractHost):
-            return self._host.get_current_task_name()
-        return os.getenv("AYON_TASK_NAME")
+        return self.get_current_context()["task_name"]
 
     def get_current_context(self):
-        if self._context_override is not None:
-            return {
-                "project_name": self.project_name,
-                "folder_path": self.current_folder_path,
-                "task_name": self.current_task_name,
-            }
         if isinstance(self._host, AbstractHost):
-            return self._host.get_current_context()
-        return {
-            "project_name": self.project_name,
-            "folder_path": self.current_folder_path,
-            "task_name": self.current_task_name
-        }
+            context = self._host.get_current_context()
+        else:
+            context = context_tools.get_current_context()
+        if self._context_override is not None:
+            folder_path, task_name = self._context_override
+            context = {
+                **context,
+                "folder_path": folder_path,
+                "task_name": task_name,
+            }
+        return context
 
     def set_context_override(
         self,
