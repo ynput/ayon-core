@@ -211,7 +211,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             "data": additional metadata for each representation.
     """
 
-    label = "Integrate Asset"
+    label = "Integrate Products"
     order = pyblish.api.IntegratorOrder
 
     default_template_name = "publish"
