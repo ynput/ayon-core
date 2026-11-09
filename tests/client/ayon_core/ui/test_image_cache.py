@@ -354,6 +354,32 @@ def test_concurrent_threads(cache: ImageCache, src_dir: Path) -> None:
     assert len(keys) == len(set(keys))
 
 
+def test_close_connections_of_other_threads(
+    cache: ImageCache, src_dir: Path
+) -> None:
+    """Connections opened by worker threads are closed by another thread.
+
+    The 'atexit' handler runs on the main thread after the worker
+    threads have ended, so it must close connections it did not open.
+    """
+    src = _make_source_file(src_dir)
+    worker_conns: list[sqlite3.Connection] = []
+
+    def worker() -> None:
+        cache.get("key", lambda: src)
+        worker_conns.append(cache._get_conn())
+
+    thread = threading.Thread(target=worker)
+    thread.start()
+    thread.join()
+
+    cache._close_all_connections()
+
+    assert len(worker_conns) == 1
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        worker_conns[0].execute("SELECT 1")
+
+
 # ---------------------------------------------------------------------------
 # Legacy JSON cleanup
 # ---------------------------------------------------------------------------

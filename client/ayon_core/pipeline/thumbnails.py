@@ -1,4 +1,5 @@
 import os
+import hashlib
 import time
 import uuid
 import collections
@@ -331,4 +332,52 @@ def get_entity_thumbnail_path(
         result.thumbnail_id,
         result.content,
         result.content_type
+    )
+
+
+def get_project_thumbnail_path(project_name: str, updated_at: str):
+    """Get path to thumbnail image of a project.
+
+    Server stores thumbnail of each project under the same reserved
+        thumbnail id, so the id cannot be used to find out that the
+        thumbnail has changed. Server does update 'updatedAt' of the project
+        when its thumbnail changes, so that is used to cache the thumbnail.
+
+    Args:
+        project_name (str): Project name.
+        updated_at (str): Value of 'updatedAt' of the project entity.
+
+    Returns:
+        Union[str, None]: Path to thumbnail image or None if the project
+            does not have a thumbnail or it was not possible to receive.
+
+    """
+    if not project_name or not updated_at:
+        return None
+
+    cache_id = "project-{}".format(
+        hashlib.sha1(str(updated_at).encode("utf-8")).hexdigest()[:16]
+    )
+    filepath = _CacheItems.thumbnails_cache.get_thumbnail_filepath(
+        project_name, cache_id
+    )
+    if filepath is not None:
+        return filepath
+
+    con = ayon_api.get_server_api_connection()
+    # Without 'placeholder=none' server responds with an empty image if
+    #   the project does not have a thumbnail
+    response = con.raw_get(
+        f"projects/{project_name}/thumbnail?placeholder=none"
+    )
+    content_type = response.content_type
+    if response.status_code != 200 or not content_type:
+        return None
+
+    return _CacheItems.thumbnails_cache.store_thumbnail(
+        project_name,
+        cache_id,
+        response.content,
+        # Content type may contain parameters, e.g. charset
+        content_type.split(";")[0].strip(),
     )

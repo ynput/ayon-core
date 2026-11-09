@@ -16,6 +16,18 @@ from .loader import (
     SelectionEntitiesCache,
     LoaderSimpleActionPlugin,
 )
+from .workfile import (
+    WorkfileAreaType,
+    WorkfileActionResult,
+    WorkfileActionRedirect,
+    WorkfileActionSaveAsFormInputs,
+    WorkfileActionSaveAsValues,
+    WorkfileActionItem,
+    WorkfileActionPlugin,
+    WorkfileActionSelection,
+    WorkfileActionsContext,
+    WorkfileSimpleActionPlugin,
+)
 
 from .launcher import (
     LauncherAction,
@@ -50,6 +62,17 @@ __all__ = (
     "LoaderActionsContext",
     "SelectionEntitiesCache",
     "LoaderSimpleActionPlugin",
+
+    "WorkfileAreaType",
+    "WorkfileActionResult",
+    "WorkfileActionRedirect",
+    "WorkfileActionSaveAsFormInputs",
+    "WorkfileActionSaveAsValues",
+    "WorkfileActionItem",
+    "WorkfileActionPlugin",
+    "WorkfileActionSelection",
+    "WorkfileActionsContext",
+    "WorkfileSimpleActionPlugin",
 
     "LauncherAction",
     "LauncherActionSelection",

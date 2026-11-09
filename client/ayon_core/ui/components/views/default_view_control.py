@@ -7,7 +7,6 @@ toggle UI and all persistence actions for default views.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Callable
 
 from qtpy.QtCore import QPointF, QRect, QRectF, Qt
@@ -18,6 +17,8 @@ from qtpy.QtWidgets import (
     QStyle,
     QStyleOptionButton,
 )
+
+from ayon_core.lib import Logger
 
 from ..buttons import AYButton
 from ..container import AYContainer
@@ -30,7 +31,7 @@ from .view_manager import DEFAULT_VIEW_LABEL
 if TYPE_CHECKING:
     from .view_selector import AYViewSelector
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 # Side length of the icon's hoverable badge — a bit larger than the
 # icon glyph itself (14px) so it reads as a distinct clickable target.

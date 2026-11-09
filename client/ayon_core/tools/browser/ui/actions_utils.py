@@ -88,21 +88,21 @@ def show_actions_menu(
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
         icon = get_qt_icon(action_item.icon)
-        if action_item.alternative_launches:
-            option_boxes = [
-                AYOptionBoxItem(
-                    identifier=alternative.identifier,
-                    icon=get_qt_icon(alternative.icon),
-                    tooltip=alternative.tooltip,
-                )
-                for alternative in action_item.alternative_launches
-            ]
-            action = AYOptionalAction(
-                action_item.label,
-                icon,
-                parent=menu,
-                option_boxes=option_boxes,
+        option_boxes = [
+            AYOptionBoxItem(
+                identifier=alternative.identifier,
+                icon=get_qt_icon(alternative.icon),
+                tooltip=alternative.tooltip,
             )
+            for alternative in action_item.alternative_launches
+        ]
+        action = AYOptionalAction(
+            label=action_item.label,
+            icon_name=icon,
+            parent=menu,
+            option_boxes=option_boxes,
+        )
+        if option_boxes:
             action.option_box_clicked.connect(
                 lambda identifier, action=action: _select_option_action(
                     action,
@@ -110,10 +110,6 @@ def show_actions_menu(
                     option_action,
                 )
             )
-        else:
-            action = QtGui.QAction(action_item.label, menu)
-            if icon is not None:
-                action.setIcon(icon)
 
         tip = action_item.tooltip
         if tip:
