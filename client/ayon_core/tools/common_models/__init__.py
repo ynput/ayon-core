@@ -21,7 +21,8 @@ from .hierarchy import (
 )
 from .thumbnails import ThumbnailsModel
 from .selection import HierarchyExpectedSelection
-from .users import UsersModel
+from .users import UsersModel, UserItem
+from .websocket import WSEventsModel
 
 
 __all__ = (
@@ -50,4 +51,7 @@ __all__ = (
     "HierarchyExpectedSelection",
 
     "UsersModel",
+    "UserItem",
+
+    "WSEventsModel",
 )

@@ -3,6 +3,9 @@ repo_url: https://github.com/ynput/ayon-core
 
 nav:
   - Home: index.md
+  - UI Library:
+    - Overview: ui.md
+    - Testing: ui_testing.md
   - License: license.md
 
 theme:

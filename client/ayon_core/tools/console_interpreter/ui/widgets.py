@@ -1,110 +1,22 @@
 from __future__ import annotations
 
 from code import InteractiveInterpreter
-from qtpy import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtWidgets
 
-try:
-    from .syntax_highlight import PythonSyntaxHighlighter
-except ImportError:
-    PythonSyntaxHighlighter = None  # type: ignore
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.tools.utils.lib import get_qt_icon
+from ayon_core.tools.utils.widgets import CodePlainTextEdit
 
 
-class PythonCodeEditor(QtWidgets.QPlainTextEdit):
+class PythonCodeEditor(CodePlainTextEdit):
     execute_requested = QtCore.Signal()
 
     def __init__(self, parent):
-        super().__init__(parent)
+        super().__init__(parent, syntax="python")
 
         self.setObjectName("PythonCodeEditor")
 
-        self._indent = 4
-        self._apply_syntax_highlighter()
-
-    def _apply_syntax_highlighter(self):
-        if PythonSyntaxHighlighter is None:
-            return
-
-        try:
-            highlighter = PythonSyntaxHighlighter(self.document())
-        except ValueError as e:
-            print(f"Error applying syntax highlighter: {e!s}")
-            return
-
-        # Apply background color from the style
-        if background_color := highlighter.style.background_color:
-            self.setStyleSheet((
-                "QPlainTextEdit {"
-                f"background-color: {background_color};"
-                "}"
-            ))
-
-    def _tab_shift_right(self):
-        cursor = self.textCursor()
-        selected_text = cursor.selectedText()
-        if not selected_text:
-            cursor.insertText(" " * self._indent)
-            return
-
-        sel_start = cursor.selectionStart()
-        sel_end = cursor.selectionEnd()
-        cursor.setPosition(sel_end)
-        end_line = cursor.blockNumber()
-        cursor.setPosition(sel_start)
-        while True:
-            cursor.movePosition(QtGui.QTextCursor.StartOfLine)
-            text = cursor.block().text()
-            spaces = len(text) - len(text.lstrip(" "))
-            new_spaces = spaces % self._indent
-            if not new_spaces:
-                new_spaces = self._indent
-
-            cursor.insertText(" " * new_spaces)
-            if cursor.blockNumber() == end_line:
-                break
-
-            cursor.movePosition(QtGui.QTextCursor.NextBlock)
-
-    def _tab_shift_left(self):
-        tmp_cursor = self.textCursor()
-        sel_start = tmp_cursor.selectionStart()
-        sel_end = tmp_cursor.selectionEnd()
-
-        cursor = QtGui.QTextCursor(self.document())
-        cursor.setPosition(sel_end)
-        end_line = cursor.blockNumber()
-        cursor.setPosition(sel_start)
-        while True:
-            cursor.movePosition(QtGui.QTextCursor.StartOfLine)
-            text = cursor.block().text()
-            spaces = len(text) - len(text.lstrip(" "))
-            if spaces:
-                spaces_to_remove = (spaces % self._indent) or self._indent
-                if spaces_to_remove > spaces:
-                    spaces_to_remove = spaces
-
-                cursor.setPosition(
-                    cursor.position() + spaces_to_remove,
-                    QtGui.QTextCursor.KeepAnchor
-                )
-                cursor.removeSelectedText()
-
-            if cursor.blockNumber() == end_line:
-                break
-
-            cursor.movePosition(QtGui.QTextCursor.NextBlock)
-
     def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Backtab:
-            self._tab_shift_left()
-            event.accept()
-            return
-
-        if event.key() == QtCore.Qt.Key_Tab:
-            if event.modifiers() == QtCore.Qt.NoModifier:
-                self._tab_shift_right()
-            event.accept()
-            return
-
         if (
             event.key() == QtCore.Qt.Key_Return
             and event.modifiers() == QtCore.Qt.ControlModifier
@@ -245,6 +157,15 @@ class OutputTextWidget(QtWidgets.QTextEdit):
     def scroll_to_bottom(self):
         v_scroll = self.verticalScrollBar()
         return v_scroll.setValue(v_scroll.maximum())
+
+    def contextMenuEvent(self, event):
+        menu = self.createStandardContextMenu()
+        menu.addSeparator()
+        clear_action = menu.addAction(
+            get_qt_icon(MaterialSymbolsIcon("clear_all")), "Clear log"
+        )
+        clear_action.triggered.connect(self.clear)
+        menu.exec_(event.globalPos())
 
 
 class EnhancedTabBar(QtWidgets.QTabBar):

@@ -1,5 +1,4 @@
 import re
-import logging
 
 import collections
 
@@ -10,6 +9,7 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import format_version
+from ayon_core.lib import Logger
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 NAME_COLOR_ROLE = QtCore.Qt.UserRole + 2
@@ -39,6 +39,7 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
 ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 24
 PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 25
 CONTAINER_VERSION_LOCKED_ROLE = QtCore.Qt.UserRole + 26
+CONTAINER_VERSION_PARTIALLY_LOCKED = "partial"
 
 
 class InventoryModel(QtGui.QStandardItemModel):
@@ -115,7 +116,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         for idx, label in enumerate(self.column_labels):
             self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
-        self.log = logging.getLogger(self.__class__.__name__)
+        self.log = Logger.get_logger(self.__class__.__name__)
 
         self._controller = controller
 
@@ -128,6 +129,30 @@ class InventoryModel(QtGui.QStandardItemModel):
 
     def outdated(self, item):
         return item.get("isOutdated", True)
+
+    @staticmethod
+    def _get_group_lock_state(container_items):
+        """Get the version lock state to show on a group item.
+
+        Args:
+            container_items (list[ContainerItem]): Containers grouped
+                under a single group item.
+
+        Returns:
+            Union[bool, str]: `True` if all containers are locked, `False`
+                if none are, or `CONTAINER_VERSION_PARTIALLY_LOCKED` if
+                only some of them are locked.
+
+        """
+        locked_states = {
+            container_item.version_locked
+            for container_item in container_items
+        }
+        if True in locked_states:
+            if False in locked_states:
+                return CONTAINER_VERSION_PARTIALLY_LOCKED
+            return True
+        return False
 
     def refresh(self, selected=None):
         """Refresh the model"""
@@ -345,6 +370,11 @@ class InventoryModel(QtGui.QStandardItemModel):
                     )
                     group_item.setData(group_icon, PRODUCT_GROUP_ICON_ROLE)
 
+                group_item.setData(
+                    self._get_group_lock_state(container_items),
+                    CONTAINER_VERSION_LOCKED_ROLE
+                )
+
                 group_item.appendRows(container_model_items)
                 group_items.append(group_item)
 
@@ -375,10 +405,24 @@ class InventoryModel(QtGui.QStandardItemModel):
             if role is None:
                 return None
 
+        elif role == QtCore.Qt.ToolTipRole and col == self.version_col:
+            return self._get_version_lock_tooltip(index)
+
         if col != 0:
             index = self.index(index.row(), 0, index.parent())
 
         return super().data(index, role)
+
+    def _get_version_lock_tooltip(self, index):
+        if index.column() != 0:
+            index = index.sibling(index.row(), 0)
+
+        lock_state = super().data(index, CONTAINER_VERSION_LOCKED_ROLE)
+        if lock_state is True:
+            return "Version is locked"
+        if lock_state == CONTAINER_VERSION_PARTIALLY_LOCKED:
+            return "Some versions are locked"
+        return None
 
     def set_hierarchy_view(self, state):
         """Set whether to display products in hierarchy view."""

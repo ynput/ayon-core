@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pyblish.api
 import ayon_api
 
@@ -36,6 +38,7 @@ class CollectHierarchy(
     settings_category = "core"
 
     edit_shot_attributes_on_update = True
+    skip_shot_attributes_on_update: list[str] = []
 
     @classmethod
     def get_attr_defs_for_context(cls, create_context):
@@ -130,6 +133,10 @@ class CollectHierarchy(
         existing_entities = self.get_existing_folder_entities(
             project_name, shot_instances)
 
+        skip_shot_attributes_on_update: set[str] = set(
+            self.skip_shot_attributes_on_update
+        )
+
         for instance in shot_instances:
             folder_path = instance.data["folderPath"]
             self.log.debug(
@@ -165,11 +172,18 @@ class CollectHierarchy(
                         )
                         continue
 
+                    if shot_attr in skip_shot_attributes_on_update:
+                        self.log.debug(
+                            "%s shot attribute skipped as the attribute is"
+                            " blacklisted for update in settings.", shot_attr
+                        )
+                        continue
+
                     shot_data["attributes"][shot_attr] = attr_value
-                else:
-                    self.log.debug(
-                        "Shot attributes will not be updated."
-                    )
+            else:
+                self.log.debug(
+                    "Shot attributes will not be updated."
+                )
 
             # Split by '/' for AYON where asset is a path
             name = folder_path.split("/")[-1]

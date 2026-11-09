@@ -2,9 +2,11 @@ import inspect
 
 import pyblish.api
 
+from ayon_core.host import IWorkfileHost
+from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.workfile import save_next_version
 from ayon_core.tools.utils.host_tools import show_workfiles
-from ayon_core.pipeline.context_tools import version_up_current_workfile
 
 
 class SaveByVersionUpAction(pyblish.api.Action):
@@ -14,7 +16,7 @@ class SaveByVersionUpAction(pyblish.api.Action):
     icon = "save"
 
     def process(self, context, plugin):
-        version_up_current_workfile()
+        save_next_version()
 
 
 class ShowWorkfilesAction(pyblish.api.Action):
@@ -36,12 +38,16 @@ class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
 
     label = "Validate File Saved"
     order = pyblish.api.ValidatorOrder - 0.1
-    hosts = ["fusion", "houdini", "max", "maya", "nuke", "substancepainter",
-             "cinema4d", "silhouette", "gaffer", "blender", "loki",
-             "photoshop"]
     actions = [SaveByVersionUpAction, ShowWorkfilesAction]
 
     def process(self, context):
+        host = registered_host()
+        if not isinstance(host, IWorkfileHost):
+            self.log.debug(
+                "Skipping file save validation because host does "
+                "not implement workfiles."
+            )
+            return
 
         current_file = context.data["currentFile"]
         if not current_file:

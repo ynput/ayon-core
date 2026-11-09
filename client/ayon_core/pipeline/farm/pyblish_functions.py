@@ -22,7 +22,8 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
-from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import PublishError
+from ayon_core.pipeline.publish.lib import get_file_collections
 from ayon_core.pipeline.publish.input_versions import serialize_input_versions
 
 if typing.TYPE_CHECKING:
@@ -347,6 +348,9 @@ def create_skeleton_instance(
     if data.get("renderlayer"):
         instance_skeleton_data["renderlayer"] = data["renderlayer"]
 
+    if data.get("status"):
+        instance_skeleton_data["status"] = data["status"]
+
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
     if instance_version != 1:
@@ -356,6 +360,15 @@ def create_skeleton_instance(
     for item in families_transfer:
         if item in instance.data.get("families", []):
             instance_skeleton_data["families"] += [item]
+
+    slate_representation_ext = instance.data.get(
+        "slateRepresentationExt")
+    if (
+        "slate" in families_transfer
+        and slate_representation_ext
+    ):
+        instance_skeleton_data["slateRepresentationExt"] = \
+            slate_representation_ext
 
     # transfer specific properties from original instance based on
     # mapping dictionary `instance_transfer`
@@ -425,8 +438,9 @@ def prepare_representations(
 
     """
     representations = []
+    slate_representation_ext = skeleton_data.get("slateRepresentationExt", [])
     host_name = os.environ.get("AYON_HOST_NAME", "")
-    collections, remainders = clique.assemble(exp_files)
+    collections, remainders = get_file_collections(exp_files)
 
     if frames_to_render is not None:
         frames_to_render = convert_frames_str_to_list(frames_to_render)
@@ -500,6 +514,9 @@ def prepare_representations(
         # poor man exclusion
         if ext in skip_integration_repre_list:
             rep["tags"].append("delete")
+
+        if ext == slate_representation_ext:
+            rep["tags"].append("slate-frame")
 
         if skeleton_data.get("multipartExr", False):
             rep["tags"].append("multipartExr")
@@ -685,9 +702,10 @@ def create_instances_for_aov(
         len(instance.data.get("attachTo", [])) > 0
         and len(instance.data.get("expectedFiles")[0].keys()) != 1
     ):
-        raise KnownPublishError(
-            "attaching multiple AOVs or renderable cameras to "
-            "product is not supported yet.")
+        raise PublishError(
+            "Attaching multiple AOVs or renderable cameras to"
+            " product is not supported yet."
+        )
 
     additional_data = {
         "renderProducts": instance.data["renderProducts"],
@@ -946,11 +964,9 @@ def _create_instances_for_aov(
             and isinstance(collected_files, (list, tuple))  # not single file
         ):
             aov_frames_to_render = convert_frames_str_to_list(frames_to_render)
-            collections, _ = clique.assemble(collected_files)
+            collections, _ = get_file_collections(collected_files)
             collected_files = _get_real_files_to_render(
                 collections[0], aov_frames_to_render)
-            if len(collected_files) == 1:
-                collected_files = collected_files[0]
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
             frame_end = int(skeleton.get("frameEndHandle"))
@@ -1139,6 +1155,9 @@ def _create_instances_for_aov(
 def _collect_expected_files_for_aov(files):
     """Collect expected files.
 
+    Frame sequences remain lists even when they contain only one file.
+    Non-sequence single files are returned as strings.
+
     Args:
         files (list): List of files.
 
@@ -1149,7 +1168,7 @@ def _collect_expected_files_for_aov(files):
         ValueError: If there are multiple collections.
 
     """
-    cols, rem = clique.assemble(files)
+    cols, rem = get_file_collections(files)
     # we shouldn't have any reminders. And if we do, it should
     # be just one item for single frame renders.
     if not cols and rem:

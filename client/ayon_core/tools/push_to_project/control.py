@@ -11,6 +11,7 @@ from ayon_core.tools.common_models import (
     SettingsModel,
     ProjectsModel,
     HierarchyModel,
+    ThumbnailsModel,
     TaskTypeItem,
 )
 
@@ -29,6 +30,7 @@ class PushToContextController:
         self._settings_model = SettingsModel()
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._integrate_model = IntegrateModel(self)
 
         self._selection_model = PushToProjectSelectionModel(self)
@@ -154,6 +156,9 @@ class PushToContextController:
     def get_project_settings(self, project_name):
         return self._settings_model.get_settings(project_name)
 
+    def get_task_sorting_mode(self, project_name):
+        return self._settings_model.get_task_sorting_mode(project_name)
+
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
@@ -172,6 +177,17 @@ class PushToContextController:
             project_name, folder_id, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     def get_user_values(self):
         return self._user_values.get_data()
 
@@ -182,6 +198,18 @@ class PushToContextController:
         with different product_base_type were used, it wouldn't be necessary.
         """
         return len(self._src_version_entities) > 1
+
+    def set_use_original_name(self, use_original_name):
+        """Set if original product names should be used.
+
+        Args:
+            use_original_name (bool): Use original product names.
+        """
+        use_original_name = bool(use_original_name)
+        if self._use_original_name == use_original_name:
+            return
+        self._use_original_name = use_original_name
+        self._invalidate()
 
     def set_user_value_folder_name(self, folder_name):
         self._user_values.set_new_folder_name(folder_name)
@@ -358,8 +386,8 @@ class PushToContextController:
             "task": task_name
         })
         try:
-            product_s = template_s.format(**fill_data)
-            product_e = template_e.format(**fill_data)
+            product_s = template_s.format_map(fill_data)
+            product_e = template_e.format_map(fill_data)
         except Exception as exc:
             print("Failed format", exc)
             return ""

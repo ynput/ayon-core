@@ -834,6 +834,11 @@ class IWorkfileHost(AbstractHost):
         all host integrations.
 
     """
+    # Can be changed to False if the host integration needs to change context
+    #   after workfile is opened, useful if the integration stores and
+    #   retrieves context to metadata of the file
+    change_context_before_workfile_open = True
+
     @abstractmethod
     def save_workfile(self, dst_path: Optional[str] = None) -> None:
         """Save the currently opened scene.
@@ -1019,15 +1024,25 @@ class IWorkfileHost(AbstractHost):
         self._before_workfile_open(open_workfile_context)
         self._emit_workfile_open_event(event_data, after_open=False)
 
-        self.set_current_context(
-            folder_entity,
-            task_entity,
-            reason=ContextChangeReason.workfile_open,
-            project_entity=open_workfile_context.project_entity,
-            anatomy=open_workfile_context.anatomy,
-        )
+        if self.change_context_before_workfile_open:
+            self.set_current_context(
+                folder_entity,
+                task_entity,
+                reason=ContextChangeReason.workfile_open,
+                project_entity=open_workfile_context.project_entity,
+                anatomy=open_workfile_context.anatomy,
+            )
 
         self.open_workfile(filepath)
+
+        if not self.change_context_before_workfile_open:
+            self.set_current_context(
+                folder_entity,
+                task_entity,
+                reason=ContextChangeReason.workfile_open,
+                project_entity=open_workfile_context.project_entity,
+                anatomy=open_workfile_context.anatomy,
+            )
 
         self._after_workfile_open(open_workfile_context)
         self._emit_workfile_open_event(event_data)
@@ -1116,6 +1131,10 @@ class IWorkfileHost(AbstractHost):
         data_parser = WorkfileDataParser(file_template, workdir_data)
         items = []
         for filename in filenames:
+            # Skip hidden files, e.g. macOS AppleDouble '._<name>' files
+            #   created on network shares without Apple metadata support
+            if filename.startswith("."):
+                continue
             # TODO add 'default' support for folders
             ext = os.path.splitext(filename)[1].lower()
             if ext not in extensions:
