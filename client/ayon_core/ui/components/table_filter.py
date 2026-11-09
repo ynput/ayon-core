@@ -749,13 +749,15 @@ class _FilterDropdown(AYDropdownPopup):
     def _show_entity_page(self) -> None:
         """Show the top-level entity selection page."""
         entities = {entry.entity for entry in self._filters}
+        # Filters without entities are listed right away
         self._selected_entity = "Other" if entities == {"Other"} else None
         self._attr_breadcrumb.setText("")
         self._attr_breadcrumb.setVisible(False)
         self._attr_search.blockSignals(True)
         self._attr_search.clear()
         self._attr_search.blockSignals(False)
-        self._attr_back_btn.setVisible(self._selected_entity is not None)
+        # This is the first page, there is nothing to go back to
+        self._attr_back_btn.setVisible(False)
         self._populate_attribute_page(self._selected_entity)
         self._attr_search.setFocus()
 

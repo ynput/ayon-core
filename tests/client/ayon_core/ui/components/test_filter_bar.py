@@ -42,6 +42,17 @@ def test_flag_is_applied_when_picked(qtbot):
     assert criterion_text(excluded) == "Not comments"
 
 
+def test_filters_without_entities_are_the_first_page(qtbot):
+    bar, _reported = _create_bar(qtbot)
+    dropdown = bar._dropdown
+
+    dropdown.open_for_new(bar)
+
+    # Nothing to go back to from the first page
+    assert dropdown._attr_back_btn.isHidden()
+    assert list(dropdown._attr_buttons) == ["comments", "author", "text"]
+
+
 def test_values_come_from_the_values_getter(qtbot):
     bar, _reported = _create_bar(qtbot)
 
