@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
+from ..style_types import get_ayon_style_data
 from .buttons import AYButton
 from .container import AYContainer
 
@@ -24,7 +25,8 @@ class AYTabBar(AYContainer):
     The bar only tracks which tab is current, switching the actual content
     is left to the owner, e.g. by connecting :attr:`current_changed` to
     ``QStackedWidget.setCurrentIndex``. The first tab is current until
-    :meth:`set_current` is called.
+    :meth:`set_current` is called. A line below the tabs separates them
+    from the content.
 
     Args:
         *args: Forwarded to ``AYContainer``.
@@ -44,7 +46,14 @@ class AYTabBar(AYContainer):
             layout_spacing=4,
             **kwargs,
         )
-        self._layout.setContentsMargins(0, 0, 0, 0)
+        # Room for the line below the tabs
+        self._layout.setContentsMargins(0, 0, 0, 6)
+        # Same color as separators of menus
+        self._line_color = QtGui.QColor(
+            get_ayon_style_data("QMenu", "default").get(
+                "separator-color", "#41474d"
+            )
+        )
         self._buttons: list[AYButton] = []
         self._current = 0
         self._group = QtWidgets.QButtonGroup(self)
@@ -129,3 +138,11 @@ class AYTabBar(AYContainer):
             btn.setToolTip(label)
         else:
             btn.setText(label)
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        super().paintEvent(event)
+        painter = QtGui.QPainter(self)
+        painter.fillRect(
+            0, self.height() - 1, self.width(), 1, self._line_color
+        )
+        painter.end()

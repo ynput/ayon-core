@@ -58,23 +58,13 @@ class SidePanelWidget(AYContainer):
             variant=AYContainer.Variants.High,
             layout_spacing=4,
         )
-        activity_page = AYContainer(
-            layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.High,
-            layout_spacing=6,
-        )
-        activity_context_label = AYLabel(
-            "", dim=True, rel_text_size=-1, icon_size=14
-        )
         # Darker than the panel so comment cards stand out from it
         activity_widget = ActivityWidget(
             controller, variant=AYContainer.Variants.Low, layout_margin=6
         )
-        activity_page.add_widget(activity_context_label)
-        activity_page.add_widget(activity_widget, stretch=1)
 
         pages = QtWidgets.QStackedWidget(self)
-        pages.addWidget(activity_page)
+        pages.addWidget(activity_widget)
         pages.addWidget(details_page)
         tabs.current_changed.connect(pages.setCurrentIndex)
         tabs.set_current(details_index)
@@ -166,7 +156,6 @@ class SidePanelWidget(AYContainer):
         self._note_frame = note_frame
         self._description_input = description_input
         self._btn_description_save = btn_description_save
-        self._activity_context_label = activity_context_label
         self._activity_widget = activity_widget
 
         self._published_mode = False
@@ -179,7 +168,7 @@ class SidePanelWidget(AYContainer):
         self._controller = controller
 
         self._set_context(False, None, None)
-        self._set_activity_context(None, None, None)
+        self._set_activity_context(None, None)
 
     def set_published_mode(self, published_mode: bool) -> None:
         """Change published mode.
@@ -234,27 +223,12 @@ class SidePanelWidget(AYContainer):
     def _on_activity_context_change(self, event):
         # Folder change does not have task information, the task is not
         #   selected yet
-        self._set_activity_context(
-            event["folder_id"], event.get("task_id"), event.get("task_name")
-        )
+        self._set_activity_context(event["folder_id"], event.get("task_id"))
 
     def _set_activity_context(
-        self,
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        task_name: Optional[str],
+        self, folder_id: Optional[str], task_id: Optional[str]
     ) -> None:
         """Show activity of the task, or of the folder without a task."""
-        if task_id:
-            label, icon = task_name or "Task", "check_circle"
-        elif folder_id:
-            label, icon = "Folder", "folder"
-        else:
-            label, icon = "", ""
-        self._activity_context_label.setText(label)
-        self._activity_context_label.set_icon(icon)
-        self._activity_context_label.setVisible(bool(label))
-
         entity_id = task_id or folder_id
         self._activity_widget.set_context(
             self._controller.get_current_project_name(),

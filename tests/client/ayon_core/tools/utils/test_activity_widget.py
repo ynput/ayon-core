@@ -516,7 +516,7 @@ def activity_shown(inspector) -> bool:
     return inspector._activity.isVisibleTo(inspector)
 
 
-def test_browser_inspector_tells_what_the_activity_is_of(
+def test_browser_inspector_shows_activity_of_the_selection(
     qtbot, monkeypatch
 ):
     from qtpy import QtCore, QtGui
@@ -539,8 +539,6 @@ def test_browser_inspector_tells_what_the_activity_is_of(
     # Details are shown first, the feed is not fetched until its tab is
     assert inspector._tabs.current() == 1
     assert not activity_shown(inspector)
-    # The label has an icon, its text is read from the tooltip
-    label = inspector._activity_context_label
     activity = inspector._activity
 
     version_row = {
@@ -558,7 +556,6 @@ def test_browser_inspector_tells_what_the_activity_is_of(
         "productName": "modelMain",
         "version": "v003 (3 versions)",
         "_version_id": "version_3",
-        "_version_name": "v003",
         # The featured version is a hero version, actions use the hero
         "_action_version_id": "hero_version",
     }
@@ -576,20 +573,12 @@ def test_browser_inspector_tells_what_the_activity_is_of(
         inspector._update()
 
     _select(1)
-    assert label.toolTip() == "modelMain v003"
-    assert not label.isHidden()
     assert activity._entity_ids == ("version_3",)
-
-    _select(0)
-    assert label.toolTip() == "modelMain v001"
-
     _select(0, 1)
-    assert label.toolTip() == "2 versions"
     assert activity._entity_ids == ("version_1", "version_3")
 
     # Nothing with a version is selected
     _select(2)
-    assert label.isHidden()
     assert activity._entity_ids == ()
 
     # Folders selected in the hierarchy show their activity, until a
@@ -598,7 +587,6 @@ def test_browser_inspector_tells_what_the_activity_is_of(
     controller._selected_folder_ids = ["folder_a", "folder_b"]
     controller.selection_changed.emit(["folder_a", "folder_b"])
     assert activity._entity_ids == ("folder_a", "folder_b")
-    assert label.toolTip() == "2 folders"
     _select(0)
     assert activity._entity_ids == ("version_1",)
     # Not when the hierarchy does not show folders
@@ -608,7 +596,6 @@ def test_browser_inspector_tells_what_the_activity_is_of(
 
     monkeypatch.setattr(inspector, "activity_selection_limit", 1)
     _select(0, 1)
-    assert label.isHidden()
     assert activity._entity_ids == ()
 
 

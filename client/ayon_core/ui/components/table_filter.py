@@ -1979,10 +1979,11 @@ class AYFilterBar(AYContainer):
         Returns:
             The button, e.g. to show a count with its text.
         """
+        # Filled, as the buttons next to the field of the frontend
         button = AYButton(
             icon=icon,
             icon_size=18,
-            variant=AYButton.Variants.Nav,
+            variant=AYButton.Variants.Surface,
             checkable=True,
             tooltip=tooltip,
             parent=parent,
