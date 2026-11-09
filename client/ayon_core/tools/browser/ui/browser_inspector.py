@@ -32,6 +32,8 @@ class ReviewInspector(AYContainer):
 
     # Activity of a larger selection is too mixed to be useful
     activity_selection_limit = 20
+    # Margin of the content on the sides of the inspector
+    side_margin = 10
 
     def __init__(
         self,
@@ -49,6 +51,9 @@ class ReviewInspector(AYContainer):
             **kwargs,
         )
         self._layout.setAlignment(QtCore.Qt.AlignTop)
+        # Line below the tabs goes from side to side, the content has the
+        #   side margins instead
+        self._layout.setContentsMargins(0, 10, 0, 10)
         self.setMinimumWidth(300)
 
         self._controller = controller
@@ -86,6 +91,7 @@ class ReviewInspector(AYContainer):
 
         # top bar with path and close button
         top_bar = AYHBoxLayout(margin=0, spacing=5)
+        top_bar.setContentsMargins(self.side_margin, 0, self.side_margin, 0)
         self._path_label = AYLabel(
             "",
             dim=True,
@@ -117,7 +123,7 @@ class ReviewInspector(AYContainer):
         # Details and activity share the space below the thumbnail, so
         #   the activity does not make the inspector any wider. Tabs are
         #   laid out as on the frontend, but details are shown first.
-        self._tabs = AYTabBar()
+        self._tabs = AYTabBar(side_margin=self.side_margin)
         self._tabs.add_tab("Activity", icon="forum", icon_only=True)
         self._tabs.add_stretch()
         details_index = self._tabs.add_tab("Details")
@@ -136,7 +142,15 @@ class ReviewInspector(AYContainer):
         self._pages.addWidget(details_page)
         self._tabs.current_changed.connect(self._pages.setCurrentIndex)
         self._tabs.set_current(details_index)
-        self.add_widget(self._pages, stretch=1)
+        pages_wrapper = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+        )
+        pages_wrapper._layout.setContentsMargins(
+            self.side_margin, 0, self.side_margin, 0
+        )
+        pages_wrapper.add_widget(self._pages)
+        self.add_widget(pages_wrapper, stretch=1)
 
         # Version info
         details_page.add_widget(

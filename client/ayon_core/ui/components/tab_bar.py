@@ -28,8 +28,13 @@ class AYTabBar(AYContainer):
     :meth:`set_current` is called. A line below the tabs separates them
     from the content.
 
+    As on the frontend, the line goes from side to side of the panel. The
+    panel places the bar without its margins, and gives the bar its side
+    margin instead.
+
     Args:
         *args: Forwarded to ``AYContainer``.
+        side_margin: Space before the first and after the last tab.
         **kwargs: Forwarded to ``AYContainer``.
 
     Signals:
@@ -38,7 +43,7 @@ class AYTabBar(AYContainer):
 
     current_changed = QtCore.Signal(int)
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, side_margin: int = 0, **kwargs) -> None:
         kwargs.setdefault("variant", AYContainer.Variants.Low)
         super().__init__(
             *args,
@@ -47,7 +52,7 @@ class AYTabBar(AYContainer):
             **kwargs,
         )
         # Room for the line below the tabs
-        self._layout.setContentsMargins(0, 0, 0, 6)
+        self._layout.setContentsMargins(side_margin, 0, side_margin, 6)
         # Same color as separators of menus
         self._line_color = QtGui.QColor(
             get_ayon_style_data("QMenu", "default").get(

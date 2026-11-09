@@ -45,9 +45,17 @@ class SidePanelWidget(AYContainer):
             layout_margin=6,
             layout_spacing=4,
         )
+        # Line below the tabs goes from side to side, the content has the
+        #   side margins instead
+        side_margin = 6
+        self._layout.setContentsMargins(0, 6, 0, 6)
 
         # Tabs are laid out as on the frontend, but details are shown first
-        tabs = AYTabBar(parent=self)
+        tabs = AYTabBar(
+            side_margin=side_margin,
+            variant=AYContainer.Variants.High,
+            parent=self,
+        )
         tabs.add_tab("Activity", icon="forum", icon_only=True)
         tabs.add_stretch()
         details_index = tabs.add_tab("Details")
@@ -68,7 +76,16 @@ class SidePanelWidget(AYContainer):
         pages.addWidget(details_page)
         tabs.current_changed.connect(pages.setCurrentIndex)
         tabs.set_current(details_index)
-        self.add_widget(pages, stretch=1)
+        pages_wrapper = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.High,
+            parent=self,
+        )
+        pages_wrapper._layout.setContentsMargins(
+            side_margin, 0, side_margin, 0
+        )
+        pages_wrapper.add_widget(pages)
+        self.add_widget(pages_wrapper, stretch=1)
 
         # ── Details section ─────────────────────────────────────────
         details_form = AYContainer(
@@ -97,7 +114,7 @@ class SidePanelWidget(AYContainer):
         # Quick actions for the selection
         # - the row always takes its space, the buttons fade in and out
         actions_row = WorkfileActionsRow(controller, self)
-        self.add_widget(actions_row, stretch=0)
+        details_page.add_widget(actions_row, stretch=0)
 
         # ── Note/Comment section reused for both ────────────
         self._note_label = AYLabel(
