@@ -1092,7 +1092,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         if repre.get("colorspaceData"):
             data["colorspaceData"] = repre["colorspaceData"]
 
-        repre_doc = new_representation_entity(
+        repre_entity = new_representation_entity(
             name=repre["name"],
             version_id=version_entity["id"],
             files=[],  # files are filled afterward
@@ -1102,10 +1102,10 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         )
         update_data = None
         if existing is not None:
-            update_data = prepare_changes(existing, repre_doc)
+            update_data = prepare_changes(existing, repre_entity)
 
         return _PreparedRepresentation(
-            representation=repre_doc,
+            representation=repre_entity,
             repre_update_data=update_data,
             anatomy_data=template_data,
             transfers=transfers,
