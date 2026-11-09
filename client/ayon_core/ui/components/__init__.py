@@ -19,6 +19,7 @@ from .option_action import (
     AYOptionalAction,
     AYOptionalActionWidget,
     AYOptionBox,
+    AYOptionBoxItem,
 )
 from .text_edit import AYTextEdit
 from .tree_view import AYTreeView
@@ -55,6 +56,7 @@ __all__ = (
     "AYTreeView",
     "AYFrame",
     "AYOptionBox",
+    "AYOptionBoxItem",
     "AYOptionalAction",
     "AYOptionalActionWidget",
     "AYOptionalMenu",

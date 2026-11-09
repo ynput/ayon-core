@@ -19,16 +19,17 @@ Implementing 'get_action_items' allows the plugin to define what actions
 
 The action is triggered by calling the 'execute_action' method. Which takes
     'LoaderActionExecuteInfo' with the selection, the additional data from
-    the action item, form values from the form if any and information if
-    the action was launched in the alternative way. Plugins implementing
-    the legacy signature '(selection, data, form_values)' are still
-    supported.
+    the action item, form values from the form if any and identifier of
+    the alternative launch if the action was launched in an alternative way.
+    Plugins implementing the legacy signature '(selection, data, form_values)'
+    are still supported.
 
-Action item can enable 'alternative_launch' which allows the user to launch
-    the action in an alternative way (e.g. using the option box in the menu).
-    The meaning of the alternative launch is fully up to the plugin, it can
-    e.g. return a form with options first, ask for confirmation or do
-    something completely different.
+Action item can define 'alternative_launches' which allow the user to launch
+    the action in alternative ways. Each alternative launch has its own
+    identifier, icon and tooltip and is shown as a button next to the action
+    in the menu. The meaning of an alternative launch is fully up to
+    the plugin, it can e.g. return a form with options first, ask for
+    confirmation or do something completely different.
 
 Using 'LoaderActionResult' as the output of 'execute_action' can trigger to
     show a message in UI or to show an additional form ('ActionForm')
@@ -58,9 +59,9 @@ The flow of the logic is (in the loader tool):
     3. Use 'LoaderActionsContext' to collect items using 'get_action_items'.
     4. Show a menu (with submenus) in the UI.
     5. If a user selects an action, the action is triggered using
-        'execute_action' on the context. If the user used the option box
-        of an item with 'alternative_launch' enabled, the action is
-        triggered with 'alternative_launch' set to 'True'.
+        'execute_action' on the context. If the user clicked a button of
+        an alternative launch, the action is triggered with
+        'alternative_launch' set to identifier of the alternative launch.
     5a. If the action returns 'LoaderActionResult', show a 'message' if it is
         filled and show a form dialog if 'form' is filled.
     5b. If the user submitted the form, trigger the action again with the
@@ -494,6 +495,26 @@ class LoaderActionSelection:
 
 
 @dataclass
+class LoaderActionAlternativeLaunch:
+    """Alternative way how to launch a loader action.
+
+    Is shown as a button next to the action item in UI.
+
+    Attributes:
+        identifier (str): Identifier of the alternative launch. Is passed
+            to 'LoaderActionExecuteInfo' as 'alternative_launch'. Has to be
+            unique for the action item.
+        icon (IconBase | dict[str, Any] | None): Icon definition. Default
+            option box icon is used if not set.
+        tooltip (str | None): Tooltip of the button.
+
+    """
+    identifier: str
+    icon: IconBase | dict[str, Any] | None = None
+    tooltip: str | None = None
+
+
+@dataclass
 class LoaderActionItem:
     """Item of loader action.
 
@@ -511,9 +532,9 @@ class LoaderActionItem:
             belongs.
         icon (IconBase | dict[str, Any] | None): Icon definition.
         data (DataType | None): Action item data.
-        alternative_launch (bool): Action can be launched in an alternative
-            way. UI shows an option box next to the item which triggers
-            the action with 'alternative_launch' set to 'True'.
+        alternative_launches (list[LoaderActionAlternativeLaunch]):
+            Alternative ways how to launch the action. UI shows a button
+            for each of them next to the item.
         identifier (str): Identifier of the plugin which
             created the action item. Is filled automatically. Is not changed
             if is filled -> can lead to different plugin.
@@ -524,7 +545,9 @@ class LoaderActionItem:
     group_label: str | None = None
     icon: IconBase | dict[str, Any] | None = None
     data: DataType | None = None
-    alternative_launch: bool = False
+    alternative_launches: list[LoaderActionAlternativeLaunch] = field(
+        default_factory=list
+    )
     # Is filled automatically
     identifier: str = None
 
@@ -576,14 +599,16 @@ class LoaderActionExecuteInfo:
             to get entities or get context of original selection.
         data (DataType | None): Additional action item data.
         form_values (dict[str, Any]): Values from a form if there are any.
-        alternative_launch (bool): Action was launched in the alternative
-            way. Is kept when the action is re-triggered from a form.
+        alternative_launch (str | None): Identifier of alternative launch
+            used to launch the action. 'None' if the action was launched
+            the usual way. Is kept when the action is re-triggered
+            from a form.
 
     """
     selection: LoaderActionSelection
     data: DataType | None = None
     form_values: dict[str, Any] = field(default_factory=dict)
-    alternative_launch: bool = False
+    alternative_launch: str | None = None
 
 
 class LoaderActionPlugin(ABC):
@@ -765,7 +790,7 @@ class LoaderActionsContext:
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
-        alternative_launch: bool = False,
+        alternative_launch: str | None = None,
     ) -> Optional[LoaderActionResult]:
         """Trigger action execution.
 
@@ -777,8 +802,8 @@ class LoaderActionsContext:
             data (Optional[DataType]): Additional action item data.
             form_values (dict[str, Any]): Form values related to action.
                 Usually filled if action returned response with form.
-            alternative_launch (bool): Action was launched in the
-                alternative way.
+            alternative_launch (str | None): Identifier of alternative
+                launch used to launch the action.
 
         """
         plugins_by_id = self._get_plugins()
@@ -867,7 +892,13 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         order: Order of the action item.
         group_label: Label of the group to which the action belongs.
         icon: Icon definition shown next to label.
+        alternative_launches: Alternative ways how to launch the action.
         options: List of options to be shown before the action is executed.
+            Options are shown when the action is launched using
+            alternative launch with 'options_launch_identifier', default
+            values are used otherwise.
+        options_launch_identifier: Identifier of the alternative launch
+            showing options.
 
     """
 
@@ -875,8 +906,10 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     order: int = 0
     group_label: str | None = None
     icon: IconBase | dict[str, Any] | None = None
+    alternative_launches: list[LoaderActionAlternativeLaunch] | None = None
     # The values of options can be received from 'form_values'
     options: list[AbstractAttrDef] | None = None
+    options_launch_identifier: str = "options"
     skip_discovery: bool = True
 
     @abstractmethod
@@ -917,16 +950,19 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     ) -> list[LoaderActionItem]:
         if self.is_compatible(selection):
             label = self.label or self.__class__.__name__
-            alternative_launch = False
+            alternative_launches = list(self.alternative_launches or [])
             if self.options:
-                alternative_launch = True
+                alternative_launches.append(LoaderActionAlternativeLaunch(
+                    self.options_launch_identifier,
+                    tooltip=f"{label} with options",
+                ))
             return [
                 LoaderActionItem(
                     label=label,
                     order=self.order,
                     group_label=self.group_label,
                     icon=self.icon,
-                    alternative_launch=alternative_launch,
+                    alternative_launches=alternative_launches,
                 )
             ]
         return []
@@ -935,7 +971,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         self, info: LoaderActionExecuteInfo
     ) -> Optional[LoaderActionResult]:
         if not info.form_values and self.options:
-            if info.alternative_launch:
+            if info.alternative_launch == self.options_launch_identifier:
                 label = self.label or self.__class__.__name__
                 form = ActionForm(f"{label} Options", fields=self.options)
                 return LoaderActionResult(form=form)

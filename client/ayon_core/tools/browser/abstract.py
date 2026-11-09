@@ -101,6 +101,33 @@ class LoadersGrouping(Enum):
 
 
 @dataclass
+class ActionAlternativeLaunch:
+    """Alternative way how to launch an action.
+
+    Args:
+        identifier (str): Alternative launch identifier.
+        icon (IconBase | dict[str, Any] | None): Icon definition. Default
+            option box icon is used if not set.
+        tooltip (str | None): Tooltip.
+
+    """
+    identifier: str
+    icon: IconBase | dict[str, Any] | None = None
+    tooltip: str | None = None
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            identifier=self.identifier,
+            icon=self.icon,
+            tooltip=self.tooltip,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ActionAlternativeLaunch":
+        return cls(**data)
+
+
+@dataclass
 class ActionItem:
     """Action item that can be triggered.
 
@@ -117,9 +144,9 @@ class ActionItem:
         data (dict[str, Any] | None): Additional action data.
         options (list[AbstractAttrDef] | None):
             Action options. Note: 'qargparse' is considered as deprecated.
-        alternative_launch (bool): Action can be launched in an alternative
-            way. Option box is shown next to the action, which does not
-            show any options dialog.
+        alternative_launches (list[ActionAlternativeLaunch]): Alternative
+            ways how to launch the action. A button is shown next to
+            the action for each of them.
 
     """
     identifier: str
@@ -130,7 +157,7 @@ class ActionItem:
     order: int
     data: dict[str, Any] | None
     options: list[AbstractAttrDef] | None
-    alternative_launch: bool
+    alternative_launches: list[ActionAlternativeLaunch]
 
     def _options_to_data(self):
         options = self.options
@@ -158,7 +185,10 @@ class ActionItem:
             order=self.order,
             data=self.data,
             options=options,
-            alternative_launch=self.alternative_launch,
+            alternative_launches=[
+                item.to_data()
+                for item in self.alternative_launches
+            ],
         )
 
     @classmethod
@@ -167,6 +197,10 @@ class ActionItem:
         if options:
             options = deserialize_attr_defs(options)
         data["options"] = options
+        data["alternative_launches"] = [
+            ActionAlternativeLaunch.from_data(item)
+            for item in data["alternative_launches"]
+        ]
         return cls(**data)
 
 
@@ -643,7 +677,7 @@ class AbstractBrowserController(ABC):
         data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: bool,
+        alternative_launch: str | None,
     ):
         """Trigger action item.
 
@@ -668,8 +702,8 @@ class AbstractBrowserController(ABC):
             data (dict[str, Any] | None): Additional action item data.
             options (dict[str, Any]): Action option values from UI.
             form_values (dict[str, Any]): Action form values from UI.
-            alternative_launch (bool): Action was launched in
-                the alternative way.
+            alternative_launch (str | None): Identifier of alternative
+                launch used to launch the action.
 
         """
         pass

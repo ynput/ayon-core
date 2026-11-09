@@ -12,7 +12,11 @@ from ayon_core.tools.utils.widgets import OptionDialog
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.browser.abstract import ActionItem
 from ayon_core.tools.browser.models.actions import LOADER_PLUGIN_ID
-from ayon_core.ui.components import AYOptionalAction, AYOptionalMenu
+from ayon_core.ui.components import (
+    AYOptionalAction,
+    AYOptionalMenu,
+    AYOptionBoxItem,
+)
 
 
 def _actions_sorter(item: tuple[ActionItem, str, str]):
@@ -46,19 +50,19 @@ def show_actions_menu(
     global_point: QtCore.QPoint,
     one_item_selected: bool,
     parent: QtWidgets.QWidget,
-) -> tuple[ActionItem | None, dict[str, Any] | None, bool]:
+) -> tuple[ActionItem | None, dict[str, Any] | None, str | None]:
     """Show actions menu and let user pick an action.
 
     Returns:
-        tuple[ActionItem | None, dict[str, Any] | None, bool]: Selected
+        tuple[ActionItem | None, dict[str, Any] | None, str | None]: Selected
             action item, option values ('None' if options dialog was
-            cancelled) and if the action was launched in
-            the alternative way.
+            cancelled) and identifier of alternative launch used to
+            launch the action.
 
     """
     selected_action_item = None
     selected_options = None
-    alternative_launch = False
+    alternative_launch = None
 
     if not action_items:
         menu = AYOptionalMenu(parent)
@@ -77,22 +81,32 @@ def show_actions_menu(
 
     group_menu_by_key = {}
     action_items_by_id = {}
-    option_action = [None]
+    # Action and identifier of clicked option box
+    option_action = [None, None]
     for item in sorted(action_items_with_labels, key=_actions_sorter):
         action_item, _, _ = item
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
         icon = get_qt_icon(action_item.icon)
-        if action_item.alternative_launch:
+        if action_item.alternative_launches:
+            option_boxes = [
+                AYOptionBoxItem(
+                    identifier=alternative.identifier,
+                    icon=get_qt_icon(alternative.icon),
+                    tooltip=alternative.tooltip,
+                )
+                for alternative in action_item.alternative_launches
+            ]
             action = AYOptionalAction(
                 action_item.label,
                 icon,
-                True,
-                menu,
+                parent=menu,
+                option_boxes=option_boxes,
             )
-            action.option_clicked.connect(
-                lambda action=action: _select_option_action(
+            action.option_box_clicked.connect(
+                lambda identifier, action=action: _select_option_action(
                     action,
+                    identifier,
                     option_action,
                 )
             )
@@ -122,28 +136,31 @@ def show_actions_menu(
         else:
             menu.addAction(action)
 
-    action = menu.exec_(global_point) or option_action[0]
+    action = menu.exec_(global_point)
+    if action is None:
+        action, alternative_launch = option_action
+
     if action is not None:
         item_id = action.data()
         selected_action_item = action_items_by_id.get(item_id)
 
     if selected_action_item is not None:
-        alternative_launch = (
-            selected_action_item.alternative_launch
-            and bool(action.property("optioned"))
+        selected_options = _get_options(
+            action, selected_action_item, alternative_launch, parent
         )
-        selected_options = _get_options(action, selected_action_item, parent)
 
     return selected_action_item, selected_options, alternative_launch
 
 
-def _select_option_action(action, output: list) -> None:
-    """Record that an action's option button triggered the menu."""
-    action.setProperty("optioned", True)
+def _select_option_action(
+    action, identifier: str | None, output: list
+) -> None:
+    """Record which action's option button triggered the menu."""
     output[0] = action
+    output[1] = identifier
 
 
-def _get_options(action, action_item, parent):
+def _get_options(action, action_item, alternative_launch, parent):
     """Provides dialog to select value from loader provided options.
 
     Loader can provide static or dynamically created options based on
@@ -152,6 +169,8 @@ def _get_options(action, action_item, parent):
     Args:
         action (OptionalAction) - Action object in menu.
         action_item (ActionItem) - Action item with context information.
+        alternative_launch (str | None) - Identifier of alternative launch
+            used to launch the action.
         parent (QtCore.QObject) - Parent object for dialog.
 
     Returns:
@@ -161,7 +180,7 @@ def _get_options(action, action_item, parent):
 
     # Pop option dialog
     options = action_item.options
-    if not action.property("optioned") or not options:
+    if alternative_launch is None or not options:
         return {}
 
     # Grouped items only have the representation name as label

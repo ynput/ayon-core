@@ -17,9 +17,26 @@ Typical usage::
     action.triggered.connect(lambda: run_process())
     action.option_clicked.connect(lambda: open_options_dialog())
     menu.addAction(action)
+
+Multiple option targets can be defined with ``option_boxes``. Each of them
+has its own identifier, icon and tooltip, and clicking it emits
+``AYOptionalAction.option_box_clicked`` with the identifier::
+
+    action = AYOptionalAction(
+        label="Run Process",
+        icon_name="play_arrow",
+        parent=menu,
+        option_boxes=[
+            AYOptionBoxItem("options", tooltip="Run with options"),
+            AYOptionBoxItem("debug", "bug_report", "Run in debug mode"),
+        ],
+    )
+    action.option_box_clicked.connect(lambda identifier: ...)
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from qtmaterialsymbols import get_icon
 from qtpy import QtCore, QtGui, QtWidgets
@@ -58,14 +75,32 @@ class AYOptionBox(AYButton):
         return self.rect().contains(pos)
 
 
+@dataclass
+class AYOptionBoxItem:
+    """Definition of an option target shown next to an optional action.
+
+    Args:
+        identifier: Identifier emitted when the option target is clicked.
+        icon: Material symbol name or an already resolved icon. Default
+            option box icon is used if not set.
+        tooltip: Tooltip shown when the option target is hovered.
+    """
+
+    identifier: str | None = None
+    icon: str | QtGui.QIcon | None = None
+    tooltip: str | None = None
+
+
 class AYOptionalActionWidget(QtWidgets.QWidget):
     """Self-painted menu row with main and option action hit regions.
 
     Args:
         label: Display text for the action.
         icon_name: Material symbol name or an already resolved icon.
-        use_option: Whether to show the option action.
+        use_option: Whether to show the default option action. Ignored
+            when ``option_boxes`` are passed.
         parent: Optional parent widget.
+        option_boxes: Option targets shown on the right side of the row.
     """
 
     def __init__(
@@ -74,14 +109,18 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         icon_name: str | QtGui.QIcon = "none",
         use_option: bool = True,
         parent: QtWidgets.QWidget | None = None,
+        option_boxes: list[AYOptionBoxItem] | None = None,
     ) -> None:
         super().__init__(parent)
+        if option_boxes is None:
+            option_boxes = [AYOptionBoxItem()] if use_option else []
         self._label = label
         self._icon_name = icon_name
-        self._use_option = use_option
+        self._option_boxes = list(option_boxes)
+        self._use_option = bool(self._option_boxes)
         self._shortcut_text = ""
         self._hovered = False
-        self._option_hovered = False
+        self._hovered_option_idx: int | None = None
         self.setMouseTracking(True)
         self.setAttribute(
             QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents
@@ -97,16 +136,44 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         style.set_context(self.parentWidget())
         return style
 
-    def _option_rect(self) -> QtCore.QRect:
-        if not self._use_option:
-            return QtCore.QRect()
+    def _option_rects(self) -> list[QtCore.QRect]:
+        """Rectangles of option targets, ordered left to right."""
         row_height = self.height()
-        return QtCore.QRect(
-            self.width() - row_height,
-            0,
-            row_height,
-            row_height,
-        )
+        count = len(self._option_boxes)
+        return [
+            QtCore.QRect(
+                self.width() - (count - idx) * row_height,
+                0,
+                row_height,
+                row_height,
+            )
+            for idx in range(count)
+        ]
+
+    def _option_rect(self) -> QtCore.QRect:
+        """Rectangle covering all option targets."""
+        rect = QtCore.QRect()
+        for option_rect in self._option_rects():
+            rect = rect.united(option_rect)
+        return rect
+
+    def _option_index_at(self, local_pos: QtCore.QPoint) -> int | None:
+        for idx, option_rect in enumerate(self._option_rects()):
+            if option_rect.contains(local_pos):
+                return idx
+        return None
+
+    def _resolved_option_icon(
+        self,
+        option_box: AYOptionBoxItem,
+        color: QtGui.QColor,
+    ) -> QtGui.QIcon:
+        icon = option_box.icon
+        if isinstance(icon, QtGui.QIcon) and not icon.isNull():
+            return icon
+        if not icon or isinstance(icon, QtGui.QIcon):
+            icon = "check_box_outline_blank"
+        return get_icon(icon, color=color.name())
 
     def _set_row_hover(self, hovered: bool) -> None:
         if self._hovered != hovered:
@@ -153,8 +220,9 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
             QtCore.QSize(),
             self.parentWidget(),
         )
-        if self._use_option:
-            size.setWidth(size.width() + size.height())
+        size.setWidth(
+            size.width() + size.height() * len(self._option_boxes)
+        )
         return size
 
     def paintEvent(self, _event: QtGui.QPaintEvent) -> None:
@@ -173,22 +241,21 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
             self.parentWidget(),
         )
 
-        if option_rect.isValid():
-            state = "hover" if self._hovered else "base"
-            style = self._menu_style(state)
-            if self._option_hovered:
+        state = "hover" if self._hovered else "base"
+        style = self._menu_style(state)
+        icon_size = int(style.get("icon-size", 16))
+        color = QtGui.QColor(style.get("color", "#f4f5f5"))
+        for idx, (option_box, option_rect) in enumerate(
+            zip(self._option_boxes, self._option_rects())
+        ):
+            if idx == self._hovered_option_idx:
                 painter.fillRect(
                     option_rect,
                     QtGui.QColor(
                         style.get("shortcut-background-color", "#353b46")
                     ),
                 )
-            icon_size = int(style.get("icon-size", 16))
-            color = QtGui.QColor(style.get("color", "#f4f5f5"))
-            option_icon = get_icon(
-                "check_box_outline_blank",
-                color=color.name(),
-            )
+            option_icon = self._resolved_option_icon(option_box, color)
             option_icon.paint(
                 painter,
                 QtCore.QRect(
@@ -206,19 +273,28 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
 
     def leaveEvent(self, event: QtCore.QEvent) -> None:
         self._set_row_hover(False)
-        self._option_hovered = False
+        self._hovered_option_idx = None
         super().leaveEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        option_hovered = self._option_rect().contains(event.pos())
-        if self._option_hovered != option_hovered:
-            self._option_hovered = option_hovered
+        hovered_option_idx = self._option_index_at(event.pos())
+        if self._hovered_option_idx != hovered_option_idx:
+            self._hovered_option_idx = hovered_option_idx
             self.update()
         super().mouseMoveEvent(event)
 
+    def option_box_at(
+        self, global_pos: QtCore.QPoint
+    ) -> AYOptionBoxItem | None:
+        """Return the option target under a global cursor position."""
+        idx = self._option_index_at(self.mapFromGlobal(global_pos))
+        if idx is None:
+            return None
+        return self._option_boxes[idx]
+
     def is_option_hovered(self, global_pos: QtCore.QPoint) -> bool:
         local_pos = self.mapFromGlobal(global_pos)
-        return self._option_rect().contains(local_pos)
+        return self._option_index_at(local_pos) is not None
 
     def set_highlight(
         self,
@@ -226,17 +302,17 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         global_pos: QtCore.QPoint | None = None,
     ) -> None:
         """Update row and option-box hover from the owning menu."""
-        option_hovered = bool(
-            highlighted
-            and global_pos is not None
-            and self.is_option_hovered(global_pos)
-        )
+        hovered_option_idx = None
+        if highlighted and global_pos is not None:
+            hovered_option_idx = self._option_index_at(
+                self.mapFromGlobal(global_pos)
+            )
         changed = (
             self._hovered != highlighted
-            or self._option_hovered != option_hovered
+            or self._hovered_option_idx != hovered_option_idx
         )
         self._hovered = highlighted
-        self._option_hovered = option_hovered
+        self._hovered_option_idx = hovered_option_idx
         if changed:
             self.update()
 
@@ -248,16 +324,22 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
     :class:`AYOptionalActionWidget` inside a standard ``QMenu``.
 
     Set ``use_option=True`` to show the option box and connect to
-    :attr:`option_clicked` for the secondary action.
+    :attr:`option_clicked` for the secondary action. Pass
+    ``option_boxes`` to show multiple option targets and connect to
+    :attr:`option_box_clicked` to know which one was clicked.
 
     Args:
         label: Display text.
         icon_name: Material symbol name, resolved icon, or ``"none"``.
-        use_option: Whether to show the option box button.
+        use_option: Whether to show the default option box button.
+            Ignored when ``option_boxes`` are passed.
         parent: Parent widget (typically the owning menu).
+        option_boxes: Option targets shown on the right side of the row.
     """
 
     option_clicked = QtCore.Signal()
+    # Identifier of clicked option box ('None' for default option box)
+    option_box_clicked = QtCore.Signal(object)
 
     def __init__(
         self,
@@ -265,11 +347,15 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         icon_name: str | QtGui.QIcon | None = "none",
         use_option: bool = True,
         parent: QtWidgets.QWidget | None = None,
+        option_boxes: list[AYOptionBoxItem] | None = None,
     ) -> None:
         super().__init__(parent)
+        if option_boxes is None:
+            option_boxes = [AYOptionBoxItem()] if use_option else []
         self._label = label
         self._icon_name = icon_name or "none"
-        self._use_option = use_option
+        self._option_boxes = list(option_boxes)
+        self._use_option = bool(self._option_boxes)
         self.widget: AYOptionalActionWidget | None = None
         self.setText(label)
 
@@ -287,8 +373,8 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         widget = AYOptionalActionWidget(
             self._label,
             icon_name=self._icon_name,
-            use_option=self._use_option,
             parent=parent,
+            option_boxes=self._option_boxes,
         )
         widget.setEnabled(self.isEnabled())
         widget.set_shortcut_text(self.shortcut().toString())
@@ -321,9 +407,22 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
             and self.widget.is_option_hovered(global_pos)
         )
 
-    def trigger_option(self) -> None:
-        """Emit the secondary action and close its menu hierarchy."""
+    def option_box_at(
+        self, global_pos: QtCore.QPoint
+    ) -> AYOptionBoxItem | None:
+        """Return the option target under *global_pos*."""
+        if not self._use_option or self.widget is None:
+            return None
+        return self.widget.option_box_at(global_pos)
+
+    def trigger_option(self, identifier: str | None = None) -> None:
+        """Emit the secondary action and close its menu hierarchy.
+
+        Args:
+            identifier: Identifier of the clicked option box.
+        """
         self.option_clicked.emit()
+        self.option_box_clicked.emit(identifier)
         self._close_menu_chain()
 
 
@@ -506,12 +605,28 @@ class AYOptionalMenu(AYMenu):
         if (
             event.button() == QtCore.Qt.MouseButton.LeftButton
             and isinstance(action, AYOptionalAction)
-            and action.is_option_hovered(self._event_global_pos(event))
         ):
-            action.trigger_option()
-            event.accept()
-            return
+            option_box = action.option_box_at(
+                self._event_global_pos(event)
+            )
+            if option_box is not None:
+                action.trigger_option(option_box.identifier)
+                event.accept()
+                return
         super().mouseReleaseEvent(event)
+
+    def event(self, event: QtCore.QEvent) -> bool:
+        """Show tooltip of the option box under the cursor."""
+        if event.type() == QtCore.QEvent.Type.ToolTip:
+            action = self.actionAt(event.pos())
+            if isinstance(action, AYOptionalAction):
+                option_box = action.option_box_at(event.globalPos())
+                if option_box is not None and option_box.tooltip:
+                    QtWidgets.QToolTip.showText(
+                        event.globalPos(), option_box.tooltip, self
+                    )
+                    return True
+        return super().event(event)
 
     def _apply_action_hover(
         self,

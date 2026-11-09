@@ -2310,7 +2310,7 @@ class BrowserWidgetController(QtCore.QObject):
         data: dict[str, Any] | None,
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: bool,
+        alternative_launch: str | None,
     ) -> None:
         """Trigger an action item by identifier.
 
@@ -2326,7 +2326,8 @@ class BrowserWidgetController(QtCore.QObject):
             data: Optional action-specific payload.
             options: Loader option values.
             form_values: Form values returned by the action dialog.
-            alternative_launch: Action was launched in the alternative way.
+            alternative_launch: Identifier of alternative launch used to
+                launch the action.
         """
         self._loader_controller.trigger_action_item(
             identifier=identifier,

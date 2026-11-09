@@ -11,6 +11,7 @@ from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.widgets import (
     OptionalMenu,
     OptionalAction,
+    OptionBoxItem,
     OptionDialog,
 )
 from ayon_core.tools.utils import get_qt_icon
@@ -36,19 +37,19 @@ def show_actions_menu(
     global_point: QtCore.QPoint,
     one_item_selected: bool,
     parent: QtWidgets.QWidget,
-) -> tuple[ActionItem | None, dict[str, Any] | None, bool]:
+) -> tuple[ActionItem | None, dict[str, Any] | None, str | None]:
     """Show actions menu and let user pick an action.
 
     Returns:
-        tuple[ActionItem | None, dict[str, Any] | None, bool]: Selected
+        tuple[ActionItem | None, dict[str, Any] | None, str | None]: Selected
             action item, option values ('None' if options dialog was
-            cancelled) and if the action was launched in
-            the alternative way.
+            cancelled) and identifier of alternative launch used to
+            launch the action.
 
     """
     selected_action_item = None
     selected_options = None
-    alternative_launch = False
+    alternative_launch = None
 
     if not action_items:
         menu = QtWidgets.QMenu(parent)
@@ -73,12 +74,20 @@ def show_actions_menu(
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
         icon = get_qt_icon(action_item.icon)
-        use_option = action_item.alternative_launch
+        option_boxes = [
+            OptionBoxItem(
+                identifier=alternative.identifier,
+                icon=get_qt_icon(alternative.icon),
+                tooltip=alternative.tooltip,
+            )
+            for alternative in action_item.alternative_launches
+        ]
         action = OptionalAction(
             action_item.label,
             icon,
-            use_option,
-            menu
+            bool(option_boxes),
+            menu,
+            option_boxes=option_boxes,
         )
         if item_options:
             # Add option box tip
@@ -110,16 +119,15 @@ def show_actions_menu(
         selected_action_item = action_items_by_id.get(item_id)
 
     if selected_action_item is not None:
-        alternative_launch = (
-            selected_action_item.alternative_launch
-            and getattr(action, "optioned", False)
+        alternative_launch = getattr(action, "option_identifier", None)
+        selected_options = _get_options(
+            action, selected_action_item, alternative_launch, parent
         )
-        selected_options = _get_options(action, selected_action_item, parent)
 
     return selected_action_item, selected_options, alternative_launch
 
 
-def _get_options(action, action_item, parent):
+def _get_options(action, action_item, alternative_launch, parent):
     """Provides dialog to select value from loader provided options.
 
     Loader can provide static or dynamically created options based on
@@ -128,6 +136,8 @@ def _get_options(action, action_item, parent):
     Args:
         action (OptionalAction) - Action object in menu.
         action_item (ActionItem) - Action item with context information.
+        alternative_launch (str | None) - Identifier of alternative launch
+            used to launch the action.
         parent (QtCore.QObject) - Parent object for dialog.
 
     Returns:
@@ -137,7 +147,7 @@ def _get_options(action, action_item, parent):
 
     # Pop option dialog
     options = action_item.options
-    if not getattr(action, "optioned", False) or not options:
+    if alternative_launch is None or not options:
         return {}
 
     dialog_title = action.label + " Options"

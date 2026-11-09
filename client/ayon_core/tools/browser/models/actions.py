@@ -27,10 +27,16 @@ from ayon_core.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from ayon_core.tools.browser.abstract import ActionItem, LoadersGrouping
+from ayon_core.tools.browser.abstract import (
+    ActionItem,
+    ActionAlternativeLaunch,
+    LoadersGrouping,
+)
 
 ACTIONS_MODEL_SENDER = "actions.model"
 LOADER_PLUGIN_ID = "__loader_plugin__"
+# Alternative launch of loader plugins showing options dialog
+LOADER_OPTIONS_LAUNCH_ID = "options"
 NOT_SET = object()
 
 
@@ -210,7 +216,7 @@ class LoaderActionsModel:
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: bool,
+        alternative_launch: str | None,
     ):
         """Trigger action by identifier.
 
@@ -228,8 +234,8 @@ class LoaderActionsModel:
             data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Loader option values.
             form_values (dict[str, Any]): Form values.
-            alternative_launch (bool): Action was launched in
-                the alternative way.
+            alternative_launch (str | None): Identifier of alternative
+                launch used to launch the action.
 
         """
         event_data = {
@@ -428,6 +434,11 @@ class LoaderActionsModel:
         elif repre_name:
             label = f"{label} ({repre_name})"
         options = loader.get_options(contexts)
+        alternative_launches = []
+        if options:
+            alternative_launches.append(
+                ActionAlternativeLaunch(LOADER_OPTIONS_LAUNCH_ID)
+            )
         return ActionItem(
             LOADER_PLUGIN_ID,
             data={
@@ -441,7 +452,7 @@ class LoaderActionsModel:
             tooltip=self._get_action_tooltip(loader),
             order=loader.order,
             options=options,
-            alternative_launch=bool(options),
+            alternative_launches=alternative_launches,
         )
 
     def _get_loaders(self, project_name):
@@ -963,7 +974,14 @@ class LoaderActionsModel:
                 order=action.order,
                 data=action.data,
                 options=None,
-                alternative_launch=action.alternative_launch,
+                alternative_launches=[
+                    ActionAlternativeLaunch(
+                        identifier=item.identifier,
+                        icon=item.icon,
+                        tooltip=item.tooltip,
+                    )
+                    for item in action.alternative_launches
+                ],
             ))
         return items
 
