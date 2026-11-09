@@ -210,6 +210,11 @@ class AYActivityStream(AYContainer):
     viewport_changed = QtCore.Signal()
 
     avatar_size = 20
+    # Spacing of rows as in the feed of the frontend: comments and publishes
+    #   have more padding around them than the smaller status changes
+    row_spacing = 8
+    row_padding = 8
+    small_row_padding = 4
     # Delay of 'viewport_changed' in milliseconds
     viewport_changed_delay = 150
 
@@ -268,12 +273,27 @@ class AYActivityStream(AYContainer):
             search_key=_SEARCH_KEY,
             compact=True,
         )
-        self._filter_bar.add_quick_action("comments", "chat", "Comments")
-        self._checklists_button = self._filter_bar.add_quick_action(
-            "checklists", "check_circle", "Checklists"
-        )
         self._filter_bar.filters_changed.connect(self._on_filters_changed)
-        self.add_widget(self._filter_bar)
+        # Comments and checklists are buttons next to the bar, as on the
+        #   frontend
+        header = AYContainer(
+            layout=AYContainer.Layout.HBox,
+            variant=self.Variants.Low,
+            layout_spacing=4,
+            parent=self,
+        )
+        header.add_widget(self._filter_bar, stretch=1)
+        header.add_widget(
+            self._filter_bar.create_quick_action(
+                "comments", "chat", "Comments", parent=header
+            )
+        )
+        self._checklists_button = self._filter_bar.create_quick_action(
+            "checklists", "check_circle", "Checklists", parent=header
+        )
+        header.add_widget(self._checklists_button)
+        self._header = header
+        self.add_widget(header)
 
         self._message_label = AYLabel("", dim=True)
         self._message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -286,7 +306,7 @@ class AYActivityStream(AYContainer):
         self._items = _ItemsContainer(
             layout=AYContainer.Layout.VBox,
             variant=self.Variants.Low,
-            layout_spacing=10,
+            layout_spacing=self.row_spacing,
         )
         self._items._layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         self._scroll = AYScrollArea(self)
@@ -588,21 +608,26 @@ class AYActivityStream(AYContainer):
     def _create_widget(
         self, activity: ActivityModel
     ) -> QtWidgets.QWidget | None:
+        padding = self.row_padding
         if isinstance(activity, CommentModel):
-            return self._create_comment(activity)
-        if isinstance(activity, VersionPublishModel):
-            return AYPublish(
+            widget = self._create_comment(activity)
+        elif isinstance(activity, VersionPublishModel):
+            widget = AYPublish(
                 data=activity,
                 status_definitions=self._status_definitions,
                 thumbnail_loader=self._thumbnail_loader,
             )
-        if isinstance(activity, StatusChangeModel):
-            return AYStatusChange(
+        elif isinstance(activity, StatusChangeModel):
+            widget = AYStatusChange(
                 data=activity,
                 status_definitions=self._status_definitions,
                 compact=self._compact,
             )
-        return None
+            padding = self.small_row_padding
+        else:
+            return None
+        widget.setContentsMargins(0, padding, 0, padding)
+        return widget
 
     def _create_comment(self, activity: CommentModel) -> AYComment:
         widget = AYComment(data=activity, mention_source=self._mention_source)
@@ -735,7 +760,7 @@ class AYActivityStream(AYContainer):
             visible += show
         total = len(self._widgets)
         on_page = self._page is not None
-        self._filter_bar.setVisible(not on_page)
+        self._header.setVisible(not on_page)
         self._message_label.setText(
             self._empty_text if not total else "Nothing matches the filter"
         )

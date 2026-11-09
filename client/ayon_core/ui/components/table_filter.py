@@ -1794,8 +1794,8 @@ class AYFilterBar(AYContainer):
     :func:`filter_values_match`. :class:`AYTableFilter` is the bar that
     applies them to a table model.
 
-    Quick actions are buttons at the end of the bar that toggle a flag
-    filter with one click, see :meth:`add_quick_action`.
+    Quick actions are buttons that toggle a flag filter with one click,
+    placed next to the bar by its owner, see :meth:`create_quick_action`.
 
     Args:
         filters: Filters offered by the dropdown.
@@ -1834,6 +1834,8 @@ class AYFilterBar(AYContainer):
             layout_margin=4,
             hover_enabled=True,
         )
+        # Room before the search icon, as in the field of the frontend
+        self._layout.setContentsMargins(8, 4, 4, 4)
         self._compact = compact
         self.setFixedHeight(32)
         self.setSizePolicy(
@@ -1884,13 +1886,7 @@ class AYFilterBar(AYContainer):
 
     def minimumSizeHint(self) -> QSize:
         """Keep badge widths from increasing the containing UI minimum."""
-        quick_width = sum(
-            button.sizeHint().width() + 4
-            for button in self._quick_actions.values()
-        )
-        return QSize(
-            self._search_btn.width() + 100 + quick_width, self.height()
-        )
+        return QSize(self._search_btn.width() + 100, self.height())
 
     def _open_filter_dropdown(self) -> None:
         """Open the filter dropdown for a new criterion."""
@@ -1961,37 +1957,43 @@ class AYFilterBar(AYContainer):
         """Set project-wide values offered for regular column filters."""
         self._dropdown.set_column_values(values)
 
-    def add_quick_action(
+    def create_quick_action(
         self,
         key: str,
         icon: str,
         tooltip: str = "",
+        parent: QWidget | None = None,
     ) -> AYButton:
-        """Add a button toggling a flag filter at the end of the bar.
+        """Create a button toggling a flag filter of the bar.
 
-        The button is checked while the filter is active.
+        The button is checked while the filter is active. It is not part
+        of the bar, the owner places it, e.g. next to the bar as the
+        frontend does.
 
         Args:
             key: Key of a filter entry that is a flag.
             icon: Material symbol of the button.
             tooltip: Tooltip of the button.
+            parent: Parent widget of the button.
 
         Returns:
             The button, e.g. to show a count with its text.
         """
         button = AYButton(
             icon=icon,
-            icon_size=16,
-            variant=AYButton.Variants.Nav_Small,
+            icon_size=18,
+            variant=AYButton.Variants.Nav,
             checkable=True,
             tooltip=tooltip,
+            parent=parent,
         )
         button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        button.setFixedHeight(self.minimumHeight())
+        button.setMinimumWidth(self.minimumHeight())
         button.clicked.connect(
             lambda _checked=False, k=key: self._toggle_flag(k)
         )
         self._quick_actions[key] = button
-        self.add_widget(button)
         self._update_quick_actions()
         return button
 

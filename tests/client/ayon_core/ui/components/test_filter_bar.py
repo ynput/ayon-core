@@ -67,7 +67,9 @@ def test_typed_text_is_offered_as_search(qtbot):
 
 def test_quick_action_toggles_its_flag(qtbot):
     bar, reported = _create_bar(qtbot)
-    button = bar.add_quick_action("comments", "chat", "Comments")
+    button = bar.create_quick_action("comments", "chat", "Comments")
+    # Not part of the bar, the owner places it
+    assert button.parent() is None
 
     button.click()
     assert button.isChecked()
