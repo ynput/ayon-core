@@ -918,8 +918,9 @@ class AYComment(AYContainer):
             parent=self,
         )
         self.edit_button.setFixedSize(bsize, bsize)
-        self.edit_frame.add_widget(self.del_button)
+        # Delete is the last button, as on the frontend
         self.edit_frame.add_widget(self.edit_button)
+        self.edit_frame.add_widget(self.del_button)
         self.top_line.addStretch(100)
         self.top_line.add_widget(self.edit_frame)
         self.edit_frame.setVisible(False)

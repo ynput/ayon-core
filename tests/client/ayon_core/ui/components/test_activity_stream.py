@@ -685,3 +685,14 @@ def test_page_is_shown_instead_of_the_feed(qtbot) -> None:
     feed_button.click()
     assert not page.isVisible()
     assert stream._scroll.isVisible()
+
+
+def test_comment_edit_button_is_left_of_delete(qtbot) -> None:
+    stream = AYActivityStream(editable=True)
+    qtbot.addWidget(stream)
+    stream.set_activities(_activities())
+    row = stream._widgets[0][1]
+
+    # As on the frontend, delete is the last button
+    layout = row.edit_frame.layout()
+    assert layout.indexOf(row.edit_button) < layout.indexOf(row.del_button)
