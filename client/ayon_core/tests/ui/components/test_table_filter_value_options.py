@@ -27,7 +27,9 @@ def _dropdown(qtbot, entries: list[FilterEntry]) -> _FilterDropdown:
     model.get_distinct_values.return_value = []
     table_filter = Mock()
     table_filter.width.return_value = 300
-    dropdown = _FilterDropdown(model, table_filter, entries)
+    dropdown = _FilterDropdown(
+        model.get_distinct_values, table_filter, entries
+    )
     qtbot.addWidget(dropdown)
     return dropdown
 
@@ -165,7 +167,7 @@ def test_value_options_accept_mixed_str_and_valueoption(qtbot):
     dropdown = _dropdown(qtbot, [entry])
     # The model reports the same raw values back (e.g. from loaded rows);
     # they must not duplicate the configured ValueOption entries.
-    dropdown._model.get_distinct_values.return_value = ["in_progress", "done"]
+    dropdown._values_getter.return_value = ["in_progress", "done"]
 
     dropdown._on_attr_selected("status", "Status")
 
