@@ -169,14 +169,16 @@ class StreamCalls:
     ) -> None:
         self.calls: list[tuple[str, Any]] = []
         self._depth = 0
-        for name in (
-            "set_status_definitions",
-            "set_user_list",
-            "set_activities",
-            "set_message",
-        ):
+        targets = (
+            (widget, "set_status_definitions"),
+            # Users that can be mentioned when a comment is edited
+            (widget.mention_source(), "set_users"),
+            (widget, "set_activities"),
+            (widget, "set_message"),
+        )
+        for obj, name in targets:
             monkeypatch.setattr(
-                widget, name, self._wrap(name, getattr(widget, name))
+                obj, name, self._wrap(name, getattr(obj, name))
             )
 
     def _wrap(self, name: str, method: Any) -> Any:
@@ -261,7 +263,7 @@ def test_feed_is_fetched_from_the_controller_while_visible(
     # Statuses and users are set before activities that are using them
     assert [name for name, _ in stream.calls[1:]] == [
         "set_status_definitions",
-        "set_user_list",
+        "set_users",
         "set_activities",
     ]
     assert stream.get("set_status_definitions") == [
@@ -276,7 +278,7 @@ def test_feed_is_fetched_from_the_controller_while_visible(
     ]
     assert [
         (user.name, user.short_name, user.full_name)
-        for user in stream.get("set_user_list")[0]
+        for user in stream.get("set_users")[0]
     ] == [("roy", "roy", "Roy Nieterau"), ("libor", "libor", "libor")]
 
     comment, status, publish = stream.get("set_activities")[0]

@@ -410,5 +410,5 @@ class ActivityWidget(AYActivityStream):
         self.set_status_definitions(
             _create_status_definitions(feed.status_items)
         )
-        self.set_user_list(users)
+        self.mention_source().set_users(users)
         self.set_activities(activities)

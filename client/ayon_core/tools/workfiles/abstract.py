@@ -7,6 +7,7 @@ import typing
 from typing import Any, Callable
 
 from ayon_core.host import PublishedWorkfileInfo
+from ayon_core.lib.icon_definitions import IconBase, get_icon_def_from_data
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
@@ -81,6 +82,104 @@ class PublishedWorkfileWrap:
         return cls(info=info, comment=data["comment"])
 
 
+@dataclass(frozen=True)
+class ActionSelectionData:
+    """Selection in the tool for which are workfile actions collected.
+
+    The object is hashable, so it can be used to cache action items.
+
+    Attributes:
+        published (bool): Selection is related to published workfiles.
+        folder_id (str | None): Selected folder id.
+        task_id (str | None): Selected task id.
+        filepath (str | None): Path to selected workfile. Is 'None' if
+            the selection is related only to the area.
+        rootless_path (str | None): Rootless path of selected workarea
+            workfile.
+        workfile_entity_id (str | None): Workfile entity id of selected
+            workarea workfile.
+        representation_id (str | None): Representation id of selected
+            published workfile.
+
+    """
+    published: bool
+    folder_id: str | None = None
+    task_id: str | None = None
+    filepath: str | None = None
+    rootless_path: str | None = None
+    workfile_entity_id: str | None = None
+    representation_id: str | None = None
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "published": self.published,
+            "folder_id": self.folder_id,
+            "task_id": self.task_id,
+            "filepath": self.filepath,
+            "rootless_path": self.rootless_path,
+            "workfile_entity_id": self.workfile_entity_id,
+            "representation_id": self.representation_id,
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> ActionSelectionData:
+        return cls(**data)
+
+
+@dataclass
+class ActionItem:
+    """Workfile action item that can be shown in the UI.
+
+    Attributes:
+        identifier (str): Identifier of the action plugin.
+        label (str): Text shown in UI.
+        order (int): Order of the action.
+        group_label (str | None): Label of the group to which the action
+            belongs.
+        icon (IconBase | dict[str, Any] | None): Icon definition.
+        tooltip (str | None): Text shown on hover over the action.
+        description (str | None): Longer description of the action.
+        quick_action (bool): The action can be shown as a quick action
+            button. Is available only in the context menu if is 'False'.
+        data (dict[str, Any] | None): Data of the action item that have to
+            be passed back on trigger.
+
+    """
+    identifier: str
+    label: str
+    order: int = 0
+    group_label: str | None = None
+    icon: IconBase | dict[str, Any] | None = None
+    tooltip: str | None = None
+    description: str | None = None
+    quick_action: bool = True
+    data: dict[str, Any] | None = None
+
+    def to_data(self) -> dict[str, Any]:
+        icon = self.icon
+        if isinstance(icon, IconBase):
+            icon = icon.to_data()
+        return {
+            "identifier": self.identifier,
+            "label": self.label,
+            "order": self.order,
+            "group_label": self.group_label,
+            "icon": icon,
+            "tooltip": self.tooltip,
+            "description": self.description,
+            "quick_action": self.quick_action,
+            "data": self.data,
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> ActionItem:
+        data = dict(data)
+        icon = data.get("icon")
+        if icon is not None:
+            data["icon"] = get_icon_def_from_data(icon)
+        return cls(**data)
+
+
 class AbstractWorkfilesCommon(ABC):
     @abstractmethod
     def is_host_valid(self) -> bool:
@@ -120,6 +219,43 @@ class AbstractWorkfilesCommon(ABC):
 
         Args:
             enabled (bool): Enable save workfile when True.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_published_workfile_info(
+        self,
+        folder_id: str | None,
+        representation_id: str | None,
+    ) -> PublishedWorkfileWrap:
+        """Get published workfile info by representation ID.
+
+        Args:
+            folder_id (str | None): Folder id.
+            representation_id (str | None): Representation id.
+
+        Returns:
+            PublishedWorkfileWrap: Published workfile info or None
+                if not found.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_workfile_info(
+        self, folder_id: str, task_id: str, rootless_path: str
+    ) -> WorkfileInfo | None:
+        """Workfile info from database.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            rootless_path (str): Workfile path.
+
+        Returns:
+            WorkfileInfo | None: Workfile info or None if was passed
+                invalid context.
 
         """
         pass
@@ -262,6 +398,42 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
 
         Returns:
             list[dict[str, Any]]: List of workfile entities.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_workarea_dir_by_context(
+        self, folder_id: str, task_id: str
+    ) -> str | None:
+        """Get workarea directory by context.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+
+        Returns:
+            str | None: Workarea directory.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_published_representation_entity(
+        self, folder_id: str | None, representation_id: str | None
+    ) -> dict[str, Any] | None:
+        """Representation entity of a published workfile.
+
+        Published workfiles of the folder are listed if they are not
+            cached or the cache is outdated.
+
+        Args:
+            folder_id (str | None): Folder id.
+            representation_id (str | None): Representation id.
+
+        Returns:
+            dict[str, Any] | None: Representation entity or None if is not
+                found.
 
         """
         pass
@@ -933,43 +1105,6 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_published_workfile_info(
-        self,
-        folder_id: str | None,
-        representation_id: str | None,
-    ) -> PublishedWorkfileWrap:
-        """Get published workfile info by representation ID.
-
-        Args:
-            folder_id (str | None): Folder id.
-            representation_id (str | None): Representation id.
-
-        Returns:
-            PublishedWorkfileWrap: Published workfile info or None
-                if not found.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_workfile_info(
-        self, folder_id: str, task_id: str, rootless_path: str
-    ) -> WorkfileInfo | None:
-        """Workfile info from database.
-
-        Args:
-            folder_id (str): Folder id.
-            task_id (str): Task id.
-            rootless_path (str): Workfile path.
-
-        Returns:
-            WorkfileInfo | None: Workfile info or None if was passed
-                invalid context.
-
-        """
-        pass
-
-    @abstractmethod
     def save_workfile_info(
         self,
         task_id: str,
@@ -1089,32 +1224,67 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """
         pass
 
+    # Workfile actions
     @abstractmethod
-    def duplicate_workfile(
-        self,
-        folder_id: str,
-        task_id: str,
-        src_filepath: str,
-        rootless_workdir: str,
-        workdir: str,
-        filename: str,
-        version: int,
-        comment: str | None,
-        description: str | None,
-    ) -> None:
-        """Duplicate workfile.
-
-        Workfiles is not opened when done.
+    def get_workfile_action_selection(
+        self, published: bool, with_workfile: bool = True
+    ) -> ActionSelectionData:
+        """Get current selection in a form used for workfile actions.
 
         Args:
-            folder_id (str): Folder id.
-            task_id (str): Task id.
-            src_filepath (str): Source workfile path.
-            rootless_workdir (str): Rootless workdir.
-            workdir (str): Destination workdir.
-            filename (str): Destination filename.
-            version (int): Workfile version.
-            comment (str): User's comment (subversion).
-            description (str): Workfile description.
+            published (bool): Selection of published workfiles should be
+                used.
+            with_workfile (bool): Add selected workfile to the selection.
+                Use 'False' to get selection related only to the area.
+
+        Returns:
+            ActionSelectionData: Selection for workfile actions.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_workfile_action_items(
+        self, selection: ActionSelectionData
+    ) -> list[ActionItem]:
+        """Get workfile action items for a selection.
+
+        Plugins are discovered on first call. Should be called from the main
+            thread, plugins may use host APIs.
+
+        Args:
+            selection (ActionSelectionData): Selection for which should be
+                actions collected.
+
+        Returns:
+            list[ActionItem]: Action items sorted by their order.
+
+        """
+        pass
+
+    @abstractmethod
+    def trigger_workfile_action(
+        self,
+        identifier: str,
+        selection: ActionSelectionData,
+        data: dict[str, Any] | None,
+        form_values: dict[str, Any],
+    ) -> None:
+        """Trigger workfile action.
+
+        Triggers 'workfile_action.started' event on start and
+        'workfile_action.finished' event with
+        '{"result": WorkfileActionResult | None, "crashed": bool}'. Both
+        events contain 'identifier', 'data' and 'selection' (data of
+        'ActionSelectionData') of the triggered action.
+
+        Args:
+            identifier (str): Identifier of action plugin.
+            selection (ActionSelectionData): Selection used to get the
+                action item.
+            data (dict[str, Any] | None): Data of the action item.
+            form_values (dict[str, Any]): Values from action form, if any
+                was shown.
+
         """
         pass
