@@ -2,11 +2,17 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils import PlaceholderLineEdit, ConnectionOverlay
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
+from ayon_core.tools.utils import (
+    PlaceholderLineEdit,
+    ConnectionOverlay,
+    get_qt_icon,
+)
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
 from .view import SceneInventoryView
+from .version_history import VersionHistoryWidget
 
 
 class SceneInventoryWindow(QtWidgets.QDialog):
@@ -51,6 +57,23 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         refresh_button.setToolTip("Refresh")
         refresh_button.setIcon(refresh_icon)
 
+        # Checked state is hardly visible on the button itself, so the
+        #   icon is swapped for a highlighted one. Icon states are not
+        #   used for that because a hovered or focused button would keep
+        #   the highlighted icon after it was unchecked.
+        history_icon = get_qt_icon(
+            MaterialSymbolsIcon("calendar_clock", color="white")
+        )
+        history_checked_icon = get_qt_icon(
+            MaterialSymbolsIcon("calendar_clock", color="#8fceff")
+        )
+        history_button = QtWidgets.QPushButton(self)
+        history_button.setToolTip(
+            "Show version history of the selected item"
+        )
+        history_button.setIcon(history_icon)
+        history_button.setCheckable(True)
+
         headers_widget = QtWidgets.QWidget(self)
         headers_layout = QtWidgets.QHBoxLayout(headers_widget)
         headers_layout.setContentsMargins(0, 0, 0, 0)
@@ -58,13 +81,27 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         headers_layout.addWidget(text_filter, 1)
         headers_layout.addWidget(outdated_only_checkbox, 0)
         headers_layout.addWidget(update_all_button, 0)
+        headers_layout.addWidget(history_button, 0)
         headers_layout.addWidget(refresh_button, 0)
 
-        view = SceneInventoryView(controller, self)
+        # Version history shares the height of the window with the view
+        #   and is hidden by default, so it never makes the window wider.
+        body_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical, self)
+        view = SceneInventoryView(controller, body_splitter)
+        history_widget = VersionHistoryWidget(
+            controller, parent=body_splitter
+        )
+        history_widget.setVisible(False)
+        body_splitter.addWidget(view)
+        body_splitter.addWidget(history_widget)
+        body_splitter.setStretchFactor(0, 1)
+        body_splitter.setStretchFactor(1, 0)
+        body_splitter.setCollapsible(0, False)
+        body_splitter.setCollapsible(1, False)
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.addWidget(headers_widget, 0)
-        main_layout.addWidget(view, 1)
+        main_layout.addWidget(body_splitter, 1)
 
         connection_overlay = ConnectionOverlay(controller, self)
 
@@ -82,6 +119,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             self._on_hierarchy_view_change
         )
         view.data_changed.connect(self._on_refresh_request)
+        view.selection_changed.connect(self._on_selection_change)
+        history_button.toggled.connect(self._on_history_toggle)
         refresh_button.clicked.connect(self._on_refresh_request)
         update_all_button.clicked.connect(self._on_update_all)
         controller.register_event_callback(
@@ -95,11 +134,17 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._update_all_button = update_all_button
         self._outdated_only_checkbox = outdated_only_checkbox
         self._view = view
+        self._body_splitter = body_splitter
+        self._history_button = history_button
+        self._history_icon = history_icon
+        self._history_checked_icon = history_checked_icon
+        self._history_widget = history_widget
         self._connection_overlay = connection_overlay
         # Refresh was postponed because server was not available
         self._refresh_on_connection = False
 
         self._first_show = True
+        self._history_first_show = True
 
     def showEvent(self, event):
         super(SceneInventoryWindow, self).showEvent(event)
@@ -129,6 +174,11 @@ class SceneInventoryWindow(QtWidgets.QDialog):
     def refresh(self):
         self._controller.reset()
         self._view.refresh()
+        # Container item ids are new after each refresh
+        self._history_widget.set_selected_item_ids(
+            self._view.get_selection_item_ids()
+        )
+        self._history_widget.refresh()
 
     def _on_show_timer(self):
         if self._show_counter < 3:
@@ -156,6 +206,22 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._view.set_filter_outdated(
             self._outdated_only_checkbox.isChecked()
         )
+
+    def _on_selection_change(self):
+        self._history_widget.set_selected_item_ids(
+            self._view.get_selection_item_ids()
+        )
+
+    def _on_history_toggle(self, enabled):
+        self._history_button.setIcon(
+            self._history_checked_icon if enabled else self._history_icon
+        )
+        self._history_widget.setVisible(enabled)
+        if enabled and self._history_first_show:
+            # Split the height about evenly
+            self._history_first_show = False
+            height = self._body_splitter.height()
+            self._body_splitter.setSizes([height // 2, height // 2])
 
     def _on_update_all(self):
         self._view.update_all()
