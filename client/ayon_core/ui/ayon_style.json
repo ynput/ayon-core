@@ -305,7 +305,7 @@
                 },
                 "table-filter": {
                     "background-color": "transparent",
-                    "color": "--md-sys-color-on-surface-dark",
+                    "color": "--md-sys-color-outline-dark",
                     "text-padding": [
                         2,
                         2
