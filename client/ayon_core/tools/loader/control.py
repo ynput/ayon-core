@@ -1,24 +1,37 @@
-import logging
+from __future__ import annotations
+
 import uuid
+import typing
+from typing import Optional, Any
 
 import ayon_api
 
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
-from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
+from ayon_core.lib import (
+    Logger,
+    NestedCacheItem,
+    CacheItem,
+    filter_profiles,
+)
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
-from ayon_core.host import ILoadHost
+from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.tools.common_models import (
+    SettingsModel,
     ProjectsModel,
     HierarchyModel,
     ThumbnailsModel,
+    TagItem,
+    ProductTypeIconMapping,
+    UsersModel,
+    WSEventsModel,
 )
 
 from .abstract import (
     BackendLoaderController,
     FrontendLoaderController,
-    ProductTypesFilter
+    ProductTypesFilter,
+    ActionItem,
 )
 from .models import (
     SelectionModel,
@@ -26,6 +39,12 @@ from .models import (
     LoaderActionsModel,
     SiteSyncModel
 )
+
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
+
+NOT_SET = object()
 
 
 class ExpectedSelection:
@@ -100,11 +119,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         host (Optional[AbstractHost]): Host object. Defaults to None.
     """
 
-    def __init__(self, host=None):
+    def __init__(self, host: Optional[AbstractHost] = None) -> None:
         self._log = None
         self._host = host
 
         self._event_system = self._create_event_system()
+
+        self._project_settings = {}
 
         self._project_anatomy_cache = NestedCacheItem(
             levels=1, lifetime=60)
@@ -119,16 +140,24 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(self)
+        self._users_model = UsersModel(self)
+        self._settings_model = SettingsModel()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     # ---------------------------------
     # Implementation of abstract methods
     # ---------------------------------
+    def get_window_subtitle(self) -> Optional[str]:
+        if self._host is None:
+            return None
+        return self._host.name
+
     # Events system
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
@@ -146,6 +175,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name = self.get_selected_project_name()
         folder_ids = self.get_selected_folder_ids()
 
+        self._project_settings = {}
+
         self._project_anatomy_cache.reset()
         self._loaded_products_cache.reset()
 
@@ -155,6 +186,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._projects_model.reset()
         self._thumbnails_model.reset()
         self._sitesync_model.reset()
+        self._users_model.reset()
+        self._settings_model.reset()
 
         self._projects_model.refresh()
 
@@ -195,6 +228,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, sender
         )
 
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        return self._projects_model.get_product_type_icons_mapping(
+            project_name
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
@@ -223,6 +263,33 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             output[folder_id] = label
         return output
 
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        return self._hierarchy_model.get_available_tags_by_entity_type(
+            project_name
+        )
+
+    def get_project_settings(self, project_name: str | None) -> dict:
+        return self._settings_model.get_settings(project_name)
+
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        return self._settings_model.get_task_sorting_mode(project_name)
+
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        return self._projects_model.get_project_anatomy_tags(project_name)
+
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
             project_name, folder_ids, sender)
@@ -249,24 +316,15 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids, sender
         )
 
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
-        return self._thumbnails_model.get_folder_thumbnail_ids(
-            project_name, folder_ids
-        )
-
-    def get_version_thumbnail_ids(self, project_name, version_ids):
-        return self._thumbnails_model.get_version_thumbnail_ids(
-            project_name, version_ids
-        )
-
     def get_thumbnail_paths(
         self,
         project_name,
         entity_type,
         entity_ids,
+        use_server_fallback=True,
     ):
         return self._thumbnails_model.get_thumbnail_paths(
-            project_name, entity_type, entity_ids
+            project_name, entity_type, entity_ids, use_server_fallback
         )
 
     def change_products_group(self, project_name, product_ids, group_name):
@@ -274,45 +332,34 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, product_ids, group_name
         )
 
-    def get_versions_action_items(self, project_name, version_ids):
-        return self._loader_actions_model.get_versions_action_items(
-            project_name, version_ids)
-
-    def get_representations_action_items(
-            self, project_name, representation_ids):
-        action_items = (
-            self._loader_actions_model.get_representations_action_items(
-                project_name, representation_ids)
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        return self._loader_actions_model.get_action_items(
+            project_name, entity_ids, entity_type
         )
-
-        action_items.extend(self._sitesync_model.get_sitesync_action_items(
-            project_name, representation_ids)
-        )
-
-        return action_items
 
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: Optional[dict[str, Any]],
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
-        if self._sitesync_model.is_sitesync_action(identifier):
-            self._sitesync_model.trigger_action_item(
-                identifier,
-                project_name,
-                representation_ids
-            )
-            return
-
         self._loader_actions_model.trigger_action_item(
-            identifier,
-            options,
-            project_name,
-            version_ids,
-            representation_ids
+            identifier=identifier,
+            project_name=project_name,
+            selected_ids=selected_ids,
+            selected_entity_type=selected_entity_type,
+            data=data,
+            options=options,
+            form_values=form_values,
         )
 
     # Selection model wrappers
@@ -436,6 +483,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_remote_site_icon_def(self, project_name):
         return self._sitesync_model.get_remote_site_icon_def(project_name)
 
+    def get_active_site(self, project_name):
+        return self._sitesync_model.get_active_site(project_name)
+
+    def get_remote_site(self, project_name):
+        return self._sitesync_model.get_remote_site(project_name)
+
     def get_version_sync_availability(self, project_name, version_ids):
         return self._sitesync_model.get_version_sync_availability(
             project_name, version_ids
@@ -454,20 +507,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def is_standard_projects_filter_enabled(self):
         return self._host is not None
 
-    def _get_project_anatomy(self, project_name):
-        if not project_name:
-            return None
-        cache = self._project_anatomy_cache[project_name]
-        if not cache.is_valid:
-            cache.update_data(Anatomy(project_name))
-        return cache.get_data()
-
-    def _create_event_system(self):
-        return QueuedEventSystem()
-
-    def _emit_event(self, topic, data=None):
-        self._event_system.emit(topic, data or {}, "controller")
-
     def get_product_types_filter(self):
         output = ProductTypesFilter(
             is_allow_list=False,
@@ -481,7 +520,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name = context.get("project_name")
         if not project_name:
             return output
-        settings = get_project_settings(project_name)
+        settings = self.get_project_settings(project_name)
         profiles = (
             settings
             ["core"]
@@ -509,7 +548,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         profile = filter_profiles(
             profiles,
             {
-                "hosts": host_name,
+                "host_names": host_name,
                 "task_types": task_type,
             }
         )
@@ -523,3 +562,26 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 product_types=profile["filter_product_types"]
             )
         return output
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> Optional[bool]:
+        return self._ws_events_model.get_connection_state()
+
+    def _create_event_system(self):
+        return QueuedEventSystem()
+
+    def _emit_event(self, topic, data=None):
+        self._event_system.emit(topic, data or {}, "controller")
+
+    def _get_project_anatomy(self, project_name):
+        if not project_name:
+            return None
+        cache = self._project_anatomy_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(Anatomy(project_name))
+        return cache.get_data()

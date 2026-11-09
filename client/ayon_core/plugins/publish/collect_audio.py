@@ -21,26 +21,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
     label = "Collect Folder Audio"
     order = pyblish.api.CollectorOrder + 0.1
     families = ["review"]
-    hosts = [
-        "nuke",
-        "maya",
-        "shell",
-        "hiero",
-        "premiere",
-        "harmony",
-        "traypublisher",
-        "fusion",
-        "tvpaint",
-        "resolve",
-        "webpublisher",
-        "aftereffects",
-        "flame",
-        "unreal",
-        "blender",
-        "houdini",
-        "max",
-        "circuit",
-    ]
+    settings_category = "core"
 
     audio_product_name = "audioMain"
 
@@ -51,7 +32,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
             context, self.__class__
         ):
             # Skip instances that already have audio filled
-            if instance.data.get("audio"):
+            if "audio" in instance.data:
                 self.log.debug(
                     "Skipping Audio collection. It is already collected"
                 )

@@ -1,7 +1,9 @@
 """Backend models that can be used in controllers."""
 
 from .cache import CacheItem, NestedCacheItem
+from .settings import SettingsModel
 from .projects import (
+    TagItem,
     StatusItem,
     StatusStates,
     ProjectItem,
@@ -9,6 +11,7 @@ from .projects import (
     PROJECTS_MODEL_SENDER,
     FolderTypeItem,
     TaskTypeItem,
+    ProductTypeIconMapping,
 )
 from .hierarchy import (
     FolderItem,
@@ -18,13 +21,17 @@ from .hierarchy import (
 )
 from .thumbnails import ThumbnailsModel
 from .selection import HierarchyExpectedSelection
-from .users import UsersModel
+from .users import UsersModel, UserItem
+from .websocket import WSEventsModel
 
 
 __all__ = (
     "CacheItem",
     "NestedCacheItem",
 
+    "SettingsModel",
+
+    "TagItem",
     "StatusItem",
     "StatusStates",
     "ProjectItem",
@@ -32,6 +39,7 @@ __all__ = (
     "PROJECTS_MODEL_SENDER",
     "FolderTypeItem",
     "TaskTypeItem",
+    "ProductTypeIconMapping",
 
     "FolderItem",
     "TaskItem",
@@ -43,4 +51,7 @@ __all__ = (
     "HierarchyExpectedSelection",
 
     "UsersModel",
+    "UserItem",
+
+    "WSEventsModel",
 )

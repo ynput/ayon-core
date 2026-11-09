@@ -19,11 +19,7 @@ from .create import (
     CreatedInstance,
     CreatorError,
 
-    LegacyCreator,
-    legacy_create,
-
     discover_creator_plugins,
-    discover_legacy_creator_plugins,
     register_creator_plugin,
     deregister_creator_plugin,
     register_creator_plugin_path,
@@ -84,9 +80,6 @@ from .context_tools import (
     uninstall_host,
     is_installed,
 
-    register_root,
-    registered_root,
-
     register_host,
     registered_host,
     deregister_host,
@@ -98,6 +91,10 @@ from .context_tools import (
     get_current_project_name,
     get_current_folder_path,
     get_current_task_name
+)
+
+from .compatibility import (
+    is_product_base_type_supported,
 )
 
 from .workfile import (
@@ -137,12 +134,7 @@ __all__ = (
 
     "CreatorError",
 
-    # - legacy creation
-    "LegacyCreator",
-    "legacy_create",
-
     "discover_creator_plugins",
-    "discover_legacy_creator_plugins",
     "register_creator_plugin",
     "deregister_creator_plugin",
     "register_creator_plugin_path",
@@ -198,9 +190,6 @@ __all__ = (
     "uninstall_host",
     "is_installed",
 
-    "register_root",
-    "registered_root",
-
     "register_host",
     "registered_host",
     "deregister_host",
@@ -223,4 +212,7 @@ __all__ = (
     # Backwards compatible function names
     "install",
     "uninstall",
+
+    # Feature detection
+    "is_product_base_type_supported",
 )

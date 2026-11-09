@@ -1,17 +1,29 @@
+import os
+
 import qtawesome
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui
 
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from ayon_core.tools.utils import TreeView
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
+from ayon_core.ui.style_types import get_ayon_style
+
+from .utils import (
+    USERNAME_ROLE,
+    NaturalSortProxyModel,
+    WorkfilesDelegate,
+    create_avatar_cache,
+)
+from .actions_widgets import add_actions_to_menu
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
-AUTHOR_ROLE = QtCore.Qt.UserRole + 3
-DATE_MODIFIED_ROLE = QtCore.Qt.UserRole + 4
+ROOTLESS_PATH_ROLE = QtCore.Qt.UserRole + 3
+AUTHOR_ROLE = QtCore.Qt.UserRole + 4
+DATE_MODIFIED_ROLE = QtCore.Qt.UserRole + 5
+WORKFILE_ENTITY_ID_ROLE = QtCore.Qt.UserRole + 6
 
 
 class WorkAreaFilesModel(QtGui.QStandardItemModel):
@@ -44,10 +56,6 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         controller.register_event_callback(
             "selection.task.changed",
             self._on_task_changed
-        )
-        controller.register_event_callback(
-            "workfile_duplicate.finished",
-            self._on_duplicate_finished
         )
         controller.register_event_callback(
             "save_as.finished",
@@ -157,13 +165,6 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         if not self._published_mode:
             self._fill_items()
 
-    def _on_duplicate_finished(self, event):
-        if event["failed"]:
-            return
-
-        if not self._published_mode:
-            self._fill_items()
-
     def _on_save_as_finished(self, event):
         if event["failed"]:
             return
@@ -198,7 +199,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         items_to_remove = set(self._items_by_filename.keys())
         new_items = []
         for file_item in file_items:
-            filename = file_item.filename
+            filename = os.path.basename(file_item.filepath)
             if filename in self._items_by_filename:
                 items_to_remove.discard(filename)
                 item = self._items_by_filename[filename]
@@ -206,23 +207,30 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
                 item = QtGui.QStandardItem()
                 new_items.append(item)
                 item.setColumnCount(self.columnCount())
-                item.setFlags(
-                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-                )
                 item.setData(self._file_icon, QtCore.Qt.DecorationRole)
-                item.setData(file_item.filename, QtCore.Qt.DisplayRole)
-                item.setData(file_item.filename, FILENAME_ROLE)
+                item.setData(filename, QtCore.Qt.DisplayRole)
+                item.setData(filename, FILENAME_ROLE)
 
-            updated_by = file_item.updated_by
-            user_item = user_items_by_name.get(updated_by)
+            flags = QtCore.Qt.ItemIsSelectable
+            if file_item.available:
+                flags |= QtCore.Qt.ItemIsEnabled
+            item.setFlags(flags)
+            username = file_item.updated_by
+            user_label = username
+            user_item = user_items_by_name.get(username)
             if user_item is not None and user_item.full_name:
-                updated_by = user_item.full_name
+                user_label = user_item.full_name
 
+            item.setData(
+                file_item.workfile_entity_id, WORKFILE_ENTITY_ID_ROLE
+            )
             item.setData(file_item.filepath, FILEPATH_ROLE)
-            item.setData(updated_by, AUTHOR_ROLE)
-            item.setData(file_item.modified, DATE_MODIFIED_ROLE)
+            item.setData(file_item.rootless_path, ROOTLESS_PATH_ROLE)
+            item.setData(file_item.file_modified, DATE_MODIFIED_ROLE)
+            item.setData(user_label, AUTHOR_ROLE)
+            item.setData(username, USERNAME_ROLE)
 
-            self._items_by_filename[file_item.filename] = item
+            self._items_by_filename[filename] = item
 
         if new_items:
             root_item.appendRows(new_items)
@@ -271,7 +279,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             self._fill_items()
 
 
-class WorkAreaFilesWidget(QtWidgets.QWidget):
+class WorkAreaFilesWidget(AYContainer):
     """Workarea files widget.
 
     Args:
@@ -281,35 +289,43 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
 
     selection_changed = QtCore.Signal()
     open_current_requested = QtCore.Signal()
-    duplicate_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(WorkAreaFilesWidget, self).__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
-        view = TreeView(self)
+        view = AYTreeView(self)
+        view.setHeaderHidden(False)
         view.setSortingEnabled(True)
         view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         # Smaller indentation
         view.setIndentation(0)
+        view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = WorkAreaFilesModel(controller)
-        proxy_model = QtCore.QSortFilterProxyModel()
+        proxy_model = NaturalSortProxyModel()
         proxy_model.setSourceModel(model)
-        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         proxy_model.setDynamicSortFilter(True)
 
         view.setModel(proxy_model)
 
-        time_delegate = PrettyTimeDelegate()
-        view.setItemDelegateForColumn(model.date_modified_col, time_delegate)
+        work_files_delegate = WorkfilesDelegate(
+            create_avatar_cache(view),
+            parent=view,
+            style_model=get_ayon_style().model
+        )
+        view.setItemDelegate(work_files_delegate)
 
         # Default to a wider first filename column it is what we mostly care
         # about and the date modified is relatively small anyway.
         view.setColumnWidth(0, 330)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(view, 1)
+        self.add_widget(view, stretch=1)
 
         selection_model = view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
@@ -325,7 +341,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
-        self._time_delegate = time_delegate
+        self._work_files_delegate = work_files_delegate
         self._controller = controller
 
         self._published_mode = False
@@ -354,14 +370,18 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
 
     def _get_selected_info(self):
         selection_model = self._view.selectionModel()
-        filepath = None
-        filename = None
+        workfile_entity_id = filename = rootless_path = filepath = None
         for index in selection_model.selectedIndexes():
             filepath = index.data(FILEPATH_ROLE)
+            rootless_path = index.data(ROOTLESS_PATH_ROLE)
             filename = index.data(FILENAME_ROLE)
+            workfile_entity_id = index.data(WORKFILE_ENTITY_ID_ROLE)
+
         return {
             "filepath": filepath,
+            "rootless_path": rootless_path,
             "filename": filename,
+            "workfile_entity_id": workfile_entity_id,
         }
 
     def get_selected_path(self):
@@ -374,8 +394,12 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         return self._get_selected_info()["filepath"]
 
     def _on_selection_change(self):
-        filepath = self.get_selected_path()
-        self._controller.set_selected_workfile_path(filepath)
+        info = self._get_selected_info()
+        self._controller.set_selected_workfile_path(
+            info["rootless_path"],
+            info["filepath"],
+            info["workfile_entity_id"],
+        )
 
     def _on_mouse_double_click(self, event):
         if event.button() == QtCore.Qt.LeftButton:
@@ -383,28 +407,34 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
 
     def _on_context_menu(self, point):
         index = self._view.indexAt(point)
-        if not index.isValid():
+        # Context menu is related only to the work area if is not
+        #   triggered on a workfile
+        on_workfile = (
+            index.isValid()
+            and bool(index.flags() & QtCore.Qt.ItemIsEnabled)
+        )
+
+        selection = self._controller.get_workfile_action_selection(
+            False, with_workfile=on_workfile
+        )
+        action_items = self._controller.get_workfile_action_items(selection)
+        if not action_items:
             return
 
-        if not index.flags() & QtCore.Qt.ItemIsEnabled:
-            return
-
-        menu = QtWidgets.QMenu(self)
-
-        # Duplicate
-        action = QtWidgets.QAction("Duplicate", menu)
-        tip = "Duplicate selected file."
-        action.setToolTip(tip)
-        action.setStatusTip(tip)
-        action.triggered.connect(self._on_duplicate_pressed)
-        menu.addAction(action)
+        menu = AYMenu(self)
+        items_by_action = add_actions_to_menu(menu, action_items)
 
         # Show the context action menu
         global_point = self._view.mapToGlobal(point)
-        _ = menu.exec_(global_point)
-
-    def _on_duplicate_pressed(self):
-        self.duplicate_requested.emit()
+        action = menu.exec_(global_point)
+        action_item = items_by_action.get(action)
+        if action_item is not None:
+            self._controller.trigger_workfile_action(
+                action_item.identifier,
+                selection,
+                action_item.data,
+                {},
+            )
 
     def _on_expected_selection_change(self, event):
         workfile_info = event["workfile"]
@@ -430,19 +460,25 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         )
 
     def _on_model_refresh(self):
-        if (
-            not self._change_selection_on_refresh
-            or self._proxy_model.rowCount() < 1
-        ):
+        if not self._change_selection_on_refresh:
             return
 
         # Find the row with latest date modified
+        indexes = [
+            self._proxy_model.index(idx, 0)
+            for idx in range(self._proxy_model.rowCount())
+        ]
+        filtered_indexes = [
+            index
+            for index in indexes
+            if self._proxy_model.flags(index) & QtCore.Qt.ItemIsEnabled
+        ]
+        if not filtered_indexes:
+            return
+
         latest_index = max(
-            (
-                self._proxy_model.index(idx, 0)
-                for idx in range(self._proxy_model.rowCount())
-            ),
-            key=lambda model_index: model_index.data(DATE_MODIFIED_ROLE)
+            filtered_indexes,
+            key=lambda model_index: model_index.data(DATE_MODIFIED_ROLE) or 0
         )
 
         # Select row of latest modified

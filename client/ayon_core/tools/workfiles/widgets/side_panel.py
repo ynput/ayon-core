@@ -1,25 +1,20 @@
-import datetime
+from datetime import datetime
+from typing import Optional
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtCore
 
+from ayon_core.tools.utils.delegates import file_size_to_string
+from ayon_core.ui.components import (
+    AYContainer,
+    AYButton,
+    AYLabel,
+    AYTextEdit
+)
 
-def file_size_to_string(file_size):
-    size = 0
-    size_ending_mapping = {
-        "KB": 1024 ** 1,
-        "MB": 1024 ** 2,
-        "GB": 1024 ** 3
-    }
-    ending = "B"
-    for _ending, _size in size_ending_mapping.items():
-        if file_size < _size:
-            break
-        size = file_size / _size
-        ending = _ending
-    return "{:.2f} {}".format(size, ending)
+from .actions_widgets import WorkfileActionsRow
 
 
-class SidePanelWidget(QtWidgets.QWidget):
+class SidePanelWidget(AYContainer):
     """Details about selected workfile.
 
     Todos:
@@ -37,152 +32,301 @@ class SidePanelWidget(QtWidgets.QWidget):
     )
 
     def __init__(self, controller, parent):
-        super(SidePanelWidget, self).__init__(parent)
-
-        details_label = QtWidgets.QLabel("Details", self)
-        details_input = QtWidgets.QPlainTextEdit(self)
-        details_input.setReadOnly(True)
-
-        artist_note_widget = QtWidgets.QWidget(self)
-        note_label = QtWidgets.QLabel("Artist note", artist_note_widget)
-        note_input = QtWidgets.QPlainTextEdit(artist_note_widget)
-        btn_note_save = QtWidgets.QPushButton("Save note", artist_note_widget)
-
-        artist_note_layout = QtWidgets.QVBoxLayout(artist_note_widget)
-        artist_note_layout.setContentsMargins(0, 0, 0, 0)
-        artist_note_layout.addWidget(note_label, 0)
-        artist_note_layout.addWidget(note_input, 1)
-        artist_note_layout.addWidget(
-            btn_note_save, 0, alignment=QtCore.Qt.AlignRight
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.High,
+            layout_margin=6,
+            layout_spacing=4,
         )
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(details_label, 0)
-        main_layout.addWidget(details_input, 1)
-        main_layout.addWidget(artist_note_widget, 1)
+        # ── Details section ─────────────────────────────────────────
+        self.add_widget(AYLabel("Details", rel_text_size=1, parent=self))
 
-        note_input.textChanged.connect(self._on_note_change)
-        btn_note_save.clicked.connect(self._on_save_click)
+        details_form = AYContainer(
+            layout=AYContainer.Layout.Form,
+            variant=AYContainer.Variants.High,
+            layout_margin=4,
+            layout_spacing=(6, 6),
+            parent=self,
+        )
+        details_form.set_label_alignment(QtCore.Qt.AlignRight)
+
+        size_val = AYLabel("-", flexible=True)
+        details_form.add_row(AYLabel("Size:", dim=True), size_val)
+
+        created_val = AYLabel("-", flexible=True)
+        created_val.setWordWrap(True)
+        details_form.add_row(AYLabel("Created:", dim=True), created_val)
+
+        modified_key = AYLabel("Modified:", dim=True)
+        modified_val = AYLabel("-", flexible=True)
+        modified_val.setWordWrap(True)
+        details_form.add_row(modified_key, modified_val)
+
+        self.add_widget(details_form, stretch=0)
+
+        # Quick actions for the selection
+        # - the row always takes its space, the buttons fade in and out
+        actions_row = WorkfileActionsRow(controller, self)
+        self.add_widget(actions_row, stretch=0)
+
+        # ── Note/Comment section reused for both ────────────
+        self._note_label = AYLabel(
+            "Artist Note", rel_text_size=1, parent=self
+        )
+        self.add_widget(self._note_label)
+
+        note_frame = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low_Framed_Thin,
+            layout_margin=10,
+            layout_spacing=4,
+            parent=self,
+        )
+        description_input = AYTextEdit(note_frame)
+        btn_description_save = AYButton(
+            "Save note", variant=AYButton.Variants.Tonal,
+            parent=note_frame,
+        )
+        note_frame.add_widget(description_input, stretch=1)
+        note_frame.add_widget(btn_description_save)
+        note_frame._layout.setAlignment(
+            btn_description_save, QtCore.Qt.AlignRight
+        )
+
+        self.add_widget(note_frame, stretch=1)
+
+        description_input.textChanged.connect(self._on_description_change)
+        btn_description_save.clicked.connect(self._on_save_click)
 
         controller.register_event_callback(
-            "selection.workarea.changed", self._on_selection_change
+            "selection.workarea.changed",
+            self._on_workarea_selection_change
+        )
+        controller.register_event_callback(
+            "selection.representation.changed",
+            self._on_representation_selection_change,
         )
 
-        self._details_input = details_input
-        self._artist_note_widget = artist_note_widget
-        self._note_input = note_input
-        self._btn_note_save = btn_note_save
+        self._details_form = details_form
+        self._actions_row = actions_row
+        self._size_val = size_val
+        self._created_val = created_val
+        self._modified_val = modified_val
+        self._note_frame = note_frame
+        self._description_input = description_input
+        self._btn_description_save = btn_description_save
 
+        self._published_mode = False
         self._folder_id = None
-        self._task_name = None
+        self._task_id = None
         self._filepath = None
-        self._orig_note = ""
+        self._rootless_path = None
+        self._representation_id = None
+        self._orig_description = ""
         self._controller = controller
 
-        self._set_context(None, None, None)
+        self._set_context(False, None, None)
 
-    def set_published_mode(self, published_mode):
+    def set_published_mode(self, published_mode: bool) -> None:
         """Change published mode.
+
+        In published mode we replace  "Artist Note" with "Comment"
+        , make it not editable and hides save button. viceversa
+        when published mode false
 
         Args:
             published_mode (bool): Published mode enabled.
         """
+        self._published_mode = published_mode
+        self._note_label.setText(
+            "Comment" if published_mode else "Artist Note"
+        )
+        self._btn_description_save.setVisible(not published_mode)
+        self._description_input.setReadOnly(published_mode)
+        self._actions_row.set_published_mode(published_mode)
 
-        self._artist_note_widget.setVisible(not published_mode)
+        # Clear the context when switching modes to avoid showing stale data
+        if published_mode:
+            self._set_publish_context(
+                self._folder_id,
+                self._task_id,
+                self._representation_id,
+            )
+        else:
+            self._set_workarea_context(
+                self._folder_id,
+                self._task_id,
+                self._rootless_path,
+                self._filepath,
+            )
 
-    def _on_selection_change(self, event):
+    def _on_workarea_selection_change(self, event):
         folder_id = event["folder_id"]
-        task_name = event["task_name"]
+        task_id = event["task_id"]
         filepath = event["path"]
+        rootless_path = event["rootless_path"]
 
-        self._set_context(folder_id, task_name, filepath)
+        self._set_workarea_context(
+            folder_id, task_id, rootless_path, filepath
+        )
 
-    def _on_note_change(self):
-        text = self._note_input.toPlainText()
-        self._btn_note_save.setEnabled(self._orig_note != text)
+    def _on_representation_selection_change(self, event):
+        folder_id = event["folder_id"]
+        task_id = event["task_id"]
+        representation_id = event["representation_id"]
+
+        self._set_publish_context(folder_id, task_id, representation_id)
+
+    def _on_description_change(self):
+        text = self._description_input.toPlainText()
+        self._btn_description_save.setEnabled(self._orig_description != text)
 
     def _on_save_click(self):
-        note = self._note_input.toPlainText()
+        description = self._description_input.toPlainText()
         self._controller.save_workfile_info(
-            self._folder_id,
-            self._task_name,
-            self._filepath,
-            note
+            self._task_id,
+            self._rootless_path,
+            description=description,
         )
-        self._orig_note = note
-        self._btn_note_save.setEnabled(False)
+        self._orig_description = description
+        self._btn_description_save.setEnabled(False)
 
-    def _set_context(self, folder_id, task_name, filepath):
-        workfile_info = None
-        # Check if folder, task and file are selected
-        if bool(folder_id) and bool(task_name) and bool(filepath):
-            workfile_info = self._controller.get_workfile_info(
-                folder_id, task_name, filepath
-            )
-        enabled = workfile_info is not None
-
-        self._details_input.setEnabled(enabled)
-        self._note_input.setEnabled(enabled)
-        self._btn_note_save.setEnabled(enabled)
-
-        self._folder_id = folder_id
-        self._task_name = task_name
+    def _set_workarea_context(
+        self,
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        rootless_path: Optional[str],
+        filepath: Optional[str],
+    ) -> None:
+        self._rootless_path = rootless_path
         self._filepath = filepath
 
-        # Disable inputs and remove texts if any required arguments are
-        #   missing
-        if not enabled:
-            self._orig_note = ""
-            self._details_input.setPlainText("")
-            self._note_input.setPlainText("")
+        workfile_info = None
+        # Check if folder, task and file are selected
+        if folder_id and task_id and rootless_path:
+            workfile_info = self._controller.get_workfile_info(
+                folder_id, task_id, rootless_path
+            )
+
+        if workfile_info is None:
+            self._set_context(False, folder_id, task_id)
             return
 
-        note = workfile_info.note
-        size_value = file_size_to_string(workfile_info.filesize)
+        self._set_context(
+            True,
+            folder_id,
+            task_id,
+            file_created=workfile_info.file_created,
+            file_modified=workfile_info.file_modified,
+            size_value=workfile_info.file_size,
+            created_by=workfile_info.created_by,
+            updated_by=workfile_info.updated_by,
+            description=workfile_info.description,
+        )
 
-        # Append html string
+    def _set_publish_context(
+        self,
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        representation_id: Optional[str],
+    ) -> None:
+        self._representation_id = representation_id
+        published_workfile_wrap = self._controller.get_published_workfile_info(
+            folder_id,
+            representation_id,
+        )
+        info = published_workfile_wrap.info
+        comment = published_workfile_wrap.comment
+        if info is None:
+            self._set_context(False, folder_id, task_id)
+            return
+
+        self._set_context(
+            True,
+            folder_id,
+            task_id,
+            file_created=info.file_created,
+            file_modified=info.file_modified,
+            size_value=info.file_size,
+            created_by=info.author,
+            updated_by=info.author,
+            description=comment or "",
+        )
+
+    def _set_context(
+        self,
+        is_valid: bool,
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        *,
+        file_created: Optional[int] = None,
+        file_modified: Optional[int] = None,
+        size_value: Optional[int] = None,
+        created_by: Optional[str] = None,
+        updated_by: Optional[str] = None,
+        description: str = "",
+    ) -> None:
+        self._folder_id = folder_id
+        self._task_id = task_id
+
+        self._details_form.setEnabled(is_valid)
+        self._description_input.setEnabled(is_valid)
+        self._btn_description_save.setEnabled(is_valid)
+
+        self._orig_description = description
+        self._description_input.setPlainText(description)
+
+        size_text = "-"
+        created_text = "-"
+        modified_text = "-"
+        if not is_valid:
+            self._size_val.setText(size_text)
+            self._created_val.setText(created_text)
+            self._modified_val.setText(modified_text)
+            return
+
         datetime_format = "%b %d %Y %H:%M:%S"
-        creation_time = datetime.datetime.fromtimestamp(
-            workfile_info.creation_time)
-        modification_time = datetime.datetime.fromtimestamp(
-            workfile_info.modification_time)
-
         user_items_by_name = self._controller.get_user_items_by_name()
 
-        def convert_username(username):
-            user_item = user_items_by_name.get(username)
+        def convert_username(username_v):
+            user_item = user_items_by_name.get(username_v)
             if user_item is not None and user_item.full_name:
                 return user_item.full_name
-            return username
+            return username_v
 
-        created_lines = [
-            creation_time.strftime(datetime_format)
-        ]
-        if workfile_info.created_by:
-            created_lines.insert(
-                0, convert_username(workfile_info.created_by)
+        if size_value is not None:
+            size_text = file_size_to_string(size_value)
+
+        created_parts = []
+        if created_by:
+            created_parts.append(convert_username(created_by))
+
+        if file_created:
+            created_parts.append(
+                datetime
+                .fromtimestamp(file_created)
+                .strftime(datetime_format)
             )
 
-        modified_lines = [
-            modification_time.strftime(datetime_format)
-        ]
-        if workfile_info.updated_by:
-            modified_lines.insert(
-                0, convert_username(workfile_info.updated_by)
+        if created_parts:
+            created_text = "\n".join(created_parts)
+
+        modified_parts = []
+        if updated_by:
+            modified_parts.append(convert_username(updated_by))
+
+        if file_modified:
+            modified_parts.append(
+                datetime
+                .fromtimestamp(file_modified)
+                .strftime(datetime_format)
             )
 
-        lines = (
-            "<b>Size:</b>",
-            size_value,
-            "<b>Created:</b>",
-            "<br/>".join(created_lines),
-            "<b>Modified:</b>",
-            "<br/>".join(modified_lines),
-        )
-        self._orig_note = note
-        self._note_input.setPlainText(note)
+        if modified_parts:
+            modified_text = "\n".join(modified_parts)
 
-        # Set as empty string
-        self._details_input.setPlainText("")
-        self._details_input.appendHtml("<br>".join(lines))
+        self._size_val.setText(size_text)
+        self._created_val.setText(created_text)
+        self._modified_val.setText(modified_text)

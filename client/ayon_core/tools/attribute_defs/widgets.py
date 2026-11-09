@@ -1,6 +1,6 @@
+from __future__ import annotations
+
 import copy
-import typing
-from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -15,31 +15,33 @@ from ayon_core.lib.attribute_definitions import (
     FileDef,
     UIDef,
     UISeparatorDef,
-    UILabelDef
+    UILabelDef,
+    ButtonDef,
 )
+from ayon_core.lib.icon_definitions import TransparentIcon
 from ayon_core.tools.utils import (
     CustomTextComboBox,
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
+    MarkdownLabel,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
+    CodePlainTextEdit,
     set_style_property,
+    get_qt_icon,
 )
 from ayon_core.tools.utils import NiceCheckbox
 
 from ._constants import REVERT_TO_DEFAULT_LABEL
 from .files_widget import FilesWidget
 
-if typing.TYPE_CHECKING:
-    from typing import Union
-
 
 def create_widget_for_attr_def(
     attr_def: AbstractAttrDef,
-    parent: Optional[QtWidgets.QWidget] = None,
-    handle_revert_to_default: Optional[bool] = True,
-):
+    parent: QtWidgets.QWidget | None = None,
+    handle_revert_to_default: bool = True,
+) -> BaseAttrDefWidget:
     widget = _create_widget_for_attr_def(
         attr_def, parent, handle_revert_to_default
     )
@@ -53,13 +55,14 @@ def create_widget_for_attr_def(
 
 def _create_widget_for_attr_def(
     attr_def: AbstractAttrDef,
-    parent: "Union[QtWidgets.QWidget, None]",
+    parent: QtWidgets.QWidget | None,
     handle_revert_to_default: bool,
-):
+) -> BaseAttrDefWidget:
     if not isinstance(attr_def, AbstractAttrDef):
-        raise TypeError("Unexpected type \"{}\" expected \"{}\"".format(
-            str(type(attr_def)), AbstractAttrDef
-        ))
+        raise TypeError(
+            f"Unexpected type \"{type(attr_def)}\""
+            " expected subclass of \"AbstractAttrDef\"."
+        )
 
     cls = None
     if isinstance(attr_def, NumberDef):
@@ -88,6 +91,9 @@ def _create_widget_for_attr_def(
 
     elif isinstance(attr_def, UILabelDef):
         cls = LabelAttrWidget
+
+    elif isinstance(attr_def, ButtonDef):
+        cls = ButtonAttrWidget
 
     if cls is None:
         raise ValueError("Unknown attribute definition \"{}\"".format(
@@ -181,6 +187,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             layout.deleteLater()
 
         new_layout = QtWidgets.QGridLayout()
+        new_layout.setContentsMargins(0, 0, 0, 0)
         new_layout.setColumnStretch(0, 0)
         new_layout.setColumnStretch(1, 1)
         self.setLayout(new_layout)
@@ -209,15 +216,21 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             if not attr_def.visible:
                 continue
 
-            expand_cols = 2
-            if attr_def.is_value_def and attr_def.is_label_horizontal:
-                expand_cols = 1
+            label = attr_def.label
+            if isinstance(attr_def, UILabelDef):
+                label = None
 
-            col_num = 2 - expand_cols
+            col_num = 0
+            if attr_def.is_label_horizontal and (
+                attr_def.is_value_def
+                or isinstance(attr_def, ButtonDef)
+            ):
+                col_num = 1
+            expand_cols = 2 - col_num
 
-            if attr_def.is_value_def and attr_def.label:
+            if label:
                 label_widget = AttributeDefinitionsLabel(
-                    attr_def.id, attr_def.label, self
+                    attr_def.id, label, self
                 )
                 label_widget.revert_to_default_requested.connect(
                     self._on_revert_request
@@ -247,12 +260,10 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
     def set_value(self, value):
         new_value = copy.deepcopy(value)
-        unused_keys = set(new_value.keys())
         for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if attr_def.key not in new_value:
                 continue
-            unused_keys.remove(attr_def.key)
 
             widget_value = new_value[attr_def.key]
             if widget_value is None:
@@ -282,7 +293,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             label.set_overridden(value != widget.attr_def.default)
 
 
-class _BaseAttrDefWidget(QtWidgets.QWidget):
+class BaseAttrDefWidget(QtWidgets.QWidget):
     # Type 'object' may not work with older PySide versions
     value_changed = QtCore.Signal(object, str)
     revert_to_default_requested = QtCore.Signal(str)
@@ -290,8 +301,8 @@ class _BaseAttrDefWidget(QtWidgets.QWidget):
     def __init__(
         self,
         attr_def: AbstractAttrDef,
-        parent: "Union[QtWidgets.QWidget, None]",
-        handle_revert_to_default: Optional[bool] = True,
+        parent: QtWidgets.QWidget | None,
+        handle_revert_to_default: bool = True,
     ):
         super().__init__(parent)
 
@@ -336,7 +347,7 @@ class _BaseAttrDefWidget(QtWidgets.QWidget):
         )
 
 
-class SeparatorAttrWidget(_BaseAttrDefWidget):
+class SeparatorAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = QtWidgets.QWidget(self)
         input_widget.setObjectName("Separator")
@@ -348,16 +359,45 @@ class SeparatorAttrWidget(_BaseAttrDefWidget):
         self.main_layout.addWidget(input_widget, 0)
 
 
-class LabelAttrWidget(_BaseAttrDefWidget):
+class LabelAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
-        input_widget = QtWidgets.QLabel(self)
+        input_widget = MarkdownLabel(self)
         label = self.attr_def.label
         if label:
             input_widget.setText(str(label))
+        input_widget.setWordWrap(True)
+        input_widget.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        input_widget.setOpenExternalLinks(True)
 
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+
+class ButtonAttrWidget(BaseAttrDefWidget):
+    def _ui_init(self):
+        input_widget = QtWidgets.QPushButton(self)
+        text = self.attr_def.text
+        if text:
+            input_widget.setText(str(text))
+
+        icon = self.attr_def.icon
+        if icon is not None:
+            qt_icon = get_qt_icon(icon)
+            input_widget.setIcon(qt_icon)
+
+        if self.attr_def.tooltip:
+            input_widget.setToolTip(self.attr_def.tooltip)
+
+        input_widget.clicked.connect(self._on_click)
+
+        self._input_widget = input_widget
+
+        self.main_layout.addWidget(input_widget, 0)
+        self.main_layout.addStretch(1)
+
+    def _on_click(self):
+        self.attr_def.trigger()
 
 
 class ClickableLineEdit(QtWidgets.QLineEdit):
@@ -384,7 +424,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
         super().mouseReleaseEvent(event)
 
 
-class NumberAttrWidget(_BaseAttrDefWidget):
+class NumberAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         decimals = self.attr_def.decimals
         if decimals > 0:
@@ -497,13 +537,15 @@ class NumberAttrWidget(_BaseAttrDefWidget):
         )
 
 
-class TextAttrWidget(_BaseAttrDefWidget):
+class TextAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         # TODO Solve how to handle regex
         # self.attr_def.regex
 
         self.multiline = self.attr_def.multiline
-        if self.multiline:
+        if self.multiline and self.attr_def.syntax:
+            input_widget = CodePlainTextEdit(self, self.attr_def.syntax)
+        elif self.multiline:
             input_widget = PlaceholderPlainTextEdit(self)
         else:
             input_widget = PlaceholderLineEdit(self)
@@ -578,7 +620,7 @@ class TextAttrWidget(_BaseAttrDefWidget):
                 self._input_widget.blockSignals(False)
 
 
-class BoolAttrWidget(_BaseAttrDefWidget):
+class BoolAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = NiceCheckbox(parent=self)
         input_widget.setChecked(self.attr_def.default)
@@ -632,7 +674,7 @@ class BoolAttrWidget(_BaseAttrDefWidget):
             self._input_widget.setChecked(value)
 
 
-class EnumAttrWidget(_BaseAttrDefWidget):
+class EnumAttrWidget(BaseAttrDefWidget):
     def __init__(self, *args, **kwargs):
         self._multivalue = False
         super().__init__(*args, **kwargs)
@@ -656,8 +698,29 @@ class EnumAttrWidget(_BaseAttrDefWidget):
         if self.attr_def.tooltip:
             input_widget.setToolTip(self.attr_def.tooltip)
 
+        # Use transparent icon for items without icon to keep labels aligned
+        #   if any item has an icon
+        # - multiselection combobox handles the alignment in its delegate
+        has_icons = any(item.get("icon") for item in self.attr_def.items)
+        empty_icon = None
+        if has_icons and not self.multiselection:
+            empty_icon = get_qt_icon(TransparentIcon())
         for item in self.attr_def.items:
-            input_widget.addItem(item["label"], item["value"])
+            icon_def = item.get("icon")
+            if icon_def:
+                icon = get_qt_icon(icon_def)
+            else:
+                icon = empty_icon
+            if icon is not None:
+                input_widget.addItem(icon, item["label"], item["value"])
+            else:
+                input_widget.addItem(item["label"], item["value"])
+
+            tooltip = item.get("tooltip")
+            if tooltip:
+                input_widget.setItemData(
+                    input_widget.count() - 1, tooltip, QtCore.Qt.ToolTipRole
+                )
 
         if not self.attr_def.items:
             self._add_empty_item(input_widget)
@@ -757,11 +820,11 @@ class EnumAttrWidget(_BaseAttrDefWidget):
         self._multivalue = multivalue
 
 
-class UnknownAttrWidget(_BaseAttrDefWidget):
+class UnknownAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = QtWidgets.QLabel(self)
-        self._value = self.attr_def.default
-        input_widget.setText(str(self._value))
+        self._value = str(self.attr_def.default)
+        input_widget.setText(self._value)
 
         self._input_widget = input_widget
 
@@ -774,9 +837,11 @@ class UnknownAttrWidget(_BaseAttrDefWidget):
 
     def set_value(self, value, multivalue=False):
         if multivalue:
-            set_value = set(value)
-            if len(set_value) == 1:
-                value = tuple(set_value)[0]
+            # Unknown values can be unhashable (e.g. list or dict) so
+            #   they can't be deduplicated using 'set'
+            values = list(value)
+            if values and all(item == values[0] for item in values):
+                value = values[0]
             else:
                 value = "< Multiselection >"
 
@@ -786,7 +851,7 @@ class UnknownAttrWidget(_BaseAttrDefWidget):
             self._input_widget.setText(str_value)
 
 
-class HiddenAttrWidget(_BaseAttrDefWidget):
+class HiddenAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         self.setVisible(False)
         self._value = self.attr_def.default
@@ -809,7 +874,7 @@ class HiddenAttrWidget(_BaseAttrDefWidget):
         self._multivalue = multivalue
 
 
-class FileAttrWidget(_BaseAttrDefWidget):
+class FileAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = FilesWidget(
             self.attr_def.single_item,

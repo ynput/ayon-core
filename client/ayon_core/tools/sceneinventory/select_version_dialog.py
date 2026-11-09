@@ -2,6 +2,7 @@ import uuid
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import StatusDelegate
 
@@ -127,6 +128,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             status_text_rect.setLeft(icon_rect.right() + 2)
 
         if status_text_rect.width() <= 0:
+            painter.restore()
             return
 
         if status_text_rect.width() < metrics.width(status_name):
@@ -144,6 +146,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
             status_name
         )
+        painter.restore()
 
     def set_current_index(self, index):
         model = self._combo_view.model()
@@ -172,11 +175,12 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         for version_option in version_options:
             icon = icons_by_name.get(version_option.status_icon)
             if icon is None:
-                icon = get_qt_icon({
-                    "type": "material-symbols",
-                    "name": version_option.status_icon,
-                    "color": version_option.status_color
-                })
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(
+                        version_option.status_icon,
+                        color=version_option.status_color,
+                    )
+                )
                 icons_by_name[version_option.status_icon] = icon
 
             item_id = uuid.uuid4().hex

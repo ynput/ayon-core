@@ -1,16 +1,48 @@
-import qtawesome
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
-    SquareButton,
-    RefreshButton,
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
-    NiceCheckbox,
 )
-from ayon_core.tools.utils.lib import checkstate_int_to_enum
+from ayon_core.tools.utils.folders_widget import FoldersFiltersWidget
+from ayon_core.ui.components import (
+    AYButton,
+    AYHBoxLayout,
+    AYVBoxLayout,
+)
+
+from .workfiles_page import WorkfilesPage
+
+
+class LauncherFoldersWidget(FoldersWidget):
+    focused_in = QtCore.Signal()
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._folders_view.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.FocusIn:
+            self.focused_in.emit()
+        return False
+
+
+class LauncherTasksWidget(TasksWidget):
+    focused_in = QtCore.Signal()
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._tasks_view.installEventFilter(self)
+
+    def deselect(self):
+        sel_model = self._tasks_view.selectionModel()
+        sel_model.clearSelection()
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.FocusIn:
+            self.focused_in.emit()
+        return False
 
 
 class HierarchyPage(QtWidgets.QWidget):
@@ -20,16 +52,21 @@ class HierarchyPage(QtWidgets.QWidget):
         # Header
         header_widget = QtWidgets.QWidget(self)
 
-        btn_back_icon = qtawesome.icon("fa.angle-left", color="white")
-        btn_back = SquareButton(header_widget)
-        btn_back.setIcon(btn_back_icon)
+        btn_back = AYButton(
+            icon="arrow_back",
+            variant=AYButton.Variants.Surface,
+            parent=header_widget,
+        )
 
         projects_combobox = ProjectsCombobox(controller, header_widget)
 
-        refresh_btn = RefreshButton(header_widget)
+        refresh_btn = AYButton(
+            icon="sync",
+            variant=AYButton.Variants.Surface,
+            parent=header_widget,
+        )
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(btn_back, 0)
         header_layout.addWidget(projects_combobox, 1)
         header_layout.addWidget(refresh_btn, 0)
@@ -44,65 +81,70 @@ class HierarchyPage(QtWidgets.QWidget):
         content_body.setOrientation(QtCore.Qt.Horizontal)
 
         # - filters
-        filters_widget = QtWidgets.QWidget(self)
-
-        folders_filter_text = PlaceholderLineEdit(filters_widget)
-        folders_filter_text.setPlaceholderText("Filter folders...")
-
-        my_tasks_tooltip = (
-            "Filter folders and task to only those you are assigned to."
-        )
-        my_tasks_label = QtWidgets.QLabel("My tasks", filters_widget)
-        my_tasks_label.setToolTip(my_tasks_tooltip)
-
-        my_tasks_checkbox = NiceCheckbox(filters_widget)
-        my_tasks_checkbox.setChecked(False)
-        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
-
-        filters_layout = QtWidgets.QHBoxLayout(filters_widget)
-        filters_layout.setContentsMargins(0, 0, 0, 0)
-        filters_layout.addWidget(folders_filter_text, 1)
-        filters_layout.addWidget(my_tasks_label, 0)
-        filters_layout.addWidget(my_tasks_checkbox, 0)
+        filters_widget = FoldersFiltersWidget(self)
 
         # - Folders widget
-        folders_widget = FoldersWidget(controller, content_body)
+        folders_widget = LauncherFoldersWidget(
+            controller,
+            content_body
+        )
         folders_widget.set_header_visible(True)
+        folders_widget.set_status_column_visible(True)
 
         # - Tasks widget
-        tasks_widget = TasksWidget(controller, content_body)
+        tasks_widget = LauncherTasksWidget(
+            controller,
+            content_body
+        )
+        tasks_widget.set_status_column_visible(True)
+
+        # - Third page - Workfiles
+        workfiles_page = WorkfilesPage(controller, content_body)
 
         content_body.addWidget(folders_widget)
         content_body.addWidget(tasks_widget)
-        content_body.setStretchFactor(0, 100)
-        content_body.setStretchFactor(1, 65)
+        content_body.addWidget(workfiles_page)
+        content_body.setStretchFactor(0, 120)
+        content_body.setStretchFactor(1, 110)
+        content_body.setStretchFactor(2, 220)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout = AYVBoxLayout(self, margin=0, spacing=4)
         main_layout.addWidget(header_widget, 0)
         main_layout.addWidget(filters_widget, 0)
         main_layout.addWidget(content_body, 1)
 
         btn_back.clicked.connect(self._on_back_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
-        folders_filter_text.textChanged.connect(self._on_filter_text_changed)
-        my_tasks_checkbox.stateChanged.connect(
+        filters_widget.text_changed.connect(self._on_filter_text_changed)
+        filters_widget.my_tasks_changed.connect(
             self._on_my_tasks_checkbox_state_changed
         )
+        folders_widget.focused_in.connect(self._on_folders_focus)
+        tasks_widget.focused_in.connect(self._on_tasks_focus)
 
         self._is_visible = False
         self._controller = controller
 
+        self._filters_widget = filters_widget
         self._btn_back = btn_back
         self._projects_combobox = projects_combobox
-        self._my_tasks_checkbox = my_tasks_checkbox
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
+        self._workfiles_page = workfiles_page
 
         self._project_name = None
 
         # Post init
         projects_combobox.set_listen_to_selection_change(self._is_visible)
+
+    def set_folders_loading_delay(self, delay: int) -> None:
+        """Delay before loading placeholder shows in folders.
+
+        Args:
+            delay (int): Delay in milliseconds.
+
+        """
+        self._folders_widget.set_loading_delay(delay)
 
     def set_page_visible(self, visible, project_name=None):
         if self._is_visible == visible:
@@ -116,8 +158,10 @@ class HierarchyPage(QtWidgets.QWidget):
     def refresh(self):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
+        self._workfiles_page.refresh()
+        # Update my tasks
         self._on_my_tasks_checkbox_state_changed(
-            self._my_tasks_checkbox.checkState()
+            self._filters_widget.is_my_tasks_checked()
         )
 
     def _on_back_clicked(self):
@@ -129,15 +173,21 @@ class HierarchyPage(QtWidgets.QWidget):
     def _on_filter_text_changed(self, text):
         self._folders_widget.set_name_filter(text)
 
-    def _on_my_tasks_checkbox_state_changed(self, state):
+    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
         folder_ids = None
         task_ids = None
-        state = checkstate_int_to_enum(state)
-        if state == QtCore.Qt.Checked:
+        if enabled:
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._project_name
             )
             folder_ids = entity_ids["folder_ids"]
             task_ids = entity_ids["task_ids"]
+
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
+
+    def _on_folders_focus(self):
+        self._workfiles_page.deselect()
+
+    def _on_tasks_focus(self):
+        self._workfiles_page.deselect()

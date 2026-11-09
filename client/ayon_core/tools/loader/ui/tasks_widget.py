@@ -1,11 +1,12 @@
 import collections
 import hashlib
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_default_entity_icon_color
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.utils import (
-    RecursiveSortFilterProxyModel,
     DeselectableTreeView,
     TasksQtModel,
     TASKS_MODEL_SENDER_NAME,
@@ -15,8 +16,13 @@ from ayon_core.tools.utils.tasks_widget import (
     ITEM_NAME_ROLE,
     PARENT_ID_ROLE,
     TASK_TYPE_ROLE,
+    TASK_TYPE_ORDER_ROLE,
+    TASK_STATUS_ROLE,
+    TASK_STATUS_ICON_ROLE,
+    TasksProxyModel,
 )
 from ayon_core.tools.utils.lib import RefreshThread, get_qt_icon
+
 
 # Role that can't clash with default 'tasks_widget' roles
 FOLDER_LABEL_ROLE = QtCore.Qt.UserRole + 100
@@ -27,7 +33,8 @@ class LoaderTasksQtModel(TasksQtModel):
     column_labels = [
         "Task name",
         "Task type",
-        "Folder"
+        "Folder",
+        "",
     ]
 
     def __init__(self, controller):
@@ -67,11 +74,10 @@ class LoaderTasksQtModel(TasksQtModel):
     def _get_no_tasks_item(self):
         if self._no_tasks_item is None:
             item = QtGui.QStandardItem("No task")
-            icon = get_qt_icon({
-                "type": "material-symbols",
-                "name": "indeterminate_check_box",
-                "color": get_default_entity_icon_color(),
-            })
+            icon = get_qt_icon(MaterialSymbolsIcon(
+                "indeterminate_check_box",
+                color=get_default_entity_icon_color(),
+            ))
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(NO_TASKS_ID, ITEM_ID_ROLE)
             item.setEditable(False)
@@ -123,7 +129,10 @@ class LoaderTasksQtModel(TasksQtModel):
         folder_labels_by_id = self._controller.get_folder_labels(
             project_name, folder_ids
         )
-        return task_items, task_type_items, folder_labels_by_id
+        status_items = self._controller.get_project_status_items(
+            project_name, sender=TASKS_MODEL_SENDER_NAME
+        )
+        return task_items, task_type_items, folder_labels_by_id, status_items
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -161,7 +170,12 @@ class LoaderTasksQtModel(TasksQtModel):
         super()._clear_items()
 
     def _fill_data_from_thread(self, thread):
-        task_items, task_type_items, folder_labels_by_id = thread.get_result()
+        (
+            task_items,
+            task_type_items,
+            folder_labels_by_id,
+            status_items,
+        ) = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -171,6 +185,15 @@ class LoaderTasksQtModel(TasksQtModel):
             self._add_empty_task_item()
             return
         self._remove_invalid_items()
+
+        status_icon_by_name = {}
+        for status in status_items:
+            icon = None
+            if status.icon:
+                icon = get_qt_icon(
+                    MaterialSymbolsIcon(status.icon, color=status.color)
+                )
+            status_icon_by_name[status.name] = icon
 
         task_type_item_by_name = {
             task_type_item.name: task_type_item
@@ -202,9 +225,13 @@ class LoaderTasksQtModel(TasksQtModel):
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
+            item.setData(task_item.task_type_order, TASK_TYPE_ORDER_ROLE)
             item.setData(folder_id, PARENT_ID_ROLE)
             item.setData(folder_label, FOLDER_LABEL_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
+            item.setData(task_item.status, TASK_STATUS_ROLE)
+            status_icon = status_icon_by_name.get(task_item.status)
+            item.setData(status_icon, TASK_STATUS_ICON_ROLE)
 
             items_by_name[name].append(item)
 
@@ -269,39 +296,45 @@ class LoaderTasksQtModel(TasksQtModel):
         if new_root_items:
             root_item.appendRows(new_root_items)
 
-    def data(self, index, role=None):
-        if not index.isValid():
-            return None
-
-        if role is None:
-            role = QtCore.Qt.DisplayRole
-
+    def _get_index_data(self, index, role):
         col = index.column()
-        if col != 0:
-            index = self.index(index.row(), 0, index.parent())
-
+        index = index.sibling(index.row(), 0)
         if col == 1:
             if role == QtCore.Qt.DisplayRole:
                 role = TASK_TYPE_ROLE
-            else:
+            elif role < QtCore.Qt.UserRole:
                 return None
 
-        if col == 2:
+        elif col == 2:
             if role == QtCore.Qt.DisplayRole:
                 role = FOLDER_LABEL_ROLE
-            else:
+            elif role < QtCore.Qt.UserRole:
+                return None
+
+        elif col == 3:
+            if role == QtCore.Qt.DecorationRole:
+                role = TASK_STATUS_ICON_ROLE
+            elif role == QtCore.Qt.ToolTipRole:
+                role = TASK_STATUS_ROLE
+            elif role < QtCore.Qt.UserRole:
                 return None
 
         return super().data(index, role)
 
 
-class LoaderTasksProxyModel(RecursiveSortFilterProxyModel):
+class LoaderTasksProxyModel(TasksProxyModel):
     def lessThan(self, left, right):
         if left.data(ITEM_ID_ROLE) == NO_TASKS_ID:
             return False
         if right.data(ITEM_ID_ROLE) == NO_TASKS_ID:
             return True
         return super().lessThan(left, right)
+
+    def filterAcceptsRow(self, row, parent_index):
+        source_index = self.sourceModel().index(row, 0, parent_index)
+        if source_index.data(ITEM_ID_ROLE) == NO_TASKS_ID:
+            return True
+        return super().filterAcceptsRow(row, parent_index)
 
 
 class LoaderTasksWidget(QtWidgets.QWidget):
@@ -314,6 +347,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
+        tasks_view.setIndentation(0)
 
         tasks_model = LoaderTasksQtModel(controller)
         tasks_proxy_model = LoaderTasksProxyModel()
@@ -323,6 +357,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_view.setModel(tasks_proxy_model)
         # Hide folder column by default
         tasks_view.setColumnHidden(2, True)
+        tasks_view.setColumnHidden(3, True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -332,15 +367,12 @@ class LoaderTasksWidget(QtWidgets.QWidget):
             "selection.folders.changed",
             self._on_folders_selection_changed,
         )
-        controller.register_event_callback(
-            "tasks.refresh.finished",
-            self._on_tasks_refresh_finished
-        )
 
         selection_model = tasks_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
 
         tasks_model.refreshed.connect(self._on_model_refresh)
+        tasks_model.project_changed.connect(self._on_tasks_project_change)
 
         self._controller = controller
         self._tasks_view = tasks_view
@@ -367,15 +399,20 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         if name:
             self._tasks_view.expandAll()
 
+    def set_task_ids_filter(self, task_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            task_ids (list[str]): The list of folder ids.
+
+        """
+        self._tasks_proxy_model.set_task_ids_filter(task_ids)
+
     def refresh(self):
         self._tasks_model.refresh()
 
     def _clear(self):
         self._tasks_model.clear()
-
-    def _on_tasks_refresh_finished(self, event):
-        if event["sender"] != TASKS_MODEL_SENDER_NAME:
-            self._set_project_name(event["project_name"])
 
     def _on_folders_selection_changed(self, event):
         project_name = event["project_name"]
@@ -384,13 +421,16 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         self._tasks_model.set_context(project_name, folder_ids)
 
     def _on_model_refresh(self):
-        self._tasks_proxy_model.sort(0)
+        self._update_task_type_sorting()
         self.refreshed.emit()
+
+    def _on_tasks_project_change(self):
+        self._update_task_type_sorting()
 
     def _get_selected_item_ids(self):
         selection_model = self._tasks_view.selectionModel()
         item_ids = set()
-        for index in selection_model.selectedIndexes():
+        for index in selection_model.selectedRows():
             item_id = index.data(ITEM_ID_ROLE)
             if item_id is None:
                 continue
@@ -403,3 +443,24 @@ class LoaderTasksWidget(QtWidgets.QWidget):
     def _on_selection_change(self):
         item_ids = self._get_selected_item_ids()
         self._controller.set_selected_tasks(item_ids)
+
+    def _update_task_type_sorting(self):
+        project_name = self._tasks_model.get_last_project_name()
+        if project_name is None:
+            return
+
+        mode = self._controller.get_task_sorting_mode(project_name)
+        if mode == "type":
+            use_task_type_sorting = True
+        elif mode == "name":
+            use_task_type_sorting = False
+        else:
+            use_task_type_sorting = False
+            self.log.warning(
+                f"Unknown sort type '{mode}' falling to 'type'"
+            )
+
+        self._tasks_proxy_model.set_task_type_sorting_enabled(
+            use_task_type_sorting
+        )
+        self._tasks_proxy_model.sort(0)

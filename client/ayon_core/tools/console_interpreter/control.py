@@ -1,4 +1,5 @@
-from typing import List, Dict
+from __future__ import annotations
+from typing import Optional
 
 from ayon_core.lib import JSONSettingRegistry
 from ayon_core.lib.local_settings import get_launcher_local_dir
@@ -11,13 +12,15 @@ from .abstract import (
 
 
 class InterpreterController(AbstractInterpreterController):
-    def __init__(self):
+    def __init__(self, name: Optional[str] = None) -> None:
+        if name is None:
+            name = "python_interpreter_tool"
         self._registry = JSONSettingRegistry(
-            "python_interpreter_tool",
+            name,
             get_launcher_local_dir(),
         )
 
-    def get_config(self):
+    def get_config(self) -> InterpreterConfig:
         width = None
         height = None
         splitter_sizes = []
@@ -54,9 +57,9 @@ class InterpreterController(AbstractInterpreterController):
         self,
         width: int,
         height: int,
-        splitter_sizes: List[int],
-        tabs: List[Dict[str, str]],
-    ):
+        splitter_sizes: list[int],
+        tabs: list[dict[str, str]],
+    ) -> None:
         self._registry.set_item("width", width)
         self._registry.set_item("height", height)
         self._registry.set_item("splitter_sizes", splitter_sizes)

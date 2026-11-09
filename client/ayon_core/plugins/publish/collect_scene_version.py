@@ -2,7 +2,7 @@ import os
 import pyblish.api
 
 from ayon_core.lib import get_version_from_path, is_in_tests
-from ayon_core.pipeline import KnownPublishError
+from ayon_core.pipeline import PublishError
 
 
 class CollectSceneVersion(pyblish.api.ContextPlugin):
@@ -12,9 +12,10 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
     """
 
     order = pyblish.api.CollectorOrder
-    label = 'Collect Scene Version'
+    label = "Collect Scene Version"
     # configurable in Settings
     hosts = ["*"]
+    settings_category = "core"
 
     # in some cases of headless publishing (for example webpublisher using PS)
     # you want to ignore version from name and let integrate use next version
@@ -46,8 +47,9 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
 
         version = get_version_from_path(filename)
         if version is None:
-            raise KnownPublishError("Unable to retrieve version number from "
-                                    "filename: {}".format(filename))
+            raise PublishError(
+                f"Unable to retrieve version number from filename: {filename}"
+            )
 
         context.data['version'] = int(version)
         self.log.debug(

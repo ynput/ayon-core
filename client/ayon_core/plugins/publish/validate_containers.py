@@ -31,6 +31,7 @@ class ValidateOutdatedContainers(
 
     label = "Validate Outdated Containers"
     order = pyblish.api.ValidatorOrder
+    settings_category = "core"
 
     optional = True
     actions = [ShowInventory]

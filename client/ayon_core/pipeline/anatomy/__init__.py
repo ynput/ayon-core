@@ -5,6 +5,8 @@ from .exceptions import (
     TemplateMissingKey,
     AnatomyTemplateUnsolved,
 )
+from .roots import AnatomyRoot, AnatomyRoots
+from .templates import AnatomyTemplateResult, AnatomyStringTemplate
 from .anatomy import Anatomy
 
 
@@ -14,6 +16,12 @@ __all__ = (
     "RootCombinationError",
     "TemplateMissingKey",
     "AnatomyTemplateUnsolved",
+
+    "AnatomyRoot",
+    "AnatomyRoots",
+
+    "AnatomyTemplateResult",
+    "AnatomyStringTemplate",
 
     "Anatomy",
 )

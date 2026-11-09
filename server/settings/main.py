@@ -3,7 +3,6 @@ from pydantic import validator
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    MultiplatformPathListModel,
     ensure_unique_names,
     task_types_enum,
 )
@@ -11,12 +10,30 @@ from ayon_server.exceptions import BadRequestException
 
 from .publish_plugins import PublishPuginsModel, DEFAULT_PUBLISH_VALUES
 from .tools import GlobalToolsModel, DEFAULT_TOOLS_VALUES
+from .workfile_actions import (
+    WorkfileActionsModel,
+    DEFAULT_WORKFILE_ACTIONS_VALUES,
+)
 
 
 class DiskMappingItemModel(BaseSettingsModel):
     _layout = "expanded"
-    source: str = SettingsField("", title="Source")
-    destination: str = SettingsField("", title="Destination")
+    source: str = SettingsField(
+        "",
+        title="Source",
+        description=(
+            "Existing path (e.g. a network share) that should be made"
+            " available under the destination path."
+        ),
+    )
+    destination: str = SettingsField(
+        "",
+        title="Destination",
+        description=(
+            "Path under which the source will be accessible, e.g. a drive"
+            " letter like `P:` on Windows or `/mnt/projects` on Linux."
+        ),
+    )
 
 
 class DiskMappingModel(BaseSettingsModel):
@@ -35,17 +52,56 @@ class DiskMappingModel(BaseSettingsModel):
 
 
 class ImageIOFileRuleModel(BaseSettingsModel):
-    name: str = SettingsField("", title="Rule name")
-    pattern: str = SettingsField("", title="Regex pattern")
-    colorspace: str = SettingsField("", title="Colorspace name")
-    ext: str = SettingsField("", title="File extension")
+    name: str = SettingsField(
+        "",
+        title="Rule name",
+        description="Unique name to identify the rule.",
+    )
+    pattern: str = SettingsField(
+        "",
+        title="Regex pattern",
+        description=(
+            "Regular expression searched for in the full file path, e.g."
+            " `_plate_` or `.*/textures/.*`."
+        ),
+    )
+    colorspace: str = SettingsField(
+        "",
+        title="Colorspace name",
+        description=(
+            "Colorspace to assign to matching files. Must exist in the"
+            " active OCIO config, e.g. `ACEScg` or `sRGB - Texture`."
+        ),
+    )
+    ext: str = SettingsField(
+        "",
+        title="File extension",
+        description=(
+            "Only apply the rule to files with this extension, e.g. `exr`."
+            " Leave empty to match any extension."
+        ),
+    )
 
 
 class CoreImageIOFileRulesModel(BaseSettingsModel):
-    activate_global_file_rules: bool = SettingsField(False)
+    activate_global_file_rules: bool = SettingsField(
+        False,
+        title="Activate global file rules",
+        description=(
+            "Use the rules below for all hosts. A host that has its own"
+            " file rules activated in its ImageIO settings uses those"
+            " instead."
+        ),
+    )
     rules: list[ImageIOFileRuleModel] = SettingsField(
         default_factory=list,
-        title="Rules"
+        title="Rules",
+        description=(
+            "Rules to match files to a colorspace.\n\n"
+            "A rule applies when a file matches both its extension and its"
+            " regex pattern. If multiple rules match, the last one in the"
+            " list wins."
+        ),
     )
 
     @validator("rules")
@@ -59,6 +115,7 @@ def _ocio_config_profile_types():
         {"value": "builtin_path", "label": "AYON built-in OCIO config"},
         {"value": "custom_path", "label": "Path to OCIO config"},
         {"value": "published_product", "label": "Published product"},
+        {"value": "disabled", "label": "Disable OCIO management"},
     ]
 
 
@@ -71,6 +128,24 @@ def _fallback_ocio_config_profile_types():
 
 def _ocio_built_in_paths():
     return [
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_2.0/studio-config-v3.0.0_aces-v2.0_ocio-v2.4.ocio",  # noqa: E501
+            "label": "ACES 2.0 Studio (OCIO v2.4)",
+            "description": (
+                "Aces 2.0 Studio OCIO config file. Requires OCIO v2.4.")
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.3/studio-config-v1.0.0_aces-v1.3_ocio-v2.1.ocio",  # noqa: E501
+            "label": "ACES 1.3 Studio (OCIO v2.1)",
+            "description": (
+                "Aces 1.3 Studio OCIO config file. Requires OCIO v2.1.")
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.3/studio-config-v1.0.0_aces-v1.3_ocio-v2.0.ocio",  # noqa: E501
+            "label": "ACES 1.3 Studio (OCIO v2)",
+            "description": (
+                "Aces 1.3 Studio OCIO config file. Requires OCIO v2.")
+        },
         {
             "value": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
             "label": "ACES 1.2",
@@ -88,7 +163,7 @@ class FallbackProductModel(BaseSettingsModel):
     fallback_type: str = SettingsField(
         title="Fallback config type",
         enum_resolver=_fallback_ocio_config_profile_types,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="builtin_path",
         description=(
             "Type of config which needs to be used in case published "
@@ -126,6 +201,13 @@ class PublishedProductModel(BaseSettingsModel):
     )
 
 
+class ReviewLayersModel(BaseSettingsModel):
+    review_layers: list[str] = SettingsField(
+        default_factory=list,
+        title="Review layers"
+    )
+
+
 class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     _layout = "expanded"
     host_names: list[str] = SettingsField(
@@ -141,10 +223,18 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
+    app_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Application names",
+        placeholder="{group}/{variant} (maya/2026,  ...)",
+        description=(
+            "Application full name (group/variant) from applications addon."
+        ),
+    )
     type: str = SettingsField(
         title="Profile type",
         enum_resolver=_ocio_config_profile_types,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="builtin_path",
         section="---",
     )
@@ -178,7 +268,13 @@ class CoreImageIOBaseModel(BaseSettingsModel):
     )
     file_rules: CoreImageIOFileRulesModel = SettingsField(
         default_factory=CoreImageIOFileRulesModel,
-        title="File Rules"
+        title="File Rules",
+        description=(
+            "Assign a colorspace to files by their path.\n\n"
+            "For example, mark all `.exr` plates as `ACEScg`. Used when the"
+            " colorspace of a published or loaded file is not otherwise"
+            " known."
+        ),
     )
 
 
@@ -197,9 +293,9 @@ class VersionStartCategoryProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    product_types: list[str] = SettingsField(
+    product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Product types"
+        title="Product base types"
     )
     product_names: list[str] = SettingsField(
         default_factory=list,
@@ -208,21 +304,46 @@ class VersionStartCategoryProfileModel(BaseSettingsModel):
     version_start: int = SettingsField(
         1,
         title="Version Start",
-        ge=0
+        ge=0,
+        description=(
+            "Version number of the first version of matching products and"
+            " workfiles, e.g. `0` or `1`."
+        ),
     )
 
 
 class VersionStartCategoryModel(BaseSettingsModel):
     profiles: list[VersionStartCategoryProfileModel] = SettingsField(
         default_factory=list,
-        title="Profiles"
+        title="Profiles",
+        description=(
+            "Version start per context.\n\n"
+            "The first profile matching the host, task and product is used."
+            " Empty filters match everything. Without a matching profile"
+            " versions start at 1."
+        ),
     )
 
 
 class EnvironmentReplacementModel(BaseSettingsModel):
-    environment_key: str = SettingsField("", title="Enviroment variable")
-    pattern: str = SettingsField("", title="Pattern")
-    replacement: str = SettingsField("", title="Replacement")
+    environment_key: str = SettingsField(
+        "",
+        title="Environment variable",
+        description="Name of the environment variable to modify.",
+    )
+    pattern: str = SettingsField(
+        "",
+        title="Pattern",
+        description="Regular expression to search for in the value.",
+    )
+    replacement: str = SettingsField(
+        "",
+        title="Replacement",
+        description=(
+            "Text that replaces the matches. If the resulting value is"
+            " empty, the variable is removed."
+        ),
+    )
 
 
 class FilterEnvsProfileModel(BaseSettingsModel):
@@ -251,11 +372,19 @@ class FilterEnvsProfileModel(BaseSettingsModel):
 
     skip_env_keys: list[str] = SettingsField(
         default_factory=list,
-        title="Skip environment variables"
+        title="Skip environment variables",
+        description=(
+            "Environment variables to remove from the farm job environment."
+        ),
     )
     replace_in_environment: list[EnvironmentReplacementModel] = SettingsField(
         default_factory=list,
-        title="Replace values in environment"
+        title="Replace values in environment",
+        description=(
+            "Modify environment variable values.\n\n"
+            "For example, replace a local path with one valid on the render"
+            " nodes."
+        ),
     )
 
 
@@ -266,6 +395,7 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         title="Global environment variables",
         widget="textarea",
+        syntax="json",
         scope=["studio"],
     )
     update_check_interval: int = SettingsField(
@@ -276,6 +406,11 @@ class CoreSettings(BaseSettingsModel):
     disk_mapping: DiskMappingModel = SettingsField(
         default_factory=DiskMappingModel,
         title="Disk mapping",
+        description=(
+            "Map paths per platform on launcher start.\n\n"
+            "Makes project files reachable under the same path on every"
+            " machine, e.g. map a network share to drive `P:` on Windows."
+        ),
     )
     tools: GlobalToolsModel = SettingsField(
         default_factory=GlobalToolsModel,
@@ -283,7 +418,22 @@ class CoreSettings(BaseSettingsModel):
     )
     version_start_category: VersionStartCategoryModel = SettingsField(
         default_factory=VersionStartCategoryModel,
-        title="Version start"
+        title="Version start",
+        description=(
+            "Define version number a new product starts with.\n\n"
+            "Applies to both products and workfiles, e.g. start at `v000`"
+            " instead of `v001` for some tasks or products."
+        ),
+    )
+    reviewable_layers: ReviewLayersModel = SettingsField(
+        default_factory=ReviewLayersModel,
+        title="Default reviewable layers",
+        description=(
+            "Define which layer to use as reviewable.\n\n"
+            "Ordered list of layer names used to determine the reviewable"
+            " channel. The first matching layer in the list is used. If the"
+            " list is empty, review layers use the default sorting behavior."
+        ),
     )
     imageio: CoreImageIOBaseModel = SettingsField(
         default_factory=CoreImageIOBaseModel,
@@ -293,24 +443,41 @@ class CoreSettings(BaseSettingsModel):
         default_factory=PublishPuginsModel,
         title="Publish plugins"
     )
-    project_plugins: MultiplatformPathListModel = SettingsField(
-        default_factory=MultiplatformPathListModel,
-        title="Additional Project Plugin Paths",
+    workfile_actions: WorkfileActionsModel = SettingsField(
+        default_factory=WorkfileActionsModel,
+        title="Workfile actions",
+        description="Actions available in the Workfiles tool.",
     )
     project_folder_structure: str = SettingsField(
         "{}",
         widget="textarea",
         title="Project folder structure",
+        description=(
+            "Defines project folders to create on disk"
+            " for 'Create project folders' action."
+        ),
+        syntax="json",
         section="---"
     )
     project_environments: str = SettingsField(
         "{}",
         widget="textarea",
         title="Project environments",
+        description=(
+            "Environment variables set when launching applications in this"
+            " project, as a JSON object."
+        ),
+        syntax="json",
         section="---"
     )
     filter_env_profiles: list[FilterEnvsProfileModel] = SettingsField(
         default_factory=list,
+        title="Filter farm environment",
+        description=(
+            "Remove or modify environment variables of farm jobs.\n\n"
+            "Applies to publish jobs sent to the render farm. The first"
+            " profile matching the host, task and folder is used."
+        ),
     )
 
     @validator(
@@ -339,6 +506,7 @@ DEFAULT_VALUES = {
         "ocio_config_profiles": [
             {
                 "host_names": [],
+                "app_names": [],
                 "task_types": [],
                 "task_names": [],
                 "type": "builtin_path",
@@ -382,7 +550,13 @@ DEFAULT_VALUES = {
     "version_start_category": {
         "profiles": []
     },
+    "reviewable_layers": {
+        "review_layers": [
+            "Beauty"
+        ]
+    },
     "publish": DEFAULT_PUBLISH_VALUES,
+    "workfile_actions": DEFAULT_WORKFILE_ACTIONS_VALUES,
     "project_folder_structure": json.dumps(
         {
             "__project_root__": {
@@ -405,11 +579,6 @@ DEFAULT_VALUES = {
         },
         indent=4
     ),
-    "project_plugins": {
-        "windows": [],
-        "darwin": [],
-        "linux": []
-    },
     "project_environments": json.dumps(
         {},
         indent=4

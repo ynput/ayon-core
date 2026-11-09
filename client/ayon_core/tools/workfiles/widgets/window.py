@@ -1,40 +1,58 @@
-from qtpy import QtCore, QtWidgets, QtGui
+from pathlib import Path
 
-from ayon_core import style, resources
-from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
-    MessageOverlayObject,
+from qtpy import QtCore, QtGui, QtWidgets
+
+from ayon_core import resources
+from ayon_core.pipeline.actions import WorkfileAreaType
+from ayon_core.pipeline.actions.workfile import (
+    SAVE_AS_FORM_KEY,
+    SAVE_CHANGES_FORM_KEY,
 )
-
-from ayon_core.tools.workfiles.control import BaseWorkfileController
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils import (
-    GoToCurrentButton,
-    RefreshButton,
     FoldersWidget,
+    MessageOverlayObject,
     TasksWidget,
+    FoldersFiltersWidget,
+    get_qt_icon,
+    ConnectionOverlay,
+)
+from ayon_core.tools.workfiles.abstract import ActionSelectionData
+from ayon_core.tools.workfiles.control import BaseWorkfileController
+from ayon_core.ui.components import (
+    AYButton,
+    AYCheckBox,
+    AYLabel,
+    AYContainer,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYLineEdit
 )
 
-from .side_panel import SidePanelWidget
 from .files_widget import FilesWidget
-from .utils import BaseOverlayFrame
+from .save_as_dialog import SaveAsDialog
+from .side_panel import SidePanelWidget
+from .utils import BaseOverlayFrame, save_changes_prompt
+
+WORKFILE_CSS_PATH = Path(__file__).parent / "workfiles_style.css"
 
 
 class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
-        super(InvalidHostOverlay, self).__init__(parent)
+        super().__init__(parent)
 
-        label_widget = QtWidgets.QLabel(
+        label_widget = AYLabel(
             (
                 "Workfiles tool is not supported in this host/DCCs."
                 "<br/><br/>This may be caused by a bug."
                 " Please contact your TD for more information."
             ),
-            self
+            parent=self,
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
         label_widget.setObjectName("OverlayFrameLabel")
 
-        layout = QtWidgets.QVBoxLayout(self)
+        layout = AYVBoxLayout(self)
         layout.addStretch(2)
         layout.addWidget(label_widget, 0, QtCore.Qt.AlignCenter)
         layout.addStretch(3)
@@ -42,7 +60,7 @@ class InvalidHostOverlay(BaseOverlayFrame):
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
 
-class WorkfilesToolWindow(QtWidgets.QWidget):
+class WorkfilesToolWindow(AYContainer):
     """WorkFiles Window.
 
     Main windows of workfiles tool.
@@ -51,16 +69,23 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Frontend controller.
         parent (Optional[QtWidgets.QWidget]): Parent widget.
     """
-
-    title = "Work Files"
-
     def __init__(self, controller=None, parent=None):
-        super(WorkfilesToolWindow, self).__init__(parent=parent)
-
         if controller is None:
             controller = BaseWorkfileController()
 
-        self.setWindowTitle(self.title)
+        title = "AYON Workfiles"
+        subtitle = controller.get_window_subtitle()
+        if subtitle:
+            title += f" - {subtitle}"
+
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.High,
+            layout_margin=16,
+            layout_spacing=16,
+        )
+        self.setWindowTitle(title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         flags = self.windowFlags() | QtCore.Qt.Window
@@ -69,7 +94,6 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._default_window_flags = flags
 
         self._folders_widget = None
-        self._folder_filter_input = None
 
         self._files_widget = None
 
@@ -91,33 +115,33 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         tasks_widget = TasksWidget(
             controller, home_body_widget, handle_expected_selection=True
         )
+        tasks_widget.set_status_column_visible(True)
         col_3_widget = self._create_col_3_widget(controller, home_body_widget)
         side_panel = SidePanelWidget(controller, home_body_widget)
 
         pages_widget.addWidget(home_page_widget)
 
         # Build home
-        home_page_layout = QtWidgets.QVBoxLayout(home_page_widget)
+        home_page_layout = AYVBoxLayout(home_page_widget, margin=0, spacing=4)
         home_page_layout.addWidget(home_body_widget)
 
         # Build home - body
-        body_layout = QtWidgets.QVBoxLayout(home_body_widget)
+        body_layout = AYVBoxLayout(home_body_widget, margin=0, spacing=4)
         split_widget = QtWidgets.QSplitter(home_body_widget)
         split_widget.addWidget(col_1_widget)
         split_widget.addWidget(tasks_widget)
         split_widget.addWidget(col_3_widget)
         split_widget.addWidget(side_panel)
-        split_widget.setSizes([255, 175, 550, 190])
+        split_widget.setSizes([350, 175, 550, 190])
 
         body_layout.addWidget(split_widget)
 
-        main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.addWidget(pages_widget, 1)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.add_widget(pages_widget, stretch=1)
 
         overlay_messages_widget = MessageOverlayObject(self)
         overlay_invalid_host = InvalidHostOverlay(self)
         overlay_invalid_host.setVisible(False)
+        connection_overlay = ConnectionOverlay(controller, self)
 
         show_timer = QtCore.QTimer()
         show_timer.setSingleShot(True)
@@ -134,12 +158,12 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             self._on_copy_representation_finished,
         )
         controller.register_event_callback(
-            "workfile_duplicate.finished",
-            self._on_duplicate_finished
-        )
-        controller.register_event_callback(
             "open_workfile.finished",
             self._on_open_finished
+        )
+        controller.register_event_callback(
+            "workfile_action.finished",
+            self._on_workfile_action_finished
         )
         controller.register_event_callback(
             "controller.reset.started",
@@ -149,13 +173,22 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             "controller.reset.finished",
             self._on_controller_refresh_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
 
         self._overlay_messages_widget = overlay_messages_widget
         self._overlay_invalid_host = overlay_invalid_host
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
         self._home_page_widget = home_page_widget
         self._pages_widget = pages_widget
         self._home_body_widget = home_body_widget
         self._split_widget = split_widget
+
+        self._project_name = self._controller.get_current_project_name()
 
         self._tasks_widget = tasks_widget
         self._side_panel = side_panel
@@ -176,33 +209,45 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         col_widget = QtWidgets.QWidget(parent)
         header_widget = QtWidgets.QWidget(col_widget)
 
-        folder_filter_input = PlaceholderLineEdit(header_widget)
-        folder_filter_input.setPlaceholderText("Filter folders..")
+        filters_widget = FoldersFiltersWidget(header_widget)
 
-        go_to_current_btn = GoToCurrentButton(header_widget)
-        refresh_btn = RefreshButton(header_widget)
+        go_to_current_btn = AYButton(
+            icon="arrow_downward",
+            variant=AYButton.Variants.Surface,
+            tooltip="Select the current context in the hierarchy",
+            parent=header_widget,
+        )
+        refresh_btn = AYButton(
+            icon="sync",
+            variant=AYButton.Variants.Surface,
+            tooltip="Refresh",
+            parent=header_widget,
+        )
+
+        header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
+        header_layout.addWidget(filters_widget, 1)
+        header_layout.addWidget(go_to_current_btn, 0)
+        header_layout.addWidget(refresh_btn, 0)
 
         folder_widget = FoldersWidget(
             controller, col_widget, handle_expected_selection=True
         )
+        folder_widget.set_status_column_visible(True)
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(folder_filter_input, 1)
-        header_layout.addWidget(go_to_current_btn, 0)
-        header_layout.addWidget(refresh_btn, 0)
-
-        col_layout = QtWidgets.QVBoxLayout(col_widget)
-        col_layout.setContentsMargins(0, 0, 0, 0)
+        col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)
         col_layout.addWidget(folder_widget, 1)
 
-        folder_filter_input.textChanged.connect(self._on_folder_filter_change)
+        filters_widget.text_changed.connect(self._on_folder_filter_change)
+        filters_widget.my_tasks_changed.connect(
+            self._on_my_tasks_checkbox_state_changed
+        )
         go_to_current_btn.clicked.connect(self._on_go_to_current_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
 
-        self._folder_filter_input = folder_filter_input
         self._folders_widget = folder_widget
+
+        self._filters_widget = filters_widget
 
         return col_widget
 
@@ -211,21 +256,22 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         header_widget = QtWidgets.QWidget(col_widget)
 
-        files_filter_input = PlaceholderLineEdit(header_widget)
-        files_filter_input.setPlaceholderText("Filter files..")
+        files_filter_input = AYLineEdit(
+            placeholder="Filter files..",
+            variant=AYLineEdit.Variants.Search_Field,
+            parent=header_widget,
+        )
 
-        published_checkbox = QtWidgets.QCheckBox("Published", header_widget)
+        published_checkbox = AYCheckBox("Published", parent=header_widget)
         published_checkbox.setToolTip("Show published workfiles")
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout = AYHBoxLayout(header_widget, margin=0, spacing=4)
         header_layout.addWidget(files_filter_input, 1)
         header_layout.addWidget(published_checkbox, 0)
 
         files_widget = FilesWidget(controller, col_widget)
 
-        col_layout = QtWidgets.QVBoxLayout(col_widget)
-        col_layout.setContentsMargins(0, 0, 0, 0)
+        col_layout = AYVBoxLayout(col_widget, margin=0, spacing=4)
         col_layout.addWidget(header_widget, 0)
         col_layout.addWidget(files_widget, 1)
 
@@ -291,7 +337,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._show_timer.start()
         if self._first_show:
             self._first_show = False
-            self.setStyleSheet(style.load_stylesheet())
+            self.setStyleSheet(WORKFILE_CSS_PATH.read_text())
 
     def keyPressEvent(self, event):
         """Custom keyPressEvent.
@@ -305,7 +351,16 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         pass
 
     def _on_show(self):
-        self.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self.refresh()
+        else:
+            self._refresh_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self.refresh()
 
     def _on_file_text_filter_change(self, text):
         self._files_widget.set_text_filter(text)
@@ -340,8 +395,13 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if not self._host_is_valid:
             return
 
-        self._folders_widget.set_project_name(
-            self._controller.get_current_project_name()
+        self._project_name = self._controller.get_current_project_name()
+        self._folders_widget.set_project_name(self._project_name)
+        self._tasks_widget.refresh()
+
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
         )
 
     def _on_save_as_finished(self, event):
@@ -366,17 +426,6 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
                 "Publish workfile saved"
             )
 
-    def _on_duplicate_finished(self, event):
-        if event["failed"]:
-            self._overlay_messages_widget.add_message(
-                "Failed to duplicate workfile",
-                "error",
-            )
-        else:
-            self._overlay_messages_widget.add_message(
-                "Workfile duplicated"
-            )
-
     def _on_open_finished(self, event):
         if event["failed"]:
             self._overlay_messages_widget.add_message(
@@ -385,3 +434,142 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             )
         else:
             self.close()
+
+    def _on_workfile_action_finished(self, event):
+        if event["crashed"]:
+            self._overlay_messages_widget.add_message(
+                "Action failed",
+                "error",
+            )
+            return
+
+        result = event["result"]
+        if result is None:
+            return
+
+        if result.message:
+            message_type = None if result.success else "error"
+            self._overlay_messages_widget.add_message(
+                result.message, message_type
+            )
+
+        # Action continues when the form, Save As dialog or save changes
+        #   prompt is accepted
+        form_values = None
+        if result.form is not None:
+            form_values = self._exec_action_form(
+                result.form, result.form_values
+            )
+        elif result.show_save_as_form is not None:
+            save_as_values = self._exec_save_as_dialog(
+                result.show_save_as_form
+            )
+            if save_as_values is not None:
+                form_values = {SAVE_AS_FORM_KEY: save_as_values}
+        elif result.show_save_changes_form:
+            save_changes = save_changes_prompt(self)
+            if save_changes is not None:
+                form_values = {SAVE_CHANGES_FORM_KEY: save_changes}
+        else:
+            self._apply_action_result(result)
+            return
+
+        if form_values is not None:
+            self._controller.trigger_workfile_action(
+                event["identifier"],
+                ActionSelectionData.from_data(event["selection"]),
+                event["data"],
+                form_values,
+            )
+
+    def _apply_action_result(self, result):
+        if result.close_tool:
+            self.close()
+            return
+
+        redirect = result.redirect
+        # Redirect does refresh too, so files created by the action can be
+        #   selected
+        if result.refresh or redirect is not None:
+            self.refresh()
+
+        if redirect is not None:
+            self._redirect(redirect)
+
+    def _exec_save_as_dialog(self, form_inputs):
+        dialog = SaveAsDialog(
+            self._controller,
+            self,
+            extension=form_inputs.extension,
+            folder_id=form_inputs.folder_id,
+            task_id=form_inputs.task_id,
+            version=form_inputs.version,
+            comment=form_inputs.comment,
+            description=form_inputs.description,
+        )
+        dialog.update_context()
+        dialog.exec_()
+        return dialog.get_result()
+
+    def _exec_action_form(self, form, form_values):
+        dialog = AttributeDefinitionsDialog(
+            form.fields,
+            title=form.title,
+            parent=self,
+        )
+        if form_values:
+            dialog.set_values(form_values)
+
+        if form.submit_label:
+            dialog.set_submit_label(form.submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if form.submit_icon:
+            dialog.set_submit_icon(get_qt_icon(form.submit_icon))
+
+        if form.cancel_label:
+            dialog.set_cancel_label(form.cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if form.cancel_icon:
+            dialog.set_cancel_icon(get_qt_icon(form.cancel_icon))
+
+        dialog.setMinimumSize(300, 140)
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+            return None
+        return dialog.get_values()
+
+    def _redirect(self, redirect):
+        if redirect.area is not None:
+            self._published_checkbox.setChecked(
+                redirect.area == WorkfileAreaType.published
+            )
+
+        # Use current selection if the context is not defined
+        folder_id = redirect.folder_id
+        task_name = redirect.task_name
+        if not folder_id:
+            folder_id = self._controller.get_selected_folder_id()
+            if not task_name:
+                task_name = self._controller.get_selected_task_name()
+
+        self._controller.set_expected_selection(
+            folder_id,
+            task_name,
+            workfile_name=redirect.workfile_name,
+            representation_id=redirect.representation_id,
+        )
+
+    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
+        folder_ids = None
+        task_ids = None
+        if enabled:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+            task_ids = entity_ids["task_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
+        self._tasks_widget.set_task_ids_filter(task_ids)

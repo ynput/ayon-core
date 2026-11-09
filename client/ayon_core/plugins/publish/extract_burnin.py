@@ -5,7 +5,6 @@ import tempfile
 import platform
 import shutil
 
-import clique
 import pyblish.api
 
 from ayon_core import resources, AYON_CORE_ROOT
@@ -17,10 +16,14 @@ from ayon_core.lib import (
     run_ayon_launcher_process,
 
     convert_input_paths_for_ffmpeg,
-    should_convert_for_ffmpeg
+    should_convert_for_ffmpeg,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
-from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import (
+    add_repre_files_for_cleanup,
+    get_default_reviewable_layers,
+    get_file_collections,
+)
 
 
 class ExtractBurnin(publish.Extractor):
@@ -36,27 +39,7 @@ class ExtractBurnin(publish.Extractor):
     order = pyblish.api.ExtractorOrder + 0.03
 
     families = ["review", "burnin"]
-    hosts = [
-        "nuke",
-        "maya",
-        "shell",
-        "hiero",
-        "premiere",
-        "traypublisher",
-        "harmony",
-        "fusion",
-        "aftereffects",
-        "tvpaint",
-        "webpublisher",
-        "aftereffects",
-        "photoshop",
-        "flame",
-        "houdini",
-        "max",
-        "blender",
-        "unreal",
-        "circuit",
-    ]
+    settings_category = "core"
 
     optional = True
 
@@ -158,15 +141,17 @@ class ExtractBurnin(publish.Extractor):
 
     def main_process(self, instance):
         host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
         product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
 
         filtering_criteria = {
-            "hosts": host_name,
-            "product_types": product_type,
+            "host_names": host_name,
+            "product_base_types": product_base_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
@@ -177,23 +162,26 @@ class ExtractBurnin(publish.Extractor):
             logger=self.log
         )
         if not profile:
-            self.log.debug((
+            self.log.debug(
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\" | Product name \"{}\""
-                " | Task name \"{}\" | Task type \"{}\""
-            ).format(
-                host_name, product_type, product_name, task_name, task_type
-            ))
+                f" Host name: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Product name \"{product_name}\""
+                f" | Task name \"{task_name}\""
+                f" | Task type \"{task_type}\""
+            )
             return
 
         # Pre-filter burnin definitions by instance families
         burnin_defs = self.filter_burnins_defs(profile, instance)
         if not burnin_defs:
-            self.log.debug((
+            self.log.debug(
                 "Skipped instance. Burnin definitions are not set for profile"
-                " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
-                " | Profile \"{}\""
-            ).format(host_name, product_type, task_name, profile))
+                f" Host name: \"{host_name}\""
+                f" | Product base type: \"{product_base_type}\""
+                f" | Task name \"{task_name}\""
+                f" | Profile \"{profile}\""
+            )
             return
 
         burnins_per_repres = self._get_burnins_per_representations(
@@ -213,6 +201,8 @@ class ExtractBurnin(publish.Extractor):
 
         anatomy = instance.context.data["anatomy"]
         scriptpath = self.burnin_script_path()
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
 
         # Args that will execute the script
         executable_args = ["run", scriptpath]
@@ -239,7 +229,9 @@ class ExtractBurnin(publish.Extractor):
 
             first_input_path = os.path.join(src_repre_staging_dir, filename)
             # Determine if representation requires pre conversion for ffmpeg
-            do_convert = should_convert_for_ffmpeg(first_input_path)
+            do_convert = should_convert_for_ffmpeg(
+                first_input_path, review_layers=review_layers
+            )
             # If result is None the requirement of conversion can't be
             #   determined
             if do_convert is None:
@@ -262,7 +254,8 @@ class ExtractBurnin(publish.Extractor):
                 convert_input_paths_for_ffmpeg(
                     src_filepaths,
                     new_staging_dir,
-                    self.log
+                    review_layers=review_layers,
+                    log=self.log,
                 )
 
             # Add anatomy keys to burnin_data.
@@ -315,22 +308,8 @@ class ExtractBurnin(publish.Extractor):
                 burnin_values = {}
                 for key in self.positions:
                     value = burnin_def.get(key)
-                    if not value:
-                        continue
-                    # TODO remove replacements
-                    burnin_values[key] = (
-                        value
-                        .replace("{task}", "{task[name]}")
-                        .replace("{product[name]}", "{subset}")
-                        .replace("{Product[name]}", "{Subset}")
-                        .replace("{PRODUCT[NAME]}", "{SUBSET}")
-                        .replace("{product[type]}", "{family}")
-                        .replace("{Product[type]}", "{Family}")
-                        .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-                        .replace("{folder[name]}", "{asset}")
-                        .replace("{Folder[name]}", "{Asset}")
-                        .replace("{FOLDER[NAME]}", "{ASSET}")
-                    )
+                    if value:
+                        burnin_values[key] = value
 
                 # Remove "delete" tag from new representation
                 if "delete" in new_repre["tags"]:
@@ -468,7 +447,7 @@ class ExtractBurnin(publish.Extractor):
             font_filepath = font_filepath.get(sys_name)
 
         if font_filepath and isinstance(font_filepath, str):
-            font_filepath = font_filepath.format(**os.environ)
+            font_filepath = font_filepath.format_map(os.environ)
             if not os.path.exists(font_filepath):
                 font_filepath = None
 
@@ -530,10 +509,10 @@ class ExtractBurnin(publish.Extractor):
         if "slate.farm" in instance.data["families"]:
             frame_start_handle += 1
 
-        burnin_data.update({
-            "version": int(version),
-            "comment": instance.data["comment"]
-        })
+        burnin_data["version"] = int(version)
+        comment = instance.data["comment"]
+        if comment:
+            burnin_data["comment"] = comment
 
         temp_data = {
             "frame_start": frame_start,
@@ -630,7 +609,7 @@ class ExtractBurnin(publish.Extractor):
         # - not used if input is not a sequence
         first_frame = None
         if is_sequence:
-            collections, _ = clique.assemble(input_filenames)
+            collections, _ = get_file_collections(input_filenames)
             if not collections:
                 is_sequence = False
             else:
@@ -746,6 +725,15 @@ class ExtractBurnin(publish.Extractor):
                 burnin_frame_end - burnin_slate_frame_start + 1
             )
         })
+
+        # burnin source resolution which might be different than on review
+        repre_source_resolution_width = repre.get("source_resolution_width")
+        repre_source_resolution_height = repre.get("source_resolution_height")
+        if repre_source_resolution_width and repre_source_resolution_height:
+            burnin_data.update({
+                "source_resolution_width": repre_source_resolution_width,
+                "source_resolution_height": repre_source_resolution_height
+            })
 
     def filter_burnins_defs(self, profile, instance):
         """Filter outputs by their values from settings.

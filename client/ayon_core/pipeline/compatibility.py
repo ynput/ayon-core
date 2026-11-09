@@ -1,0 +1,20 @@
+"""Package to handle compatibility checks for pipeline components."""
+import ayon_api
+
+
+def is_product_base_type_supported() -> bool:
+    """Check support for product base types.
+
+    This function checks if the current pipeline supports product base types.
+    Once this feature is implemented, it will return True. This should be used
+    in places where some kind of backward compatibility is needed to avoid
+    breaking existing functionality that relies on the current behavior.
+
+    Returns:
+        bool: True if product base types are supported, False otherwise.
+
+    """
+
+    if not hasattr(ayon_api, "is_product_base_type_supported"):
+        return False
+    return ayon_api.is_product_base_type_supported()

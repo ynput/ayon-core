@@ -8,13 +8,7 @@ This module contains a unified plugin that handles:
 
 from pprint import pformat
 
-import opentimelineio as otio
 import pyblish.api
-from ayon_core.pipeline.editorial import (
-    get_media_range_with_retimes,
-    otio_range_to_frame_range,
-    otio_range_with_handles,
-)
 
 
 def validate_otio_clip(instance, logger):
@@ -33,7 +27,7 @@ def validate_otio_clip(instance, logger):
     return True
 
 
-class CollectOtioRanges(pyblish.api.InstancePlugin):
+class CollectOTIORanges(pyblish.api.InstancePlugin):
     """Collect all OTIO-related frame ranges and timing information.
 
     This plugin handles collection of:
@@ -63,7 +57,8 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     label = "Collect OTIO Ranges"
     order = pyblish.api.CollectorOrder - 0.08
-    families = ["shot", "clip"]
+    families = ["otio.clip.ranges"]
+    HAS_RUN_KEY = "__CollectOTIORanges_Run__"
 
     def process(self, instance):
         """Process the instance to collect all frame ranges.
@@ -71,10 +66,21 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         Args:
             instance: The instance to process
         """
+        # Mark instance for 'CollectOTIORangesOld'
+        instance.data[self.HAS_RUN_KEY] = True
+
         if not validate_otio_clip(instance, self.log):
             return
 
+        import opentimelineio as otio
+
         otio_clip = instance.data["otioClip"]
+        if isinstance(
+            otio_clip.media_reference,
+            otio.schema.MissingReference
+        ):
+            self.log.info("Clip has no media reference")
+            return
 
         # Collect timeline ranges if workfile start frame is available
         if "workfileFrameStart" in instance.data:
@@ -100,6 +106,11 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     def _collect_timeline_ranges(self, instance, otio_clip):
         """Collect basic timeline frame ranges."""
+        from ayon_core.pipeline.editorial import (
+            otio_range_to_frame_range,
+            otio_range_with_handles,
+        )
+
         workfile_start = instance.data["workfileFrameStart"]
 
         # Get timeline ranges
@@ -129,6 +140,8 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     def _collect_source_ranges(self, instance, otio_clip):
         """Collect source media frame ranges."""
+        import opentimelineio as otio
+
         # Get source ranges
         otio_src_range = otio_clip.source_range
         otio_available_range = otio_clip.available_range()
@@ -178,6 +191,8 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     def _collect_retimed_ranges(self, instance, otio_clip):
         """Handle retimed clip frame ranges."""
+        from ayon_core.pipeline.editorial import get_media_range_with_retimes
+
         retimed_attributes = get_media_range_with_retimes(otio_clip, 0, 0)
         self.log.debug(f"Retimed attributes: {retimed_attributes}")
 
@@ -197,3 +212,16 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
         instance.data.update(data)
         self.log.debug(f"Updated retimed values: {data}")
+
+
+class CollectOTIORangesOld(CollectOTIORanges):
+    label = "Collect OTIO Ranges (old)"
+    order = CollectOTIORanges.order + 0.000001
+    families = ["shot", "clip"]
+
+    def process(self, instance):
+        if instance.data.pop(CollectOTIORanges.HAS_RUN_KEY, False) is True:
+            self.log.debug("Skipping, CollectOTIORanges has run.")
+            return
+        self.log.debug("Using old CollectOTIORanges plugin")
+        super().process(instance)

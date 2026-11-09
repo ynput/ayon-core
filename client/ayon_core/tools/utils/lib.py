@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 import os
 import sys
+import io
 import contextlib
 import collections
 import traceback
+import urllib.request
 from functools import partial
 from typing import Union, Any
 
+import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 import qtmaterialsymbols
@@ -16,10 +21,25 @@ from ayon_core.style import (
 )
 from ayon_core.resources import get_image_path
 from ayon_core.lib import Logger
+from ayon_core.lib.icon_definitions import (
+    IconBase,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    PathIcon,
+    UrlIcon,
+    AYONUrlIcon,
+    TransparentIcon,
+)
 
-from .constants import CHECKED_INT, UNCHECKED_INT, PARTIALLY_CHECKED_INT
+from .constants import (
+    CHECKED_INT,
+    UNCHECKED_INT,
+    PARTIALLY_CHECKED_INT,
+    DEFAULT_WEB_ICON_COLOR,
+)
 
 log = Logger.get_logger(__name__)
+_PLACEHOLDER = object()
 
 
 def checkstate_int_to_enum(state):
@@ -45,14 +65,8 @@ def checkstate_enum_to_int(state):
 
 def center_window(window):
     """Move window to center of it's screen."""
-
-    if hasattr(QtWidgets.QApplication, "desktop"):
-        desktop = QtWidgets.QApplication.desktop()
-        screen_idx = desktop.screenNumber(window)
-        screen_geo = desktop.screenGeometry(screen_idx)
-    else:
-        screen = window.screen()
-        screen_geo = screen.geometry()
+    screen = window.screen()
+    screen_geo = screen.geometry()
 
     geo = window.frameGeometry()
     geo.moveCenter(screen_geo.center())
@@ -110,9 +124,6 @@ def paint_image_with_color(image, color):
         QtGui.QPainter.Antialiasing
         | QtGui.QPainter.SmoothPixmapTransform
     )
-    # Deprecated since 5.14
-    if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-        render_hints |= QtGui.QPainter.HighQualityAntialiasing
     painter.setRenderHints(render_hints)
 
     painter.setClipRegion(alpha_region)
@@ -242,19 +253,18 @@ def preserve_expanded_rows(tree_view, column=0, role=None):
             value = index.data(role)
             expanded.add(value)
 
-    try:
-        yield
-    finally:
-        if not expanded:
-            return
+    yield
 
-        for index in iter_model_rows(model, column=column, include_root=False):
-            value = index.data(role)
-            state = value in expanded
-            if state:
-                tree_view.expand(index)
-            else:
-                tree_view.collapse(index)
+    if not expanded:
+        return
+
+    for index in iter_model_rows(model, column=column, include_root=False):
+        value = index.data(role)
+        state = value in expanded
+        if state:
+            tree_view.expand(index)
+        else:
+            tree_view.collapse(index)
 
 
 @contextlib.contextmanager
@@ -293,24 +303,23 @@ def preserve_selection(tree_view, column=0, role=None, current_index=True):
         return
 
     selected = set(row.data(role) for row in selected_rows)
-    try:
-        yield
-    finally:
-        if not selected:
-            return
+    yield
 
-        # Go through all indices, select the ones with similar data
-        for index in iter_model_rows(model, column=column, include_root=False):
-            value = index.data(role)
-            state = value in selected
-            if state:
-                tree_view.scrollTo(index)  # Ensure item is visible
-                selection_model.select(index, flags)
+    if not selected:
+        return
 
-            if current_index_value and value == current_index_value:
-                selection_model.setCurrentIndex(
-                    index, selection_model.NoUpdate
-                )
+    # Go through all indices, select the ones with similar data
+    for index in iter_model_rows(model, column=column, include_root=False):
+        value = index.data(role)
+        state = value in selected
+        if state:
+            tree_view.scrollTo(index)  # Ensure item is visible
+            selection_model.select(index, flags)
+
+        if current_index_value and value == current_index_value:
+            selection_model.setCurrentIndex(
+                index, QtCore.QItemSelectionModel.NoUpdate
+            )
 
 
 class DynamicQThread(QtCore.QThread):
@@ -472,6 +481,80 @@ class _IconsCache:
     _cache = {}
     _default = None
     _qtawesome_cache = {}
+    # Downloaded content of url icons by '(icon type, url)'
+    _content_cache: dict[tuple[str, str], bytes] = {}
+
+    @classmethod
+    def _get_url_icon_info(
+        cls, icon_def: IconBase | dict
+    ) -> tuple[str, str] | None:
+        if isinstance(icon_def, UrlIcon):
+            return "url", icon_def.url
+        if isinstance(icon_def, AYONUrlIcon):
+            return "ayon_url", icon_def.url
+        if isinstance(icon_def, dict):
+            icon_type = icon_def.get("type")
+            if icon_type in {"url", "ayon_url"}:
+                return icon_type, icon_def["url"]
+        return None
+
+    @classmethod
+    def _get_url_content(cls, icon_type: str, url: str) -> bytes | None:
+        """Download content of url icon, cached.
+
+        Does not create any Qt object, safe to call from worker threads.
+        Failed downloads are not cached so they are tried again later.
+        """
+        key = (icon_type, url)
+        content = cls._content_cache.get(key)
+        if content is not None:
+            return content
+
+        try:
+            if icon_type == "url":
+                content = urllib.request.urlopen(url).read()
+            else:
+                full_url = f"{ayon_api.get_base_url()}/{url.lstrip('/')}"
+                stream = io.BytesIO()
+                ayon_api.download_file_to_stream(full_url, stream)
+                content = stream.getvalue()
+        except Exception:
+            log.warning(
+                "Failed to download image '%s'", url, exc_info=True
+            )
+            return None
+        cls._content_cache[key] = content
+        return content
+
+    @classmethod
+    def _icon_from_url(cls, icon_type: str, url: str) -> QtGui.QIcon | None:
+        content = cls._get_url_content(icon_type, url)
+        if not content:
+            return None
+        pix = QtGui.QPixmap()
+        pix.loadFromData(content)
+        return QtGui.QIcon(pix)
+
+    @classmethod
+    def prefetch(cls, icon_defs) -> None:
+        """Download content of icons which need it.
+
+        Meant to be called from a worker thread so that 'get_icon' on the
+        UI thread does not wait for network. Invalid icon definitions are
+        skipped, 'get_icon' handles them.
+        """
+        for icon_def in icon_defs:
+            if icon_def is None:
+                continue
+            try:
+                info = cls._get_url_icon_info(icon_def)
+            except Exception:
+                log.debug(
+                    "Invalid icon definition %s", icon_def, exc_info=True
+                )
+                continue
+            if info is not None:
+                cls._get_url_content(*info)
 
     @classmethod
     def _get_cache_key(cls, icon_def):
@@ -480,23 +563,113 @@ class _IconsCache:
         if icon_type == "path":
             parts = [icon_type, icon_def["path"]]
 
-        elif icon_type in {"awesome-font", "material-symbols"}:
-            color = icon_def["color"] or ""
+        elif icon_type == "awesome-font":
+            color = icon_def.get("color") or ""
             if isinstance(color, QtGui.QColor):
                 color = color.name()
             parts = [icon_type, icon_def["name"] or "", color]
+
+        elif icon_type == "material-symbols":
+            color = icon_def.get("color") or DEFAULT_WEB_ICON_COLOR
+            if isinstance(color, QtGui.QColor):
+                color = color.name()
+            fill = bool(icon_def.get("fill"))
+            parts = [icon_type, icon_def["name"] or "", color, str(fill)]
+
+        elif icon_type in {"url", "ayon_url"}:
+            parts = [icon_type, icon_def["url"]]
+
+        elif icon_type == "transparent":
+            size = icon_def.get("size")
+            if size is None:
+                size = 256
+            parts = [icon_type, str(size)]
+
         return "|".join(parts)
 
     @classmethod
-    def get_icon(cls, icon_def):
-        if not icon_def:
-            return None
-        icon_type = icon_def["type"]
-        cache_key = cls._get_cache_key(icon_def)
+    def get_icon(
+        cls,
+        icon_def: IconBase | dict,
+        *,
+        default: Any = _PLACEHOLDER,
+    ) -> QtGui.QIcon | Any:
+        if icon_def is None:
+            if default is _PLACEHOLDER:
+                return None
+            return default
+
+        if isinstance(icon_def, IconBase):
+            cache_key = icon_def.get_unique_id()
+        elif isinstance(icon_def, dict):
+            cache_key = cls._get_cache_key(icon_def)
+        else:
+            raise TypeError(
+                "Unsupported icon type. Expected 'IconBase' or 'dict',"
+                f" got '{type(icon_def)}'"
+            )
+
         cache = cls._cache.get(cache_key)
         if cache is not None:
             return cache
 
+        if not isinstance(icon_def, IconBase):
+            icon = cls._get_icon_from_dict(icon_def)
+            if icon is None:
+                if default is not _PLACEHOLDER:
+                    return default
+                icon = cls.get_default()
+            cls._cache[cache_key] = icon
+            return icon
+
+        icon = None
+        if isinstance(icon_def, PathIcon):
+            if os.path.exists(icon_def.path):
+                icon = QtGui.QIcon(icon_def.path)
+
+        elif isinstance(icon_def, AwesomeFontIcon):
+            with contextlib.suppress(Exception):
+                icon = qtawesome.icon(
+                    icon_def.name,
+                    color=icon_def.color,
+                )
+
+        elif isinstance(icon_def, MaterialSymbolsIcon):
+            with contextlib.suppress(Exception):
+                icon = qtmaterialsymbols.get_icon(
+                    icon_def.name,
+                    icon_def.color,
+                    fill=icon_def.fill,
+                )
+
+        elif isinstance(icon_def, (UrlIcon, AYONUrlIcon)):
+            icon = cls._icon_from_url(*cls._get_url_icon_info(icon_def))
+
+        elif isinstance(icon_def, TransparentIcon):
+            pix = QtGui.QPixmap(icon_def.size, icon_def.size)
+            pix.fill(QtCore.Qt.transparent)
+            icon = QtGui.QIcon(pix)
+
+        if icon is None:
+            # Do not cache 'default' value
+            if default is not _PLACEHOLDER:
+                return default
+
+            icon = cls.get_default()
+        cls._cache[cache_key] = icon
+        return icon
+
+    @classmethod
+    def _get_icon_from_dict(
+        cls, icon_def: dict[str, Any]
+    ) -> QtGui.QIcon | None:
+        """Get icon from dictionary definition.
+
+        In ideal case dictionary definitions should be replace with 'IconBase'
+            but that is request for future.
+
+        """
+        icon_type = icon_def["type"]
         icon = None
         if icon_type == "path":
             path = icon_def["path"]
@@ -505,7 +678,7 @@ class _IconsCache:
 
         elif icon_type == "awesome-font":
             icon_name = icon_def["name"]
-            icon_color = icon_def["color"]
+            icon_color = icon_def.get("color")
             icon = cls.get_qta_icon_by_name_and_color(icon_name, icon_color)
             if icon is None:
                 icon = cls.get_qta_icon_by_name_and_color(
@@ -513,13 +686,24 @@ class _IconsCache:
 
         elif icon_type == "material-symbols":
             icon_name = icon_def["name"]
-            icon_color = icon_def["color"]
+            icon_color = icon_def.get("color") or DEFAULT_WEB_ICON_COLOR
             if qtmaterialsymbols.get_icon_name_char(icon_name) is not None:
-                icon = qtmaterialsymbols.get_icon(icon_name, icon_color)
+                icon = qtmaterialsymbols.get_icon(
+                    icon_name,
+                    icon_color,
+                    fill=bool(icon_def.get("fill")),
+                )
 
-        if icon is None:
-            icon = cls.get_default()
-        cls._cache[cache_key] = icon
+        elif icon_type in {"url", "ayon_url"}:
+            icon = cls._icon_from_url(icon_type, icon_def["url"])
+
+        elif icon_type == "transparent":
+            size = icon_def.get("size")
+            if size is None:
+                size = 256
+            pix = QtGui.QPixmap(size, size)
+            pix.fill(QtCore.Qt.transparent)
+            icon = QtGui.QIcon(pix)
         return icon
 
     @classmethod
@@ -565,17 +749,36 @@ class _IconsCache:
         return icon
 
 
-def get_qt_icon(icon_def):
+def get_qt_icon(
+    icon_def: IconBase | dict[str, Any],
+    *,
+    default: Any = _PLACEHOLDER,
+) -> QtGui.QIcon | Any:
     """Returns icon from cache or creates new one.
 
     Args:
-        icon_def (dict[str, Any]): Icon definition.
+        icon_def (IconBase | dict[str, Any): Icon definition.
+        default (Any): Default value to return if icon is not found.
 
     Returns:
         QtGui.QIcon: Icon.
 
     """
-    return _IconsCache.get_icon(icon_def)
+    return _IconsCache.get_icon(icon_def, default=default)
+
+
+def prefetch_qt_icons(icon_defs) -> None:
+    """Download content of icons so 'get_qt_icon' does not wait for network.
+
+    Safe to call from worker threads, does not create any Qt objects. Use it
+    in the 'fetch' step of 'AsyncLoader' for icons shown by 'apply'.
+
+    Args:
+        icon_defs (Iterable[IconBase | dict[str, Any] | None]): Icon
+            definitions.
+
+    """
+    _IconsCache.prefetch(icon_defs)
 
 
 def get_qta_icon_by_name_and_color(icon_name, icon_color):

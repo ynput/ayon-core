@@ -27,7 +27,7 @@ class EnvironmentValueDelegate(QtWidgets.QStyledItemDelegate):
 
 class EnvironmentsView(QtWidgets.QTreeView):
     def __init__(self, parent=None):
-        super(EnvironmentsView, self).__init__(parent)
+        super().__init__(parent)
 
         self._scroll_enabled = False
 
@@ -76,6 +76,7 @@ class EnvironmentsView(QtWidgets.QTreeView):
             0, QtWidgets.QHeaderView.ResizeToContents
         )
         self.setSelectionMode(QtWidgets.QTreeView.ExtendedSelection)
+        self.setIndentation(20)
 
     def get_selection_as_dict(self):
         indexes = self.selectionModel().selectedIndexes()

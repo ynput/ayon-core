@@ -21,12 +21,16 @@ from .exceptions import (
     TemplateFillError,
 )
 from .structures import (
+    ParentFlags,
+    ProductTypeItem,
+    ButtonCallbackInfo,
     CreatedInstance,
     ConvertorItem,
     AttributeValues,
     CreatorAttributeValues,
     PublishAttributeValues,
     PublishAttributes,
+    InstanceContextInfo,
 )
 from .utils import (
     get_last_versions_for_instances,
@@ -44,9 +48,6 @@ from .creator_plugins import (
     AutoCreator,
     HiddenCreator,
 
-    discover_legacy_creator_plugins,
-    get_legacy_creator_by_name,
-
     discover_creator_plugins,
     register_creator_plugin,
     deregister_creator_plugin,
@@ -57,11 +58,6 @@ from .creator_plugins import (
 )
 
 from .context import CreateContext
-
-from .legacy_create import (
-    LegacyCreator,
-    legacy_create,
-)
 
 
 __all__ = (
@@ -85,12 +81,16 @@ __all__ = (
     "TaskNotSetError",
     "TemplateFillError",
 
+    "ParentFlags",
+    "ProductTypeItem",
+    "ButtonCallbackInfo",
     "CreatedInstance",
     "ConvertorItem",
     "AttributeValues",
     "CreatorAttributeValues",
     "PublishAttributeValues",
     "PublishAttributes",
+    "InstanceContextInfo",
 
     "get_last_versions_for_instances",
     "get_next_versions_for_instances",
@@ -105,9 +105,6 @@ __all__ = (
     "AutoCreator",
     "HiddenCreator",
 
-    "discover_legacy_creator_plugins",
-    "get_legacy_creator_by_name",
-
     "discover_creator_plugins",
     "register_creator_plugin",
     "deregister_creator_plugin",
@@ -117,7 +114,4 @@ __all__ = (
     "cache_and_get_instances",
 
     "CreateContext",
-
-    "LegacyCreator",
-    "legacy_create",
 )

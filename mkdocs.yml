@@ -3,6 +3,9 @@ repo_url: https://github.com/ynput/ayon-core
 
 nav:
   - Home: index.md
+  - UI Library:
+    - Overview: ui.md
+    - Testing: ui_testing.md
   - License: license.md
 
 theme:
@@ -11,12 +14,12 @@ theme:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       toggle:
-        icon: material/toggle-switch-off-outline
+        icon: material/weather-sunny
         name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
       toggle:
-        icon: material/toggle-switch
+        icon: material/weather-night
         name: Switch to dark mode
   logo: img/ay-symbol-blackw-full.png
   favicon: img/favicon.ico

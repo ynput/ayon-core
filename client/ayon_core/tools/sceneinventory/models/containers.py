@@ -9,6 +9,9 @@ from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models.projects import StatusStates
 
 
+_log = Logger.get_logger(__name__)
+
+
 # --- Implementation that should be in ayon-python-api ---
 # The implementation is not available in all versions of ayon-python-api.
 RepresentationHierarchy = collections.namedtuple(
@@ -72,8 +75,29 @@ def get_representations_hierarchy(project_name, representation_ids):
     query.set_variable_value("representationIds", list(repre_ids))
 
     con = ayon_api.get_server_api_connection()
-    parsed_data = query.query(con)
-    for repre in parsed_data["project"]["representations"]:
+    try:
+        parsed_data = query.query(con)
+        project = parsed_data["project"]
+    except Exception:
+        # Query can fail e.g. because of missing access to the project,
+        #   or because the project does not exist (was renamed/removed).
+        # Treat it the same as "nothing found" instead of letting it
+        #   propagate and break the whole scene inventory refresh.
+        _log.error(
+            "Failed to query representations hierarchy for project"
+            f" '{project_name}'.",
+            exc_info=True
+        )
+        return output
+
+    if project is None:
+        _log.warning(
+            f"Project '{project_name}' does not exist or is not"
+            " accessible. Treating its representations as not found."
+        )
+        return output
+
+    for repre in project["representations"]:
         repre_id = repre["id"]
         version = repre.pop("version")
         product = version.pop("product")
@@ -95,7 +119,8 @@ class ContainerItem:
         namespace,
         object_name,
         item_id,
-        project_name
+        project_name,
+        version_locked,
     ):
         self.representation_id = representation_id
         self.loader_name = loader_name
@@ -103,6 +128,7 @@ class ContainerItem:
         self.namespace = namespace
         self.item_id = item_id
         self.project_name = project_name
+        self.version_locked = version_locked
 
     @classmethod
     def from_container_data(cls, current_project_name, container):
@@ -114,7 +140,8 @@ class ContainerItem:
             item_id=uuid.uuid4().hex,
             project_name=container.get(
                 "project_name", current_project_name
-            )
+            ),
+            version_locked=container.get("version_locked", False),
         )
 
 
@@ -126,6 +153,7 @@ class RepresentationInfo:
         product_id,
         product_name,
         product_type,
+        product_type_icon,
         product_group,
         version_id,
         representation_name,
@@ -135,6 +163,7 @@ class RepresentationInfo:
         self.product_id = product_id
         self.product_name = product_name
         self.product_type = product_type
+        self.product_type_icon = product_type_icon
         self.product_group = product_group
         self.version_id = version_id
         self.representation_name = representation_name
@@ -153,7 +182,17 @@ class RepresentationInfo:
 
     @classmethod
     def new_invalid(cls):
-        return cls(None, None, None, None, None, None, None, None)
+        return cls(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
 
 class VersionItem:
@@ -229,13 +268,17 @@ class ContainersModel:
     def get_representation_info_items(self, project_name, representation_ids):
         output = {}
         missing_repre_ids = set()
+        icons_mapping = self._controller.get_product_type_icons_mapping(
+            project_name
+        )
         for repre_id in representation_ids:
             try:
                 uuid.UUID(repre_id)
             except (ValueError, TypeError, AttributeError):
                 output[repre_id] = RepresentationInfo.new_invalid()
                 continue
-            repre_info = self._repre_info_by_id.get(repre_id)
+            # Cache key contains project name and representation id
+            repre_info = self._repre_info_by_id.get((project_name, repre_id))
             if repre_info is None:
                 missing_repre_ids.add(repre_id)
             else:
@@ -253,6 +296,7 @@ class ContainersModel:
                 "product_id": None,
                 "product_name": None,
                 "product_type": None,
+                "product_type_icon": None,
                 "product_group": None,
                 "version_id": None,
                 "representation_name": None,
@@ -265,10 +309,17 @@ class ContainersModel:
                 kwargs["folder_id"] = folder["id"]
                 kwargs["folder_path"] = folder["path"]
             if product:
+                product_type = product["productType"]
+                product_base_type = product.get("productBaseType")
+                icon = icons_mapping.get_icon(
+                    product_base_type=product_base_type,
+                    product_type=product_type,
+                )
                 group = product["attrib"]["productGroup"]
                 kwargs["product_id"] = product["id"]
                 kwargs["product_name"] = product["name"]
                 kwargs["product_type"] = product["productType"]
+                kwargs["product_type_icon"] = icon
                 kwargs["product_group"] = group
             if version:
                 kwargs["version_id"] = version["id"]
@@ -276,7 +327,7 @@ class ContainersModel:
                 kwargs["representation_name"] = repre["name"]
 
             repre_info = RepresentationInfo(**kwargs)
-            self._repre_info_by_id[repre_id] = repre_info
+            self._repre_info_by_id[(project_name, repre_id)] = repre_info
             output[repre_id] = repre_info
         return output
 
@@ -286,12 +337,15 @@ class ContainersModel:
         missing_ids = {
             product_id
             for product_id in product_ids
-            if product_id not in self._version_items_by_product_id
+            if (project_name, product_id)
+            not in self._version_items_by_product_id
         }
         if missing_ids:
             status_items_by_name = {
                 status_item.name: status_item
-                for status_item in self._controller.get_project_status_items()
+                for status_item in self._controller.get_project_status_items(
+                    project_name
+                )
             }
 
             def version_sorted(entity):
@@ -317,6 +371,14 @@ class ContainersModel:
             for product_id, version_entities in (
                 version_entities_by_product_id.items()
             ):
+                cache_key = (project_name, product_id)
+                if not version_entities:
+                    # Product does not actually exist (or has no versions)
+                    #   in this project - e.g. a stale/mismatched
+                    #   project name on a container.
+                    self._version_items_by_product_id[cache_key] = {}
+                    continue
+
                 last_version = abs(version_entities[-1]["version"])
                 last_approved_id = None
                 for version_entity in version_entities:
@@ -336,12 +398,14 @@ class ContainersModel:
                     )
                     for entity in version_entities
                 }
-                self._version_items_by_product_id[product_id] = (
+                self._version_items_by_product_id[cache_key] = (
                     version_items_by_id
                 )
 
         return {
-            product_id: dict(self._version_items_by_product_id[product_id])
+            product_id: dict(
+                self._version_items_by_product_id[(project_name, product_id)]
+            )
             for product_id in product_ids
         }
 

@@ -1,13 +1,32 @@
-from abc import ABC, abstractmethod
-from typing import List
+"""Abstract base classes for loader tool."""
+from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+import typing
+from typing import Iterable, Any, Optional
+
+from ayon_core.lib.icon_definitions import (
+    IconBase,
+    AwesomeFontIcon,
+    get_icon_def_from_data,
+)
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
-    serialize_attr_defs,
     deserialize_attr_defs,
+    serialize_attr_defs,
+)
+from ayon_core.tools.common_models import (
+    TaskItem,
+    TagItem,
+    ProductTypeIconMapping,
 )
 
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models.settings import TaskSortMode
 
+
+@dataclass
 class ProductTypeItem:
     """Item representing product type.
 
@@ -15,78 +34,98 @@ class ProductTypeItem:
         name (str): Product type name.
         icon (dict[str, Any]): Product type icon definition.
     """
-
-    def __init__(self, name, icon):
-        self.name = name
-        self.icon = icon
+    name: str
+    icon: dict[str, Any]
 
     def to_data(self):
-        return {
-            "name": self.name,
-            "icon": self.icon,
-        }
+        return dict(name=self.name, icon=self.icon)
 
     @classmethod
     def from_data(cls, data):
         return cls(**data)
 
 
+@dataclass
+class ProductBaseTypeItem:
+    """Item representing the product base type."""
+    name: str
+    icon: AwesomeFontIcon
+
+    def to_data(self) -> dict[str, Any]:
+        """Convert item to data dictionary.
+
+        Returns:
+            dict[str, Any]: Data representation of the item.
+
+        """
+        return {
+            "name": self.name,
+            "icon": {
+                "name": self.icon.name,
+                "color": self.icon.color,
+            },
+        }
+
+    @classmethod
+    def from_data(
+        cls, data: dict[str, Any]
+    ) -> ProductBaseTypeItem:
+        """Create item from data dictionary.
+
+        Args:
+            data (dict[str, Any]): Data to create item from.
+
+        Returns:
+            ProductBaseTypeItem: Item created from the provided data.
+
+        """
+        icon = data["icon"]
+        data["icon"] = AwesomeFontIcon(icon["name"], color=icon["color"])
+        return cls(**data)
+
+
+@dataclass
 class ProductItem:
     """Product item with it versions.
 
-    Args:
+    Attributes:
         product_id (str): Product id.
         product_type (str): Product type.
         product_name (str): Product name.
         product_icon (dict[str, Any]): Product icon definition.
-        product_type_icon (dict[str, Any]): Product type icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
-        group_name (str): Group name.
+        group_name (str | None]): Group name.
         folder_id (str): Folder id.
         folder_label (str): Folder label.
         version_items (dict[str, VersionItem]): Version items by id.
     """
+    product_id: str
+    product_type: str
+    product_base_type: str
+    product_name: str
+    product_icon: dict[str, Any]
+    group_name: str | None
+    folder_id: str
+    folder_label: str
+    version_items: dict[str, VersionItem]
+    product_in_scene: bool
 
-    def __init__(
-        self,
-        product_id,
-        product_type,
-        product_name,
-        product_icon,
-        product_type_icon,
-        product_in_scene,
-        group_name,
-        folder_id,
-        folder_label,
-        version_items,
-    ):
-        self.product_id = product_id
-        self.product_type = product_type
-        self.product_name = product_name
-        self.product_icon = product_icon
-        self.product_type_icon = product_type_icon
-        self.product_in_scene = product_in_scene
-        self.group_name = group_name
-        self.folder_id = folder_id
-        self.folder_label = folder_label
-        self.version_items = version_items
-
-    def to_data(self):
-        return {
-            "product_id": self.product_id,
-            "product_type": self.product_type,
-            "product_name": self.product_name,
-            "product_icon": self.product_icon,
-            "product_type_icon": self.product_type_icon,
-            "product_in_scene": self.product_in_scene,
-            "group_name": self.group_name,
-            "folder_id": self.folder_id,
-            "folder_label": self.folder_label,
-            "version_items": {
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            product_id=self.product_id,
+            product_type=self.product_type,
+            product_base_type=self.product_base_type,
+            product_name=self.product_name,
+            product_icon=self.product_icon,
+            product_in_scene=self.product_in_scene,
+            group_name=self.group_name,
+            folder_id=self.folder_id,
+            folder_label=self.folder_label,
+            version_items={
                 version_id: version_item.to_data()
                 for version_id, version_item in self.version_items.items()
             },
-        }
+        )
 
     @classmethod
     def from_data(cls, data):
@@ -98,63 +137,48 @@ class ProductItem:
         return cls(**data)
 
 
+@dataclass
 class VersionItem:
     """Version item.
 
     Object have implemented comparison operators to be sortable.
 
-    Args:
+    Attributes:
         version_id (str): Version id.
         version (int): Version. Can be negative when is hero version.
         is_hero (bool): Is hero version.
         product_id (str): Product id.
-        task_id (Union[str, None]): Task id.
-        thumbnail_id (Union[str, None]): Thumbnail id.
-        published_time (Union[str, None]): Published time in format
+        task_id (str | None): Task id.
+        thumbnail_id (str | None): Thumbnail id.
+        published_time (str | None): Published time in format
             '%Y%m%dT%H%M%SZ'.
-        status (Union[str, None]): Status name.
-        author (Union[str, None]): Author.
-        frame_range (Union[str, None]): Frame range.
-        duration (Union[int, None]): Duration.
-        handles (Union[str, None]): Handles.
-        step (Union[int, None]): Step.
-        comment (Union[str, None]): Comment.
-        source (Union[str, None]): Source.
-    """
+        status (str | None): Status name.
+        tags (list[str] | None): Tags.
+        author (str | None): Author.
+        frame_range (str | None): Frame range.
+        duration (int | None): Duration.
+        handles (str | None): Handles.
+        step (int | None): Step.
+        comment (str | None): Comment.
+        source (str | None): Source.
 
-    def __init__(
-        self,
-        version_id,
-        version,
-        is_hero,
-        product_id,
-        task_id,
-        thumbnail_id,
-        published_time,
-        author,
-        status,
-        frame_range,
-        duration,
-        handles,
-        step,
-        comment,
-        source,
-    ):
-        self.version_id = version_id
-        self.product_id = product_id
-        self.task_id = task_id
-        self.thumbnail_id = thumbnail_id
-        self.version = version
-        self.is_hero = is_hero
-        self.published_time = published_time
-        self.author = author
-        self.status = status
-        self.frame_range = frame_range
-        self.duration = duration
-        self.handles = handles
-        self.step = step
-        self.comment = comment
-        self.source = source
+    """
+    version_id: str
+    version: int
+    is_hero: bool
+    product_id: str
+    task_id: str | None
+    thumbnail_id: str | None
+    published_time: str | None
+    tags: list[str] | None
+    author: str | None
+    status: str | None
+    frame_range: str | None
+    duration: int | None
+    handles: str | None
+    step: int | None
+    comment: str | None
+    source: str | None
 
     def __eq__(self, other):
         if not isinstance(other, VersionItem):
@@ -198,69 +222,67 @@ class VersionItem:
     def __le__(self, other):
         return self.__eq__(other) or self.__lt__(other)
 
-    def to_data(self):
-        return {
-            "version_id": self.version_id,
-            "product_id": self.product_id,
-            "task_id": self.task_id,
-            "thumbnail_id": self.thumbnail_id,
-            "version": self.version,
-            "is_hero": self.is_hero,
-            "published_time": self.published_time,
-            "author": self.author,
-            "status": self.status,
-            "frame_range": self.frame_range,
-            "duration": self.duration,
-            "handles": self.handles,
-            "step": self.step,
-            "comment": self.comment,
-            "source": self.source,
-        }
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            version_id=self.version_id,
+            product_id=self.product_id,
+            task_id=self.task_id,
+            thumbnail_id=self.thumbnail_id,
+            version=self.version,
+            is_hero=self.is_hero,
+            published_time=self.published_time,
+            author=self.author,
+            tags=self.tags,
+            status=self.status,
+            frame_range=self.frame_range,
+            duration=self.duration,
+            handles=self.handles,
+            step=self.step,
+            comment=self.comment,
+            source=self.source,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> VersionItem:
         return cls(**data)
 
 
+@dataclass
 class RepreItem:
     """Representation item.
 
-    Args:
+    Attributes:
         representation_id (str): Representation id.
         representation_name (str): Representation name.
-        representation_icon (dict[str, Any]): Representation icon definition.
+        representation_icon (IconBase): Representation icon definition.
         product_name (str): Product name.
         folder_label (str): Folder label.
     """
 
-    def __init__(
-        self,
-        representation_id,
-        representation_name,
-        representation_icon,
-        product_name,
-        folder_label
-    ):
-        self.representation_id = representation_id
-        self.representation_name = representation_name
-        self.representation_icon = representation_icon
-        self.product_name = product_name
-        self.folder_label = folder_label
+    representation_id: str
+    representation_name: str
+    representation_icon: IconBase
+    product_name: str
+    folder_label: str
 
-    def to_data(self):
-        return {
-            "representation_id": self.representation_id,
-            "representation_name": self.representation_name,
-            "representation_icon": self.representation_icon,
-            "product_name": self.product_name,
-            "folder_label": self.folder_label,
-        }
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            representation_id=self.representation_id,
+            representation_name=self.representation_name,
+            representation_icon=self.representation_icon.to_data(),
+            product_name=self.product_name,
+            folder_label=self.folder_label,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> RepreItem:
+        data["representation_icon"] = get_icon_def_from_data(
+            data["representation_icon"]
+        )
         return cls(**data)
 
 
+@dataclass
 class ActionItem:
     """Action item that can be triggered.
 
@@ -270,43 +292,23 @@ class ActionItem:
     Args:
         identifier (str): Action identifier.
         label (str): Action label.
-        icon (dict[str, Any]): Action icon definition.
-        tooltip (str): Action tooltip.
-        options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
-            Action options. Note: 'qargparse' is considered as deprecated.
+        group_label (str | None): Group label.
+        icon (IconBase | dict[str, Any] | None): Action icon definition.
+        tooltip (str | None): Action tooltip.
         order (int): Action order.
-        project_name (str): Project name.
-        folder_ids (list[str]): Folder ids.
-        product_ids (list[str]): Product ids.
-        version_ids (list[str]): Version ids.
-        representation_ids (list[str]): Representation ids.
-    """
+        data (dict[str, Any] | None): Additional action data.
+        options (list[AbstractAttrDef] | None):
+            Action options. Note: 'qargparse' is considered as deprecated.
 
-    def __init__(
-        self,
-        identifier,
-        label,
-        icon,
-        tooltip,
-        options,
-        order,
-        project_name,
-        folder_ids,
-        product_ids,
-        version_ids,
-        representation_ids,
-    ):
-        self.identifier = identifier
-        self.label = label
-        self.icon = icon
-        self.tooltip = tooltip
-        self.options = options
-        self.order = order
-        self.project_name = project_name
-        self.folder_ids = folder_ids
-        self.product_ids = product_ids
-        self.version_ids = version_ids
-        self.representation_ids = representation_ids
+    """
+    identifier: str
+    label: str
+    group_label: str | None
+    icon: IconBase | dict[str, Any] | None
+    tooltip: str | None
+    order: int
+    data: dict[str, Any] | None
+    options: list[AbstractAttrDef] | None
 
     def _options_to_data(self):
         options = self.options
@@ -318,30 +320,26 @@ class ActionItem:
         #   future development of detached UI tools it would be better to be
         #   prepared for it.
         raise NotImplementedError(
-            "{}.to_data is not implemented. Use Attribute definitions"
-            " from 'ayon_core.lib' instead of 'qargparse'.".format(
-                self.__class__.__name__
-            )
+            f"{self.__class__.__name__}.to_data is not implemented."
+            " Use Attribute definitions from 'ayon_core.lib'"
+            " instead of 'qargparse'."
         )
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         options = self._options_to_data()
-        return {
-            "identifier": self.identifier,
-            "label": self.label,
-            "icon": self.icon,
-            "tooltip": self.tooltip,
-            "options": options,
-            "order": self.order,
-            "project_name": self.project_name,
-            "folder_ids": self.folder_ids,
-            "product_ids": self.product_ids,
-            "version_ids": self.version_ids,
-            "representation_ids": self.representation_ids,
-        }
+        return dict(
+            identifier=self.identifier,
+            label=self.label,
+            group_label=self.group_label,
+            icon=self.icon,
+            tooltip=self.tooltip,
+            order=self.order,
+            data=self.data,
+            options=options,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> "ActionItem":
         options = data["options"]
         if options:
             options = deserialize_attr_defs(options)
@@ -349,14 +347,24 @@ class ActionItem:
         return cls(**data)
 
 
+@dataclass
 class ProductTypesFilter:
     """Product types filter.
 
     Defines the filtering for product types.
     """
-    def __init__(self, product_types: List[str], is_allow_list: bool):
-        self.product_types: List[str] = product_types
-        self.is_allow_list: bool = is_allow_list
+    product_types: list[str]
+    is_allow_list: bool
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            product_types=self.product_types,
+            is_allow_list=self.is_allow_list,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> ProductTypesFilter:
+        return cls(**data)
 
 
 class _BaseLoaderController(ABC):
@@ -450,8 +458,8 @@ class BackendLoaderController(_BaseLoaderController):
             topic (str): Event topic name.
             data (Optional[dict[str, Any]]): Event data.
             source (Optional[str]): Event source.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -460,12 +468,49 @@ class BackendLoaderController(_BaseLoaderController):
 
         Returns:
             set[str]: Set of loaded product ids.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_project_settings(self, project_name: str | None) -> dict:
+        pass
+
+    @abstractmethod
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        """Product type icons mapping.
+
+        Returns:
+            ProductTypeIconMapping: Product type icons mapping.
+
+        """
         pass
 
 
 class FrontendLoaderController(_BaseLoaderController):
+    @abstractmethod
+    def get_window_subtitle(self) -> Optional[str]:
+        """Get window subtitle.
+
+        Returns:
+            Optional[str]: Window subtitle.
+
+        """
+
+    @abstractmethod
+    def get_task_sorting_mode(self, project_name: str | None) -> TaskSortMode:
+        """Used by tasks widget to define how tasks are sorted.
+
+        Args:
+            project_name (str | None): Name of the project.
+
+        Returns:
+            TaskSortMode: Task sorting mode.
+
+        """
+
     @abstractmethod
     def register_event_callback(self, topic, callback):
         """Register callback for an event topic.
@@ -517,8 +562,21 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[ProjectItem]: List of project items.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        """Tag items defined on project anatomy.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            list[TagItem]: Tag definition items.
+
+        """
         pass
 
     @abstractmethod
@@ -542,7 +600,12 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def get_task_items(self, project_name, folder_ids, sender=None):
+    def get_task_items(
+        self,
+        project_name: str,
+        folder_ids: Iterable[str],
+        sender: Optional[str] = None,
+    ) -> list[TaskItem]:
         """Task items for folder ids.
 
         Args:
@@ -586,6 +649,36 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, Optional[str]]: Folder labels by folder id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get available tags by entity type.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Available tags by entity type.
 
         """
         pass
@@ -689,34 +782,6 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def get_version_thumbnail_ids(self, project_name, version_ids):
-        """Get thumbnail ids for version ids.
-
-        Args:
-            project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-
-        Returns:
-            dict[str, Union[str, Any]]: Thumbnail id by version id.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_folder_thumbnail_ids(self, project_name, folder_ids):
-        """Get thumbnail ids for folder ids.
-
-        Args:
-            project_name (str): Project name.
-            folder_ids (Iterable[str]): Folder ids.
-
-        Returns:
-            dict[str, Union[str, Any]]: Thumbnail id by folder id.
-        """
-
-        pass
-
-    @abstractmethod
     def get_versions_representation_count(
         self, project_name, version_ids, sender=None
     ):
@@ -737,7 +802,8 @@ class FrontendLoaderController(_BaseLoaderController):
         self,
         project_name,
         entity_type,
-        entity_ids
+        entity_ids,
+        use_server_fallback=True,
     ):
         """Get thumbnail path for thumbnail id.
 
@@ -749,6 +815,9 @@ class FrontendLoaderController(_BaseLoaderController):
             project_name (str): Project name.
             entity_type (str): Entity type.
             entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
 
         Returns:
             dict[str, Union[str, None]]: Thumbnail path by entity id.
@@ -899,43 +968,35 @@ class FrontendLoaderController(_BaseLoaderController):
 
     # Load action items
     @abstractmethod
-    def get_versions_action_items(self, project_name, version_ids):
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
         """Action items for versions selection.
 
         Args:
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
+            entity_ids (set[str]): Entity ids.
+            entity_type (str): Entity type.
 
         Returns:
             list[ActionItem]: List of action items.
+
         """
-
-        pass
-
-    @abstractmethod
-    def get_representations_action_items(
-        self, project_name, representation_ids
-    ):
-        """Action items for representations selection.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            list[ActionItem]: List of action items.
-        """
-
         pass
 
     @abstractmethod
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: Optional[dict[str, Any]],
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         """Trigger action item.
 
@@ -953,17 +1014,24 @@ class FrontendLoaderController(_BaseLoaderController):
             }
 
         Args:
-            identifier (str): Action identifier.
-            options (dict[str, Any]): Action option values from UI.
+            identifier (sttr): Plugin identifier.
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            selected_ids (set[str]): Selected entity ids.
+            selected_entity_type (str): Selected entity type.
+            data (Optional[dict[str, Any]]): Additional action item data.
+            options (dict[str, Any]): Action option values from UI.
+            form_values (dict[str, Any]): Action form values from UI.
 
+        """
         pass
 
     @abstractmethod
-    def change_products_group(self, project_name, product_ids, group_name):
+    def change_products_group(
+        self,
+        project_name: str,
+        product_ids: set[str],
+        group_name: str,
+    ):
         """Change group of products.
 
         Triggers event "products.group.changed" with data:
@@ -978,8 +1046,8 @@ class FrontendLoaderController(_BaseLoaderController):
             project_name (str): Project name.
             product_ids (Iterable[str]): Product ids.
             group_name (str): New group name.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -1018,6 +1086,48 @@ class FrontendLoaderController(_BaseLoaderController):
                 current context project.
         """
 
+        pass
+
+    @abstractmethod
+    def process_server_events(self):
+        """Process AYON server events received via websocket.
+
+        Server events are received in a background thread and are queued.
+        This method must be called from the main (UI) thread periodically,
+        the queued events are emitted as controller events:
+        - "ayon.connection.opened"
+        - "ayon.connection.closed"
+        - "ayon.auth.failed"
+        - "ayon.server.restart"
+
+        """
+        pass
+
+    @abstractmethod
+    def check_server_available(self):
+        """Check if server is available.
+
+        Request to server is sent only if the connection state is not
+        known yet. Starts listening to server events, so
+        "ayon.connection.opened" is emitted once connection is established.
+
+        Can be used to postpone refresh of UI until the server is available.
+
+        Returns:
+            bool: 'False' if server is not available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_server_connection_state(self):
+        """Server connection state.
+
+        Returns:
+            Optional[bool]: 'True' if connected, 'False' if disconnected
+                and 'None' if state is not known yet.
+
+        """
         pass
 
     # Site sync functions
@@ -1063,6 +1173,33 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             Union[dict[str, Any], None]: Icon definition or None if site sync
                 is not enabled for the project.
+        """
+
+        pass
+
+    @abstractmethod
+    def get_active_site(self, project_name: str) -> str | None:
+        """Active site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_remote_site(self, project_name: str) -> str | None:
+        """Remote site name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[str, None]: Site name or None if site sync is not enabled.
+
         """
 
         pass

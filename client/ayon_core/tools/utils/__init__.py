@@ -6,6 +6,8 @@ from .widgets import (
     CustomTextComboBox,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
+    CodePlainTextEdit,
+    MarkdownLabel,
     ElideLabel,
     HintedLineEdit,
     ExpandingTextEdit,
@@ -28,6 +30,7 @@ from .widgets import (
 from .views import (
     DeselectableTreeView,
     TreeView,
+    ListView,
 )
 from .error_dialog import ErrorMessageBox
 from .lib import (
@@ -40,6 +43,7 @@ from .lib import (
     get_qt_app,
     get_ayon_qt_app,
     get_qt_icon,
+    prefetch_qt_icons,
 )
 
 from .models import (
@@ -47,6 +51,10 @@ from .models import (
 )
 from .overlay_messages import (
     MessageOverlayObject,
+)
+from .connection_overlay import (
+    AYONLogoAnimation,
+    ConnectionOverlay,
 )
 from .multiselection_combobox import MultiSelectionComboBox
 from .thumbnail_paint_widget import ThumbnailPainterWidget
@@ -60,6 +68,7 @@ from .dialogs import (
 )
 from .projects_widget import (
     ProjectsCombobox,
+    ProjectsWidget,
     ProjectsQtModel,
     ProjectSortFilterProxy,
     PROJECT_NAME_ROLE,
@@ -73,6 +82,7 @@ from .folders_widget import (
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
     SimpleFoldersWidget,
+    FoldersFiltersWidget,
 )
 
 from .tasks_widget import (
@@ -91,6 +101,8 @@ __all__ = (
     "CustomTextComboBox",
     "PlaceholderLineEdit",
     "PlaceholderPlainTextEdit",
+    "CodePlainTextEdit",
+    "MarkdownLabel",
     "ElideLabel",
     "HintedLineEdit",
     "ExpandingTextEdit",
@@ -112,6 +124,7 @@ __all__ = (
 
     "DeselectableTreeView",
     "TreeView",
+    "ListView",
 
     "ErrorMessageBox",
 
@@ -124,10 +137,14 @@ __all__ = (
     "get_qt_app",
     "get_ayon_qt_app",
     "get_qt_icon",
+    "prefetch_qt_icons",
 
     "RecursiveSortFilterProxyModel",
 
     "MessageOverlayObject",
+
+    "AYONLogoAnimation",
+    "ConnectionOverlay",
 
     "MultiSelectionComboBox",
 
@@ -143,6 +160,7 @@ __all__ = (
     "PopupUpdateKeys",
 
     "ProjectsCombobox",
+    "ProjectsWidget",
     "ProjectsQtModel",
     "ProjectSortFilterProxy",
     "PROJECT_NAME_ROLE",
@@ -154,6 +172,7 @@ __all__ = (
     "FoldersQtModel",
     "FOLDERS_MODEL_SENDER_NAME",
     "SimpleFoldersWidget",
+    "FoldersFiltersWidget",
 
     "TasksWidget",
     "TasksQtModel",

@@ -12,7 +12,9 @@ import json
 
 import pyblish.api
 
-from ayon_core.pipeline import KnownPublishError
+from ayon_core.pipeline.publish.input_versions import (
+    deserialize_input_versions
+)
 from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 
@@ -105,6 +107,9 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
 
             self._fill_staging_dir(instance_data, anatomy)
             instance.data.update(instance_data)
+            instance.data["inputVersions"] = deserialize_input_versions(
+                instance_data.get("inputVersions")
+            )
 
             # stash render job id for later validation
             instance.data["publishJobMetadata"] = data
@@ -146,7 +151,9 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
 
         publish_data_paths = os.environ.get("AYON_PUBLISH_DATA")
         if not publish_data_paths:
-            raise KnownPublishError("Missing `AYON_PUBLISH_DATA`")
+            self.log.warning(
+                "Environment variable `AYON_PUBLISH_DATA` is not set.")
+            return
 
         # QUESTION
         #   Do we support (or want support) multiple files in the variable?

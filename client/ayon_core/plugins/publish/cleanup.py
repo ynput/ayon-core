@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """Cleanup leftover files from publish."""
 import os
-import shutil
-import pyblish.api
 import re
+import shutil
+import tempfile
+
+import pyblish.api
 
 from ayon_core.lib import is_in_tests
+from ayon_core.pipeline import PublishError
 
 
 class CleanUp(pyblish.api.InstancePlugin):
@@ -17,24 +20,8 @@ class CleanUp(pyblish.api.InstancePlugin):
 
     order = pyblish.api.IntegratorOrder + 10
     label = "Clean Up"
-    hosts = [
-        "aftereffects",
-        "blender",
-        "celaction",
-        "flame",
-        "fusion",
-        "harmony",
-        "hiero",
-        "houdini",
-        "maya",
-        "nuke",
-        "photoshop",
-        "resolve",
-        "tvpaint",
-        "unreal",
-        "webpublisher",
-        "shell"
-    ]
+    settings_category = "core"
+
     exclude_families = ["clip"]
     optional = True
     active = True
@@ -48,17 +35,15 @@ class CleanUp(pyblish.api.InstancePlugin):
         if is_in_tests():
             # let automatic test process clean up temporary data
             return
-        # Get the errored instances
-        failed = []
+
+        # If instance has errors, do not clean up
         for result in instance.context.data["results"]:
-            if (result["error"] is not None and result["instance"] is not None
-               and result["instance"] not in failed):
-                failed.append(result["instance"])
-        assert instance not in failed, (
-            "Result of '{}' instance were not success".format(
-                instance.data["name"]
-            )
-        )
+            if result["error"] is not None and result["instance"] is instance:
+                raise PublishError(
+                    "Result of '{}' instance were not success".format(
+                        instance.data["name"]
+                    )
+                )
 
         _skip_cleanup_filepaths = instance.context.data.get(
             "skipCleanupFilepaths"
@@ -71,10 +56,15 @@ class CleanUp(pyblish.api.InstancePlugin):
             self.log.debug("Cleaning renders new...")
             self.clean_renders(instance, skip_cleanup_filepaths)
 
-        if [ef for ef in self.exclude_families
-                if instance.data["productType"] in ef]:
+        product_base_type = instance.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = instance.data["productType"]
+
+        if product_base_type in self.exclude_families:
+            self.log.debug(
+                "Skipping cleanup for instance because product base"
+                f" type is excluded from cleanup: {product_base_type}")
             return
-        import tempfile
 
         temp_root = tempfile.gettempdir()
         staging_dir = instance.data.get("stagingDir", None)
@@ -106,7 +96,9 @@ class CleanUp(pyblish.api.InstancePlugin):
         transfers = instance.data.get("transfers", list())
 
         instance_families = instance.data.get("families", list())
-        instance_product_type = instance.data.get("productType")
+        instance_product_base_type = instance.data.get("productBaseType")
+        if not instance_product_base_type:
+            instance_product_base_type = instance.data.get("productType")
         dirnames = []
         transfers_dirs = []
 
@@ -131,7 +123,7 @@ class CleanUp(pyblish.api.InstancePlugin):
                 continue
 
             if (
-                instance_product_type == "render"
+                instance_product_base_type == "render"
                 or "render" in instance_families
             ):
                 self.log.info("Removing src: `{}`...".format(src))

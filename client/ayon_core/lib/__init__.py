@@ -2,6 +2,9 @@
 # flake8: noqa E402
 """AYON lib functions."""
 
+from .terminal import Terminal
+from .log import Logger, log_span
+from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,
     JSONSettingRegistry,
@@ -11,6 +14,7 @@ from .local_settings import (
     get_launcher_storage_dir,
     get_addons_resources_dir,
     get_local_site_id,
+    get_ayon_user_entity,
     get_ayon_username,
 )
 from .ayon_connection import initialize_ayon_connection
@@ -28,9 +32,24 @@ from .vendor_bin_utils import (
     find_executable,
     get_oiio_tools_path,
     get_oiio_tool_args,
+    get_ffmpeg_supported_options,
+    get_ffmpeg_available_encoders,
     get_ffmpeg_tool_path,
     get_ffmpeg_tool_args,
+    is_ffmpeg_option_supported,
+    is_ffmpeg_encoder_available,
     is_oiio_supported,
+)
+
+from .icon_definitions import (
+    IconBase,
+    PathIcon,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    UrlIcon,
+    AYONUrlIcon,
+    TransparentIcon,
+    get_icon_def_from_data,
 )
 
 from .attribute_definitions import (
@@ -39,6 +58,7 @@ from .attribute_definitions import (
     UIDef,
     UISeparatorDef,
     UILabelDef,
+    ButtonDef,
 
     UnknownDef,
     NumberDef,
@@ -50,11 +70,12 @@ from .attribute_definitions import (
 )
 
 from .env_tools import (
+    compute_env_variables_structure,
     env_value_to_bool,
     get_paths_from_environ,
+    merge_env_variables,
 )
 
-from .terminal import Terminal
 from .execute import (
     get_ayon_launcher_args,
     get_linux_launcher_args,
@@ -62,14 +83,13 @@ from .execute import (
     run_subprocess,
     run_detached_process,
     run_ayon_launcher_process,
+    run_detached_ayon_launcher_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
-from .log import (
-    Logger,
-)
 
 from .path_templates import (
+    DefaultKeysDict,
     TemplateUnsolved,
     StringTemplate,
     FormatObject,
@@ -98,7 +118,6 @@ from .profiles_filtering import (
 from .transcoding import (
     get_transcode_temp_directory,
     should_convert_for_ffmpeg,
-    convert_for_ffmpeg,
     convert_input_paths_for_ffmpeg,
     get_ffprobe_data,
     get_ffprobe_streams,
@@ -117,6 +136,7 @@ from .plugin_tools import (
 
 from .path_tools import (
     format_file_size,
+    open_in_file_browser,
     collect_frames,
     create_hard_link,
     version_up,
@@ -132,11 +152,16 @@ from .ayon_info import (
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
+    get_settings_variant,
 )
 
 terminal = Terminal
 
 __all__ = [
+    "Logger",
+    "log_span",
+    "StrEnum",
+
     "IniSettingRegistry",
     "JSONSettingRegistry",
     "AYONSecureRegistry",
@@ -145,6 +170,7 @@ __all__ = [
     "get_launcher_storage_dir",
     "get_addons_resources_dir",
     "get_local_site_id",
+    "get_ayon_user_entity",
     "get_ayon_username",
 
     "initialize_ayon_connection",
@@ -161,25 +187,42 @@ __all__ = [
     "run_subprocess",
     "run_detached_process",
     "run_ayon_launcher_process",
+    "run_detached_ayon_launcher_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 
+    "compute_env_variables_structure",
     "env_value_to_bool",
     "get_paths_from_environ",
+    "merge_env_variables",
 
     "ToolNotFoundError",
     "find_executable",
     "get_oiio_tools_path",
     "get_oiio_tool_args",
+    "get_ffmpeg_supported_options",
+    "get_ffmpeg_available_encoders",
     "get_ffmpeg_tool_path",
     "get_ffmpeg_tool_args",
+    "is_ffmpeg_option_supported",
+    "is_ffmpeg_encoder_available",
     "is_oiio_supported",
+
+    "IconBase",
+    "PathIcon",
+    "MaterialSymbolsIcon",
+    "AwesomeFontIcon",
+    "UrlIcon",
+    "AYONUrlIcon",
+    "TransparentIcon",
+    "get_icon_def_from_data",
 
     "AbstractAttrDef",
 
     "UIDef",
     "UISeparatorDef",
     "UILabelDef",
+    "ButtonDef",
 
     "UnknownDef",
     "NumberDef",
@@ -198,7 +241,6 @@ __all__ = [
 
     "get_transcode_temp_directory",
     "should_convert_for_ffmpeg",
-    "convert_for_ffmpeg",
     "convert_input_paths_for_ffmpeg",
     "get_ffprobe_data",
     "get_ffprobe_streams",
@@ -217,12 +259,14 @@ __all__ = [
     "source_hash",
 
     "format_file_size",
+    "open_in_file_browser",
     "collect_frames",
     "create_hard_link",
     "version_up",
     "get_version_from_path",
     "get_last_version_from_path",
 
+    "DefaultKeysDict",
     "TemplateUnsolved",
     "StringTemplate",
     "FormatObject",
@@ -233,8 +277,6 @@ __all__ = [
     "get_timestamp",
     "get_formatted_current_time",
 
-    "Logger",
-
     "is_in_ayon_launcher_process",
     "is_running_from_build",
     "is_using_ayon_console",
@@ -242,4 +284,5 @@ __all__ = [
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
+    "get_settings_variant",
 ]

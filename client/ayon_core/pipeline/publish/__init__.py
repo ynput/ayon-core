@@ -29,6 +29,7 @@ from .lib import (
     get_publish_template_name,
 
     publish_plugins_discover,
+    filter_crashed_publish_paths,
     load_help_content_from_plugin,
     load_help_content_from_filepath,
 
@@ -46,8 +47,25 @@ from .lib import (
     get_publish_instance_families,
 
     main_cli_publish,
-)
 
+    add_trait_representations,
+    get_trait_representations,
+    has_trait_representations,
+    set_trait_representations,
+
+    get_instance_template_name,
+    get_instance_publish_template,
+    get_publish_template_object,
+    get_instance_families,
+    get_version_data_from_instance,
+    get_rootless_path,
+
+    IntegrationTemplateItem,
+
+    get_default_reviewable_layers,
+)
+from .report import PublishReport
+from .logic import PublishLogic, PublishActionResult
 from .abstract_expected_files import ExpectedFiles
 from .abstract_collect_render import (
     RenderInstance,
@@ -82,6 +100,7 @@ __all__ = (
     "get_publish_template_name",
 
     "publish_plugins_discover",
+    "filter_crashed_publish_paths",
     "load_help_content_from_plugin",
     "load_help_content_from_filepath",
 
@@ -100,8 +119,29 @@ __all__ = (
 
     "main_cli_publish",
 
+    "PublishReport",
+
+    "PublishLogic",
+    "PublishActionResult",
+
     "ExpectedFiles",
 
     "RenderInstance",
     "AbstractCollectRender",
+
+    "add_trait_representations",
+    "get_trait_representations",
+    "has_trait_representations",
+    "set_trait_representations",
+
+    "get_instance_template_name",
+    "get_instance_publish_template",
+    "get_publish_template_object",
+    "get_instance_families",
+    "get_version_data_from_instance",
+    "get_rootless_path",
+
+    "IntegrationTemplateItem",
+
+    "get_default_reviewable_layers",
 )

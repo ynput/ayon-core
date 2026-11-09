@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Package for handling AYON command line arguments."""
+
 import os
 import sys
 import code
-import traceback
 from pathlib import Path
-import warnings
 
 import click
+import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
@@ -26,25 +26,45 @@ from ayon_core.lib.env_tools import (
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.option("--use-staging", is_flag=True,
-              expose_value=False, help="use staging variants")
-@click.option("--debug", is_flag=True, expose_value=False,
-              help="Enable debug")
-@click.option("--verbose", expose_value=False,
-              help=("Change AYON log level (debug - critical or 0-50)"))
-@click.option("--force", is_flag=True, hidden=True)
-def main_cli(ctx, force):
+@click.option(
+    "--use-staging",
+    is_flag=True,
+    expose_value=False,
+    help="use staging variants")
+@click.option(
+    "--debug",
+    is_flag=True,
+    expose_value=False,
+    help="Enable debug")
+@click.option(
+    "--project",
+    help="Project name")
+@click.option(
+    "--verbose",
+    expose_value=False,
+    help="Change AYON log level (debug - critical or 0-50)")
+@click.option(
+    "--use-dev",
+    is_flag=True,
+    expose_value=False,
+    help="use dev bundle")
+@click.option(
+    "--ayon-login",
+    is_flag=True,
+    expose_value=False,
+    help="Show login dialog (change server or user)")
+def main_cli(ctx, *_args, **_kwargs):
     """AYON is main command serving as entry point to pipeline system.
 
     It wraps different commands together.
     """
-
     if ctx.invoked_subcommand is None:
         # Print help if headless mode is used
         if os.getenv("AYON_HEADLESS_MODE") == "1":
             print(ctx.get_help())
             sys.exit(0)
         else:
+            ctx.params.pop("project")
             ctx.forward(tray)
 
 
@@ -59,7 +79,6 @@ def tray(force):
     Default action of AYON command is to launch tray widget to control basic
     aspects of AYON. See documentation for more information.
     """
-
     from ayon_core.tools.tray import main
 
     main(force)
@@ -73,54 +92,6 @@ def addon(ctx):
     These commands are generated dynamically by currently loaded addons.
     """
     pass
-
-
-@main_cli.command()
-@click.pass_context
-@click.argument("output_json_path")
-@click.option("--project", help="Project name", default=None)
-@click.option("--asset", help="Folder path", default=None)
-@click.option("--task", help="Task name", default=None)
-@click.option("--app", help="Application name", default=None)
-@click.option(
-    "--envgroup", help="Environment group (e.g. \"farm\")", default=None
-)
-def extractenvironments(
-    ctx, output_json_path, project, asset, task, app, envgroup
-):
-    """Extract environment variables for entered context to a json file.
-
-    Entered output filepath will be created if does not exists.
-
-    All context options must be passed otherwise only AYON's global
-    environments will be extracted.
-
-    Context options are "project", "asset", "task", "app"
-
-    Deprecated:
-        This function is deprecated and will be removed in future. Please use
-        'addon applications extractenvironments ...' instead.
-    """
-    warnings.warn(
-        (
-            "Command 'extractenvironments' is deprecated and will be"
-            " removed in future. Please use"
-            " 'addon applications extractenvironments ...' instead."
-        ),
-        DeprecationWarning
-    )
-
-    addons_manager = ctx.obj["addons_manager"]
-    applications_addon = addons_manager.get_enabled_addon("applications")
-    if applications_addon is None:
-        raise RuntimeError(
-            "Applications addon is not available or enabled."
-        )
-
-    # Please ignore the fact this is using private method
-    applications_addon._cli_extract_environments(
-        output_json_path, project, asset, task, app, envgroup
-    )
 
 
 @main_cli.command()
@@ -223,6 +194,28 @@ def interactive():
     code.interact(banner)
 
 
+@main_cli.command(context_settings={"ignore_unknown_options": True})
+def browser():
+    """Show Browser tool."""
+    from ayon_core.tools.utils import get_ayon_qt_app
+    from ayon_core.tools.utils.host_tools import use_legacy_loader
+
+    if use_legacy_loader():
+        from ayon_core.tools.loader.ui import LoaderWindow
+
+        window_class = LoaderWindow
+    else:
+        from ayon_core.tools.browser.ui import BrowserWindow
+
+        window_class = BrowserWindow
+
+    app = get_ayon_qt_app()
+    browser_window = window_class()
+    browser_window.setWindowTitle("AYON Browser")
+    browser_window.show()
+    app.exec_()
+
+
 @main_cli.command()
 @click.option("--build", help="Print only build version",
               is_flag=True, default=False)
@@ -233,6 +226,101 @@ def version(build):
         This function has questionable usage.
     """
     print(os.environ["AYON_VERSION"])
+
+
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+def create_project_structure(
+    project,
+):
+    """Create project folder structure as defined in setting
+    `ayon+settings://core/project_folder_structure`
+
+    Args:
+        project (str): The name of the project for which you
+            want to create its additional folder structure.
+
+    """
+
+    from ayon_core.pipeline.project_folders import create_project_folders
+
+    print(f">>> Creating project folder structure for project '{project}'.")
+    create_project_folders(project)
+
+
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+@click.option(
+    "--event_id",
+    type=str,
+    help="Id of the event carrying the version ids",
+    default=None)
+@click.option(
+    "--version_ids",
+    type=str,
+    help="Comma separated version ids",
+    default=None)
+def deliver(
+    project, event_id, version_ids
+):
+    """Launch delivery action for selected versions.
+
+    The version ids can be passed either directly via '--version_ids' (legacy)
+    or via an event using '--event_id'. Exactly one of the two must be
+    provided.
+
+    Args:
+        project (str): The name of the project.
+        event_id (str): Id of the event carrying the version ids.
+        version_ids (str): Comma separated version ids.
+
+    """
+    log = Logger.get_logger("delivery")
+    log.debug(f"Launching browser for Delivery action for '{project}'.")
+
+    try:
+        from ayon_core.tools.delivery.delivery import DeliveryOptionsDialog
+        # must be here because no module qargparse
+        from ayon_core.tools.utils.lib import get_qt_app
+
+        _app = get_qt_app()
+        list_entity_label = None
+        if event_id:
+            event = ayon_api.get_event(event_id)
+
+            # either version_ids or list_id can be in payload
+            version_ids = event["payload"].get("version_ids")
+            list_id = event["payload"].get("list_id")
+            if not version_ids and not list_id:
+                raise ValueError("No version_ids or list_id in payload.")
+            if list_id:
+                list_entity = ayon_api.get_entity_list_rest(project, list_id)
+                if not list_entity:
+                    raise ValueError(
+                        f"Entity list '{list_id}' was not found.")
+                list_entity_label = list_entity["label"]
+                # get all version entities belonging to the list
+                version_ids = [
+                    version["entityId"] for version in list_entity["items"]]
+        elif version_ids:
+            version_ids = version_ids.split(",")
+        else:
+            raise ValueError("Missing option '--version_ids' or '--event_id'")
+
+        dialog = DeliveryOptionsDialog(
+            project, version_ids, list_entity_label=list_entity_label, log=log
+        )
+        dialog.exec_()
+    except Exception:
+        log.warning("Failed to deliver versions.", exc_info=True)
 
 
 def _set_global_environments() -> None:
@@ -281,7 +369,45 @@ def _add_addons(addons_manager):
             )
 
 
+def _cleanup_project_args():
+    rem_args = list(sys.argv[1:])
+    if "--project" not in rem_args:
+        return
+
+    cmd = None
+    current_ctx = None
+    parent_name = "ayon"
+    parent_cmd = main_cli
+    while hasattr(parent_cmd, "resolve_command"):
+        if current_ctx is None:
+            current_ctx = main_cli.make_context(parent_name, rem_args)
+        else:
+            current_ctx = parent_cmd.make_context(
+                parent_name,
+                rem_args,
+                parent=current_ctx
+            )
+        if not rem_args:
+            break
+        cmd_name, cmd, rem_args = parent_cmd.resolve_command(
+            current_ctx, rem_args
+        )
+        parent_name = cmd_name
+        parent_cmd = cmd
+
+    if cmd is None:
+        return
+
+    param_names = {param.name for param in cmd.params}
+    if "project" in param_names:
+        return
+    idx = sys.argv.index("--project")
+    sys.argv.pop(idx)
+    sys.argv.pop(idx)
+
+
 def main(*args, **kwargs):
+    logger = Logger.get_logger("main")
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
@@ -298,20 +424,21 @@ def main(*args, **kwargs):
             sys.path.insert(0, path)
     os.environ["PYTHONPATH"] = os.pathsep.join(split_paths)
 
-    print(">>> loading environments ...")
-    print("  - global AYON ...")
+    logger.debug("Loading environment for AYON.")
     _set_global_environments()
-    print("  - for addons ...")
+    logger.debug("Loading environment for addons.")
     addons_manager = AddonsManager()
     _set_addons_environments(addons_manager)
     _add_addons(addons_manager)
+
+    _cleanup_project_args()
+
     try:
         main_cli(
             prog_name="ayon",
             obj={"addons_manager": addons_manager},
+            args=(sys.argv[1:]),
         )
     except Exception:  # noqa
-        exc_info = sys.exc_info()
-        print("!!! AYON crashed:")
-        traceback.print_exception(*exc_info)
+        logger.exception("AYON crashed")
         sys.exit(1)
