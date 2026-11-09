@@ -672,6 +672,16 @@ class BrowserWidgetController(QtCore.QObject):
         return ""
 
     @property
+    def selected_hierarchy_folder_ids(self) -> list[str]:
+        """Return ids of the folders selected in the hierarchy.
+
+        Empty when the slicer shows another category, e.g. lists.
+        """
+        if self._current_category != BrowserSlicerCategory.HIERARCHY.value:
+            return []
+        return list(self._selected_folder_ids)
+
+    @property
     def group_by(self) -> GroupByOption:
         """Return the current group-by option."""
         return self._group_by_options.get(

@@ -78,6 +78,8 @@ class ReviewInspector(AYContainer):
         self._first_update_measured: bool = False
 
         self._build()
+        # Activity of selected folders is shown without a selected version
+        controller.selection_changed.connect(self._on_folders_selected)
 
     def _build(self) -> None:
         """Build the inspector UI. This is a placeholder method."""
@@ -113,8 +115,12 @@ class ReviewInspector(AYContainer):
         self.add_layout(thumb_wrapper)
 
         # Details and activity share the space below the thumbnail, so
-        #   the activity does not make the inspector any wider.
-        self._tabs = AYTabBar(["Details", "Activity"])
+        #   the activity does not make the inspector any wider. Tabs are
+        #   laid out as on the frontend, but details are shown first.
+        self._tabs = AYTabBar()
+        self._tabs.add_tab("Activity", icon="forum", icon_only=True)
+        self._tabs.add_stretch()
+        details_index = self._tabs.add_tab("Details")
         self.add_widget(self._tabs)
         details_page = AYContainer(
             layout=AYContainer.Layout.VBox,
@@ -132,7 +138,6 @@ class ReviewInspector(AYContainer):
         self._activity_context_label = AYLabel(
             "",
             dim=True,
-            icon="layers",
             icon_size=14,
             elide_mode=QtCore.Qt.TextElideMode.ElideMiddle,
             rel_text_size=-1,
@@ -144,9 +149,10 @@ class ReviewInspector(AYContainer):
         activity_page.add_widget(self._activity_context_label)
         activity_page.add_widget(self._activity, stretch=1)
         self._pages = QtWidgets.QStackedWidget()
-        self._pages.addWidget(details_page)
         self._pages.addWidget(activity_page)
+        self._pages.addWidget(details_page)
         self._tabs.current_changed.connect(self._pages.setCurrentIndex)
+        self._tabs.set_current(details_index)
         self.add_widget(self._pages, stretch=1)
 
         # Version info
@@ -269,6 +275,9 @@ class ReviewInspector(AYContainer):
         self._current_selection.clear()
         self._update()
 
+    def _on_folders_selected(self, _folder_ids: list[str]) -> None:
+        self._update()
+
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
         """Track mouse press/release events on the view's viewport.
 
@@ -388,6 +397,9 @@ class ReviewInspector(AYContainer):
 
         thumb_keys: list[str] = []
         version_ids: list[str] = []
+        # A featured hero version has the activity of the version it was
+        #   made from, but representations of the hero version
+        activity_version_ids: list[str] = []
         project_name: str = data.get("project_name", "")
         for d in selected_data:
             tid = d.get("thumbnailId", "")
@@ -396,6 +408,7 @@ class ReviewInspector(AYContainer):
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
             version_ids.append(d.get("_action_version_id") or vid)
+            activity_version_ids.append(vid)
 
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses
@@ -404,18 +417,9 @@ class ReviewInspector(AYContainer):
             self._current_thumb_key = ""
             self._thumbnail.set_thumbnail("")
 
-        if len(version_ids) > self.activity_selection_limit:
-            self._set_activity_label("")
-            self._activity.set_context(
-                None, [], f"{n_sel} versions selected"
-            )
-        else:
-            self._set_activity_label(self._get_activity_label(selected_data))
-            self._activity.set_context(
-                project_name,
-                version_ids,
-                "Select a version to see its activity",
-            )
+        self._update_activity(
+            project_name, activity_version_ids, selected_data
+        )
 
         # Fetch and display representations for all selected versions.
         if self._controller and project_name and version_ids:
@@ -423,6 +427,51 @@ class ReviewInspector(AYContainer):
         else:
             self._repre_request_key = ""
             self._representations.set_items([])
+
+    def _update_activity(
+        self,
+        project_name: str,
+        version_ids: list[str],
+        selected_data: list[dict],
+    ) -> None:
+        """Show activity of the selected versions, or of their folders.
+
+        As on the frontend, the activity of the folders selected in the
+        hierarchy is shown when no version is selected.
+
+        Args:
+            project_name: Project of the selected versions.
+            version_ids: Ids of the selected versions.
+            selected_data: Data of the selected rows with a version.
+        """
+        if len(version_ids) > self.activity_selection_limit:
+            self._set_activity_label("")
+            self._activity.set_context(
+                None, [], f"{len(version_ids)} versions selected"
+            )
+            return
+
+        if version_ids:
+            label = self._get_activity_label(selected_data)
+            self._set_activity_label(label, "layers")
+            self._activity.set_context(project_name, version_ids)
+            return
+
+        folder_ids = self._controller.selected_hierarchy_folder_ids
+        if len(folder_ids) > self.activity_selection_limit:
+            folder_ids = []
+        label = ""
+        if folder_ids:
+            label = (
+                "Folder" if len(folder_ids) == 1
+                else f"{len(folder_ids)} folders"
+            )
+        self._set_activity_label(label, "folder")
+        self._activity.set_context(
+            self._controller.current_project,
+            folder_ids,
+            "Select a folder or version to see its activity",
+        )
 
     @staticmethod
     def _get_activity_label(selected_data: list[dict]) -> str:
@@ -432,11 +481,9 @@ class ReviewInspector(AYContainer):
             selected_data: Data of the selected rows with a version.
 
         Returns:
-            Product and version name of a single version, the count of
-                more versions, or an empty string without a version.
+            Product and version name of a single version, or the count of
+                more versions.
         """
-        if not selected_data:
-            return ""
         if len(selected_data) > 1:
             return f"{len(selected_data)} versions"
         data = selected_data[0]
@@ -448,12 +495,13 @@ class ReviewInspector(AYContainer):
             if name
         )
 
-    def _set_activity_label(self, label: str) -> None:
-        self._activity_context_label.setText(label)
+    def _set_activity_label(self, label: str, icon: str = "") -> None:
+        label_widget = self._activity_context_label
+        label_widget.setText(label)
         # Changed text removes the icon of a label
-        self._activity_context_label.set_icon()
-        self._activity_context_label.setToolTip(label)
-        self._activity_context_label.setVisible(bool(label))
+        label_widget.set_icon(icon)
+        label_widget.setToolTip(label)
+        label_widget.setVisible(bool(label))
 
     def _load_representations(
         self, project_name: str, version_ids: list[str]

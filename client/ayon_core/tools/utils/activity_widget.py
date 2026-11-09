@@ -110,6 +110,11 @@ def _text(value: Any) -> str:
     return NOT_AVAILABLE if value is None else str(value)
 
 
+def _date(item: ActivityItem) -> str:
+    # Activities are shown at the time they were made, as on the frontend
+    return _text(item.created_at or item.updated_at)
+
+
 def _create_users(user_items: list[UserItem]) -> list[User]:
     return [
         User(
@@ -167,8 +172,9 @@ def _create_comment(
         user_full_name=user_full_name,
         user_name=user_name,
         comment=_text(item.body),
-        comment_date=_text(item.updated_at),
+        comment_date=_date(item),
         category=item.category or "",
+        category_color=item.category_color or "",
         files=files,
         annotations=annotations,
     )
@@ -198,7 +204,7 @@ def _create_activity(
             user_name=user_name,
             version=_text(item.version_name),
             product=_text(item.product_name),
-            date=_text(item.updated_at),
+            date=_date(item),
             status=item.version_status or "",
         )
     if item.activity_type == "status.change":
@@ -210,7 +216,7 @@ def _create_activity(
             version=_text(item.version_name),
             old_status=_text(item.old_status),
             new_status=_text(item.new_status),
-            date=_text(item.updated_at),
+            date=_date(item),
         )
     return None
 
@@ -219,7 +225,8 @@ class ActivityWidget(AYActivityStream):
     """Activity feed showing comments and events of the set entities.
 
     Nothing is fetched while the widget is hidden, so it is free to keep
-    in a tab that the user may never open.
+    in a tab that the user may never open. As on the frontend, the newest
+    activity is at the bottom, where a new feed starts.
 
     Args:
         controller: Controller of the tool, the source of all data of
@@ -239,6 +246,7 @@ class ActivityWidget(AYActivityStream):
         **kwargs,
     ) -> None:
         kwargs.setdefault("thumbnail_loader", self._load_thumbnail)
+        kwargs.setdefault("stick_to_bottom", True)
         super().__init__(*args, avatar_cache=avatar_cache, **kwargs)
         if avatar_cache is None:
             # Created after 'super().__init__' as it is parented to
@@ -386,7 +394,8 @@ class ActivityWidget(AYActivityStream):
         full_names_by_username = {user.name: user.full_name for user in users}
         thumbnail_sources = {}
         activities = []
-        for item in feed.activity_items:
+        # Items are from the newest, the feed shows the newest last
+        for item in reversed(feed.activity_items):
             activity = _create_activity(item, full_names_by_username)
             if activity is None:
                 continue

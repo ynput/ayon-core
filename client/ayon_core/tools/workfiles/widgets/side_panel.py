@@ -19,8 +19,9 @@ from .actions_widgets import WorkfileActionsRow
 class SidePanelWidget(AYContainer):
     """Details about selected workfile and activity of its task.
 
-    The activity is a second tab so the panel does not take more space.
-    It shows the selected task, or the folder until a task is selected.
+    The activity is a tab next to the details, so the panel does not take
+    more space. It shows the selected task, or the folder until a task is
+    selected.
 
     Todos:
         At this moment only shows created and modified date of file
@@ -45,7 +46,11 @@ class SidePanelWidget(AYContainer):
             layout_spacing=4,
         )
 
-        tabs = AYTabBar(["Details", "Activity"], parent=self)
+        # Tabs are laid out as on the frontend, but details are shown first
+        tabs = AYTabBar(parent=self)
+        tabs.add_tab("Activity", icon="forum", icon_only=True)
+        tabs.add_stretch()
+        details_index = tabs.add_tab("Details")
         self.add_widget(tabs)
 
         details_page = AYContainer(
@@ -69,9 +74,10 @@ class SidePanelWidget(AYContainer):
         activity_page.add_widget(activity_widget, stretch=1)
 
         pages = QtWidgets.QStackedWidget(self)
-        pages.addWidget(details_page)
         pages.addWidget(activity_page)
+        pages.addWidget(details_page)
         tabs.current_changed.connect(pages.setCurrentIndex)
+        tabs.set_current(details_index)
         self.add_widget(pages, stretch=1)
 
         # ── Details section ─────────────────────────────────────────

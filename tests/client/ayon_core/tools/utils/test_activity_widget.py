@@ -52,6 +52,7 @@ class FakeController:
                 created_at="2026-10-03T10:00:00+00:00",
                 updated_at="2026-10-03T11:00:00+00:00",
                 category="Feedback",
+                category_color="#ff8800",
                 files=[ActivityFileItem("file_id", "image/png")],
                 annotations=[
                     ActivityAnnotationItem(
@@ -281,12 +282,17 @@ def test_feed_is_fetched_from_the_controller_while_visible(
         for user in stream.get("set_users")[0]
     ] == [("roy", "roy", "Roy Nieterau"), ("libor", "libor", "libor")]
 
-    comment, status, publish = stream.get("set_activities")[0]
+    # The newest activity is shown last, as on the frontend
+    publish, status, comment = stream.get("set_activities")[0]
     assert isinstance(comment, CommentModel)
     assert comment.activity_id == "comment"
     assert comment.comment == "Looks good"
-    assert comment.comment_date == "2026-10-03T11:00:00+00:00"
-    assert comment.category == "Feedback"
+    # Activities are shown at the time they were made
+    assert comment.comment_date == "2026-10-03T10:00:00+00:00"
+    assert (comment.category, comment.category_color) == (
+        "Feedback",
+        "#ff8800",
+    )
     # Falls back to the username when the full name is not filled
     assert (comment.user_name, comment.user_full_name) == ("libor", "libor")
     assert [(file.id, file.mime, file.frame) for file in comment.files] == [
@@ -298,6 +304,8 @@ def test_feed_is_fetched_from_the_controller_while_visible(
     ] == [("annotation_id", [1001, 1002], "file_id")]
 
     assert isinstance(status, StatusChangeModel)
+    # Date of the last change if the creation date is not known
+    assert status.date == "2026-10-02T10:00:00+00:00"
     assert (status.user_name, status.user_full_name) == ("n/a", "n/a")
     assert (status.product, status.version) == ("modelMain", "v003")
     assert (status.old_status, status.new_status) == (
@@ -458,6 +466,8 @@ def test_workfiles_side_panel_uses_its_controller(qtbot, task_queue):
     qtbot.addWidget(panel)
     widget = panel._activity_widget
     assert widget._controller is controller
+    # Details are shown first
+    assert not widget.isVisibleTo(panel)
 
     # Activity of the folder is shown until a task is selected
     controller.emit_event(
@@ -502,6 +512,10 @@ def test_browser_inspector_uses_its_controller(qtbot, monkeypatch):
     assert inspector._activity._avatar_cache is avatar_cache
 
 
+def activity_shown(inspector) -> bool:
+    return inspector._activity.isVisibleTo(inspector)
+
+
 def test_browser_inspector_tells_what_the_activity_is_of(
     qtbot, monkeypatch
 ):
@@ -522,6 +536,9 @@ def test_browser_inspector_tells_what_the_activity_is_of(
     inspector = browser_inspector.ReviewInspector(controller)
     qtbot.addWidget(inspector)
     inspector.show()
+    # Details are shown first, the feed is not fetched until its tab is
+    assert inspector._tabs.current() == 1
+    assert not activity_shown(inspector)
     # The label has an icon, its text is read from the tooltip
     label = inspector._activity_context_label
     activity = inspector._activity
@@ -542,6 +559,8 @@ def test_browser_inspector_tells_what_the_activity_is_of(
         "version": "v003 (3 versions)",
         "_version_id": "version_3",
         "_version_name": "v003",
+        # The featured version is a hero version, actions use the hero
+        "_action_version_id": "hero_version",
     }
     folder_row = {"id": "folder_id", "entityType": "folder"}
     model = QtGui.QStandardItemModel()
@@ -571,6 +590,20 @@ def test_browser_inspector_tells_what_the_activity_is_of(
     # Nothing with a version is selected
     _select(2)
     assert label.isHidden()
+    assert activity._entity_ids == ()
+
+    # Folders selected in the hierarchy show their activity, until a
+    #   version is selected
+    controller._current_project = "demo"
+    controller._selected_folder_ids = ["folder_a", "folder_b"]
+    controller.selection_changed.emit(["folder_a", "folder_b"])
+    assert activity._entity_ids == ("folder_a", "folder_b")
+    assert label.toolTip() == "2 folders"
+    _select(0)
+    assert activity._entity_ids == ("version_1",)
+    # Not when the hierarchy does not show folders
+    controller._current_category = "Lists"
+    _select(2)
     assert activity._entity_ids == ()
 
     monkeypatch.setattr(inspector, "activity_selection_limit", 1)
