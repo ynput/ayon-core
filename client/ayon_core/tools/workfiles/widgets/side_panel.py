@@ -50,6 +50,23 @@ class SidePanelWidget(AYContainer):
         side_margin = 6
         self._layout.setContentsMargins(0, 6, 0, 6)
 
+        # Quick actions for the selection, above the tabs so they are
+        #   available with the details and the activity
+        # - the row always takes its space, the buttons fade in and out
+        actions_row = WorkfileActionsRow(controller, self)
+        # The row places its buttons in its whole rect, the margins are
+        #   around it
+        actions_wrapper = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.High,
+            parent=self,
+        )
+        actions_wrapper._layout.setContentsMargins(
+            side_margin, 0, side_margin, 0
+        )
+        actions_wrapper.add_widget(actions_row)
+        self.add_widget(actions_wrapper)
+
         # Tabs are laid out as on the frontend, but details are shown first
         tabs = AYTabBar(
             side_margin=side_margin,
@@ -110,11 +127,6 @@ class SidePanelWidget(AYContainer):
         details_form.add_row(modified_key, modified_val)
 
         details_page.add_widget(details_form, stretch=0)
-
-        # Quick actions for the selection
-        # - the row always takes its space, the buttons fade in and out
-        actions_row = WorkfileActionsRow(controller, self)
-        details_page.add_widget(actions_row, stretch=0)
 
         # ── Note/Comment section reused for both ────────────
         self._note_label = AYLabel(
