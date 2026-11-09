@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from unittest.mock import patch
 
 from ayon_core.pipeline.anatomy import Anatomy
+from ayon_core.pipeline.anatomy.exceptions import RootMissingEnv
 from ayon_core.pipeline.anatomy.roots import AnatomyRoot, AnatomyRoots
 
 if TYPE_CHECKING:
@@ -207,7 +208,7 @@ def test_value_expands_env_var(anatomy_roots: AnatomyRoots) -> None:
         with patch("platform.system", return_value="linux"):
             item = AnatomyRoot(
                 parent=anatomy_roots,
-                root_raw_data={"linux": "$MY_ROOT/projects"},
+                root_raw_data={"linux": "{MY_ROOT}/projects"},
                 name="work",
             )
     assert item.value == "/env/root/projects"
@@ -296,14 +297,14 @@ def test_find_root_template_no_match(linux_root: AnatomyRoot) -> None:
 
 def test_expanded_path_matches_unexpanded_root_with_envvar(
         anatomy_roots: AnatomyRoots) -> None:
-    """Root stored as ``$MY_ROOT/projects``, path already expanded."""
+    """Root stored as ``{MY_ROOT}/projects``, path already expanded."""
     fake_env = {"MY_ROOT": "/mnt"}
     with patch.dict(os.environ, fake_env, clear=False):
         with patch("platform.system", return_value="linux"):
             item = AnatomyRoot(
                 parent=anatomy_roots,
                 root_raw_data={
-                    "linux": "$MY_ROOT/projects",
+                    "linux": "{MY_ROOT}/projects",
                     "windows": "C:/projects",
                 },
                 name="work",
@@ -335,45 +336,14 @@ def test_expanded_path_matches_unexpanded_root_with_tilde(
     assert result == "{root[work]}/shot/file.ma"
 
 
-def test_unexpanded_path_matches_expanded_root(
-        anatomy_roots: AnatomyRoots) -> None:
-    """Root already expanded, path passed as ``~/projects/...``."""
-    fake_home = "/home/user"
-    expand = lambda p: p.replace("~", fake_home)  # noqa: E731
-    with patch("platform.system", return_value="linux"):
-        item = AnatomyRoot(
-            parent=anatomy_roots,
-            root_raw_data={"linux": "/home/user/projects"},
-            name="work",
-        )
-    with patch("os.path.expanduser", side_effect=expand):
-        success, result = item.find_root_template_from_path(
-            "~/projects/shot/file.ma"
-        )
-    assert success is True
-    assert result == "{root[work]}/shot/file.ma"
-
-
-def test_unexpanded_envvar_path_matches_expanded_root(
-        anatomy_roots: AnatomyRoots) -> None:
-    """Root already expanded, path contains ``$MY_ROOT``."""
-    fake_env = {"MY_ROOT": "/mnt"}
-    with patch("platform.system", return_value="linux"):
-        item = AnatomyRoot(
-            parent=anatomy_roots,
-            root_raw_data={"linux": "/mnt/projects"},
-            name="work",
-        )
-    with patch.dict(os.environ, fake_env, clear=False):
-        success, result = item.find_root_template_from_path(
-            "$MY_ROOT/projects/shot/file.ma"
-        )
-    assert success is True
-    assert result == "{root[work]}/shot/file.ma"
-
-
-def test_both_sides_need_expanding(anatomy_roots: AnatomyRoots) -> None:
-    """Both root and path contain ``~``."""
+@pytest.mark.parametrize("input_path", [
+    "~/projects/shot/file.ma",
+    "$MY_ROOT/projects/shot/file.ma",
+    "{MY_ROOT}/projects/shot/file.ma",
+])
+def test_unexpanded_input_path_is_not_expanded(
+        anatomy_roots: AnatomyRoots, input_path: str) -> None:
+    """Input path must be already resolved, it is not expanded."""
     fake_home = "/home/user"
     expand = lambda p: p.replace("~", fake_home)  # noqa: E731
     with patch("os.path.expanduser", side_effect=expand):
@@ -384,11 +354,10 @@ def test_both_sides_need_expanding(anatomy_roots: AnatomyRoots) -> None:
                 name="work",
             )
     with patch("os.path.expanduser", side_effect=expand):
-        with patch.dict(os.environ, {"MY_ROOT": "/home/user"}, clear=False):
-            success, result = item.find_root_template_from_path(
-                "~/projects/shot/file.ma"
-            )
-    assert success is True
+        with patch.dict(os.environ, {"MY_ROOT": fake_home}, clear=False):
+            success, result = item.find_root_template_from_path(input_path)
+    assert success is False
+    assert result == input_path
 
 
 def test_no_match_with_expansion_returns_false(
@@ -398,7 +367,7 @@ def test_no_match_with_expansion_returns_false(
         with patch("platform.system", return_value="linux"):
             item = AnatomyRoot(
                 parent=anatomy_roots,
-                root_raw_data={"linux": "$MY_ROOT/projects"},
+                root_raw_data={"linux": "{MY_ROOT}/projects"},
                 name="work",
             )
     path = "/completely/different/path/file.ma"
@@ -406,6 +375,113 @@ def test_no_match_with_expansion_returns_false(
         success, result = item.find_root_template_from_path(path)
     assert success is False
     assert result == path
+
+
+@pytest.mark.parametrize("raw_root", [
+    "$MY_ROOT/projects",
+    "${MY_ROOT}/projects",
+    "%MY_ROOT%/projects",
+])
+def test_shell_env_syntax_is_rejected(
+        anatomy_roots: AnatomyRoots, raw_root: str) -> None:
+    """Only '{ENV_KEY}' is supported, shell-like syntax raises."""
+    with patch.dict(os.environ, {"MY_ROOT": "/mnt"}, clear=False):
+        with patch("platform.system", return_value="linux"):
+            with pytest.raises(RootMissingEnv):
+                AnatomyRoot(
+                    parent=anatomy_roots,
+                    root_raw_data={"linux": raw_root},
+                    name="work",
+                )
+
+
+def test_windows_admin_share_is_allowed(anatomy_roots: AnatomyRoots) -> None:
+    """'$' which is not an env variable (admin share) is kept."""
+    with patch("platform.system", return_value="windows"):
+        item = AnatomyRoot(
+            parent=anatomy_roots,
+            root_raw_data={"windows": "//server/c$/projects"},
+            name="work",
+        )
+    assert item.value == "//server/c$/projects"
+
+
+def test_missing_env_raises(anatomy_roots: AnatomyRoots) -> None:
+    env = {k: v for k, v in os.environ.items() if k != "AYON_TEST_MISSING"}
+    with patch.dict(os.environ, env, clear=True):
+        with patch("platform.system", return_value="linux"):
+            with pytest.raises(RootMissingEnv, match="AYON_TEST_MISSING"):
+                AnatomyRoot(
+                    parent=anatomy_roots,
+                    root_raw_data={"linux": "{AYON_TEST_MISSING}/projects"},
+                    name="work",
+                )
+
+
+def test_missing_platform_raises(anatomy_roots: AnatomyRoots) -> None:
+    with patch("platform.system", return_value="linux"):
+        with pytest.raises(RootMissingEnv, match="linux"):
+            AnatomyRoot(
+                parent=anatomy_roots,
+                root_raw_data={"windows": "C:/projects"},
+                name="work",
+            )
+
+
+def test_find_root_template_respects_path_boundary(
+        linux_root: AnatomyRoot) -> None:
+    """Root '/mnt/projects' must not match '/mnt/projects2'."""
+    path = "/mnt/projects2/myproject/file.ma"
+    success, result = linux_root.find_root_template_from_path(path)
+    assert success is False
+    assert result == path
+
+
+def test_other_platform_root_is_not_expanded(
+        anatomy_roots: AnatomyRoots) -> None:
+    """'~' in root of other platform is not expanded on current machine."""
+    fake_home = "/home/user"
+    expand = lambda p: p.replace("~", fake_home)  # noqa: E731
+    with patch("os.path.expanduser", side_effect=expand):
+        with patch("platform.system", return_value="linux"):
+            item = AnatomyRoot(
+                parent=anatomy_roots,
+                root_raw_data={
+                    "linux": "/mnt/projects",
+                    "darwin": "~/projects",
+                },
+                name="work",
+            )
+        success, _ = item.find_root_template_from_path(
+            "/home/user/projects/shot/file.ma"
+        )
+    assert success is False
+
+
+def test_path_remapper_uses_expanded_current_root(
+        anatomy_roots: AnatomyRoots) -> None:
+    fake_home = "/home/user"
+    expand = lambda p: p.replace("~", fake_home)  # noqa: E731
+    with patch("os.path.expanduser", side_effect=expand):
+        with patch("platform.system", return_value="linux"):
+            item = AnatomyRoot(
+                parent=anatomy_roots,
+                root_raw_data={
+                    "linux": "~/projects",
+                    "windows": "C:/projects",
+                },
+                name="work",
+            )
+    result = item.path_remapper(
+        "C:/projects/shot/file.ma",
+        dst_platform="linux",
+        src_platform="windows",
+    )
+    assert result == "/home/user/projects/shot/file.ma"
+    result = item.path_remapper(
+        "/home/user/projects/shot/file.ma", dst_platform="windows"
+    )
+    assert result == "C:/projects/shot/file.ma"
 
 
 # ---------------------------------------------------------------------------
