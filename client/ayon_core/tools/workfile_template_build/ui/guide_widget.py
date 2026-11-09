@@ -43,10 +43,14 @@ GUIDE_STEPS = (
     ),
 )
 
-ARROW_SIZE = QtCore.QSize(72, 48)
+ARROW_SIZE = QtCore.QSize(82, 48)
 # Vertical position of the arrow tip. Matches the middle of the "Add" button
 #   at the top of the placeholders panel next to the guide.
 ARROW_TIP_Y = 15
+# Vertical position of the arrow tail. Matches the middle of the text next
+#   to the arrow.
+ARROW_TAIL_Y = 39
+ARROW_HEAD_LENGTH = 9
 ARROW_SPACING = 8
 STEP_BADGE_SIZE = 22
 # Space between the steps of the guide
@@ -69,18 +73,24 @@ class _ArrowWidget(QtWidgets.QWidget):
         pen.setJoinStyle(QtCore.Qt.RoundJoin)
         painter.setPen(pen)
 
-        # A swoop with a small loop, drawn in a 72x48 box from the bottom
-        #   right towards the tip on the left.
+        # A swoop with a small loop, drawn from the text on the right
+        #   towards the tip on the left.
         point = QtCore.QPointF
         tip = point(3, ARROW_TIP_Y)
-        path = QtGui.QPainterPath(point(68, 44))
-        path.cubicTo(point(56, 46), point(46, 40), point(44, 30))
-        path.cubicTo(point(42, 20), point(52, 16), point(54, 24))
-        path.cubicTo(point(56, 32), point(44, 36), point(34, 30))
-        path.cubicTo(point(24, 24), point(12, 16), tip)
+        path = QtGui.QPainterPath(point(ARROW_SIZE.width() - 2, ARROW_TAIL_Y))
+        path.cubicTo(point(70, ARROW_TAIL_Y), point(58, 39), point(55, 31))
+        path.cubicTo(point(52, 22), point(62, 16), point(65, 24))
+        path.cubicTo(point(68, 32), point(55, 36), point(45, 31))
+        # Ends level, so the line comes in straight towards the button
+        path.cubicTo(point(34, 25), point(26, ARROW_TIP_Y), tip)
         painter.drawPath(path)
-        painter.drawLine(tip, QtCore.QPointF(11, ARROW_TIP_Y - 6))
-        painter.drawLine(tip, QtCore.QPointF(10, ARROW_TIP_Y + 7))
+
+        # The head is symmetric around the direction the line comes in
+        angle = path.angleAtPercent(1.0)
+        for offset in (150, -150):
+            line = QtCore.QLineF(tip, tip + point(ARROW_HEAD_LENGTH, 0))
+            line.setAngle(angle + offset)
+            painter.drawLine(line)
 
 
 class _StepBadge(QtWidgets.QWidget):

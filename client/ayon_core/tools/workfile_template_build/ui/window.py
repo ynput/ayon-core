@@ -176,6 +176,12 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         pages_widget.setObjectName(PAGES_OBJECT_NAME)
         hint_widget = PlaceholderGuideWidget(pages_widget)
         editor_widget = PlaceholderEditorWidget(controller, pages_widget)
+        # The guide has no left margin, so its arrow gets closer to the
+        #   "Add" button. The editor keeps the margin of the panel.
+        editor_panel.layout().setContentsMargins(
+            0, PANEL_MARGIN, PANEL_MARGIN, PANEL_MARGIN
+        )
+        editor_widget.setContentsMargins(PANEL_MARGIN, 0, 0, 0)
         pages_widget.addWidget(hint_widget)
         pages_widget.addWidget(editor_widget)
         editor_panel.add_widget(pages_widget, stretch=1)
