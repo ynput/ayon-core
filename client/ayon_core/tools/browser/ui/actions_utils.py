@@ -94,7 +94,7 @@ def show_actions_menu(
                 icon=get_qt_icon(alternative.icon),
                 tooltip=alternative.tooltip,
             )
-            for alternative in action_item.alternative_launches
+            for alternative in action_item.alternative_launch_items
         ]
         action = AYOptionalAction(
             label=action_item.label,

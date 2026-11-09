@@ -24,11 +24,11 @@ The action is triggered by calling the 'execute_action' method. Which takes
     Plugins implementing the legacy signature '(selection, data, form_values)'
     are still supported.
 
-Action item can define 'alternative_launches' which allow the user to launch
-    the action in alternative ways. Each alternative launch has its own
-    identifier, icon and tooltip and is shown as a button next to the action
-    in the menu. The meaning of an alternative launch is fully up to
-    the plugin, it can e.g. return a form with options first, ask for
+Action item can define 'alternative_launch_items' which allow the user to
+    launch the action in alternative ways. Each alternative launch has its
+    own identifier, icon and tooltip and is shown as a button next to
+    the action in the menu. The meaning of an alternative launch is fully up
+    to the plugin, it can e.g. return a form with options first, ask for
     confirmation or do something completely different.
 
 Using 'LoaderActionResult' as the output of 'execute_action' can trigger to
@@ -495,7 +495,7 @@ class LoaderActionSelection:
 
 
 @dataclass
-class LoaderActionAlternativeLaunch:
+class LoaderActionAlternativeItem:
     """Alternative way how to launch a loader action.
 
     Is shown as a button next to the action item in UI.
@@ -532,7 +532,7 @@ class LoaderActionItem:
             belongs.
         icon (IconBase | dict[str, Any] | None): Icon definition.
         data (DataType | None): Action item data.
-        alternative_launches (list[LoaderActionAlternativeLaunch]):
+        alternative_launch_items (list[LoaderActionAlternativeItem]):
             Alternative ways how to launch the action. UI shows a button
             for each of them next to the item.
         identifier (str): Identifier of the plugin which
@@ -545,7 +545,7 @@ class LoaderActionItem:
     group_label: str | None = None
     icon: IconBase | dict[str, Any] | None = None
     data: DataType | None = None
-    alternative_launches: list[LoaderActionAlternativeLaunch] = field(
+    alternative_launch_items: list[LoaderActionAlternativeItem] = field(
         default_factory=list
     )
     # Is filled automatically
@@ -892,7 +892,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         order: Order of the action item.
         group_label: Label of the group to which the action belongs.
         icon: Icon definition shown next to label.
-        alternative_launches: Alternative ways how to launch the action.
+        alternative_launch_items: Alternative ways how to launch the action.
         options: List of options to be shown before the action is executed.
             Options are shown when the action is launched using
             alternative launch with 'options_launch_identifier', default
@@ -906,7 +906,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     order: int = 0
     group_label: str | None = None
     icon: IconBase | dict[str, Any] | None = None
-    alternative_launches: list[LoaderActionAlternativeLaunch] | None = None
+    alternative_launch_items: list[LoaderActionAlternativeItem] | None = None
     # The values of options can be received from 'form_values'
     options: list[AbstractAttrDef] | None = None
     options_launch_identifier: str = "options"
@@ -950,19 +950,23 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
     ) -> list[LoaderActionItem]:
         if self.is_compatible(selection):
             label = self.label or self.__class__.__name__
-            alternative_launches = list(self.alternative_launches or [])
+            alternative_launch_items = list(
+                self.alternative_launch_items or []
+            )
             if self.options:
-                alternative_launches.append(LoaderActionAlternativeLaunch(
-                    self.options_launch_identifier,
-                    tooltip=f"{label} with options",
-                ))
+                alternative_launch_items.append(
+                    LoaderActionAlternativeItem(
+                        self.options_launch_identifier,
+                        tooltip=f"{label} with options",
+                    )
+                )
             return [
                 LoaderActionItem(
                     label=label,
                     order=self.order,
                     group_label=self.group_label,
                     icon=self.icon,
-                    alternative_launches=alternative_launches,
+                    alternative_launch_items=alternative_launch_items,
                 )
             ]
         return []

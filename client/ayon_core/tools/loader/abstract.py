@@ -283,7 +283,7 @@ class RepreItem:
 
 
 @dataclass
-class ActionAlternativeLaunch:
+class ActionAlternativeItem:
     """Alternative way how to launch an action.
 
     Args:
@@ -305,7 +305,7 @@ class ActionAlternativeLaunch:
         )
 
     @classmethod
-    def from_data(cls, data: dict[str, Any]) -> "ActionAlternativeLaunch":
+    def from_data(cls, data: dict[str, Any]) -> "ActionAlternativeItem":
         return cls(**data)
 
 
@@ -326,7 +326,7 @@ class ActionItem:
         data (dict[str, Any] | None): Additional action data.
         options (list[AbstractAttrDef] | None):
             Action options. Note: 'qargparse' is considered as deprecated.
-        alternative_launches (list[ActionAlternativeLaunch]): Alternative
+        alternative_launch_items (list[ActionAlternativeItem]): Alternative
             ways how to launch the action. A button is shown next to
             the action for each of them.
 
@@ -339,7 +339,7 @@ class ActionItem:
     order: int
     data: dict[str, Any] | None
     options: list[AbstractAttrDef] | None
-    alternative_launches: list[ActionAlternativeLaunch]
+    alternative_launch_items: list[ActionAlternativeItem]
 
     def _options_to_data(self):
         options = self.options
@@ -367,9 +367,9 @@ class ActionItem:
             order=self.order,
             data=self.data,
             options=options,
-            alternative_launches=[
+            alternative_launch_items=[
                 item.to_data()
-                for item in self.alternative_launches
+                for item in self.alternative_launch_items
             ],
         )
 
@@ -379,9 +379,9 @@ class ActionItem:
         if options:
             options = deserialize_attr_defs(options)
         data["options"] = options
-        data["alternative_launches"] = [
-            ActionAlternativeLaunch.from_data(item)
-            for item in data["alternative_launches"]
+        data["alternative_launch_items"] = [
+            ActionAlternativeItem.from_data(item)
+            for item in data["alternative_launch_items"]
         ]
         return cls(**data)
 

@@ -29,7 +29,7 @@ from ayon_core.pipeline.load import (
 )
 from ayon_core.tools.browser.abstract import (
     ActionItem,
-    ActionAlternativeLaunch,
+    ActionAlternativeItem,
     LoadersGrouping,
 )
 
@@ -434,10 +434,10 @@ class LoaderActionsModel:
         elif repre_name:
             label = f"{label} ({repre_name})"
         options = loader.get_options(contexts)
-        alternative_launches = []
+        alternative_launch_items = []
         if options:
-            alternative_launches.append(
-                ActionAlternativeLaunch(LOADER_OPTIONS_LAUNCH_ID)
+            alternative_launch_items.append(
+                ActionAlternativeItem(LOADER_OPTIONS_LAUNCH_ID)
             )
         return ActionItem(
             LOADER_PLUGIN_ID,
@@ -452,7 +452,7 @@ class LoaderActionsModel:
             tooltip=self._get_action_tooltip(loader),
             order=loader.order,
             options=options,
-            alternative_launches=alternative_launches,
+            alternative_launch_items=alternative_launch_items,
         )
 
     def _get_loaders(self, project_name):
@@ -974,13 +974,13 @@ class LoaderActionsModel:
                 order=action.order,
                 data=action.data,
                 options=None,
-                alternative_launches=[
-                    ActionAlternativeLaunch(
+                alternative_launch_items=[
+                    ActionAlternativeItem(
                         identifier=item.identifier,
                         icon=item.icon,
                         tooltip=item.tooltip,
                     )
-                    for item in action.alternative_launches
+                    for item in action.alternative_launch_items
                 ],
             ))
         return items
