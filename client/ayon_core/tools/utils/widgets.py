@@ -1143,6 +1143,9 @@ class OptionalActionWidget(QtWidgets.QWidget):
 
     def __init__(self, label, parent=None):
         super().__init__(parent)
+        self.setObjectName("OptionalAction")
+        # Allow stylesheet to paint hover background of the whole row
+        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
 
         body_widget = QtWidgets.QWidget(self)
         body_widget.setObjectName("OptionalActionBody")
@@ -1170,9 +1173,9 @@ class OptionalActionWidget(QtWidgets.QWidget):
         body_layout.addWidget(label)
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(2, 1, 2, 1)
-        layout.setSpacing(0)
-        layout.addWidget(body_widget)
+        layout.setContentsMargins(2, 1, 6, 1)
+        layout.setSpacing(2)
+        layout.addWidget(body_widget, 1)
 
         body_widget.setMouseTracking(True)
         label.setMouseTracking(True)
@@ -1204,7 +1207,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
         """
         option = OptionBox(self, icon)
         option.setObjectName("OptionalActionOption")
-        option.setFixedSize(30, 30)
+        option.setFixedSize(24, 24)
         option.setMouseTracking(True)
         self._layout.addWidget(option)
         self.options.append(option)
@@ -1217,17 +1220,17 @@ class OptionalActionWidget(QtWidgets.QWidget):
         return None
 
     def set_hover_properties(self, hovered, hovered_option=None):
-        body_state = ""
+        row_state = ""
         if hovered:
-            body_state = "hover"
+            row_state = "hover"
 
         # Backwards compatibility for boolean value
         if isinstance(hovered_option, bool):
             hovered_option = self.option if hovered_option else None
 
-        if self.body.property("state") != body_state:
-            self.body.setProperty("state", body_state)
-            self.body.style().polish(self.body)
+        if self.property("state") != row_state:
+            self.setProperty("state", row_state)
+            self.style().polish(self)
 
         for option in self.options:
             option_state = "hover" if option is hovered_option else ""
@@ -1252,7 +1255,7 @@ class OptionBox(QtWidgets.QLabel):
 
         if icon is None:
             icon = qtawesome.icon("fa.sticky-note-o", color="#c6c6c6")
-        pixmap = icon.pixmap(18, 18)
+        pixmap = icon.pixmap(16, 16)
         self.setPixmap(pixmap)
 
     def is_hovered(self, global_pos):

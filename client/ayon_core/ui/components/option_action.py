@@ -103,6 +103,16 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         option_boxes: Option targets shown on the right side of the row.
     """
 
+    # Padding around icon of option target
+    _OPTION_PADDING = 4
+    # Spacing between option targets
+    _OPTION_SPACING = 2
+    # Space between label and option targets
+    _OPTION_GAP = 4
+    # Space between option targets and right edge of the row
+    _OPTION_MARGIN = 4
+    _OPTION_RADIUS = 4
+
     def __init__(
         self,
         label: str,
@@ -136,16 +146,36 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         style.set_context(self.parentWidget())
         return style
 
+    def _option_button_size(self) -> int:
+        icon_size = int(self._menu_style().get("icon-size", 16))
+        return icon_size + self._OPTION_PADDING * 2
+
+    def _options_width(self) -> int:
+        """Width reserved for option targets including spacing."""
+        count = len(self._option_boxes)
+        if not count:
+            return 0
+        return (
+            count * self._option_button_size()
+            + (count - 1) * self._OPTION_SPACING
+            + self._OPTION_GAP
+            + self._OPTION_MARGIN
+        )
+
     def _option_rects(self) -> list[QtCore.QRect]:
         """Rectangles of option targets, ordered left to right."""
-        row_height = self.height()
+        size = self._option_button_size()
         count = len(self._option_boxes)
+        right = self.width() - self._OPTION_MARGIN
+        top = (self.height() - size) // 2
         return [
             QtCore.QRect(
-                self.width() - (count - idx) * row_height,
-                0,
-                row_height,
-                row_height,
+                right
+                - (count - idx) * size
+                - (count - idx - 1) * self._OPTION_SPACING,
+                top,
+                size,
+                size,
             )
             for idx in range(count)
         ]
@@ -221,21 +251,33 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
             QtCore.QSize(),
             self.parentWidget(),
         )
-        size.setWidth(
-            size.width() + size.height() * len(self._option_boxes)
-        )
+        size.setWidth(size.width() + self._options_width())
         return size
 
     def paintEvent(self, _event: QtGui.QPaintEvent) -> None:
-        option_rect = self._option_rect()
+        ayon_style = get_ayon_style()
+        painter = QtGui.QPainter(self)
         menu_rect = self.rect()
-        if option_rect.isValid():
-            menu_rect.setRight(option_rect.left() - 1)
+        if self._option_boxes:
+            # Paint row background under the option targets so the whole
+            #   row looks like one item
+            bg_option = self._style_option()
+            bg_option.rect = self.rect()
+            bg_option.text = ""
+            bg_option.icon = QtGui.QIcon()
+            ayon_style.drawControl(
+                QtWidgets.QStyle.ControlElement.CE_MenuItem,
+                bg_option,
+                painter,
+                self.parentWidget(),
+            )
+            menu_rect.setRight(
+                self._option_rect().left() - self._OPTION_GAP - 1
+            )
 
         option = self._style_option()
         option.rect = menu_rect
-        painter = QtGui.QPainter(self)
-        get_ayon_style().drawControl(
+        ayon_style.drawControl(
             QtWidgets.QStyle.ControlElement.CE_MenuItem,
             option,
             painter,
@@ -246,22 +288,32 @@ class AYOptionalActionWidget(QtWidgets.QWidget):
         style = self._menu_style(state)
         icon_size = int(style.get("icon-size", 16))
         color = QtGui.QColor(style.get("color", "#f4f5f5"))
+        hover_color = QtGui.QColor(
+            self._menu_style("hover").get(
+                "option-hover-background-color", "#424a57"
+            )
+        )
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         for idx, (option_box, option_rect) in enumerate(
             zip(self._option_boxes, self._option_rects())
         ):
             if idx == self._hovered_option_idx:
-                painter.fillRect(
-                    option_rect,
-                    QtGui.QColor(
-                        style.get("shortcut-background-color", "#353b46")
-                    ),
+                painter.setPen(QtCore.Qt.PenStyle.NoPen)
+                painter.setBrush(hover_color)
+                painter.drawRoundedRect(
+                    QtCore.QRectF(option_rect),
+                    self._OPTION_RADIUS,
+                    self._OPTION_RADIUS,
                 )
             option_icon = self._resolved_option_icon(option_box, color)
+            # 'QRect.center' is rounded down for even sizes -> calculate
+            #   the offset from size to have the icon centered
             option_icon.paint(
                 painter,
                 QtCore.QRect(
-                    option_rect.center().x() - icon_size // 2,
-                    option_rect.center().y() - icon_size // 2,
+                    option_rect.x() + (option_rect.width() - icon_size) // 2,
+                    option_rect.y()
+                    + (option_rect.height() - icon_size) // 2,
                     icon_size,
                     icon_size,
                 ),
