@@ -6,7 +6,6 @@ import copy
 from collections import defaultdict
 from typing import Iterable, Any
 
-import clique
 import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
@@ -31,6 +30,7 @@ from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
 )
+from ayon_core.pipeline.publish.lib import get_file_collections
 from ayon_core.pipeline import is_product_base_type_supported
 from ayon_core.pipeline.anatomy import (
     Anatomy,
@@ -158,6 +158,34 @@ def get_instance_families(
 def get_frame_padded(frame: int, padding: int) -> str:
     """Return frame number as string with `padding` amount of padded zeros"""
     return "{frame:0{padding}d}".format(padding=padding, frame=frame)
+
+
+def get_colorspace_template_value(
+    colorspace_data: dict[str, Any] | None,
+) -> str | None:
+    """Get the `colorspace` template value from representation data.
+
+    Only a real colorspace name is used. Display and view are not a
+    colorspace, so they are never turned into one.
+
+    Args:
+        colorspace_data (dict[str, Any] | None): Representation
+            `colorspaceData`.
+
+    Returns:
+        str | None: Colorspace name with spaces replaced by
+            underscores, or None when there is no colorspace.
+
+    """
+    if not colorspace_data:
+        return None
+    colorspace = colorspace_data.get("colorspace")
+    if not colorspace:
+        return None
+    # replace spaces with underscores
+    # pipeline.colorspace.parse_colorspace_from_filepath
+    # is checking it with underscores too
+    return colorspace.replace(" ", "_")
 
 
 class IntegrateAsset(pyblish.api.ContextPlugin):
@@ -734,8 +762,8 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         if not is_sequence_representation:
             return
 
-        src_collections, remainders = clique.assemble(files)
-        if len(files) < 2 or len(src_collections) != 1 or remainders:
+        src_collections, remainders = get_file_collections(files)
+        if len(src_collections) != 1 or remainders:
             raise PublishError((
                 "Files of representation does not contain proper"
                 " sequence files.\nCollected collections: {}"
@@ -780,12 +808,10 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
         template_data["version"] = version_entity["version"]
 
         # add template data for colorspaceData
-        if repre.get("colorspaceData"):
-            colorspace = repre["colorspaceData"]["colorspace"]
-            # replace spaces with underscores
-            # pipeline.colorspace.parse_colorspace_from_filepath
-            # is checking it with underscores too
-            colorspace = colorspace.replace(" ", "_")
+        colorspace = get_colorspace_template_value(
+            repre.get("colorspaceData")
+        )
+        if colorspace:
             template_data["colorspace"] = colorspace
 
         stagingdir = repre.get("stagingDir")
@@ -846,6 +872,15 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             template_data["originalDirname"] = without_root
 
         is_sequence_representation = isinstance(files, (list, tuple))
+        if is_sequence_representation:
+            self.log.debug(
+                f"Handling sequence representation {repre['name']}: "
+                f"{len(files)} files"
+            )
+        else:
+            self.log.debug(
+                f"Handling single file representation {repre['name']}: {files}"
+            )
         self._validate_repre_files(files, is_sequence_representation)
 
         # Output variables of conditions below:
@@ -864,7 +899,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
             # Find out first frame string value
             first_index_padded = None
             if not is_udim and is_sequence_representation:
-                col = clique.assemble(files)[0][0]
+                col = get_file_collections(files)[0][0]
                 sorted_frames = tuple(sorted(col.indexes))
                 # First frame used for end value
                 first_frame = sorted_frames[0]
@@ -900,7 +935,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, _remainders = clique.assemble(files)
+            src_collections, _remainder = get_file_collections(files)
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
@@ -970,7 +1005,7 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
                 repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
-            dst_collection = clique.assemble(dst_filepaths)[0][0]
+            dst_collection = get_file_collections(dst_filepaths)[0][0]
             dst_collection.padding = destination_padding
             if len(src_collection.indexes) != len(dst_collection.indexes):
                 raise PublishError(

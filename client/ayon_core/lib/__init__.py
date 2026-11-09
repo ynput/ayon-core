@@ -136,6 +136,7 @@ from .plugin_tools import (
 
 from .path_tools import (
     format_file_size,
+    open_in_file_browser,
     collect_frames,
     create_hard_link,
     version_up,
@@ -258,6 +259,7 @@ __all__ = [
     "source_hash",
 
     "format_file_size",
+    "open_in_file_browser",
     "collect_frames",
     "create_hard_link",
     "version_up",

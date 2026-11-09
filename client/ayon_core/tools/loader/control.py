@@ -338,15 +338,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         entity_ids: set[str],
         entity_type: str,
     ) -> list[ActionItem]:
-        action_items = self._loader_actions_model.get_action_items(
+        return self._loader_actions_model.get_action_items(
             project_name, entity_ids, entity_type
         )
-
-        site_sync_items = self._sitesync_model.get_sitesync_action_items(
-            project_name, entity_ids, entity_type
-        )
-        action_items.extend(site_sync_items)
-        return action_items
 
     def trigger_action_item(
         self,
@@ -358,13 +352,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
-        if self._sitesync_model.is_sitesync_action(identifier):
-            self._sitesync_model.trigger_action_item(
-                project_name,
-                data,
-            )
-            return
-
         self._loader_actions_model.trigger_action_item(
             identifier=identifier,
             project_name=project_name,

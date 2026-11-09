@@ -11,6 +11,8 @@ from ayon_core.ui.components import (
     AYTextEdit
 )
 
+from .actions_widgets import WorkfileActionsRow
+
 
 class SidePanelWidget(AYContainer):
     """Details about selected workfile.
@@ -64,6 +66,11 @@ class SidePanelWidget(AYContainer):
 
         self.add_widget(details_form, stretch=0)
 
+        # Quick actions for the selection
+        # - the row always takes its space, the buttons fade in and out
+        actions_row = WorkfileActionsRow(controller, self)
+        self.add_widget(actions_row, stretch=0)
+
         # ── Note/Comment section reused for both ────────────
         self._note_label = AYLabel(
             "Artist Note", rel_text_size=1, parent=self
@@ -103,6 +110,7 @@ class SidePanelWidget(AYContainer):
         )
 
         self._details_form = details_form
+        self._actions_row = actions_row
         self._size_val = size_val
         self._created_val = created_val
         self._modified_val = modified_val
@@ -137,6 +145,7 @@ class SidePanelWidget(AYContainer):
         )
         self._btn_description_save.setVisible(not published_mode)
         self._description_input.setReadOnly(published_mode)
+        self._actions_row.set_published_mode(published_mode)
 
         # Clear the context when switching modes to avoid showing stale data
         if published_mode:
