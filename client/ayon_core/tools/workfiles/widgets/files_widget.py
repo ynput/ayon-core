@@ -11,7 +11,7 @@ from ayon_core.ui.components import (
 )
 
 from .save_as_dialog import SaveAsDialog
-from .task_in_use_dialog import TaskInUseDialog
+from .task_in_use_dialog import confirm_task_in_use
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
 from .utils import save_changes_prompt
@@ -216,49 +216,10 @@ class FilesWidget(AYContainer):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def _confirm_task_in_use(
-        self, task_id, confirm_label="Open anyway", workfile=None
-    ):
-        """Notify user that the task is in use by other users.
-
-        Args:
-            task_id (str): Task id.
-            confirm_label (str): Label of the button to continue.
-            workfile (Optional[str]): Workfile that will be opened. Version
-                up is offered if other user works in the same workfile.
-
-        Returns:
-            Optional[bool]: None if user did cancel the action, True if
-                user wants to work in next version of the workfile,
-                otherwise False.
-        """
-        items = self._controller.get_task_usage_items(task_id)
-        if not items:
-            return False
-        full_names = {
-            username: user_item.full_name
-            for username, user_item in (
-                self._controller.get_user_items_by_name().items()
-            )
-            if user_item.full_name
-        }
-        dialog = TaskInUseDialog(
-            items,
-            full_names,
-            parent=self,
-            confirm_label=confirm_label,
-            version_up=any(item.is_workfile(workfile) for item in items),
-        )
-        confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
-        version_up = dialog.is_version_up_requested()
-        dialog.deleteLater()
-        if not confirmed:
-            return None
-        self._controller.confirm_task_usage_items(items)
-        return version_up
-
     def _open_workfile(self, folder_id, task_id, filepath):
-        version_up = self._confirm_task_in_use(task_id, workfile=filepath)
+        version_up = confirm_task_in_use(
+            self._controller, task_id, self, workfile=filepath
+        )
         if version_up is None:
             return
 
@@ -326,8 +287,8 @@ class FilesWidget(AYContainer):
         result = self._exec_save_as_dialog()
         if result is None:
             return
-        if self._confirm_task_in_use(
-            result["task_id"], "Save anyway"
+        if confirm_task_in_use(
+            self._controller, result["task_id"], self, "Save anyway"
         ) is None:
             return
         self._controller.save_as_workfile(
@@ -387,7 +348,9 @@ class FilesWidget(AYContainer):
         )
         if result is None:
             return
-        if self._confirm_task_in_use(result["task_id"]) is None:
+        if confirm_task_in_use(
+            self._controller, result["task_id"], self
+        ) is None:
             return
 
         self._controller.copy_workfile_representation(

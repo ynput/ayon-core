@@ -229,13 +229,13 @@ def _parse_time(value: Any) -> Optional[datetime.datetime]:
 
 
 def _get_profiles(project_settings: dict[str, Any]) -> list[dict[str, Any]]:
-    return (
+    workfiles_settings = (
         project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        .get("task_in_use_profiles")
-    ) or []
+        .get("core", {})
+        .get("tools", {})
+        .get("Workfiles", {})
+    )
+    return workfiles_settings.get("task_in_use_profiles") or []
 
 
 def is_task_usage_enabled_in_project(

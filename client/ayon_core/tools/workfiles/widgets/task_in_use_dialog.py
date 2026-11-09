@@ -24,6 +24,7 @@ if typing.TYPE_CHECKING:
         TaskInUseNotice,
         TaskUsageItem,
     )
+    from ayon_core.tools.workfiles.abstract import AbstractWorkfilesFrontend
 
 log = logging.getLogger(__name__)
 
@@ -312,6 +313,59 @@ class TaskInUseDialog(QtWidgets.QDialog):
         self.setStyleSheet(load_stylesheet())
 
 
+def confirm_task_in_use(
+    controller: AbstractWorkfilesFrontend,
+    task_id: str,
+    parent: QtWidgets.QWidget,
+    confirm_label: str = "Open anyway",
+    workfile: str | None = None,
+) -> bool | None:
+    """Ask user before working on a task that is in use by other users.
+
+    Nothing is shown if the task is not in use. Sessions confirmed by
+    the user are not asked about again in the same process.
+
+    Args:
+        controller (AbstractWorkfilesFrontend): Controller of the
+            Workfiles tool.
+        task_id (str): Task id.
+        parent (QtWidgets.QWidget): Parent widget of the dialog.
+        confirm_label (str): Label of the button to continue.
+        workfile (Optional[str]): Workfile that will be opened. Version
+            up is offered if other user works in the same workfile.
+
+    Returns:
+        Optional[bool]: None if user did cancel the action, True if
+            user wants to work in next version of the workfile,
+            otherwise False.
+
+    """
+    items = controller.get_task_usage_items(task_id)
+    if not items:
+        return False
+    full_names = {
+        username: user_item.full_name
+        for username, user_item in (
+            controller.get_user_items_by_name().items()
+        )
+        if user_item.full_name
+    }
+    dialog = TaskInUseDialog(
+        items,
+        full_names,
+        parent=parent,
+        confirm_label=confirm_label,
+        version_up=any(item.is_workfile(workfile) for item in items),
+    )
+    confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
+    version_up = dialog.is_version_up_requested()
+    dialog.deleteLater()
+    if not confirmed:
+        return None
+    controller.confirm_task_usage_items(items)
+    return version_up
+
+
 def _can_show_dialog() -> bool:
     """A dialog can be shown and executed in current thread."""
     app = QtWidgets.QApplication.instance()
@@ -334,25 +388,23 @@ def _can_show_dialog() -> bool:
 
 def ask_to_launch_on_task_in_use(
     items: list[TaskUsageItem],
-    workfile: str | None = None,
-) -> tuple[bool, bool] | None:
+) -> bool | None:
     """Ask user if wants to launch an application on a task that is in use.
 
     The dialog is shown in current process. Qt application is created if
     it does not exist, which is the case in a process that only launches
     an application.
 
+    Version up is not offered, the workfile can be copied correctly only
+    by the host integration, which is not running yet.
+
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
-        workfile (Optional[str]): Workfile that will be opened in the
-            application. Version up is offered if other user has opened
-            the same workfile.
 
     Returns:
-        Optional[tuple[bool, bool]]: User wants to launch the application,
-            and user wants to work in next version of the workfile. None
-            if the dialog can't be shown, e.g. in a thread that is not
+        Optional[bool]: User wants to launch the application. None if
+            the dialog can't be shown, e.g. in a thread that is not
             the thread of Qt application or without a display.
 
     """
@@ -373,13 +425,11 @@ def ask_to_launch_on_task_in_use(
             items,
             get_task_usage_user_full_names(items),
             confirm_label="Launch anyway",
-            version_up=any(item.is_workfile(workfile) for item in items),
         )
         # The dialog does not have a parent window, make sure it is not
         #   hidden behind other windows while the launch waits for it
         dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
-        confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
-        return confirmed, confirmed and dialog.is_version_up_requested()
+        return dialog.exec_() == QtWidgets.QDialog.Accepted
 
     finally:
         # Avatars of users are loaded by threads of the shared task queue,

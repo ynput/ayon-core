@@ -11,10 +11,12 @@ from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.actions import (
     WorkfileActionResult,
     WorkfileActionSaveAsFormInputs,
+    WorkfileActionTaskInUseFormInputs,
 )
 from ayon_core.pipeline.actions.workfile import (
     SAVE_AS_FORM_KEY,
     SAVE_CHANGES_FORM_KEY,
+    TASK_IN_USE_FORM_KEY,
 )
 from ayon_core.tools.workfiles.abstract import (
     ActionItem,
@@ -343,6 +345,49 @@ def test_window_passes_save_changes_answer_to_action():
     window.reset_mock()
     with mock.patch.object(
         window_module, "save_changes_prompt", return_value=None
+    ):
+        WorkfilesToolWindow._on_workfile_action_finished(window, event)
+    window._controller.trigger_workfile_action.assert_not_called()
+    window._apply_action_result.assert_not_called()
+
+
+def test_window_asks_if_task_in_use():
+    selection = ActionSelectionData(
+        published=False, folder_id="folder-1", task_id="task-1"
+    )
+    event = {
+        "crashed": False,
+        "identifier": "test.open",
+        "selection": selection.to_data(),
+        "data": None,
+        "result": WorkfileActionResult(
+            show_task_in_use_form=WorkfileActionTaskInUseFormInputs(
+                task_id="task-2", confirm_label="Open anyway"
+            ),
+        ),
+    }
+    window = mock.Mock()
+
+    # Same prompt as on workfile open of the tool, also continues if
+    #   nobody works on the task anymore
+    for answer in (False, True):
+        window.reset_mock()
+        with mock.patch.object(
+            window_module, "confirm_task_in_use", return_value=answer
+        ) as prompt_mock:
+            WorkfilesToolWindow._on_workfile_action_finished(window, event)
+        prompt_mock.assert_called_once_with(
+            window._controller, "task-2", window, confirm_label="Open anyway"
+        )
+        window._controller.trigger_workfile_action.assert_called_once_with(
+            "test.open", selection, None, {TASK_IN_USE_FORM_KEY: True}
+        )
+        window._apply_action_result.assert_not_called()
+
+    # Cancel does not trigger the action again
+    window.reset_mock()
+    with mock.patch.object(
+        window_module, "confirm_task_in_use", return_value=None
     ):
         WorkfilesToolWindow._on_workfile_action_finished(window, event)
     window._controller.trigger_workfile_action.assert_not_called()

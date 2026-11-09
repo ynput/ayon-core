@@ -1,4 +1,4 @@
-"""Test task in-use prompt shown before an application is launched."""
+"""Test task in-use prompts before launch and in the Workfiles tool."""
 from __future__ import annotations
 
 import json
@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -23,6 +24,7 @@ from ayon_core.tools.workfiles.widgets import (  # noqa: E402
 )
 from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (  # noqa: E402, E501
     ask_to_launch_on_task_in_use,
+    confirm_task_in_use,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
@@ -68,22 +70,20 @@ def clicked_button(qtbot, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "button, workfile, expected",
+    "button, expected",
     [
-        ("Version up", "/work/sh010_anim_v001.ma", (True, True)),
-        ("Launch anyway", "/work/sh010_anim_v001.ma", (True, False)),
-        ("Cancel", "/work/sh010_anim_v001.ma", (False, False)),
-        # Version up is not offered for a different workfile, the dialog
-        #   is rejected if the button is not available
-        ("Version up", "/work/sh010_anim_v002.ma", (False, False)),
-        ("Version up", None, (False, False)),
-        ("Launch anyway", None, (True, False)),
+        ("Launch anyway", True),
+        ("Cancel", False),
+        # Version up is never offered before launch, even if the other
+        #   user has opened the workfile that will be opened. The dialog
+        #   is rejected if the button is not available.
+        ("Version up", False),
     ]
 )
-def test_ask_to_launch(clicked_button, button, workfile, expected):
+def test_ask_to_launch(clicked_button, button, expected):
     clicked_button[0] = button
     items = [TaskUsageItem(**_SESSION)]
-    assert ask_to_launch_on_task_in_use(items, workfile) == expected
+    assert ask_to_launch_on_task_in_use(items) is expected
 
 
 def test_ask_to_launch_in_other_thread(clicked_button):
@@ -131,11 +131,11 @@ from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
 )
 {click_button}
 
-label, session, workfile = sys.argv[1], json.loads(sys.argv[2]), sys.argv[3]
+label, session = sys.argv[1], json.loads(sys.argv[2])
 QtWidgets.QDialog.exec_ = lambda dialog: click_button(dialog, label)
 task_usage.get_task_usage_user_full_names = lambda items: {{}}
 assert QtWidgets.QApplication.instance() is None
-answer = ask_to_launch_on_task_in_use([TaskUsageItem(**session)], workfile)
+answer = ask_to_launch_on_task_in_use([TaskUsageItem(**session)])
 print(json.dumps(answer))
 """.format(click_button=_CLICK_BUTTON)
 
@@ -143,9 +143,8 @@ print(json.dumps(answer))
 @pytest.mark.parametrize(
     "button, expected",
     [
-        ("Version up", [True, True]),
-        ("Launch anyway", [True, False]),
-        ("Cancel", [False, False]),
+        ("Launch anyway", True),
+        ("Cancel", False),
     ]
 )
 def test_ask_to_launch_in_launch_process(button, expected):
@@ -168,7 +167,6 @@ def test_ask_to_launch_in_launch_process(button, expected):
             _LAUNCH_PROCESS,
             button,
             json.dumps(_SESSION),
-            "/work/sh010_anim_v001.ma",
         ],
         env=env,
         capture_output=True,
@@ -176,4 +174,50 @@ def test_ask_to_launch_in_launch_process(button, expected):
     )
     stdout = process.stdout.decode(errors="replace")
     assert process.returncode == 0, process.stderr.decode(errors="replace")
-    assert json.loads(stdout.strip().splitlines()[-1]) == expected
+    assert json.loads(stdout.strip().splitlines()[-1]) is expected
+
+
+@pytest.mark.parametrize(
+    "button, workfile, expected",
+    [
+        ("Open anyway", "/work/sh010_anim_v001.ma", False),
+        ("Version up", "/work/sh010_anim_v001.ma", True),
+        ("Cancel", "/work/sh010_anim_v001.ma", None),
+        # Version up is offered only for the workfile of the other user
+        ("Version up", "/work/sh010_anim_v002.ma", None),
+        ("Version up", None, None),
+    ]
+)
+def test_confirm_task_in_use(
+    clicked_button, qtbot, button, workfile, expected
+):
+    """Prompt of the Workfiles tool and its workfile actions."""
+    clicked_button[0] = button
+    item = TaskUsageItem(**_SESSION)
+    controller = mock.Mock()
+    controller.get_task_usage_items.return_value = [item]
+    controller.get_user_items_by_name.return_value = {}
+    parent = QtWidgets.QWidget()
+    qtbot.addWidget(parent)
+
+    answer = confirm_task_in_use(
+        controller, "task-1", parent, workfile=workfile
+    )
+    assert answer is expected
+    controller.get_task_usage_items.assert_called_once_with("task-1")
+    # Only confirmed sessions are not asked about again
+    if expected is None:
+        controller.confirm_task_usage_items.assert_not_called()
+    else:
+        controller.confirm_task_usage_items.assert_called_once_with([item])
+
+
+def test_confirm_task_not_in_use(qtbot):
+    controller = mock.Mock()
+    controller.get_task_usage_items.return_value = []
+    with mock.patch.object(
+        task_in_use_dialog, "TaskInUseDialog"
+    ) as dialog_mock:
+        assert confirm_task_in_use(controller, "task-1", None) is False
+    dialog_mock.assert_not_called()
+    controller.confirm_task_usage_items.assert_not_called()

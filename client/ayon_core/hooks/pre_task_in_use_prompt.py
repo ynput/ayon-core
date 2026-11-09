@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-import os
-import copy
-import shutil
-from typing import Optional
-
 from ayon_applications import (
     PreLaunchHook,
     LaunchTypes,
@@ -12,15 +7,6 @@ from ayon_applications import (
 )
 
 from ayon_core.lib import is_headless_mode_enabled
-from ayon_core.pipeline.template_data import get_template_data
-from ayon_core.pipeline.workfile import (
-    get_workfile_template_key,
-    find_workfile_rootless_path,
-    save_workfile_info,
-)
-from ayon_core.pipeline.workfile.path_resolving import (
-    get_next_workfile_version_path,
-)
 from ayon_core.pipeline.workfile.task_usage import (
     ACKNOWLEDGED_SESSIONS_ENV_KEY,
     TaskUsageItem,
@@ -36,9 +22,8 @@ class TaskInUsePrompt(PreLaunchHook):
     the launch. Confirmed sessions are passed to the launched application,
     so the user is not notified about them again there.
 
-    If the workfile that will be opened in the application is opened by
-    other user, the user can choose to version up. The workfile is then
-    copied to next version, which is opened instead.
+    The prompt does not offer to version up the workfile, a workfile can
+    be copied correctly only by the host integration.
 
     The prompt is skipped for farm, remote and automated launches and in
     headless mode.
@@ -80,8 +65,7 @@ class TaskInUsePrompt(PreLaunchHook):
         if not items:
             return
 
-        workfile_path = self._get_workfile_to_open()
-        asked, confirmed, version_up = self._confirm(items, workfile_path)
+        asked, confirmed = self._confirm(items)
         if not confirmed:
             usernames = ", ".join(sorted({item.username for item in items}))
             raise ApplicationLaunchFailed(
@@ -89,28 +73,13 @@ class TaskInUsePrompt(PreLaunchHook):
                 f" Task '{task_entity['name']}' is in use by {usernames}."
             )
 
-        if version_up and workfile_path:
-            self._version_up_workfile(workfile_path)
-
         # Sessions are confirmed only if the user was asked
         if asked:
             self.launch_context.env[ACKNOWLEDGED_SESSIONS_ENV_KEY] = (
                 ",".join(item.session_id for item in items)
             )
 
-    def _get_workfile_to_open(self) -> Optional[str]:
-        """Existing workfile that will be opened in the application."""
-        workfile_path = self.data.get("workfile_path")
-        if not workfile_path and self.data.get("start_last_workfile"):
-            workfile_path = self.data.get("last_workfile_path")
-
-        if workfile_path and os.path.exists(workfile_path):
-            return workfile_path
-        return None
-
-    def _confirm(
-        self, items: list[TaskUsageItem], workfile_path: Optional[str]
-    ) -> tuple[bool, bool, bool]:
+    def _confirm(self, items: list[TaskUsageItem]) -> tuple[bool, bool]:
         """Ask user with a dialog shown in current process.
 
         The launch is not blocked if the dialog can't be shown, e.g. if
@@ -118,9 +87,8 @@ class TaskInUsePrompt(PreLaunchHook):
         notified inside the launched application in that case.
 
         Returns:
-            tuple[bool, bool, bool]: User was asked, user wants to launch
-                the application, and user wants to work in next version
-                of the workfile.
+            tuple[bool, bool]: User was asked, and user wants to launch
+                the application.
 
         """
         answer = None
@@ -130,7 +98,7 @@ class TaskInUsePrompt(PreLaunchHook):
                 ask_to_launch_on_task_in_use,
             )
 
-            answer = ask_to_launch_on_task_in_use(items, workfile_path)
+            answer = ask_to_launch_on_task_in_use(items)
         except Exception:
             self.log.warning(
                 "Failed to show task in-use prompt.", exc_info=True
@@ -141,86 +109,5 @@ class TaskInUsePrompt(PreLaunchHook):
                 "Task in-use prompt was not shown."
                 " Launching without the confirmation."
             )
-            return False, True, False
-        return (True, *answer)
-
-    def _version_up_workfile(self, workfile_path: str) -> None:
-        """Copy workfile to next version and open the copy instead.
-
-        Raises:
-            ApplicationLaunchFailed: If the next version could not be
-                created. The user did ask to not work in the workfile.
-
-        """
-        try:
-            new_path = self._copy_to_next_version(workfile_path)
-        except Exception as exc:
-            self.log.warning("Failed to version up workfile.", exc_info=True)
-            raise ApplicationLaunchFailed(
-                "Failed to version up workfile"
-                f" '{os.path.basename(workfile_path)}': {exc}"
-            )
-
-        self.log.info(f"Workfile was versioned up to '{new_path}'.")
-        if self.data.get("workfile_path"):
-            self.data["workfile_path"] = new_path
-        self.data["last_workfile_path"] = new_path
-        self.launch_context.env["AYON_LAST_WORKFILE"] = new_path
-
-    def _copy_to_next_version(self, workfile_path: str) -> str:
-        project_name = self.data["project_name"]
-        project_entity = self.data["project_entity"]
-        folder_entity = self.data["folder_entity"]
-        task_entity = self.data["task_entity"]
-        anatomy = self.data["anatomy"]
-        project_settings = self.data.get("project_settings")
-        host_name = self.host_name
-
-        template_key = get_workfile_template_key(
-            project_name,
-            task_entity["taskType"],
-            host_name,
-            project_settings=project_settings,
-        )
-        file_template = anatomy.get_template_item(
-            "work", template_key, "file"
-        ).template
-        template_data = copy.deepcopy(self.data.get("workdir_data"))
-        if not template_data:
-            template_data = get_template_data(
-                project_entity,
-                folder_entity,
-                task_entity,
-                host_name,
-                settings=project_settings,
-            )
-
-        new_path, version, comment = get_next_workfile_version_path(
-            workfile_path, file_template, template_data
-        )
-        if os.path.exists(new_path):
-            raise ValueError(
-                f"Workfile '{os.path.basename(new_path)}' already exists."
-            )
-
-        shutil.copy2(workfile_path, new_path)
-
-        rootless_path = find_workfile_rootless_path(
-            new_path,
-            project_name,
-            folder_entity,
-            task_entity,
-            host_name,
-            project_entity=project_entity,
-            project_settings=project_settings,
-            anatomy=anatomy,
-        )
-        save_workfile_info(
-            project_name,
-            task_entity["id"],
-            rootless_path,
-            host_name,
-            version=version,
-            comment=comment,
-        )
-        return new_path
+            return False, True
+        return True, answer
