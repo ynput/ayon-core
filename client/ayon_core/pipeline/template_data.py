@@ -9,7 +9,8 @@ from ayon_core.lib import DefaultKeysDict
 from ayon_core.lib.local_settings import get_ayon_user_entity
 
 # Keys of user entity 'data' that must not be available in template data
-#   (secrets that allow logging in as the user, and frontend-only values)
+#   (secrets that allow logging in as the user, and server or frontend
+#   only values)
 _USER_DATA_KEYS_TO_REMOVE = (
     "frontendPreferences",
     "password",
@@ -19,6 +20,8 @@ _USER_DATA_KEYS_TO_REMOVE = (
     "apiKeyPreview",
     "supportToken",
     "inviteRequest",
+    "userPool",
+    "uiExposureLevel",
 )
 
 
