@@ -5,6 +5,7 @@ import subprocess
 import platform
 import json
 import tempfile
+import shlex
 
 from .log import Logger
 from .vendor_bin_utils import find_executable
@@ -80,6 +81,13 @@ def run_subprocess(*args, **kwargs):
     On windows are 'creationflags' filled with flags that should cause ignore
     creation of new window.
 
+    With `shell=True` and a single string command on Linux and macOS, the
+    string is split into arguments with `shlex.split` (quotes already in the
+    string are honoured) and run without a shell. Special characters in paths
+    are safe, but shell syntax like `~`, globs, pipes or redirections is not
+    interpreted. A string that cannot be split (e.g. unbalanced quotes)
+    raises `ValueError` instead of being run.
+
     Args:
         *args: Variable length argument list passed to Popen.
         **kwargs : Arbitrary keyword arguments passed to Popen. Is possible to
@@ -92,6 +100,8 @@ def run_subprocess(*args, **kwargs):
     Raises:
         RuntimeError: Exception is raised if process finished with nonzero
             return code.
+        ValueError: Single string command with `shell=True` on Linux and
+            macOS that cannot be split into arguments.
 
     """
     # Modify creation flags on windows to hide console window if in UI mode
@@ -115,20 +125,11 @@ def run_subprocess(*args, **kwargs):
         and len(args) == 1
         and isinstance(args[0], str)
     ):
-        # Escape parentheses for bash
+        # Split the command and run it without a shell on POSIX, so special
+        # characters in paths are not interpreted
         if platform.system().lower() != "windows":
-            new_arg = (
-                args[0]
-                .replace("&", "\\&")
-                .replace(";", "\\;")
-                .replace("|", "\\|")
-                .replace("$", "\\$")
-                .replace(">", "\\>")
-                .replace("<", "\\<")
-                .replace("(", "\\(")
-                .replace(")", "\\)")
-            )
-            args = (new_arg,)
+            args = (shlex.split(args[0]), )
+            kwargs["shell"] = False
         # Escape & on Windows in shell with `cmd.exe` using ^&
         elif (
             platform.system().lower() == "windows"

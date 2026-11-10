@@ -3,7 +3,7 @@
 """AYON lib functions."""
 
 from .terminal import Terminal
-from .log import Logger, log_timing
+from .log import Logger, log_span
 from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,
@@ -139,6 +139,7 @@ from .plugin_tools import (
 
 from .path_tools import (
     format_file_size,
+    open_in_file_browser,
     collect_frames,
     create_hard_link,
     version_up,
@@ -161,7 +162,7 @@ terminal = Terminal
 
 __all__ = [
     "Logger",
-    "log_timing",
+    "log_span",
     "StrEnum",
 
     "IniSettingRegistry",
@@ -265,6 +266,7 @@ __all__ = [
     "source_hash",
 
     "format_file_size",
+    "open_in_file_browser",
     "collect_frames",
     "create_hard_link",
     "version_up",
