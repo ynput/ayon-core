@@ -6,6 +6,7 @@ from .widgets import (
     CustomTextComboBox,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
+    CodePlainTextEdit,
     MarkdownLabel,
     ElideLabel,
     HintedLineEdit,
@@ -50,6 +51,10 @@ from .models import (
 )
 from .overlay_messages import (
     MessageOverlayObject,
+)
+from .connection_overlay import (
+    AYONLogoAnimation,
+    ConnectionOverlay,
 )
 from .multiselection_combobox import MultiSelectionComboBox
 from .thumbnail_paint_widget import ThumbnailPainterWidget
@@ -96,6 +101,7 @@ __all__ = (
     "CustomTextComboBox",
     "PlaceholderLineEdit",
     "PlaceholderPlainTextEdit",
+    "CodePlainTextEdit",
     "MarkdownLabel",
     "ElideLabel",
     "HintedLineEdit",
@@ -136,6 +142,9 @@ __all__ = (
     "RecursiveSortFilterProxyModel",
 
     "MessageOverlayObject",
+
+    "AYONLogoAnimation",
+    "ConnectionOverlay",
 
     "MultiSelectionComboBox",
 

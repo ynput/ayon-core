@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import uuid
 import warnings
 from typing import Optional, Any
@@ -14,9 +13,12 @@ from pyblish.lib import MessageHandler
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import AbstractHost
 from ayon_core.lib import (
+    Logger,
     is_in_tests,
     initialize_ayon_connection,
+    register_event_callback,
 )
+from ayon_core.lib.log import set_process_context
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -31,16 +33,16 @@ from . import (
     deregister_inventory_action_path
 )
 
-
 _is_installed = False
 _process_id = None
-_registered_root = {"_": {}}
+# Callback updating log context on context change, see '_set_log_context'
+_log_context_callback = None
 _registered_host = {"_": None}
 # Keep modules manager (and it's modules) in memory
 # - that gives option to register modules' callbacks
 _addons_manager = None
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 PLUGINS_DIR = os.path.join(AYON_CORE_ROOT, "plugins")
 
@@ -64,37 +66,6 @@ def _get_addons_manager():
     if _addons_manager is None:
         _addons_manager = AddonsManager()
     return _addons_manager
-
-
-def register_root(path):
-    """DEPRECATED Register currently active root."""
-    log.info("Registering root: %s" % path)
-    _registered_root["_"] = path
-
-
-def registered_root():
-    """Return registered roots from current project anatomy.
-
-    Consider this does return roots only for current project and current
-        platforms, only if host was installer using 'install_host'.
-
-    Deprecated:
-        Please use project 'Anatomy' to get roots. This function is still used
-            at current core functions of load logic, but that will change
-            in future and this function will be removed eventually. Using this
-            function at new places can cause problems in the future.
-
-    Returns:
-        dict[str, str]: Root paths.
-
-    """
-    warnings.warn(
-        "Used deprecated function 'registered_root'. Please use 'Anatomy'"
-        " to get roots.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _registered_root["_"]
 
 
 def install_host(host: AbstractHost) -> None:
@@ -125,6 +96,13 @@ def install_host(host: AbstractHost) -> None:
     #     raise ValueError(
     #         "AYON_PROJECT_NAME is missing in environment variables."
     #     )
+    # Host not inheriting from 'AbstractHost' may not have 'name'
+    host_name = (
+        getattr(host, "name", None)
+        or os.environ.get("AYON_HOST_NAME")
+    )
+    # Logs of host and addons installation already have the context
+    _set_log_context(host_name, project_name)
 
     log.info("Activating {}..".format(project_name))
 
@@ -133,6 +111,9 @@ def install_host(host: AbstractHost) -> None:
         host.install()
 
     register_host(host)
+    # Folder and task are known only by the host which may need
+    #   to be installed first
+    _set_host_log_context()
 
     def modified_emit(obj, record):
         """Method replacing `emit` in Pyblish's MessageHandler."""
@@ -156,13 +137,76 @@ def install_host(host: AbstractHost) -> None:
         print("Registering pyblish target: automated")
         pyblish.api.register_target("automated")
 
-    host_name = os.environ.get("AYON_HOST_NAME")
-
     # Give option to handle host installation
     for addon in addons_manager.get_enabled_addons():
         addon.on_host_install(host, host_name, project_name)
 
     install_ayon_plugins(project_name, host_name)
+
+
+def _update_log_context(event) -> None:
+    """Set context of 'taskChanged' event to log records."""
+    # Host plugins loaded after host installation may have removed
+    #   AYON handlers from the root logger
+    Logger.ensure_handlers()
+    set_process_context(
+        project=event.get("project_name"),
+        folder=event.get("folder_path"),
+        task=event.get("task_name"),
+    )
+
+
+def _set_host_log_context() -> None:
+    """Set current context of registered host to log records.
+
+    Context is not taken from environment variables because hosts may
+    store it elsewhere, e.g. in the workfile.
+
+    """
+    # Host may have removed AYON handlers from the root logger
+    #   during its installation
+    Logger.ensure_handlers()
+    try:
+        context = get_current_context()
+    except Exception:
+        log.debug("Failed to get current context of host.", exc_info=True)
+        return
+
+    set_process_context(
+        project=context.get("project_name"),
+        folder=context.get("folder_path"),
+        task=context.get("task_name"),
+    )
+
+
+def _set_log_context(
+    host_name: Optional[str], project_name: Optional[str]
+) -> None:
+    """Add host and project to all log records of the process.
+
+    Folder and task are added by '_set_host_log_context' once the host
+    is installed. Context is updated on each 'taskChanged' event, emitted
+    by hosts on context change.
+
+    Args:
+        host_name (Optional[str]): Name of the host.
+        project_name (Optional[str]): Current project name.
+
+    """
+    global _log_context_callback
+
+    set_process_context(
+        host_name=host_name,
+        project=project_name,
+        folder=None,
+        task=None,
+    )
+    if _log_context_callback is None:
+        _log_context_callback = register_event_callback(
+            "taskChanged", _update_log_context
+        )
+        # Before other callbacks, their logs have the new context
+        _log_context_callback.order = 0
 
 
 def install_ayon_plugins(project_name=None, host_name=None):
@@ -187,13 +231,31 @@ def install_ayon_plugins(project_name=None, host_name=None):
     if host_name is None:
         host_name = get_current_host_name()
 
+    if project_name is None:
+        project_name = os.environ.get("AYON_PROJECT_NAME")
+
+    if project_name:
+        anatomy = Anatomy(project_name)
+        anatomy.set_root_environments()
+
+    addons_manager = _get_addons_manager()
+
+    # Loader plugin paths are registered without a host name too. Tools that
+    # run without a host (the tray Browser) rely on addons returning their
+    # host-less loader folders for `host_name=None`, e.g. the 'global'
+    # folders of the OpenRV, DJV and xStudio addons. An addon that has only
+    # host specific loaders simply returns nothing for `None`.
+    # TODO remove when the addons stop using LoaderPlugin for actions
+    load_plugin_paths = addons_manager.collect_load_plugin_paths(host_name)
+    for path in load_plugin_paths:
+        register_loader_plugin_path(path)
+
     if host_name is None:
         log.debug(
             "Host name is not set. Skipping registering host specific plugins."
         )
     else:
         # Load host specific plugins
-        addons_manager = _get_addons_manager()
         publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
             host_name)
         for path in publish_plugin_dirs:
@@ -204,23 +266,10 @@ def install_ayon_plugins(project_name=None, host_name=None):
         for path in create_plugin_paths:
             register_creator_plugin_path(path)
 
-        load_plugin_paths = addons_manager.collect_load_plugin_paths(
-            host_name)
-        for path in load_plugin_paths:
-            register_loader_plugin_path(path)
-
         inventory_action_paths = addons_manager.collect_inventory_action_paths(
             host_name)
         for path in inventory_action_paths:
             register_inventory_action_path(path)
-
-    if project_name is None:
-        project_name = os.environ.get("AYON_PROJECT_NAME")
-
-    if project_name:
-        anatomy = Anatomy(project_name)
-        anatomy.set_root_environments()
-        register_root(anatomy.roots)
 
 
 def uninstall_host():
@@ -239,6 +288,7 @@ def uninstall_host():
     log.info("Global plug-ins unregistered")
 
     deregister_host()
+    set_process_context(host_name=None, project=None, folder=None, task=None)
 
     log.info("Successfully uninstalled AYON!")
 

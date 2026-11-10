@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import tempfile
 import shutil
 import typing
@@ -20,8 +19,10 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
     ThumbnailsModel,
 )
+from ayon_core.lib import Logger
 
 from .models import (
     PublishModel,
@@ -108,6 +109,8 @@ class PublisherController(
         self._hierarchy_model = HierarchyModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._users_model = UsersModel(self)
+        # Websocket connection is created only when UI processes events
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -118,7 +121,7 @@ class PublisherController(
         """
 
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def get_window_subtitle(self) -> Optional[str]:
@@ -128,6 +131,15 @@ class PublisherController(
 
     def is_headless(self):
         return self._headless
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> Optional[bool]:
+        return self._ws_events_model.get_connection_state()
 
     def get_host(self):
         return self._host

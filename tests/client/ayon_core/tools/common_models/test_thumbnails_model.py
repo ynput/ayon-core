@@ -259,3 +259,114 @@ def test_result_received_during_reset_is_not_cached(
     model.get_thumbnail_paths(*args)
     assert get_folders.call_count == 2
     assert get_thumbnail_path.call_count == 2
+
+
+def _mock_projects(monkeypatch, model, updated_at_by_name):
+    query = Mock(side_effect=lambda: dict(updated_at_by_name))
+    monkeypatch.setattr(model, "_query_projects_updated_at", query)
+    return query
+
+
+def test_project_thumbnails(monkeypatch, create_file):
+    """Entity ids of projects are project names."""
+    path = create_file()
+    get_project_thumbnail_path = Mock(
+        side_effect=lambda project_name, _updated_at: (
+            path if project_name == "demo" else None
+        )
+    )
+    monkeypatch.setattr(
+        thumbnails, "get_project_thumbnail_path", get_project_thumbnail_path
+    )
+    model = thumbnails.ThumbnailsModel()
+    query = _mock_projects(
+        monkeypatch, model, {"demo": "2026-01-01", "empty": "2026-01-01"}
+    )
+
+    project_names = {"demo", "empty", "removed"}
+    expected = {"demo": path, "empty": None, "removed": None}
+    # Project name is not used
+    assert model.get_thumbnail_paths(
+        None, "project", project_names
+    ) == expected
+    assert get_project_thumbnail_path.call_count == 2
+
+    # Nothing is requested again until the cache expires
+    assert model.get_thumbnail_paths(
+        None, "project", project_names
+    ) == expected
+    assert query.call_count == 1
+    assert get_project_thumbnail_path.call_count == 2
+
+
+def test_changed_project_thumbnail_is_received_after_reset(
+    monkeypatch, create_file
+):
+    paths = [create_file(), create_file()]
+    get_project_thumbnail_path = Mock(side_effect=paths)
+    monkeypatch.setattr(
+        thumbnails, "get_project_thumbnail_path", get_project_thumbnail_path
+    )
+    model = thumbnails.ThumbnailsModel()
+    updated_at_by_name = {"demo": "2026-01-01"}
+    _mock_projects(monkeypatch, model, updated_at_by_name)
+    args = (None, "project", {"demo"})
+    assert model.get_thumbnail_paths(*args) == {"demo": paths[0]}
+
+    # Server updates the project when its thumbnail is changed
+    updated_at_by_name["demo"] = "2026-01-02"
+    assert model.get_thumbnail_paths(*args) == {"demo": paths[0]}
+    model.reset()
+    assert model.get_thumbnail_paths(*args) == {"demo": paths[1]}
+    get_project_thumbnail_path.assert_called_with("demo", "2026-01-02")
+
+
+def test_projects_are_queried_once_by_multiple_threads(monkeypatch):
+    threads_count = 8
+    barrier = threading.Barrier(threads_count)
+    monkeypatch.setattr(
+        thumbnails,
+        "get_project_thumbnail_path",
+        lambda project_name, _updated_at: f"/{project_name}",
+    )
+    model = thumbnails.ThumbnailsModel()
+    query = _mock_projects(
+        monkeypatch,
+        model,
+        {f"project_{idx}": "2026-01-01" for idx in range(threads_count)},
+    )
+    monkeypatch.setattr(thumbnails.os.path, "exists", lambda _path: True)
+    outputs = {}
+
+    def _run(idx):
+        barrier.wait()
+        outputs[idx] = model.get_thumbnail_paths(
+            None, "project", {f"project_{idx}"}
+        )
+
+    threads = [
+        threading.Thread(target=_run, args=(idx,))
+        for idx in range(threads_count)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert query.call_count == 1
+    assert outputs == {
+        idx: {f"project_{idx}": f"/project_{idx}"}
+        for idx in range(threads_count)
+    }
+
+
+def test_failed_projects_query_does_not_raise(monkeypatch):
+    model = thumbnails.ThumbnailsModel()
+    monkeypatch.setattr(
+        model,
+        "_query_projects_updated_at",
+        Mock(side_effect=ValueError("Server is not available")),
+    )
+    assert model.get_thumbnail_paths(None, "project", {"demo"}) == {
+        "demo": None
+    }

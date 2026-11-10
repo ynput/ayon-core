@@ -28,6 +28,7 @@ from ayon_core.tools.utils import (
     MarkdownLabel,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
+    CodePlainTextEdit,
     set_style_property,
     get_qt_icon,
 )
@@ -566,7 +567,9 @@ class TextAttrWidget(BaseAttrDefWidget):
         # self.attr_def.regex
 
         self.multiline = self.attr_def.multiline
-        if self.multiline:
+        if self.multiline and self.attr_def.syntax:
+            input_widget = CodePlainTextEdit(self, self.attr_def.syntax)
+        elif self.multiline:
             input_widget = PlaceholderPlainTextEdit(self)
         else:
             input_widget = PlaceholderLineEdit(self)
@@ -844,8 +847,8 @@ class EnumAttrWidget(BaseAttrDefWidget):
 class UnknownAttrWidget(BaseAttrDefWidget):
     def _ui_init(self):
         input_widget = QtWidgets.QLabel(self)
-        self._value = self.attr_def.default
-        input_widget.setText(str(self._value))
+        self._value = str(self.attr_def.default)
+        input_widget.setText(self._value)
 
         self._input_widget = input_widget
 
@@ -858,9 +861,11 @@ class UnknownAttrWidget(BaseAttrDefWidget):
 
     def set_value(self, value, multivalue=False):
         if multivalue:
-            set_value = set(value)
-            if len(set_value) == 1:
-                value = tuple(set_value)[0]
+            # Unknown values can be unhashable (e.g. list or dict) so
+            #   they can't be deduplicated using 'set'
+            values = list(value)
+            if values and all(item == values[0] for item in values):
+                value = values[0]
             else:
                 value = "< Multiselection >"
 

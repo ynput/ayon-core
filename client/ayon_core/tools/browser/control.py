@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import logging
 import typing
 from typing import Any
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem
+from ayon_core.lib import NestedCacheItem, Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import AbstractHost
@@ -15,6 +14,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
     ThumbnailsModel,
 )
 
@@ -57,11 +57,12 @@ class BrowserController(AbstractBrowserController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     # ---------------------------------
@@ -71,6 +72,15 @@ class BrowserController(AbstractBrowserController):
         if self._host is None:
             return None
         return self._host.name
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
 
     # Events system
     def emit_event(
