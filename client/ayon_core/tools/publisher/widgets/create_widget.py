@@ -382,9 +382,14 @@ class CreateWidget(QtWidgets.QWidget):
         controller.register_event_callback(
             "controller.reset.finished", self._on_controler_reset
         )
+        # Refresh 'created' state of subtask products
         controller.register_event_callback(
             "create.context.removed.instance",
-            self._on_instances_removed
+            self._on_instances_change
+        )
+        controller.register_event_callback(
+            "create.model.instances.context.changed",
+            self._on_instances_change
         )
 
         self._main_splitter_widget = main_splitter_widget
@@ -651,13 +656,16 @@ class CreateWidget(QtWidgets.QWidget):
                 item.setData(value, role)
 
             icon = icon_created
+            tooltip = "Product is already created in selected context"
             flags = QtCore.Qt.ItemIsEnabled
             if not subtask_product.created:
                 icon = icon_missing
+                tooltip = None
                 flags |= QtCore.Qt.ItemIsSelectable
 
             item.setFlags(flags)
             item.setData(icon, QtCore.Qt.DecorationRole)
+            item.setData(tooltip, QtCore.Qt.ToolTipRole)
 
         for item in existing_items.values():
             root_item.removeRow(item.row())
@@ -1111,7 +1119,7 @@ class CreateWidget(QtWidgets.QWidget):
             self._creator_basics_widget.sizeHint().height()
         )
 
-    def _on_instances_removed(self):
+    def _on_instances_change(self) -> None:
         self._refresh_subtask_products()
 
     def _on_create(self) -> None:
