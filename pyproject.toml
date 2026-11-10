@@ -79,6 +79,7 @@ testpaths = [
     "tests/client/ayon_core/pipeline",
     "client/ayon_core/tests",
     "tests/client/ayon_core/ui",
+    "tests/client/ayon_core/lib",
 ]
 pythonpath = [
     "client",
