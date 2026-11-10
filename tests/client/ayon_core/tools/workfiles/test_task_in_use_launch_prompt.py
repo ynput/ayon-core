@@ -126,6 +126,7 @@ from qtpy import QtWidgets
 
 from ayon_core.pipeline.workfile import task_usage
 from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
+from ayon_core.tools.workfiles.widgets import task_in_use_dialog
 from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
     ask_to_launch_on_task_in_use,
 )
@@ -134,6 +135,9 @@ from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
 label, session = sys.argv[1], json.loads(sys.argv[2])
 QtWidgets.QDialog.exec_ = lambda dialog: click_button(dialog, label)
 task_usage.get_task_usage_user_full_names = lambda items: {{}}
+# Linux without display (e.g. CI) would not show the dialog, 'offscreen'
+#   platform is used by the test instead
+task_in_use_dialog._can_show_dialog = lambda: True
 assert QtWidgets.QApplication.instance() is None
 answer = ask_to_launch_on_task_in_use([TaskUsageItem(**session)])
 print(json.dumps(answer))
