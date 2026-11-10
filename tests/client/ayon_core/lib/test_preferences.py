@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import os
 import sqlite3
 import subprocess
@@ -221,6 +222,38 @@ def test_local_preferences_import_passed_legacy_registry(local_dir):
 
 
 @pytest.mark.unit
+def test_local_preferences_import_is_tried_again(monkeypatch):
+    """The legacy registry is imported later if the database failed."""
+    registry = JSONSettingRegistry("unreal", get_launcher_local_dir("tools"))
+    registry.set_item("width", 800)
+    # The database exists, used by other preferences
+    LocalPreferences(KEY).set_item("visible", True)
+    monkeypatch.setattr(LocalPreferences, "timeout", 0.1)
+
+    prefs = LocalPreferences("unreal")
+    other = sqlite3.connect(prefs.filepath, isolation_level=None)
+    try:
+        other.execute("BEGIN EXCLUSIVE")
+        assert prefs.get_item("width", default=None) is None
+    finally:
+        other.close()
+    assert prefs.get_item("width") == 800
+
+    # Also if the registry file was used by another process
+    registry = JSONSettingRegistry("nuke", get_launcher_local_dir("tools"))
+    registry.set_item("width", 900)
+
+    def open_file(*args, **kwargs):
+        raise PermissionError("Used by another process")
+
+    prefs = LocalPreferences("nuke")
+    with monkeypatch.context() as context:
+        context.setattr(local_settings, "open", open_file, raising=False)
+        assert prefs.get_item("width", default=None) is None
+    assert prefs.get_item("width") == 900
+
+
+@pytest.mark.unit
 def test_json_registry_reads_changes_of_others():
     path = get_launcher_local_dir("tools")
     registry = JSONSettingRegistry("other_tool", path)
@@ -230,6 +263,45 @@ def test_json_registry_reads_changes_of_others():
 
     JSONSettingRegistry("other_tool", path).set_item("width", 800)
     assert registry.get_item("width", default=None) == 800
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"registry": {"width": 800},',
+        '["width"]',
+        '{"registry": ["width"]}',
+    ],
+    ids=["broken", "not_a_dict", "registry_not_a_dict"],
+)
+def test_json_registry_keeps_a_file_it_cannot_parse(content, local_dir):
+    """Items of a file that can't be read are not overwritten."""
+    registry = JSONSettingRegistry("other_tool", local_dir)
+    with open(registry.filepath, "w") as stream:
+        stream.write(content)
+
+    assert registry.get_item("width", default=None) is None
+    registry.set_item("height", 600)
+    registry.delete_item("width")
+    with open(registry.filepath, "r") as stream:
+        assert stream.read() == content
+
+
+@pytest.mark.unit
+def test_json_registry_keeps_a_file_it_cannot_open(local_dir, monkeypatch):
+    registry = JSONSettingRegistry("other_tool", local_dir)
+    registry.set_item("width", 800)
+
+    def open_file(*args, **kwargs):
+        raise PermissionError("Used by another process")
+
+    with monkeypatch.context() as context:
+        context.setattr(local_settings, "open", open_file, raising=False)
+        assert registry.get_item("width", default=None) is None
+        registry.set_item("height", 600)
+        registry.delete_item("width")
+    assert registry.get_data() == {"width": 800}
 
 
 def broken_databases(prefs: LocalPreferences) -> list[str]:
@@ -534,3 +606,37 @@ def test_user_preferences_while_server_is_not_reachable(
     prefs.set_item("sizes", [1])
     assert server.preferences[(KEY, None)] == {"sizes": [1]}
     assert UserPreferences.is_supported() is True
+
+
+@pytest.mark.unit
+def test_user_preferences_when_requests_raise(monkeypatch, caplog):
+    """Requests that raise, e.g. without connection, are logged."""
+    server = use_server(monkeypatch, FakeServer())
+    prefs = UserPreferences(KEY)
+    prefs.set_item("visible", True)
+
+    def raise_error(endpoint, **kwargs):
+        raise ConnectionError("Connection refused")
+
+    for method in ("get", "put", "patch", "delete"):
+        monkeypatch.setattr(ayon_api, f"raw_{method}", raise_error)
+    caplog.set_level(logging.WARNING, logger="UserPreferences")
+
+    # Kept only in the cache, the server is still known to have the API
+    prefs.set_item("visible", False)
+    assert prefs.refresh() is False
+    assert prefs.get_item("visible") is False
+    assert server.preferences[(KEY, None)] == {"visible": True}
+    assert UserPreferences.is_supported() is True
+    assert caplog.messages == [
+        f"Failed to change preference '{KEY}'.",
+        "Failed to ask the server for user preferences.",
+    ]
+    assert all(record.exc_info for record in caplog.records)
+
+    # Support of a server that can't be asked is not cached
+    monkeypatch.setattr(ayon_api, "get_base_url", lambda: "http://other")
+    assert UserPreferences.is_supported() is False
+    assert local_settings._ServerSupport.by_url == {
+        "http://ayon.server": True
+    }

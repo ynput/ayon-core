@@ -46,8 +46,8 @@ class BaseLauncherController(
         self._event_system = None
         self._log = None
 
-        # Same file as the registry the launcher used before, the name is
-        #   kept so nothing has to be converted.
+        # Name of the registry the launcher used before, so its file
+        #   'tools/launcher.json' is imported on first use.
         self._launcher_preferences = LocalPreferences("launcher")
 
         self._addons_manager = None
@@ -130,7 +130,7 @@ class BaseLauncherController(
             return []
 
     def set_grouped_host_names(self, host_names: list[str | None]):
-        # Stored as JSON string, which older versions of the launcher read
+        # JSON string, as in the imported registry of previous versions
         value = json.dumps(host_names)
         self._launcher_preferences.set_item("grouped_hosts", value)
 

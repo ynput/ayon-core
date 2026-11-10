@@ -38,9 +38,26 @@ import platformdirs
 import ayon_api
 
 from .cache import NestedCacheItem, CacheItem
-from .log import Logger
 
 _PLACEHOLDER = object()
+
+
+def _get_logger(name: str) -> logging.Logger:
+    """Get a logger of this module.
+
+    The 'log' module imports this module, so 'Logger' is imported on
+    first use, not when this module is imported.
+
+    Args:
+        name: Name of the logger.
+
+    Returns:
+        logging.Logger: Logger with the name.
+
+    """
+    from .log import Logger
+
+    return Logger.get_logger(name)
 
 
 # TODO should use 'KeyError' or 'Exception' as base
@@ -545,7 +562,8 @@ class JSONSettingRegistry(ASettingRegistry):
     The file is read on each access, so changes of other processes are
     visible, and written only when an item changes. Writes go through a
     temporary file, so a reader never gets half of the file. Errors of
-    reading and writing are logged, not raised.
+    reading and writing are logged, not raised. A file that can't be read
+    is not written, so its items are not lost.
 
     Note:
         Writes are guarded only within this process. Two processes that
@@ -566,7 +584,7 @@ class JSONSettingRegistry(ASettingRegistry):
 
     @property
     def log(self) -> logging.Logger:
-        return Logger.get_logger(self.__class__.__name__)
+        return _get_logger(self.__class__.__name__)
 
     @property
     def filepath(self) -> str:
@@ -580,10 +598,10 @@ class JSONSettingRegistry(ASettingRegistry):
             dict[str, Any]: Items by name.
 
         """
-        registry = self._read_content().get("registry")
-        if not isinstance(registry, dict):
+        content = self._read_content()
+        if content is None:
             return {}
-        return registry
+        return content["registry"]
 
     def clear(self) -> None:
         """Delete all items, by removing the file."""
@@ -626,17 +644,20 @@ class JSONSettingRegistry(ASettingRegistry):
         """
         with self._write_lock:
             content = self._read_content()
-            registry = content.get("registry")
-            if not isinstance(registry, dict):
-                registry = content["registry"] = {}
-            registry[name] = value
+            if content is None:
+                self._log_not_changed(name, "stored")
+                return
+            content["registry"][name] = value
             self._write_content(content)
 
     def _delete_item(self, name: str, ignore_missing: bool = True) -> None:
         with self._write_lock:
             content = self._read_content()
-            registry = content.get("registry")
-            if not isinstance(registry, dict) or name not in registry:
+            if content is None:
+                self._log_not_changed(name, "deleted")
+                return
+            registry = content["registry"]
+            if name not in registry:
                 if ignore_missing:
                     return
                 raise RegistryItemNotFound(
@@ -645,21 +666,45 @@ class JSONSettingRegistry(ASettingRegistry):
             registry.pop(name)
             self._write_content(content)
 
-    def _read_content(self) -> dict[str, Any]:
+    def _log_not_changed(self, name: str, action: str) -> None:
+        self.log.warning(
+            "Item '%s' was not %s, registry file '%s' can't be read.",
+            name,
+            action,
+            self._registry_file,
+        )
+
+    def _read_content(self) -> Optional[dict[str, Any]]:
+        """Content of the file, with the items in its 'registry'.
+
+        Returns:
+            Optional[dict[str, Any]]: Content of the file, empty registry
+                if the file does not exist. 'None' if it can't be read,
+                e.g. is broken or used by another process.
+
+        """
         try:
             with open(self._registry_file, "r", encoding="utf-8") as stream:
                 content = json.load(stream)
         except FileNotFoundError:
-            return {}
+            return {"registry": {}}
         except (OSError, ValueError):
             self.log.warning(
                 "Failed to read registry file '%s'.",
                 self._registry_file,
                 exc_info=True,
             )
-            return {}
-        if not isinstance(content, dict):
-            return {}
+            return None
+
+        registry = None
+        if isinstance(content, dict):
+            registry = content.setdefault("registry", {})
+        if not isinstance(registry, dict):
+            self.log.warning(
+                "Registry file '%s' has no registry of items.",
+                self._registry_file,
+            )
+            return None
         return content
 
     def _write_content(self, content: dict[str, Any]) -> None:
@@ -897,7 +942,6 @@ class LocalPreferences(ASettingRegistry):
         ValueError: If the name is not valid.
 
     """
-    log = Logger.get_logger("LocalPreferences")
     # Seconds to wait for another process that changes the database
     timeout = 10
     # Guards moving a broken database aside in this process
@@ -915,6 +959,10 @@ class LocalPreferences(ASettingRegistry):
         self._filepath = get_launcher_local_dir("tools", "preferences.db")
         self._legacy_registry_filepath = legacy_registry_filepath
         self._legacy_registry_imported = False
+
+    @property
+    def log(self) -> logging.Logger:
+        return _get_logger("LocalPreferences")
 
     @property
     def filepath(self) -> str:
@@ -972,6 +1020,16 @@ class LocalPreferences(ASettingRegistry):
             bool: Whether items were imported now.
 
         """
+        return self._import_registry(filepath) is True
+
+    def _import_registry(self, filepath: str) -> Optional[bool]:
+        """Import items of a registry file, see 'import_registry'.
+
+        Returns:
+            Optional[bool]: Whether items were imported now. 'None' if the
+                import can be tried again, e.g. the database was locked.
+
+        """
         if not os.path.isfile(filepath):
             return False
         try:
@@ -983,11 +1041,12 @@ class LocalPreferences(ASettingRegistry):
                 (self.name, item, json.dumps(value))
                 for item, value in registry.items()
             ]
-        except (OSError, ValueError, TypeError, AttributeError):
+        except (OSError, ValueError, TypeError, AttributeError) as exc:
             self.log.warning(
                 "Failed to read registry file '%s'.", filepath, exc_info=True
             )
-            return False
+            # The file may be used by another process, broken stays broken
+            return None if isinstance(exc, OSError) else False
 
         source = os.path.normcase(os.path.abspath(filepath))
 
@@ -1022,7 +1081,9 @@ class LocalPreferences(ASettingRegistry):
         success, imported = self._run(
             _import, f"import registry file '{filepath}' to"
         )
-        return success and imported
+        if not success:
+            return None
+        return imported
 
     def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
         rows = self._query(
@@ -1095,9 +1156,12 @@ class LocalPreferences(ASettingRegistry):
         return count if success else -1
 
     def _ensure_legacy_registry_imported(self) -> None:
-        if not self._legacy_registry_imported:
-            self._legacy_registry_imported = True
-            self.import_registry(self._legacy_registry_filepath)
+        if self._legacy_registry_imported:
+            return
+        # Tried again on the next access if it failed for now. Otherwise
+        #   items stored meanwhile would be kept over the imported ones.
+        imported = self._import_registry(self._legacy_registry_filepath)
+        self._legacy_registry_imported = imported is not None
 
     def _run(
         self,
@@ -1278,7 +1342,7 @@ def _list_preferences(query: dict[str, str]) -> Optional[Any]:
     try:
         response = ayon_api.raw_get(f"preferences?{urlencode(query)}")
     except Exception:
-        UserPreferences.log.warning(
+        _get_logger("UserPreferences").warning(
             "Failed to ask the server for user preferences.", exc_info=True
         )
         return None
@@ -1321,7 +1385,6 @@ class UserPreferences(ASettingRegistry):
         ValueError: If the name is not valid.
 
     """
-    log = Logger.get_logger("UserPreferences")
     # Oldest AYON server with the preferences API, for messages to the
     #   user. Whether a server has it is asked, not told by its version.
     min_server_version = "1.17.3"
@@ -1337,6 +1400,10 @@ class UserPreferences(ASettingRegistry):
         self._lock = threading.RLock()
         self._data: dict[str, Any] = {}
         self._loaded = False
+
+    @property
+    def log(self) -> logging.Logger:
+        return _get_logger("UserPreferences")
 
     @staticmethod
     def is_supported() -> bool:
@@ -1456,8 +1523,9 @@ class UserPreferences(ASettingRegistry):
                 return
 
             # The server can't delete a single item, the preference is
-            #   replaced with what is stored on the server without it. So
-            #   items changed meanwhile by other processes are kept.
+            #   replaced with what is stored on the server without it. Items
+            #   other processes changed before are kept, but an item changed
+            #   between these two requests is lost.
             data = self._receive_data()
             if data is None or name not in data:
                 return
