@@ -27,7 +27,13 @@ class ValidateOutdatedContainers(
     OptionalPyblishPluginMixin,
     pyblish.api.ContextPlugin
 ):
-    """Containers are must be updated to latest version on publish."""
+    """Containers are must be updated to latest version on publish.
+
+    Hosts can limit which containers are validated by collecting them into
+    `context.data["usedContainers"]`, e.g. only containers that the published
+    instances use. All containers in the scene are validated when the key is
+    not set. An empty list means none are used, so nothing is validated.
+    """
 
     label = "Validate Outdated Containers"
     order = pyblish.api.ValidatorOrder
@@ -72,6 +78,8 @@ class ValidateOutdatedContainers(
         if not self.is_active(context.data):
             return
 
-        if any_outdated_containers():
+        # Use containers collected by host, if any, otherwise all in scene
+        containers = context.data.get("usedContainers")
+        if any_outdated_containers(containers=containers):
             msg = "There are outdated containers in the scene."
             raise PublishXmlValidationError(self, msg)
