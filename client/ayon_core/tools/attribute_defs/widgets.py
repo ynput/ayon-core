@@ -27,6 +27,7 @@ from ayon_core.tools.utils import (
     MarkdownLabel,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
+    CodePlainTextEdit,
     set_style_property,
     get_qt_icon,
 )
@@ -583,7 +584,9 @@ class TextAttrWidget(BaseAttrDefWidget):
         self._completer_model = None
 
         self.multiline = self.attr_def.multiline
-        if self.multiline:
+        if self.multiline and self.attr_def.syntax:
+            input_widget = CodePlainTextEdit(self, self.attr_def.syntax)
+        elif self.multiline:
             input_widget = PlaceholderPlainTextEdit(self)
         else:
             input_widget = PlaceholderLineEdit(self)

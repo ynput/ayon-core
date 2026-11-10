@@ -404,7 +404,11 @@ class AbstractTemplateBuilder(ABC):
 
         # Backwards compatibility
         if hasattr(self._host, "get_workfile_build_placeholder_plugins"):
-            return self._host.get_workfile_build_placeholder_plugins()
+            return [
+                cls
+                for cls in self._host.get_workfile_build_placeholder_plugins()
+                if cls.__dict__.get("skip_discovery") is not True
+            ]
 
         plugins.extend(discover(PlaceholderPlugin))
         return plugins
@@ -1529,6 +1533,13 @@ class PlaceholderPlugin(ABC):
     a logic in the scene. Most common logic is to load representation using
     loaders or to create instances in scene.
     """
+
+    # Attribute 'skip_discovery' is used during discovery phase to skip
+    #   plugins, which can be used to mark base plugins that should not be
+    #   considered as plugins "to use". The discovery logic does NOT use
+    #   the attribute value from parent classes. Each base class has to define
+    #   the attribute again.
+    skip_discovery = True
 
     label = None
     # Icon definition used in UI. Can be any value supported by
