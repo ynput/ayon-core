@@ -433,7 +433,37 @@ class AYOptionalAction(QtWidgets.QWidgetAction):
         widget.set_shortcut_text(self.shortcut().toString())
         self.widget = widget
 
+        # Row widget is transparent for mouse events and does not know when
+        #   it is hovered. 'AYOptionalMenu' takes care of that, for other
+        #   menus watch active action and mouse movement of the menu.
+        if (
+            isinstance(parent, QtWidgets.QMenu)
+            and not isinstance(parent, AYOptionalMenu)
+        ):
+            parent.hovered.connect(self._on_menu_hovered)
+            parent.aboutToHide.connect(self._on_menu_hide)
+            parent.installEventFilter(self)
+
         return widget
+
+    def eventFilter(
+        self, watched: QtCore.QObject, event: QtCore.QEvent
+    ) -> bool:
+        event_type = event.type()
+        if event_type == QtCore.QEvent.Type.MouseMove:
+            self.set_highlight(
+                watched.actionAt(event.pos()) is self,
+                AYOptionalMenu._event_global_pos(event),
+            )
+        elif event_type == QtCore.QEvent.Type.Leave:
+            self.set_highlight(False)
+        return False
+
+    def _on_menu_hovered(self, hovered_action: QtWidgets.QAction) -> None:
+        self.set_highlight(hovered_action is self, QtGui.QCursor.pos())
+
+    def _on_menu_hide(self) -> None:
+        self.set_highlight(False)
 
     def _close_menu_chain(self) -> None:
         """Close the menu (and any parent menus) hosting this action."""
