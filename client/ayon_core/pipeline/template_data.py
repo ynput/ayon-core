@@ -49,12 +49,16 @@ def get_general_template_data(
         settings = get_studio_settings()
 
     if user_entity is None:
+        # 'get_ayon_user_entity' already returns a copy
         user_entity = get_ayon_user_entity(username)
+        user_entity_data = user_entity["data"]
+    else:
+        # Copy the data to not modify the passed 'user_entity'
+        # - only top-level keys are removed so shallow copy is enough
+        user_entity_data = dict(user_entity["data"])
 
     # Remove secrets and UI-only values from user data, they should not
     #   be available for templates nor stored with published data
-    # NOTE Copy the data to not modify the passed 'user_entity'
-    user_entity_data = dict(user_entity["data"])
     for key in _USER_DATA_KEYS_TO_REMOVE:
         user_entity_data.pop(key, None)
 
