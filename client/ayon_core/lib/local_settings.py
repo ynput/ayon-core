@@ -1523,8 +1523,9 @@ class UserPreferences(ASettingRegistry):
                 return
 
             # The server can't delete a single item, the preference is
-            #   replaced with what is stored on the server without it. So
-            #   items changed meanwhile by other processes are kept.
+            #   replaced with what is stored on the server without it. Items
+            #   other processes changed before are kept, but an item changed
+            #   between these two requests is lost.
             data = self._receive_data()
             if data is None or name not in data:
                 return

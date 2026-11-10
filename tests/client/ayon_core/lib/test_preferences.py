@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import os
 import sqlite3
 import subprocess
@@ -605,3 +606,37 @@ def test_user_preferences_while_server_is_not_reachable(
     prefs.set_item("sizes", [1])
     assert server.preferences[(KEY, None)] == {"sizes": [1]}
     assert UserPreferences.is_supported() is True
+
+
+@pytest.mark.unit
+def test_user_preferences_when_requests_raise(monkeypatch, caplog):
+    """Requests that raise, e.g. without connection, are logged."""
+    server = use_server(monkeypatch, FakeServer())
+    prefs = UserPreferences(KEY)
+    prefs.set_item("visible", True)
+
+    def raise_error(endpoint, **kwargs):
+        raise ConnectionError("Connection refused")
+
+    for method in ("get", "put", "patch", "delete"):
+        monkeypatch.setattr(ayon_api, f"raw_{method}", raise_error)
+    caplog.set_level(logging.WARNING, logger="UserPreferences")
+
+    # Kept only in the cache, the server is still known to have the API
+    prefs.set_item("visible", False)
+    assert prefs.refresh() is False
+    assert prefs.get_item("visible") is False
+    assert server.preferences[(KEY, None)] == {"visible": True}
+    assert UserPreferences.is_supported() is True
+    assert caplog.messages == [
+        f"Failed to change preference '{KEY}'.",
+        "Failed to ask the server for user preferences.",
+    ]
+    assert all(record.exc_info for record in caplog.records)
+
+    # Support of a server that can't be asked is not cached
+    monkeypatch.setattr(ayon_api, "get_base_url", lambda: "http://other")
+    assert UserPreferences.is_supported() is False
+    assert local_settings._ServerSupport.by_url == {
+        "http://ayon.server": True
+    }
