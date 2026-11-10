@@ -8,7 +8,7 @@ import collections
 import numbers
 import copy
 from functools import wraps
-from typing import Optional, Union, Any, overload
+from typing import Optional, Union, Any, Iterable, overload
 
 import ayon_api
 from ayon_api.exceptions import GraphQlQueryFailed
@@ -1048,10 +1048,20 @@ def loaders_from_representation(loaders, representation):
     return loaders_from_repre_context(loaders, context)
 
 
-def any_outdated_containers(host=None, project_name=None):
-    """Check if there are any outdated containers in scene."""
+def any_outdated_containers(host=None, project_name=None, containers=None):
+    """Check if there are any outdated containers in scene.
 
-    if get_outdated_containers(host, project_name):
+    Args:
+        host (Optional[AbstractHost]): Host implementation.
+        project_name (Optional[str]): Name of project in which context we are.
+        containers (Optional[Iterable[dict]]): Containers to check instead
+            of all containers in the scene.
+
+    Returns:
+        bool: True if any of the containers is outdated.
+    """
+
+    if get_outdated_containers(host, project_name, containers=containers):
         return True
     return False
 
@@ -1060,6 +1070,7 @@ def get_outdated_containers(
     host: Optional[AbstractHost] = None,
     project_name: Optional[str] = None,
     ignore_locked_versions: bool = False,
+    containers: Optional[Iterable[dict]] = None,
 ):
     """Collect outdated containers from host scene.
 
@@ -1070,20 +1081,23 @@ def get_outdated_containers(
         host (Optional[AbstractHost]): Host implementation.
         project_name (Optional[str]): Name of project in which context we are.
         ignore_locked_versions (bool): Locked versions are ignored.
+        containers (Optional[Iterable[dict]]): Containers to check instead
+            of all containers in the scene. Host is not queried when passed.
 
     """
     from ayon_core.pipeline import registered_host, get_current_project_name
 
-    if host is None:
-        host = registered_host()
-
     if project_name is None:
         project_name = get_current_project_name()
 
-    if isinstance(host, ILoadHost):
-        containers = host.get_containers()
-    else:
-        containers = host.ls()
+    if containers is None:
+        if host is None:
+            host = registered_host()
+
+        if isinstance(host, ILoadHost):
+            containers = host.get_containers()
+        else:
+            containers = host.ls()
 
     outdated_containers = []
     for container in filter_containers(containers, project_name).outdated:
