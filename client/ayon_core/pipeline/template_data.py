@@ -21,7 +21,6 @@ _USER_DATA_KEYS_TO_REMOVE = (
     "supportToken",
     "inviteRequest",
     "userPool",
-    "uiExposureLevel",
 )
 
 
