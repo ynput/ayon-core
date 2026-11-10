@@ -38,9 +38,26 @@ import platformdirs
 import ayon_api
 
 from .cache import NestedCacheItem, CacheItem
-from .log import Logger
 
 _PLACEHOLDER = object()
+
+
+def _get_logger(name: str) -> logging.Logger:
+    """Get a logger of this module.
+
+    The 'log' module imports this module, so 'Logger' is imported on
+    first use, not when this module is imported.
+
+    Args:
+        name: Name of the logger.
+
+    Returns:
+        logging.Logger: Logger with the name.
+
+    """
+    from .log import Logger
+
+    return Logger.get_logger(name)
 
 
 # TODO should use 'KeyError' or 'Exception' as base
@@ -566,7 +583,7 @@ class JSONSettingRegistry(ASettingRegistry):
 
     @property
     def log(self) -> logging.Logger:
-        return Logger.get_logger(self.__class__.__name__)
+        return _get_logger(self.__class__.__name__)
 
     @property
     def filepath(self) -> str:
@@ -897,7 +914,6 @@ class LocalPreferences(ASettingRegistry):
         ValueError: If the name is not valid.
 
     """
-    log = Logger.get_logger("LocalPreferences")
     # Seconds to wait for another process that changes the database
     timeout = 10
     # Guards moving a broken database aside in this process
@@ -915,6 +931,10 @@ class LocalPreferences(ASettingRegistry):
         self._filepath = get_launcher_local_dir("tools", "preferences.db")
         self._legacy_registry_filepath = legacy_registry_filepath
         self._legacy_registry_imported = False
+
+    @property
+    def log(self) -> logging.Logger:
+        return _get_logger("LocalPreferences")
 
     @property
     def filepath(self) -> str:
@@ -1278,7 +1298,7 @@ def _list_preferences(query: dict[str, str]) -> Optional[Any]:
     try:
         response = ayon_api.raw_get(f"preferences?{urlencode(query)}")
     except Exception:
-        UserPreferences.log.warning(
+        _get_logger("UserPreferences").warning(
             "Failed to ask the server for user preferences.", exc_info=True
         )
         return None
@@ -1321,7 +1341,6 @@ class UserPreferences(ASettingRegistry):
         ValueError: If the name is not valid.
 
     """
-    log = Logger.get_logger("UserPreferences")
     # Oldest AYON server with the preferences API, for messages to the
     #   user. Whether a server has it is asked, not told by its version.
     min_server_version = "1.17.3"
@@ -1337,6 +1356,10 @@ class UserPreferences(ASettingRegistry):
         self._lock = threading.RLock()
         self._data: dict[str, Any] = {}
         self._loaded = False
+
+    @property
+    def log(self) -> logging.Logger:
+        return _get_logger("UserPreferences")
 
     @staticmethod
     def is_supported() -> bool:
