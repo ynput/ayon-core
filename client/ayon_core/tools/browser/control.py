@@ -255,7 +255,7 @@ class BrowserController(AbstractBrowserController):
                 project_name,
             )
             return False
-        host_name = None
+        host_name = ""
         if self._host is not None:
             host_name = self._host.name
         return self._loader_actions_model.trigger_default_action(
