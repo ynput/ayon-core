@@ -10,6 +10,7 @@ import typing
 from .abstract import (
     AbstractTemplateBuilderController,
     ActionResult,
+    BuildContextItem,
     PlaceholderItemInfo,
     PlaceholderPluginItem,
 )
@@ -48,6 +49,7 @@ def __getattr__(name):
 __all__ = (
     "AbstractTemplateBuilderController",
     "ActionResult",
+    "BuildContextItem",
     "PlaceholderItemInfo",
     "PlaceholderPluginItem",
 

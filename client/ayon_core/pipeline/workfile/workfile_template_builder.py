@@ -50,7 +50,7 @@ from ayon_core.pipeline.workfile.path_resolving import (
 )
 
 from ayon_core.lib.attribute_definitions import get_attributes_keys
-from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline import Anatomy, context_tools
 from ayon_core.pipeline.load import (
     get_loaders_by_name,
     get_representation_contexts,
@@ -270,34 +270,81 @@ class AbstractTemplateBuilder(ABC):
         self._current_task_entity = _NOT_SET
         self._linked_folder_entities = _NOT_SET
 
+        # Folder path and task name used instead of the host context
+        self._context_override: Optional[tuple[str, Optional[str]]] = None
+
         self._event_system = EventSystem()
 
     @property
     def project_name(self):
         if isinstance(self._host, AbstractHost):
             return self._host.get_current_project_name()
-        return os.getenv("AYON_PROJECT_NAME")
+        return context_tools.get_current_project_name()
 
     @property
     def current_folder_path(self):
-        if isinstance(self._host, AbstractHost):
-            return self._host.get_current_folder_path()
-        return os.getenv("AYON_FOLDER_PATH")
+        return self.get_current_context()["folder_path"]
 
     @property
     def current_task_name(self):
-        if isinstance(self._host, AbstractHost):
-            return self._host.get_current_task_name()
-        return os.getenv("AYON_TASK_NAME")
+        return self.get_current_context()["task_name"]
 
     def get_current_context(self):
         if isinstance(self._host, AbstractHost):
-            return self._host.get_current_context()
-        return {
-            "project_name": self.project_name,
-            "folder_path": self.current_folder_path,
-            "task_name": self.current_task_name
-        }
+            context = self._host.get_current_context()
+        else:
+            context = context_tools.get_current_context()
+        if self._context_override is not None:
+            folder_path, task_name = self._context_override
+            context = {
+                **context,
+                "folder_path": folder_path,
+                "task_name": task_name,
+            }
+        return context
+
+    def set_context_override(
+        self,
+        folder_path: Optional[str] = None,
+        task_name: Optional[str] = None,
+    ) -> None:
+        """Use a different folder and task than the host context.
+
+        Placeholders are previewed and populated as if the scene was opened
+        in the passed context, so a template can be tested with production
+        data while it is opened in a different context. The host context
+        itself is not changed.
+
+        Args:
+            folder_path (Optional[str]): Folder path used instead of the
+                host context. The host context is used again when not
+                passed.
+            task_name (Optional[str]): Task name used with the folder path.
+
+        """
+        context_override = None
+        if folder_path:
+            context_override = (folder_path, task_name)
+        if context_override == self._context_override:
+            return
+
+        self._context_override = context_override
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._linked_folder_entities = _NOT_SET
+        # Shared data may be based on the context
+        self.clear_shared_data()
+        self.clear_shared_populate_data()
+
+    def get_context_override(self) -> Optional[tuple[str, Optional[str]]]:
+        """Folder path and task name used instead of the host context.
+
+        Returns:
+            Optional[tuple[str, Optional[str]]]: Folder path and task name,
+                None when the host context is used.
+
+        """
+        return self._context_override
 
     @property
     def project_settings(self):
@@ -2120,8 +2167,7 @@ class PlaceholderLoadMixin(object):
 
         return [
             attribute_definitions.UISeparatorDef(),
-            attribute_definitions.UILabelDef("Main attributes"),
-            attribute_definitions.UISeparatorDef(),
+            attribute_definitions.UILabelDef("**What to load**"),
 
             attribute_definitions.EnumDef(
                 "builder_type",
@@ -2171,6 +2217,8 @@ class PlaceholderLoadMixin(object):
                     " in the hero version, are skipped."
                 )
             ),
+            attribute_definitions.UISeparatorDef(),
+            attribute_definitions.UILabelDef("**How to load**"),
             attribute_definitions.EnumDef(
                 "loader",
                 label="Loader",
@@ -2211,11 +2259,10 @@ class PlaceholderLoadMixin(object):
                 )
             ),
             attribute_definitions.UISeparatorDef(),
-            attribute_definitions.UILabelDef("Optional attributes"),
-            attribute_definitions.UISeparatorDef(),
+            attribute_definitions.UILabelDef("**Filters** (optional)"),
             attribute_definitions.TextDef(
                 "folder_path",
-                label="Folder filter",
+                label="Folder path",
                 default=options.get("folder_path"),
                 placeholder="regex filtering by folder path",
                 tooltip=(
@@ -2225,7 +2272,7 @@ class PlaceholderLoadMixin(object):
             ),
             attribute_definitions.TextDef(
                 "product_name",
-                label="Product filter",
+                label="Product name",
                 default=options.get("product_name"),
                 placeholder="regex filtering by product name",
                 tooltip=(
@@ -2869,8 +2916,7 @@ class PlaceholderCreateMixin(object):
         options = options or {}
         return [
             attribute_definitions.UISeparatorDef(),
-            attribute_definitions.UILabelDef("Main attributes"),
-            attribute_definitions.UISeparatorDef(),
+            attribute_definitions.UILabelDef("**What to create**"),
 
             attribute_definitions.EnumDef(
                 "creator",

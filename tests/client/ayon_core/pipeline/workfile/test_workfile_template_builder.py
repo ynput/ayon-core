@@ -373,3 +373,69 @@ class TestTextDefCompletions:
         ).compare_to_def(
             attribute_definitions.TextDef("key", completions=["b"])
         )
+
+
+class _ContextBuilder(wtb.AbstractTemplateBuilder):
+    """Builder that resolves its context like a real one."""
+
+    def get_placeholder_plugin_classes(self):
+        return []
+
+    def import_template(self, path):
+        return True
+
+
+class TestContextOverride:
+    @pytest.fixture
+    def builder(self, monkeypatch):
+        monkeypatch.setenv("AYON_PROJECT_NAME", "demo")
+        monkeypatch.setenv("AYON_FOLDER_PATH", "/assets/bob")
+        monkeypatch.setenv("AYON_TASK_NAME", "modeling")
+        return _ContextBuilder(None)
+
+    def test_host_context_is_used_by_default(self, builder):
+        assert builder.get_context_override() is None
+        assert builder.current_folder_path == "/assets/bob"
+        assert builder.current_task_name == "modeling"
+
+    def test_override_replaces_folder_and_task(self, builder):
+        builder.set_context_override("/shots/sh010", "animation")
+
+        assert builder.get_context_override() == (
+            "/shots/sh010", "animation"
+        )
+        assert builder.current_folder_path == "/shots/sh010"
+        assert builder.current_task_name == "animation"
+        assert builder.get_current_context() == {
+            "project_name": "demo",
+            "folder_path": "/shots/sh010",
+            "task_name": "animation",
+        }
+
+    def test_override_resets_cached_entities(self, builder, monkeypatch):
+        queried = []
+
+        def get_folder_by_path(project_name, folder_path):
+            queried.append(folder_path)
+            return {"id": folder_path, "path": folder_path}
+
+        monkeypatch.setattr(wtb, "get_folder_by_path", get_folder_by_path)
+
+        assert builder.current_folder_entity["path"] == "/assets/bob"
+        builder.set_context_override("/shots/sh010", "animation")
+        assert builder.current_folder_entity["path"] == "/shots/sh010"
+        assert queried == ["/assets/bob", "/shots/sh010"]
+
+    def test_override_survives_refresh(self, builder):
+        builder.set_context_override("/shots/sh010", "animation")
+        builder.refresh()
+
+        assert builder.current_folder_path == "/shots/sh010"
+
+    def test_no_folder_restores_host_context(self, builder):
+        builder.set_context_override("/shots/sh010", "animation")
+        builder.set_context_override(None)
+
+        assert builder.get_context_override() is None
+        assert builder.current_folder_path == "/assets/bob"
+        assert builder.current_task_name == "modeling"

@@ -14,20 +14,27 @@ from typing import Any, Callable, Optional
 from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.pipeline import (
+    get_current_host_name,
+    get_current_project_name,
+)
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     AbstractTemplateBuilder,
     PlaceholderItem,
     PlaceholderPlugin,
     PlaceholderPreview,
+    TemplatePreset,
 )
 
 from .abstract import (
+    BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDERS_REFRESHED_TOPIC,
     PLACEHOLDER_CREATED_TOPIC,
     PLACEHOLDER_UPDATED_TOPIC,
     PLACEHOLDER_DELETED_TOPIC,
     AbstractTemplateBuilderController,
     ActionResult,
+    BuildContextItem,
     BuildStep,
     PlaceholderItemInfo,
     PlaceholderPluginItem,
@@ -115,10 +122,51 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             host_name = self._builder.host_name
             if host_name:
                 return host_name
-        return os.getenv("AYON_HOST_NAME") or "NA"
+        return get_current_host_name() or "NA"
 
     def is_builder_available(self) -> bool:
         return self._builder is not None
+
+    def get_project_name(self) -> Optional[str]:
+        if self._builder is not None:
+            return self._builder.project_name
+        return get_current_project_name()
+
+    def get_workfile_name(self) -> Optional[str]:
+        if self._builder is None:
+            return None
+        get_current_workfile = getattr(
+            self._builder.host, "get_current_workfile", None
+        )
+        if get_current_workfile is None:
+            return None
+        try:
+            filepath = get_current_workfile()
+        except Exception:
+            self._log.debug("Failed to get current workfile.", exc_info=True)
+            return None
+        if not filepath:
+            return None
+        return os.path.basename(filepath)
+
+    def get_build_context(self) -> BuildContextItem:
+        if self._builder is None:
+            return BuildContextItem()
+        return BuildContextItem(
+            folder_path=self._builder.current_folder_path,
+            task_name=self._builder.current_task_name,
+            is_override=self._builder.get_context_override() is not None,
+        )
+
+    def set_build_context(
+        self,
+        folder_path: Optional[str] = None,
+        task_name: Optional[str] = None,
+    ) -> None:
+        if self._builder is None:
+            return
+        self._builder.set_context_override(folder_path, task_name)
+        self.emit_event(BUILD_CONTEXT_CHANGED_TOPIC)
 
     def reset(self) -> None:
         self._placeholders_by_id = None
@@ -362,6 +410,41 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             )
         return ActionResult(success=True)
 
+    def get_template_path(self) -> Optional[str]:
+        preset = self._get_template_preset()
+        if preset is None or not preset.profile:
+            return None
+        return preset.path
+
+    def open_template(self) -> ActionResult:
+        preset, result = self._get_valid_template_preset()
+        if result is not None:
+            return result
+
+        try:
+            self._builder.open_template(preset)
+        except Exception:
+            return self._action_failed("Failed to open the template")
+
+        # Another scene is opened, everything has to be collected again.
+        self.reset()
+        return ActionResult(success=True)
+
+    def build_template(self) -> ActionResult:
+        preset, result = self._get_valid_template_preset()
+        if result is not None:
+            return result
+
+        try:
+            self._builder.build_template(preset=preset)
+        except Exception:
+            return self._action_failed("Failed to build from the template")
+
+        # The template added placeholders to the scene.
+        self._invalidate_placeholders()
+        self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
+        return ActionResult(success=True)
+
     def get_build_steps(self) -> list[BuildStep]:
         """Steps of the last template build.
 
@@ -522,6 +605,53 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             error_title=error_title,
             error_detail=traceback.format_exc(),
         )
+
+    def _get_template_preset(self) -> Optional[TemplatePreset]:
+        if self._builder is None:
+            return None
+        try:
+            return self._builder.get_template_preset()
+        except Exception:
+            self._log.warning(
+                "Failed to get template preset.", exc_info=True
+            )
+            return None
+
+    def _get_valid_template_preset(
+        self,
+    ) -> tuple[Optional[TemplatePreset], Optional[ActionResult]]:
+        """Template preset of the build context that can be used.
+
+        Returns:
+            tuple[Optional[TemplatePreset], Optional[ActionResult]]: The
+                preset, or result with the reason why there is none.
+
+        """
+        if self._builder is None:
+            return None, ActionResult(
+                success=False,
+                error_title="Template builder is not available.",
+            )
+
+        preset = self._get_template_preset()
+        context_label = self.get_build_context().label
+        if preset is None or not preset.profile:
+            return None, ActionResult(
+                success=False,
+                error_title=(
+                    "No template is set in settings for {}.".format(
+                        context_label
+                    )
+                ),
+            )
+
+        if not preset.has_valid_path():
+            return None, ActionResult(
+                success=False,
+                error_title="Template file does not exist.",
+                error_detail=str(preset.path),
+            )
+        return preset, None
 
     def _placeholder_not_found(self, scene_identifier: str) -> ActionResult:
         return ActionResult(

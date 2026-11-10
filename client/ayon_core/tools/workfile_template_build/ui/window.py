@@ -7,9 +7,10 @@ from typing import Optional
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
-from ayon_core.ui.components import AYButton, AYContainer, AYLabel
+from ayon_core.ui.components import AYButton, AYContainer
 
 from ..abstract import (
+    BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDERS_REFRESHED_TOPIC,
     AbstractTemplateBuilderController,
     ActionResult,
@@ -17,11 +18,99 @@ from ..abstract import (
     PlaceholderPluginItem,
 )
 from .build_report import BuildReportDialog
-from .editor_widget import PlaceholderEditorWidget, PlaceholderHintWidget
+from .context_bar import ContextBarWidget
+from .editor_widget import (
+    OPTIONS_CONTENT_OBJECT_NAME,
+    OPTIONS_SCROLL_OBJECT_NAME,
+    PlaceholderEditorWidget,
+)
+from .guide_widget import PlaceholderGuideWidget
 from .placeholders_widget import PlaceholdersWidget
+from .utils import (
+    DIVIDER_COLOR,
+    INPUT_COLOR,
+    PANEL_COLOR,
+    get_palette_color,
+)
 
 HINT_PAGE = 0
 EDITOR_PAGE = 1
+
+SPLITTER_OBJECT_NAME = "WorkfileTemplateBuilderSplitter"
+PAGES_OBJECT_NAME = "WorkfileTemplateBuilderPages"
+DIVIDER_OBJECT_NAME = "WorkfileTemplateBuilderDivider"
+
+# Margin inside of the panels
+PANEL_MARGIN = 10
+# Width of the splitter handle between the panels
+SPLITTER_HANDLE_WIDTH = 6
+
+# Input widgets of the placeholder options
+OPTION_INPUT_TYPES = (
+    "QAbstractSpinBox",
+    "QLineEdit",
+    "QPlainTextEdit",
+    "QTextEdit",
+    "QComboBox",
+)
+
+
+def _get_window_stylesheet() -> str:
+    """Rules applied on top of the AYON stylesheet.
+
+    The AYON stylesheet paints every widget with a background color, widgets
+    between the panel and the option inputs should show the panel instead.
+    Option inputs use the same color as the inputs of the AYON components,
+    e.g. the placeholders filter. Separators of the options are as thin as
+    the divider below the context bar.
+
+    Returns:
+        str: Stylesheet.
+
+    """
+    content = "#{}".format(OPTIONS_CONTENT_OBJECT_NAME)
+    inputs_selector = ",\n".join(
+        "{} {}".format(content, widget_type)
+        for widget_type in OPTION_INPUT_TYPES
+    )
+    disabled_selector = ",\n".join(
+        "{} {}:disabled".format(content, widget_type)
+        for widget_type in OPTION_INPUT_TYPES
+    )
+    return """
+#{splitter},
+#{pages},
+#{scroll},
+#{scroll} > QWidget,
+{content} {{
+    background: transparent;
+}}
+#{divider},
+{content} #Separator {{
+    background: {divider_color};
+}}
+{content} #Separator {{
+    min-height: 1px;
+    max-height: 1px;
+}}
+{inputs_selector} {{
+    background: {input_color};
+}}
+{disabled_selector} {{
+    background: {panel_color};
+}}
+""".format(
+        splitter=SPLITTER_OBJECT_NAME,
+        pages=PAGES_OBJECT_NAME,
+        scroll=OPTIONS_SCROLL_OBJECT_NAME,
+        content=content,
+        divider=DIVIDER_OBJECT_NAME,
+        divider_color=get_palette_color(DIVIDER_COLOR),
+        inputs_selector=inputs_selector,
+        input_color=get_palette_color(INPUT_COLOR),
+        disabled_selector=disabled_selector,
+        panel_color=get_palette_color(PANEL_COLOR),
+    )
 
 
 class WorkfileTemplateBuilderWindow(AYContainer):
@@ -40,9 +129,8 @@ class WorkfileTemplateBuilderWindow(AYContainer):
     ):
         super().__init__(
             parent,
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.High,
-            layout_margin=8,
+            layout=AYContainer.Layout.VBox,
+            layout_margin=0,
         )
 
         self.setWindowTitle("AYON Workfile Template Builder - {}".format(
@@ -52,64 +140,81 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self.setObjectName("WorkfileTemplateBuilderWindow")
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
 
-        placeholders_widget = PlaceholdersWidget(self)
+        # --- Workfile and context ---
+        context_bar = ContextBarWidget(PANEL_MARGIN, self)
+        divider_widget = QtWidgets.QWidget(self)
+        divider_widget.setObjectName(DIVIDER_OBJECT_NAME)
+        divider_widget.setFixedHeight(1)
 
-        pages_widget = QtWidgets.QStackedWidget(self)
-        hint_widget = PlaceholderHintWidget(pages_widget)
-        editor_widget = PlaceholderEditorWidget(controller, pages_widget)
-        pages_widget.addWidget(hint_widget)
-        pages_widget.addWidget(editor_widget)
-
-        content_widget = AYContainer(
+        # --- Placeholders panel ---
+        placeholders_panel = AYContainer(
             self,
             layout=AYContainer.Layout.VBox,
-            layout_margin=6,
+            layout_margin=PANEL_MARGIN,
+            layout_spacing=8,
         )
-
-        build_btn = AYButton(
-            "Populate placeholders",
-            parent=self,
-            variant=AYButton.Variants.Filled,
-            icon="play_arrow",
-            tooltip="Populate the placeholders in the current scene",
-        )
-        build_btn.setEnabled(False)
-        build_status_label = AYLabel(
-            parent=self,
-            dim=True,
-            elide_mode=QtCore.Qt.ElideRight,
-        )
-        build_status_label.setVisible(False)
-        build_report_btn = AYButton(
-            "Report",
-            parent=self,
+        placeholders_widget = PlaceholdersWidget(placeholders_panel)
+        build_status_btn = AYButton(
+            "",
+            parent=placeholders_panel,
             variant=AYButton.Variants.Text,
             icon="description",
-            tooltip="Show the report of the last template build",
         )
-        build_report_btn.setVisible(False)
-        header_widget = AYContainer(
-            self,
-            layout=AYContainer.Layout.HBox,
-            layout_margin=0,
+        build_status_btn.setVisible(False)
+        placeholders_panel.add_widget(placeholders_widget, stretch=1)
+        placeholders_panel.layout().addWidget(
+            build_status_btn, 0, QtCore.Qt.AlignLeft
         )
-        header_widget.addStretch(1)
-        header_widget.add_widget(build_status_label)
-        header_widget.add_widget(build_report_btn)
-        header_widget.add_widget(build_btn)
 
-        content_widget.add_widget(header_widget)
-        content_widget.add_widget(pages_widget, stretch=1)
+        # --- Editor panel ---
+        editor_panel = AYContainer(
+            self,
+            layout=AYContainer.Layout.VBox,
+            layout_margin=PANEL_MARGIN,
+        )
+        pages_widget = QtWidgets.QStackedWidget(editor_panel)
+        pages_widget.setObjectName(PAGES_OBJECT_NAME)
+        hint_widget = PlaceholderGuideWidget(pages_widget)
+        editor_widget = PlaceholderEditorWidget(controller, pages_widget)
+        # The guide has no left margin, so its arrow gets closer to the
+        #   "Add" button. The editor keeps the margin of the panel.
+        editor_panel.layout().setContentsMargins(
+            0, PANEL_MARGIN, PANEL_MARGIN, PANEL_MARGIN
+        )
+        editor_widget.setContentsMargins(PANEL_MARGIN, 0, 0, 0)
+        pages_widget.addWidget(hint_widget)
+        pages_widget.addWidget(editor_widget)
+        editor_panel.add_widget(pages_widget, stretch=1)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
-        splitter.addWidget(placeholders_widget)
-        splitter.addWidget(content_widget)
+        splitter.setObjectName(SPLITTER_OBJECT_NAME)
+        splitter.setHandleWidth(SPLITTER_HANDLE_WIDTH)
+        splitter.setChildrenCollapsible(False)
+        splitter.addWidget(placeholders_panel)
+        splitter.addWidget(editor_panel)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([340, 680])
+        splitter.setSizes([320, 680])
 
+        self.add_widget(context_bar)
+        self.add_widget(divider_widget)
         self.add_widget(splitter, stretch=1)
 
+        context_bar.context_change_requested.connect(
+            self._on_context_change_request
+        )
+        context_bar.context_reset_requested.connect(
+            self._on_context_reset_request
+        )
+        context_bar.test_build_requested.connect(
+            self._on_run_template_build_request
+        )
+        context_bar.open_template_requested.connect(
+            self._on_open_template_request
+        )
+        context_bar.build_from_template_requested.connect(
+            self._on_build_from_template_request
+        )
         placeholders_widget.selection_changed.connect(
             self._on_selection_change
         )
@@ -118,27 +223,34 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             self._on_select_in_scene_request
         )
         placeholders_widget.refresh_requested.connect(self._on_refresh_request)
-        hint_widget.create_requested.connect(self._on_create_request)
+        pages_widget.currentChanged.connect(self._update_add_highlight)
         editor_widget.create_requested.connect(self._on_create_confirmed)
         editor_widget.save_requested.connect(self._on_save_confirmed)
         editor_widget.cancel_requested.connect(self._on_create_cancelled)
         editor_widget.run_requested.connect(self._on_run_request)
         editor_widget.remove_requested.connect(self._on_remove_request)
-        build_btn.clicked.connect(self._on_run_template_build_request)
-        build_report_btn.clicked.connect(self._on_show_build_report)
+        editor_widget.select_in_scene_requested.connect(
+            self._on_select_in_scene_request
+        )
+        editor_widget.unsaved_changes_changed.connect(
+            self._on_unsaved_changes_change
+        )
+        build_status_btn.clicked.connect(self._on_show_build_report)
 
         controller.register_event_callback(
             PLACEHOLDERS_REFRESHED_TOPIC, self._on_placeholders_refreshed
         )
+        controller.register_event_callback(
+            BUILD_CONTEXT_CHANGED_TOPIC, self._on_build_context_changed
+        )
 
         self._controller = controller
+        self._context_bar = context_bar
         self._placeholders_widget = placeholders_widget
         self._pages_widget = pages_widget
         self._hint_widget = hint_widget
         self._editor_widget = editor_widget
-        self._build_btn = build_btn
-        self._build_status_label = build_status_label
-        self._build_report_btn = build_report_btn
+        self._build_status_btn = build_status_btn
 
         self._first_show = True
         self._ignore_selection_change = False
@@ -147,14 +259,17 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._placeholder_items_by_id: dict[str, PlaceholderItemInfo] = {}
 
         self._update_build_state()
-        self.resize(1020, 620)
+        self._update_build_context()
+        self.resize(1000, 680)
 
     # --- Qt overrides -------------------------------------------------
     def showEvent(self, event):
         super().showEvent(event)
         if self._first_show:
             self._first_show = False
-            self.setStyleSheet(style.load_stylesheet())
+            self.setStyleSheet(
+                style.load_stylesheet() + _get_window_stylesheet()
+            )
             self.refresh()
 
     # --- Public API ---------------------------------------------------
@@ -162,9 +277,51 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         """Collect placeholders from the scene and update the UI."""
         self._controller.reset()
 
+    def select_placeholder(self, scene_identifier: str) -> bool:
+        """Select a placeholder and show its options.
+
+        Hosts can use it to show the placeholder that is selected in the
+        scene when the tool is opened.
+
+        Args:
+            scene_identifier (str): Scene identifier of the placeholder.
+
+        Returns:
+            bool: Placeholder was found and selected.
+
+        """
+        if scene_identifier not in self._placeholder_items_by_id:
+            return False
+        self._placeholders_widget.select_identifier(scene_identifier)
+        return self._current_identifier == scene_identifier
+
     # --- Implementation -----------------------------------------------
     def _on_placeholders_refreshed(self):
+        self._context_bar.set_workfile(
+            self._controller.get_workfile_name(),
+            self._controller.get_host_name(),
+        )
+        self._update_template_path()
         self._update_placeholders()
+
+    def _on_build_context_changed(self):
+        self._update_build_context()
+        if self._pages_widget.currentIndex() == EDITOR_PAGE:
+            self._editor_widget.refresh_preview()
+
+    def _update_build_context(self):
+        context_item = self._controller.get_build_context()
+        self._context_bar.set_build_context(context_item)
+        self._context_bar.set_context_enabled(
+            self._controller.is_builder_available()
+        )
+        self._editor_widget.set_build_context_label(context_item.label)
+        self._update_template_path()
+
+    def _update_template_path(self):
+        self._context_bar.set_template_path(
+            self._controller.get_template_path()
+        )
 
     def _update_placeholders(self):
         self._plugin_items = self._controller.get_placeholder_plugin_items()
@@ -199,58 +356,55 @@ class WorkfileTemplateBuilderWindow(AYContainer):
     def _update_build_state(self):
         """Enable building only when the host supports it and there is
         something to build."""
-        self._build_btn.setEnabled(
+        self._context_bar.set_test_build_enabled(
             bool(self._placeholder_items_by_id)
             and self._controller.is_builder_available()
         )
 
     def _update_hint_message(self):
         if not self._controller.is_builder_available():
-            self._hint_widget.set_message(
+            self._hint_widget.set_unavailable(
                 "Template build is not available",
                 (
                     "Host \"{}\" does not implement workfile template"
                     " build.".format(self._controller.get_host_name())
                 ),
-                create_enabled=False,
             )
             return
 
         if not self._plugin_items:
-            self._hint_widget.set_message(
+            self._hint_widget.set_unavailable(
                 "No placeholder types available",
                 (
                     "Host \"{}\" does not have any placeholder plugins"
                     " registered.".format(self._controller.get_host_name())
                 ),
-                create_enabled=False,
             )
             return
 
-        if not self._placeholder_items_by_id:
-            self._hint_widget.set_message(
-                "No placeholders in this workfile",
-                (
-                    "Placeholders describe what should happen when this"
-                    " template is built - which products are loaded and"
-                    " which publish instances are created."
-                    "\n\nAdd your first placeholder to get started."
-                ),
-            )
-            return
+        self._hint_widget.set_guide(bool(self._placeholder_items_by_id))
+        self._update_add_highlight()
 
-        self._hint_widget.set_message(
-            "Select a placeholder",
-            (
-                "Pick a placeholder on the left to change its options and"
-                " see what it would do, or add a new one."
-            ),
+    def _update_add_highlight(self):
+        """Highlight "Add" while the guide points at it."""
+        self._placeholders_widget.set_add_highlighted(
+            self._pages_widget.currentIndex() == HINT_PAGE
+            and not self._placeholder_items_by_id
         )
 
     def _show_hint_page(self):
         self._current_identifier = None
+        self._set_pending_item(None)
         self._update_hint_message()
         self._pages_widget.setCurrentIndex(HINT_PAGE)
+
+    def _get_plugin_item(
+        self, plugin_identifier: Optional[str]
+    ) -> Optional[PlaceholderPluginItem]:
+        for plugin_item in self._plugin_items:
+            if plugin_item.identifier == plugin_identifier:
+                return plugin_item
+        return None
 
     def _show_editor_page(self, scene_identifier):
         placeholder_item = self._placeholder_items_by_id.get(scene_identifier)
@@ -258,14 +412,30 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             self._show_hint_page()
             return
 
+        plugin_item = self._get_plugin_item(placeholder_item.plugin_identifier)
         self._current_identifier = scene_identifier
-        self._editor_widget.set_edit_mode(placeholder_item)
+        self._set_pending_item(None)
+        self._editor_widget.set_edit_mode(
+            placeholder_item,
+            select_supported=(
+                plugin_item is not None and plugin_item.select_supported
+            ),
+        )
         self._pages_widget.setCurrentIndex(EDITOR_PAGE)
 
-    def _show_create_page(self):
+    def _show_create_page(self, plugin_item: PlaceholderPluginItem):
         self._current_identifier = None
-        self._editor_widget.set_create_mode(self._plugin_items)
+        self._set_pending_item(plugin_item)
+        self._editor_widget.set_create_mode(plugin_item)
         self._pages_widget.setCurrentIndex(EDITOR_PAGE)
+
+    def _set_pending_item(
+        self, plugin_item: Optional[PlaceholderPluginItem]
+    ) -> None:
+        """Show the placeholder that is being created in the list."""
+        self._ignore_selection_change = True
+        self._placeholders_widget.set_pending_item(plugin_item)
+        self._ignore_selection_change = False
 
     def _select_silently(self, scene_identifier):
         self._ignore_selection_change = True
@@ -356,12 +526,13 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             )
             return
 
+        context_label = self._controller.get_build_context().label
         answer = QtWidgets.QMessageBox.question(
             self,
-            "Build template?",
+            "Run all placeholders?",
             (
-                "This will populate the placeholders in the current scene."
-                "\nDo you want to continue?"
+                "This will populate all placeholders in the current scene"
+                " for {}.\nDo you want to continue?".format(context_label)
             ),
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.No,
@@ -381,6 +552,52 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if not result.success and not has_results:
             self._show_action_error(result)
 
+    def _on_open_template_request(self):
+        if not self._confirm_discard_changes():
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Open template?",
+            (
+                "This opens the template of {}:\n{}\n\n"
+                "Unsaved changes in the current scene are lost."
+                "\nDo you want to continue?"
+            ).format(
+                self._controller.get_build_context().label,
+                self._controller.get_template_path(),
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        self._show_action_error(self._controller.open_template())
+
+    def _on_build_from_template_request(self):
+        if not self._confirm_discard_changes():
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Build from template?",
+            (
+                "This imports the template of {} into the current scene"
+                " and populates its placeholders:\n{}\n\n"
+                "Do you want to continue?"
+            ).format(
+                self._controller.get_build_context().label,
+                self._controller.get_template_path(),
+            ),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        self._show_action_error(self._controller.build_template())
+
     def _update_build_status(self, result: ActionResult) -> None:
         """Show the outcome of the last template build.
 
@@ -390,15 +607,16 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         """
         results = self._controller.get_last_build_results()
         if not results:
-            self._build_status_label.setVisible(False)
-            self._build_report_btn.setVisible(False)
+            self._build_status_btn.setVisible(False)
             return
 
         failed = [entry for entry in results if entry[2]]
-        if result.success:
-            text = "Build: {} placeholder(s) processed".format(len(results))
+        if failed:
+            text = "{} of {} failed".format(len(failed), len(results))
+            icon = "error"
         else:
-            text = "Build: {} of {} failed".format(len(failed), len(results))
+            text = "{} populated".format(len(results))
+            icon = "check_circle"
 
         details = []
         for identifier, label, error in results:
@@ -406,27 +624,76 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             details.append("[{}] {} ({})".format(status, label, identifier))
             if error:
                 details.append(error)
+        details.append("\nClick to show the build report.")
 
-        self._build_status_label.setText(text)
-        self._build_status_label.setToolTip("\n".join(details))
-        self._build_status_label.setVisible(True)
-        self._build_report_btn.setVisible(True)
-        self._build_report_btn.setEnabled(True)
+        self._build_status_btn.setText(text)
+        self._build_status_btn.set_icon(icon)
+        self._build_status_btn.setToolTip("\n".join(details))
+        self._build_status_btn.setVisible(True)
+
+    def _on_context_change_request(self):
+        context = self._ask_for_build_context()
+        if context is None:
+            return
+        folder_path, task_name = context
+        self._controller.set_build_context(folder_path, task_name)
+
+    def _on_context_reset_request(self):
+        self._controller.set_build_context(None)
+
+    def _ask_for_build_context(
+        self,
+    ) -> Optional[tuple[str, Optional[str]]]:
+        """Let the user choose a folder and task of the current project.
+
+        Returns:
+            Optional[tuple[str, Optional[str]]]: Folder path and task name,
+                None when nothing was chosen.
+
+        """
+        from ayon_core.tools.context_dialog import ContextDialog
+
+        dialog = ContextDialog(parent=self)
+        dialog.setWindowTitle("Preview as")
+        dialog.set_context(self._controller.get_project_name())
+        if not dialog.exec_():
+            return None
+
+        context = dialog.get_context()
+        folder_path = context.get("folder_path")
+        if not folder_path:
+            return None
+        return folder_path, context.get("task_name")
+
+    def _on_unsaved_changes_change(self, has_changes: bool):
+        self._placeholders_widget.set_unsaved_identifier(
+            self._editor_widget.get_scene_identifier()
+            if has_changes
+            else None
+        )
 
     def _on_show_build_report(self):
         dialog = BuildReportDialog(self._controller, parent=self)
         dialog.exec_()
 
-    def _on_create_request(self):
+    def _on_create_request(self, plugin_identifier: Optional[str] = None):
         if not self._controller.is_builder_available():
             return
         if not self._plugin_items:
             return
+
+        # Use the first placeholder type when none is specified
+        plugin_item = self._plugin_items[0]
+        if plugin_identifier is not None:
+            plugin_item = self._get_plugin_item(plugin_identifier)
+            if plugin_item is None:
+                return
+
         if not self._confirm_discard_changes():
             return
 
         self._select_silently(None)
-        self._show_create_page()
+        self._show_create_page(plugin_item)
 
     def _on_create_cancelled(self):
         self._select_silently(None)
@@ -502,8 +769,11 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._update_placeholders()
         self._show_hint_page()
 
-    def _on_select_in_scene_request(self):
-        scene_identifier = self._placeholders_widget.get_selected_identifier()
+    def _on_select_in_scene_request(self, scene_identifier=None):
+        if scene_identifier is None:
+            scene_identifier = (
+                self._placeholders_widget.get_selected_identifier()
+            )
         if scene_identifier is None:
             return
         result = self._controller.select_placeholder(scene_identifier)
