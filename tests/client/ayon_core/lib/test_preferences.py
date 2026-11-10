@@ -232,6 +232,45 @@ def test_json_registry_reads_changes_of_others():
     assert registry.get_item("width", default=None) == 800
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"registry": {"width": 800},',
+        '["width"]',
+        '{"registry": ["width"]}',
+    ],
+    ids=["broken", "not_a_dict", "registry_not_a_dict"],
+)
+def test_json_registry_keeps_a_file_it_cannot_parse(content, local_dir):
+    """Items of a file that can't be read are not overwritten."""
+    registry = JSONSettingRegistry("other_tool", local_dir)
+    with open(registry.filepath, "w") as stream:
+        stream.write(content)
+
+    assert registry.get_item("width", default=None) is None
+    registry.set_item("height", 600)
+    registry.delete_item("width")
+    with open(registry.filepath, "r") as stream:
+        assert stream.read() == content
+
+
+@pytest.mark.unit
+def test_json_registry_keeps_a_file_it_cannot_open(local_dir, monkeypatch):
+    registry = JSONSettingRegistry("other_tool", local_dir)
+    registry.set_item("width", 800)
+
+    def open_file(*args, **kwargs):
+        raise PermissionError("Used by another process")
+
+    with monkeypatch.context() as context:
+        context.setattr(local_settings, "open", open_file, raising=False)
+        assert registry.get_item("width", default=None) is None
+        registry.set_item("height", 600)
+        registry.delete_item("width")
+    assert registry.get_data() == {"width": 800}
+
+
 def broken_databases(prefs: LocalPreferences) -> list[str]:
     dirpath = os.path.dirname(prefs.filepath)
     return sorted(

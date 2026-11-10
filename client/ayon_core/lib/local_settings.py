@@ -562,7 +562,8 @@ class JSONSettingRegistry(ASettingRegistry):
     The file is read on each access, so changes of other processes are
     visible, and written only when an item changes. Writes go through a
     temporary file, so a reader never gets half of the file. Errors of
-    reading and writing are logged, not raised.
+    reading and writing are logged, not raised. A file that can't be read
+    is not written, so its items are not lost.
 
     Note:
         Writes are guarded only within this process. Two processes that
@@ -597,10 +598,10 @@ class JSONSettingRegistry(ASettingRegistry):
             dict[str, Any]: Items by name.
 
         """
-        registry = self._read_content().get("registry")
-        if not isinstance(registry, dict):
+        content = self._read_content()
+        if content is None:
             return {}
-        return registry
+        return content["registry"]
 
     def clear(self) -> None:
         """Delete all items, by removing the file."""
@@ -643,17 +644,20 @@ class JSONSettingRegistry(ASettingRegistry):
         """
         with self._write_lock:
             content = self._read_content()
-            registry = content.get("registry")
-            if not isinstance(registry, dict):
-                registry = content["registry"] = {}
-            registry[name] = value
+            if content is None:
+                self._log_not_changed(name, "stored")
+                return
+            content["registry"][name] = value
             self._write_content(content)
 
     def _delete_item(self, name: str, ignore_missing: bool = True) -> None:
         with self._write_lock:
             content = self._read_content()
-            registry = content.get("registry")
-            if not isinstance(registry, dict) or name not in registry:
+            if content is None:
+                self._log_not_changed(name, "deleted")
+                return
+            registry = content["registry"]
+            if name not in registry:
                 if ignore_missing:
                     return
                 raise RegistryItemNotFound(
@@ -662,21 +666,45 @@ class JSONSettingRegistry(ASettingRegistry):
             registry.pop(name)
             self._write_content(content)
 
-    def _read_content(self) -> dict[str, Any]:
+    def _log_not_changed(self, name: str, action: str) -> None:
+        self.log.warning(
+            "Item '%s' was not %s, registry file '%s' can't be read.",
+            name,
+            action,
+            self._registry_file,
+        )
+
+    def _read_content(self) -> Optional[dict[str, Any]]:
+        """Content of the file, with the items in its 'registry'.
+
+        Returns:
+            Optional[dict[str, Any]]: Content of the file, empty registry
+                if the file does not exist. 'None' if it can't be read,
+                e.g. is broken or used by another process.
+
+        """
         try:
             with open(self._registry_file, "r", encoding="utf-8") as stream:
                 content = json.load(stream)
         except FileNotFoundError:
-            return {}
+            return {"registry": {}}
         except (OSError, ValueError):
             self.log.warning(
                 "Failed to read registry file '%s'.",
                 self._registry_file,
                 exc_info=True,
             )
-            return {}
-        if not isinstance(content, dict):
-            return {}
+            return None
+
+        registry = None
+        if isinstance(content, dict):
+            registry = content.setdefault("registry", {})
+        if not isinstance(registry, dict):
+            self.log.warning(
+                "Registry file '%s' has no registry of items.",
+                self._registry_file,
+            )
+            return None
         return content
 
     def _write_content(self, content: dict[str, Any]) -> None:
