@@ -128,7 +128,7 @@ def run_subprocess(*args, **kwargs):
         # Split the command and run it without a shell on POSIX, so special
         # characters in paths are not interpreted
         if platform.system().lower() != "windows":
-            args = shlex.split(args[0])
+            args = (shlex.split(args[0]), )
             kwargs["shell"] = False
         # Escape & on Windows in shell with `cmd.exe` using ^&
         elif (
