@@ -27,7 +27,7 @@ class ValidateOutdatedContainers(
     OptionalPyblishPluginMixin,
     pyblish.api.ContextPlugin
 ):
-    """Containers are must be updated to latest version on publish.
+    """Containers must be updated to latest version on publish.
 
     Hosts can limit which containers are validated by collecting them into
     `context.data["usedContainers"]`, e.g. only containers that the published
