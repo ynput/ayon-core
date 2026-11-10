@@ -2256,6 +2256,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "host_names": [
                     "aftereffects",
                     "blender",
+                    "flame",
                     "houdini",
                     "maya",
                     "nuke",
