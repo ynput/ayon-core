@@ -1020,6 +1020,16 @@ class LocalPreferences(ASettingRegistry):
             bool: Whether items were imported now.
 
         """
+        return self._import_registry(filepath) is True
+
+    def _import_registry(self, filepath: str) -> Optional[bool]:
+        """Import items of a registry file, see 'import_registry'.
+
+        Returns:
+            Optional[bool]: Whether items were imported now. 'None' if the
+                import can be tried again, e.g. the database was locked.
+
+        """
         if not os.path.isfile(filepath):
             return False
         try:
@@ -1031,11 +1041,12 @@ class LocalPreferences(ASettingRegistry):
                 (self.name, item, json.dumps(value))
                 for item, value in registry.items()
             ]
-        except (OSError, ValueError, TypeError, AttributeError):
+        except (OSError, ValueError, TypeError, AttributeError) as exc:
             self.log.warning(
                 "Failed to read registry file '%s'.", filepath, exc_info=True
             )
-            return False
+            # The file may be used by another process, broken stays broken
+            return None if isinstance(exc, OSError) else False
 
         source = os.path.normcase(os.path.abspath(filepath))
 
@@ -1070,7 +1081,9 @@ class LocalPreferences(ASettingRegistry):
         success, imported = self._run(
             _import, f"import registry file '{filepath}' to"
         )
-        return success and imported
+        if not success:
+            return None
+        return imported
 
     def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
         rows = self._query(
@@ -1143,9 +1156,12 @@ class LocalPreferences(ASettingRegistry):
         return count if success else -1
 
     def _ensure_legacy_registry_imported(self) -> None:
-        if not self._legacy_registry_imported:
-            self._legacy_registry_imported = True
-            self.import_registry(self._legacy_registry_filepath)
+        if self._legacy_registry_imported:
+            return
+        # Tried again on the next access if it failed for now. Otherwise
+        #   items stored meanwhile would be kept over the imported ones.
+        imported = self._import_registry(self._legacy_registry_filepath)
+        self._legacy_registry_imported = imported is not None
 
     def _run(
         self,

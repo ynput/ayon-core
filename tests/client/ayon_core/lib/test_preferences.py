@@ -221,6 +221,38 @@ def test_local_preferences_import_passed_legacy_registry(local_dir):
 
 
 @pytest.mark.unit
+def test_local_preferences_import_is_tried_again(monkeypatch):
+    """The legacy registry is imported later if the database failed."""
+    registry = JSONSettingRegistry("unreal", get_launcher_local_dir("tools"))
+    registry.set_item("width", 800)
+    # The database exists, used by other preferences
+    LocalPreferences(KEY).set_item("visible", True)
+    monkeypatch.setattr(LocalPreferences, "timeout", 0.1)
+
+    prefs = LocalPreferences("unreal")
+    other = sqlite3.connect(prefs.filepath, isolation_level=None)
+    try:
+        other.execute("BEGIN EXCLUSIVE")
+        assert prefs.get_item("width", default=None) is None
+    finally:
+        other.close()
+    assert prefs.get_item("width") == 800
+
+    # Also if the registry file was used by another process
+    registry = JSONSettingRegistry("nuke", get_launcher_local_dir("tools"))
+    registry.set_item("width", 900)
+
+    def open_file(*args, **kwargs):
+        raise PermissionError("Used by another process")
+
+    prefs = LocalPreferences("nuke")
+    with monkeypatch.context() as context:
+        context.setattr(local_settings, "open", open_file, raising=False)
+        assert prefs.get_item("width", default=None) is None
+    assert prefs.get_item("width") == 900
+
+
+@pytest.mark.unit
 def test_json_registry_reads_changes_of_others():
     path = get_launcher_local_dir("tools")
     registry = JSONSettingRegistry("other_tool", path)
