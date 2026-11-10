@@ -93,7 +93,7 @@ class OverlayMessageWidget(QtWidgets.QFrame):
     """Message widget showed as overlay.
 
     Message type is shown with colored icon and with progress bar at the
-    bottom which is filling until the message is hidden.
+    bottom which is emptying until the message is hidden.
 
     Message is hidden after timeout. The timeout is paused while mouse is
     hovering over the widget.
@@ -126,8 +126,8 @@ class OverlayMessageWidget(QtWidgets.QFrame):
 
         # Animation is used as timeout and to paint the progress bar
         progress_anim = QtCore.QVariantAnimation(self)
-        progress_anim.setStartValue(0.0)
-        progress_anim.setEndValue(1.0)
+        progress_anim.setStartValue(1.0)
+        progress_anim.setEndValue(0.0)
         progress_anim.setDuration(timeout)
 
         icon_label = QtWidgets.QLabel(self)
