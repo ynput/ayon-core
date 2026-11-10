@@ -63,7 +63,7 @@ class AttachReviewables(
                 continue
 
             # Skip inactive instances
-            if not attach_instance.data.get("active", True):
+            if not attach_instance.data.get("publish", True):
                 continue
 
             # For now do not support attaching to 'farm' instances until we
