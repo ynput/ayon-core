@@ -8,6 +8,19 @@ from ayon_core.settings import get_studio_settings
 from ayon_core.lib import DefaultKeysDict
 from ayon_core.lib.local_settings import get_ayon_user_entity
 
+# Keys of user entity 'data' that must not be available in template data
+#   (secrets that allow logging in as the user, and frontend-only values)
+_USER_DATA_KEYS_TO_REMOVE = (
+    "frontendPreferences",
+    "password",
+    "passwordResetRequest",
+    "apiKey",
+    "apiKeys",
+    "apiKeyPreview",
+    "supportToken",
+    "inviteRequest",
+)
+
 
 def get_general_template_data(
     settings: Optional[dict[str, Any]] = None,
@@ -35,6 +48,13 @@ def get_general_template_data(
     if user_entity is None:
         user_entity = get_ayon_user_entity(username)
 
+    # Remove secrets and UI-only values from user data, they should not
+    #   be available for templates nor stored with published data
+    # NOTE Copy the data to not modify the passed 'user_entity'
+    user_entity_data = dict(user_entity["data"])
+    for key in _USER_DATA_KEYS_TO_REMOVE:
+        user_entity_data.pop(key, None)
+
     # Use dictionary with default value for backwards compatibility
     # - we did support '{user}' now it should be '{user[name]}'
     user_data = DefaultKeysDict(
@@ -42,7 +62,7 @@ def get_general_template_data(
         {
             "name": user_entity["name"],
             "attrib": user_entity["attrib"],
-            "data": user_entity["data"],
+            "data": user_entity_data,
         }
     )
 
