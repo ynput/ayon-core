@@ -27,6 +27,13 @@ from ayon_core.lib.profiles_filtering import (
         ("", [".*"], 1),
         ("", ["a*"], 1),
         ("", ["modeling"], -1),
+        # Empty item in filters targets empty value
+        ("", [""], 1),
+        ("", ["maya", ""], 1),
+        ("", "", 0),
+        ("maya", [""], -1),
+        ("maya", ["maya", ""], 1),
+        (None, [""], -1),
         # None does not match specific filters
         (None, [".*"], -1),
         (None, ["modeling"], -1),
@@ -53,6 +60,29 @@ def test_filter_profiles_empty_string_value():
     ]
     profile = filter_profiles(profiles, {"task_names": ""})
     assert profile["name"] == "any"
+
+
+@pytest.mark.parametrize(
+    ("host_name", "expected"),
+    [
+        ("", "no host"),
+        ("maya", "maya"),
+        ("nuke", "generic"),
+        (None, "generic"),
+    ],
+)
+def test_filter_profiles_profile_for_empty_value(host_name, expected):
+    """Profile with empty filter item targets empty value.
+
+    For example a profile for tray, where there is no host.
+    """
+    profiles = [
+        {"name": "generic", "host_names": []},
+        {"name": "no host", "host_names": [""]},
+        {"name": "maya", "host_names": ["maya"]},
+    ]
+    profile = filter_profiles(profiles, {"host_names": host_name})
+    assert profile["name"] == expected
 
 
 def test_filter_profiles_none_value():

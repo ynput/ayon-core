@@ -107,6 +107,11 @@ def validate_value_by_regexes(value, in_list):
     if value is None:
         return -1
 
+    # Empty item in filters targets empty value. Empty items are skipped
+    #   when compiling regexes, so they're handled here.
+    if value == "" and "" in in_list:
+        return 1
+
     regexes = compile_list_of_regexes(in_list)
     for regex in regexes:
         if hasattr(regex, "fullmatch"):
