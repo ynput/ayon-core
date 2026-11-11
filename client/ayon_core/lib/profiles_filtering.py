@@ -12,7 +12,8 @@ def compile_list_of_regexes(in_list):
         return regexes
 
     for item in in_list:
-        if not item:
+        # Empty string is a valid regex that matches empty value
+        if item is None:
             continue
         try:
             regexes.append(re.compile(item))
@@ -106,11 +107,6 @@ def validate_value_by_regexes(value, in_list):
     #   by regexes.
     if value is None:
         return -1
-
-    # Empty item in filters targets empty value. Empty items are skipped
-    #   when compiling regexes, so they're handled here.
-    if value == "" and "" in in_list:
-        return 1
 
     regexes = compile_list_of_regexes(in_list)
     for regex in regexes:
