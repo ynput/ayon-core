@@ -35,7 +35,7 @@ class _SharedFoldersCache:
     of a project is queried once per process instead of once per tool.
 
     """
-    lifetime = 60  # A minute
+    lifetime = 300  # 5 minutes
 
     def __init__(self) -> None:
         self.folders_items = NestedCacheItem(
