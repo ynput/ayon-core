@@ -43,6 +43,14 @@ def _rest_folder(
     return folder
 
 
+@pytest.fixture(autouse=True)
+def reset_shared_folders_cache():
+    """Folder items cache is shared by all models, clear it between tests."""
+    hierarchy._SHARED_FOLDERS_CACHE.reset()
+    yield
+    hierarchy._SHARED_FOLDERS_CACHE.reset()
+
+
 @pytest.fixture
 def get_folder_ids(monkeypatch):
     def _get_folder_ids(folders: list[dict[str, Any]]) -> set[str]:
@@ -83,3 +91,39 @@ def test_missing_active_is_kept(get_folder_ids):
         _rest_folder("child", "root", "root/child", active=None),
     ]
     assert get_folder_ids(folders) == {"root", "child"}
+
+
+@pytest.fixture
+def get_rest_folders(monkeypatch) -> Mock:
+    mock = Mock(return_value=[_rest_folder("root", None, "root")])
+    monkeypatch.setattr(hierarchy.ayon_api, "get_rest_folders", mock)
+    return mock
+
+
+def test_folders_cache_is_shared_between_models(get_rest_folders):
+    model_a = hierarchy.HierarchyModel(Mock())
+    model_b = hierarchy.HierarchyModel(Mock())
+
+    assert set(model_a.get_folder_items("demo", None)) == {"root"}
+    assert set(model_b.get_folder_items("demo", None)) == {"root"}
+    assert get_rest_folders.call_count == 1
+
+
+def test_reset_keeps_shared_folders_cache(get_rest_folders):
+    model_a = hierarchy.HierarchyModel(Mock())
+    model_b = hierarchy.HierarchyModel(Mock())
+
+    model_a.get_folder_items("demo", None)
+    model_b.reset()
+    model_b.get_folder_items("demo", None)
+    assert get_rest_folders.call_count == 1
+
+
+def test_forced_reset_clears_shared_folders_cache(get_rest_folders):
+    model_a = hierarchy.HierarchyModel(Mock())
+    model_b = hierarchy.HierarchyModel(Mock())
+
+    model_a.get_folder_items("demo", None)
+    model_b.reset(force=True)
+    model_a.get_folder_items("demo", None)
+    assert get_rest_folders.call_count == 2

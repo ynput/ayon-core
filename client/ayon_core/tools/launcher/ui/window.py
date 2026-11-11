@@ -258,7 +258,7 @@ class LauncherWindow(AYContainer):
         self._projects_widget.set_name_filter(text)
 
     def _on_refresh_request(self):
-        self._controller.refresh()
+        self._controller.refresh(force=True)
 
     def _on_projects_refresh(self):
         # Refresh only actions on projects page

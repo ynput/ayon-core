@@ -687,8 +687,8 @@ class PublisherWindow(QtWidgets.QDialog):
             return False
         return self._controller.save_changes()
 
-    def reset(self) -> None:
-        self._controller.reset()
+    def reset(self, force: bool = False) -> None:
+        self._controller.reset(force)
 
     def set_context_label(self, label: str) -> None:
         self._context_label.setText(label)
@@ -871,7 +871,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._save_changes(True)
 
     def _on_reset_clicked(self) -> None:
-        self.reset()
+        self.reset(force=True)
 
     def _on_stop_clicked(self) -> None:
         self._controller.stop_publish()

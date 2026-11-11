@@ -26,6 +26,32 @@ FOLDER_FIELDS = {
 }
 
 
+class _SharedFoldersCache:
+    """Folder items cache shared by all 'HierarchyModel' instances.
+
+    Each tool (loader, publisher, workfiles, ...) has its own controller
+    with its own 'HierarchyModel', but the folder hierarchy of a project is
+    the same for all of them. Sharing the cache means the full folder list
+    of a project is queried once per process instead of once per tool.
+
+    """
+    lifetime = 60  # A minute
+
+    def __init__(self) -> None:
+        self.folders_items = NestedCacheItem(
+            levels=1, default_factory=dict, lifetime=self.lifetime
+        )
+        # Project name -> ident of thread refreshing its folders
+        self.folders_refreshing: dict[str, int] = {}
+        self.folders_refreshing_cond = threading.Condition()
+
+    def reset(self) -> None:
+        self.folders_items.reset()
+
+
+_SHARED_FOLDERS_CACHE = _SharedFoldersCache()
+
+
 class AbstractHierarchyController(ABC):
     @abstractmethod
     def emit_event(
@@ -240,14 +266,16 @@ class HierarchyModel:
 
     Hierarchy items are folders and tasks. Folders can have as parent another
     folder or project. Tasks can have as parent only folder.
+
+    Folder items are stored in a cache shared by all instances of the model
+    (see '_SharedFoldersCache'), other caches are per instance.
     """
     lifetime = 60  # A minute
 
     def __init__(self, controller):
         self._tags_by_entity_type = NestedCacheItem(
             levels=1, default_factory=dict, lifetime=self.lifetime)
-        self._folders_items = NestedCacheItem(
-            levels=1, default_factory=dict, lifetime=self.lifetime)
+        self._folders_items = _SHARED_FOLDERS_CACHE.folders_items
         self._folders_by_id = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
@@ -259,15 +287,27 @@ class HierarchyModel:
         self._entity_ids_by_assignee = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
-        # Project name -> ident of thread refreshing its folders
-        self._folders_refreshing: dict[str, int] = {}
-        self._folders_refreshing_cond = threading.Condition()
+        self._folders_refreshing = _SHARED_FOLDERS_CACHE.folders_refreshing
+        self._folders_refreshing_cond = (
+            _SHARED_FOLDERS_CACHE.folders_refreshing_cond
+        )
         self._tasks_refreshing = set()
         self._controller = controller
 
-    def reset(self) -> None:
+    def reset(self, force: bool = False) -> None:
+        """Reset cached data.
+
+        Folder items are shared with other tools and are not reset by
+        default. They are queried again once their cache lifetime expires.
+
+        Args:
+            force (bool): Reset also folder items shared with other tools.
+                Should be used when user explicitly asks for a refresh.
+
+        """
+        if force:
+            _SHARED_FOLDERS_CACHE.reset()
         self._tags_by_entity_type.reset()
-        self._folders_items.reset()
         self._folders_by_id.reset()
 
         self._task_items.reset()
