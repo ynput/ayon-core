@@ -9,10 +9,7 @@ from ayon_core.pipeline import (
     get_temp_dir
 )
 from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
-from ayon_core.pipeline.colorspace import (
-    get_display_view_colorspace_name,
-    get_representation_ocio_config_path,
-)
+from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
 from ayon_core.lib import is_oiio_supported
 
 from ayon_core.lib.transcoding import (
@@ -189,20 +186,9 @@ class ExtractOIIOTranscode(publish.Extractor):
                 else:
                     new_colorspace_data["display"] = target_display
                     new_colorspace_data["view"] = target_view
-                    # Colorspace of the display/view pair for consumers that
-                    #   read only 'colorspace' (loaders, the '{colorspace}'
-                    #   template key)
-                    display_view_colorspace = ""
-                    if target_display and target_view:
-                        display_view_colorspace = (
-                            get_display_view_colorspace_name(
-                                config_path, target_display, target_view
-                            )
-                            or ""
-                        )
-                    new_colorspace_data["colorspace"] = (
-                        display_view_colorspace
-                    )
+                    # Display/view describe the pixels, the colorspace
+                    #   copied from the source does not
+                    new_colorspace_data.pop("colorspace", None)
 
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
