@@ -1,7 +1,8 @@
 import re
-import logging
 
-log = logging.getLogger(__name__)
+from .log import Logger
+
+log = Logger.get_logger(__name__)
 
 
 def compile_list_of_regexes(in_list):

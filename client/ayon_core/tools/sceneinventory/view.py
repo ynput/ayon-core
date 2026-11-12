@@ -1,5 +1,4 @@
 import collections
-import logging
 from functools import partial
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -20,6 +19,7 @@ from ayon_core.tools.utils.lib import (
     get_qt_icon,
 )
 from ayon_core.tools.utils.delegates import StatusDelegate
+from ayon_core.lib import Logger
 from ayon_core.ui.components import AYMenu
 
 from .switch_dialog import SwitchAssetDialog
@@ -43,7 +43,7 @@ VERSION_UP_SHORTCUT = "Ctrl+Up"
 VERSION_DOWN_SHORTCUT = "Ctrl+Down"
 VERSION_LATEST_SHORTCUT = "Ctrl+Shift+Up"
 
-log = logging.getLogger("SceneInventory")
+log = Logger.get_logger("SceneInventory")
 
 
 class SceneInventoryView(QtWidgets.QTreeView):

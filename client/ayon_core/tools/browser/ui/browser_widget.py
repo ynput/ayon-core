@@ -30,6 +30,9 @@ class BrowserWidget(AYContainer):
 
     # Max selected versions for which context menu data are prefetched
     prefetch_selection_limit = 50
+    # Versions of selected group headers above which actions are only
+    # shown after confirmation
+    group_versions_confirm_limit = 500
 
     def __init__(
         self,
@@ -191,23 +194,151 @@ class BrowserWidget(AYContainer):
         self._table.set_auto_expand(auto_expand)
         self._table.reset_data()
 
-    def _get_selected_version_ids(self) -> set[str]:
-        """Return version IDs of the rows selected in the active view."""
+    @staticmethod
+    def _get_row_version_id(row_dict: dict[str, Any]) -> str | None:
+        """Return the version id actions of a row apply to.
+
+        Product group headers resolve to their featured version, other
+        group headers and folders have none.
+        """
+        if row_dict.get("entityType", "") == "Folder":
+            return None
+        version_id = (
+            row_dict.get("_action_version_id")
+            or row_dict.get("_version_id")
+            or row_dict.get("id", "")
+        )
+        if version_id and not version_id.startswith("grp:"):
+            return version_id
+        return None
+
+    def _get_selected_rows(self) -> list[dict[str, Any]]:
+        """Return row data of the rows selected in the active view."""
         selection_model = self._table.active_view.selectionModel()
-        version_ids: set[str] = set()
+        rows: list[dict[str, Any]] = []
         for proxy_idx in selection_model.selectedIndexes():
             if proxy_idx.column() != 0:
                 continue
-            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-            if row_dict.get("entityType", "") == "Folder":
-                continue
-            version_id = (
-                row_dict.get("_action_version_id")
-                or row_dict.get("_version_id")
-                or row_dict.get("id", "")
-            )
-            if version_id and not version_id.startswith("grp:"):
+            row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole)
+            if row_dict:
+                rows.append(row_dict)
+        return rows
+
+    def _get_selected_version_ids(self) -> set[str]:
+        """Return version IDs of the rows selected in the active view.
+
+        Group headers other than Product are skipped, their versions are
+        resolved only when a context menu is requested.
+        """
+        version_ids: set[str] = set()
+        for row_dict in self._get_selected_rows():
+            version_id = self._get_row_version_id(row_dict)
+            if version_id:
                 version_ids.add(version_id)
+        return version_ids
+
+    @staticmethod
+    def _is_versions_group_row(row_dict: dict[str, Any]) -> bool:
+        """Return whether actions of the row apply to all its versions.
+
+        That is every group header except Product, which stands for its
+        featured version only (Product headers carry ``_product_id``).
+        """
+        row_id = row_dict.get("id") or ""
+        return (
+            row_id.startswith("grp:")
+            and not row_dict.get("_product_id")
+        )
+
+    def _confirm_group_versions(self, count: int) -> bool:
+        """Ask whether to show actions for many versions of groups."""
+        result = QtWidgets.QMessageBox.question(
+            self,
+            "Many versions selected",
+            (
+                f"The selected groups contain {count} versions.\n"
+                "Show the actions for all of them?"
+            ),
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.Cancel,
+            QtWidgets.QMessageBox.StandardButton.Cancel,
+        )
+        return result == QtWidgets.QMessageBox.StandardButton.Yes
+
+    def _get_group_version_ids(
+        self, group_rows: list[dict[str, Any]]
+    ) -> set[str] | None:
+        """Return the version ids listed under group headers.
+
+        Groups with all their versions loaded in the table use those,
+        others query only the version ids from the server. Groups with
+        more than :attr:`group_versions_confirm_limit` versions in total
+        ask for confirmation first.
+
+        Args:
+            group_rows: Row data of the group headers.
+
+        Returns:
+            Version ids of the groups, or ``None`` when cancelled or the
+            query failed.
+        """
+        version_ids: set[str] = set()
+        query_group_ids: list[str] = []
+        unknown_count = False
+        query_count = 0
+        for row_dict in group_rows:
+            group_id = row_dict["id"]
+            child_rows = self._table.get_all_child_rows(group_id)
+            if child_rows is not None:
+                for child_row in child_rows:
+                    version_id = self._get_row_version_id(child_row)
+                    if version_id:
+                        version_ids.add(version_id)
+                continue
+            child_count = row_dict.get("child_count")
+            if child_count is None:
+                unknown_count = True
+            elif child_count == 0:
+                continue
+            else:
+                query_count += child_count
+            query_group_ids.append(group_id)
+
+        limit = self.group_versions_confirm_limit
+        confirmed = False
+        expected_count = len(version_ids) + query_count
+        if expected_count > limit:
+            if not self._confirm_group_versions(expected_count):
+                return None
+            confirmed = True
+
+        if query_group_ids:
+            QtWidgets.QApplication.setOverrideCursor(
+                QtCore.Qt.CursorShape.WaitCursor
+            )
+            try:
+                for group_id in query_group_ids:
+                    version_ids |= self._controller.get_group_version_ids(
+                        group_id
+                    )
+            except Exception:
+                log.warning(
+                    "Failed to query versions of groups", exc_info=True
+                )
+                self.default_view_message.emit(
+                    "Failed to query versions of the groups", False
+                )
+                return None
+            finally:
+                QtWidgets.QApplication.restoreOverrideCursor()
+
+        if (
+            unknown_count
+            and not confirmed
+            and len(version_ids) > limit
+            and not self._confirm_group_versions(len(version_ids))
+        ):
+            return None
         return version_ids
 
     def _get_selected_product_ids(self) -> set[str]:
@@ -310,9 +441,23 @@ class BrowserWidget(AYContainer):
             pos: Cursor position in viewport coordinates.
         """
         project_name = self._controller.current_project
-        version_ids = self._get_selected_version_ids()
-
         global_point = self._table.active_view.viewport().mapToGlobal(pos)
+
+        version_ids: set[str] = set()
+        group_rows: list[dict[str, Any]] = []
+        for row_dict in self._get_selected_rows():
+            if self._is_versions_group_row(row_dict):
+                group_rows.append(row_dict)
+                continue
+            version_id = self._get_row_version_id(row_dict)
+            if version_id:
+                version_ids.add(version_id)
+
+        if project_name and group_rows:
+            group_version_ids = self._get_group_version_ids(group_rows)
+            if group_version_ids is None:
+                return
+            version_ids |= group_version_ids
 
         if not version_ids or not project_name:
             log.debug("No version ids or project name")

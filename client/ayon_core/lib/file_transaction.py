@@ -14,6 +14,8 @@ from ayon_core.lib import create_hard_link
 import speedcopy
 import speedcopy.version
 
+from .log import Logger
+
 _IS_MACOS = platform.system().lower() == "darwin"
 
 
@@ -86,7 +88,7 @@ class FileTransaction:
         allow_queue_replacements: bool = False,
     ) -> None:
         if log is None:
-            log = logging.getLogger("FileTransaction")
+            log = Logger.get_logger("FileTransaction")
 
         self.log: logging.Logger = log
 
@@ -272,7 +274,7 @@ def wait_for_future_errors(
     fail. We log all exceptions but re-raise the last exception only.
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = Logger.get_logger(__name__)
 
     for future in concurrent.futures.as_completed(futures):
         exception = future.exception()

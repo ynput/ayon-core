@@ -533,7 +533,7 @@ class AnatomyTemplates:
 
         # Make sure rootless path is with forward slashes
         if _IS_WINDOWS:
-            output.replace("\\", "/")
+            output = output.replace("\\", "/")
 
         # Make sure there are no double slashes
         while "//" in output:

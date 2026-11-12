@@ -1,7 +1,8 @@
-import logging
 from qtpy import QtWidgets, QtCore, QtGui
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 
 def icon_widget(parent, icon, size: int = 64) -> QtWidgets.QLabel:

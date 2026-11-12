@@ -1293,8 +1293,10 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
         default_factory=list,
         title="Input arguments",
         description=(
-            "FFmpeg arguments placed before the input file, e.g."
-            " `-apply_trc gamma22` to convert linear EXR input."
+            "FFmpeg arguments placed before the input file. Some"
+            " arguments change colors (e.g. `-apply_trc gamma22`), but"
+            " color conversion is best done in *Extract OIIO Transcode*"
+            " so the output's colorspace data stays accurate."
         ),
     )
     output: list[str] = SettingsField(
@@ -2224,6 +2226,19 @@ DEFAULT_PUBLISH_VALUES = {
                     "if_not_set",
             },
             {
+                "product_base_types": ["animation"],
+                "task_types": [],
+                "task_names": [],
+                "contribution_enabled": True,
+                "contribution_layer": "animation",
+                "contribution_target_product": "usdShot",
+                "contribution_apply_as_variant": False,
+                "contribution_variant_set_name": "{layer}",
+                "contribution_variant": "{variant}",
+                "contribution_variant_default_policy":
+                    "if_not_set",
+            },
+            {
                 "product_base_types": ["usd"],
                 "task_types": [],
                 "task_names": [],
@@ -2271,6 +2286,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "host_names": [
                     "aftereffects",
                     "blender",
+                    "flame",
                     "houdini",
                     "maya",
                     "nuke",
@@ -2422,9 +2438,7 @@ DEFAULT_PUBLISH_VALUES = {
                         "ffmpeg_args": {
                             "video_filters": [],
                             "audio_filters": [],
-                            "input": [
-                                "-apply_trc gamma22"
-                            ],
+                            "input": [],
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",
@@ -2525,9 +2539,7 @@ DEFAULT_PUBLISH_VALUES = {
                         "ffmpeg_args": {
                             "video_filters": [],
                             "audio_filters": [],
-                            "input": [
-                                "-apply_trc gamma22"
-                            ],
+                            "input": [],
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",

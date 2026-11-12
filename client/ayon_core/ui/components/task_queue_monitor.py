@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import enum
-import logging
 import math
 from dataclasses import dataclass
 from typing import Any
@@ -16,11 +15,13 @@ from qtpy.QtCore import (
 from qtpy.QtGui import QCloseEvent, QColor, QPainter, QPainterPath, QPen
 from qtpy.QtWidgets import QSizePolicy, QToolTip, QWidget
 
+from ayon_core.lib import Logger
+
 from ..style import get_ayon_style_data
 from .style_mixin import StyleMixin
 from .task_queue import AsyncTaskQueue
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Progress widget

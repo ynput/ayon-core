@@ -26,18 +26,18 @@ inherited :attr:`error` signal.
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 from urllib.parse import urlencode
 
 import ayon_api
 from ayon_core.addon import get_bundle_information
+from ayon_core.lib import Logger
 from qtpy.QtCore import QObject  # type: ignore[attr-defined]
 
 from .data_models import View, Scope, Visibility
 from .view_manager import ViewManager, DEFAULT_VIEW_LABEL
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 _POWERPACK_ADDON_NAME = "powerpack"
 

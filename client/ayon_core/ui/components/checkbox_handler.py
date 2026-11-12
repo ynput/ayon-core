@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import re
 from dataclasses import dataclass, field
 
@@ -29,8 +28,10 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import QTextEdit
 
+from ayon_core.lib import Logger
 
-log = logging.getLogger(__name__)
+
+log = Logger.get_logger(__name__)
 
 # Custom format type for checkboxes (must be unique)
 CHECKBOX_FORMAT_TYPE = QTextFormat.ObjectTypes.UserObject + 1
