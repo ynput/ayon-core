@@ -71,6 +71,20 @@ def execute(args, silent=False, cwd=None, env=None, shell=None):
     return popen.returncode
 
 
+def _escape_cmd_ampersands(command: str) -> str:
+    """Escape '&' with '^&' for cmd.exe, outside double quotes only.
+
+    Inside double quotes cmd.exe treats '&' as text and keeps '^' as a
+    literal character, so escaping there breaks paths like "a & b".
+    cmd.exe toggles quoting on every '"', so do the same.
+    """
+    parts = command.split('"')
+    # Even indexes are outside quotes
+    for idx in range(0, len(parts), 2):
+        parts[idx] = parts[idx].replace("&", "^&")
+    return '"'.join(parts)
+
+
 def run_subprocess(*args, **kwargs):
     """Convenience method for getting output errors for subprocess.
 
@@ -135,8 +149,7 @@ def run_subprocess(*args, **kwargs):
             platform.system().lower() == "windows"
             and os.getenv("COMSPEC").endswith("cmd.exe")
         ):
-            new_arg = args[0].replace("&", "^&")
-            args = (new_arg, )
+            args = (_escape_cmd_ampersands(args[0]), )
 
     # Get environments from kwarg or use current process environments if were
     # not passed.
