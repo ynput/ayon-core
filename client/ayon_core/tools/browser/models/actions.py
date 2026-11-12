@@ -14,6 +14,7 @@ from ayon_core.lib import NestedCacheItem, Logger
 from ayon_core.pipeline.actions import (
     LoaderActionsContext,
     LoaderActionSelection,
+    LoaderActionTriggerInfo,
     SelectionEntitiesCache,
 )
 from ayon_core.pipeline.load import (
@@ -265,7 +266,9 @@ class LoaderActionsModel:
                     ),
                     data=data,
                     form_values=form_values,
-                    alternative_identifier=alternative_identifier,
+                    trigger_info=LoaderActionTriggerInfo(
+                        alternative_identifier=alternative_identifier,
+                    ),
                 )
 
             except Exception:

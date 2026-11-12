@@ -19,18 +19,18 @@ Implementing 'get_action_items' allows the plugin to define what actions
 
 The action is triggered by calling the 'execute_action' method. Which takes
     the action identifier, the selection, the additional data from the action
-    item, form values from the form if any and identifier of alternative
-    launch if the action was launched in an alternative way.
+    item, form values from the form if any and 'LoaderActionTriggerInfo'
+    with information about how the action was triggered.
 
 Action item can define 'alternative_launch_items' which allow the user to
     launch the action in alternative ways. Each alternative launch has its
     own identifier, icon and tooltip and is shown as a button next to
     the action in the menu. Identifier of the alternative launch is passed
-    to 'execute_action' of the plugin as 'alternative_identifier'. What
-    an alternative launch does is fully up to the plugin, it can e.g. return
-    a form with options first, ask for confirmation or do something
-    completely different. Plugins implementing 'execute_action' without
-    'alternative_identifier' argument are still supported.
+    to 'execute_action' of the plugin in 'trigger_info' as
+    'alternative_identifier'. What an alternative launch does is fully up
+    to the plugin, it can e.g. return a form with options first, ask for
+    confirmation or do something completely different. Plugins implementing
+    'execute_action' without 'trigger_info' argument are still supported.
 
 Using 'LoaderActionResult' as the output of 'execute_action' can trigger to
     show a message in UI or to show an additional form ('ActionForm')
@@ -62,12 +62,12 @@ The flow of the logic is (in the loader tool):
     5. If a user selects an action, the action is triggered using
         'execute_action' on the context. If the user clicked a button of
         an alternative launch, identifier of the alternative launch is
-        passed as 'alternative_identifier'.
+        passed in 'trigger_info' as 'alternative_identifier'.
     5a. If the action returns 'LoaderActionResult', show a 'message' if it is
         filled and show a form dialog if 'form' is filled.
     5b. If the user submitted the form, trigger the action again with the
-        values from the form (and the same 'alternative_identifier') and
-        repeat from 5a.
+        values from the form (and the same 'trigger_info') and repeat
+        from 5a.
 
 """
 from __future__ import annotations
@@ -507,7 +507,8 @@ class LoaderActionAlternativeItem:
 
     Attributes:
         identifier (str): Identifier of the alternative launch. Is passed
-            to 'execute_action' of the plugin as 'alternative_identifier'.
+            to 'execute_action' of the plugin in 'trigger_info' as
+            'alternative_identifier'.
             Has to be unique for the action item.
         icon (IconBase | dict[str, Any]): Icon definition. Default
             option box icon is used if not set.
@@ -517,6 +518,31 @@ class LoaderActionAlternativeItem:
     identifier: str
     icon: IconBase | dict[str, Any] = field(default_factory=_default_alt_icon)
     tooltip: str | None = None
+
+
+@dataclass(frozen=True)
+class LoaderActionTriggerInfo:
+    """Information about how a loader action was triggered.
+
+    New attributes may be added in the future, all of them have
+        a default value.
+
+    Attributes:
+        alternative_identifier (str | None): Identifier of alternative
+            launch used to launch the action. 'None' if the action was
+            launched the usual way.
+
+    """
+    alternative_identifier: str | None = None
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "alternative_identifier": self.alternative_identifier,
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> LoaderActionTriggerInfo:
+        return cls(**data)
 
 
 @dataclass
@@ -650,23 +676,22 @@ class LoaderActionPlugin(ABC):
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
-        alternative_identifier: str | None = None,
+        trigger_info: LoaderActionTriggerInfo,
     ) -> Optional[LoaderActionResult]:
         """Execute an action.
 
         Notes:
-            Implementations without 'alternative_identifier' argument are
-                still supported, they are not able to know which
-                alternative launch was used.
+            Implementations without 'trigger_info' argument are still
+                supported, they are not able to know how the action
+                was triggered.
 
         Args:
             selection (LoaderActionSelection): Selection wrapper. Can be used
                 to get entities or get context of original selection.
             data (Optional[DataType]): Additional action item data.
             form_values (dict[str, Any]): Attribute values.
-            alternative_identifier (str | None): Identifier of
-                alternative launch used to launch the action. 'None' if
-                the action was launched the usual way.
+            trigger_info (LoaderActionTriggerInfo): Information about how
+                the action was triggered.
 
         Returns:
             Optional[LoaderActionResult]: Result of the action execution.
@@ -784,7 +809,7 @@ class LoaderActionsContext:
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
-        alternative_identifier: str | None = None,
+        trigger_info: LoaderActionTriggerInfo | None = None,
     ) -> Optional[LoaderActionResult]:
         """Trigger action execution.
 
@@ -796,26 +821,30 @@ class LoaderActionsContext:
             data (Optional[DataType]): Additional action item data.
             form_values (dict[str, Any]): Form values related to action.
                 Usually filled if action returned response with form.
-            alternative_identifier (str | None): Identifier of
-                alternative launch used to launch the action.
+            trigger_info (LoaderActionTriggerInfo | None): Information
+                about how the action was triggered. Default trigger info
+                is used if not passed.
 
         """
+        if trigger_info is None:
+            trigger_info = LoaderActionTriggerInfo()
         plugins_by_id = self._get_plugins()
         plugin = plugins_by_id[identifier]
-        # Backwards compatibility for plugins without
-        #   'alternative_identifier' argument
+        # Backwards compatibility for plugins without 'trigger_info' argument
+        # TODO remove when all addons using the new signature are set as
+        #   compatible with ayon core
         if is_func_signature_supported(
             plugin.execute_action,
             selection,
             data,
             form_values,
-            alternative_identifier,
+            trigger_info,
         ):
             return plugin.execute_action(
                 selection,
                 data,
                 form_values,
-                alternative_identifier,
+                trigger_info,
             )
         return plugin.execute_action(selection, data, form_values)
 
@@ -927,20 +956,19 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         self,
         selection: LoaderActionSelection,
         form_values: dict[str, Any],
-        alternative_identifier: str | None = None,
+        trigger_info: LoaderActionTriggerInfo,
     ) -> Optional[LoaderActionResult]:
         """Process action based on selection.
 
         Notes:
-            Implementations without 'alternative_identifier' argument are
-                still supported.
+            Implementations without 'trigger_info' argument are still
+                supported.
 
         Args:
             selection (LoaderActionSelection): Selection information.
             form_values (dict[str, Any]): Values from a form if there are any.
-            alternative_identifier (str | None): Identifier of
-                alternative launch used to launch the action. 'None' if
-                the action was launched the usual way.
+            trigger_info (LoaderActionTriggerInfo): Information about how
+                the action was triggered.
 
         Returns:
             Optional[LoaderActionResult]: Result of the action.
@@ -979,10 +1007,10 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
-        alternative_identifier: str | None = None,
+        trigger_info: LoaderActionTriggerInfo,
     ) -> Optional[LoaderActionResult]:
         if not form_values and self.options:
-            if alternative_identifier == self.options_identifier:
+            if trigger_info.alternative_identifier == self.options_identifier:
                 label = self.label or self.__class__.__name__
                 form = ActionForm(f"{label} Options", fields=self.options)
                 return LoaderActionResult(form=form)
@@ -994,17 +1022,18 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
                 if attr.is_value_def
             }
 
-        # Backwards compatibility for plugins without
-        #   'alternative_identifier' argument
+        # Backwards compatibility for plugins without 'trigger_info' argument
+        # TODO remove when all addons using the new signature are set as
+        #   compatible with ayon core
         if is_func_signature_supported(
             self.execute_simple_action,
             selection,
             form_values,
-            alternative_identifier,
+            trigger_info,
         ):
             return self.execute_simple_action(
                 selection,
                 form_values,
-                alternative_identifier,
+                trigger_info,
             )
         return self.execute_simple_action(selection, form_values)

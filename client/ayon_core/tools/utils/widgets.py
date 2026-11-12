@@ -1071,7 +1071,6 @@ class OptionalAction(QtWidgets.QWidgetAction):
         self.option_boxes: List[OptionBoxItem] = list(option_boxes)
         self.use_option = bool(self.option_boxes)
         self.option_tip = ""
-        self.optioned = False
         self.option_identifier = None
         self.widget = None
 
@@ -1116,7 +1115,6 @@ class OptionalAction(QtWidgets.QWidgetAction):
         self.option_tip = sep.join(option_items)
 
     def on_option(self, identifier=None):
-        self.optioned = True
         self.option_identifier = identifier
 
     def get_option_at(self, global_pos):
@@ -1188,13 +1186,6 @@ class OptionalActionWidget(QtWidgets.QWidget):
         self.body = body_widget
         self._layout = layout
 
-    @property
-    def option(self):
-        """First option box, kept for backwards compatibility."""
-        if self.options:
-            return self.options[0]
-        return None
-
     def add_option(self, icon=None):
         """Add option box to the right side of the action.
 
@@ -1223,10 +1214,6 @@ class OptionalActionWidget(QtWidgets.QWidget):
         row_state = ""
         if hovered:
             row_state = "hover"
-
-        # Backwards compatibility for boolean value
-        if isinstance(hovered_option, bool):
-            hovered_option = self.option if hovered_option else None
 
         if self.property("state") != row_state:
             self.setProperty("state", row_state)
