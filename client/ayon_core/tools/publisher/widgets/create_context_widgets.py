@@ -161,6 +161,17 @@ class CreateHierarchyController:
             project_name, folder_id, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        return self._controller.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     def get_folder_type_items(
         self, project_name: str, sender: str | None = None
     ) -> list[FolderTypeItem]:
@@ -246,7 +257,6 @@ class CreateContextWidget(QtWidgets.QWidget):
         folders_widget = FoldersWidget(
             hierarchy_controller, self, handle_expected_selection=True
         )
-        folders_widget.set_deselectable(True)
 
         tasks_widget = TasksWidget(
             hierarchy_controller, self, handle_expected_selection=True

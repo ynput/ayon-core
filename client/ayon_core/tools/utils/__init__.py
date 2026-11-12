@@ -6,6 +6,7 @@ from .widgets import (
     CustomTextComboBox,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
+    CodePlainTextEdit,
     MarkdownLabel,
     ElideLabel,
     HintedLineEdit,
@@ -42,6 +43,7 @@ from .lib import (
     get_qt_app,
     get_ayon_qt_app,
     get_qt_icon,
+    prefetch_qt_icons,
 )
 
 from .models import (
@@ -49,6 +51,10 @@ from .models import (
 )
 from .overlay_messages import (
     MessageOverlayObject,
+)
+from .connection_overlay import (
+    AYONLogoAnimation,
+    ConnectionOverlay,
 )
 from .multiselection_combobox import MultiSelectionComboBox
 from .thumbnail_paint_widget import ThumbnailPainterWidget
@@ -95,6 +101,7 @@ __all__ = (
     "CustomTextComboBox",
     "PlaceholderLineEdit",
     "PlaceholderPlainTextEdit",
+    "CodePlainTextEdit",
     "MarkdownLabel",
     "ElideLabel",
     "HintedLineEdit",
@@ -130,10 +137,14 @@ __all__ = (
     "get_qt_app",
     "get_ayon_qt_app",
     "get_qt_icon",
+    "prefetch_qt_icons",
 
     "RecursiveSortFilterProxyModel",
 
     "MessageOverlayObject",
+
+    "AYONLogoAnimation",
+    "ConnectionOverlay",
 
     "MultiSelectionComboBox",
 

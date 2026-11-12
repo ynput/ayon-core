@@ -1,14 +1,22 @@
 import os
 
 import qtpy
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets
+
+from ayon_core.ui.components import (
+    AYContainer,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYButton
+)
 
 from .save_as_dialog import SaveAsDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
+from .utils import save_changes_prompt
 
 
-class FilesWidget(QtWidgets.QWidget):
+class FilesWidget(AYContainer):
     """A widget displaying files that allows to save and open files.
 
     Args:
@@ -17,7 +25,13 @@ class FilesWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, controller, parent):
-        super(FilesWidget, self).__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=0,
+            layout_spacing=0,
+        )
 
         files_widget = QtWidgets.QStackedWidget(self)
         workarea_widget = WorkAreaFilesWidget(controller, files_widget)
@@ -28,45 +42,62 @@ class FilesWidget(QtWidgets.QWidget):
         btns_widget = QtWidgets.QWidget(self)
 
         workarea_btns_widget = QtWidgets.QWidget(btns_widget)
-        workarea_btn_open = QtWidgets.QPushButton(
-            "Open", workarea_btns_widget)
-        workarea_btn_browse = QtWidgets.QPushButton(
-            "Browse", workarea_btns_widget)
-        workarea_btn_save = QtWidgets.QPushButton(
-            "Save As", workarea_btns_widget)
+        workarea_btn_open = AYButton(
+            "Open",
+            variant=AYButton.Variants.Surface,
+            parent=workarea_btns_widget,
+        )
+        workarea_btn_browse = AYButton(
+            "Browse",
+            variant=AYButton.Variants.Surface,
+            parent=workarea_btns_widget,
+        )
+        workarea_btn_save = AYButton(
+            "Save As",
+            variant=AYButton.Variants.Surface,
+            parent=workarea_btns_widget,
+        )
 
-        workarea_btns_layout = QtWidgets.QHBoxLayout(workarea_btns_widget)
-        workarea_btns_layout.setContentsMargins(0, 0, 0, 0)
+        workarea_btns_layout = AYHBoxLayout(
+            workarea_btns_widget, margin=0, spacing=4
+        )
+        workarea_btns_layout.setContentsMargins(0, 8, 0, 0)
         workarea_btns_layout.addWidget(workarea_btn_open, 1)
         workarea_btns_layout.addWidget(workarea_btn_browse, 1)
         workarea_btns_layout.addWidget(workarea_btn_save, 1)
 
         published_btns_widget = QtWidgets.QWidget(btns_widget)
-        published_btn_copy_n_open = QtWidgets.QPushButton(
-            "Copy && Open", published_btns_widget
+        published_btn_copy_n_open = AYButton(
+            "Copy & Open",
+            variant=AYButton.Variants.Filled,
+            parent=published_btns_widget,
         )
-        published_btn_change_context = QtWidgets.QPushButton(
-            "Choose different context", published_btns_widget
+        published_btn_change_context = AYButton(
+            "Choose different context",
+            variant=AYButton.Variants.Surface,
+            parent=published_btns_widget,
         )
-        published_btn_cancel = QtWidgets.QPushButton(
-            "Cancel", published_btns_widget
+        published_btn_cancel = AYButton(
+            "Cancel",
+            variant=AYButton.Variants.Tertiary,
+            parent=published_btns_widget,
         )
 
-        published_btns_layout = QtWidgets.QHBoxLayout(published_btns_widget)
-        published_btns_layout.setContentsMargins(0, 0, 0, 0)
+        published_btns_layout = AYHBoxLayout(
+            published_btns_widget, margin=0, spacing=4
+        )
         published_btns_layout.addWidget(published_btn_copy_n_open, 1)
         published_btns_layout.addWidget(published_btn_change_context, 1)
         published_btns_layout.addWidget(published_btn_cancel, 1)
 
-        btns_layout = QtWidgets.QVBoxLayout(btns_widget)
-        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout = AYVBoxLayout(
+            btns_widget, margin=0, spacing=4
+        )
         btns_layout.addWidget(workarea_btns_widget, 1)
         btns_layout.addWidget(published_btns_widget, 1)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(files_widget, 1)
-        main_layout.addWidget(btns_widget, 0)
+        self.add_widget(files_widget, stretch=1)
+        self.add_widget(btns_widget, stretch=0)
 
         controller.register_event_callback(
             "selection.workarea.changed",
@@ -91,8 +122,6 @@ class FilesWidget(QtWidgets.QWidget):
 
         workarea_widget.open_current_requested.connect(
             self._on_current_open_requests)
-        workarea_widget.duplicate_requested.connect(
-            self._on_duplicate_request)
         workarea_btn_open.clicked.connect(self._on_workarea_open_clicked)
         workarea_btn_browse.clicked.connect(self._on_workarea_browse_clicked)
         workarea_btn_save.clicked.connect(self._on_workarea_save_clicked)
@@ -166,7 +195,7 @@ class FilesWidget(QtWidgets.QWidget):
         self._workarea_widget.set_text_filter(text_filter)
         self._published_widget.set_text_filter(text_filter)
 
-    def _exec_save_as_dialog(self, extension=None):
+    def _exec_save_as_dialog(self, extension=None, copied_from=None):
         """Show SaveAs dialog using currently selected context.
 
         Returns:
@@ -177,6 +206,7 @@ class FilesWidget(QtWidgets.QWidget):
             self._controller,
             self,
             extension=extension,
+            copied_from=copied_from,
         )
         dialog.update_context()
         dialog.exec_()
@@ -185,15 +215,15 @@ class FilesWidget(QtWidgets.QWidget):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def _open_workfile(self, folder_id, task_name, filepath):
+    def _open_workfile(self, folder_id, task_id, filepath):
         if self._controller.has_unsaved_changes():
-            result = self._save_changes_prompt()
+            result = save_changes_prompt(self)
             if result is None:
                 return
 
             if result:
                 self._controller.save_current_workfile()
-        self._controller.open_workfile(folder_id, task_name, filepath)
+        self._controller.open_workfile(folder_id, task_id, filepath)
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()
@@ -208,28 +238,6 @@ class FilesWidget(QtWidgets.QWidget):
         # - this uses selected item, but that does not have to be the one
         #   under mouse
         self._on_workarea_open_clicked()
-
-    def _on_duplicate_request(self):
-        filepath = self._workarea_widget.get_selected_path()
-        if filepath is None:
-            return
-
-        result = self._exec_save_as_dialog()
-        if result is None:
-            return
-        folder_id = self._selected_folder_id
-        task_id = self._selected_task_id
-        self._controller.duplicate_workfile(
-            folder_id,
-            task_id,
-            filepath,
-            result["rootless_workdir"],
-            result["workdir"],
-            result["filename"],
-            version=result["version"],
-            comment=result["comment"],
-            description=result["description"]
-        )
 
     def _on_workarea_browse_clicked(self):
         extnsions = self._controller.get_workfile_extensions()
@@ -323,6 +331,7 @@ class FilesWidget(QtWidgets.QWidget):
         extension = os.path.splitext(repre_info["filepath"])[1].lower()
         result = self._exec_save_as_dialog(
             extension=extension,
+            copied_from=repre_info["filepath"],
         )
         if result is None:
             return
@@ -405,34 +414,3 @@ class FilesWidget(QtWidgets.QWidget):
         self._is_save_enabled = enabled
         self._update_published_btns_state()
         self._update_workarea_btns_state()
-
-    def _save_changes_prompt(self):
-        """Ask user if wants to save changes to current file.
-
-        Returns:
-            Union[bool, None]: True if user wants to save changes, False if
-                user does not want to save changes, None if user cancels
-                operation.
-        """
-        messagebox = QtWidgets.QMessageBox(parent=self)
-        messagebox.setWindowFlags(
-            messagebox.windowFlags() | QtCore.Qt.FramelessWindowHint
-        )
-        messagebox.setIcon(QtWidgets.QMessageBox.Warning)
-        messagebox.setWindowTitle("Unsaved Changes!")
-        messagebox.setText(
-            "There are unsaved changes to the current file."
-            "\nDo you want to save the changes?"
-        )
-        messagebox.setStandardButtons(
-            QtWidgets.QMessageBox.Yes
-            | QtWidgets.QMessageBox.No
-            | QtWidgets.QMessageBox.Cancel
-        )
-
-        result = messagebox.exec_()
-        if result == QtWidgets.QMessageBox.Yes:
-            return True
-        if result == QtWidgets.QMessageBox.No:
-            return False
-        return None

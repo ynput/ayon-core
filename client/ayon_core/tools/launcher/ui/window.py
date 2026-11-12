@@ -1,27 +1,41 @@
+from pathlib import Path
+
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core import style, resources
-
+from ayon_core import resources
 from ayon_core.tools.launcher.control import BaseLauncherController
 from ayon_core.tools.utils import (
     MessageOverlayObject,
-    PlaceholderLineEdit,
-    RefreshButton,
     ProjectsWidget,
+    ConnectionOverlay,
+)
+from ayon_core.ui.components import (
+    AYContainer,
+    AYHBoxLayout,
+    AYVBoxLayout,
+    AYLineEdit,
+    AYButton,
 )
 
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
 
+LAUNCHER_CSS_PATH = Path(__file__).parent / "launcher_style.css"
 
-class LauncherWindow(QtWidgets.QWidget):
+
+class LauncherWindow(AYContainer):
     """Launcher interface"""
     message_interval = 5000
     refresh_interval = 10000
     page_side_anim_interval = 250
 
     def __init__(self, controller=None, parent=None):
-        super().__init__(parent)
+        super().__init__(
+            parent,
+            layout=AYContainer.Layout.VBox,
+            layout_margin=10,
+            layout_spacing=16,
+        )
 
         if controller is None:
             controller = BaseLauncherController()
@@ -31,8 +45,7 @@ class LauncherWindow(QtWidgets.QWidget):
         self.setWindowTitle("Launcher")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
-
-        self.setStyleSheet(style.load_stylesheet())
+        self.setStyleSheet(LAUNCHER_CSS_PATH.read_text())
 
         # Allow minimize
         self.setWindowFlags(
@@ -57,28 +70,38 @@ class LauncherWindow(QtWidgets.QWidget):
         projects_page = QtWidgets.QWidget(pages_widget)
         projects_header_widget = QtWidgets.QWidget(projects_page)
 
-        projects_filter_text = PlaceholderLineEdit(projects_header_widget)
-        projects_filter_text.setPlaceholderText("Filter projects...")
+        projects_filter_text = AYLineEdit(
+            placeholder="Filter projects...",
+            variant=AYLineEdit.Variants.Search_Field,
+            parent=projects_header_widget,
+        )
 
-        refresh_btn = RefreshButton(projects_header_widget)
+        refresh_btn = AYButton(
+            icon="sync",
+            variant=AYButton.Variants.Surface,
+            tooltip="Refresh projects",
+            parent=projects_header_widget,
+        )
 
-        projects_header_layout = QtWidgets.QHBoxLayout(projects_header_widget)
-        projects_header_layout.setContentsMargins(0, 0, 0, 0)
+        projects_header_layout = AYHBoxLayout(
+            projects_header_widget, margin=0, spacing=4
+        )
         projects_header_layout.addWidget(projects_filter_text, 1)
         projects_header_layout.addWidget(refresh_btn, 0)
 
         projects_widget = ProjectsWidget(controller, pages_widget)
 
-        projects_layout = QtWidgets.QVBoxLayout(projects_page)
-        projects_layout.setContentsMargins(0, 0, 0, 0)
+        projects_layout = AYVBoxLayout(projects_page, margin=0, spacing=4)
         projects_layout.addWidget(projects_header_widget, 0)
         projects_layout.addWidget(projects_widget, 1)
 
         # - Second page - Hierarchy (folders & tasks)
         hierarchy_page = HierarchyPage(controller, pages_widget)
+        # Folders load while the page slides in, show loading placeholder
+        #   only if they are not loaded when the slide finishes.
+        hierarchy_page.set_folders_loading_delay(self.page_side_anim_interval)
 
-        pages_layout = QtWidgets.QHBoxLayout(pages_widget)
-        pages_layout.setContentsMargins(0, 0, 0, 0)
+        pages_layout = AYHBoxLayout(pages_widget, margin=0, spacing=0)
         pages_layout.addWidget(projects_page, 1)
         pages_layout.addWidget(hierarchy_page, 1)
 
@@ -101,19 +124,8 @@ class LauncherWindow(QtWidgets.QWidget):
         content_body.setStretchFactor(0, 10)
         content_body.setSizes([580, 160])
 
-        # Footer
-        # footer_widget = QtWidgets.QWidget(self)
-        #
-        # action_history = ActionHistory(footer_widget)
-        # action_history.setStatusTip("Show Action History")
-        #
-        # footer_layout = QtWidgets.QHBoxLayout(footer_widget)
-        # footer_layout.setContentsMargins(0, 0, 0, 0)
-        # footer_layout.addWidget(action_history, 0)
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(content_body, 1)
-        # layout.addWidget(footer_widget, 0)
+        # Use AYContainer's add_widget instead of manual layout
+        self.add_widget(content_body)
 
         actions_refresh_timer = QtCore.QTimer()
         actions_refresh_timer.setInterval(self.refresh_interval)
@@ -155,8 +167,17 @@ class LauncherWindow(QtWidgets.QWidget):
             "webaction.trigger.finished",
             self._on_webaction_trigger_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
+
+        connection_overlay = ConnectionOverlay(controller, self)
 
         self._overlay_object = overlay_object
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
 
         self._controller = controller
 
@@ -177,14 +198,18 @@ class LauncherWindow(QtWidgets.QWidget):
         self._page_slide_anim = page_slide_anim
 
         hierarchy_page.setVisible(not self._is_on_projects_page)
-        self.resize(920, 740)
+        self.resize(1100, 740)
 
     def showEvent(self, event):
         super().showEvent(event)
         self._window_is_active = True
         if not self._actions_refresh_timer.isActive():
             self._actions_refresh_timer.start()
-        self._controller.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self._controller.refresh()
+        else:
+            self._refresh_on_connection = True
 
     def closeEvent(self, event):
         super().closeEvent(event)
@@ -205,7 +230,15 @@ class LauncherWindow(QtWidgets.QWidget):
 
         super().changeEvent(event)
 
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self._controller.refresh()
+
     def _on_actions_refresh_timeout(self):
+        # Skip actions refresh while server is not available
+        if self._controller.get_server_connection_state() is False:
+            return
         # Stop timer if widget is not visible
         if self._window_is_active:
             self._controller.refresh_actions()

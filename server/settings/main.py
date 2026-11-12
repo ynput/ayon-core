@@ -3,7 +3,6 @@ from pydantic import validator
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    MultiplatformPathListModel,
     ensure_unique_names,
     task_types_enum,
 )
@@ -11,6 +10,10 @@ from ayon_server.exceptions import BadRequestException
 
 from .publish_plugins import PublishPuginsModel, DEFAULT_PUBLISH_VALUES
 from .tools import GlobalToolsModel, DEFAULT_TOOLS_VALUES
+from .workfile_actions import (
+    WorkfileActionsModel,
+    DEFAULT_WORKFILE_ACTIONS_VALUES,
+)
 
 
 class DiskMappingItemModel(BaseSettingsModel):
@@ -440,16 +443,10 @@ class CoreSettings(BaseSettingsModel):
         default_factory=PublishPuginsModel,
         title="Publish plugins"
     )
-    project_plugins: MultiplatformPathListModel = SettingsField(
-        default_factory=MultiplatformPathListModel,
-        title="Additional Project Plugin Paths",
-        description=(
-            "Add paths to custom studio or project plugins.\n\n"
-            "Folders with custom create, publish and load plugins that are"
-            " registered when working in this project. Environment variables"
-            " can be used, e.g. `{STUDIO_ROOT}/plugins`. Paths that do not"
-            " exist are skipped."
-        ),
+    workfile_actions: WorkfileActionsModel = SettingsField(
+        default_factory=WorkfileActionsModel,
+        title="Workfile actions",
+        description="Actions available in the Workfiles tool.",
     )
     project_folder_structure: str = SettingsField(
         "{}",
@@ -559,6 +556,7 @@ DEFAULT_VALUES = {
         ]
     },
     "publish": DEFAULT_PUBLISH_VALUES,
+    "workfile_actions": DEFAULT_WORKFILE_ACTIONS_VALUES,
     "project_folder_structure": json.dumps(
         {
             "__project_root__": {
@@ -581,11 +579,6 @@ DEFAULT_VALUES = {
         },
         indent=4
     ),
-    "project_plugins": {
-        "windows": [],
-        "darwin": [],
-        "linux": []
-    },
     "project_environments": json.dumps(
         {},
         indent=4

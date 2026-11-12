@@ -802,7 +802,8 @@ class FrontendLoaderController(_BaseLoaderController):
         self,
         project_name,
         entity_type,
-        entity_ids
+        entity_ids,
+        use_server_fallback=True,
     ):
         """Get thumbnail path for thumbnail id.
 
@@ -814,6 +815,9 @@ class FrontendLoaderController(_BaseLoaderController):
             project_name (str): Project name.
             entity_type (str): Entity type.
             entity_ids (set[str]): Entity ids.
+            use_server_fallback (bool): Let the server resolve thumbnails
+                of entities without own thumbnail, like AYON frontend
+                does. Requires a request for each such entity.
 
         Returns:
             dict[str, Union[str, None]]: Thumbnail path by entity id.
@@ -1082,6 +1086,48 @@ class FrontendLoaderController(_BaseLoaderController):
                 current context project.
         """
 
+        pass
+
+    @abstractmethod
+    def process_server_events(self):
+        """Process AYON server events received via websocket.
+
+        Server events are received in a background thread and are queued.
+        This method must be called from the main (UI) thread periodically,
+        the queued events are emitted as controller events:
+        - "ayon.connection.opened"
+        - "ayon.connection.closed"
+        - "ayon.auth.failed"
+        - "ayon.server.restart"
+
+        """
+        pass
+
+    @abstractmethod
+    def check_server_available(self):
+        """Check if server is available.
+
+        Request to server is sent only if the connection state is not
+        known yet. Starts listening to server events, so
+        "ayon.connection.opened" is emitted once connection is established.
+
+        Can be used to postpone refresh of UI until the server is available.
+
+        Returns:
+            bool: 'False' if server is not available.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_server_connection_state(self):
+        """Server connection state.
+
+        Returns:
+            Optional[bool]: 'True' if connected, 'False' if disconnected
+                and 'None' if state is not known yet.
+
+        """
         pass
 
     # Site sync functions

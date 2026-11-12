@@ -365,6 +365,7 @@ class InstanceCardWidget(CardWidget):
             return
         if active is None:
             active = not self._is_active
+        self._is_active = active
         self._set_checked(active)
 
     def is_parent_active(self) -> bool:
@@ -619,7 +620,7 @@ class InstanceCardView(AbstractInstanceView):
             affected_ids.add(instance_id)
             parent_id = instance_id
             while True:
-                parent_id = self._parent_id_by_id[parent_id]
+                parent_id = self._parent_id_by_id.get(parent_id)
                 if parent_id is None:
                     break
                 affected_ids.add(parent_id)
@@ -627,6 +628,23 @@ class InstanceCardView(AbstractInstanceView):
             child_ids = set(self._instance_ids_by_parent_id[instance_id])
             affected_queue.extend(child_ids - affected_ids)
         return affected_ids
+
+    def _get_root_ids_with_active(self) -> list[tuple[set[str], bool]]:
+        """Top level instance ids with their parent active state.
+
+        Orphaned instances, which parent is not available, are considered
+            to have inactive parent.
+
+        Returns:
+            list[tuple[set[str], bool]]: Instance ids with parent active
+                state.
+
+        """
+        output = [(set(self._instance_ids_by_parent_id.get(None, ())), True)]
+        for parent_id, children_ids in self._instance_ids_by_parent_id.items():
+            if parent_id is not None and parent_id not in self._widgets_by_id:
+                output.append((set(children_ids), False))
+        return output
 
     def _toggle_instances(
         self,
@@ -646,8 +664,7 @@ class InstanceCardView(AbstractInstanceView):
 
         affected_ids = self._get_affected_ids(instance_ids)
 
-        _queue = deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        _queue = deque(self._get_root_ids_with_active())
         discarted_ids = set()
         while _queue:
             if not instance_ids:
@@ -670,8 +687,10 @@ class InstanceCardView(AbstractInstanceView):
                     if value is None:
                         value = not old_value
 
-                    widget.set_active(value)
-                    if widget.is_parent_active():
+                    # Skip instances that can't be changed by user
+                    #   (mandatory, or disabled by parent)
+                    if widget.is_checkbox_enabled():
+                        widget.set_active(value)
                         active_by_id[instance_id] = widget.is_active()
 
                 children_ids = self._instance_ids_by_parent_id[instance_id]
@@ -787,6 +806,10 @@ class InstanceCardView(AbstractInstanceView):
         }
         _queue = deque()
         _queue.append((None, True))
+        # Orphaned instances have inactive parent
+        for parent_id in instance_ids_by_parent_id:
+            if parent_id is not None and parent_id not in instances_by_id:
+                _queue.append((parent_id, False))
         while _queue:
             parent_id, is_parent_active = _queue.popleft()
             for instance_id in instance_ids_by_parent_id[parent_id]:
@@ -837,18 +860,16 @@ class InstanceCardView(AbstractInstanceView):
 
             widget_idx += 1
 
-            instances = instances_by_group[group_name]
-            for instance in instances:
-                group_by_instance_id[instance.id] = group_name
-                instance_ids_by_group_name[group_name].append(instance.id)
-
-            self._update_instance_widgets(
+            ordered_ids = self._update_instance_widgets(
                 group_name,
-                instances,
+                instances_by_group[group_name],
                 context_info_by_id,
                 parent_active_by_id,
                 group_icons,
             )
+            for instance_id in ordered_ids:
+                group_by_instance_id[instance_id] = group_name
+            instance_ids_by_group_name[group_name] = ordered_ids
 
         # Remove empty groups
         for group_name in groups_to_remove:
@@ -887,7 +908,7 @@ class InstanceCardView(AbstractInstanceView):
         context_info_by_id: dict[str, InstanceContextInfo],
         parent_active_by_id: dict[str, bool],
         group_icons: dict[str, str],
-    ) -> None:
+    ) -> list[str]:
         """Update instances for the group.
 
         Args:
@@ -897,54 +918,57 @@ class InstanceCardView(AbstractInstanceView):
                 context info by instance id.
             parent_active_by_id (dict[str, bool]): Instance has active parent.
 
+        Returns:
+            list[str]: Instance ids in the order they are shown in the group.
+
         """
-        # Store instances by id and by product name
         group_widget: BaseGroupWidget = self._widgets_by_group[group_name]
-        instances_by_id = {}
-        instances_by_product_name = defaultdict(list)
-        for instance in instances:
-            instances_by_id[instance.id] = instance
-            product_name = instance.product_name
-            instances_by_product_name[product_name].append(instance)
+        instances_by_id = {
+            instance.id: instance
+            for instance in instances
+        }
 
         to_remove_ids = set(
             self._instance_ids_by_group_name[group_name]
         ) - set(instances_by_id)
         group_widget.take_widgets(to_remove_ids)
 
-        # Sort instances by product name
-        sorted_product_names = list(sorted(instances_by_product_name.keys()))
+        # Sort instances by folder path and product name
+        sorted_instances = sorted(
+            instances,
+            key=lambda i: (i.folder_path or "", i.product_name)
+        )
 
         # Add new instances to widget
         ordered_ids = []
         widgets_by_id = {}
-        for product_names in sorted_product_names:
-            for instance in instances_by_product_name[product_names]:
-                context_info = context_info_by_id[instance.id]
-                is_parent_active = parent_active_by_id[instance.id]
-                if instance.id in self._widgets_by_id:
-                    widget = self._widgets_by_id[instance.id]
-                    widget.update_instance(
-                        instance, context_info, is_parent_active
-                    )
-                else:
-                    group_icon = group_icons[instance.creator_identifier]
-                    widget = InstanceCardWidget(
-                        instance,
-                        context_info,
-                        is_parent_active,
-                        group_icon,
-                        group_widget,
-                    )
-                    widget.selected.connect(self._on_widget_selection)
-                    widget.active_changed.connect(self._on_active_changed)
-                    widget.double_clicked.connect(self.double_clicked)
-                    self._widgets_by_id[instance.id] = widget
+        for instance in sorted_instances:
+            context_info = context_info_by_id[instance.id]
+            is_parent_active = parent_active_by_id[instance.id]
+            if instance.id in self._widgets_by_id:
+                widget = self._widgets_by_id[instance.id]
+                widget.update_instance(
+                    instance, context_info, is_parent_active
+                )
+            else:
+                group_icon = group_icons[instance.creator_identifier]
+                widget = InstanceCardWidget(
+                    instance,
+                    context_info,
+                    is_parent_active,
+                    group_icon,
+                    group_widget,
+                )
+                widget.selected.connect(self._on_widget_selection)
+                widget.active_changed.connect(self._on_active_changed)
+                widget.double_clicked.connect(self.double_clicked)
+                self._widgets_by_id[instance.id] = widget
 
-                ordered_ids.append(instance.id)
-                widgets_by_id[instance.id] = widget
+            ordered_ids.append(instance.id)
+            widgets_by_id[instance.id] = widget
 
         group_widget.set_widgets(widgets_by_id, ordered_ids)
+        return ordered_ids
 
     def _make_sure_context_widget_exists(self) -> None:
         # Create context item if is not already existing
@@ -1037,8 +1061,7 @@ class InstanceCardView(AbstractInstanceView):
 
         affected_ids = self._get_affected_ids(instance_ids)
 
-        _queue = deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        _queue = deque(self._get_root_ids_with_active())
         while _queue:
             if not affected_ids:
                 break

@@ -1,10 +1,12 @@
-import logging
+from __future__ import annotations
+
 import math
 from typing import Optional, List, Set, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 import qtawesome
+
 
 try:
     import markdown
@@ -17,10 +19,11 @@ from ayon_core.style import (
     get_default_tools_icon_color,
 )
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
+from ayon_core.lib import MaterialSymbolsIcon, Logger
 
-from .lib import get_qta_icon_by_name_and_color, set_style_property
+from .lib import get_qt_icon, set_style_property
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 class FocusSpinBox(QtWidgets.QSpinBox):
@@ -135,6 +138,147 @@ class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
                 _Cache.get_placeholder_color()
             )
             viewport.setPalette(filter_palette)
+
+
+class CodePlainTextEdit(PlaceholderPlainTextEdit):
+    """Plain text edit for code.
+
+    Uses a monospace font, indents with spaces on Tab, unindents on
+    Shift+Tab and can highlight syntax using pygments.
+
+    Args:
+        parent (Optional[QtWidgets.QWidget]): Parent widget.
+        syntax (Optional[str]): Name or alias of a pygments lexer used
+            for syntax highlighting, e.g. 'python'.
+
+    """
+    indent = 4
+
+    def __init__(self, parent=None, syntax: Optional[str] = None):
+        super().__init__(parent)
+        self.setObjectName("CodePlainTextEdit")
+        self._highlighter = None
+        if syntax:
+            self.set_syntax(syntax)
+
+    def set_syntax(self, syntax: Optional[str]) -> bool:
+        """Set syntax used for highlighting.
+
+        Args:
+            syntax (Optional[str]): Name or alias of a pygments lexer.
+                Pass None to disable highlighting.
+
+        Returns:
+            bool: Whether highlighting is applied.
+
+        """
+        if self._highlighter is not None:
+            self._highlighter.setDocument(None)
+            self._highlighter.deleteLater()
+            self._highlighter = None
+            self.setStyleSheet("")
+
+        if not syntax:
+            return False
+
+        try:
+            from .syntax_highlight import create_syntax_highlighter
+        except ImportError:
+            log.debug(
+                "Syntax highlighting is not available.", exc_info=True
+            )
+            return False
+
+        try:
+            highlighter = create_syntax_highlighter(self.document(), syntax)
+        except ValueError:
+            log.warning(
+                "Failed to apply syntax highlighter.", exc_info=True
+            )
+            return False
+
+        if highlighter is None:
+            log.debug(f"Syntax '{syntax}' is not supported.")
+            return False
+
+        # Apply background color from the style
+        if background_color := highlighter.style.background_color:
+            self.setStyleSheet((
+                "QPlainTextEdit {"
+                f"background-color: {background_color};"
+                "}"
+            ))
+        self._highlighter = highlighter
+        return True
+
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Backtab:
+            self._tab_shift_left()
+            event.accept()
+            return
+
+        if event.key() == QtCore.Qt.Key_Tab:
+            if event.modifiers() == QtCore.Qt.NoModifier:
+                self._tab_shift_right()
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
+
+    def _tab_shift_right(self):
+        cursor = self.textCursor()
+        selected_text = cursor.selectedText()
+        if not selected_text:
+            cursor.insertText(" " * self.indent)
+            return
+
+        sel_start = cursor.selectionStart()
+        sel_end = cursor.selectionEnd()
+        cursor.setPosition(sel_end)
+        end_line = cursor.blockNumber()
+        cursor.setPosition(sel_start)
+        while True:
+            cursor.movePosition(QtGui.QTextCursor.StartOfLine)
+            text = cursor.block().text()
+            spaces = len(text) - len(text.lstrip(" "))
+            new_spaces = spaces % self.indent
+            if not new_spaces:
+                new_spaces = self.indent
+
+            cursor.insertText(" " * new_spaces)
+            if cursor.blockNumber() == end_line:
+                break
+
+            cursor.movePosition(QtGui.QTextCursor.NextBlock)
+
+    def _tab_shift_left(self):
+        tmp_cursor = self.textCursor()
+        sel_start = tmp_cursor.selectionStart()
+        sel_end = tmp_cursor.selectionEnd()
+
+        cursor = QtGui.QTextCursor(self.document())
+        cursor.setPosition(sel_end)
+        end_line = cursor.blockNumber()
+        cursor.setPosition(sel_start)
+        while True:
+            cursor.movePosition(QtGui.QTextCursor.StartOfLine)
+            text = cursor.block().text()
+            spaces = len(text) - len(text.lstrip(" "))
+            if spaces:
+                spaces_to_remove = (spaces % self.indent) or self.indent
+                if spaces_to_remove > spaces:
+                    spaces_to_remove = spaces
+
+                cursor.setPosition(
+                    cursor.position() + spaces_to_remove,
+                    QtGui.QTextCursor.KeepAnchor
+                )
+                cursor.removeSelectedText()
+
+            if cursor.blockNumber() == end_line:
+                break
+
+            cursor.movePosition(QtGui.QTextCursor.NextBlock)
 
 
 class MarkdownLabel(QtWidgets.QLabel):
@@ -1175,14 +1319,20 @@ class PressHoverButton(QtWidgets.QPushButton):
 
 
 def get_refresh_icon():
-    return get_qta_icon_by_name_and_color(
-        "fa.refresh", get_default_tools_icon_color()
+    return get_qt_icon(
+        MaterialSymbolsIcon(
+            name="sync",
+            color=get_default_tools_icon_color(),
+        )
     )
 
 
 def get_go_to_current_icon():
-    return get_qta_icon_by_name_and_color(
-        "fa.arrow-down", get_default_tools_icon_color()
+    return get_qt_icon(
+        MaterialSymbolsIcon(
+            name="my_location",
+            color=get_default_tools_icon_color(),
+        )
     )
 
 
@@ -1239,10 +1389,12 @@ class SquareButton(QtWidgets.QPushButton):
 class RefreshButton(VerticalExpandButton):
     def __init__(self, parent=None):
         super(RefreshButton, self).__init__(parent)
+        self.setToolTip("Refresh")
         self.setIcon(get_refresh_icon())
 
 
 class GoToCurrentButton(VerticalExpandButton):
     def __init__(self, parent=None):
         super(GoToCurrentButton, self).__init__(parent)
+        self.setToolTip("Select the current context")
         self.setIcon(get_go_to_current_icon())

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from functools import cmp_to_key
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -21,6 +20,8 @@ from qtpy.QtWidgets import (
 )
 from qtpy.shiboken import isValid
 
+from ayon_core.lib import Logger
+
 from .components.combo_box import ComboBoxItemDelegate
 from .components.table_view import TableItemDelegate
 from .components.tree_view import TreeViewItemDelegate
@@ -35,6 +36,7 @@ from .drawers import (
     MenuDrawer,
     ScrollAreaDrawer,
     ScrollBarDrawer,
+    SpinBoxDrawer,
     TableHeaderDrawer,
     TooltipDrawer,
     TreeViewDrawer,
@@ -48,7 +50,7 @@ from .style_types import (
     hsl_to_html_color,  # noqa: F401  (re-exported for backward compatibility)
 )
 
-log = logging.getLogger("AYON Style")
+log = Logger.get_logger("AYON Style")
 
 W_T = {}
 
@@ -76,6 +78,7 @@ class AYONStyle(QCommonStyle):
             CheckboxDrawer(self),
             ComboBoxDrawer(self),
             ScrollBarDrawer(self),
+            SpinBoxDrawer(self),
             FrameDrawer(self),
             TreeViewDrawer(self),
             TableHeaderDrawer(self),
@@ -201,9 +204,11 @@ class AYONStyle(QCommonStyle):
 
         if isinstance(widget, QComboBox):
             widget.setMinimumContentsLength(1)
-            widget.setItemDelegate(
-                ComboBoxItemDelegate(parent=widget, style_model=self.model)
-            )
+            # Only set default delegate if no custom delegate was set.
+            if widget.itemDelegate() is None:
+                widget.setItemDelegate(
+                    ComboBoxItemDelegate(parent=widget, style_model=self.model)
+                )
             widget.setSizeAdjustPolicy(
                 QComboBox.SizeAdjustPolicy.AdjustToContents
             )
@@ -216,9 +221,13 @@ class AYONStyle(QCommonStyle):
             widget.setAttribute(
                 Qt.WidgetAttribute.WA_TranslucentBackground, True
             )
-            widget.setWindowFlags(
-                widget.windowFlags() | Qt.WindowType.NoDropShadowWindowHint
-            )
+            # Add NoDropShadowWindowHint only once to avoid reinitialization of
+            # the window
+            flags = widget.windowFlags()
+            if not (flags & Qt.WindowType.NoDropShadowWindowHint):
+                widget.setWindowFlags(
+                    flags | Qt.WindowType.NoDropShadowWindowHint
+                )
 
             # make icons visible in menus (MacOS)
             def _setup_actions(menu):
@@ -313,9 +322,6 @@ class AYONStyle(QCommonStyle):
         """Calculate rectangles for sub-elements."""
         key = enum_to_str(QStyle.SubElement, element, self.widget_key(widget))
 
-        if isinstance(widget, QLabel):
-            log.debug("%s %s", type(widget).__name__, key)
-
         sizer = self.sizers.get(key)
         if sizer is None:
             # Fall back to parent implementation
@@ -340,9 +346,6 @@ class AYONStyle(QCommonStyle):
     ) -> QRect:
         key = enum_to_str(QStyle.ComplexControl, cc, self.widget_key(w))
 
-        if isinstance(w, QLabel):
-            log.debug("%s %s", type(w).__name__, key)
-
         sizer = self.sizers.get(key)
         if sizer is None:
             # Fall back to parent implementation
@@ -361,9 +364,6 @@ class AYONStyle(QCommonStyle):
     ) -> int:
         """Return pixel measurements for various style metrics."""
         key = enum_to_str(QStyle.PixelMetric, metric, self.widget_key(widget))
-
-        if isinstance(widget, QLabel):
-            log.debug("%s %s", type(widget), key)
 
         metric_func = self.metrics.get(key)
         if metric_func is None:
@@ -387,6 +387,12 @@ class AYONStyle(QCommonStyle):
             return 0
         elif hint == QStyle.StyleHint.SH_ComboBox_PopupFrameStyle:
             return QFrame.Shape.NoFrame
+        elif hint in (
+            QStyle.StyleHint.SH_Menu_MouseTracking,
+            QStyle.StyleHint.SH_MenuBar_MouseTracking,
+        ):
+            # Make sure the mouse movement is tracked.
+            return 1
         # Fall back to parent implementation
         return super().styleHint(hint, opt, w, shret)
 
@@ -402,9 +408,6 @@ class AYONStyle(QCommonStyle):
         key = enum_to_str(
             QStyle.ContentsType, contents_type, self.widget_key(widget)
         )
-
-        if isinstance(widget, QLabel):
-            log.debug("%s", widget)
 
         sizer = self.sizers.get(key)
         if sizer is not None:

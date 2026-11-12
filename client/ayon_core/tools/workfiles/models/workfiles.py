@@ -23,7 +23,6 @@ from ayon_core.host.interfaces import (
     ListWorkfilesOptionalData,
     ListPublishedWorkfilesOptionalData,
     SaveWorkfileOptionalData,
-    CopyWorkfileOptionalData,
     CopyPublishedWorkfileOptionalData,
 )
 from ayon_core.pipeline.template_data import (
@@ -245,59 +244,6 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
-    def duplicate_workfile(
-        self,
-        folder_id: str,
-        task_id: str,
-        src_filepath: str,
-        rootless_workdir: str,
-        workdir: str,
-        filename: str,
-        version: int,
-        comment: str | None,
-        description: str | None,
-    ) -> None:
-        self._emit_event("workfile_duplicate.started")
-
-        project_name = self._controller.get_current_project_name()
-        project_entity = self._controller.get_project_entity(project_name)
-        folder_entity = self._controller.get_folder_entity(
-            project_name, folder_id
-        )
-        task_entity = self._controller.get_task_entity(project_name, task_id)
-        workfile_entities = self.get_workfile_entities(task_id)
-        rootless_path = f"{rootless_workdir}/{filename}"
-        workfile_path = os.path.join(workdir, filename)
-
-        prepared_data = CopyWorkfileOptionalData(
-            project_entity=project_entity,
-            project_settings=self._controller.project_settings,
-            anatomy=self._controller.project_anatomy,
-            rootless_path=rootless_path,
-            workfile_entities=workfile_entities,
-        )
-        failed = False
-        try:
-            self._host.copy_workfile(
-                src_filepath,
-                workfile_path,
-                folder_entity,
-                task_entity,
-                version=version,
-                comment=comment,
-                description=description,
-                prepared_data=prepared_data,
-            )
-
-        except Exception:
-            failed = True
-            self._log.warning("Duplication of workfile failed", exc_info=True)
-
-        self._emit_event(
-            "workfile_duplicate.finished",
-            {"failed": failed},
-        )
-
     def get_workfile_entities(
         self, task_id: str | None
     ) -> list[dict[str, Any]]:
@@ -326,6 +272,29 @@ class WorkfilesModel:
             self._cache_file_items(folder_id, task_id)
             mapping = self._workarea_file_items_mapping[task_id]
         return mapping.get(rootless_path)
+
+    def get_published_representation_entity(
+        self, folder_id: str | None, representation_id: str | None
+    ) -> dict[str, Any] | None:
+        """Representation entity of a published workfile.
+
+        Published workfiles of the folder are listed if they are not
+            cached or the cache is outdated.
+
+        Args:
+            folder_id (str | None): Folder id.
+            representation_id (str | None): Representation id.
+
+        Returns:
+            dict[str, Any] | None: Representation entity or None if is not
+                found.
+
+        """
+        if not folder_id or not representation_id:
+            return None
+        # Make sure published workfiles of the folder are cached
+        self.get_published_file_items(folder_id, None)
+        return self._repre_by_id.get(representation_id)
 
     def save_workfile_info(
         self,
