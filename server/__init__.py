@@ -6,7 +6,9 @@ from ayon_server.actions import (
 )
 from ayon_server.addons import BaseServerAddon
 from ayon_server.api.dependencies import CurrentUser
+from ayon_server.access.utils import ensure_entity_access
 from ayon_server.entities import ProjectEntity
+from ayon_server.exceptions import ForbiddenException
 from ayon_server.types import OPModel
 from ayon_server.lib.postgres import Postgres
 from ayon_server.events import dispatch_event
@@ -24,7 +26,7 @@ from .settings import (
 
 
 class CleanupFolderThumbnailsRequestModel(OPModel):
-    folder_ids: list[str] | None = None
+    folder_ids: list[str]
 
 
 class CleanupFolderThumbnailsResponseModel(OPModel):
@@ -201,6 +203,8 @@ class CoreAddon(BaseServerAddon):
     ) -> CleanupFolderThumbnailsResponseModel:
         """Remove thumbnail ids from folders sharing thumbnail with a version.
 
+        User must be able to publish to, or update, all passed folders.
+
         Args:
             project_name (str): Name of the project.
             payload (CleanupFolderThumbnailsRequestModel): Request payload
@@ -213,19 +217,19 @@ class CoreAddon(BaseServerAddon):
         # Validate user has permissions to access the project
         await user.ensure_project_access(project_name)
 
-        async with Postgres.transaction():
-            if payload.folder_ids is None:
-                res = await Postgres.fetch(
-                    UPDATE_THUMBNAILS_QUERY.format(project_name=project_name),
-                )
-            else:
-                res = await Postgres.fetch(
-                    UPDATE_THUMBNAILS_BY_IDS_QUERY.format(
-                        project_name=project_name
-                    ),
-                    payload.folder_ids,
-                )
+        folder_ids = list(set(payload.folder_ids))
+        if not folder_ids:
+            return CleanupFolderThumbnailsResponseModel(count=0)
 
+        await _ensure_folders_thumbnail_access(user, project_name, folder_ids)
+
+        async with Postgres.transaction():
+            res = await Postgres.fetch(
+                UPDATE_THUMBNAILS_BY_IDS_QUERY.format(
+                    project_name=project_name
+                ),
+                folder_ids,
+            )
             filtered_folder_ids = [row["id"] for row in res]
 
         return CleanupFolderThumbnailsResponseModel(
@@ -233,17 +237,58 @@ class CoreAddon(BaseServerAddon):
         )
 
 
-UPDATE_THUMBNAILS_QUERY = """
-UPDATE project_{project_name}.folders AS f
-SET thumbnail_id = NULL
-WHERE f.thumbnail_id IS NOT NULL
-    AND EXISTS (
-        SELECT 1
-        FROM project_{project_name}.versions AS v
-        WHERE v.thumbnail_id = f.thumbnail_id
-    )
-RETURNING f.id AS id;
-"""
+def _supports_multi_entity_access() -> bool:
+    """Server 1.16.4+ can validate access of multiple entities at once."""
+    try:
+        from ayon_server.version import __version__ as server_version
+
+        version = tuple(
+            int(part) for part in server_version.split("-")[0].split(".")[:3]
+        )
+    except Exception:
+        return False
+    return version >= (1, 16, 4)
+
+
+async def _ensure_folders_access(
+    user, project_name: str, folder_ids: list[str], access_type: str
+) -> None:
+    if _supports_multi_entity_access():
+        await ensure_entity_access(
+            user, project_name, "folder", folder_ids, access_type
+        )
+        return
+
+    # Older servers support only a single entity id
+    for folder_id in folder_ids:
+        await ensure_entity_access(
+            user, project_name, "folder", folder_id, access_type
+        )
+
+
+async def _ensure_folders_thumbnail_access(
+    user, project_name: str, folder_ids: list[str]
+) -> None:
+    """Make sure user can change thumbnail of all passed folders.
+
+    Same rules as server uses for folder thumbnail update, publish
+        access is enough, otherwise update access is required.
+
+    Raises:
+        ForbiddenException: User can't change thumbnail of some folders.
+
+    """
+    if user.is_manager:
+        return
+
+    try:
+        await _ensure_folders_access(
+            user, project_name, folder_ids, "publish"
+        )
+    except ForbiddenException:
+        await _ensure_folders_access(
+            user, project_name, folder_ids, "update"
+        )
 
 
 UPDATE_THUMBNAILS_BY_IDS_QUERY = """
