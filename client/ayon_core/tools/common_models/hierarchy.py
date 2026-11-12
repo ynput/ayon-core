@@ -60,12 +60,15 @@ class _FoldersCacheEntry:
             for the whole time since the query started.
         changed (bool): A server event changed folders of the project
             since the query started.
+        listening_lost_at (float | None): When websocket connection was
+            lost while the entry was listening ('time.monotonic').
 
     """
     items: dict[str, FolderItem]
     queried_at: float
     listening: bool
     changed: bool = False
+    listening_lost_at: float | None = None
 
 
 @dataclass
@@ -89,19 +92,24 @@ class _SharedFoldersCache:
 
     Cached folders are valid for 'min_lifetime' seconds. When the
     websocket of the process is connected, the cache listens to server
-    events about folders, and folders are kept up to 'max_lifetime'
-    seconds unless an event changed them. A change does not trigger a new
-    query, folders are queried again when a tool asks for them, but not
-    more often than once per 'min_lifetime', even if folders change all
-    the time.
+    events about folders, and folders are kept until an event changes
+    them, or until the user explicitly asks for a refresh (forced reset).
+    A change does not trigger a new query, folders are queried again when
+    a tool asks for them, but not more often than once per
+    'min_lifetime', even if folders change all the time.
+
+    When websocket connection is lost, cached folders are not cleared.
+    Events might be missed while disconnected and server does not allow
+    regular users to query events of other users, so folders that were
+    kept by events are valid for 'min_lifetime' since the connection was
+    lost, then they are queried once again.
 
     The websocket connection is not created by the cache. It is created
     by tools that process server events (see 'WSEventsModel'), so headless
     usage stays without websocket and uses only 'min_lifetime'.
 
     """
-    min_lifetime = 60  # A minute
-    max_lifetime = 30 * 60  # 30 minutes
+    min_lifetime = 5 * 60  # 5 minutes
     # Seconds until new topics subscription is sent to server when
     #   websocket is already connected. Server sends heartbeat every
     #   5 seconds, the subscription is sent after a message is received.
@@ -257,12 +265,12 @@ class _SharedFoldersCache:
         return time.monotonic()
 
     def _is_entry_valid(self, entry: _FoldersCacheEntry) -> bool:
-        age = self._now() - entry.queried_at
-        if age < self.min_lifetime:
+        if entry.listening and not entry.changed:
             return True
-        if entry.changed or not entry.listening:
-            return False
-        return age < self.max_lifetime
+        valid_from = entry.queried_at
+        if entry.listening_lost_at is not None:
+            valid_from = max(valid_from, entry.listening_lost_at)
+        return self._now() - valid_from < self.min_lifetime
 
     def _listen_to_events(self) -> None:
         """Register callbacks to server events once websocket exists."""
@@ -310,11 +318,16 @@ class _SharedFoldersCache:
             )
 
     def _on_connection_closed(self) -> None:
-        # Events might be missed until connection is opened again
+        # Events might be missed until connection is opened again. Keep
+        #   folders that were up to date for 'min_lifetime', so a brief
+        #   interruption does not cause queries.
+        now = self._now()
         with self.cond:
             self._listening_since = None
             self._connection_counter += 1
             for entry in self._entries.values():
+                if entry.listening and not entry.changed:
+                    entry.listening_lost_at = now
                 entry.listening = False
 
     def _on_folders_changed(self, event: Event) -> None:

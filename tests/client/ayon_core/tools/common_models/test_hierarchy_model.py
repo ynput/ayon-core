@@ -196,16 +196,17 @@ def test_without_websocket_uses_min_lifetime(
     assert _query_count(get_rest_folders) == 2
 
 
-def test_listening_cache_is_kept_until_max_lifetime(
-    get_rest_folders, shared_cache, event_hub, clock
+def test_listening_cache_is_kept_without_changes(
+    get_rest_folders, event_hub, clock
 ):
     model = hierarchy.HierarchyModel(Mock())
     _get_folders(model)
-    clock[0] += shared_cache.max_lifetime - 1
+    clock[0] += 7 * 24 * 60 * 60
     _get_folders(model)
     assert _query_count(get_rest_folders) == 1
 
-    clock[0] += 2
+    # Refresh button
+    model.reset(force=True)
     _get_folders(model)
     assert _query_count(get_rest_folders) == 2
 
@@ -273,28 +274,69 @@ def test_project_rename_invalidates_old_project_name(
     assert _query_count(get_rest_folders) == 2
 
 
-def test_lost_connection_falls_back_to_min_lifetime(
+def test_brief_connection_loss_keeps_folders(
+    get_rest_folders, shared_cache, event_hub, clock
+):
+    model = hierarchy.HierarchyModel(Mock())
+    _get_folders(model)
+    clock[0] += 3 * shared_cache.min_lifetime
+
+    # Brief interruption does not cause query
+    event_hub.emit("connection.closed", project_name=None)
+    event_hub.emit("connection.opened", project_name=None)
+    _get_folders(model)
+    clock[0] += shared_cache.min_lifetime - 1
+    _get_folders(model)
+    assert _query_count(get_rest_folders) == 1
+
+    # Events might have been missed, query once
+    clock[0] += 2
+    _get_folders(model)
+    assert _query_count(get_rest_folders) == 2
+
+    # Queried while connected
+    clock[0] += 3 * shared_cache.min_lifetime
+    _get_folders(model)
+    assert _query_count(get_rest_folders) == 2
+
+
+def test_long_connection_loss_uses_min_lifetime(
     get_rest_folders, shared_cache, event_hub, clock
 ):
     model = hierarchy.HierarchyModel(Mock())
     _get_folders(model)
     event_hub.emit("connection.closed", project_name=None)
 
-    # Events might have been missed
     clock[0] += shared_cache.min_lifetime + 1
     _get_folders(model)
     assert _query_count(get_rest_folders) == 2
 
     # Queried while disconnected
-    event_hub.emit("connection.opened", project_name=None)
     clock[0] += shared_cache.min_lifetime + 1
     _get_folders(model)
     assert _query_count(get_rest_folders) == 3
 
     # Queried while connected
+    event_hub.emit("connection.opened", project_name=None)
     clock[0] += shared_cache.min_lifetime + 1
     _get_folders(model)
-    assert _query_count(get_rest_folders) == 3
+    assert _query_count(get_rest_folders) == 4
+    clock[0] += 3 * shared_cache.min_lifetime
+    _get_folders(model)
+    assert _query_count(get_rest_folders) == 4
+
+
+def test_known_change_is_not_extended_by_connection_loss(
+    get_rest_folders, shared_cache, event_hub, clock
+):
+    model = hierarchy.HierarchyModel(Mock())
+    _get_folders(model)
+    clock[0] += shared_cache.min_lifetime - 10
+    event_hub.emit("entity.folder.renamed")
+    event_hub.emit("connection.closed", project_name=None)
+    clock[0] += 11
+    _get_folders(model)
+    assert _query_count(get_rest_folders) == 2
 
 
 def test_subscription_to_connected_websocket_waits(
