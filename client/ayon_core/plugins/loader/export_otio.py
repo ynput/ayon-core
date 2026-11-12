@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from collections import defaultdict
-from typing import Optional
+from typing import Any, Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -24,7 +24,6 @@ from ayon_core.pipeline.actions import (
     LoaderSimpleActionPlugin,
     LoaderActionSelection,
     LoaderActionResult,
-    LoaderActionExecuteInfo,
 )
 
 OTIO = None
@@ -55,10 +54,11 @@ class ExportOTIO(LoaderSimpleActionPlugin):
         return selection.versions_selected()
 
     def execute_simple_action(
-        self, info: LoaderActionExecuteInfo
+        self,
+        selection: LoaderActionSelection,
+        form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         _import_otio()
-        selection = info.selection
         version_ids = set(selection.selected_ids)
 
         versions_by_id = {

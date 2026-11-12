@@ -216,7 +216,7 @@ class LoaderActionsModel:
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: str | None,
+        alternative_identifier: str | None,
     ):
         """Trigger action by identifier.
 
@@ -234,7 +234,7 @@ class LoaderActionsModel:
             data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Loader option values.
             form_values (dict[str, Any]): Form values.
-            alternative_launch (str | None): Identifier of alternative
+            alternative_identifier (str | None): Identifier of alternative
                 launch used to launch the action.
 
         """
@@ -244,7 +244,7 @@ class LoaderActionsModel:
             "selected_ids": list(selected_ids),
             "selected_entity_type": selected_entity_type,
             "data": data,
-            "alternative_launch": alternative_launch,
+            "alternative_identifier": alternative_identifier,
             "id": uuid.uuid4().hex,
         }
         self._controller.emit_event(
@@ -265,7 +265,7 @@ class LoaderActionsModel:
                     ),
                     data=data,
                     form_values=form_values,
-                    alternative_launch=alternative_launch,
+                    alternative_identifier=alternative_identifier,
                 )
 
             except Exception:

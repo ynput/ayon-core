@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Any
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import get_ayon_launcher_args, run_detached_process
@@ -9,7 +9,6 @@ from ayon_core.pipeline.actions import (
     LoaderSimpleActionPlugin,
     LoaderActionSelection,
     LoaderActionResult,
-    LoaderActionExecuteInfo,
 )
 
 
@@ -44,9 +43,10 @@ class PushToProject(LoaderSimpleActionPlugin):
         return False
 
     def execute_simple_action(
-        self, info: LoaderActionExecuteInfo
+        self,
+        selection: LoaderActionSelection,
+        form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
-        selection = info.selection
         push_tool_script_path = os.path.join(
             AYON_CORE_ROOT,
             "tools",

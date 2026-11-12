@@ -1036,7 +1036,7 @@ class FrontendLoaderController(_BaseLoaderController):
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
-        alternative_launch: str | None,
+        alternative_identifier: str | None,
     ):
         """Trigger action item.
 
@@ -1061,7 +1061,7 @@ class FrontendLoaderController(_BaseLoaderController):
             data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Action option values from UI.
             form_values (dict[str, Any]): Action form values from UI.
-            alternative_launch (str | None): Identifier of alternative
+            alternative_identifier (str | None): Identifier of alternative
                 launch used to launch the action.
 
         """

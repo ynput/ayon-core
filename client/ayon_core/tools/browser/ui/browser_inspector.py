@@ -579,7 +579,7 @@ class Representations(AYContainer):
         result = show_actions_menu(
             action_items, global_point, len(selected_ids) == 1, self
         )
-        action_item, options, alternative_launch = result
+        action_item, options, alternative_identifier = result
         if action_item is None or options is None:
             return
 
@@ -591,7 +591,7 @@ class Representations(AYContainer):
             data=action_item.data,
             options=options,
             form_values={},
-            alternative_launch=alternative_launch,
+            alternative_identifier=alternative_identifier,
         )
 
     def _set_tree_mode(self, enabled: bool) -> None:

@@ -640,7 +640,7 @@ class LoaderWindow(QtWidgets.QWidget):
             options={},
             data=event["data"],
             form_values=form_values,
-            alternative_launch=event["alternative_launch"],
+            alternative_identifier=event["alternative_identifier"],
         )
 
     def _on_project_selection_changed(self, event):

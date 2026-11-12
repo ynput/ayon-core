@@ -49,14 +49,14 @@ def show_actions_menu(
     """
     selected_action_item = None
     selected_options = None
-    alternative_launch = None
+    alternative_identifier = None
 
     if not action_items:
         menu = QtWidgets.QMenu(parent)
         action = _get_no_loader_action(menu, one_item_selected)
         menu.addAction(action)
         menu.exec_(global_point)
-        return selected_action_item, selected_options, alternative_launch
+        return selected_action_item, selected_options, alternative_identifier
 
     menu = OptionalMenu(parent)
 
@@ -119,15 +119,15 @@ def show_actions_menu(
         selected_action_item = action_items_by_id.get(item_id)
 
     if selected_action_item is not None:
-        alternative_launch = getattr(action, "option_identifier", None)
+        alternative_identifier = getattr(action, "option_identifier", None)
         selected_options = _get_options(
-            action, selected_action_item, alternative_launch, parent
+            action, selected_action_item, alternative_identifier, parent
         )
 
-    return selected_action_item, selected_options, alternative_launch
+    return selected_action_item, selected_options, alternative_identifier
 
 
-def _get_options(action, action_item, alternative_launch, parent):
+def _get_options(action, action_item, alternative_identifier, parent):
     """Provides dialog to select value from loader provided options.
 
     Loader can provide static or dynamically created options based on
@@ -136,7 +136,7 @@ def _get_options(action, action_item, alternative_launch, parent):
     Args:
         action (OptionalAction) - Action object in menu.
         action_item (ActionItem) - Action item with context information.
-        alternative_launch (str | None) - Identifier of alternative launch
+        alternative_identifier (str | None) - Identifier of alternative launch
             used to launch the action.
         parent (QtCore.QObject) - Parent object for dialog.
 
@@ -147,7 +147,7 @@ def _get_options(action, action_item, alternative_launch, parent):
 
     # Pop option dialog
     options = action_item.options
-    if alternative_launch is None or not options:
+    if alternative_identifier is None or not options:
         return {}
 
     dialog_title = action.label + " Options"

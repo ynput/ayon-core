@@ -4,7 +4,7 @@ import subprocess
 import platform
 import collections
 import ctypes
-from typing import Optional, Callable
+from typing import Optional, Any, Callable
 
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
@@ -12,7 +12,6 @@ from ayon_core.pipeline.actions import (
     LoaderActionItem,
     LoaderActionPlugin,
     LoaderActionResult,
-    LoaderActionExecuteInfo,
     LoaderActionSelection,
 )
 
@@ -329,12 +328,14 @@ class OpenFileAction(LoaderActionPlugin):
         ]
 
     def execute_action(
-        self, info: LoaderActionExecuteInfo
+        self,
+        selection: LoaderActionSelection,
+        data: dict[str, Any],
+        form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
-        selection = info.selection
         path = None
         repre_path = None
-        repre_ids = info.data["representation_ids"]
+        repre_ids = data["representation_ids"]
         for repre in selection.entities.get_representations(repre_ids):
             repre_path = get_representation_path_with_anatomy(
                 repre, selection.get_project_anatomy()
