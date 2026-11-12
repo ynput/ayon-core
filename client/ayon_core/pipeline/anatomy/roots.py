@@ -1,4 +1,6 @@
+from __future__ import annotations
 import os
+import re
 import platform
 import numbers
 import warnings
@@ -7,6 +9,13 @@ from ayon_core.lib import Logger, StringTemplate
 from ayon_core.lib.path_templates import FormatObject
 
 from .exceptions import RootMissingEnv
+
+# Shell-like environment variables ('$KEY', '${KEY}' and '%KEY%') which are
+#   not supported in roots. Matches only valid env key names so paths like
+#   Windows admin shares ('//server/c$/projects') are not affected.
+_SHELL_VAR_REGEX = re.compile(
+    r"\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*|%[A-Za-z_]\w*%"
+)
 
 
 class AnatomyRoot(FormatObject):
@@ -38,21 +47,39 @@ class AnatomyRoot(FormatObject):
         self.available_platforms = set(lowered_platform_keys.keys())
 
         current_platform = platform.system().lower()
-        # WARNING: Using environment variables in roots is not considered
-        #   as production safe. Some features may not work as expected, for
-        #   example USD resolver or site sync.
-        try:
-            self.value = lowered_platform_keys[current_platform].format_map(
-                os.environ
+        self._current_platform = current_platform
+        raw_value = lowered_platform_keys.get(current_platform)
+        if raw_value is None:
+            raise RootMissingEnv(
+                f"Root \"{name}\" is missing definition"
+                f" for platform \"{current_platform}\"."
             )
-        except KeyError:
-            result = StringTemplate(self.value).format(os.environ.copy())
+
+        # WARNING: Using environment variables or '~' in roots is not
+        #   considered as production safe. Some features may not work as
+        #   expected, for example USD resolver or site sync.
+        # Only '~' and '{ENV_KEY}' are supported. Shell-like '$ENV_KEY' or
+        #   '%ENV_KEY%' are not expanded on purpose, unknown keys would be
+        #   left in the path silently.
+        unsupported_vars = _SHELL_VAR_REGEX.findall(raw_value)
+        if unsupported_vars:
+            joined_vars = ", ".join(f"\"{var}\"" for var in unsupported_vars)
+            raise RootMissingEnv(
+                f"Root \"{name}\" contains unsupported environment variable"
+                f" syntax {joined_vars}. Use '{{ENV_KEY}}' instead."
+            )
+        try:
+            value = os.path.expanduser(raw_value).format_map(os.environ)
+        except KeyError as e:
+            result = StringTemplate(raw_value).format(os.environ.copy())
             is_are = "is" if len(result.missing_keys) == 1 else "are"
             missing_keys = ", ".join(result.missing_keys)
             raise RootMissingEnv(
                 f"Root \"{name}\" requires environment variable/s"
                 f" {missing_keys} which {is_are} not available."
-            )
+            ) from e
+
+        self.value = value
 
         self.clean_value = self._clean_root(self.value)
 
@@ -131,6 +158,29 @@ class AnatomyRoot(FormatObject):
             for key, value in raw_data.items()
         }
 
+    def _get_platform_root(self, platform_name):
+        """Cleaned root value for a platform.
+
+        Value of current platform is resolved ('~' and '{ENV_KEY}' are
+        expanded), values of other platforms are returned as defined
+        because they can't be resolved on this machine.
+
+        Args:
+            platform_name (str): Platform name.
+
+        Returns:
+            Optional[str]: Cleaned root value or None if not defined.
+
+        """
+        if platform_name == self._current_platform:
+            return self.clean_value
+        return self.cleaned_data.get(platform_name)
+
+    @staticmethod
+    def _path_starts_with_root(path, root):
+        """Check if path is the root or is inside the root."""
+        return path == root or path.startswith(root + "/")
+
     def path_remapper(self, path, dst_platform=None, src_platform=None):
         """Remap path for specific platform.
 
@@ -150,7 +200,7 @@ class AnatomyRoot(FormatObject):
         """
         cleaned_path = self._clean_path(path)
         if dst_platform:
-            dst_root_clean = self.cleaned_data.get(dst_platform)
+            dst_root_clean = self._get_platform_root(dst_platform)
             if not dst_root_clean:
                 self.log.warning(
                     "Root \"{}\" miss platform \"{}\" definition.".format(
@@ -163,7 +213,7 @@ class AnatomyRoot(FormatObject):
                 return cleaned_path
 
         if src_platform:
-            src_root_clean = self.cleaned_data.get(src_platform)
+            src_root_clean = self._get_platform_root(src_platform)
             if src_root_clean is None:
                 self.log.warning(
                     "Root \"{}\" miss platform \"{}\" definition.".format(
@@ -195,7 +245,9 @@ class AnatomyRoot(FormatObject):
     def find_root_template_from_path(self, path):
         """Replaces known root value with formattable key in path.
 
-        All platform values are checked for this replacement.
+        All platform values are checked for this replacement. Value of
+        current platform is used resolved ('~' and '{ENV_KEY}' expanded).
+        Input path is expected to be absolute and fully resolved.
 
         Args:
             path (str): Path where root value should be found.
@@ -225,19 +277,21 @@ class AnatomyRoot(FormatObject):
         output = str(path)
 
         mod_path = self._clean_path(path)
-        for root_os, root_path in self.cleaned_data.items():
+        replacement = "{" + self.full_key + "}"
+        for root_os in self.cleaned_data:
+            root_path = self._get_platform_root(root_os)
             # Skip empty paths
             if not root_path:
                 continue
 
-            _mod_path = mod_path  # reset to original cleaned value
+            _mod_path = mod_path
+            _root_path = root_path
             if root_os == "windows":
-                root_path = root_path.lower()
                 _mod_path = _mod_path.lower()
+                _root_path = _root_path.lower()
 
-            if _mod_path.startswith(root_path):
+            if self._path_starts_with_root(_mod_path, _root_path):
                 result = True
-                replacement = "{" + self.full_key + "}"
                 output = replacement + mod_path[len(root_path):]
                 break
 
