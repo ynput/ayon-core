@@ -13,6 +13,7 @@ import ayon_api
 from ayon_core.lib import NestedCacheItem
 
 from .projects import TaskTypeItem
+from .websocket import Event, EventCallback, get_existing_event_hub
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
 FOLDER_FIELDS = {
@@ -26,6 +27,58 @@ FOLDER_FIELDS = {
 }
 
 
+# Server events that change folder items or the folders hierarchy. Other
+#   folder events (attributes, data, tags, thumbnail) don't affect them.
+_FOLDER_ITEMS_TOPICS = (
+    "entity.folder.created",
+    "entity.folder.deleted",
+    "entity.folder.renamed",
+    "entity.folder.parent_changed",
+    "entity.folder.active_changed",
+    "entity.folder.label_changed",
+    "entity.folder.status_changed",
+    "entity.folder.type_changed",
+)
+# Project events that can change folder items without any folder event,
+#   e.g. renaming a folder type or a status in project anatomy renames it
+#   on all folders.
+_PROJECT_TOPICS = (
+    "entity.project.changed",
+    "entity.project.deleted",
+    "entity.project.renamed",
+)
+
+
+@dataclass
+class _FoldersCacheEntry:
+    """Cached folder items of one project.
+
+    Attributes:
+        items (dict[str, FolderItem]): Folder items by id.
+        queried_at (float): When the query started ('time.monotonic').
+        listening (bool): Server events about folders were received
+            for the whole time since the query started.
+        changed (bool): A server event changed folders of the project
+            since the query started.
+
+    """
+    items: dict[str, FolderItem]
+    queried_at: float
+    listening: bool
+    changed: bool = False
+
+
+@dataclass
+class _FoldersQueryToken:
+    """State of the cache when a query of folders started."""
+    queried_at: float
+    reset_counter: int
+    project_reset_counter: int
+    change_counter: int
+    connection_counter: int
+    listening: bool
+
+
 class _SharedFoldersCache:
     """Folder items cache shared by all 'HierarchyModel' instances.
 
@@ -34,19 +87,251 @@ class _SharedFoldersCache:
     the same for all of them. Sharing the cache means the full folder list
     of a project is queried once per process instead of once per tool.
 
+    Cached folders are valid for 'min_lifetime' seconds. When the
+    websocket of the process is connected, the cache listens to server
+    events about folders, and folders are kept up to 'max_lifetime'
+    seconds unless an event changed them. A change does not trigger a new
+    query, folders are queried again when a tool asks for them, but not
+    more often than once per 'min_lifetime', even if folders change all
+    the time.
+
+    The websocket connection is not created by the cache. It is created
+    by tools that process server events (see 'WSEventsModel'), so headless
+    usage stays without websocket and uses only 'min_lifetime'.
+
     """
-    lifetime = 300  # 5 minutes
+    min_lifetime = 60  # A minute
+    max_lifetime = 30 * 60  # 30 minutes
+    # Seconds until new topics subscription is sent to server when
+    #   websocket is already connected. Server sends heartbeat every
+    #   5 seconds, the subscription is sent after a message is received.
+    subscribe_delay = 10
 
     def __init__(self) -> None:
-        self.folders_items = NestedCacheItem(
-            levels=1, default_factory=dict, lifetime=self.lifetime
-        )
+        # Used as lock for all attributes below
+        self.cond = threading.Condition()
         # Project name -> ident of thread refreshing its folders
-        self.folders_refreshing: dict[str, int] = {}
-        self.folders_refreshing_cond = threading.Condition()
+        self.refreshing: dict[str, int] = {}
 
-    def reset(self) -> None:
-        self.folders_items.reset()
+        self._entries: dict[str, _FoldersCacheEntry] = {}
+        self._reset_counter = 0
+        self._project_reset_counters: dict[str, int] = (
+            collections.defaultdict(int)
+        )
+        self._change_counters: dict[str, int] = collections.defaultdict(int)
+        self._connection_counter = 0
+        # Since when are folder events received ('time.monotonic')
+        self._listening_since: float | None = None
+
+        self._register_lock = threading.Lock()
+        self._subscribed_at: float | None = None
+        self._hub_callbacks: list[EventCallback] = []
+
+    def reset(self, project_name: str | None = None) -> None:
+        """Clear cached folders.
+
+        Results of queries running at the moment are discarded.
+
+        Args:
+            project_name (str | None): Clear only folders of the project.
+
+        """
+        with self.cond:
+            if project_name is None:
+                self._entries.clear()
+                self._reset_counter += 1
+            else:
+                self._entries.pop(project_name, None)
+                self._project_reset_counters[project_name] += 1
+
+    def get_valid_items(
+        self, project_name: str
+    ) -> dict[str, FolderItem] | None:
+        """Folder items of a project if cache is valid.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, FolderItem] | None: Folder items by id, 'None' if
+                folders have to be queried.
+
+        """
+        self._listen_to_events()
+        with self.cond:
+            return self.get_valid_items_locked(project_name)
+
+    def get_valid_items_locked(
+        self, project_name: str
+    ) -> dict[str, FolderItem] | None:
+        """Same as 'get_valid_items', but caller holds 'cond'."""
+        entry = self._entries.get(project_name)
+        if entry is None or not self._is_entry_valid(entry):
+            return None
+        return entry.items
+
+    def get_items(self, project_name: str) -> dict[str, FolderItem]:
+        """Last queried folder items of a project, even if not valid.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, FolderItem]: Folder items by id.
+
+        """
+        with self.cond:
+            entry = self._entries.get(project_name)
+            if entry is None:
+                return {}
+            return entry.items
+
+    def start_query_locked(self, project_name: str) -> _FoldersQueryToken:
+        """Remember cache state before folders are queried.
+
+        Caller holds 'cond'.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            _FoldersQueryToken: Token to pass to 'store'.
+
+        """
+        now = self._now()
+        listening_since = self._listening_since
+        return _FoldersQueryToken(
+            queried_at=now,
+            reset_counter=self._reset_counter,
+            project_reset_counter=self._project_reset_counters[project_name],
+            change_counter=self._change_counters[project_name],
+            connection_counter=self._connection_counter,
+            listening=(
+                listening_since is not None and now >= listening_since
+            ),
+        )
+
+    def store(
+        self,
+        project_name: str,
+        items: dict[str, FolderItem],
+        token: _FoldersQueryToken,
+    ) -> bool:
+        """Store queried folder items.
+
+        Args:
+            project_name (str): Project name.
+            items (dict[str, FolderItem]): Folder items by id.
+            token (_FoldersQueryToken): Token from 'start_query_locked'.
+
+        Returns:
+            bool: Items were stored. 'False' if cache was reset while
+                the query was running and folders have to be queried
+                again.
+
+        """
+        with self.cond:
+            if (
+                token.reset_counter != self._reset_counter
+                or token.project_reset_counter
+                != self._project_reset_counters[project_name]
+            ):
+                return False
+
+            self._entries[project_name] = _FoldersCacheEntry(
+                items=items,
+                queried_at=token.queried_at,
+                listening=(
+                    token.listening
+                    and token.connection_counter == self._connection_counter
+                ),
+                # Change during the query might not be in the result
+                changed=(
+                    token.change_counter
+                    != self._change_counters[project_name]
+                ),
+            )
+            return True
+
+    def _now(self) -> float:
+        return time.monotonic()
+
+    def _is_entry_valid(self, entry: _FoldersCacheEntry) -> bool:
+        age = self._now() - entry.queried_at
+        if age < self.min_lifetime:
+            return True
+        if entry.changed or not entry.listening:
+            return False
+        return age < self.max_lifetime
+
+    def _listen_to_events(self) -> None:
+        """Register callbacks to server events once websocket exists."""
+        if self._hub_callbacks:
+            return
+
+        event_hub = get_existing_event_hub()
+        if event_hub is None:
+            return
+
+        with self._register_lock:
+            if self._hub_callbacks:
+                return
+            subscribed_at = self._now()
+            with self.cond:
+                self._subscribed_at = subscribed_at
+                if event_hub.is_connected():
+                    # Subscription is sent with next message
+                    self._listening_since = (
+                        subscribed_at + self.subscribe_delay
+                    )
+
+            callbacks = [
+                EventCallback(
+                    "connection.opened", self._on_connection_opened
+                ),
+                EventCallback(
+                    "connection.closed", self._on_connection_closed
+                ),
+            ]
+            for topic in _FOLDER_ITEMS_TOPICS + _PROJECT_TOPICS:
+                callbacks.append(
+                    EventCallback(topic, self._on_folders_changed)
+                )
+            event_hub.add_callbacks(callbacks, connect=False)
+            self._hub_callbacks = callbacks
+
+    def _on_connection_opened(self) -> None:
+        with self.cond:
+            # Subscription might have been sent with the previous message
+            #   if callbacks were registered during connection.
+            self._listening_since = max(
+                self._now(),
+                self._subscribed_at + self.subscribe_delay,
+            )
+
+    def _on_connection_closed(self) -> None:
+        # Events might be missed until connection is opened again
+        with self.cond:
+            self._listening_since = None
+            self._connection_counter += 1
+            for entry in self._entries.values():
+                entry.listening = False
+
+    def _on_folders_changed(self, event: Event) -> None:
+        project_names = {event.project_name}
+        # Project rename event does not have project name filled
+        if isinstance(event.summary, dict):
+            project_names.add(event.summary.get("entityName"))
+        project_names.discard(None)
+        if not project_names:
+            return
+
+        with self.cond:
+            for project_name in project_names:
+                self._change_counters[project_name] += 1
+                entry = self._entries.get(project_name)
+                if entry is not None:
+                    entry.changed = True
 
 
 _SHARED_FOLDERS_CACHE = _SharedFoldersCache()
@@ -275,7 +560,6 @@ class HierarchyModel:
     def __init__(self, controller):
         self._tags_by_entity_type = NestedCacheItem(
             levels=1, default_factory=dict, lifetime=self.lifetime)
-        self._folders_items = _SHARED_FOLDERS_CACHE.folders_items
         self._folders_by_id = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
@@ -287,10 +571,6 @@ class HierarchyModel:
         self._entity_ids_by_assignee = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
-        self._folders_refreshing = _SHARED_FOLDERS_CACHE.folders_refreshing
-        self._folders_refreshing_cond = (
-            _SHARED_FOLDERS_CACHE.folders_refreshing_cond
-        )
         self._tasks_refreshing = set()
         self._controller = controller
 
@@ -298,7 +578,8 @@ class HierarchyModel:
         """Reset cached data.
 
         Folder items are shared with other tools and are not reset by
-        default. They are queried again once their cache lifetime expires.
+        default. They are queried again once they change on server or
+        their cache lifetime expires (see '_SharedFoldersCache').
 
         Args:
             force (bool): Reset also folder items shared with other tools.
@@ -322,6 +603,7 @@ class HierarchyModel:
             project_name (str): Name of project to refresh.
 
         """
+        _SHARED_FOLDERS_CACHE.reset(project_name)
         self._refresh_folders_cache(project_name)
 
     def get_folder_items(
@@ -340,9 +622,11 @@ class HierarchyModel:
             dict[str, FolderItem]: Folder items by id.
 
         """
-        if not self._folders_items[project_name].is_valid:
+        items = _SHARED_FOLDERS_CACHE.get_valid_items(project_name)
+        if items is None:
             self._refresh_folders_cache(project_name, sender)
-        return self._folders_items[project_name].get_data()
+            items = _SHARED_FOLDERS_CACHE.get_items(project_name)
+        return items
 
     def get_folder_items_by_id(
         self, project_name: str, folder_ids: set[str] | list[str]
@@ -363,8 +647,8 @@ class HierarchyModel:
         if not isinstance(folder_ids, set):
             folder_ids = set(folder_ids)
 
-        if self._folders_items[project_name].is_valid:
-            cache_data = self._folders_items[project_name].get_data()
+        cache_data = _SHARED_FOLDERS_CACHE.get_valid_items(project_name)
+        if cache_data is not None:
             return {
                 folder_id: cache_data.get(folder_id)
                 for folder_id in folder_ids
@@ -407,8 +691,8 @@ class HierarchyModel:
         if not folder_paths:
             return output
 
-        if self._folders_items[project_name].is_valid:
-            cache_data = self._folders_items[project_name].get_data()
+        cache_data = _SHARED_FOLDERS_CACHE.get_valid_items(project_name)
+        if cache_data is not None:
             for folder_item in cache_data.values():
                 if folder_item.path in folder_paths:
                     output[folder_item.path] = folder_item
@@ -701,30 +985,43 @@ class HierarchyModel:
     def _refresh_folders_cache(
         self, project_name: str, sender: str | None = None
     ) -> None:
+        cache = _SHARED_FOLDERS_CACHE
         thread_id = threading.get_ident()
-        cond = self._folders_refreshing_cond
-        with cond:
-            refreshing_thread = self._folders_refreshing.get(project_name)
-            # Re-entered from a refresh event callback in the same thread
-            if refreshing_thread == thread_id:
-                return
-            # Other thread is already querying, wait for its result
-            #   instead of returning not yet filled cache.
-            if refreshing_thread is not None:
-                cond.wait_for(
-                    lambda: project_name not in self._folders_refreshing
-                )
-                return
-            self._folders_refreshing[project_name] = thread_id
-
-        try:
-            with self._folder_refresh_event_manager(project_name, sender):
-                folder_items = self._query_folders(project_name)
-                self._folders_items[project_name].update_data(folder_items)
-        finally:
+        cond = cache.cond
+        while True:
             with cond:
-                self._folders_refreshing.pop(project_name, None)
-                cond.notify_all()
+                refreshing_thread = cache.refreshing.get(project_name)
+                # Re-entered from a refresh event callback in the same thread
+                if refreshing_thread == thread_id:
+                    return
+                # Other thread is already querying, wait for its result
+                #   instead of returning not yet filled cache.
+                if refreshing_thread is not None:
+                    cond.wait_for(
+                        lambda: project_name not in cache.refreshing
+                    )
+                    # Query again if the result was discarded or failed
+                    if cache.get_valid_items_locked(project_name) is None:
+                        continue
+                    return
+
+                cache.refreshing[project_name] = thread_id
+                token = cache.start_query_locked(project_name)
+
+            stored = False
+            try:
+                with self._folder_refresh_event_manager(project_name, sender):
+                    folder_items = self._query_folders(project_name)
+                    stored = cache.store(project_name, folder_items, token)
+            finally:
+                with cond:
+                    cache.refreshing.pop(project_name, None)
+                    cond.notify_all()
+
+            if stored:
+                return
+            # Cache was reset during the query, the result might be
+            #   outdated so query again
 
     def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
         folders = ayon_api.get_rest_folders(project_name, include_attrib=False)
