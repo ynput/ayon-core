@@ -211,8 +211,15 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         version_entities_by_id,
         project_name
     ):
+        # Server 1.16.8 and newer propagates version thumbnail to parent
+        #   folder and task, so folder thumbnail does not have to be set.
+        # - older servers still need the thumbnail set on folder
+        set_folder_thumbnail = (
+            ayon_api.get_server_version_tuple() < (1, 16, 8)
+        )
         # Make sure each entity id has defined only one thumbnail id
         folder_ids = set()
+        thumbnail_id_by_folder_id = {}
         op_session = OperationsSession()
         for instance_item in filtered_instance_items:
             instance, thumbnail_path, version_id = instance_item
@@ -245,12 +252,25 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 f"Setting thumbnail for version \"{version_name}\""
                 f" <{version_id}>"
             )
+            if set_folder_thumbnail:
+                thumbnail_id_by_folder_id[folder_id] = thumbnail_id
+
+        for folder_id, thumbnail_id in thumbnail_id_by_folder_id.items():
+            op_session.update_entity(
+                project_name,
+                "folder",
+                folder_id,
+                {"thumbnailId": thumbnail_id}
+            )
+            self.log.debug(
+                f"Setting thumbnail for folder <{folder_id}>"
+            )
 
         # Trigger thumbnail cleanup for the folders that did use thumbnail
         #   id of a version. We changed the logic, folders don't need
         #   to have explicitly set thumbnail id, but we need to auto-fix
         #   existing folders that already did set the thumbnail.
-        if folder_ids:
+        if folder_ids and not set_folder_thumbnail:
             # There is a bug in public version of 'get_addon_endpoint'
             # - did not support subpaths correctly
             endpoint = ayon_api.get_addon_endpoint("core", __version__)
