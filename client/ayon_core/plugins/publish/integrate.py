@@ -28,7 +28,7 @@ from ayon_core.lib.file_transaction import (
 )
 from ayon_core.pipeline.publish import (
     PublishError,
-    get_publish_template_name,
+    get_publish_template_name_for_instance,
 )
 from ayon_core.pipeline.publish.lib import get_file_collections
 from ayon_core.pipeline import is_product_base_type_supported
@@ -1179,27 +1179,8 @@ class IntegrateAsset(pyblish.api.ContextPlugin):
 
     def get_template_name(self, instance: pyblish.api.Instance) -> str:
         """Return anatomy template name to use for integration"""
-
-        # Anatomy data is pre-filled by Collectors
-        context = instance.context
-        project_name = context.data["projectName"]
-
-        # Task can be optional in anatomy data
-        host_name = context.data["hostName"]
-        anatomy_data = instance.data["anatomyData"]
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = instance.data["productType"]
-        task_info = anatomy_data.get("task") or {}
-
-        return get_publish_template_name(
-            project_name,
-            host_name,
-            product_base_type=product_base_type,
-            task_name=task_info.get("name"),
-            task_type=task_info.get("type"),
-            project_settings=context.data["project_settings"],
-            logger=self.log,
+        return get_publish_template_name_for_instance(
+            instance, logger=self.log
         )
 
     def get_rootless_path(self, anatomy: Anatomy, path: str) -> str:
