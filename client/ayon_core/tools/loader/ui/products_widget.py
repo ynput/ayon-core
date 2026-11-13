@@ -433,7 +433,7 @@ class ProductsWidget(QtWidgets.QWidget):
             len(version_ids) == 1,
             self
         )
-        action_item, options = result
+        action_item, options, alternative_identifier = result
         if action_item is None or options is None:
             return
 
@@ -445,6 +445,7 @@ class ProductsWidget(QtWidgets.QWidget):
             data=action_item.data,
             options=options,
             form_values={},
+            alternative_identifier=alternative_identifier,
         )
 
     def _on_selection_change(self):

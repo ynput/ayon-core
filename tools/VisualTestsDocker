@@ -1,4 +1,6 @@
-FROM ubuntu:24.04 AS testsbase
+# Keep in sync with 'runs-on' of '.github/workflows/pr_unittests.yaml',
+#   text and icons are rendered slightly differently on each Ubuntu release.
+FROM ubuntu:26.04 AS testsbase
 ENV PYTHONUNBUFFERED=1
 ENV QT_QPA_PLATFORM=offscreen
 

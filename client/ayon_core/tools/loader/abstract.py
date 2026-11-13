@@ -283,6 +283,33 @@ class RepreItem:
 
 
 @dataclass
+class ActionAlternativeItem:
+    """Alternative way how to launch an action.
+
+    Args:
+        identifier (str): Alternative launch identifier.
+        icon (IconBase | dict[str, Any] | None): Icon definition. Default
+            option box icon is used if not set.
+        tooltip (str | None): Tooltip.
+
+    """
+    identifier: str
+    icon: IconBase | dict[str, Any] | None = None
+    tooltip: str | None = None
+
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            identifier=self.identifier,
+            icon=self.icon,
+            tooltip=self.tooltip,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ActionAlternativeItem":
+        return cls(**data)
+
+
+@dataclass
 class ActionItem:
     """Action item that can be triggered.
 
@@ -299,6 +326,9 @@ class ActionItem:
         data (dict[str, Any] | None): Additional action data.
         options (list[AbstractAttrDef] | None):
             Action options. Note: 'qargparse' is considered as deprecated.
+        alternative_launch_items (list[ActionAlternativeItem]): Alternative
+            ways how to launch the action. A button is shown next to
+            the action for each of them.
 
     """
     identifier: str
@@ -309,6 +339,7 @@ class ActionItem:
     order: int
     data: dict[str, Any] | None
     options: list[AbstractAttrDef] | None
+    alternative_launch_items: list[ActionAlternativeItem]
 
     def _options_to_data(self):
         options = self.options
@@ -336,6 +367,10 @@ class ActionItem:
             order=self.order,
             data=self.data,
             options=options,
+            alternative_launch_items=[
+                item.to_data()
+                for item in self.alternative_launch_items
+            ],
         )
 
     @classmethod
@@ -344,6 +379,10 @@ class ActionItem:
         if options:
             options = deserialize_attr_defs(options)
         data["options"] = options
+        data["alternative_launch_items"] = [
+            ActionAlternativeItem.from_data(item)
+            for item in data["alternative_launch_items"]
+        ]
         return cls(**data)
 
 
@@ -997,6 +1036,7 @@ class FrontendLoaderController(_BaseLoaderController):
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
+        alternative_identifier: str | None,
     ):
         """Trigger action item.
 
@@ -1021,6 +1061,8 @@ class FrontendLoaderController(_BaseLoaderController):
             data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Action option values from UI.
             form_values (dict[str, Any]): Action form values from UI.
+            alternative_identifier (str | None): Identifier of alternative
+                launch used to launch the action.
 
         """
         pass
