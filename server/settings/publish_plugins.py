@@ -2273,40 +2273,9 @@ DEFAULT_PUBLISH_VALUES = {
     "ValidateOutdatedContainers": {
         "plugin_state_profiles": [
             {
-                # Default host names are based on original
-                #   filter of ValidateContainer pyblish plugin
-                "host_names": [
-                    "maya",
-                    "houdini",
-                    "nuke",
-                    "harmony",
-                    "photoshop",
-                    "aftereffects",
-                    "fusion",
-                    "silhouette",
-                    "blender",
-                    "max",
-                    "cinema4d",
-                    "comfyui",
-                    "equalizer",
-                    "flame",
-                    "hiero",
-                    "mari",
-                    "marvelousdesigner",
-                    "mochapro",
-                    "motionbuilder",
-                    "openrv",
-                    "premiere",
-                    "pureref",
-                    "resolve",
-                    "speedtree",
-                    "substancedesigner",
-                    "substancepainter",
-                    "tvpaint",
-                    "unreal",
-                    "wrap",
-                    "zbrush",
-                ],
+                # Empty host names match all hosts. The plugin disables itself
+                #   for hosts that do not implement `ILoadHost`.
+                "host_names": [],
                 "enabled": True,
                 "optional": True,
                 "active": True
