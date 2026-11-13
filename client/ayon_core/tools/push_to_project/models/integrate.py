@@ -1030,7 +1030,6 @@ class ProjectPushItemProcess:
             "source",
             "comment",
             "description",
-            "intent",
         }:
             value = src_attrib.get(key)
             if value:

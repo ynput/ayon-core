@@ -1679,13 +1679,6 @@ def get_version_data_from_instance(
         "fps": instance.data.get("fps", context.data.get("fps"))
     }
 
-    intent_value = context.data.get("intent")
-    if intent_value and isinstance(intent_value, dict):
-        intent_value = intent_value.get("value")
-
-    if intent_value:
-        version_data["intent"] = intent_value
-
     # Include optional data if present in
     optionals = [
         "frameStart", "frameEnd", "step",
