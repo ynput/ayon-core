@@ -8,8 +8,10 @@ from ayon_core.ui.components.container import AYContainer
 from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
 from ayon_core.ui.components.label import AYLabel
 from ayon_core.ui.components.layouts import AYHBoxLayout
+from ayon_core.ui.components.tab_bar import AYTabBar
 from ayon_core.ui.components.table_view import AYTableView
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
+from ayon_core.ui.components.user_avatars import UserAvatarCache
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
@@ -19,6 +21,7 @@ from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
 from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils.activity_widget import ActivityWidget
 
 from ._browser_cell_delegates import format_relative_time
 from ._browser_thumbnails import _thumbnail_loader
@@ -27,10 +30,16 @@ from ._browser_thumbnails import _thumbnail_loader
 class ReviewInspector(AYContainer):
     """A placeholder widget for the review inspector panel."""
 
+    # Activity of a larger selection is too mixed to be useful
+    activity_selection_limit = 20
+    # Margin of the content on the sides of the inspector
+    side_margin = 10
+
     def __init__(
         self,
         controller: BrowserWidgetController,
         *args,
+        avatar_cache: UserAvatarCache | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -42,9 +51,14 @@ class ReviewInspector(AYContainer):
             **kwargs,
         )
         self._layout.setAlignment(QtCore.Qt.AlignTop)
+        # Line below the tabs goes from side to side, the content has the
+        #   side margins instead
+        self._layout.setContentsMargins(0, 10, 0, 10)
         self.setMinimumWidth(300)
 
         self._controller = controller
+        # Avatars shared with other views of the tool, e.g. the table
+        self._avatar_cache = avatar_cache
         self._view: QtWidgets.QAbstractItemView | None = None
         self._current_thumb_key: str = ""
         # Key of the latest representations request, older results are
@@ -69,12 +83,15 @@ class ReviewInspector(AYContainer):
         self._first_update_measured: bool = False
 
         self._build()
+        # Activity of selected folders is shown without a selected version
+        controller.selection_changed.connect(self._on_folders_selected)
 
     def _build(self) -> None:
         """Build the inspector UI. This is a placeholder method."""
 
         # top bar with path and close button
         top_bar = AYHBoxLayout(margin=0, spacing=5)
+        top_bar.setContentsMargins(self.side_margin, 0, self.side_margin, 0)
         self._path_label = AYLabel(
             "",
             dim=True,
@@ -103,8 +120,40 @@ class ReviewInspector(AYContainer):
         thumb_wrapper.addWidget(self._thumbnail)
         self.add_layout(thumb_wrapper)
 
+        # Details and activity share the space below the thumbnail, so
+        #   the activity does not make the inspector any wider. Tabs are
+        #   laid out as on the frontend, but details are shown first.
+        self._tabs = AYTabBar(side_margin=self.side_margin)
+        self._tabs.add_tab("Activity", icon="forum", icon_only=True)
+        self._tabs.add_stretch()
+        details_index = self._tabs.add_tab("Details")
+        self.add_widget(self._tabs)
+        details_page = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+            layout_spacing=10,
+        )
+        details_page._layout.setAlignment(QtCore.Qt.AlignTop)
+        self._activity = ActivityWidget(
+            self._controller, avatar_cache=self._avatar_cache
+        )
+        self._pages = QtWidgets.QStackedWidget()
+        self._pages.addWidget(self._activity)
+        self._pages.addWidget(details_page)
+        self._tabs.current_changed.connect(self._pages.setCurrentIndex)
+        self._tabs.set_current(details_index)
+        pages_wrapper = AYContainer(
+            layout=AYContainer.Layout.VBox,
+            variant=AYContainer.Variants.Low,
+        )
+        pages_wrapper._layout.setContentsMargins(
+            self.side_margin, 0, self.side_margin, 0
+        )
+        pages_wrapper.add_widget(self._pages)
+        self.add_widget(pages_wrapper, stretch=1)
+
         # Version info
-        self.add_widget(
+        details_page.add_widget(
             AYLabel(
                 "Version Info",
                 variant=AYLabel.Variants.Default,
@@ -117,7 +166,7 @@ class ReviewInspector(AYContainer):
             layout_spacing=(10, 8),
         )
         self.info_lyt.set_label_alignment(QtCore.Qt.AlignRight)
-        self.add_widget(self.info_lyt)
+        details_page.add_widget(self.info_lyt)
         # product name
         self._product_value = AYLabel("-")
         self.info_lyt.add_row(
@@ -164,7 +213,7 @@ class ReviewInspector(AYContainer):
         )
 
         # representations
-        self.add_widget(
+        details_page.add_widget(
             AYLabel(
                 "Representations",
                 variant=AYLabel.Variants.Default,
@@ -172,7 +221,7 @@ class ReviewInspector(AYContainer):
             )
         )
         self._representations = Representations(self._controller)
-        self.add_widget(self._representations)
+        details_page.add_widget(self._representations)
 
     def set_view(self, view: QtWidgets.QAbstractItemView) -> None:
         """Set the view for the inspector."""
@@ -221,6 +270,9 @@ class ReviewInspector(AYContainer):
     def _on_model_reset(self) -> None:
         """Clear the selection when the model is reset."""
         self._current_selection.clear()
+        self._update()
+
+    def _on_folders_selected(self, _folder_ids: list[str]) -> None:
         self._update()
 
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
@@ -342,6 +394,9 @@ class ReviewInspector(AYContainer):
 
         thumb_keys: list[str] = []
         version_ids: list[str] = []
+        # A featured hero version has the activity of the version it was
+        #   made from, but representations of the hero version
+        activity_version_ids: list[str] = []
         project_name: str = data.get("project_name", "")
         for d in selected_data:
             tid = d.get("thumbnailId", "")
@@ -350,6 +405,7 @@ class ReviewInspector(AYContainer):
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
             version_ids.append(d.get("_action_version_id") or vid)
+            activity_version_ids.append(vid)
 
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses
@@ -358,12 +414,45 @@ class ReviewInspector(AYContainer):
             self._current_thumb_key = ""
             self._thumbnail.set_thumbnail("")
 
+        self._update_activity(project_name, activity_version_ids)
+
         # Fetch and display representations for all selected versions.
         if self._controller and project_name and version_ids:
             self._load_representations(project_name, version_ids)
         else:
             self._repre_request_key = ""
             self._representations.set_items([])
+
+    def _update_activity(
+        self, project_name: str, version_ids: list[str]
+    ) -> None:
+        """Show activity of the selected versions, or of their folders.
+
+        As on the frontend, the activity of the folders selected in the
+        hierarchy is shown when no version is selected.
+
+        Args:
+            project_name: Project of the selected versions.
+            version_ids: Ids of the selected versions.
+        """
+        if len(version_ids) > self.activity_selection_limit:
+            self._activity.set_context(
+                None, [], f"{len(version_ids)} versions selected"
+            )
+            return
+
+        if version_ids:
+            self._activity.set_context(project_name, version_ids)
+            return
+
+        folder_ids = self._controller.selected_hierarchy_folder_ids
+        if len(folder_ids) > self.activity_selection_limit:
+            folder_ids = []
+        self._activity.set_context(
+            self._controller.current_project,
+            folder_ids,
+            "Select a folder or version to see its activity",
+        )
 
     def _load_representations(
         self, project_name: str, version_ids: list[str]
@@ -485,7 +574,9 @@ class ReviewInspector(AYContainer):
             get_task_queue().enqueue(
                 AsyncTask(
                     name=f"inspector_thumb_{key}",
-                    function=lambda k=key: _thumbnail_loader(k),
+                    function=lambda k=key: _thumbnail_loader(
+                        k, inspector._controller
+                    ),
                     callback=_make_callback(key),
                     priority=1,
                     cancellable=True,

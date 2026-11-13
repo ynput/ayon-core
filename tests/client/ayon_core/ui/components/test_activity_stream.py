@@ -6,6 +6,8 @@ from qtpy import QtWidgets
 
 from ayon_core.ui.components.activity_stream import AYActivityStream
 from ayon_core.ui.components.comment import AYPublish, AYStatusChange
+from ayon_core.ui.components.table_filter import FilterCriterion
+from ayon_core.ui.components.table_model import FLAG_VALUE
 from ayon_core.ui.data_models import (
     ActivityCategory,
     CommentModel,
@@ -54,7 +56,19 @@ def _activities() -> list:
     ]
 
 
-def test_stream_filters_by_category(qtbot) -> None:
+def _flag(key: str, exclude: bool = False) -> FilterCriterion:
+    return FilterCriterion(key, key.title(), [FLAG_VALUE], exclude=exclude)
+
+
+def _visible(stream: AYActivityStream) -> list[str]:
+    return [
+        activity.activity_id
+        for activity, widget in stream._widgets
+        if widget.isVisible()
+    ]
+
+
+def test_stream_filters_by_search_and_filter_bar(qtbot) -> None:
     stream = AYActivityStream(status_definitions=STATUSES)
     qtbot.addWidget(stream)
     stream.show()
@@ -62,19 +76,67 @@ def test_stream_filters_by_category(qtbot) -> None:
     stream.set_activities(_activities())
     assert stream.activity_count() == 3
     assert stream.activity_count(ActivityCategory.COMMENT) == 1
+    filter_bar = stream._filter_bar
 
-    stream._on_filter_clicked(1)
-    visible = [
-        activity.activity_id
-        for activity, widget in stream._widgets
-        if widget.isVisible()
-    ]
-    assert visible == ["comment"]
-    assert stream._count_label.text() == "1 of 3"
+    filter_bar.set_active_criteria([_flag("comments")])
+    assert _visible(stream) == ["comment"]
+    # Picked types are alternatives
+    filter_bar.set_active_criteria([_flag("comments"), _flag("versions")])
+    assert _visible(stream) == ["comment", "publish"]
+    filter_bar.set_active_criteria([_flag("comments", exclude=True)])
+    assert _visible(stream) == ["status", "publish"]
+    # Other criteria all have to match
+    filter_bar.set_active_criteria([
+        _flag("updates", exclude=True),
+        FilterCriterion("author", "User", ["libor"]),
+    ])
+    assert _visible(stream) == ["comment"]
+    filter_bar.set_active_criteria([
+        FilterCriterion("text", "Text", ["v003"], use_substring=True)
+    ])
+    assert _visible(stream) == ["publish"]
+    filter_bar.set_active_criteria([_flag("attachments")])
+    assert _visible(stream) == []
+    assert stream._message_label.text() == "Nothing matches the filter"
+
+    # Filters are kept for other activities
+    stream.set_activities(_activities()[:1])
+    assert stream._message_label.isVisible()
+    filter_bar.set_active_criteria([])
+    assert _visible(stream) == ["comment"]
 
     stream.set_message("Loading")
     assert stream.activity_count() == 0
     assert stream._message_label.text() == "Loading"
+
+
+def test_filter_values_come_from_the_activities(qtbot) -> None:
+    stream = AYActivityStream()
+    qtbot.addWidget(stream)
+    stream.show()
+    activities = _activities()
+    filter_keys = {entry.key for entry in stream._filter_bar._filters}
+    assert "category" not in filter_keys
+
+    activities[0].category = "Internal"
+    activities[0].category_color = "#ff8800"
+    stream.set_activities(activities)
+    # Categories are offered when comments have them
+    filter_keys = {entry.key for entry in stream._filter_bar._filters}
+    assert "category" in filter_keys
+    assert [
+        (option.value, option.label, option.color)
+        for option in stream._get_filter_values("category")
+    ] == [("Internal", "Internal", "#ff8800")]
+    assert [
+        (option.value, option.label)
+        for option in stream._get_filter_values("author")
+    ] == [("libor", "Libor"), ("roy", "Roy Nieterau")]
+
+    stream._filter_bar.set_active_criteria([
+        FilterCriterion("category", "Category", ["Internal"])
+    ])
+    assert _visible(stream) == ["comment"]
 
 
 def test_publish_card_shows_version_status_and_thumbnail(
@@ -441,12 +503,20 @@ def test_stream_filters_checklists(qtbot) -> None:
     stream.set_activities([_checklist_comment()] + _activities())
 
     assert stream.activity_count(ActivityCategory.CHECKLIST) == 1
-    stream._on_filter_clicked(3)
-    assert [
-        activity.activity_id
-        for activity, widget in stream._widgets
-        if widget.isVisible()
-    ] == ["checklist"]
+    # Checked and total checkboxes are shown on the quick action
+    button = stream._checklists_button
+    assert button.text() == "1/2"
+
+    # Quick actions toggle their filter
+    button.click()
+    assert button.isChecked()
+    assert _visible(stream) == ["checklist"]
+    button.click()
+    assert not button.isChecked()
+    assert len(_visible(stream)) == 4
+
+    stream.set_activities(_activities())
+    assert button.text() == ""
 
 
 def test_stick_to_bottom_follows_the_end_of_the_feed(qtbot) -> None:
@@ -509,7 +579,7 @@ def test_stream_reports_the_activities_in_view(qtbot, monkeypatch) -> None:
 
     # Rows hidden by the filter are not in view
     with qtbot.waitSignal(stream.viewport_changed, timeout=1000):
-        stream._on_filter_clicked(2)
+        stream._filter_bar.set_active_criteria([_flag("versions")])
     assert stream.get_visible_activities() == []
 
 
@@ -587,28 +657,42 @@ def test_page_is_shown_instead_of_the_feed(qtbot) -> None:
     page = QtWidgets.QLabel("Details of the version")
     button = stream.add_page("Details", page)
     assert not page.isVisible()
+    # Pages are tabs, the feed is the first one
+    feed_button = stream._tab_bar.button(0)
+    assert feed_button.isChecked()
+    assert button.text() == "Details"
 
     # A page is available without activities, and so is the way back
     button.click()
     assert page.isVisible()
     assert not stream._message_label.isVisible()
-    assert stream._filter_buttons[0].isEnabled()
-    stream._filter_buttons[0].click()
+    assert not stream._filter_bar.isVisible()
+    feed_button.click()
     assert not page.isVisible()
     assert stream._message_label.isVisible()
+    assert stream._filter_bar.isVisible()
     assert not button.isChecked()
 
     stream.set_activities(_activities())
     button.click()
     assert page.isVisible()
     assert not stream._scroll.isVisible()
-    assert not stream._count_label.isVisible()
     # A refresh of the feed keeps the page
     stream.set_activities(_activities()[:2])
     assert page.isVisible()
     assert not stream._scroll.isVisible()
 
-    stream._filter_buttons[1].click()
+    feed_button.click()
     assert not page.isVisible()
     assert stream._scroll.isVisible()
-    assert stream._count_label.text() == "1 of 2"
+
+
+def test_comment_edit_button_is_left_of_delete(qtbot) -> None:
+    stream = AYActivityStream(editable=True)
+    qtbot.addWidget(stream)
+    stream.set_activities(_activities())
+    row = stream._widgets[0][1]
+
+    # As on the frontend, delete is the last button
+    layout = row.edit_frame.layout()
+    assert layout.indexOf(row.edit_button) < layout.indexOf(row.del_button)

@@ -65,6 +65,7 @@ def _create_status_label(
     status_name: str,
     status_definitions: list[dict[str, Any]],
     icon_only: bool = False,
+    dim: bool = False,
 ) -> AYLabel:
     """Create a label of a status with its icon and color.
 
@@ -75,6 +76,7 @@ def _create_status_label(
             not defined is shown by its name only.
         icon_only: Show only the icon, with the name in the tooltip. The
             name is shown anyway if the status has no icon.
+        dim: Show the name dimmed, the icon keeps the color of the status.
 
     Returns:
         The status label.
@@ -97,6 +99,7 @@ def _create_status_label(
         )
     return AYLabel(
         status_name,
+        dim=dim,
         icon=icon,
         icon_color=status.get("color", ""),
         icon_size=14,
@@ -349,27 +352,25 @@ class AYPublish(AYActivityRow):
         text.add_widget(
             AYLabel(
                 data.product,
-                icon="layers",
-                icon_size=14,
                 elide_mode=Qt.TextElideMode.ElideMiddle,
             )
         )
+        # As on the frontend: the version, and its status on the right
         version_line = AYContainer(
             layout=AYContainer.Layout.HBox,
             variant=AYContainer.Variants.High,
             layout_spacing=8,
         )
-        version_line.add_widget(AYLabel(data.version, dim=True))
+        version_line.add_widget(AYLabel(data.version))
+        version_line.addStretch(1)
         if data.status:
             status_label = _create_status_label(
-                data.status, status_definitions or []
+                data.status, status_definitions or [], dim=True
             )
             status_label.setToolTip(
                 f"Current status of the version: {data.status}"
             )
-            version_line.add_widget(status_label, stretch=1)
-        else:
-            version_line.addStretch(1)
+            version_line.add_widget(status_label)
         text.add_widget(version_line)
         self.detail.add_widget(text, stretch=1)
 
@@ -918,8 +919,9 @@ class AYComment(AYContainer):
             parent=self,
         )
         self.edit_button.setFixedSize(bsize, bsize)
-        self.edit_frame.add_widget(self.del_button)
+        # Delete is the last button, as on the frontend
         self.edit_frame.add_widget(self.edit_button)
+        self.edit_frame.add_widget(self.del_button)
         self.top_line.addStretch(100)
         self.top_line.add_widget(self.edit_frame)
         self.edit_frame.setVisible(False)
