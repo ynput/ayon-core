@@ -218,7 +218,7 @@ class UIPublishErrorItem:
     def from_error_item(
         cls, error_info: PublishErrorInfo
     ) -> "UIPublishErrorItem":
-        """Create new object based on resukt from controller.
+        """Create new object based on result from controller.
 
         Returns:
             PublishErrorItem: New object with filled data.
@@ -345,6 +345,14 @@ class UIPublishErrorReport:
                 for ai in data["plugin_action_items"]
             ],
         )
+
+
+@dataclass
+class SubtaskProduct:
+    product_name: str
+    product_base_type: str
+    product_type: str
+    created: bool = False
 
 
 class AbstractPublisherCommon(ABC):
@@ -1130,4 +1138,40 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def clear_thumbnail_temp_dir_path(self) -> None:
         """Remove content of thumbnail temp directory."""
+        pass
+
+    @abstractmethod
+    def get_subtask_products(
+        self, folder_id: str, folder_path: str, task_name: str
+    ) -> list[SubtaskProduct] | None:
+        """Get cached subtask products for a given folder and task.
+
+        Does not query the server, use 'fetch_subtask_products' to do so.
+
+        Args:
+            folder_id (str): Folder id.
+            folder_path (str): Folder path, used to find out which
+                products are already created.
+            task_name (str): Task name.
+
+        Returns:
+            list[SubtaskProduct] | None: Subtask products, or None if
+                they were not fetched yet.
+
+        """
+        pass
+
+    @abstractmethod
+    def fetch_subtask_products(
+        self, project_name: str, folder_id: str
+    ) -> None:
+        """Query subtask products of a folder from server and cache them.
+
+        Can be called from other than main thread.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder id.
+
+        """
         pass

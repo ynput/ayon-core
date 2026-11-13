@@ -39,6 +39,8 @@ if typing.TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.tools.common_models.settings import TaskSortMode
 
+    from .abstract import SubtaskProduct
+
 
 class PublisherController(
     AbstractPublisherBackend,
@@ -708,3 +710,15 @@ class PublisherController(
         return CommentDef(
             minimum_chars_required=comment_minimum_required_chars
         )
+
+    def get_subtask_products(
+        self, folder_id: str, folder_path: str, task_name: str
+    ) -> list[SubtaskProduct]:
+        return self._create_model.get_subtask_products(
+            folder_id, folder_path, task_name
+        )
+
+    def fetch_subtask_products(
+        self, project_name: str, folder_id: str
+    ) -> None:
+        self._create_model.fetch_subtask_products(project_name, folder_id)
