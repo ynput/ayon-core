@@ -1050,11 +1050,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
     # General commands
     @abstractmethod
-    def reset(self) -> None:
+    def reset(self, force: bool = False) -> None:
         """Reset everything, models, ui etc.
 
         Triggers 'controller.reset.started' event at the beginning and
         'controller.reset.finished' at the end.
+
+        Args:
+            force (bool): Reset also data shared with other tools, e.g.
+                folders hierarchy. Should be used when user explicitly
+                asks for a refresh.
 
         """
         pass

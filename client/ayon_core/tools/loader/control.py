@@ -169,7 +169,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def register_event_callback(self, topic, callback):
         self._event_system.add_callback(topic, callback)
 
-    def reset(self):
+    def reset(self, force=False):
         self._emit_event("controller.reset.started")
 
         project_name = self.get_selected_project_name()
@@ -181,7 +181,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loaded_products_cache.reset()
 
         self._products_model.reset()
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
         self._loader_actions_model.reset()
         self._projects_model.reset()
         self._thumbnails_model.reset()

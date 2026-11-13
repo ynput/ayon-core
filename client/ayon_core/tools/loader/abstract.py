@@ -391,11 +391,16 @@ class _BaseLoaderController(ABC):
         pass
 
     @abstractmethod
-    def reset(self):
+    def reset(self, force=False):
         """Reset all cached data to reload everything.
 
         Triggers events "controller.reset.started" and
         "controller.reset.finished".
+
+        Args:
+            force (bool): Reset also data shared with other tools, e.g.
+                folders hierarchy. Should be used when user explicitly
+                asks for a refresh.
         """
 
         pass

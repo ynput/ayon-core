@@ -263,12 +263,12 @@ class BaseLauncherController(
         return self._actions_model.set_action_config_values(context, values)
 
     # General methods
-    def refresh(self):
+    def refresh(self, force=False):
         self._emit_event("controller.refresh.started")
 
         self._settings_model.reset()
         self._projects_model.reset()
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
         self._thumbnails_model.reset()
         self._users_model.reset()
 

@@ -396,13 +396,18 @@ class PublisherController(
             for product_entity in product_entities
         }
 
-    def reset(self):
-        """Reset everything related to creation and publishing."""
+    def reset(self, force: bool = False):
+        """Reset everything related to creation and publishing.
+
+        Args:
+            force (bool): Reset also data shared with other tools.
+
+        """
         self.stop_publish()
 
         self._emit_event("controller.reset.started")
 
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
         self._thumbnails_model.reset()
         self._users_model.reset()
 

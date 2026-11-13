@@ -438,11 +438,16 @@ class AbstractPublisherCommon(ABC):
         pass
 
     @abstractmethod
-    def reset(self) -> None:
+    def reset(self, force: bool = False) -> None:
         """Reset whole controller.
 
         This should reset create context, publish context and all variables
         that are related to it.
+
+        Args:
+            force (bool): Reset also data shared with other tools, e.g.
+                folders hierarchy. Should be used when user explicitly
+                asks for a refresh.
 
         """
         pass

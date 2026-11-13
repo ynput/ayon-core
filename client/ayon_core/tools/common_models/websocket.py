@@ -1210,6 +1210,19 @@ class _GlobalContext:
         event_hub.stop()
 
 
+def get_existing_event_hub() -> EventHub | None:
+    """Global event hub, only if it was already created.
+
+    Can be used to listen to server events without creating websocket
+        connection, e.g. in headless usage.
+
+    Returns:
+        EventHub | None: Global event hub or 'None'.
+
+    """
+    return _GlobalContext.event_hub
+
+
 class WSEventsModel:
     """Receive AYON server events in a tool controller.
 
