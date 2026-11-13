@@ -143,6 +143,18 @@ def install_host(host: AbstractHost) -> None:
 
     install_ayon_plugins(project_name, host_name)
 
+    _install_task_usage_tracker(host)
+
+
+def _install_task_usage_tracker(host: AbstractHost) -> None:
+    """Register current process on the task it is working on."""
+    from .workfile.task_usage import install_task_usage_tracker
+
+    try:
+        install_task_usage_tracker(host)
+    except Exception:
+        log.warning("Failed to install task in-use tracking.", exc_info=True)
+
 
 def _update_log_context(event) -> None:
     """Set context of 'taskChanged' event to log records."""
@@ -274,7 +286,11 @@ def install_ayon_plugins(project_name=None, host_name=None):
 
 def uninstall_host():
     """Undo all of what `install()` did"""
+    from .workfile.task_usage import uninstall_task_usage_tracker
+
     host = registered_host()
+
+    uninstall_task_usage_tracker()
 
     try:
         host.uninstall()

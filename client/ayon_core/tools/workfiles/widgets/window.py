@@ -7,6 +7,7 @@ from ayon_core.pipeline.actions import WorkfileAreaType
 from ayon_core.pipeline.actions.workfile import (
     SAVE_AS_FORM_KEY,
     SAVE_CHANGES_FORM_KEY,
+    TASK_IN_USE_FORM_KEY,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils import (
@@ -32,6 +33,7 @@ from ayon_core.ui.components import (
 from .files_widget import FilesWidget
 from .save_as_dialog import SaveAsDialog
 from .side_panel import SidePanelWidget
+from .task_in_use_dialog import confirm_task_in_use
 from .utils import BaseOverlayFrame, save_changes_prompt
 
 WORKFILE_CSS_PATH = Path(__file__).parent / "workfiles_style.css"
@@ -432,6 +434,11 @@ class WorkfilesToolWindow(AYContainer):
                 "Failed to open workfile",
                 "error",
             )
+        elif event.get("version_up_failed"):
+            self._overlay_messages_widget.add_message(
+                "Failed to version up opened workfile",
+                "error",
+            )
         else:
             self.close()
 
@@ -453,8 +460,8 @@ class WorkfilesToolWindow(AYContainer):
                 result.message, message_type
             )
 
-        # Action continues when the form, Save As dialog or save changes
-        #   prompt is accepted
+        # Action continues when the form, Save As dialog, save changes
+        #   prompt or task in-use prompt is accepted
         form_values = None
         if result.form is not None:
             form_values = self._exec_action_form(
@@ -470,6 +477,15 @@ class WorkfilesToolWindow(AYContainer):
             save_changes = save_changes_prompt(self)
             if save_changes is not None:
                 form_values = {SAVE_CHANGES_FORM_KEY: save_changes}
+        elif result.show_task_in_use_form is not None:
+            task_in_use_form = result.show_task_in_use_form
+            if confirm_task_in_use(
+                self._controller,
+                task_in_use_form.task_id,
+                self,
+                confirm_label=task_in_use_form.confirm_label,
+            ) is not None:
+                form_values = {TASK_IN_USE_FORM_KEY: True}
         else:
             self._apply_action_result(result)
             return

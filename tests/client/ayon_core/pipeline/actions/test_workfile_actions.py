@@ -18,8 +18,12 @@ from ayon_core.pipeline.actions import (
     WorkfileActionSaveAsValues,
     WorkfileActionSelection,
     WorkfileActionsContext,
+    WorkfileActionTaskInUseFormInputs,
+    WorkfileSimpleActionPlugin,
 )
 from ayon_core.pipeline.actions import workfile as workfile_actions
+from ayon_core.pipeline.workfile import task_usage
+from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
 
 PLUGIN_FILE_CONTENT = '''
 from ayon_core.pipeline.actions import (
@@ -126,6 +130,65 @@ def _no_server_calls():
         workfile_actions, "ayon_api", mock.Mock(spec=[])
     ):
         yield
+
+
+# Task in-use notification enabled for all tasks
+TASK_IN_USE_SETTINGS = {
+    "core": {
+        "tools": {
+            "Workfiles": {
+                "task_in_use_profiles": [{
+                    "host_names": [],
+                    "task_types": [],
+                    "task_names": [],
+                    "enabled": True,
+                    "session_timeout_minutes": 5,
+                }],
+            },
+        },
+    },
+}
+OTHER_USER_SESSION = TaskUsageItem(
+    session_id="other-session",
+    username="artist2",
+    machine="machine",
+    site_id="site-1",
+    host_name="testhost",
+    workfile="file_v001.ma",
+    opened_at="2026-01-01T12:00:00+00:00",
+    updated_at="2026-01-01T12:00:00+00:00",
+)
+
+
+@pytest.fixture
+def task_sessions(monkeypatch):
+    """Sessions of a task on the server, other user works on the task.
+
+    Sessions acknowledged by the user are skipped the same way as with
+    the server, the acknowledged sessions are reset for each test.
+    """
+    sessions = [OTHER_USER_SESSION]
+    server_mock = mock.Mock(side_effect=lambda *args: list(sessions))
+    monkeypatch.setattr(task_usage, "get_task_usage_items", server_mock)
+    monkeypatch.setattr(task_usage, "get_ayon_username", lambda: "artist1")
+    monkeypatch.setattr(task_usage, "_acknowledged_session_ids", set())
+    return server_mock
+
+
+class _TaskInUseAction(WorkfileSimpleActionPlugin):
+    identifier = "test.task-in-use"
+    label = "Task in use"
+
+    def is_compatible(self, selection):
+        return True
+
+    def execute_simple_action(self, selection, form_values):
+        result = self.ask_to_confirm_task_in_use(
+            selection.get_task_entity(), form_values, "Open anyway"
+        )
+        if result is not None:
+            return result
+        return WorkfileActionResult(message="continued")
 
 
 def test_discovery_and_sorting(tmp_path):
@@ -269,6 +332,55 @@ def test_ask_to_save_changes(tmp_path):
     assert result.message == "Failed to save current workfile"
 
 
+def test_ask_to_confirm_task_in_use(tmp_path, task_sessions):
+    task_entity = {
+        "id": "task-1", "folderId": "folder-1", "name": "comp",
+        "taskType": "Compositing",
+    }
+    selection = _create_selection(task_entity=task_entity)
+
+    def _execute(project_settings, form_values):
+        context = _create_context(
+            tmp_path, project_settings=project_settings
+        )
+        return _TaskInUseAction(context).execute_action(
+            selection, None, form_values
+        )
+
+    # Not enabled for the task, the server is not asked
+    result = _execute({}, {})
+    assert result.message == "continued"
+    task_sessions.assert_not_called()
+
+    # Other user works on the task, the user is asked first
+    result = _execute(TASK_IN_USE_SETTINGS, {})
+    assert result.show_task_in_use_form == WorkfileActionTaskInUseFormInputs(
+        task_id="task-1", confirm_label="Open anyway"
+    )
+    assert result.message is None
+    task_sessions.assert_called_once_with("test_project", "task-1")
+
+    # User did confirm, the server is not asked again
+    task_sessions.reset_mock()
+    result = _execute(
+        TASK_IN_USE_SETTINGS,
+        {workfile_actions.TASK_IN_USE_FORM_KEY: True},
+    )
+    assert result.message == "continued"
+    task_sessions.assert_not_called()
+
+    # Confirmed sessions are not asked about again, even if the answer is
+    #   not in form values anymore, e.g. after other prompt of the action
+    task_usage.acknowledge_task_usage_items([OTHER_USER_SESSION])
+    result = _execute(TASK_IN_USE_SETTINGS, {})
+    assert result.message == "continued"
+
+    # Failed request does not block the action
+    task_sessions.side_effect = RuntimeError("Server is not available")
+    result = _execute(TASK_IN_USE_SETTINGS, {})
+    assert result.message == "continued"
+
+
 def test_selection_areas():
     selection = _create_selection(filepath="/work/file_v001.ma")
     assert selection.is_workarea()
@@ -385,6 +497,109 @@ def test_set_context(tmp_path):
     assert result.success is True
     assert result.refresh is True
     assert "Compositing" in result.message
+
+
+def test_set_context_task_in_use(tmp_path, task_sessions):
+    identifier = "core.set-context"
+    host = _create_host()
+    task_entity = {
+        "id": "task-1", "folderId": "folder-1", "name": "comp",
+        "taskType": "Compositing",
+    }
+    selection = _create_selection(
+        folder_entity={"id": "folder-1", "path": "/shots/sh020"},
+        task_entity=task_entity,
+        project_entity={"name": "test_project"},
+        project_anatomy=mock.Mock(),
+    )
+    context = _create_context(
+        tmp_path, project_settings=TASK_IN_USE_SETTINGS, host=host
+    )
+
+    # User is asked before the context is changed
+    result = context.execute_action(identifier, selection, None, {})
+    assert result.show_task_in_use_form == WorkfileActionTaskInUseFormInputs(
+        task_id="task-1", confirm_label="Set context anyway"
+    )
+    host.set_current_context.assert_not_called()
+
+    result = context.execute_action(
+        identifier,
+        selection,
+        None,
+        {workfile_actions.TASK_IN_USE_FORM_KEY: True},
+    )
+    host.set_current_context.assert_called_once()
+    assert result.success is True
+
+
+def test_increment_and_open_task_in_use(tmp_path, task_sessions):
+    """User is asked about the task in use and then about unsaved changes.
+
+    Is the same order as the workfiles tool asks on open. Answer to the
+    task in-use prompt is not passed with the answer to the save changes
+    prompt, the user should not be asked again.
+    """
+    host = mock.MagicMock(spec=IWorkfileHost)
+    host.name = "testhost"
+    host.get_current_project_name.return_value = "test_project"
+    host.workfile_has_unsaved_changes.return_value = True
+    context = _create_context(
+        tmp_path, project_settings=TASK_IN_USE_SETTINGS, host=host
+    )
+    identifier = "core.increment-and-open"
+    plugin = context._get_plugins()[identifier]
+    plugin_module = sys.modules[plugin.__module__]
+
+    workfile_path = tmp_path / "file_v001.ma"
+    workfile_path.write_text("")
+    task_entity = {
+        "id": "task-1", "folderId": "folder-1", "name": "comp",
+        "taskType": "Compositing",
+    }
+    selection = _create_selection(
+        filepath=str(workfile_path),
+        folder_entity={"id": "folder-1"},
+        task_entity=task_entity,
+        project_entity={"name": "test_project"},
+        project_anatomy=mock.Mock(),
+        workfile_info=mock.Mock(available=True, comment=None),
+    )
+
+    with mock.patch.object(
+        plugin_module,
+        "copy_workfile_to_context",
+        return_value=str(tmp_path / "file_v002.ma"),
+    ) as copy_mock:
+        result = context.execute_action(identifier, selection, None, {})
+        assert result.show_task_in_use_form == (
+            WorkfileActionTaskInUseFormInputs(
+                task_id="task-1", confirm_label="Open anyway"
+            )
+        )
+        assert result.show_save_changes_form is False
+
+        # The tool acknowledges the sessions the user did confirm
+        task_usage.acknowledge_task_usage_items([OTHER_USER_SESSION])
+        result = context.execute_action(
+            identifier,
+            selection,
+            None,
+            {workfile_actions.TASK_IN_USE_FORM_KEY: True},
+        )
+        assert result.show_save_changes_form is True
+        assert result.show_task_in_use_form is None
+        copy_mock.assert_not_called()
+
+        result = context.execute_action(
+            identifier,
+            selection,
+            None,
+            {workfile_actions.SAVE_CHANGES_FORM_KEY: False},
+        )
+        assert result.show_task_in_use_form is None
+        copy_mock.assert_called_once()
+        assert result.close_tool is True
 
 
 def test_increment_and_open(tmp_path):
@@ -649,6 +864,9 @@ def test_result_json_conversion():
             extension=".ma",
         ),
         show_save_changes_form=True,
+        show_task_in_use_form=WorkfileActionTaskInUseFormInputs(
+            task_id="task-2", confirm_label="Open anyway"
+        ),
         redirect=WorkfileActionRedirect(
             folder_id="folder-1",
             task_name="comp",

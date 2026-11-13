@@ -30,7 +30,8 @@ Using 'WorkfileActionResult' as the output of 'execute_action' can trigger
     would retrigger the action with the values from the form on submitting,
     to refresh the tool, to redirect the tool to a different context, to
     show the Save As dialog of the tool, to ask a user to save unsaved
-    changes of the current workfile or to close the tool.
+    changes of the current workfile, to ask a user if wants to work on
+    a task that is in use by other users or to close the tool.
 
     The result has helper method 'set_redirect' to define the context
     by entities.
@@ -94,6 +95,10 @@ from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import discover_plugins
+from ayon_core.pipeline.workfile.task_usage import (
+    get_task_usage_settings,
+    get_other_users_task_usage_items,
+)
 
 from .structures import ActionForm
 
@@ -108,6 +113,7 @@ if typing.TYPE_CHECKING:
 _PLACEHOLDER = object()
 SAVE_CHANGES_FORM_KEY = "save_current_workfile"
 SAVE_AS_FORM_KEY = "save_as_values"
+TASK_IN_USE_FORM_KEY = "task_in_use_confirmed"
 
 
 class WorkfileAreaType(StrEnum):
@@ -552,6 +558,34 @@ class WorkfileActionSaveAsFormInputs:
 
 
 @dataclass
+class WorkfileActionTaskInUseFormInputs:
+    """Inputs of the task in-use prompt the workfiles tool should show.
+
+    The prompt shows other users working on the task, the same way as
+        the tool does before it opens a workfile. The action is triggered
+        again with 'True' under 'TASK_IN_USE_FORM_KEY' when a user wants
+        to continue. Nothing happens on cancel. See
+        'WorkfileActionPlugin.ask_to_confirm_task_in_use'.
+
+    Attributes:
+        task_id (str): Task the action is about to work on.
+        confirm_label (str): Label of the button to continue.
+
+    """
+    task_id: str
+    confirm_label: str = "Continue anyway"
+
+    def to_json_data(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_json_data(
+        cls, data: dict[str, Any]
+    ) -> WorkfileActionTaskInUseFormInputs:
+        return cls(**data)
+
+
+@dataclass
 class WorkfileActionSaveAsValues:
     """Values of the Save As dialog accepted by a user.
 
@@ -648,6 +682,11 @@ class WorkfileActionResult:
             the tool uses on open. The action is triggered again with
             the answer under 'SAVE_CHANGES_FORM_KEY' unless the user
             cancels. See 'WorkfileActionPlugin.ask_to_save_changes'.
+        show_task_in_use_form (WorkfileActionTaskInUseFormInputs | None):
+            Ask a user if wants to work on a task that is in use by other
+            users. The action is triggered again with 'True' under
+            'TASK_IN_USE_FORM_KEY' unless the user cancels. See
+            'WorkfileActionPlugin.ask_to_confirm_task_in_use'.
         close_tool (bool): The tool should be closed, e.g. because
             a workfile was opened by the action itself.
 
@@ -660,6 +699,7 @@ class WorkfileActionResult:
     redirect: WorkfileActionRedirect | None = None
     show_save_as_form: WorkfileActionSaveAsFormInputs | None = None
     show_save_changes_form: bool = False
+    show_task_in_use_form: WorkfileActionTaskInUseFormInputs | None = None
     close_tool: bool = False
 
     def to_json_data(self) -> dict[str, Any]:
@@ -672,6 +712,9 @@ class WorkfileActionResult:
         save_as_form = self.show_save_as_form
         if save_as_form is not None:
             save_as_form = save_as_form.to_json_data()
+        task_in_use_form = self.show_task_in_use_form
+        if task_in_use_form is not None:
+            task_in_use_form = task_in_use_form.to_json_data()
         return {
             "message": self.message,
             "success": self.success,
@@ -681,6 +724,7 @@ class WorkfileActionResult:
             "redirect": redirect,
             "show_save_as_form": save_as_form,
             "show_save_changes_form": self.show_save_changes_form,
+            "show_task_in_use_form": task_in_use_form,
             "close_tool": self.close_tool,
         }
 
@@ -698,6 +742,13 @@ class WorkfileActionResult:
             data["show_save_as_form"] = (
                 WorkfileActionSaveAsFormInputs.from_json_data(
                     save_as_form
+                )
+            )
+        task_in_use_form = data.get("show_task_in_use_form")
+        if task_in_use_form is not None:
+            data["show_task_in_use_form"] = (
+                WorkfileActionTaskInUseFormInputs.from_json_data(
+                    task_in_use_form
                 )
             )
         return cls(**data)
@@ -910,6 +961,86 @@ class WorkfileActionPlugin(ABC):
             return False
 
         return WorkfileActionResult(show_save_changes_form=True)
+
+    def ask_to_confirm_task_in_use(
+        self,
+        task_entity: dict[str, Any],
+        form_values: dict[str, Any],
+        confirm_label: str = "Continue anyway",
+    ) -> WorkfileActionResult | None:
+        """Make sure a user knows that other users work on a task.
+
+        Helper for actions which make the user work on a task, e.g. open
+            a workfile of the task or change context to it. The user is
+            asked the same way as the workfiles tool asks before it opens
+            a workfile. Should be called before the action changes
+            anything, and before 'ask_to_save_changes', so the user is
+            asked in the same order as by the tool.
+
+        Returns a result if the action should stop and return it from
+            'execute_action', the result asks the user. Nothing happens
+            when the user cancels.
+
+        Returns None if the action can continue. That is when the user did
+            confirm, when the task in-use notification is not enabled for
+            the task, when nobody else works on the task or when the
+            information could not be received. Sessions the user did
+            confirm are not asked about again in the same process, so
+            the action can use other prompts afterwards.
+
+        Example:
+            >>> def execute_action(self, selection, data, form_values):
+            ...     result = self.ask_to_confirm_task_in_use(
+            ...         selection.get_task_entity(),
+            ...         form_values,
+            ...         confirm_label="Open anyway",
+            ...     )
+            ...     if result is not None:
+            ...         return result
+            ...     # The user wants to work on the task
+
+        Args:
+            task_entity (dict[str, Any]): Task the action is about to
+                work on.
+            form_values (dict[str, Any]): Form values passed to
+                'execute_action'.
+            confirm_label (str): Label of the button to continue.
+
+        Returns:
+            WorkfileActionResult | None: Result to return from
+                'execute_action', or None if the action can continue.
+
+        """
+        if form_values.get(TASK_IN_USE_FORM_KEY):
+            return None
+
+        try:
+            settings = get_task_usage_settings(
+                self.project_name,
+                self.host_name,
+                task_entity.get("taskType"),
+                task_entity.get("name"),
+                project_settings=self._context.get_project_settings(),
+            )
+            if not settings.enabled:
+                return None
+            items = get_other_users_task_usage_items(
+                self.project_name, task_entity["id"]
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to receive task in-use information.", exc_info=True
+            )
+            return None
+
+        if not items:
+            return None
+        return WorkfileActionResult(
+            show_task_in_use_form=WorkfileActionTaskInUseFormInputs(
+                task_id=task_entity["id"],
+                confirm_label=confirm_label,
+            )
+        )
 
 
 class WorkfileActionsContext:

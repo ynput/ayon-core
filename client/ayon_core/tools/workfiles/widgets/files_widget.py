@@ -11,6 +11,7 @@ from ayon_core.ui.components import (
 )
 
 from .save_as_dialog import SaveAsDialog
+from .task_in_use_dialog import confirm_task_in_use
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
 from .utils import save_changes_prompt
@@ -216,6 +217,12 @@ class FilesWidget(AYContainer):
     # Workarea workfiles
     # -------------------------------------------------------------
     def _open_workfile(self, folder_id, task_id, filepath):
+        version_up = confirm_task_in_use(
+            self._controller, task_id, self, workfile=filepath
+        )
+        if version_up is None:
+            return
+
         if self._controller.has_unsaved_changes():
             result = save_changes_prompt(self)
             if result is None:
@@ -223,7 +230,9 @@ class FilesWidget(AYContainer):
 
             if result:
                 self._controller.save_current_workfile()
-        self._controller.open_workfile(folder_id, task_id, filepath)
+        self._controller.open_workfile(
+            folder_id, task_id, filepath, version_up
+        )
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()
@@ -277,6 +286,10 @@ class FilesWidget(AYContainer):
     def _on_workarea_save_clicked(self):
         result = self._exec_save_as_dialog()
         if result is None:
+            return
+        if confirm_task_in_use(
+            self._controller, result["task_id"], self, "Save anyway"
+        ) is None:
             return
         self._controller.save_as_workfile(
             result["folder_id"],
@@ -334,6 +347,10 @@ class FilesWidget(AYContainer):
             copied_from=repre_info["filepath"],
         )
         if result is None:
+            return
+        if confirm_task_in_use(
+            self._controller, result["task_id"], self
+        ) is None:
             return
 
         self._controller.copy_workfile_representation(
