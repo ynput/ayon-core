@@ -2284,6 +2284,7 @@ DEFAULT_PUBLISH_VALUES = {
                     "aftereffects",
                     "fusion",
                     "silhouette",
+                    "max",
                 ],
                 "enabled": True,
                 "optional": True,
