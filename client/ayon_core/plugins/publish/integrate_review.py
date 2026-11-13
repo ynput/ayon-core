@@ -36,25 +36,31 @@ class ReviewableUpload:
     label: Optional[str]
 
 
-class IntegrateAYONReview(pyblish.api.InstancePlugin):
+class IntegrateAYONReview(pyblish.api.ContextPlugin):
+    """Upload reviewables of all instances to AYON.
+
+    This is a context plugin so uploads of all instances can run
+    concurrently, which reduces the impact of per-request latency to the
+    server when publishing many instances.
+    """
+
     label = "Integrate AYON Review"
     # Must happen after IntegrateAsset
     order = pyblish.api.IntegratorOrder + 0.15
 
-    def process(self, instance):
-        project_name = instance.context.data["projectName"]
-        src_version_entity = instance.data.get("versionEntity")
-        src_hero_version_entity = instance.data.get("heroVersionEntity")
+    def process(self, context):
+        project_name = context.data["projectName"]
         uploads: list[ReviewableUpload] = []
-        for version_entity in (
-            src_version_entity,
-            src_hero_version_entity,
-        ):
-            if not version_entity:
+        instances_with_uploads = []
+        for instance in context:
+            # Skip instances that are disabled from publishing
+            if not instance.data.get("publish", True):
                 continue
 
-            version_id = version_entity["id"]
-            uploads.extend(self._collect_uploads(version_id, instance))
+            instance_uploads = self._collect_instance_uploads(instance)
+            if instance_uploads:
+                uploads.extend(instance_uploads)
+                instances_with_uploads.append(instance)
 
         if not uploads:
             return
@@ -71,7 +77,23 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             for future in futures:
                 future.result()
 
-        instance.data["hasWebreview"] = True
+        for instance in instances_with_uploads:
+            instance.data["hasWebreview"] = True
+
+    def _collect_instance_uploads(
+        self, instance: pyblish.api.Instance
+    ) -> list[ReviewableUpload]:
+        uploads: list[ReviewableUpload] = []
+        for version_entity in (
+            instance.data.get("versionEntity"),
+            instance.data.get("heroVersionEntity"),
+        ):
+            if not version_entity:
+                continue
+
+            version_id = version_entity["id"]
+            uploads.extend(self._collect_uploads(version_id, instance))
+        return uploads
 
     def _collect_uploads(
         self, version_id: str, instance: pyblish.api.Instance
