@@ -19,6 +19,7 @@ from .publish_frame import PublishFrame
 from .tabs_widget import PublisherTabsWidget
 from .overview_widget import OverviewWidget
 from .report_page import ReportPageWidget
+from .debug_page import PublishDebugWidget, is_publish_debugger_enabled
 
 
 __all__ = (
@@ -41,4 +42,6 @@ __all__ = (
     "PublisherTabsWidget",
     "OverviewWidget",
     "ReportPageWidget",
+    "PublishDebugWidget",
+    "is_publish_debugger_enabled",
 )

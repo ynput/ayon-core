@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import collections
 from dataclasses import dataclass, asdict, field
 import typing
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Literal
 import uuid
 
 from ayon_core.lib.attribute_definitions import (
@@ -345,6 +345,130 @@ class UIPublishErrorReport:
                 for ai in data["plugin_action_items"]
             ],
         )
+
+
+# Debug step types
+# - "item" processes one plugin on one instance (or context)
+# - "plugin" processes all remaining items of the current plugin
+# - "continue" runs until next breakpoint or end of publishing
+PublishDebugStepType = Literal["item", "plugin", "continue"]
+
+
+@dataclass
+class PublishDebugPluginItem:
+    """Publish plugin information for the debugger.
+
+    Attributes:
+        name (str): Plugin class name, used as breakpoint identifier.
+        label (str): Plugin label.
+        order (float): Plugin order.
+        is_instance_plugin (bool): Plugin processes instances.
+        filepath (str | None): Path to file where plugin is defined.
+        processed (bool): Publishing already went past the plugin.
+        is_pending (bool): Publishing is paused before the plugin.
+
+    """
+    name: str
+    label: str
+    order: float
+    is_instance_plugin: bool
+    filepath: str | None
+    processed: bool
+    is_pending: bool
+
+
+@dataclass
+class PublishDebugValue:
+    """Snapshot of a value from publish context or instance data.
+
+    Values are converted to strings at the moment of snapshot so the UI
+        does not hold references to live publish data.
+
+    Attributes:
+        key (str): Key of value in parent.
+        type_name (str): Name of value type.
+        value (str): Value converted to string, can be shortened.
+        children (list[PublishDebugValue] | None): Children of container
+            values (dict, list, ...).
+        status (str): Change compared to previous snapshot. Possible
+            values are "new", "changed" or empty string.
+        length (int | None): Number of items of container value.
+        is_mapping (bool): Container value is a mapping (dict).
+        is_expandable (bool): Children are not part of the snapshot but
+            can be loaded on demand, e.g. attributes of an object.
+        is_attribute (bool): Value is an attribute of parent object.
+
+    """
+    key: str
+    type_name: str
+    value: str
+    children: list[PublishDebugValue] | None = None
+    status: str = ""
+    length: int | None = None
+    is_mapping: bool = False
+    is_expandable: bool = False
+    is_attribute: bool = False
+
+
+@dataclass
+class PublishDebugDataItem:
+    """Snapshot of pyblish context or instance data.
+
+    Attributes:
+        id (str): Instance id or 'CONTEXT_ID'.
+        label (str): Label of the item.
+        is_context (bool): Item is pyblish context.
+        is_active (bool): Instance is enabled for publishing.
+        is_pending (bool): Publishing is paused before processing the item.
+        status (str): Change compared to previous snapshot.
+        data (PublishDebugValue): Root value of the item data.
+
+    """
+    id: str
+    label: str
+    is_context: bool
+    is_active: bool
+    is_pending: bool
+    status: str
+    data: PublishDebugValue
+
+
+@dataclass
+class PublishDebugState:
+    """State of the publish debugger.
+
+    Attributes:
+        is_paused (bool): Publishing is paused by the debugger.
+        pause_reason (str | None): Why publishing was paused, "breakpoint"
+            or "step".
+        plugin_name (str | None): Plugin which will be processed next.
+        plugin_label (str | None): Label of plugin which will be
+            processed next.
+        instance_id (str | None): Instance which will be processed next.
+            Is 'None' for context plugins.
+        item_label (str | None): Label of instance or context which will
+            be processed next.
+
+    """
+    is_paused: bool = False
+    pause_reason: str | None = None
+    plugin_name: str | None = None
+    plugin_label: str | None = None
+    instance_id: str | None = None
+    item_label: str | None = None
+
+
+@dataclass
+class PublishDebugExecResult:
+    """Result of code executed in publish debugger.
+
+    Attributes:
+        success (bool): Code finished without an exception.
+        output (str): Captured output, result or traceback.
+
+    """
+    success: bool
+    output: str
 
 
 class AbstractPublisherCommon(ABC):
@@ -1091,6 +1215,127 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def store_publish_report(self, filepath: str) -> None:
+        pass
+
+    # --- Publish debugger ---
+    @abstractmethod
+    def get_publish_debug_state(self) -> PublishDebugState:
+        """Current state of publish debugger.
+
+        Returns:
+            PublishDebugState: Debugger state.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_publish_debug_plugin_items(self) -> list[PublishDebugPluginItem]:
+        """Publish plugins that will be processed, in processing order.
+
+        Returns:
+            list[PublishDebugPluginItem]: Plugin items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_publish_breakpoints(self) -> set[str]:
+        """Plugin names where publishing will pause.
+
+        Returns:
+            set[str]: Plugin names.
+
+        """
+        pass
+
+    @abstractmethod
+    def set_publish_breakpoints(
+        self, plugin_names: Iterable[str], enabled: bool
+    ) -> None:
+        """Add or remove breakpoints.
+
+        Publishing is paused before the plugin processes each item.
+        Breakpoints are kept on reset.
+
+        Args:
+            plugin_names (Iterable[str]): Plugin names.
+            enabled (bool): Add or remove the breakpoints.
+
+        """
+        pass
+
+    @abstractmethod
+    def clear_publish_breakpoints(self) -> None:
+        """Remove all breakpoints."""
+        pass
+
+    @abstractmethod
+    def get_publish_debug_data_items(self) -> list[PublishDebugDataItem]:
+        """Snapshot of current pyblish context and instances data.
+
+        Values are marked with changes compared to the snapshot taken
+            before the last processed plugins.
+
+        Returns:
+            list[PublishDebugDataItem]: Context item and instance items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_publish_debug_value_children(
+        self, item_id: str, path: tuple[str, ...]
+    ) -> list[PublishDebugValue] | None:
+        """Load children of an expandable value on demand.
+
+        Children of objects are their attributes. Loaded values are not
+            compared to previous snapshot.
+
+        Args:
+            item_id (str): Instance id or 'CONTEXT_ID'.
+            path (tuple[str, ...]): Path to value in item data. Path of
+                attribute is prefixed with '.'.
+
+        Returns:
+            list[PublishDebugValue] | None: Children or None if value
+                was not found.
+
+        """
+        pass
+
+    @abstractmethod
+    def publish_debug_step(self, step_type: PublishDebugStepType) -> None:
+        """Start or continue publishing in debug mode.
+
+        Make sure all changes are saved before publishing is started.
+
+        Args:
+            step_type (PublishDebugStepType): How far should publishing go
+                before it pauses again.
+
+        """
+        pass
+
+    @abstractmethod
+    def publish_debug_execute(
+        self, code: str, instance_id: str | None = None
+    ) -> PublishDebugExecResult:
+        """Execute python code with access to publish data.
+
+        Available variables are 'context', 'instance', 'instances',
+            'plugin' and 'create_context'. Variables defined by the code
+            are kept until reset.
+
+        Args:
+            code (str): Python code to execute.
+            instance_id (str | None): Instance available as 'instance'
+                variable. Instance which is processed next is used
+                if not passed.
+
+        Returns:
+            PublishDebugExecResult: Result of execution.
+
+        """
         pass
 
     @abstractmethod

@@ -15,6 +15,7 @@ from .widgets import (
 if typing.TYPE_CHECKING:
     from ayon_core.tools.publisher.abstract import (
         AbstractPublisherFrontend,
+        PublishDebugState,
         UIFailInfo,
     )
 
@@ -393,7 +394,11 @@ class PublishFrame(QtWidgets.QWidget):
         self._validate_btn.setEnabled(validate_enabled)
         self._publish_btn.setEnabled(publish_enabled)
 
-        if self._controller.publish_has_crashed():
+        debug_state = self._controller.get_publish_debug_state()
+        if debug_state.is_paused:
+            self._set_debug_paused(debug_state)
+
+        elif self._controller.publish_has_crashed():
             self._set_error_msg()
 
         elif self._controller.publish_has_validation_errors():
@@ -416,6 +421,17 @@ class PublishFrame(QtWidgets.QWidget):
             "Hit publish (play button) to continue."
         )
 
+        self._set_success_property(4)
+
+    def _set_debug_paused(self, debug_state: PublishDebugState):
+        if debug_state.pause_reason == "breakpoint":
+            main_label = "Paused at breakpoint"
+        else:
+            main_label = "Paused by debugger"
+        self._set_main_label(main_label)
+        self._message_label_top.setText(
+            f"Next: {debug_state.plugin_label} on {debug_state.item_label}"
+        )
         self._set_success_property(4)
 
     def _set_error_msg(self):
