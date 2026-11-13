@@ -439,3 +439,85 @@ class TestContextOverride:
         assert builder.get_context_override() is None
         assert builder.current_folder_path == "/assets/bob"
         assert builder.current_task_name == "modeling"
+
+
+class _CachingPlugin(wtb.PlaceholderPlugin):
+    """Plugin caching the scene scan in populate data, like integrations."""
+
+    label = "Caching"
+    identifier = "caching"
+
+    def collect_placeholders(self):
+        nodes = self.get_plugin_shared_populate_data("nodes")
+        if nodes is None:
+            # Copy the scene, so later scene changes are not visible through
+            #   the cached value.
+            nodes = set(self.builder.scene_nodes)
+            self.set_plugin_shared_populate_data("nodes", nodes)
+        return [
+            wtb.PlaceholderItem(scene_identifier, {}, self)
+            for scene_identifier in sorted(nodes)
+        ]
+
+    def create_placeholder(self, placeholder_data):
+        raise NotImplementedError
+
+    def update_placeholder(self, placeholder_item, placeholder_data):
+        raise NotImplementedError
+
+    def populate_placeholder(self, placeholder):
+        self.builder.populated.append(placeholder.scene_identifier)
+
+    def repopulate_placeholder(self, placeholder):
+        self.builder.repopulated.append(placeholder.scene_identifier)
+
+
+class _CachingBuilder(wtb.AbstractTemplateBuilder):
+    """Builder whose placeholder plugin caches the scene scan."""
+
+    def __init__(self):
+        super().__init__(None)
+        self.scene_nodes = set()
+        self.populated = []
+        self.repopulated = []
+
+    def get_placeholder_plugin_classes(self):
+        return [_CachingPlugin]
+
+    def import_template(self, path):
+        self.scene_nodes.update({"imported_1", "imported_2"})
+        return True
+
+
+class TestPopulateDataCache:
+    @pytest.fixture
+    def preset(self, tmp_path):
+        template_path = tmp_path / "template.ma"
+        template_path.write_text("")
+        return wtb.TemplatePreset(
+            path=str(template_path),
+            keep_placeholder=True,
+            profile={"path": str(template_path)},
+        )
+
+    def test_build_from_template_scans_scene_after_import(self, preset):
+        """A cached scan from the tool must not hide imported placeholders."""
+        builder = _CachingBuilder()
+        # The tool lists the empty scene before the template is imported.
+        assert builder.get_placeholders() == []
+
+        builder.build_template(preset=preset)
+
+        assert sorted(builder.populated) == ["imported_1", "imported_2"]
+
+    def test_rebuild_template_scans_scene_again(self):
+        """Run all must see placeholders added or removed outside the tool."""
+        builder = _CachingBuilder()
+        builder.scene_nodes.add("removed")
+        # Warm the cache with the old scene.
+        builder.get_placeholders()
+
+        builder.scene_nodes = {"added"}
+        builder.rebuild_template()
+
+        assert builder.repopulated == ["added"]

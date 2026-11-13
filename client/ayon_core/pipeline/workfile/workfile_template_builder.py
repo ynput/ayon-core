@@ -974,6 +974,11 @@ class AbstractTemplateBuilder(ABC):
             self.log.info("There are no placeholder plugins available.")
             return []
 
+        # The tool may have collected placeholders before this call and
+        #   integrations cache the scene scan in shared populate data. Clear
+        #   the cache so the scene is scanned again (e.g. after changes made
+        #   outside of the tool).
+        self.clear_shared_populate_data()
         placeholders = self.get_placeholders()
         if not placeholders:
             self.log.info("No placeholders were found.")
@@ -1142,6 +1147,10 @@ class AbstractTemplateBuilder(ABC):
             self.log.warning("There are no placeholder plugins available.")
             return
 
+        # A template can be imported just before this call. Integrations cache
+        #   the scene scan in shared populate data, which would still describe
+        #   the scene from before the import.
+        self.clear_shared_populate_data()
         placeholders = self.get_placeholders()
         if not placeholders:
             self.log.warning("No placeholders were found.")
