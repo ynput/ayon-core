@@ -59,7 +59,9 @@ class FilterFarmEnvironments(PreLaunchHook):
             if not value:
                 continue
 
-            value = re.sub(value, env_item["pattern"], env_item["replacement"])
+            value = re.sub(
+                env_item["pattern"], env_item["replacement"], value
+            )
             if value:
                 calculated_env[key] = value
             else:
@@ -69,4 +71,4 @@ class FilterFarmEnvironments(PreLaunchHook):
         """Skips list of environment variable names"""
         for skip_env in matching_profile["skip_env_keys"]:
             self.log.info(f"Skipping {skip_env}")
-            calculated_env.pop(skip_env)
+            calculated_env.pop(skip_env, None)
