@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import os
 import platform
@@ -553,8 +555,28 @@ def is_ffmpeg_encoder_available(encoder: str) -> bool:
     return encoder in get_ffmpeg_available_encoders()
 
 
-def is_oiio_supported():
+@functools.lru_cache(maxsize=None)
+def _cached_oiio_executable_validation(args: tuple[str, ...]) -> bool:
+    """Cached '_oiio_executable_validation' keyed by resolved arguments.
+
+    The validation launches the tool in a subprocess, which can be slow,
+    e.g. when the executable lives on a network share. The result is cached
+    per process and validated again only if the resolved arguments change.
+
+    Args:
+        args (tuple[str, ...]): Arguments to launch the tool.
+
+    Returns:
+        bool: Tool executable can be executed.
+    """
+    return _oiio_executable_validation(list(args))
+
+
+def is_oiio_supported() -> bool:
     """Checks if oiiotool is configured for this platform.
+
+    The executable validation result is cached per process for the resolved
+    oiiotool arguments.
 
     Returns:
         bool: OIIO tool executable is available.
@@ -567,4 +589,4 @@ def is_oiio_supported():
     if not args:
         log.debug("OIIOTool is not configured or not present.")
         return False
-    return _oiio_executable_validation(args)
+    return _cached_oiio_executable_validation(tuple(args))
