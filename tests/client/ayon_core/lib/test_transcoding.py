@@ -9,6 +9,7 @@ from ayon_core.lib.transcoding import (
     get_ffmpeg_codec_args,
     oiio_color_convert,
     get_ffmpeg_format_args,
+    get_rescaled_command_arguments,
 )
 
 
@@ -457,6 +458,71 @@ class OiioColorConvertDisplayViewCommands(unittest.TestCase):
                 for arg in cmd
             )
         )
+
+
+class ReuseOiioInputInfo(unittest.TestCase):
+    """Passing 'input_info' must not probe the input again."""
+
+    # Anamorphic overscan input: data window is larger than display window
+    input_info = {
+        "width": 1100,
+        "height": 900,
+        "full_width": 1024,
+        "full_height": 858,
+        "channelnames": ["R", "G", "B", "A"],
+        "attribs": {"PixelAspectRatio": 2.0},
+    }
+
+    def setUp(self):
+        self.oiio_info_mock = self._patch("get_oiio_info_for_input")
+        self.oiio_info_mock.return_value = self.input_info
+        self.ffprobe_mock = self._patch("get_ffprobe_data")
+        # What ffprobe reports for the same input
+        self.ffprobe_mock.return_value = {"streams": [{
+            "codec_type": "video",
+            "width": 1024,
+            "height": 858,
+            "sample_aspect_ratio": "2:1",
+        }]}
+        self.run_subprocess_mock = self._patch("run_subprocess")
+        self._patch("get_oiio_tool_args").side_effect = (
+            lambda tool_name, *extra_args: [tool_name, *extra_args]
+        )
+
+    def _patch(self, name):
+        patcher = patch(f"ayon_core.lib.transcoding.{name}")
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def test_rescale_args_match_probed_input(self):
+        expected = get_rescaled_command_arguments(
+            "oiiotool", "input.exr", 1920, 1080
+        )
+        self.ffprobe_mock.reset_mock()
+        self.oiio_info_mock.reset_mock()
+
+        args = get_rescaled_command_arguments(
+            "oiiotool", "input.exr", 1920, 1080,
+            input_info=self.input_info,
+        )
+
+        self.assertEqual(args, expected)
+        self.assertIn("--pixelaspect", args)
+        self.ffprobe_mock.assert_not_called()
+        self.oiio_info_mock.assert_not_called()
+
+    def test_color_convert_uses_input_info(self):
+        oiio_color_convert(
+            "input.exr",
+            "output.jpg",
+            "config.ocio",
+            "ACEScg",
+            target_colorspace="sRGB",
+            input_info=self.input_info,
+        )
+
+        self.oiio_info_mock.assert_not_called()
+        self.run_subprocess_mock.assert_called_once()
 
 
 def _atom(atom_type: bytes, payload: bytes = b"") -> bytes:

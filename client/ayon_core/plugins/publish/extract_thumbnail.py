@@ -490,8 +490,19 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         colorspace_data: dict = repre["colorspaceData"]
 
         self.log.info(f"Extracting thumbnail {dst_path}")
+        # Read input info once and reuse it for resize and color conversion
+        try:
+            input_info = get_oiio_info_for_input(src_path, logger=self.log)
+        except Exception:
+            self.log.warning(
+                "Failed to read thumbnail source using oiiotool",
+                exc_info=True
+            )
+            return False
+
         resolution_arg = self._get_resolution_args(
-            "oiiotool", src_path, thumbnail_def, review_layers
+            "oiiotool", src_path, thumbnail_def, review_layers,
+            input_info=input_info,
         )
 
         repre_display = colorspace_data.get("display")
@@ -535,6 +546,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 additional_command_args=resolution_arg,
                 review_layers=review_layers,
                 logger=self.log,
+                input_info=input_info,
             )
         except Exception:
             self.log.warning(
@@ -567,8 +579,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
 
         try:
+            input_info = get_oiio_info_for_input(src_path, logger=self.log)
             resolution_arg = self._get_resolution_args(
-                "oiiotool", src_path, thumbnail_def, review_layers
+                "oiiotool", src_path, thumbnail_def, review_layers,
+                input_info=input_info,
             )
         except RuntimeError:
             self.log.warning(
@@ -576,11 +590,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return False
 
-        input_info = get_oiio_info_for_input(
-            src_path,
-            logger=self.log,
-            verbose=False,
-        )
         try:
             input_arg, channels_arg = get_oiio_input_and_channel_args(
                 input_info, review_layers=review_layers
@@ -793,6 +802,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         input_path: str,
         thumbnail_def: ThumbnailDef,
         review_layers: list[str],
+        input_info: dict | None = None,
     ) -> list:
         """Create command arguments for rescaling.
 
@@ -801,6 +811,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             input_path (str): Input file path.
             thumbnail_def (ThumbnailDef): Thumbnail definition.
             review_layers (list[str]): List of reviewable layers.
+            input_info (dict | None): Input info from
+                'get_oiio_info_for_input' to avoid probing the input again.
 
         Returns:
             list: List of command arguments for rescaling.
@@ -822,6 +834,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             bg_color=thumbnail_def.background_color,
             review_layers=review_layers,
             log=self.log,
+            input_info=input_info,
         )
 
     def _get_config_from_profile(
