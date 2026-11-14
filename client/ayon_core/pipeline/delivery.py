@@ -15,7 +15,6 @@ import ayon_api
 
 from ayon_core.lib import create_hard_link, filter_profiles
 
-from .compatibility import is_product_base_type_supported
 from .template_data import (
     get_general_template_data,
     get_folder_template_data,
@@ -511,17 +510,13 @@ def get_representations_delivery_template_data(
 
     general_template_data = get_general_template_data()
 
-    product_fields = {"name", "productType"}
-    if is_product_base_type_supported():
-        product_fields.add("productBaseType")
-
     repres_hierarchy = ayon_api.get_representations_hierarchy(
         project_name,
         representation_ids,
         project_fields=set(),
         folder_fields={"path", "folderType"},
         task_fields={"name", "taskType"},
-        product_fields=product_fields,
+        product_fields={"name", "productType", "productBaseType"},
         version_fields={"version", "productId"},
         representation_fields=None,
     )
