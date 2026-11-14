@@ -544,14 +544,11 @@ def get_representations_delivery_template_data(
 
         product_entity = repre_hierarchy.product
         version_entity = repre_hierarchy.version
-        product_type = product_entity["productType"]
         template_data.update({
             "product": {
                 "name": product_entity["name"],
-                "type": product_type,
-                "basetype": (
-                    product_entity.get("productBaseType") or product_type
-                ),
+                "type": product_entity["productType"],
+                "basetype": product_entity["productBaseType"],
             },
             "version": version_entity["version"],
         })
