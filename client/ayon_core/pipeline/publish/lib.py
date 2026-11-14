@@ -770,6 +770,42 @@ def context_plugin_should_run(
     return False
 
 
+def get_publish_create_context(
+    context: pyblish.api.Context,
+) -> CreateContext | None:
+    """Get CreateContext the publishing was started from.
+
+    The Publisher (and other publish entry points) store their
+        CreateContext in 'context.data["create_context"]'. It caches project
+        settings, project entity, anatomy and folder and task entities since
+        its last reset, so collectors can use them instead of querying the
+        server again.
+
+    The cache is used directly, so mutable values (settings and entities)
+        must be copied before they are stored on the publish context or
+        instances.
+
+    Args:
+        context (pyblish.api.Context): Publish context.
+
+    Returns:
+        CreateContext | None: CreateContext if available and its current
+            project is the publish project.
+
+    """
+    create_context = context.data.get("create_context")
+    if create_context is None:
+        return None
+
+    project_name = context.data.get("projectName")
+    if (
+        not project_name
+        or create_context.get_current_project_name() != project_name
+    ):
+        return None
+    return create_context
+
+
 def get_publish_repre_path(
     instance: pyblish.api.Instance,
     repre: dict[str, Any],
