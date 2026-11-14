@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import copy
+import logging
 import os
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from typing import Any, TYPE_CHECKING
 
 import pyblish.api
@@ -102,8 +105,55 @@ class ThumbnailDef:
         return cls(**filtered_data)
 
 
-class ExtractThumbnail(pyblish.api.InstancePlugin):
-    """Create jpg thumbnail from sequence using ffmpeg"""
+class _InstanceLogAdapter(logging.LoggerAdapter):
+    """Prefix log messages with the instance label.
+
+    Instances are processed in parallel, the prefix keeps the interleaved
+    log messages attributable to an instance.
+    """
+
+    def process(
+        self, msg: Any, kwargs: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        return f"[{self.extra['label']}] {msg}", kwargs
+
+
+@dataclass
+class _InstanceResult:
+    """Thumbnail extraction result of one instance.
+
+    Filled by a worker thread and applied to the instance in the main thread
+    once all workers finished.
+
+    Attributes:
+        instance (pyblish.api.Instance): Processed instance.
+        label (str): Instance label used in logs and error messages.
+        log (logging.LoggerAdapter): Logger prefixing the instance label.
+        staging_dir (str | None): Created temporary staging directory that
+            should be cleaned up after publishing.
+        representations (list[dict[str, Any]]): New thumbnail
+            representations to add to the instance.
+        error (Exception | None): Unexpected error raised during extraction.
+    """
+    instance: pyblish.api.Instance
+    label: str
+    log: logging.LoggerAdapter
+    staging_dir: str | None = None
+    representations: list[dict[str, Any]] = field(default_factory=list)
+    error: Exception | None = None
+
+
+class ExtractThumbnail(pyblish.api.ContextPlugin):
+    """Create jpg thumbnail from sequence using ffmpeg
+
+    Instances are processed in parallel in a thread pool because the
+    extraction mostly waits on ffprobe, ffmpeg and oiiotool subprocesses.
+    Instances are filtered by 'families' and active state the same way as
+    pyblish does for an instance plugin.
+
+    Worker threads only compute the thumbnails, the instance and context
+    data are modified in the main thread after all workers finished.
+    """
 
     label = "Extract Thumbnail"
     order = pyblish.api.ExtractorOrder + 0.49
@@ -131,9 +181,134 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     profiles = []
 
-    def process(self, instance):
-        # run main process
-        self._main_process(instance)
+    # Maximum number of instances processed in parallel. With 1 the instances
+    #   are processed serially in the main thread.
+    max_workers: int = min(8, os.cpu_count() or 1)
+
+    def process(self, context: pyblish.api.Context) -> None:
+        results = [
+            self._create_result(instance)
+            for instance in self._get_instances(context)
+        ]
+        if not results:
+            self.log.debug("No instances to extract thumbnails for.")
+            return
+
+        max_workers = min(self.max_workers, len(results))
+        if max_workers <= 1:
+            for result in results:
+                self._process_instance(result)
+        else:
+            self.log.debug(
+                f"Extracting thumbnails for {len(results)} instances"
+                f" using {max_workers} workers."
+            )
+            with ThreadPoolExecutor(
+                max_workers=max_workers,
+                thread_name_prefix=self.__class__.__name__,
+            ) as executor:
+                # Consume the iterator to re-raise errors not caught by
+                #   the worker function
+                list(executor.map(self._process_instance, results))
+
+        # Apply results in the main thread in order of instances
+        failed_results = []
+        for result in results:
+            # Store new staging to cleanup paths, also for failed instances
+            if result.staging_dir:
+                context.data["cleanupFullPaths"].append(result.staging_dir)
+
+            if result.error is not None:
+                failed_results.append(result)
+                continue
+            self._apply_result(result)
+
+        if failed_results:
+            labels = ", ".join(result.label for result in failed_results)
+            raise RuntimeError(
+                f"Failed to extract thumbnail for instances: {labels}"
+            ) from failed_results[0].error
+
+    def _get_instances(
+        self, context: pyblish.api.Context
+    ) -> list[pyblish.api.Instance]:
+        """Get instances to extract thumbnails for.
+
+        Same filtering as pyblish does for an instance plugin, instances with
+            matching families that are not disabled for publishing.
+
+        Args:
+            context (pyblish.api.Context): Publish context.
+
+        Returns:
+            list[pyblish.api.Instance]: Instances to process.
+
+        """
+        return [
+            instance
+            for instance in pyblish.api.instances_by_plugin(context, self)
+            if instance.data.get("publish") is not False
+        ]
+
+    def _create_result(
+        self, instance: pyblish.api.Instance
+    ) -> _InstanceResult:
+        label = instance.data.get("label") or instance.data["name"]
+        return _InstanceResult(
+            instance=instance,
+            label=label,
+            log=_InstanceLogAdapter(self.log, {"label": label}),
+        )
+
+    def _process_instance(self, result: _InstanceResult) -> None:
+        """Extract thumbnails for one instance.
+
+        Called from worker threads. Errors are stored to the result so
+            the remaining instances can finish.
+
+        Args:
+            result (_InstanceResult): Result of the instance to process.
+
+        """
+        # Shallow copy of the plugin logging with the instance prefix, so
+        #   the per-instance logic can keep using 'self.log'.
+        worker = copy.copy(self)
+        worker.log = result.log
+        try:
+            worker._main_process(result.instance, result)
+        except Exception as exc:
+            result.log.error("Failed to extract thumbnail.", exc_info=True)
+            result.error = exc
+
+    def _apply_result(self, result: _InstanceResult) -> None:
+        """Apply extracted thumbnails to the instance.
+
+        Must be called in the main thread.
+
+        Args:
+            result (_InstanceResult): Result of a processed instance.
+
+        """
+        instance = result.instance
+        for new_repre in result.representations:
+            full_output_path = os.path.join(
+                new_repre["stagingDir"], new_repre["files"]
+            )
+            # add thumbnail path to instance data for integrator
+            instance_thumb_path = instance.data.get("thumbnailPath")
+            if (
+                not instance_thumb_path
+                or not os.path.isfile(instance_thumb_path)
+            ):
+                result.log.debug(
+                    "Adding thumbnail path to instance data: {}".format(
+                        full_output_path
+                    )
+                )
+                instance.data["thumbnailPath"] = full_output_path
+
+            # adding representation
+            instance.data["representations"].append(new_repre)
 
         # Make sure cleanup happens to representations which are having both
         # tags `delete` and `need_thumbnail`
@@ -146,12 +321,25 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 "delete" in tags
                 and "need_thumbnail" in tags
             ):
-                self.log.debug(
+                result.log.debug(
                     "Removing representation: {}".format(repre)
                 )
                 instance.data["representations"].remove(repre)
 
-    def _main_process(self, instance):
+    def _main_process(
+        self, instance: pyblish.api.Instance, result: _InstanceResult
+    ) -> None:
+        """Extract thumbnails for one instance.
+
+        Runs in a worker thread and must not modify instance or context
+            data. The staging directory and new representations are stored
+            to the result instead.
+
+        Args:
+            instance (pyblish.api.Instance): Instance to process.
+            result (_InstanceResult): Result to store the outputs to.
+
+        """
         if not self.profiles:
             self.log.debug("No profiles present for extract review thumbnail.")
             return
@@ -212,7 +400,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             "Create temp directory {} for thumbnail".format(dst_staging)
         )
         # Store new staging to cleanup paths
-        instance.context.data["cleanupFullPaths"].append(dst_staging)
+        result.staging_dir = dst_staging
 
         oiio_supported = is_oiio_supported()
         thumbnail_created = False
@@ -317,19 +505,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             else:
                 repre_name = "thumbnail"
 
-            # add thumbnail path to instance data for integrator
-            instance_thumb_path = instance.data.get("thumbnailPath")
-            if (
-                not instance_thumb_path
-                or not os.path.isfile(instance_thumb_path)
-            ):
-                self.log.debug(
-                    "Adding thumbnail path to instance data: {}".format(
-                        full_output_path
-                    )
-                )
-                instance.data["thumbnailPath"] = full_output_path
-
             new_repre_tags = ["thumbnail"]
             # for workflows which needs to have thumbnails published as
             # separate representations `delete` tag should not be added
@@ -349,7 +524,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             }
 
             # adding representation
-            instance.data["representations"].append(new_repre)
+            result.representations.append(new_repre)
 
             if explicit_repres:
                 # this key will then align assetVersion ftrack thumbnail sync
