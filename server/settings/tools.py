@@ -504,6 +504,80 @@ class PublishToolModel(BaseSettingsModel):
     )
 
 
+class DeliveryTemplateProfileModel(BaseSettingsModel):
+    _layout = "expanded"
+    delivery_templates: list[str] = SettingsField(
+        default_factory=list,
+        title="Picked delivery templates",
+        description=(
+            "Apply when the artist picks one of these delivery templates"
+            " in the Delivery tool. Empty matches any template."
+        ),
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+    representation_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names",
+        description="Regex supported. Empty matches any representation.",
+    )
+    extensions: list[str] = SettingsField(
+        default_factory=list,
+        title="Extensions",
+        description=(
+            "Lowercase extensions without dot, e.g. 'exr'. Regex supported."
+            " Empty matches any extension."
+        ),
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+        description="Empty matches any product base type.",
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Deliver with template",
+        description=(
+            "Anatomy delivery template used for matching representations."
+            " Leave empty to keep the template picked by the artist."
+        ),
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+
+
+class DeliveryToolModel(BaseSettingsModel):
+    filter_type: str = SettingsField(
+        "is_deny_list",
+        title="Filter type",
+        section="Templates shown in Delivery tool",
+        description=(
+            "Limit which anatomy delivery templates artists can pick."
+            " Template profiles can still deliver with hidden templates."
+        ),
+        enum_resolver=filter_type_enum,
+    )
+    filter_templates: list[str] = SettingsField(
+        default_factory=list,
+        title="Delivery templates",
+        description=(
+            "Deny list hides these templates, allow list shows only these."
+            " Empty deny list shows all templates."
+        ),
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+    template_profiles: list[DeliveryTemplateProfileModel] = SettingsField(
+        default_factory=list,
+        title="Template profiles",
+        description=(
+            "Deliver some representations with a different anatomy"
+            " delivery template than the one picked in the Delivery tool,"
+            " e.g. EXRs into a plates folder. The most specific matching"
+            " profile wins, on ties the first one in the list."
+            " Representations without a matching profile use the picked"
+            " template."
+        ),
+    )
+
+
 class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
@@ -528,6 +602,10 @@ class GlobalToolsModel(BaseSettingsModel):
     publish: PublishToolModel = SettingsField(
         default_factory=PublishToolModel,
         title="Publish"
+    )
+    delivery: DeliveryToolModel = SettingsField(
+        default_factory=DeliveryToolModel,
+        title="Delivery"
     )
 
 
@@ -835,5 +913,10 @@ DEFAULT_TOOLS_VALUES = {
             "ignore_paths": [],
         },
         "comment_minimum_required_chars": 0,
-    }
+    },
+    "delivery": {
+        "filter_type": "is_deny_list",
+        "filter_templates": [],
+        "template_profiles": [],
+    },
 }

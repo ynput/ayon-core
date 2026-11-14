@@ -1,21 +1,164 @@
 """Functions useful for delivery of published representations."""
+from __future__ import annotations
+
 import os
 import copy
 import shutil
 import glob
 import collections
-from typing import Dict, Any, Iterable
+import logging
+from dataclasses import dataclass, field
+from typing import Dict, Any, Iterable, Optional
 
 import clique
 import ayon_api
 
-from ayon_core.lib import create_hard_link
+from ayon_core.lib import create_hard_link, filter_profiles
 
 from .template_data import (
     get_general_template_data,
     get_folder_template_data,
     get_task_template_data,
 )
+
+
+@dataclass
+class DeliveryTemplateMatch:
+    """Delivery template resolved for a single representation.
+
+    Attributes:
+        template_name: Name of the anatomy delivery template to use.
+        selected_template_name: Template name the user picked.
+        profile_index: Index of the matching profile in the template
+            profiles settings, or None when no profile matched.
+        profile: The matching profile, or None when no profile matched.
+    """
+    template_name: str
+    selected_template_name: str
+    profile_index: Optional[int] = None
+    profile: Optional[dict[str, Any]] = field(default=None, repr=False)
+
+    @property
+    def is_override(self) -> bool:
+        """Whether a profile changed the template the user picked."""
+        return self.template_name != self.selected_template_name
+
+
+def get_delivery_tool_settings(
+    project_settings: dict[str, Any],
+) -> dict[str, Any]:
+    """Return Delivery tool settings from project settings.
+
+    Args:
+        project_settings: Project settings.
+
+    Returns:
+        dict[str, Any]: Delivery tool settings.
+    """
+    return project_settings["core"]["tools"].get("delivery", {})
+
+
+def get_delivery_template_profiles(
+    project_settings: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return delivery template profiles from project settings.
+
+    Args:
+        project_settings: Project settings.
+
+    Returns:
+        list[dict[str, Any]]: Delivery template profiles.
+    """
+    return get_delivery_tool_settings(project_settings).get(
+        "template_profiles", []
+    )
+
+
+def filter_delivery_template_names(
+    template_names: Iterable[str],
+    delivery_settings: dict[str, Any],
+) -> list[str]:
+    """Filter delivery templates the user can pick in the Delivery tool.
+
+    Template profiles may still deliver with filtered out templates, this
+    only limits what is offered to pick.
+
+    Args:
+        template_names: Anatomy delivery template names.
+        delivery_settings: Delivery tool settings.
+
+    Returns:
+        list[str]: Template names to offer, in the input order.
+    """
+    filter_templates = set(delivery_settings.get("filter_templates") or [])
+    is_allow_list = (
+        delivery_settings.get("filter_type", "is_deny_list")
+        == "is_allow_list"
+    )
+    return [
+        template_name
+        for template_name in template_names
+        if (template_name in filter_templates) == is_allow_list
+    ]
+
+
+def resolve_delivery_template(
+    profiles: list[dict[str, Any]],
+    selected_template_name: str,
+    representation_name: str,
+    extension: Optional[str] = None,
+    product_base_type: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
+) -> DeliveryTemplateMatch:
+    """Resolve which delivery template to use for a representation.
+
+    The user picks one delivery template in the Delivery tool. Template
+    profiles can deliver some representations with another anatomy
+    delivery template, e.g. EXRs into a plates folder. The most specific
+    matching profile wins, on ties the first one in order. A matching
+    profile with an empty template name keeps the picked template, which
+    allows excluding representations from a broader profile.
+
+    Args:
+        profiles: Delivery template profiles from project settings.
+        selected_template_name: Delivery template picked by the user.
+        representation_name: Representation name.
+        extension: Representation extension, with or without leading dot.
+            Matched in lowercase.
+        product_base_type: Product base type of the representation.
+        logger: Logger used for profile filtering debug output.
+
+    Returns:
+        DeliveryTemplateMatch: Resolved delivery template.
+    """
+    if extension:
+        extension = extension.lstrip(".").lower()
+
+    profile = filter_profiles(
+        profiles,
+        {
+            "delivery_templates": selected_template_name,
+            "representation_names": representation_name,
+            "extensions": extension,
+            "product_base_types": product_base_type,
+        },
+        logger=logger,
+    )
+    if profile is None:
+        return DeliveryTemplateMatch(
+            template_name=selected_template_name,
+            selected_template_name=selected_template_name,
+        )
+
+    profile_index = next(
+        idx for idx, item in enumerate(profiles) if item is profile
+    )
+    return DeliveryTemplateMatch(
+        template_name=profile["template_name"] or selected_template_name,
+        selected_template_name=selected_template_name,
+        profile_index=profile_index,
+        profile=profile,
+    )
 
 
 def _copy_file(src_path, dst_path):
@@ -373,7 +516,7 @@ def get_representations_delivery_template_data(
         project_fields=set(),
         folder_fields={"path", "folderType"},
         task_fields={"name", "taskType"},
-        product_fields={"name", "productType"},
+        product_fields={"name", "productType", "productBaseType"},
         version_fields={"version", "productId"},
         representation_fields=None,
     )
@@ -405,6 +548,7 @@ def get_representations_delivery_template_data(
             "product": {
                 "name": product_entity["name"],
                 "type": product_entity["productType"],
+                "basetype": product_entity["productBaseType"],
             },
             "version": version_entity["version"],
         })
