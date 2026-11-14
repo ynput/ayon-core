@@ -511,7 +511,8 @@ class DeliveryTemplateProfileModel(BaseSettingsModel):
         title="Picked delivery templates",
         description=(
             "Apply when the artist picks one of these delivery templates"
-            " in the Delivery tool. Empty matches any template."
+            " in the Delivery tool. Empty applies to any template, but only"
+            " when no profile for the picked template matches."
         ),
         enum_resolver=anatomy_template_items_enum(category="delivery"),
     )
@@ -570,10 +571,12 @@ class DeliveryToolModel(BaseSettingsModel):
         description=(
             "Deliver some representations with a different anatomy"
             " delivery template than the one picked in the Delivery tool,"
-            " e.g. EXRs into a plates folder. The most specific matching"
-            " profile wins, on ties the first one in the list."
-            " Representations without a matching profile use the picked"
-            " template."
+            " e.g. EXRs into a plates folder. Profiles for the picked"
+            " template go before profiles for any template. Then the"
+            " profile matching most filters wins, on a tie representation"
+            " names go before extensions before product base types, then"
+            " the first one in the list. Representations without a matching"
+            " profile use the picked template."
         ),
     )
 

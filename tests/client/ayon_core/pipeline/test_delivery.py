@@ -180,3 +180,51 @@ def test_product_base_type_filter_requires_value():
     )
 
     assert match.template_name == "client"
+
+
+def test_picked_template_profile_beats_any_template_profile():
+    profiles = [
+        _profile(
+            "plates_any",
+            representation_names=["plate"],
+            extensions=["exr"],
+            product_base_types=["plate"],
+        ),
+        _profile("client_plates", delivery_templates=["client"]),
+    ]
+
+    match = resolve_delivery_template(
+        profiles, "client", "plate", extension="exr", product_base_type="plate"
+    )
+
+    assert match.template_name == "client_plates"
+    assert match.profile_index == 1
+
+
+def test_any_template_profile_used_when_picked_has_no_match():
+    profiles = [
+        _profile(
+            "client_cdl", delivery_templates=["client"], extensions=["ccc"]
+        ),
+        _profile("plates_any", extensions=["exr"]),
+    ]
+
+    match = resolve_delivery_template(
+        profiles, "client", "exr", extension="exr"
+    )
+
+    assert match.template_name == "plates_any"
+    assert match.profile_index == 1
+
+
+def test_tie_prefers_representation_name_over_extension():
+    profiles = [
+        _profile("client_plates", extensions=["exr"]),
+        _profile("client_review", representation_names=["exr_review"]),
+    ]
+
+    match = resolve_delivery_template(
+        profiles, "client", "exr_review", extension="exr"
+    )
+
+    assert match.template_name == "client_review"

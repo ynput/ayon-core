@@ -114,10 +114,17 @@ def resolve_delivery_template(
 
     The user picks one delivery template in the Delivery tool. Template
     profiles can deliver some representations with another anatomy
-    delivery template, e.g. EXRs into a plates folder. The most specific
-    matching profile wins, on ties the first one in order. A matching
-    profile with an empty template name keeps the picked template, which
-    allows excluding representations from a broader profile.
+    delivery template, e.g. EXRs into a plates folder.
+
+    Profiles listing the picked template take precedence, profiles without
+    picked templates are only used when none of those match. Within these
+    'filter_profiles' picks the profile matching the most filters. On a
+    tie representation names go before extensions before product base
+    types, then the first profile in order.
+
+    A matching profile with an empty template name keeps the picked
+    template, which allows excluding representations from a broader
+    profile.
 
     Args:
         profiles: Delivery template profiles from project settings.
@@ -134,16 +141,29 @@ def resolve_delivery_template(
     if extension:
         extension = extension.lstrip(".").lower()
 
-    profile = filter_profiles(
-        profiles,
-        {
-            "delivery_templates": selected_template_name,
-            "representation_names": representation_name,
-            "extensions": extension,
-            "product_base_types": product_base_type,
-        },
-        logger=logger,
-    )
+    # Match picked template before 'filter_profiles' so a profile for any
+    #   template can't win over a profile made for the picked template by
+    #   matching more of the other filters.
+    picked_template_profiles = []
+    any_template_profiles = []
+    for profile in profiles:
+        delivery_templates = profile["delivery_templates"]
+        if not delivery_templates:
+            any_template_profiles.append(profile)
+        elif selected_template_name in delivery_templates:
+            picked_template_profiles.append(profile)
+
+    key_values = {
+        "representation_names": representation_name,
+        "extensions": extension,
+        "product_base_types": product_base_type,
+    }
+    profile = None
+    for candidates in (picked_template_profiles, any_template_profiles):
+        profile = filter_profiles(candidates, key_values, logger=logger)
+        if profile is not None:
+            break
+
     if profile is None:
         return DeliveryTemplateMatch(
             template_name=selected_template_name,
