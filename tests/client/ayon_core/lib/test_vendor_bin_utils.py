@@ -8,20 +8,17 @@ from ayon_core.lib import vendor_bin_utils
 
 
 class IsOiioSupportedCache(unittest.TestCase):
-    """`is_oiio_supported` validates the executable once per arguments."""
+    """`is_oiio_supported` validates the executable once per process."""
 
     def setUp(self):
-        vendor_bin_utils._cached_oiio_executable_validation.cache_clear()
-        self.addCleanup(
-            vendor_bin_utils._cached_oiio_executable_validation.cache_clear
-        )
-        self.tool_args = ["oiiotool_a"]
+        vendor_bin_utils.is_oiio_supported.cache_clear()
+        self.addCleanup(vendor_bin_utils.is_oiio_supported.cache_clear)
         patcher = mock.patch.object(
             vendor_bin_utils,
             "get_oiio_tool_args",
-            side_effect=lambda *_args: list(self.tool_args),
+            return_value=["oiiotool"],
         )
-        patcher.start()
+        self.get_args = patcher.start()
         self.addCleanup(patcher.stop)
         patcher = mock.patch.object(
             vendor_bin_utils,
@@ -31,20 +28,10 @@ class IsOiioSupportedCache(unittest.TestCase):
         self.validation = patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_validates_once_for_same_args(self):
+    def test_validates_once(self):
         for _ in range(5):
             self.assertTrue(vendor_bin_utils.is_oiio_supported())
-        self.validation.assert_called_once_with(["oiiotool_a"])
-
-    def test_validates_again_when_args_change(self):
-        vendor_bin_utils.is_oiio_supported()
-        self.tool_args = ["oiiotool_b"]
-        vendor_bin_utils.is_oiio_supported()
-        vendor_bin_utils.is_oiio_supported()
-        self.assertEqual(
-            self.validation.call_args_list,
-            [mock.call(["oiiotool_a"]), mock.call(["oiiotool_b"])],
-        )
+        self.validation.assert_called_once_with(["oiiotool"])
 
     def test_failed_validation_is_cached(self):
         self.validation.return_value = False
@@ -52,11 +39,15 @@ class IsOiioSupportedCache(unittest.TestCase):
         self.assertFalse(vendor_bin_utils.is_oiio_supported())
         self.validation.assert_called_once()
 
-    def test_tool_not_found(self):
-        with mock.patch.object(
-            vendor_bin_utils,
-            "get_oiio_tool_args",
-            side_effect=vendor_bin_utils.ToolNotFoundError(),
-        ):
-            self.assertFalse(vendor_bin_utils.is_oiio_supported())
+    def test_tool_not_found_is_cached(self):
+        self.get_args.side_effect = vendor_bin_utils.ToolNotFoundError()
+        self.assertFalse(vendor_bin_utils.is_oiio_supported())
+        self.assertFalse(vendor_bin_utils.is_oiio_supported())
+        self.get_args.assert_called_once()
         self.validation.assert_not_called()
+
+    def test_cache_clear_validates_again(self):
+        vendor_bin_utils.is_oiio_supported()
+        vendor_bin_utils.is_oiio_supported.cache_clear()
+        vendor_bin_utils.is_oiio_supported()
+        self.assertEqual(self.validation.call_count, 2)
