@@ -175,15 +175,20 @@ class ExtractOIIOTranscode(publish.Extractor):
                     target_view = display_view["view"] or scene_view
                     target_display = display_view["display"] or scene_display
 
-                # both could be already collected by DCC,
-                # but could be overwritten when transcoding
-                if target_view:
-                    new_repre["colorspaceData"]["view"] = target_view
-                if target_display:
-                    new_repre["colorspaceData"]["display"] = target_display
+                # Colorspace data of the new representation describe only
+                #   the target, keys copied from the source representation
+                #   must not be kept
+                new_colorspace_data = new_repre["colorspaceData"]
                 if target_colorspace:
-                    new_repre["colorspaceData"]["colorspace"] = \
-                        target_colorspace
+                    new_colorspace_data["colorspace"] = target_colorspace
+                    new_colorspace_data.pop("display", None)
+                    new_colorspace_data.pop("view", None)
+                else:
+                    new_colorspace_data["display"] = target_display
+                    new_colorspace_data["view"] = target_view
+                    # Display/view describe the pixels, the colorspace
+                    #   copied from the source does not
+                    new_colorspace_data.pop("colorspace", None)
 
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])

@@ -75,11 +75,8 @@ log_cli = true
 log_cli_level = "INFO"
 addopts = "-ra -q -m 'not optional'"
 testpaths = [
-    "tests/client/ayon_core/lib",
-    "tests/client/ayon_core/pipeline",
     "client/ayon_core/tests",
-    "tests/client/ayon_core/ui",
-    "tests/client/ayon_core/lib",
+    "tests",
 ]
 pythonpath = [
     "client",

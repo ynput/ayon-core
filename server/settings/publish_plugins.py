@@ -2256,6 +2256,7 @@ DEFAULT_PUBLISH_VALUES = {
                 "host_names": [
                     "aftereffects",
                     "blender",
+                    "flame",
                     "houdini",
                     "maya",
                     "nuke",
@@ -2283,6 +2284,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "aftereffects",
                     "fusion",
                     "silhouette",
+                    "blender",
+                    "max",
                 ],
                 "enabled": True,
                 "optional": True,
