@@ -36,7 +36,9 @@ from .abstract import (
     ActionResult,
     BuildContextItem,
     BuildStep,
+    PlaceholderCompletionsError,
     PlaceholderItemInfo,
+    PlaceholderOptionsError,
     PlaceholderPluginItem,
 )
 
@@ -87,6 +89,8 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         # Cache of collected placeholders by scene identifier. Cleared on
         #   'reset' and after any action that changes the scene.
         self._placeholders_by_id = None
+        # Error from the last placeholder collection, shown in the UI.
+        self._placeholders_error: Optional[str] = None
 
         # Results of the last template build
         self._build_steps: list[BuildStep] = []
@@ -169,7 +173,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self.emit_event(BUILD_CONTEXT_CHANGED_TOPIC)
 
     def reset(self) -> None:
-        self._placeholders_by_id = None
+        self._invalidate_placeholders()
         if self._builder is not None:
             self._builder.refresh()
         self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
@@ -196,6 +200,16 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             for placeholder in self._get_placeholders().values()
         ]
 
+    def get_placeholders_error(self) -> Optional[str]:
+        """Error from the last placeholder collection.
+
+        Returns:
+            Optional[str]: Short user-facing error message, or None when the
+                last collection did not fail.
+
+        """
+        return self._placeholders_error
+
     def get_placeholder_options(
         self,
         plugin_identifier: str,
@@ -206,13 +220,16 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             return []
         try:
             return list(plugin.get_placeholder_options(placeholder_data))
-        except Exception:
+        except Exception as exc:
             self._log.warning(
                 "Failed to collect options of placeholder plugin"
                 f" '{plugin_identifier}'.",
                 exc_info=True
             )
-            return []
+            raise PlaceholderOptionsError(
+                "Failed to collect options of placeholder plugin"
+                " '{}': {}".format(plugin_identifier, exc)
+            ) from exc
 
     def get_placeholder_preview(
         self, plugin_identifier: str, placeholder_data: dict[str, Any]
@@ -244,13 +261,16 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
 
         try:
             return plugin.get_placeholder_completions(placeholder_data) or {}
-        except Exception:
+        except Exception as exc:
             self._log.warning(
                 "Failed to collect completions of placeholder plugin"
                 f" '{plugin_identifier}'.",
                 exc_info=True
             )
-            return {}
+            raise PlaceholderCompletionsError(
+                "Failed to collect completion suggestions of placeholder"
+                " plugin '{}': {}".format(plugin_identifier, exc)
+            ) from exc
 
     # --- Actions ------------------------------------------------------
     def create_placeholder(
@@ -350,15 +370,35 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         if placeholder is None:
             return self._placeholder_not_found(scene_identifier)
 
+        plugin = placeholder.plugin
+        if not plugin.is_run_placeholder_supported():
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title=(
+                    "Running a placeholder is not supported by placeholder"
+                    " plugin '{}'.".format(plugin.identifier)
+                ),
+            )
+
         try:
             self._builder.repopulate_placeholder(placeholder)
+            errors = list(placeholder.get_errors())
         except Exception:
             return self._action_failed(
                 "Failed to run placeholder", scene_identifier
             )
+        finally:
+            # Running a placeholder can change or remove it from the scene.
+            self._invalidate_placeholders()
 
-        # Running a placeholder can change or remove it from the scene.
-        self._invalidate_placeholders()
+        if errors:
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title="Placeholder failed to populate",
+                error_detail="\n".join(errors),
+            )
         return ActionResult(success=True, scene_identifier=scene_identifier)
 
     def run_template_build(self) -> ActionResult:
@@ -395,7 +435,15 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         # The build can change or remove placeholders in the scene.
         self._invalidate_placeholders()
 
-        failed = [step for step in self._build_steps if step.error]
+        failed = [
+            step for step in self._build_steps if step.status == "failed"
+        ]
+        skipped = [
+            step for step in self._build_steps if step.status == "skipped"
+        ]
+        succeeded = [
+            step for step in self._build_steps if step.status == "succeeded"
+        ]
         if failed:
             return ActionResult(
                 success=False,
@@ -406,6 +454,19 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                     "{} ({}):\n{}".format(step.label, step.scene_identifier,
                                           step.error)
                     for step in failed
+                ),
+            )
+
+        if self._build_steps and not succeeded:
+            return ActionResult(
+                success=False,
+                error_title=(
+                    "No placeholder could be run: the host does not"
+                    " support re-running placeholders."
+                ),
+                error_detail="\n".join(
+                    "{} ({})".format(step.label, step.scene_identifier)
+                    for step in skipped
                 ),
             )
         return ActionResult(success=True)
@@ -477,7 +538,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         Returns:
             list[tuple[str, str, str]]: Scene identifier, label and error
                 message of each placeholder. The error message is empty when
-                the placeholder was processed successfully.
+                the placeholder was processed successfully or skipped.
 
         """
         return [
@@ -500,16 +561,27 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         except Exception:
             label = placeholder.scene_identifier
 
+        plugin = placeholder.plugin
         errors = placeholder.get_errors()
+        if not plugin.is_run_placeholder_supported():
+            status = "skipped"
+            error = ""
+        elif errors:
+            status = "failed"
+            error = "\n".join(errors)
+        else:
+            status = "succeeded"
+            error = ""
+
         return BuildStep(
             scene_identifier=placeholder.scene_identifier,
             label=label or placeholder.scene_identifier,
             order=placeholder.order,
-            status="failed" if errors else "succeeded",
+            status=status,
             duration=self._build_durations.get(
                 placeholder.scene_identifier, 0.0
             ),
-            error="\n".join(errors),
+            error=error,
         )
 
     def _store_build_history(self) -> None:
@@ -533,12 +605,14 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
     def _invalidate_placeholders(self) -> None:
         """Drop cached placeholders so they are collected from scene again."""
         self._placeholders_by_id = None
+        self._placeholders_error = None
 
     def _get_placeholders(self) -> dict[str, PlaceholderItem]:
         if self._placeholders_by_id is not None:
             return self._placeholders_by_id
 
         placeholders_by_id = {}
+        self._placeholders_error = None
         if self._builder is not None:
             # Placeholder plugins cache collected scene nodes in "populate"
             #   shared data. Clear it so changes made in the scene since the
@@ -553,7 +627,20 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                     "Failed to collect placeholders from scene.",
                     exc_info=True
                 )
-                placeholders = []
+                self._placeholders_error = (
+                    "Failed to read placeholders from the scene. See the"
+                    " AYON log for details."
+                )
+                # Do not cache a failed collection, so it can be retried.
+                return {}
+
+            plugin_errors = self._builder.get_placeholder_errors()
+            if plugin_errors:
+                self._placeholders_error = "\n".join(plugin_errors)
+                # If nothing could be collected, do not cache the empty
+                #   result so the collection is retried.
+                if not placeholders:
+                    return {}
 
             placeholders_by_id = {
                 placeholder.scene_identifier: placeholder

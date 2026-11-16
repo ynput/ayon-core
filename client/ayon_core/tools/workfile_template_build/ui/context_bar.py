@@ -180,6 +180,7 @@ class ContextBarWidget(AYContainer):
         self._context_btn = context_btn
         self._reset_btn = reset_btn
         self._test_build_btn = test_build_btn
+        self._test_build_tooltip = test_build_btn.toolTip()
         self._template_btn = template_btn
         self._template_menu = template_menu
         self._template_missing_action = missing_action
@@ -227,14 +228,21 @@ class ContextBarWidget(AYContainer):
         """
         self._context_btn.setEnabled(enabled)
 
-    def set_test_build_enabled(self, enabled: bool) -> None:
+    def set_test_build_enabled(
+        self, enabled: bool, reason: Optional[str] = None
+    ) -> None:
         """Allow to run all placeholders.
 
         Args:
             enabled (bool): All placeholders can be run.
+            reason (Optional[str]): Tooltip explaining why running is not
+                possible.
 
         """
         self._test_build_btn.setEnabled(enabled)
+        self._test_build_btn.setToolTip(
+            reason or self._test_build_tooltip
+        )
 
     def set_template_path(self, template_path: Optional[str]) -> None:
         """Show the template set in settings for the build context.

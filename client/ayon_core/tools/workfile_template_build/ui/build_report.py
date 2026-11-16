@@ -14,12 +14,14 @@ from ayon_core.ui.components import (
 )
 
 ERROR_COLOR = "#e55353"
+SKIPPED_COLOR = "#ffc671"
 
 STATUS_LABELS = {
     "pending": "PENDING",
     "running": "RUNNING",
     "succeeded": "OK",
     "failed": "FAILED",
+    "skipped": "SKIPPED",
 }
 
 
@@ -150,10 +152,13 @@ class BuildReportDialog(QtWidgets.QDialog):
 
         total_duration = 0.0
         failed = 0
+        skipped = 0
         for step in steps:
             total_duration += step.duration
-            if step.error:
+            if step.status == "failed":
                 failed += 1
+            elif step.status == "skipped":
+                skipped += 1
 
             order_item = QtGui.QStandardItem(str(step.order))
             label_item = QtGui.QStandardItem(step.label)
@@ -171,15 +176,24 @@ class BuildReportDialog(QtWidgets.QDialog):
                 color = QtGui.QColor(ERROR_COLOR)
                 status_item.setForeground(QtGui.QBrush(color))
                 label_item.setForeground(QtGui.QBrush(color))
+            elif step.status == "skipped":
+                color = QtGui.QColor(SKIPPED_COLOR)
+                status_item.setForeground(QtGui.QBrush(color))
 
             self._model.appendRow([
                 order_item, label_item, status_item, duration_item
             ])
 
         if steps:
+            populated = len(steps) - failed - skipped
+            parts = ["{} populated".format(populated)]
+            if skipped:
+                parts.append("{} skipped".format(skipped))
+            if failed:
+                parts.append("{} failed".format(failed))
             self._summary_label.setText(
-                "{} placeholder(s) processed, {} failed, {:.2f}s total".format(
-                    len(steps), failed, total_duration
+                "{}, {:.2f}s total".format(
+                    ", ".join(parts), total_duration
                 )
             )
         else:

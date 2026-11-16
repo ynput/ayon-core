@@ -26,6 +26,15 @@ PLACEHOLDER_DELETED_TOPIC = "placeholder.deleted"
 BUILD_CONTEXT_CHANGED_TOPIC = "build_context.changed"
 
 
+class PlaceholderOptionsError(Exception):
+    """Options of a placeholder plugin could not be collected."""
+
+
+class PlaceholderCompletionsError(Exception):
+    """Completion suggestions of a placeholder plugin could not be
+    collected."""
+
+
 @dataclass
 class BuildStep:
     """Step of a template build for a single placeholder.
@@ -35,7 +44,7 @@ class BuildStep:
         label (str): Label of the placeholder.
         order (int): Order in which the placeholder was processed.
         status (str): Status of the step, one of 'pending', 'running',
-            'succeeded' or 'failed'.
+            'succeeded', 'failed' or 'skipped'.
         duration (float): Duration of the step in seconds.
         error (str): Error message when the step failed.
 
@@ -44,7 +53,8 @@ class BuildStep:
     scene_identifier: str
     label: str
     order: int
-    status: str = "pending"     # pending | running | succeeded | failed
+    # pending | running | succeeded | failed | skipped
+    status: str = "pending"
     duration: float = 0.0
     error: str = ""
 
@@ -339,6 +349,17 @@ class AbstractTemplateBuilderController(ABC):
         pass
 
     @abstractmethod
+    def get_placeholders_error(self) -> Optional[str]:
+        """Error that happened during the last placeholder collection.
+
+        Returns:
+            Optional[str]: Short user-facing error message, or None when
+                the last collection did not fail.
+
+        """
+        pass
+
+    @abstractmethod
     def get_placeholder_options(
         self,
         plugin_identifier: str,
@@ -353,6 +374,10 @@ class AbstractTemplateBuilderController(ABC):
 
         Returns:
             list[AbstractAttrDef]: Attribute definitions.
+
+        Raises:
+            PlaceholderOptionsError: Options of the plugin could not be
+                collected.
 
         """
         pass
@@ -386,6 +411,9 @@ class AbstractTemplateBuilderController(ABC):
 
         Returns:
             dict[str, list[str]]: Suggestions by option key.
+
+        Raises:
+            PlaceholderCompletionsError: Suggestions could not be collected.
 
         """
         pass
@@ -523,6 +551,9 @@ __all__ = (
     "PLACEHOLDER_UPDATED_TOPIC",
     "PLACEHOLDER_DELETED_TOPIC",
     "BUILD_CONTEXT_CHANGED_TOPIC",
+
+    "PlaceholderOptionsError",
+    "PlaceholderCompletionsError",
 
     "BuildContextItem",
 

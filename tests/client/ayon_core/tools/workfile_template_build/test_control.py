@@ -16,6 +16,8 @@ from ayon_core.tools.workfile_template_build.abstract import (
     PLACEHOLDERS_REFRESHED_TOPIC,
     PLACEHOLDER_DELETED_TOPIC,
     PLACEHOLDER_UPDATED_TOPIC,
+    PlaceholderCompletionsError,
+    PlaceholderOptionsError,
 )
 from ayon_core.tools.workfile_template_build.control import (
     MAX_BUILD_HISTORY,
@@ -52,6 +54,8 @@ class _Plugin(PlaceholderPlugin):
         self.scene = builder.scene
 
     def get_placeholder_options(self, options=None):
+        if self.fail_on == "options":
+            raise RuntimeError("options boom")
         options = options or {}
         return [
             attribute_definitions.TextDef(
@@ -68,6 +72,8 @@ class _Plugin(PlaceholderPlugin):
         ))
 
     def get_placeholder_completions(self, placeholder_data):
+        if self.fail_on == "completions":
+            raise RuntimeError("completions boom")
         return {"name": ["one", "two"]}
 
     def create_placeholder(self, placeholder_data):
@@ -82,6 +88,8 @@ class _Plugin(PlaceholderPlugin):
         )
 
     def collect_placeholders(self):
+        if self.fail_on == "collect":
+            raise RuntimeError("collect boom")
         return [
             PlaceholderItem(identifier, dict(data), self)
             for identifier, data in self.scene.nodes.items()
@@ -617,3 +625,86 @@ class TestWorkfileName:
         controller = WorkfileTemplateBuilderController(None)
         assert controller.get_workfile_name() is None
         assert controller.get_build_context().label == "No context"
+
+
+class TestPlaceholderCollectionErrors:
+    def test_failed_collection_is_reported_and_retried(self, controller):
+        _Plugin.fail_on = "collect"
+        try:
+            items = controller.get_placeholder_items()
+        finally:
+            _Plugin.fail_on = None
+
+        assert items == []
+        error = controller.get_placeholders_error()
+        assert error is not None
+        assert "fake" in error
+        assert "collect boom" in error
+
+        # The failed collection must not be cached.
+        controller._builder.scene.add({"name": "one"})
+        labels = [item.label for item in controller.get_placeholder_items()]
+        assert labels == ["one"]
+        assert controller.get_placeholders_error() is None
+
+
+class TestPlaceholderPluginErrors:
+    def test_options_failure_is_raised(self, controller):
+        _Plugin.fail_on = "options"
+        try:
+            with pytest.raises(PlaceholderOptionsError) as exc_info:
+                controller.get_placeholder_options("fake")
+        finally:
+            _Plugin.fail_on = None
+
+        assert "options boom" in str(exc_info.value)
+
+    def test_completions_failure_is_raised(self, controller):
+        _Plugin.fail_on = "completions"
+        try:
+            with pytest.raises(PlaceholderCompletionsError) as exc_info:
+                controller.get_placeholder_completions(
+                    "fake", {"name": "one"}
+                )
+        finally:
+            _Plugin.fail_on = None
+
+        assert "completions boom" in str(exc_info.value)
+
+
+class TestRunSupport:
+    @staticmethod
+    def _disable_repopulation(monkeypatch):
+        monkeypatch.setattr(
+            _Plugin,
+            "repopulate_placeholder",
+            PlaceholderPlugin.repopulate_placeholder,
+        )
+
+    def test_run_all_reports_skipped_placeholders(
+        self, controller, monkeypatch
+    ):
+        controller.create_placeholder("fake", {"name": "one"})
+        self._disable_repopulation(monkeypatch)
+
+        result = controller.run_template_build()
+
+        steps = controller.get_build_steps()
+        assert [step.status for step in steps] == ["skipped"]
+        assert not result.success
+        assert "not support" in result.error_title.lower()
+        assert controller._builder.scene.ran == []
+
+    def test_run_placeholder_without_support_fails(
+        self, controller, monkeypatch
+    ):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+        self._disable_repopulation(monkeypatch)
+
+        result = controller.run_placeholder(identifier)
+
+        assert not result.success
+        assert "not supported" in result.error_title
+        assert controller._builder.scene.ran == []

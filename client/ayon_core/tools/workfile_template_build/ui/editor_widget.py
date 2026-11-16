@@ -22,7 +22,9 @@ from ayon_core.ui.components.scroll_area import AYScrollArea
 
 from ..abstract import (
     AbstractTemplateBuilderController,
+    PlaceholderCompletionsError,
     PlaceholderItemInfo,
+    PlaceholderOptionsError,
     PlaceholderPluginItem,
 )
 from .placeholders_widget import (
@@ -33,7 +35,12 @@ from .placeholders_widget import (
     SELECT_ICON,
     get_placeholder_icon,
 )
-from .utils import INPUT_COLOR, PANEL_COLOR, get_palette_color
+from .utils import (
+    INPUT_COLOR,
+    PANEL_COLOR,
+    WARNING_COLOR,
+    get_palette_color,
+)
 
 # Delay between last change of an option and re-calculation of preview and
 #   completions. Both may query the AYON server so they are not calculated
@@ -45,8 +52,6 @@ MAX_PREVIEW_HEIGHT = 200
 
 # Space between the icon, name and actions of the edited placeholder
 HEADER_SPACING = 10
-
-WARNING_COLOR = "#ffc671"
 
 # Object names used by the window stylesheet
 OPTIONS_SCROLL_OBJECT_NAME = "PlaceholderOptionsScroll"
@@ -504,6 +509,37 @@ class PlaceholderEditorWidget(AYContainer):
         attrs_wrapper_layout.addStretch(1)
         attrs_scroll.setWidget(attrs_wrapper)
 
+        # Error shown in the options area when the options cannot be loaded
+        options_error_widget = AYContainer(
+            attrs_wrapper,
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=10,
+            layout_spacing=8,
+        )
+        options_error_icon = AYLabel(
+            parent=options_error_widget,
+            icon="warning",
+            icon_color=WARNING_COLOR,
+            icon_size=16,
+        )
+        options_error_label = AYLabel(
+            parent=options_error_widget,
+            flexible=True,
+        )
+        options_error_label.setWordWrap(True)
+        options_retry_btn = AYButton(
+            "Retry",
+            parent=options_error_widget,
+            variant=AYButton.Variants.Surface,
+            icon="refresh",
+        )
+        options_error_widget.add_widget(options_error_icon)
+        options_error_widget.add_widget(options_error_label, stretch=1)
+        options_error_widget.add_widget(options_retry_btn)
+        options_error_widget.setVisible(False)
+        attrs_wrapper_layout.insertWidget(0, options_error_widget, 0)
+
         # --- Preview ---
         preview_widget = PreviewWidget(self)
 
@@ -555,9 +591,11 @@ class PlaceholderEditorWidget(AYContainer):
         cancel_btn.clicked.connect(self._on_cancel_click)
         run_btn.clicked.connect(self._on_run_click)
         remove_btn.clicked.connect(self._on_remove_click)
+        options_retry_btn.clicked.connect(self._on_options_retry)
 
         self._header_widget = header_widget
         self._select_btn = select_btn
+        self._attrs_scroll = attrs_scroll
         self._attrs_wrapper = attrs_wrapper
         self._attrs_wrapper_layout = attrs_wrapper_layout
         self._preview_widget = preview_widget
@@ -567,6 +605,8 @@ class PlaceholderEditorWidget(AYContainer):
         self._run_btn = run_btn
         self._remove_btn = remove_btn
         self._dynamic_timer = dynamic_timer
+        self._options_error_widget = options_error_widget
+        self._options_error_label = options_error_label
 
         self._mode = CREATE_MODE
         self._plugin_identifier: Optional[str] = None
@@ -575,6 +615,7 @@ class PlaceholderEditorWidget(AYContainer):
         self._original_values: dict[str, Any] = {}
         self._last_dynamic_values: Optional[dict[str, Any]] = None
         self._had_unsaved_changes = False
+        self._options_source_data: Optional[dict[str, Any]] = None
 
     # --- Public API ---------------------------------------------------
     def set_create_mode(self, plugin_item: PlaceholderPluginItem) -> None:
@@ -750,15 +791,22 @@ class PlaceholderEditorWidget(AYContainer):
 
         """
         self._plugin_identifier = plugin_identifier
+        self._options_source_data = copy.deepcopy(placeholder_data)
         self._remove_attrs_widget()
 
         self._preview_widget.set_preview(None)
         self._last_dynamic_values = None
         self._dynamic_timer.stop()
 
-        attr_defs = self._controller.get_placeholder_options(
-            plugin_identifier, placeholder_data
-        )
+        try:
+            attr_defs = self._controller.get_placeholder_options(
+                plugin_identifier, placeholder_data
+            )
+        except PlaceholderOptionsError as exc:
+            self._show_options_error(str(exc))
+            return
+
+        self._hide_options_error()
         attrs_widget = AttributeDefinitionsWidget(
             attr_defs, self._attrs_wrapper
         )
@@ -776,7 +824,28 @@ class PlaceholderEditorWidget(AYContainer):
         self._update_confirm_state()
         self._request_dynamic_update()
 
+    def _show_options_error(self, message: str) -> None:
+        """Show why the options of a plugin could not be loaded."""
+        self._options_error_label.setText(
+            "Could not load placeholder options.\n{}".format(message)
+        )
+        self._options_error_widget.setVisible(True)
+        self._preview_widget.set_preview(None)
+        self._update_confirm_state()
+
+    def _hide_options_error(self) -> None:
+        self._options_error_widget.setVisible(False)
+
+    def _on_options_retry(self) -> None:
+        """Try to load the options again."""
+        if self._plugin_identifier is None:
+            return
+        self._set_plugin(
+            self._plugin_identifier, self._options_source_data
+        )
+
     def _remove_attrs_widget(self) -> None:
+        self._hide_options_error()
         if self._attrs_widget is None:
             return
         self._attrs_wrapper_layout.removeWidget(self._attrs_widget)
@@ -817,15 +886,37 @@ class PlaceholderEditorWidget(AYContainer):
         self._last_dynamic_values = copy.deepcopy(values)
 
         self._preview_widget.set_calculating()
-        completions = self._controller.get_placeholder_completions(
-            self._plugin_identifier, values
-        )
-        if completions and self._attrs_widget is not None:
-            self._attrs_widget.set_completions(completions)
+        completions_error = None
+        try:
+            completions = self._controller.get_placeholder_completions(
+                self._plugin_identifier, values
+            )
+        except PlaceholderCompletionsError as exc:
+            completions = {}
+            completions_error = str(exc)
+
+        if self._attrs_widget is not None:
+            self._attrs_widget.set_completions(completions or {})
 
         preview = self._controller.get_placeholder_preview(
             self._plugin_identifier, values
         )
+        if completions_error is not None:
+            # The preview is still useful; show it with a warning instead of
+            #   hiding the completion failure.
+            if preview is None:
+                preview = PlaceholderPreview(
+                    title="Preview unavailable",
+                    hint=completions_error,
+                    is_error=True,
+                )
+            else:
+                hint = preview.hint
+                preview.hint = (
+                    "{}\n\n{}".format(hint, completions_error)
+                    if hint else completions_error
+                )
+                preview.is_error = True
         self._preview_widget.set_preview(preview)
 
     def _on_confirm_click(self) -> None:

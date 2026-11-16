@@ -41,6 +41,8 @@ class _Plugin(PlaceholderPlugin):
         self.nodes = builder.nodes
 
     def get_placeholder_options(self, options=None):
+        if self.fail_on == "options":
+            raise RuntimeError("options boom")
         options = options or {}
         return [
             attribute_definitions.TextDef(
@@ -58,6 +60,8 @@ class _Plugin(PlaceholderPlugin):
         )
 
     def get_placeholder_completions(self, placeholder_data):
+        if self.fail_on == "completions":
+            raise RuntimeError("completions boom")
         return {"name": ["one", "two"]}
 
     def create_placeholder(self, placeholder_data):
@@ -71,6 +75,8 @@ class _Plugin(PlaceholderPlugin):
         )
 
     def collect_placeholders(self):
+        if self.fail_on == "collect":
+            raise RuntimeError("collect boom")
         return [
             PlaceholderItem(identifier, dict(data), self)
             for identifier, data in self.nodes.items()
@@ -514,7 +520,25 @@ class TestBuildReport:
             assert dialog._model.rowCount() == 1
             assert dialog._model.item(0, 1).text() == "one"
             assert dialog._model.item(0, 2).text() == "OK"
-            assert "1 placeholder(s) processed" in dialog.get_report_text()
+            assert "1 populated" in dialog.get_report_text()
+        finally:
+            dialog.close()
+
+    def test_build_report_lists_skipped_steps(self, window, monkeypatch):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        monkeypatch.setattr(
+            _Plugin,
+            "repopulate_placeholder",
+            PlaceholderPlugin.repopulate_placeholder,
+        )
+
+        window._controller.run_template_build()
+
+        dialog = BuildReportDialog(window._controller, parent=window)
+        try:
+            assert dialog._model.item(0, 2).text() == "SKIPPED"
+            assert "1 skipped" in dialog.get_report_text()
         finally:
             dialog.close()
 
@@ -700,3 +724,118 @@ class TestSelectPlaceholder:
     def test_unknown_placeholder_is_ignored(self, window):
         assert not window.select_placeholder("missing")
         assert window._pages_widget.currentIndex() == HINT_PAGE
+
+
+class TestOptionsErrors:
+    def test_failed_options_are_shown_and_disable_confirm(self, window):
+        _Plugin.fail_on = "options"
+        try:
+            window._on_create_request("fake")
+        finally:
+            _Plugin.fail_on = None
+
+        editor = window._editor_widget
+        assert not editor._options_error_widget.isHidden()
+        assert editor._attrs_widget is None
+        assert not editor._confirm_btn.isEnabled()
+        assert "options boom" in editor._options_error_label.text()
+
+    def test_retry_loads_options(self, window):
+        _Plugin.fail_on = "options"
+        try:
+            window._on_create_request("fake")
+        finally:
+            _Plugin.fail_on = None
+
+        editor = window._editor_widget
+        editor._on_options_retry()
+
+        assert editor._options_error_widget.isHidden()
+        assert editor._attrs_widget is not None
+        assert editor._confirm_btn.isEnabled()
+
+
+class TestCollectionErrors:
+    def test_error_banner_and_hint_are_shown(self, window):
+        _Plugin.fail_on = "collect"
+        try:
+            window.refresh()
+        finally:
+            _Plugin.fail_on = None
+
+        placeholders_widget = window._placeholders_widget
+        assert not placeholders_widget._error_widget.isHidden()
+        assert "collect boom" in placeholders_widget._error_label.text()
+        assert placeholders_widget._empty_widget.isHidden()
+        assert window._pages_widget.currentIndex() == HINT_PAGE
+        assert (
+            "Could not read placeholders"
+            in window._hint_widget._title_label.text()
+        )
+
+    def test_refresh_clears_the_error(self, window):
+        _Plugin.fail_on = "collect"
+        try:
+            window.refresh()
+        finally:
+            _Plugin.fail_on = None
+        assert not window._placeholders_widget._error_widget.isHidden()
+
+        window.refresh()
+
+        assert window._placeholders_widget._error_widget.isHidden()
+        assert not window._placeholders_widget._empty_widget.isHidden()
+
+
+class TestCompletionsErrors:
+    def test_completion_error_is_shown_in_preview(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        editor = window._editor_widget
+
+        _Plugin.fail_on = "completions"
+        try:
+            editor._on_dynamic_timer()
+        finally:
+            _Plugin.fail_on = None
+
+        assert "completions boom" in (
+            editor._preview_widget._hint_label.text()
+        )
+
+
+class TestRunSupport:
+    def test_run_all_is_disabled_without_plugin_support(
+        self, qtbot, monkeypatch
+    ):
+        monkeypatch.setattr(
+            _Plugin,
+            "repopulate_placeholder",
+            PlaceholderPlugin.repopulate_placeholder,
+        )
+        controller = WorkfileTemplateBuilderController(_Builder(None))
+        window = WorkfileTemplateBuilderWindow(controller)
+        qtbot.addWidget(window)
+        window.show()
+        qtbot.waitExposed(window)
+
+        window._on_create_request("fake")
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        test_build_btn = window._context_bar._test_build_btn
+        assert not test_build_btn.isEnabled()
+        assert "supports re-running" in test_build_btn.toolTip().lower()
+
+    def test_build_status_reports_skipped(self, window, monkeypatch):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        monkeypatch.setattr(
+            _Plugin,
+            "repopulate_placeholder",
+            PlaceholderPlugin.repopulate_placeholder,
+        )
+
+        result = window._controller.run_template_build()
+        window._update_build_status(result)
+
+        assert "1 skipped" in window._build_status_btn.text()

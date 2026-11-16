@@ -439,3 +439,124 @@ class TestContextOverride:
         assert builder.get_context_override() is None
         assert builder.current_folder_path == "/assets/bob"
         assert builder.current_task_name == "modeling"
+
+
+class _StaticPlugin(wtb.PlaceholderPlugin):
+    """Plugin collecting placeholders from a fixed scene."""
+
+    label = "Static"
+    identifier = "static"
+
+    def collect_placeholders(self):
+        return [
+            wtb.PlaceholderItem(scene_identifier, {}, self)
+            for scene_identifier in sorted(self.builder.scene_nodes)
+        ]
+
+    def create_placeholder(self, placeholder_data):
+        raise NotImplementedError
+
+    def update_placeholder(self, placeholder_item, placeholder_data):
+        raise NotImplementedError
+
+    def populate_placeholder(self, placeholder):
+        pass
+
+
+class _FailingPlugin(wtb.PlaceholderPlugin):
+    """Plugin whose collection fails, like a broken integration."""
+
+    label = "Failing"
+    identifier = "failing"
+    fail = True
+
+    def collect_placeholders(self):
+        if self.fail:
+            raise RuntimeError("collect boom")
+        return [wtb.PlaceholderItem("from_failing", {}, self)]
+
+    def create_placeholder(self, placeholder_data):
+        raise NotImplementedError
+
+    def update_placeholder(self, placeholder_item, placeholder_data):
+        raise NotImplementedError
+
+    def populate_placeholder(self, placeholder):
+        pass
+
+
+class _IsolatingBuilder(wtb.AbstractTemplateBuilder):
+    """Builder with one working and one failing placeholder plugin."""
+
+    def __init__(self):
+        super().__init__(None)
+        self.scene_nodes = set()
+
+    def get_placeholder_plugin_classes(self):
+        return [_StaticPlugin, _FailingPlugin]
+
+    def import_template(self, path):
+        return True
+
+
+class TestPlaceholderCollectionErrors:
+    def test_one_failing_plugin_does_not_hide_the_others(self, monkeypatch):
+        builder = _IsolatingBuilder()
+        builder.scene_nodes.add("kept")
+
+        placeholders = builder.get_placeholders()
+
+        assert [
+            placeholder.scene_identifier for placeholder in placeholders
+        ] == ["kept"]
+        errors = builder.get_placeholder_errors()
+        assert len(errors) == 1
+        assert "failing" in errors[0]
+
+        monkeypatch.setattr(_FailingPlugin, "fail", False)
+        placeholders = builder.get_placeholders()
+
+        assert sorted(
+            placeholder.scene_identifier for placeholder in placeholders
+        ) == ["from_failing", "kept"]
+        assert builder.get_placeholder_errors() == []
+
+
+class TestLoadOptionsAvailability:
+    def test_link_types_are_cached_per_project(self, monkeypatch):
+        monkeypatch.setenv("AYON_PROJECT_NAME", "demo")
+        builder = _Builder(None)
+        calls = []
+
+        def get_link_types(project_name):
+            calls.append(project_name)
+            return []
+
+        monkeypatch.setattr(wtb.ayon_api, "get_link_types", get_link_types)
+
+        assert builder.get_link_types() == []
+        assert builder.get_link_types() == []
+        assert calls == ["demo"]
+
+        builder.refresh()
+        builder.get_link_types()
+        assert calls == ["demo", "demo"]
+
+    def test_load_options_work_without_loaders(self, monkeypatch):
+        monkeypatch.setenv("AYON_PROJECT_NAME", "demo")
+        monkeypatch.setattr(
+            wtb.ayon_api, "get_link_types", lambda project_name: []
+        )
+
+        class _EmptyLoaderBuilder(_Builder):
+            def get_loaders_by_name(self):
+                return {}
+
+        plugin = _LoadPlugin(_EmptyLoaderBuilder(None))
+
+        attr_defs = plugin.get_placeholder_options({})
+
+        assert attr_defs
+        assert any(
+            attr_def.key == "product_base_type" for attr_def in attr_defs
+        )

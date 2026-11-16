@@ -17,7 +17,7 @@ from ..abstract import (
     PlaceholderItemInfo,
     PlaceholderPluginItem,
 )
-from .build_report import BuildReportDialog
+from .build_report import BuildReportDialog, STATUS_LABELS
 from .context_bar import ContextBarWidget
 from .editor_widget import (
     OPTIONS_CONTENT_OBJECT_NAME,
@@ -334,6 +334,9 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._ignore_selection_change = True
         self._placeholders_widget.set_plugin_items(self._plugin_items)
         self._placeholders_widget.set_placeholder_items(placeholder_items)
+        self._placeholders_widget.set_error(
+            self._controller.get_placeholders_error()
+        )
         self._placeholders_widget.select_identifier(self._current_identifier)
         self._ignore_selection_change = False
 
@@ -356,10 +359,23 @@ class WorkfileTemplateBuilderWindow(AYContainer):
     def _update_build_state(self):
         """Enable building only when the host supports it and there is
         something to build."""
-        self._context_bar.set_test_build_enabled(
-            bool(self._placeholder_items_by_id)
-            and self._controller.is_builder_available()
+        builder_available = self._controller.is_builder_available()
+        has_placeholders = bool(self._placeholder_items_by_id)
+        supports_run = any(
+            plugin_item.run_supported for plugin_item in self._plugin_items
         )
+        enabled = has_placeholders and builder_available and supports_run
+        reason = None
+        if (
+            has_placeholders
+            and builder_available
+            and not supports_run
+        ):
+            reason = (
+                "No placeholder type in this host supports re-running"
+                " placeholders."
+            )
+        self._context_bar.set_test_build_enabled(enabled, reason)
 
     def _update_hint_message(self):
         if not self._controller.is_builder_available():
@@ -369,6 +385,14 @@ class WorkfileTemplateBuilderWindow(AYContainer):
                     "Host \"{}\" does not implement workfile template"
                     " build.".format(self._controller.get_host_name())
                 ),
+            )
+            return
+
+        placeholders_error = self._controller.get_placeholders_error()
+        if placeholders_error:
+            self._hint_widget.set_unavailable(
+                "Could not read placeholders",
+                placeholders_error,
             )
             return
 
@@ -605,25 +629,40 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             result (ActionResult): Result of the build action.
 
         """
-        results = self._controller.get_last_build_results()
-        if not results:
+        steps = self._controller.get_build_steps()
+        if not steps:
             self._build_status_btn.setVisible(False)
             return
 
-        failed = [entry for entry in results if entry[2]]
+        failed = [step for step in steps if step.status == "failed"]
+        skipped = [step for step in steps if step.status == "skipped"]
+        succeeded = [step for step in steps if step.status == "succeeded"]
+
         if failed:
-            text = "{} of {} failed".format(len(failed), len(results))
+            text = "{} of {} failed".format(len(failed), len(steps))
             icon = "error"
+        elif skipped and not succeeded:
+            text = "{} skipped (not supported)".format(len(skipped))
+            icon = "warning"
+        elif skipped:
+            text = "{} populated, {} skipped".format(
+                len(succeeded), len(skipped)
+            )
+            icon = "check_circle"
         else:
-            text = "{} populated".format(len(results))
+            text = "{} populated".format(len(succeeded))
             icon = "check_circle"
 
         details = []
-        for identifier, label, error in results:
-            status = "FAILED" if error else "OK"
-            details.append("[{}] {} ({})".format(status, label, identifier))
-            if error:
-                details.append(error)
+        for step in steps:
+            status = STATUS_LABELS.get(step.status, step.status.upper())
+            details.append(
+                "[{}] {} ({})".format(
+                    status, step.label, step.scene_identifier
+                )
+            )
+            if step.error:
+                details.append(step.error)
         details.append("\nClick to show the build report.")
 
         self._build_status_btn.setText(text)

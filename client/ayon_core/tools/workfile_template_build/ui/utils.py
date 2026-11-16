@@ -14,6 +14,9 @@ INPUT_COLOR = "--md-sys-color-surface-container-low-dark"
 DIVIDER_COLOR = "--md-sys-color-surface-container-high-dark"
 HIGHEST_SURFACE_COLOR = "--md-sys-color-surface-container-highest-dark"
 
+# Color used for warnings that do not have a dedicated palette token
+WARNING_COLOR = "#ffc671"
+
 _FALLBACK_COLORS = {
     PRIMARY_COLOR: "#8fceff",
     ON_PRIMARY_COLOR: "#00344f",

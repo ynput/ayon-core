@@ -273,6 +273,13 @@ class AbstractTemplateBuilder(ABC):
         # Folder path and task name used instead of the host context
         self._context_override: Optional[tuple[str, Optional[str]]] = None
 
+        # Errors collected during the last placeholder collection
+        self._placeholder_errors = []
+
+        # Link types of the project, used by load placeholder options
+        self._link_types = None
+        self._link_types_project = None
+
         self._event_system = EventSystem()
 
     @property
@@ -454,6 +461,11 @@ class AbstractTemplateBuilder(ABC):
 
         self._project_settings = None
 
+        self._placeholder_errors = []
+
+        self._link_types = None
+        self._link_types_project = None
+
         self._event_system = EventSystem()
 
         self.clear_shared_data()
@@ -463,6 +475,25 @@ class AbstractTemplateBuilder(ABC):
         if self._loaders_by_name is None:
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
+
+    def get_link_types(self):
+        """Link types available in the current project.
+
+        The result is cached per project, so building load placeholder
+        options does not query the server on every call.
+
+        Returns:
+            list[dict[str, Any]]: Link types of the project.
+
+        """
+        project_name = self.project_name
+        if (
+            self._link_types is None
+            or self._link_types_project != project_name
+        ):
+            self._link_types = ayon_api.get_link_types(project_name)
+            self._link_types_project = project_name
+        return self._link_types
 
     def get_linked_folder_entities(
         self,
@@ -653,21 +684,51 @@ class AbstractTemplateBuilder(ABC):
 
         Each placeholder plugin can collect it's placeholders and return them.
         This method does not use cached values but always go through the scene.
+        A plugin that fails to collect its placeholders is skipped, so one
+        broken plugin does not hide placeholders of other plugins. Use
+        'get_placeholder_errors' to get the errors of the last collection.
 
         Returns:
             List[PlaceholderItem]: Sorted placeholder items.
         """
 
         placeholders = []
+        errors = []
         for placeholder_plugin in self.placeholder_plugins.values():
-            result = placeholder_plugin.collect_placeholders()
+            try:
+                result = placeholder_plugin.collect_placeholders()
+            except Exception as exc:
+                self.log.warning(
+                    "Failed to collect placeholders with plugin"
+                    " '{}'.".format(placeholder_plugin.identifier),
+                    exc_info=True
+                )
+                errors.append(
+                    "Plugin '{}' failed: {}".format(
+                        placeholder_plugin.identifier, exc
+                    )
+                )
+                continue
             if result:
                 placeholders.extend(result)
 
+        self._placeholder_errors = errors
         return list(sorted(
             placeholders,
             key=lambda placeholder: placeholder.order
         ))
+
+    def get_placeholder_errors(self):
+        """Errors collected during the last placeholder collection.
+
+        Returns:
+            List[str]: Short error messages for plugins that failed to
+                collect placeholders. Empty when the last collection failed
+                without a specific plugin error.
+
+        """
+
+        return list(getattr(self, "_placeholder_errors", []))
 
     def get_placeholder_by_scene_identifier(self, scene_identifier):
         """Find collected placeholder by its scene identifier.
@@ -967,7 +1028,9 @@ class AbstractTemplateBuilder(ABC):
 
         Returns:
             list[PlaceholderItem]: Placeholders that were processed, failed
-                placeholders have errors in 'get_errors()'.
+                placeholders have errors in 'get_errors()'. Placeholders of
+                plugins that do not support re-running are returned without
+                being processed.
         """
 
         if not self.placeholder_plugins:
@@ -981,6 +1044,14 @@ class AbstractTemplateBuilder(ABC):
 
         for placeholder in placeholders:
             plugin = placeholder.plugin
+            if not plugin.is_run_placeholder_supported():
+                self.log.info(
+                    "Placeholder '{}' cannot be re-run: plugin '{}' does not"
+                    " support it.".format(
+                        placeholder.scene_identifier, plugin.identifier
+                    )
+                )
+                continue
             self.emit_event(
                 topic="template.placeholder_started",
                 data={
@@ -2120,6 +2191,13 @@ class PlaceholderLoadMixin(object):
         ]
 
         loader_items = list(sorted(loader_items, key=lambda i: i["label"]))
+        if not loader_items:
+            # EnumDef requires at least one item. An empty loader list usually
+            #   means the host has no loader plugins.
+            loader_items.append(
+                {"label": "<No loaders>", "value": None}
+            )
+
         options = options or {}
 
         # Get product base types from all loaders excluding "*"
@@ -2134,6 +2212,8 @@ class PlaceholderLoadMixin(object):
 
         # Sort for readability
         product_base_types = list(sorted(product_base_types))
+        if not product_base_types:
+            product_base_types.append("<No product base types>")
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
@@ -2141,7 +2221,7 @@ class PlaceholderLoadMixin(object):
             {"label": "All folders", "value": "all_folders"},
         ]
 
-        link_types = ayon_api.get_link_types(self.builder.project_name)
+        link_types = self.builder.get_link_types()
 
         # Filter link types for folder to folder links
         link_types_enum_items = [

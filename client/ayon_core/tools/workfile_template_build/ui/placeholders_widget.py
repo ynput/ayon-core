@@ -20,6 +20,7 @@ from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.ui.style_types import get_ayon_style
 
 from ..abstract import PlaceholderItemInfo, PlaceholderPluginItem
+from .utils import WARNING_COLOR
 
 SCENE_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 1
 PLUGIN_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 2
@@ -250,6 +251,10 @@ class PlaceholdersWidget(AYContainer):
         header_widget.add_widget(count_label)
         header_widget.addStretch(1)
         header_widget.add_widget(create_btn)
+        header_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Maximum,
+        )
 
         # --- Filter ---
         filter_widget = AYContainer(
@@ -275,6 +280,45 @@ class PlaceholdersWidget(AYContainer):
         )
         filter_widget.add_widget(filter_input, stretch=1)
         filter_widget.add_widget(refresh_btn)
+        # Rows with fixed height inputs must not grow when the list is hidden
+        filter_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Maximum,
+        )
+
+        # --- Collection error ---
+        error_widget = AYContainer(
+            self,
+            layout=AYContainer.Layout.HBox,
+            variant=AYContainer.Variants.Low,
+            layout_margin=6,
+            layout_spacing=6,
+        )
+        error_icon = AYLabel(
+            parent=error_widget,
+            icon="warning",
+            icon_color=WARNING_COLOR,
+            icon_size=16,
+        )
+        error_label = AYLabel(
+            parent=error_widget,
+            flexible=True,
+        )
+        error_label.setWordWrap(True)
+        error_retry_btn = AYButton(
+            "Retry",
+            parent=error_widget,
+            variant=AYButton.Variants.Surface,
+            icon=REFRESH_ICON,
+        )
+        error_widget.add_widget(error_icon)
+        error_widget.add_widget(error_label, stretch=1)
+        error_widget.add_widget(error_retry_btn)
+        error_widget.setVisible(False)
+        error_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Maximum,
+        )
 
         # --- Placeholders ---
         model = QtGui.QStandardItemModel()
@@ -332,8 +376,12 @@ class PlaceholdersWidget(AYContainer):
         self.add_widget(header_widget)
         self.layout().addSpacing(4)
         self.add_widget(filter_widget)
+        self.add_widget(error_widget)
         self.add_widget(view, stretch=1)
         self.add_widget(empty_widget, stretch=1)
+        # Keeps the header, filter and error compact when both the list and
+        #   the empty message are hidden.
+        self.layout().addStretch(0)
 
         filter_input.textChanged.connect(self._on_filter_change)
         view.selection_changed.connect(self._on_selection_change)
@@ -341,11 +389,14 @@ class PlaceholdersWidget(AYContainer):
         view.customContextMenuRequested.connect(self._on_context_menu)
         create_btn.create_requested.connect(self.create_requested)
         refresh_btn.clicked.connect(self.refresh_requested)
+        error_retry_btn.clicked.connect(self.refresh_requested)
 
         self._model = model
         self._proxy_model = proxy_model
         self._view = view
         self._empty_widget = empty_widget
+        self._error_widget = error_widget
+        self._error_label = error_label
         self._filter_input = filter_input
         self._count_label = count_label
         self._create_btn = create_btn
@@ -355,6 +406,7 @@ class PlaceholdersWidget(AYContainer):
         self._unsaved_identifier: Optional[str] = None
         self._pending_plugin_item: Optional[PlaceholderPluginItem] = None
         self._has_placeholders = False
+        self._error_message: Optional[str] = None
 
     def set_placeholder_items(
         self, placeholder_items: list[PlaceholderItemInfo]
@@ -414,6 +466,21 @@ class PlaceholdersWidget(AYContainer):
         if selected_identifier is not None:
             self.select_identifier(selected_identifier)
 
+    def set_error(self, message: Optional[str]) -> None:
+        """Show an error from the last placeholder collection.
+
+        Args:
+            message (Optional[str]): User-facing error message, None hides
+                the error.
+
+        """
+        if message == self._error_message:
+            return
+        self._error_message = message
+        self._error_widget.setVisible(bool(message))
+        self._error_label.setText(message or "")
+        self._update_view_visibility()
+
     def set_pending_item(
         self, plugin_item: Optional[PlaceholderPluginItem]
     ) -> None:
@@ -464,7 +531,9 @@ class PlaceholdersWidget(AYContainer):
             self._has_placeholders or self._pending_plugin_item is not None
         )
         self._view.setVisible(has_rows)
-        self._empty_widget.setVisible(not has_rows)
+        self._empty_widget.setVisible(
+            not has_rows and self._error_message is None
+        )
 
     def set_unsaved_identifier(
         self, scene_identifier: Optional[str]
