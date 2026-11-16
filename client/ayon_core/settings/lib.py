@@ -6,7 +6,7 @@ import collections
 import copy
 import time
 import warnings
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlencode
 
 import ayon_api
@@ -45,7 +45,7 @@ def _get_addons_settings_items(
     studio_bundle_name: str,
     project_bundle_name: str,
     variant: str,
-    project_name: Optional[str] = None,
+    project_name: str | None = None,
 ) -> list[dict[str, Any]]:
     """Request settings of all addons.
 
@@ -108,7 +108,7 @@ class _AyonSettingsCache:
         return os.environ["AYON_BUNDLE_NAME"]
 
     @classmethod
-    def _update_cache(cls, project_name: Optional[str]) -> None:
+    def _update_cache(cls, project_name: str | None) -> None:
         addon_items = _get_addons_settings_items(
             studio_bundle_name=cls._get_studio_bundle_name(),
             project_bundle_name=cls._get_project_bundle_name(),
