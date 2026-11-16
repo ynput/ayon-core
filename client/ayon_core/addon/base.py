@@ -103,7 +103,7 @@ class ProcessContext:
             print(f"Unknown keys in ProcessContext: {unknown_keys}")
 
 
-def _get_bundle_names() -> tuple[str | None, str | None]:
+def _get_bundle_names() -> tuple[str, str | None]:
     studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
     project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
     # If AYON launcher <1.4.0 was used
