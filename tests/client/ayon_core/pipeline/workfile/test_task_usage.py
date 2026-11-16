@@ -794,10 +794,24 @@ def test_tracker_is_disabled_by_heartbeat(
 
 
 def test_tracker_thread(tracker_calls, monkeypatch):
-    """Scheduled context is processed and released by the thread."""
+    """Scheduled context is processed and released by the thread.
+
+    Host integration is used only in the main thread, the thread does
+    only requests to the server.
+    """
     host, tracker, calls, _ = tracker_calls
     main_thread = threading.current_thread()
     threads = []
+    host_threads = set()
+
+    def _host_method(method):
+        def _wrapper():
+            host_threads.add(threading.current_thread())
+            return method()
+        return _wrapper
+
+    for name in ("get_current_context", "get_current_workfile"):
+        setattr(host, name, _host_method(getattr(host, name)))
     claimed = threading.Event()
     claim_task = task_usage.claim_task
 
@@ -833,6 +847,7 @@ def test_tracker_thread(tracker_calls, monkeypatch):
     ]
     assert threads == [thread, thread]
     assert main_thread not in threads
+    assert host_threads == {main_thread}
 
 
 def test_tracker_stop_does_not_wait_for_server(tracker_calls, monkeypatch):
