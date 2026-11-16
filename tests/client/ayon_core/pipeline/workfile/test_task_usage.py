@@ -961,6 +961,23 @@ def test_tracker_install_uses_acknowledged_env(monkeypatch):
     assert started == ["sync", "start"]
 
 
+def test_tracker_install_follows_host_events(monkeypatch):
+    """Opened workfiles are synced when the host changes them.
+
+    E.g. Blender can't tell current workfile while it is installed, the
+    first workfile is known on 'new' or 'open' event.
+    """
+    _prepare_install(monkeypatch)
+    topics = []
+    monkeypatch.setattr(
+        task_usage,
+        "register_event_callback",
+        lambda topic, callback: topics.append(topic),
+    )
+    task_usage.install_task_usage_tracker(_MockHost())
+    assert {"taskChanged", "new", "open", "save"}.issubset(topics)
+
+
 def test_tracker_uninstall(monkeypatch):
     _prepare_install(monkeypatch)
     stopped = []

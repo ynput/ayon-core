@@ -1347,6 +1347,7 @@ def install_task_usage_tracker(
         "workfile.closed",
         # Topics emitted by host integrations from native callbacks of
         #   the application
+        "new",
         "open",
         "save",
     ):
