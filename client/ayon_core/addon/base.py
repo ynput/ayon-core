@@ -113,13 +113,11 @@ def _get_bundle_names() -> tuple[str | None, str | None]:
 
 
 def _get_ayon_bundle_data(
-    studio_bundle_name: str | None = None,
-    project_bundle_name: str | None = None,
+    studio_bundle_name: str,
+    project_bundle_name: str | None,
 ) -> tuple[
     dict[str, Any], dict[str, Any] | None
 ]:
-    if studio_bundle_name is None:
-        studio_bundle_name, project_bundle_name = _get_bundle_names()
     bundles = ayon_api.get_bundles()["bundles"]
     studio_bundle = next(
         (
