@@ -558,6 +558,9 @@ _notifier = None
 def install_task_in_use_notifier() -> TaskInUseNotifier:
     """Show notices of task in-use tracking in the application.
 
+    Is called by host integrations based on Qt, e.g. in 'install' of the
+    host, so the notice can be shown when the tracking is started.
+
     Must be called from the main thread of the application, the notices
     are shown in the thread of Qt application.
 

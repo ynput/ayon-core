@@ -1,7 +1,9 @@
 """Test task in-use tracking in the pipeline module."""
 from __future__ import annotations
 
+import ast
 import datetime
+import inspect
 import re
 import threading
 from dataclasses import replace
@@ -822,7 +824,7 @@ def test_tracker_thread(tracker_calls, monkeypatch):
     tracker.sync()
     assert claimed.wait(5)
 
-    tracker.stop(timeout=5)
+    tracker.stop()
     assert not thread.is_alive()
     assert tracker._thread is None
     assert calls == [
@@ -844,16 +846,17 @@ def test_tracker_stop_does_not_wait_for_server(tracker_calls, monkeypatch):
         finish_release.wait(5)
 
     monkeypatch.setattr(task_usage, "release_task", _release_task)
+    monkeypatch.setattr(task_usage, "EXIT_TIMEOUT_SECONDS", 0.05)
     _sync(tracker)
     tracker.start()
     thread = tracker._thread
-    tracker.stop(timeout=0.05)
+    tracker.stop()
     # Thread is still releasing the task
     assert release_started.wait(5)
     assert thread.is_alive()
 
     # Nothing happens in current thread when exit is called again
-    tracker.stop(timeout=0.05)
+    tracker.stop()
 
     finish_release.set()
     thread.join(5)
@@ -925,10 +928,6 @@ def _prepare_install(monkeypatch):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(task_usage, "register_event_callback", lambda *a: None)
     monkeypatch.setattr(task_usage.atexit, "register", lambda *a: None)
-    monkeypatch.setattr(task_usage, "_connect_qt_quit", lambda: None)
-    monkeypatch.setattr(
-        task_usage, "_install_notice_frontend", lambda: started.append("ui")
-    )
     monkeypatch.setattr(
         TaskUsageTracker, "sync", lambda self: started.append("sync")
     )
@@ -944,24 +943,42 @@ def test_tracker_install_uses_acknowledged_env(monkeypatch):
 
     assert task_usage.install_task_usage_tracker(_MockHost()) is not None
     assert task_usage._acknowledged_session_ids == {"a", "b"}
-    # Frontend is ready before the first notice can be created
-    assert started == ["ui", "sync", "start"]
+    assert started == ["sync", "start"]
 
 
 def test_tracker_uninstall(monkeypatch):
     _prepare_install(monkeypatch)
     stopped = []
     monkeypatch.setattr(
-        TaskUsageTracker,
-        "stop",
-        lambda self, timeout=None: stopped.append(timeout),
+        TaskUsageTracker, "stop", lambda self: stopped.append(self)
     )
-    task_usage.install_task_usage_tracker(_MockHost())
+    tracker = task_usage.install_task_usage_tracker(_MockHost())
     task_usage._on_exit()
     task_usage.uninstall_task_usage_tracker()
     task_usage.uninstall_task_usage_tracker()
     task_usage._on_exit()
-    assert stopped == [task_usage.EXIT_TIMEOUT_SECONDS] * 2
+    assert stopped == [tracker] * 2
+
+
+def test_no_qt_or_tools_imports():
+    """Pipeline logic does not import Qt or tools, not all hosts use Qt.
+
+    Host integration does register a frontend of notices on its own.
+    """
+    tree = ast.parse(inspect.getsource(task_usage))
+    modules = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.add(node.module)
+    qt_modules = {"qtpy", "PySide2", "PySide6", "PyQt5", "PyQt6"}
+    assert not [
+        module
+        for module in modules
+        if module.split(".")[0] in qt_modules
+        or module.startswith("ayon_core.tools")
+    ]
 
 
 def test_tracker_install_skipped_in_headless(monkeypatch):
@@ -1221,7 +1238,7 @@ def test_sync_task_usage(monkeypatch):
 
 def test_tracker_install_skipped_if_not_used_in_project(monkeypatch):
     """Nothing is started if the project does not have enabled profile."""
-    _prepare_install(monkeypatch)
+    started = _prepare_install(monkeypatch)
     projects = []
 
     def _is_enabled(project_name, *args):
@@ -1230,11 +1247,6 @@ def test_tracker_install_skipped_if_not_used_in_project(monkeypatch):
 
     monkeypatch.setattr(
         task_usage, "is_task_usage_enabled_in_project", _is_enabled
-    )
-    monkeypatch.setattr(
-        task_usage,
-        "_install_notice_frontend",
-        lambda: pytest.fail("Frontend must not be installed"),
     )
     assert task_usage.install_task_usage_tracker(_MockHost()) is None
     assert projects == ["project"]
@@ -1251,3 +1263,4 @@ def test_tracker_install_skipped_if_not_used_in_project(monkeypatch):
 
     host.get_current_context = _failing
     assert task_usage.install_task_usage_tracker(host) is None
+    assert started == []

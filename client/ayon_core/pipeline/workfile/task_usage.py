@@ -24,8 +24,9 @@ own session, all of them are released when the application is closed.
 Callbacks of the application do not wait for the server. Session of the
 application is handled by 'TaskUsageTracker' in a background thread, the
 main thread only passes current context to it. A notice about other users
-is passed to callbacks registered by a frontend, which shows it in its own
-thread, see 'register_task_in_use_notice_callback'.
+is passed to callbacks registered by the host integration, which shows it
+in its own thread, see 'register_task_in_use_notice_callback'. Without
+a callback the user is asked in the launcher and in the Workfiles tool.
 
 The endpoints are not available if the server runs older version of the
 core addon. In that case the tracking is disabled and nothing is reported.
@@ -739,6 +740,11 @@ def register_task_in_use_notice_callback(
     The frontend should call 'acknowledge_task_usage_items' with sessions
     it did show, so the user is not asked about them again.
 
+    Host integration should register the callback in its 'install', the
+    tracking is started by 'install_host' after that. Integrations based
+    on Qt can use 'install_task_in_use_notifier' from
+    'ayon_core.tools.workfiles.widgets.task_in_use_dialog'.
+
     Warning:
         The callback is called from a background thread. It must not
         block and must not touch the application or its UI directly. It
@@ -890,17 +896,13 @@ class TaskUsageTracker:
         )
         thread.start()
 
-    def stop(self, timeout: float | None = None) -> None:
+    def stop(self) -> None:
         """Release all claimed tasks and stop the background thread.
 
-        The tasks are released by the thread. They are released in current
-        thread if the thread was not started.
-
-        Args:
-            timeout (float | None): Seconds to wait until the tasks are
-                released by the thread, e.g. on exit of the application.
-                Does not wait if is not passed.
-
+        Can be called by the host integration on exit of the application.
+        The tasks are released by the thread, which is awaited only for
+        a moment, so a slow server does not block the exit. They are
+        released in current thread if the thread was not started.
         """
         thread, self._thread = self._thread, None
         with self._lock:
@@ -912,8 +914,8 @@ class TaskUsageTracker:
 
         if thread is None:
             self.process()
-        elif timeout and thread is not threading.current_thread():
-            thread.join(timeout)
+        elif thread is not threading.current_thread():
+            thread.join(EXIT_TIMEOUT_SECONDS)
 
     def _schedule(
         self, state: tuple[_HostWorkfile, ...] | None
@@ -1257,44 +1259,7 @@ _tracker: TaskUsageTracker | None = None
 
 def _on_exit() -> None:
     if _tracker is not None:
-        # The task is released by the thread, wait for it only a moment
-        _tracker.stop(timeout=EXIT_TIMEOUT_SECONDS)
-
-
-def _connect_qt_quit() -> None:
-    """Release the task when Qt application is about to quit.
-
-    Not all applications do trigger 'atexit' callbacks on exit.
-    """
-    try:
-        from qtpy import QtWidgets
-
-        app = QtWidgets.QApplication.instance()
-        if app is not None:
-            app.aboutToQuit.connect(_on_exit)
-    except Exception:
-        log.debug("Failed to connect to Qt application quit.", exc_info=True)
-
-
-def _install_notice_frontend() -> None:
-    """Let a frontend show notices about task in use to the user.
-
-    The tracker does not know how to show a notice in the application, it
-    only calls registered callbacks. Nothing is registered if Qt is not
-    available. The user is then asked in the Workfiles tool or in the
-    launcher.
-    """
-    try:
-        from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
-            install_task_in_use_notifier,
-        )
-
-        install_task_in_use_notifier()
-    except Exception:
-        log.debug(
-            "Failed to install frontend of task in-use notice.",
-            exc_info=True,
-        )
+        _tracker.stop()
 
 
 def sync_task_usage() -> None:
@@ -1330,12 +1295,18 @@ def install_task_usage_tracker(
 ) -> TaskUsageTracker | None:
     """Start tracking of task in-use for the host integration.
 
-    Should be called from the main thread of the application. Tracking is
-    skipped in headless mode, in farm jobs and in automated tests.
+    Is called by 'install_host' from the main thread of the application.
+    Tracking is skipped in headless mode, in farm jobs and in automated
+    tests.
 
     Nothing is started if project of the host integration does not have
     any enabled profile of task in-use notification, so the feature does
     not cost anything when it is not used.
+
+    The tasks are released on exit with 'atexit'. Host integration of an
+    application that does not call 'atexit' callbacks on exit, e.g. Maya,
+    should call 'uninstall_task_usage_tracker' on exit of the application.
+    Otherwise the session expires after the session timeout.
 
     Args:
         host (AbstractHost): Installed host integration.
@@ -1382,9 +1353,7 @@ def install_task_usage_tracker(
         register_event_callback(topic, tracker.sync)
 
     atexit.register(_on_exit)
-    _connect_qt_quit()
 
-    _install_notice_frontend()
     tracker.sync()
     tracker.start()
     return tracker
@@ -1396,4 +1365,4 @@ def uninstall_task_usage_tracker() -> None:
 
     tracker, _tracker = _tracker, None
     if tracker is not None:
-        tracker.stop(timeout=EXIT_TIMEOUT_SECONDS)
+        tracker.stop()
