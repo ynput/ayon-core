@@ -30,8 +30,6 @@ _ENTITY_LIST_FIELDS = {"id", "label", "entityListType", "entityType"}
 #   'labels' argument of 'get_entity_lists'.
 # First ayon_api version that supports 'labels' in 'get_entity_lists'.
 _AYON_API_LABELS_FILTER_VERSION = semver.VersionInfo(1, 2, 29)
-# First server version that supports 'filter' on 'entityLists' in GraphQl.
-_SERVER_LISTS_FILTER_VERSION = (1, 8, 3)
 _ENTITY_LISTS_BY_LABEL_QUERY = """
 query EntityListsByLabel(
     $projectName: String!, $filter: String!, $after: String
@@ -73,16 +71,6 @@ def get_entity_lists_by_labels(
 
     # TODO: Remove the workaround below once the minimum required ayon_api
     #   version supports the 'labels' argument of 'get_entity_lists'.
-    if ayon_api.get_server_version_tuple() < _SERVER_LISTS_FILTER_VERSION:
-        # Server does not support 'filter', so fetch all lists
-        return [
-            entity_list
-            for entity_list in ayon_api.get_entity_lists(
-                project_name, fields=_ENTITY_LIST_FIELDS
-            )
-            if entity_list["label"] in labels
-        ]
-
     variables = {
         "projectName": project_name,
         "filter": json.dumps({
