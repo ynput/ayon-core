@@ -18,6 +18,7 @@ from ayon_core.lib import (
     format_file_size,
     collect_frames,
     get_datetime_data,
+    open_in_file_browser,
 )
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.settings import get_project_settings
@@ -49,6 +50,7 @@ _REPRE_ICON_COLUMN = 1
 # Item data roles of destination paths view
 _GROUP_KEY_ROLE = QtCore.Qt.UserRole + 1
 _PATH_ROLE = QtCore.Qt.UserRole + 2
+_EXPLORE_PATH_ROLE = QtCore.Qt.UserRole + 3
 
 
 @dataclass
@@ -59,14 +61,15 @@ class _DestinationGroup:
         repre_name: Representation name.
         template_name: Delivery template used.
         is_override: Template differs from the default template.
-        paths: Destination paths, frame sequences collapsed.
+        paths: Destination paths with frame sequences collapsed, each with
+            path of its first file.
         files_count: Number of files to deliver.
         errors: Reasons why some versions can't be delivered.
     """
     repre_name: str
     template_name: str
     is_override: bool
-    paths: list[str] = field(default_factory=list)
+    paths: list[tuple[str, str]] = field(default_factory=list)
     files_count: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -228,6 +231,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         copy_paths_action.setShortcutContext(QtCore.Qt.WidgetShortcut)
         copy_paths_action.triggered.connect(self._copy_selected_paths)
         paths_view.addAction(copy_paths_action)
+        explore_action = QtWidgets.QAction("Explore", paths_view)
+        explore_action.triggered.connect(self._explore_current_path)
+        paths_view.addAction(explore_action)
         paths_view.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
 
         paths_timer = QtCore.QTimer(self)
@@ -326,6 +332,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self.repre_list = repre_list
         self.paths_toggle = paths_toggle
         self.paths_view = paths_view
+        self._explore_action = explore_action
         self.paths_timer = paths_timer
         self._main_layout = layout
         self._paths_widget = paths_widget
@@ -346,6 +353,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         list_label_line_edit.textChanged.connect(self._invalidate_paths)
         renumber_frame.toggled.connect(self._invalidate_paths)
         first_frame_start.valueChanged.connect(self._invalidate_paths)
+        paths_view.currentItemChanged.connect(self._update_explore_action)
+        self._update_explore_action()
 
         if not self.dropdown.count():
             self.text_area.setVisible(True)
@@ -759,10 +768,11 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 item.addChild(child)
                 child.setFirstColumnSpanned(True)
 
-            for path in group.paths:
+            for path, first_path in group.paths:
                 child = QtWidgets.QTreeWidgetItem([path])
                 child.setToolTip(0, path)
                 child.setData(0, _PATH_ROLE, path)
+                child.setData(0, _EXPLORE_PATH_ROLE, first_path)
                 item.addChild(child)
                 child.setFirstColumnSpanned(True)
             item.setExpanded(key not in collapsed_keys)
@@ -829,6 +839,26 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         if paths:
             QtWidgets.QApplication.clipboard().setText("\n".join(paths))
 
+    def _get_explore_path(self) -> Optional[str]:
+        """Closest existing path of the current destination path."""
+        item = self.paths_view.currentItem()
+        path = item.data(0, _EXPLORE_PATH_ROLE) if item else None
+        while path and not os.path.exists(path):
+            parent = os.path.dirname(path)
+            if parent == path:
+                return None
+            path = parent
+        return path
+
+    def _update_explore_action(self, *_args):
+        self._explore_action.setEnabled(bool(self._get_explore_path()))
+
+    def _explore_current_path(self):
+        """Open destination path, or its closest existing parent."""
+        path = self._get_explore_path()
+        if path:
+            open_in_file_browser(path)
+
     def _get_destination_paths(
         self,
         repre: dict[str, Any],
@@ -872,23 +902,31 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         return paths, None
 
     @staticmethod
-    def _collapse_paths(paths: list[str]) -> list[str]:
-        """Collapse frame sequences, e.g. 'name.####.exr  [1001-1048]'."""
+    def _collapse_paths(paths: list[str]) -> list[tuple[str, str]]:
+        """Collapse frame sequences, e.g. 'name.####.exr  [1001-1048]'.
+
+        Returns:
+            list[tuple[str, str]]: Collapsed path with path of its first
+                file.
+        """
         collections, remainder = clique.assemble(
             paths,
             patterns=[clique.PATTERNS["frames"]],
             assume_padded_when_ambiguous=True,
         )
         output = [
-            "{}{}{}  [{}]".format(
-                collection.head,
-                "#" * (collection.padding or 1),
-                collection.tail,
-                collection.format("{ranges}"),
+            (
+                "{}{}{}  [{}]".format(
+                    collection.head,
+                    "#" * (collection.padding or 1),
+                    collection.tail,
+                    collection.format("{ranges}"),
+                ),
+                next(iter(collection)),
             )
             for collection in collections
         ]
-        output.extend(remainder)
+        output.extend((path, path) for path in remainder)
         return sorted(output)
 
     def _get_repre_label(
