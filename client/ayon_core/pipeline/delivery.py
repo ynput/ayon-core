@@ -8,7 +8,7 @@ import glob
 import collections
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, Any, Iterable, Optional
+from typing import Dict, Any, Iterable
 
 import clique
 import ayon_api
@@ -50,8 +50,8 @@ class DeliveryTemplateMatch:
     """
     template_name: str
     default_template_name: str
-    override_index: Optional[int] = None
-    override: Optional[dict[str, Any]] = field(default=None, repr=False)
+    override_index: int | None = None
+    override: dict[str, Any] | None = field(default=None, repr=False)
 
     @property
     def is_override(self) -> bool:
@@ -124,9 +124,10 @@ def resolve_delivery_template(
     overrides: list[dict[str, Any]],
     default_template_name: str,
     representation_name: str,
-    extension: Optional[str] = None,
-    product_base_type: Optional[str] = None,
-    logger: Optional[logging.Logger] = None,
+    product_base_type: str,
+    extension: str | None = None,
+    *,
+    logger: logging.Logger | None = None,
 ) -> DeliveryTemplateMatch:
     """Resolve which delivery template to use for a representation.
 
@@ -140,9 +141,9 @@ def resolve_delivery_template(
         overrides: Overrides of a delivery recipe.
         default_template_name: Template used when no override matches.
         representation_name: Representation name.
+        product_base_type: Product base type of the representation.
         extension: Representation extension, with or without leading dot.
             Matched in lowercase.
-        product_base_type: Product base type of the representation.
         logger: Logger used for profile filtering debug output.
 
     Returns:

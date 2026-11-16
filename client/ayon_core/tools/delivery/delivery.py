@@ -485,14 +485,13 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self, repre: dict[str, Any], recipe: DeliveryRecipe
     ) -> DeliveryTemplateMatch:
         """Resolve delivery template for a representation."""
-        template_data = self._template_data_by_repre_id.get(repre["id"], {})
-        product_data = template_data.get("product") or {}
+        template_data = self._template_data_by_repre_id[repre["id"]]
         return resolve_delivery_template(
             recipe.overrides,
             recipe.template_name,
             representation_name=repre["name"],
+            product_base_type=template_data["product"]["basetype"],
             extension=repre["context"].get("ext"),
-            product_base_type=product_data.get("basetype"),
             logger=self.log,
         )
 

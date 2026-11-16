@@ -80,7 +80,9 @@ def _override(template_name: str, **filters: list[str]) -> dict[str, Any]:
 
 
 def test_no_overrides_uses_default_template():
-    match = resolve_delivery_template([], "client", "exr", extension="exr")
+    match = resolve_delivery_template(
+        [], "client", "exr", "render", extension="exr"
+    )
 
     assert match.template_name == "client"
     assert match.override is None
@@ -95,7 +97,7 @@ def test_extension_match_overrides_template():
     ]
 
     match = resolve_delivery_template(
-        overrides, "client", "plate", extension=".EXR"
+        overrides, "client", "plate", "render", extension=".EXR"
     )
 
     assert match.template_name == "client_plates"
@@ -109,7 +111,7 @@ def test_override_to_default_template_is_not_override():
     overrides = [_override("client", extensions=["exr"])]
 
     match = resolve_delivery_template(
-        overrides, "client", "exr", extension="exr"
+        overrides, "client", "exr", "render", extension="exr"
     )
 
     assert match.override is overrides[0]
