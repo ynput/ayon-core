@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 import ayon_api
 import pyblish.api
@@ -36,7 +35,7 @@ class ReviewableUpload:
         version_id: str,
         path: str,
         content_type: str,
-        label: Optional[str],
+        label: str | None,
     ) -> None:
         self.version_id = version_id
         self.path = path
