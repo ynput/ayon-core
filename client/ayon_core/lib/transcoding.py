@@ -1772,20 +1772,23 @@ def get_rescaled_command_arguments(
         log (Optional[logging.Logger]): Logger used for logging.
         review_layers (Optional[list[str]]): List of reviewable layers.
         input_info (Optional[dict]): Information about the input from
-            'get_oiio_info_for_input' called with 'verbose=True' (default),
-            so it includes the pixel aspect ratio. If passed, it is used for
-            the resolution and channels instead of probing the input with
-            'ffprobe' and 'oiiotool'.
+            'get_oiio_info_for_input'. Pass it if already known to avoid
+            reading the input with 'oiiotool' again.
 
     Returns:
         list[str]: List of command arguments.
     """
     command_args = []
     target_par = target_par or 1.0
+    input_par = 1.0
 
-    input_height, input_width, input_par = _get_image_dimensions(
-        application, input_path, log, input_info=input_info
-    )
+    input_height, input_width, stream_input_par = _get_image_dimensions(
+        application, input_path, log)
+    if stream_input_par:
+        input_par = (
+            float(stream_input_par.split(":")[0])
+            / float(stream_input_par.split(":")[1])
+        )
     # recalculating input and target width
     input_width = int(input_width * input_par)
     target_width = int(target_width * target_par)
@@ -1899,38 +1902,18 @@ def get_rescaled_command_arguments(
     return command_args
 
 
-def _get_image_dimensions(
-    application: str,
-    input_path: str,
-    log: Optional[logging.Logger],
-    input_info: Optional[dict] = None,
-) -> tuple[int, int, float]:
-    """Get resolution and pixel aspect ratio of the input.
-
-    Uses 'input_info' if passed. Otherwise uses 'ffprobe' first and then
-    'oiiotool' if available.
+def _get_image_dimensions(application, input_path, log):
+    """Uses 'ffprobe' first and then 'oiiotool' if available to get dim.
 
     Args:
         application (str): "oiiotool"|"ffmpeg"
         input_path (str): path to image file
         log (Optional[logging.Logger]): Logger used for logging.
-        input_info (Optional[dict]): Information about the input from
-            'get_oiio_info_for_input'.
-
     Returns:
-        tuple[int, int, float]: Height, width and pixel aspect ratio.
-
+        (tuple) (int, int, dict) - (height, width, sample_aspect_ratio)
     Raises:
         RuntimeError if image dimensions couldn't be parsed out.
     """
-    if input_info is not None:
-        # Use the display window like 'ffprobe' does
-        input_width = input_info.get("full_width") or input_info["width"]
-        input_height = input_info.get("full_height") or input_info["height"]
-        # The attribute is only available with verbose info
-        input_par = input_info.get("attribs", {}).get("PixelAspectRatio")
-        return input_height, input_width, float(input_par or 1.0)
-
     # ffmpeg command
     input_file_metadata = get_ffprobe_data(input_path, logger=log)
     input_width = input_height = 0
@@ -1961,12 +1944,8 @@ def _get_image_dimensions(
         raise RuntimeError("Couldn't read {} either "
                            "with ffprobe or oiiotool".format(input_path))
 
-    input_par = 1.0
     stream_input_par = stream.get("sample_aspect_ratio")
-    if stream_input_par:
-        par_num, par_den = stream_input_par.split(":")
-        input_par = float(par_num) / float(par_den)
-    return input_height, input_width, input_par
+    return input_height, input_width, stream_input_par
 
 
 def convert_color_values(application, color_value):

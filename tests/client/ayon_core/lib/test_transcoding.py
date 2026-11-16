@@ -461,24 +461,14 @@ class OiioColorConvertDisplayViewCommands(unittest.TestCase):
 
 
 class ReuseOiioInputInfo(unittest.TestCase):
-    """Passing 'input_info' must not probe the input again."""
+    """Passing 'input_info' must not read the input with oiiotool again."""
 
-    # Anamorphic overscan input: data window is larger than display window
-    input_info = {
-        "width": 1100,
-        "height": 900,
-        "full_width": 1024,
-        "full_height": 858,
-        "channelnames": ["R", "G", "B", "A"],
-        "attribs": {"PixelAspectRatio": 2.0},
-    }
+    input_info = {"channelnames": ["R", "G", "B", "A"]}
 
     def setUp(self):
         self.oiio_info_mock = self._patch("get_oiio_info_for_input")
         self.oiio_info_mock.return_value = self.input_info
-        self.ffprobe_mock = self._patch("get_ffprobe_data")
-        # What ffprobe reports for the same input
-        self.ffprobe_mock.return_value = {"streams": [{
+        self._patch("get_ffprobe_data").return_value = {"streams": [{
             "codec_type": "video",
             "width": 1024,
             "height": 858,
@@ -494,11 +484,10 @@ class ReuseOiioInputInfo(unittest.TestCase):
         self.addCleanup(patcher.stop)
         return patcher.start()
 
-    def test_rescale_args_match_probed_input(self):
+    def test_rescale_args_use_input_info(self):
         expected = get_rescaled_command_arguments(
             "oiiotool", "input.exr", 1920, 1080
         )
-        self.ffprobe_mock.reset_mock()
         self.oiio_info_mock.reset_mock()
 
         args = get_rescaled_command_arguments(
@@ -507,8 +496,6 @@ class ReuseOiioInputInfo(unittest.TestCase):
         )
 
         self.assertEqual(args, expected)
-        self.assertIn("--pixelaspect", args)
-        self.ffprobe_mock.assert_not_called()
         self.oiio_info_mock.assert_not_called()
 
     def test_color_convert_uses_input_info(self):
