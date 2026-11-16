@@ -18,8 +18,7 @@ TEMPLATE_NAMES = ["client", "client_cdl", "client_plates", "internal"]
 @pytest.mark.parametrize(
     "delivery_settings, expected",
     [
-        # Missing settings and empty deny list show all templates
-        ({}, TEMPLATE_NAMES),
+        # Empty deny list shows all templates
         (
             {"filter_type": "is_deny_list", "filter_templates": []},
             TEMPLATE_NAMES,

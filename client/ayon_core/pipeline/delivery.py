@@ -70,7 +70,7 @@ def get_delivery_tool_settings(
     Returns:
         dict[str, Any]: Delivery tool settings.
     """
-    return project_settings["core"]["tools"].get("delivery", {})
+    return project_settings["core"]["tools"]["delivery"]
 
 
 def get_delivery_recipes(
@@ -84,15 +84,14 @@ def get_delivery_recipes(
     Returns:
         list[DeliveryRecipe]: Delivery recipes.
     """
+    delivery_settings = get_delivery_tool_settings(project_settings)
     return [
         DeliveryRecipe(
             name=recipe["name"],
             template_name=recipe["template_name"],
             overrides=recipe["overrides"],
         )
-        for recipe in get_delivery_tool_settings(project_settings).get(
-            "recipes", []
-        )
+        for recipe in delivery_settings["recipes"]
     ]
 
 
@@ -112,11 +111,8 @@ def filter_delivery_template_names(
     Returns:
         list[str]: Template names to offer, in the input order.
     """
-    filter_templates = set(delivery_settings.get("filter_templates") or [])
-    is_allow_list = (
-        delivery_settings.get("filter_type", "is_deny_list")
-        == "is_allow_list"
-    )
+    filter_templates = set(delivery_settings["filter_templates"])
+    is_allow_list = delivery_settings["filter_type"] == "is_allow_list"
     return [
         template_name
         for template_name in template_names
