@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from typing import Optional
 
 import ayon_api
@@ -28,12 +27,21 @@ def _get_max_upload_workers() -> int:
     return max(1, value)
 
 
-@dataclass
+# NOTE: This is intentionally not a dataclass. Pyblish plugin discovery
+#   can fail on dataclasses in plugin files, see:
+#   https://github.com/ynput/ayon-core/pull/2050
 class ReviewableUpload:
-    version_id: str
-    path: str
-    content_type: str
-    label: Optional[str]
+    def __init__(
+        self,
+        version_id: str,
+        path: str,
+        content_type: str,
+        label: Optional[str],
+    ) -> None:
+        self.version_id = version_id
+        self.path = path
+        self.content_type = content_type
+        self.label = label
 
 
 class IntegrateAYONReview(pyblish.api.ContextPlugin):
