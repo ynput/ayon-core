@@ -6,7 +6,6 @@ import os
 import subprocess
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
 from typing import Any, TYPE_CHECKING
 
 import pyblish.api
@@ -118,7 +117,6 @@ class _InstanceLogAdapter(logging.LoggerAdapter):
         return f"[{self.extra['label']}] {msg}", kwargs
 
 
-@dataclass
 class _InstanceResult:
     """Thumbnail extraction result of one instance.
 
@@ -135,12 +133,18 @@ class _InstanceResult:
             representations to add to the instance.
         error (Exception | None): Unexpected error raised during extraction.
     """
-    instance: pyblish.api.Instance
-    label: str
-    log: logging.LoggerAdapter
-    staging_dir: str | None = None
-    representations: list[dict[str, Any]] = field(default_factory=list)
-    error: Exception | None = None
+    def __init__(
+        self, instance: pyblish.api.Instance, logger: logging.Logger
+    ) -> None:
+        label: str = instance.data.get("label") or instance.data["name"]
+        self.instance: pyblish.api.Instance = instance
+        self.label: str = label
+        self.log: logging.LoggerAdapter = _InstanceLogAdapter(
+            logger, {"label": label}
+        )
+        self.staging_dir: str | None = None
+        self.representations: list[dict[str, Any]] = []
+        self.error: Exception | None = None
 
 
 class ExtractThumbnail(pyblish.api.ContextPlugin):
@@ -187,7 +191,7 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
 
     def process(self, context: pyblish.api.Context) -> None:
         results = [
-            self._create_result(instance)
+            _InstanceResult(instance, self.log)
             for instance in self._get_instances(context)
         ]
         if not results:
@@ -249,16 +253,6 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
             for instance in pyblish.api.instances_by_plugin(context, self)
             if instance.data.get("publish") is not False
         ]
-
-    def _create_result(
-        self, instance: pyblish.api.Instance
-    ) -> _InstanceResult:
-        label = instance.data.get("label") or instance.data["name"]
-        return _InstanceResult(
-            instance=instance,
-            label=label,
-            log=_InstanceLogAdapter(self.log, {"label": label}),
-        )
 
     def _process_instance(self, result: _InstanceResult) -> None:
         """Extract thumbnails for one instance.

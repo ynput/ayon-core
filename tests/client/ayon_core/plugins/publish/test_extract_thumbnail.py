@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import os
+import shutil
 import tempfile
 import threading
 from pathlib import Path
@@ -14,7 +15,10 @@ import pyblish.plugin
 import pytest
 
 from ayon_core.plugins.publish import extract_thumbnail
-from ayon_core.plugins.publish.extract_thumbnail import ExtractThumbnail
+from ayon_core.plugins.publish.extract_thumbnail import (
+    ExtractThumbnail,
+    _InstanceResult,
+)
 
 PROFILE = {
     "product_base_types": [],
@@ -103,6 +107,24 @@ def _fake_main_process_factory(
     return _main_process
 
 
+def test_plugin_discovered_by_pyblish(tmp_path) -> None:
+    """pyblish-base discovery loads the plugin file.
+
+    Discovery skips plugin files with dataclasses until
+    pyblish/pyblish-base#403 is released.
+    """
+    shutil.copy(extract_thumbnail.__file__, tmp_path)
+    host_registered = "shell" in pyblish.api.registered_hosts()
+    pyblish.api.register_host("shell")
+    try:
+        plugins = pyblish.plugin.discover(paths=[str(tmp_path)])
+    finally:
+        if not host_registered:
+            pyblish.api.deregister_host("shell")
+
+    assert [plugin.__name__ for plugin in plugins] == ["ExtractThumbnail"]
+
+
 def test_instance_selection_matches_instance_plugin() -> None:
     """Selected instances equal what pyblish yields to an InstancePlugin."""
     context = _create_context()
@@ -171,7 +193,7 @@ def test_apply_result(tmp_path) -> None:
     _write_file(str(tmp_path / "a_thumb.jpg"))
     _write_file(str(tmp_path / "b_thumb.jpg"))
     plugin = ExtractThumbnail()
-    result = plugin._create_result(instance)
+    result = _InstanceResult(instance, plugin.log)
     result.representations = [
         {"name": "thumbnail_a", "files": "a_thumb.jpg",
          "stagingDir": str(tmp_path)},
@@ -194,7 +216,7 @@ def test_apply_result_keeps_existing_thumbnail_path(tmp_path) -> None:
     instance = _add_instance(context, "renderMain", thumbnailPath=existing)
     _write_file(str(tmp_path / "a_thumb.jpg"))
     plugin = ExtractThumbnail()
-    result = plugin._create_result(instance)
+    result = _InstanceResult(instance, plugin.log)
     result.representations = [
         {"name": "thumbnail", "files": "a_thumb.jpg",
          "stagingDir": str(tmp_path)},
@@ -231,7 +253,7 @@ def test_main_process_does_not_modify_instance(tmp_path, monkeypatch):
     plugin = ExtractThumbnail()
     plugin.profiles = [PROFILE]
     instance_data = copy.deepcopy(dict(instance.data))
-    result = plugin._create_result(instance)
+    result = _InstanceResult(instance, plugin.log)
 
     plugin._main_process(instance, result)
 
