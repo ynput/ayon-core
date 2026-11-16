@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import os
 import json
 import collections
 import copy
 import time
 import warnings
+from typing import Any
 from urllib.parse import urlencode
 
 import ayon_api
@@ -38,13 +41,20 @@ class CacheItem:
         return time.time() > self._outdate_time
 
 
-def _get_addons_settings(
-    studio_bundle_name,
-    project_bundle_name,
-    variant,
-    project_name=None,
-):
-    """Modified version of `ayon_api.get_addons_settings` function."""
+def _get_addons_settings_items(
+    studio_bundle_name: str,
+    project_bundle_name: str,
+    variant: str,
+    project_name: str | None = None,
+) -> list[dict[str, Any]]:
+    """Request settings of all addons.
+
+    Each item contains addon name, version and settings.
+
+    Returns:
+        list[dict[str, Any]]: Addon items of the response.
+
+    """
     query_values = {
         key: value
         for key, value in (
@@ -63,16 +73,13 @@ def _get_addons_settings(
 
     response = ayon_api.get(f"settings?{urlencode(query_values)}")
     response.raise_for_status()
-    return {
-        addon["name"]: addon["settings"]
-        for addon in response.data["addons"]
-    }
+    return response.data["addons"]
 
 
 class _AyonSettingsCache:
     variant = None
+    # Addon versions from the last studio settings response
     addon_versions = CacheItem.create_outdated()
-    studio_settings = CacheItem.create_outdated()
     cache_by_project_name = collections.defaultdict(
         CacheItem.create_outdated)
 
@@ -101,60 +108,38 @@ class _AyonSettingsCache:
         return os.environ["AYON_BUNDLE_NAME"]
 
     @classmethod
+    def _update_cache(cls, project_name: str | None) -> None:
+        addon_items = _get_addons_settings_items(
+            studio_bundle_name=cls._get_studio_bundle_name(),
+            project_bundle_name=cls._get_project_bundle_name(),
+            project_name=project_name,
+            variant=cls._get_variant(),
+        )
+        cls.cache_by_project_name[project_name].update_value({
+            addon["name"]: addon["settings"]
+            for addon in addon_items
+        })
+        if project_name is None:
+            # Studio settings list the addons of the bundle with project
+            #   bundle overrides, same as a 'summary' settings request.
+            # Updated after settings, so it does not outlive them.
+            cls.addon_versions.update_value({
+                addon["name"]: addon["version"]
+                for addon in addon_items
+            })
+
+    @classmethod
     def get_value_by_project(cls, project_name):
         cache_item = _AyonSettingsCache.cache_by_project_name[project_name]
         if cache_item.is_outdated:
-            cache_item.update_value(
-                _get_addons_settings(
-                    studio_bundle_name=cls._get_studio_bundle_name(),
-                    project_bundle_name=cls._get_project_bundle_name(),
-                    project_name=project_name,
-                    variant=cls._get_variant(),
-                )
-            )
+            cls._update_cache(project_name)
         return cache_item.get_value()
 
     @classmethod
-    def _get_addon_versions_from_bundle(cls):
-        studio_bundle_name = cls._get_studio_bundle_name()
-        project_bundle_name = cls._get_project_bundle_name()
-        bundles = ayon_api.get_bundles()["bundles"]
-        project_bundle = next(
-            (
-                bundle
-                for bundle in bundles
-                if bundle["name"] == project_bundle_name
-            ),
-            None
-        )
-        studio_bundle = None
-        if studio_bundle_name and project_bundle_name != studio_bundle_name:
-            studio_bundle = next(
-                (
-                    bundle
-                    for bundle in bundles
-                    if bundle["name"] == studio_bundle_name
-                ),
-                None
-            )
-
-        if studio_bundle and project_bundle:
-            addons = copy.deepcopy(studio_bundle["addons"])
-            addons.update(project_bundle["addons"])
-            project_bundle["addons"] = addons
-
-        if project_bundle is not None:
-            return project_bundle["addons"]
-        return {}
-
-    @classmethod
-    def get_addon_versions(cls):
+    def get_addon_versions(cls) -> dict[str, str]:
         cache_item = _AyonSettingsCache.addon_versions
         if cache_item.is_outdated:
-            cache_item.update_value(
-                cls._get_addon_versions_from_bundle()
-            )
-
+            cls._update_cache(None)
         return cache_item.get_value()
 
 
@@ -179,6 +164,21 @@ def get_studio_settings(*args, **kwargs):
 
 def get_project_settings(project_name, *args, **kwargs):
     return _AyonSettingsCache.get_value_by_project(project_name)
+
+
+def get_studio_addon_versions() -> dict[str, str]:
+    """Versions of addons used by the process.
+
+    Addons of the studio bundle with overrides of the project bundle.
+    Versions come from the studio settings response, which is cached
+    together with studio settings.
+
+    Returns:
+        dict[str, str]: Addon versions by addon name, ordered as returned
+            by the server.
+
+    """
+    return _AyonSettingsCache.get_addon_versions()
 
 
 def get_general_environments(studio_settings=None):
