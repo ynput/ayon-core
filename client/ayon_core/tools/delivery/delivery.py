@@ -25,20 +25,21 @@ from ayon_core.pipeline import Anatomy
 
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
+    DeliveryRecipe,
     DeliveryTemplateMatch,
     get_format_dict,
     check_destination_path,
     deliver_single_file,
     filter_delivery_template_names,
-    get_delivery_template_profiles,
+    get_delivery_recipes,
     get_delivery_tool_settings,
     get_representations_delivery_template_data,
     resolve_delivery_template,
 )
 from ayon_core.tools.utils import get_qt_icon
 
-# Profile filter keys with labels used to explain why a profile matched
-_PROFILE_FILTER_LABELS = (
+# Override filter keys with labels used to explain why an override matched
+_OVERRIDE_FILTER_LABELS = (
     ("representation_names", "Representation names"),
     ("extensions", "Extensions"),
     ("product_base_types", "Product base types"),
@@ -57,7 +58,7 @@ class _DestinationGroup:
     Attributes:
         repre_name: Representation name.
         template_name: Delivery template used.
-        is_override: Template differs from the template picked by user.
+        is_override: Template differs from the default template.
         paths: Destination paths, frame sequences collapsed.
         files_count: Number of files to deliver.
         errors: Reasons why some versions can't be delivered.
@@ -109,9 +110,6 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         for repre in self._representations:
             self._repres_by_name[repre["name"]].append(repre)
         project_settings = get_project_settings(project_name)
-        self._template_profiles = get_delivery_template_profiles(
-            project_settings
-        )
         self._template_data_by_repre_id = (
             get_representations_delivery_template_data(
                 project_name,
@@ -131,20 +129,32 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         )
         self._paths_dirty = True
 
+        # Recipes first, then delivery templates as recipes without overrides
         dropdown = QtWidgets.QComboBox()
-        # All valid delivery templates, template profiles may use templates
-        #   that are not offered in the dropdown
+        # All valid delivery templates, recipes may use templates that are
+        #   not offered in the dropdown
         self.templates = self._get_templates(self.anatomy)
+        recipes = get_delivery_recipes(project_settings)
+        for recipe in recipes:
+            dropdown.addItem(recipe.name, recipe)
+            dropdown.setItemData(
+                dropdown.count() - 1,
+                self._get_recipe_tooltip(recipe),
+                QtCore.Qt.ToolTipRole,
+            )
         visible_template_names = filter_delivery_template_names(
             self.templates, get_delivery_tool_settings(project_settings)
         )
+        if recipes and visible_template_names:
+            dropdown.insertSeparator(dropdown.count())
         for name in visible_template_names:
-            dropdown.addItem(name)
-        if visible_template_names and platform.system() == "Darwin":
+            dropdown.addItem(name, DeliveryRecipe(name, name))
+        labels = [recipe.name for recipe in recipes] + visible_template_names
+        if labels and platform.system() == "Darwin":
             # fix macos QCombobox Style
             dropdown.setItemDelegate(QtWidgets.QStyledItemDelegate())
             # update combo box length to longest entry
-            longest_key = max(visible_template_names, key=len)
+            longest_key = max(labels, key=len)
             dropdown.setMinimumContentsLength(len(longest_key))
 
         template_dir_label = QtWidgets.QLabel()
@@ -345,7 +355,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             )
             if self.templates:
                 error_message = (
-                    "No Delivery Templates to pick!\n"
+                    "No Delivery Templates or Recipes to pick!\n"
                     "All templates are filtered out by project settings"
                     " [core/tools/delivery]"
                 )
@@ -363,7 +373,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         selected_repres = self._get_selected_repres()
 
         datetime_data = get_datetime_data()
-        selected_template_name = self.dropdown.currentText()
+        recipe = self.dropdown.currentData()
         format_dict = get_format_dict(self.anatomy, self.root_line_edit.text())
         list_label = self.list_label_line_edit.text()
         renumber_frame = self.renumber_frame.isChecked()
@@ -376,7 +386,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         delivered_by_template = defaultdict(list)
         for repre in filtered_repres:
-            match = self._resolve_template(repre, selected_template_name)
+            match = self._resolve_template(repre, recipe)
             template_name = match.template_name
             if template_name not in self.templates:
                 msg = "Delivery template is not available in anatomy"
@@ -463,14 +473,14 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         return toggle
 
     def _resolve_template(
-        self, repre: dict[str, Any], selected_template_name: str
+        self, repre: dict[str, Any], recipe: DeliveryRecipe
     ) -> DeliveryTemplateMatch:
         """Resolve delivery template for a representation."""
         template_data = self._template_data_by_repre_id.get(repre["id"], {})
         product_data = template_data.get("product") or {}
         return resolve_delivery_template(
-            self._template_profiles,
-            selected_template_name,
+            recipe.overrides,
+            recipe.template_name,
             representation_name=repre["name"],
             extension=repre["context"].get("ext"),
             product_base_type=product_data.get("basetype"),
@@ -585,14 +595,14 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
     def _update_template_icons(self):
         """Mark representations delivered with another template."""
-        selected_template_name = self.dropdown.currentText()
+        recipe = self.dropdown.currentData()
         no_icon = QtGui.QIcon()
         for idx in range(self.repre_list.topLevelItemCount()):
             item = self.repre_list.topLevelItem(idx)
             matches = []
-            if selected_template_name:
+            if recipe is not None:
                 matches = [
-                    self._resolve_template(repre, selected_template_name)
+                    self._resolve_template(repre, recipe)
                     for repre in self._repres_by_name[item.text(0)]
                 ]
 
@@ -600,18 +610,38 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             icon = no_icon
             if any(match.is_override for match in matches):
                 icon = self._override_icon
-                tooltip = self._get_override_tooltip(matches)
+                tooltip = self._get_override_tooltip(recipe, matches)
             item.setIcon(_REPRE_ICON_COLUMN, icon)
             item.setToolTip(_REPRE_NAME_COLUMN, tooltip)
             item.setToolTip(_REPRE_ICON_COLUMN, tooltip)
 
     @staticmethod
-    def _get_override_tooltip(matches: list[DeliveryTemplateMatch]) -> str:
-        """Explain which template is used instead of the picked one."""
+    def _get_recipe_tooltip(recipe: DeliveryRecipe) -> str:
+        """Describe default template and overrides of a recipe."""
+        lines = [f"Default template: {recipe.template_name}"]
+        if recipe.overrides:
+            lines.append("Overrides:")
+        for override in recipe.overrides:
+            filters = [
+                ", ".join(override[filter_key])
+                for filter_key, _label in _OVERRIDE_FILTER_LABELS
+                if override[filter_key]
+            ]
+            lines.append(
+                f"    {' | '.join(filters) or 'Any'}:"
+                f" {override['template_name']}"
+            )
+        return "\n".join(lines)
+
+    @staticmethod
+    def _get_override_tooltip(
+        recipe: DeliveryRecipe, matches: list[DeliveryTemplateMatch]
+    ) -> str:
+        """Explain which template is used instead of the default one."""
         counts = defaultdict(int)
         unique_matches = {}
         for match in matches:
-            key = (match.template_name, match.profile_index)
+            key = (match.template_name, match.override_index)
             counts[key] += 1
             unique_matches.setdefault(key, match)
 
@@ -626,13 +656,14 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 )
             lines.append(
                 f"{subject} with template '{match.template_name}'"
-                f" instead of '{match.selected_template_name}'."
+                f" instead of '{match.default_template_name}'."
             )
             lines.append(
-                f"Set by delivery template profile #{match.profile_index + 1}"
+                f"Set by override #{match.override_index + 1}"
+                f" of recipe '{recipe.name}'"
             )
-            for filter_key, label in _PROFILE_FILTER_LABELS:
-                values = match.profile.get(filter_key)
+            for filter_key, label in _OVERRIDE_FILTER_LABELS:
+                values = match.override.get(filter_key)
                 if values:
                     lines.append(f"    {label}: {', '.join(values)}")
             lines.append("")
@@ -673,7 +704,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self.paths_view.clear()
 
         selected_repre_names = self._get_selected_repres()
-        if not selected_repre_names or not self.dropdown.currentText():
+        recipe = self.dropdown.currentData()
+        if not selected_repre_names or recipe is None:
             item = QtWidgets.QTreeWidgetItem(
                 ["Select representations to see where they will be delivered."]
             )
@@ -684,13 +716,14 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
-            groups = self._get_destination_groups(selected_repre_names)
+            groups = self._get_destination_groups(
+                recipe, selected_repre_names
+            )
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
 
         override_brush = QtGui.QBrush(self._override_color)
         error_brush = QtGui.QBrush(self._error_color)
-        selected_template_name = self.dropdown.currentText()
         for group in groups:
             key = f"{group.repre_name}|{group.template_name}"
             counts = []
@@ -713,7 +746,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 item.setToolTip(
                     1,
                     f"Delivered with template '{group.template_name}'"
-                    f" instead of '{selected_template_name}'",
+                    f" instead of '{recipe.template_name}'",
                 )
             if group.errors:
                 item.setForeground(2, error_brush)
@@ -735,14 +768,13 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             item.setExpanded(key not in collapsed_keys)
 
     def _get_destination_groups(
-        self, repre_names: list[str]
+        self, recipe: DeliveryRecipe, repre_names: list[str]
     ) -> list[_DestinationGroup]:
         """Destination paths of all files grouped by representation.
 
         Versions with the same representation name may be delivered with
         different templates, so groups are per name and template.
         """
-        selected_template_name = self.dropdown.currentText()
         format_dict = get_format_dict(self.anatomy, self.root_line_edit.text())
         list_label = self.list_label_line_edit.text()
         renumber_frame = self.renumber_frame.isChecked()
@@ -752,7 +784,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         groups: dict[tuple[str, str], _DestinationGroup] = {}
         for repre_name in sorted(repre_names):
             for repre in self._repres_by_name[repre_name]:
-                match = self._resolve_template(repre, selected_template_name)
+                match = self._resolve_template(repre, recipe)
                 paths, error = self._get_destination_paths(
                     repre,
                     match.template_name,
@@ -949,11 +981,17 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
     def _update_template_value(self, _index=None):
         """Sets template value to label after selection in dropdown."""
-        name = self.dropdown.currentText()
-        template_value = self.templates.get(name)
-        if template_value:
-            self.template_dir_label.setText(template_value["directory"])
-            self.template_file_label.setText(template_value["file"])
+        recipe = self.dropdown.currentData()
+        if recipe is not None:
+            template_value = self.templates.get(recipe.template_name)
+            dir_text = file_text = (
+                f"Template '{recipe.template_name}' is not available"
+            )
+            if template_value:
+                dir_text = template_value["directory"]
+                file_text = template_value["file"]
+            self.template_dir_label.setText(dir_text)
+            self.template_file_label.setText(file_text)
             self.btn_delivery.setEnabled(bool(self._get_selected_repres()))
         self._update_template_icons()
         self._invalidate_paths()

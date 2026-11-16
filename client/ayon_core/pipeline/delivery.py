@@ -23,25 +23,40 @@ from .template_data import (
 
 
 @dataclass
+class DeliveryRecipe:
+    """Delivery recipe from project settings.
+
+    Attributes:
+        name: Recipe name offered in the Delivery tool.
+        template_name: Anatomy delivery template used by default.
+        overrides: Profiles delivering matching representations with
+            another anatomy delivery template.
+    """
+    name: str
+    template_name: str
+    overrides: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
 class DeliveryTemplateMatch:
     """Delivery template resolved for a single representation.
 
     Attributes:
         template_name: Name of the anatomy delivery template to use.
-        selected_template_name: Template name the user picked.
-        profile_index: Index of the matching profile in the template
-            profiles settings, or None when no profile matched.
-        profile: The matching profile, or None when no profile matched.
+        default_template_name: Template used when no override matches.
+        override_index: Index of the matching override, or None when no
+            override matched.
+        override: The matching override, or None when no override matched.
     """
     template_name: str
-    selected_template_name: str
-    profile_index: Optional[int] = None
-    profile: Optional[dict[str, Any]] = field(default=None, repr=False)
+    default_template_name: str
+    override_index: Optional[int] = None
+    override: Optional[dict[str, Any]] = field(default=None, repr=False)
 
     @property
     def is_override(self) -> bool:
-        """Whether a profile changed the template the user picked."""
-        return self.template_name != self.selected_template_name
+        """Whether an override changed the default template."""
+        return self.template_name != self.default_template_name
 
 
 def get_delivery_tool_settings(
@@ -58,20 +73,27 @@ def get_delivery_tool_settings(
     return project_settings["core"]["tools"].get("delivery", {})
 
 
-def get_delivery_template_profiles(
+def get_delivery_recipes(
     project_settings: dict[str, Any],
-) -> list[dict[str, Any]]:
-    """Return delivery template profiles from project settings.
+) -> list[DeliveryRecipe]:
+    """Return delivery recipes from project settings.
 
     Args:
         project_settings: Project settings.
 
     Returns:
-        list[dict[str, Any]]: Delivery template profiles.
+        list[DeliveryRecipe]: Delivery recipes.
     """
-    return get_delivery_tool_settings(project_settings).get(
-        "template_profiles", []
-    )
+    return [
+        DeliveryRecipe(
+            name=recipe["name"],
+            template_name=recipe["template_name"],
+            overrides=recipe["overrides"],
+        )
+        for recipe in get_delivery_tool_settings(project_settings).get(
+            "recipes", []
+        )
+    ]
 
 
 def filter_delivery_template_names(
@@ -80,8 +102,8 @@ def filter_delivery_template_names(
 ) -> list[str]:
     """Filter delivery templates the user can pick in the Delivery tool.
 
-    Template profiles may still deliver with filtered out templates, this
-    only limits what is offered to pick.
+    Delivery recipes may still use filtered out templates, this only
+    limits which templates are offered to pick.
 
     Args:
         template_names: Anatomy delivery template names.
@@ -103,8 +125,8 @@ def filter_delivery_template_names(
 
 
 def resolve_delivery_template(
-    profiles: list[dict[str, Any]],
-    selected_template_name: str,
+    overrides: list[dict[str, Any]],
+    default_template_name: str,
     representation_name: str,
     extension: Optional[str] = None,
     product_base_type: Optional[str] = None,
@@ -112,23 +134,15 @@ def resolve_delivery_template(
 ) -> DeliveryTemplateMatch:
     """Resolve which delivery template to use for a representation.
 
-    The user picks one delivery template in the Delivery tool. Template
-    profiles can deliver some representations with another anatomy
-    delivery template, e.g. EXRs into a plates folder.
-
-    Profiles listing the picked template take precedence, profiles without
-    picked templates are only used when none of those match. Within these
-    'filter_profiles' picks the profile matching the most filters. On a
+    Overrides of a delivery recipe deliver some representations with
+    another anatomy delivery template, e.g. EXRs into a plates folder.
+    'filter_profiles' picks the override matching the most filters. On a
     tie representation names go before extensions before product base
-    types, then the first profile in order.
-
-    A matching profile with an empty template name keeps the picked
-    template, which allows excluding representations from a broader
-    profile.
+    types, then the first override in order.
 
     Args:
-        profiles: Delivery template profiles from project settings.
-        selected_template_name: Delivery template picked by the user.
+        overrides: Overrides of a delivery recipe.
+        default_template_name: Template used when no override matches.
         representation_name: Representation name.
         extension: Representation extension, with or without leading dot.
             Matched in lowercase.
@@ -141,43 +155,29 @@ def resolve_delivery_template(
     if extension:
         extension = extension.lstrip(".").lower()
 
-    # Match picked template before 'filter_profiles' so a profile for any
-    #   template can't win over a profile made for the picked template by
-    #   matching more of the other filters.
-    picked_template_profiles = []
-    any_template_profiles = []
-    for profile in profiles:
-        delivery_templates = profile["delivery_templates"]
-        if not delivery_templates:
-            any_template_profiles.append(profile)
-        elif selected_template_name in delivery_templates:
-            picked_template_profiles.append(profile)
-
-    key_values = {
-        "representation_names": representation_name,
-        "extensions": extension,
-        "product_base_types": product_base_type,
-    }
-    profile = None
-    for candidates in (picked_template_profiles, any_template_profiles):
-        profile = filter_profiles(candidates, key_values, logger=logger)
-        if profile is not None:
-            break
-
-    if profile is None:
+    override = filter_profiles(
+        overrides,
+        {
+            "representation_names": representation_name,
+            "extensions": extension,
+            "product_base_types": product_base_type,
+        },
+        logger=logger,
+    )
+    if override is None:
         return DeliveryTemplateMatch(
-            template_name=selected_template_name,
-            selected_template_name=selected_template_name,
+            template_name=default_template_name,
+            default_template_name=default_template_name,
         )
 
-    profile_index = next(
-        idx for idx, item in enumerate(profiles) if item is profile
+    override_index = next(
+        idx for idx, item in enumerate(overrides) if item is override
     )
     return DeliveryTemplateMatch(
-        template_name=profile["template_name"] or selected_template_name,
-        selected_template_name=selected_template_name,
-        profile_index=profile_index,
-        profile=profile,
+        template_name=override["template_name"],
+        default_template_name=default_template_name,
+        override_index=override_index,
+        override=override,
     )
 
 

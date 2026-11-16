@@ -504,18 +504,8 @@ class PublishToolModel(BaseSettingsModel):
     )
 
 
-class DeliveryTemplateProfileModel(BaseSettingsModel):
+class DeliveryRecipeOverrideModel(BaseSettingsModel):
     _layout = "expanded"
-    delivery_templates: list[str] = SettingsField(
-        default_factory=list,
-        title="Picked delivery templates",
-        description=(
-            "Apply when the artist picks one of these delivery templates"
-            " in the Delivery tool. Empty applies to any template, but only"
-            " when no profile for the picked template matches."
-        ),
-        enum_resolver=anatomy_template_items_enum(category="delivery"),
-    )
     representation_names: list[str] = SettingsField(
         default_factory=list,
         title="Representation names",
@@ -536,12 +526,31 @@ class DeliveryTemplateProfileModel(BaseSettingsModel):
     )
     template_name: str = SettingsField(
         "",
-        title="Deliver with template",
+        title="Template",
+        description="Anatomy delivery template for matching representations.",
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+
+
+class DeliveryRecipeModel(BaseSettingsModel):
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Name offered in the Delivery tool.",
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Default template",
         description=(
-            "Anatomy delivery template used for matching representations."
-            " Leave empty to keep the template picked by the artist."
+            "Anatomy delivery template for representations without"
+            " a matching override."
         ),
         enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+    overrides: list[DeliveryRecipeOverrideModel] = SettingsField(
+        default_factory=list,
+        title="Overrides",
+        description="Other template for matching representations",
     )
 
 
@@ -552,7 +561,7 @@ class DeliveryToolModel(BaseSettingsModel):
         section="Templates shown in Delivery tool",
         description=(
             "Limit which anatomy delivery templates artists can pick."
-            " Template profiles can still deliver with hidden templates."
+            " Recipes can still use hidden templates."
         ),
         enum_resolver=filter_type_enum,
     )
@@ -565,20 +574,17 @@ class DeliveryToolModel(BaseSettingsModel):
         ),
         enum_resolver=anatomy_template_items_enum(category="delivery"),
     )
-    template_profiles: list[DeliveryTemplateProfileModel] = SettingsField(
+    recipes: list[DeliveryRecipeModel] = SettingsField(
         default_factory=list,
-        title="Template profiles",
-        description=(
-            "Deliver some representations with a different anatomy"
-            " delivery template than the one picked in the Delivery tool,"
-            " e.g. EXRs into a plates folder. Profiles for the picked"
-            " template go before profiles for any template. Then the"
-            " profile matching most filters wins, on a tie representation"
-            " names go before extensions before product base types, then"
-            " the first one in the list. Representations without a matching"
-            " profile use the picked template."
-        ),
+        title="Delivery recipes",
+        section="Delivery recipes",
+        description="Offered before the delivery templates",
     )
+
+    @validator("recipes")
+    def validate_unique_name(cls, value):
+        ensure_unique_names(value)
+        return value
 
 
 class GlobalToolsModel(BaseSettingsModel):
@@ -608,7 +614,17 @@ class GlobalToolsModel(BaseSettingsModel):
     )
     delivery: DeliveryToolModel = SettingsField(
         default_factory=DeliveryToolModel,
-        title="Delivery"
+        title="Delivery",
+        description=(
+            "Templates and recipes offered in the Delivery tool\n\n"
+            "A recipe delivers with its default template, and with another"
+            " template for representations matching one of its overrides,"
+            " e.g. EXRs into a plates folder. Recipes can use templates"
+            " hidden from the Delivery tool.\n\n"
+            "The override matching most filters wins. On a tie"
+            " representation names go before extensions before product base"
+            " types, then the first override in the list."
+        ),
     )
 
 
@@ -920,6 +936,6 @@ DEFAULT_TOOLS_VALUES = {
     "delivery": {
         "filter_type": "is_deny_list",
         "filter_templates": [],
-        "template_profiles": [],
+        "recipes": [],
     },
 }
