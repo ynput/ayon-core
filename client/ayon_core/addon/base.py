@@ -166,7 +166,7 @@ class BundleInformation:
     mode and custom code need them.
 
     """
-    studio_bundle_name: str | None
+    studio_bundle_name: str
     project_bundle_name: str | None
     addons: list[BundleAddon]
     _bundles: dict[str, Any] = field(
