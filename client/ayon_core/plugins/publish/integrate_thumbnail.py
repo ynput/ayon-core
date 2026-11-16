@@ -22,9 +22,12 @@
 
 """
 
+from __future__ import annotations
+
 import os
 import collections
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import ayon_api
 from ayon_api.operations import OperationsSession
@@ -40,6 +43,18 @@ InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",
     ["instance", "thumbnail_path", "version_id"]
 )
+
+
+def _get_max_upload_workers() -> int:
+    """Number of thumbnails uploaded concurrently.
+
+    Can be overridden with 'AYON_PUBLISH_UPLOAD_WORKERS' env variable.
+    """
+    try:
+        value = int(os.getenv("AYON_PUBLISH_UPLOAD_WORKERS", 4))
+    except ValueError:
+        value = 4
+    return max(1, value)
 
 
 class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
@@ -205,6 +220,29 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             help_filename="upload_file.xml",
         )
 
+    def _create_thumbnails(
+        self, project_name: str, thumbnail_paths: set[str]
+    ) -> dict[str, str]:
+        """Upload thumbnails concurrently and return ids by their path.
+
+        Each unique path is uploaded only once. Uploads run concurrently to
+        reduce the impact of per-request latency to the server.
+        """
+        if not thumbnail_paths:
+            return {}
+        paths = list(thumbnail_paths)
+        max_workers = min(_get_max_upload_workers(), len(paths))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(self._create_thumbnail, project_name, path)
+                for path in paths
+            ]
+            # Wait for all uploads, re-raise the first error
+            return {
+                path: future.result()
+                for path, future in zip(paths, futures)
+            }
+
     def _integrate_thumbnails(
         self,
         filtered_instance_items,
@@ -217,26 +255,37 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         set_folder_thumbnail = (
             ayon_api.get_server_version_tuple() < (1, 16, 8)
         )
-        # Make sure each entity id has defined only one thumbnail id
-        folder_ids = set()
-        thumbnail_id_by_folder_id = {}
-        op_session = OperationsSession()
+        valid_instance_items = []
         for instance_item in filtered_instance_items:
-            instance, thumbnail_path, version_id = instance_item
-            instance_label = self._get_instance_label(instance)
-            version_entity = version_entities_by_id.get(version_id)
+            version_entity = version_entities_by_id.get(
+                instance_item.version_id
+            )
             if not version_entity:
+                instance_label = self._get_instance_label(
+                    instance_item.instance
+                )
                 self.log.warning(
                     f"Version entity for instance \"{instance_label}\""
                     f" was not found."
                 )
                 continue
+            valid_instance_items.append(instance_item)
 
+        thumbnail_id_by_path = self._create_thumbnails(
+            project_name,
+            {item.thumbnail_path for item in valid_instance_items}
+        )
+
+        # Make sure each entity id has defined only one thumbnail id
+        folder_ids = set()
+        thumbnail_id_by_folder_id = {}
+        op_session = OperationsSession()
+        for instance_item in valid_instance_items:
+            instance, thumbnail_path, version_id = instance_item
+            version_entity = version_entities_by_id[version_id]
+            thumbnail_id = thumbnail_id_by_path[thumbnail_path]
             folder_id = instance.data["folderEntity"]["id"]
             folder_ids.add(folder_id)
-            thumbnail_id = self._create_thumbnail(
-                project_name, thumbnail_path
-            )
 
             # Set thumbnail id for version
             op_session.update_entity(
