@@ -27,7 +27,7 @@ Provides:
     instance    -> latestVersion
 
 Missing entities are taken from the CreateContext cache when the publish was
-    started from a CreateContext (e.g. Publisher) for the same project.
+    started from a CreateContext (e.g. Publisher).
 """
 from __future__ import annotations
 
@@ -41,7 +41,6 @@ import ayon_api
 
 from ayon_core.pipeline.template_data import get_folder_template_data
 from ayon_core.pipeline.version_start import get_versioning_start
-from ayon_core.pipeline.publish import get_publish_create_context
 
 if TYPE_CHECKING:
     from ayon_core.pipeline.create import CreateContext
@@ -109,7 +108,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             ", ".join(["\"{}\"".format(path) for path in folder_paths])
         ))
 
-        create_context = get_publish_create_context(context)
+        create_context = context.data.get("create_context")
         if create_context is not None:
             # Copy so publish plugins can't change CreateContext cache
             folder_entities_by_path = {
@@ -206,7 +205,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         all_task_names.discard(None)
 
         task_entities = []
-        create_context = get_publish_create_context(context)
+        create_context = context.data.get("create_context")
         if create_context is not None:
             task_entities = self._get_create_context_task_entities(
                 create_context,

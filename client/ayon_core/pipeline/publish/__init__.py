@@ -38,7 +38,6 @@ from .lib import (
 
     filter_instances_for_context_plugin,
     context_plugin_should_run,
-    get_publish_create_context,
     get_instance_staging_dir,
     get_publish_repre_path,
 
@@ -110,7 +109,6 @@ __all__ = (
 
     "filter_instances_for_context_plugin",
     "context_plugin_should_run",
-    "get_publish_create_context",
     "get_instance_staging_dir",
     "get_publish_repre_path",
 

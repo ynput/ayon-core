@@ -13,7 +13,7 @@ Provides:
         and 'task' are set in context data.
 
 Entities and anatomy are taken from the CreateContext cache when the publish
-    was started from a CreateContext (e.g. Publisher) for the same project.
+    was started from a CreateContext (e.g. Publisher).
 """
 import copy
 
@@ -21,7 +21,6 @@ import pyblish.api
 import ayon_api
 
 from ayon_core.pipeline import PublishError, Anatomy
-from ayon_core.pipeline.publish import get_publish_create_context
 
 
 class CollectContextEntities(pyblish.api.ContextPlugin):
@@ -39,7 +38,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         folder_entity = context.data.get("folderEntity")
         task_entity = context.data.get("taskEntity")
 
-        create_context = get_publish_create_context(context)
+        create_context = context.data.get("create_context")
 
         if not project_entity and create_context is not None:
             project_entity = create_context.get_current_project_entity()

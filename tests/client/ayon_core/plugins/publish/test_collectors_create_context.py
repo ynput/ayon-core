@@ -309,17 +309,3 @@ def test_collected_data_does_not_change_create_context(server_calls):
                 folder_path, task_name
             )
             assert task_entity["attrib"]["fps"] == 25.0
-
-
-def test_create_context_of_other_project_is_not_used(server_calls):
-    """CreateContext of a different project is ignored."""
-    create_context = _create_create_context()
-    server_calls.clear()
-
-    context = _create_publish_context(create_context)
-    context.data["projectName"] = "other_project"
-    CollectSettings().process(context)
-    CollectInstanceEntities().fill_folder_entities(context)
-
-    assert server_calls["get_project_settings"] == 1
-    assert server_calls["get_folders"] == 1

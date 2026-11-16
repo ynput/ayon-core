@@ -100,7 +100,7 @@ class CollectHierarchy(
             shot_instances (list[pyblish.api.Instance]): A list of shot
                 instances.
             create_context (CreateContext | None): CreateContext with
-                cached folder entities of 'project_name'.
+                cached folder entities.
 
         Returns:
             dict[str, dict | None]: A dictionary mapping folder paths to
@@ -158,7 +158,7 @@ class CollectHierarchy(
         existing_entities = self.get_existing_folder_entities(
             project_name,
             shot_instances,
-            publish.get_publish_create_context(context),
+            context.data.get("create_context"),
         )
 
         skip_shot_attributes_on_update: set[str] = set(
