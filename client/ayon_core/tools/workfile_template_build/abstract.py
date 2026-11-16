@@ -225,12 +225,15 @@ class AbstractTemplateBuilderController(ABC):
     @abstractmethod
     def register_event_callback(
         self, topic: str, callback: Callable
-    ) -> None:
+    ) -> Any:
         """Register callback to a topic.
 
         Args:
             topic (str): Name of the topic.
             callback (Callable): Callback triggered on event.
+
+        Returns:
+            Any: Callback handle with a 'deregister' method, when supported.
 
         """
         pass

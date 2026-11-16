@@ -16,6 +16,9 @@ from ayon_core.tools.workfile_template_build import (
     WorkfileTemplateBuilderController,
     WorkfileTemplateBuilderWindow,
 )
+from ayon_core.tools.workfile_template_build.abstract import (
+    BuildContextItem,
+)
 from ayon_core.tools.workfile_template_build.ui.build_report import (
     BuildReportDialog,
 )
@@ -114,7 +117,21 @@ class _Answers:
         self.queue = []
 
     def question(self, *args, **kwargs):
+        if not self.queue:
+            # Closing a window at test teardown must not open a modal dialog.
+            return QtWidgets.QMessageBox.Discard
         return self.queue.pop(0)
+
+
+@pytest.fixture(autouse=True)
+def _close_without_prompt(monkeypatch):
+    monkeypatch.setattr(
+        QtWidgets.QMessageBox,
+        "question",
+        staticmethod(
+            lambda *args, **kwargs: QtWidgets.QMessageBox.Discard
+        ),
+    )
 
 
 @pytest.fixture
@@ -351,9 +368,14 @@ class TestEdit:
 
         assert window._pages_widget.currentIndex() == HINT_PAGE
 
-    def test_remove_deletes_placeholder_without_confirmation(
-        self, window, builder
-    ):
+    def test_remove_asks_for_confirmation(self, window, builder, answers):
+        answers.queue.append(QtWidgets.QMessageBox.No)
+        window._on_remove_request()
+
+        assert "node_1" in builder.nodes
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
         window._on_remove_request()
 
         assert "node_1" not in builder.nodes
@@ -442,10 +464,13 @@ class TestEditorActions:
 
         assert builder.runs == ["node_1"]
 
-    def test_remove_button_removes_the_placeholder(self, window, builder):
+    def test_remove_button_removes_the_placeholder(
+        self, window, builder, answers
+    ):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
 
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
         window._editor_widget._remove_btn.click()
 
         assert "node_1" not in builder.nodes
@@ -615,9 +640,8 @@ class TestContextBar:
         window._on_context_change_request()
 
         context_bar = window._context_bar
-        assert context_bar._context_btn.text() == (
-            "/shots/sh010 \u00b7 animation"
-        )
+        label = "/shots/sh010 \u00b7 animation"
+        assert label in context_bar._context_btn.toolTip()
         assert not context_bar._reset_btn.isHidden()
         preview = window._editor_widget._preview_widget
         assert "/shots/sh010" in preview._context_label.text()
@@ -839,3 +863,149 @@ class TestRunSupport:
         window._update_build_status(result)
 
         assert "1 skipped" in window._build_status_btn.text()
+
+
+class TestUnsavedChangeGuards:
+    def _create_placeholder(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert window._current_identifier == "node_1"
+
+    def test_close_asks_for_dirty_changes(self, window, answers):
+        self._create_placeholder(window)
+        _name_input(window).setText("changed")
+
+        answers.queue.append(QtWidgets.QMessageBox.Cancel)
+        window.close()
+        assert window.isVisible()
+
+        answers.queue.append(QtWidgets.QMessageBox.Discard)
+        window.close()
+        assert window.isHidden()
+
+    def test_create_mode_switch_asks_to_discard(self, window, answers):
+        self._create_placeholder(window)
+        window._on_create_request()
+        _name_input(window).setText("changed")
+
+        answers.queue.append(QtWidgets.QMessageBox.Cancel)
+        window._placeholders_widget.select_identifier("node_1")
+        assert window._editor_widget.is_create_mode()
+
+        answers.queue.append(QtWidgets.QMessageBox.Discard)
+        window._placeholders_widget.select_identifier("node_1")
+        assert not window._editor_widget.is_create_mode()
+        assert window._current_identifier == "node_1"
+
+    def test_create_mode_cancel_asks_to_discard(self, window, answers):
+        window._on_create_request()
+        _name_input(window).setText("changed")
+
+        answers.queue.append(QtWidgets.QMessageBox.Cancel)
+        window._on_create_cancelled()
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+
+        answers.queue.append(QtWidgets.QMessageBox.Discard)
+        window._on_create_cancelled()
+        assert window._pages_widget.currentIndex() == HINT_PAGE
+
+    def test_filter_does_not_close_editor_or_ask(self, window, answers):
+        self._create_placeholder(window)
+        _name_input(window).setText("changed")
+        answers.queue.append(QtWidgets.QMessageBox.Cancel)
+
+        filter_input = window._placeholders_widget._filter_input
+        filter_input.setText("zzz")
+
+        assert answers.queue
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert window._current_identifier == "node_1"
+        assert window._editor_widget.has_unsaved_changes()
+
+        filter_input.setText("")
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert (
+            window._placeholders_widget.get_selected_identifier()
+            == "node_1"
+        )
+
+    def test_empty_list_click_keeps_editor(self, window, answers):
+        self._create_placeholder(window)
+        _name_input(window).setText("changed")
+        answers.queue.append(QtWidgets.QMessageBox.Cancel)
+
+        window._placeholders_widget._view.selectionModel().clearSelection()
+
+        assert answers.queue
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert window._editor_widget.has_unsaved_changes()
+
+    def test_discard_on_refresh_reverts_editor(self, window, answers):
+        self._create_placeholder(window)
+        _name_input(window).setText("changed")
+
+        answers.queue.append(QtWidgets.QMessageBox.Discard)
+        window._on_refresh_request()
+
+        assert _name_input(window).text() == "one"
+        assert not window._editor_widget.has_unsaved_changes()
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+
+    def test_refresh_updates_editor_from_scene(self, window, builder):
+        self._create_placeholder(window)
+        builder.nodes["node_1"]["name"] = "changed outside"
+
+        window.refresh()
+
+        assert _name_input(window).text() == "changed outside"
+        assert not window._editor_widget.has_unsaved_changes()
+
+    def test_removed_placeholder_shows_notice(self, window, builder):
+        self._create_placeholder(window)
+        builder.nodes.pop("node_1")
+
+        window.refresh()
+
+        assert window._pages_widget.currentIndex() == HINT_PAGE
+        assert (
+            window._hint_widget._title_label.text()
+            == "Placeholder no longer exists"
+        )
+
+    def test_removed_placeholder_keeps_dirty_form(self, window, builder):
+        self._create_placeholder(window)
+        _name_input(window).setText("changed")
+        builder.nodes.pop("node_1")
+
+        window.refresh()
+
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert _name_input(window).text() == "changed"
+        assert window._editor_widget.has_unsaved_changes()
+
+    def test_long_context_is_elided(self, window):
+        window._context_bar.set_build_context(
+            BuildContextItem("/short/folder", "modeling", False)
+        )
+        window.layout().activate()
+        short_width = window.minimumSizeHint().width()
+
+        long_folder = "/assets/" + "/".join(
+            ["very_long_asset_folder_name"] * 8
+        )
+        label = "{} \u00b7 animation".format(long_folder)
+        window._context_bar.set_build_context(
+            BuildContextItem(long_folder, "animation", True)
+        )
+        window.layout().activate()
+
+        button = window._context_bar._context_btn
+        assert window.minimumSizeHint().width() <= short_width + 100
+        assert label in button.toolTip()
+        assert button.text() != label
+        window._context_bar.layout().activate()
+        assert (
+            window._context_bar._test_build_btn.geometry().right()
+            <= window._context_bar.width()
+        )

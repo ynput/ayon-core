@@ -22,11 +22,65 @@ MENU_ARROW_MARGIN = 6
 class _MenuButton(AYButton):
     """Button with an arrow after its label, so it reads as a menu."""
 
+    def __init__(self, *args, **kwargs):
+        base_tooltip = kwargs.get("tooltip", "")
+        super().__init__(*args, **kwargs)
+        self._full_text = super().text()
+        self._base_tooltip = base_tooltip or self.toolTip()
+        self._apply_elide()
+
     def sizeHint(self) -> QtCore.QSize:
         size = super().sizeHint()
-        return QtCore.QSize(
-            size.width() + MENU_ARROW_SIZE + MENU_ARROW_GAP, size.height()
+        font_metrics = self.fontMetrics()
+        extra_width = max(
+            0,
+            font_metrics.horizontalAdvance(self._full_text)
+            - font_metrics.horizontalAdvance(self.text()),
         )
+        return QtCore.QSize(size.width() + extra_width, size.height())
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        size = super().minimumSizeHint()
+        return QtCore.QSize(
+            MENU_ARROW_SIZE + MENU_ARROW_GAP + MENU_ARROW_MARGIN + 24,
+            size.height(),
+        )
+
+    def setText(self, text: str) -> None:
+        self._full_text = text
+        self._apply_elide()
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._apply_elide()
+
+    def _apply_elide(self) -> None:
+        full_text = getattr(self, "_full_text", "")
+        icon_width = 0
+        if not self.icon().isNull():
+            icon_width = self.iconSize().width() + 8
+        available_width = (
+            self.width()
+            - icon_width
+            - MENU_ARROW_SIZE
+            - MENU_ARROW_GAP
+            - MENU_ARROW_MARGIN
+        )
+        if available_width > 24:
+            text = self.fontMetrics().elidedText(
+                full_text,
+                QtCore.Qt.ElideMiddle,
+                available_width,
+            )
+        else:
+            text = full_text
+        QtWidgets.QPushButton.setText(self, text)
+
+        tooltip = full_text
+        base_tooltip = getattr(self, "_base_tooltip", "")
+        if base_tooltip:
+            tooltip = "{}\n\n{}".format(full_text, base_tooltip)
+        self.setToolTip(tooltip)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         super().paintEvent(event)

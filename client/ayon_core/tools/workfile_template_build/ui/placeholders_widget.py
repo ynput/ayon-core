@@ -407,6 +407,8 @@ class PlaceholdersWidget(AYContainer):
         self._pending_plugin_item: Optional[PlaceholderPluginItem] = None
         self._has_placeholders = False
         self._error_message: Optional[str] = None
+        self._ignore_selection_change = False
+        self._filtered_selection_identifier: Optional[str] = None
 
     def set_placeholder_items(
         self, placeholder_items: list[PlaceholderItemInfo]
@@ -666,9 +668,43 @@ class PlaceholdersWidget(AYContainer):
         self._view.scrollTo(index)
 
     def _on_filter_change(self, text: str) -> None:
-        self._proxy_model.setFilterFixedString(text)
+        """Change the filter without treating it as a selection change.
+
+        Filtering the list must not close the editor. When the selected
+        placeholder is filtered out, remember it and select it again when it
+        becomes visible.
+        """
+        selected_identifier = self.get_selected_identifier()
+        candidate = selected_identifier
+        if candidate is None:
+            candidate = self._filtered_selection_identifier
+
+        self._ignore_selection_change = True
+        try:
+            self._proxy_model.setFilterFixedString(text)
+            if candidate is not None:
+                if self._is_identifier_visible(candidate):
+                    self.select_identifier(candidate)
+                    self._filtered_selection_identifier = None
+                else:
+                    self._view.selectionModel().clearSelection()
+                    self._filtered_selection_identifier = candidate
+        finally:
+            self._ignore_selection_change = False
+
+    def _is_identifier_visible(self, scene_identifier: str) -> bool:
+        matches = self._proxy_model.match(
+            self._proxy_model.index(0, 0),
+            SCENE_IDENTIFIER_ROLE,
+            scene_identifier,
+            1,
+            QtCore.Qt.MatchExactly | QtCore.Qt.MatchRecursive,
+        )
+        return bool(matches)
 
     def _on_selection_change(self, *_args) -> None:
+        if self._ignore_selection_change:
+            return
         self.selection_changed.emit()
 
     def _on_double_click(self, index: QtCore.QModelIndex) -> None:

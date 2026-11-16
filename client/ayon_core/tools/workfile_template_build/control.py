@@ -107,8 +107,8 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             )
 
     # --- Events -------------------------------------------------------
-    def register_event_callback(self, topic: str, callback: Callable) -> None:
-        self._event_system.add_callback(topic, callback)
+    def register_event_callback(self, topic: str, callback: Callable) -> Any:
+        return self._event_system.add_callback(topic, callback)
 
     def emit_event(
         self,

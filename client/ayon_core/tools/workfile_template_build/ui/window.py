@@ -237,12 +237,16 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         )
         build_status_btn.clicked.connect(self._on_show_build_report)
 
-        controller.register_event_callback(
-            PLACEHOLDERS_REFRESHED_TOPIC, self._on_placeholders_refreshed
-        )
-        controller.register_event_callback(
-            BUILD_CONTEXT_CHANGED_TOPIC, self._on_build_context_changed
-        )
+        self._event_callbacks = [
+            controller.register_event_callback(
+                PLACEHOLDERS_REFRESHED_TOPIC,
+                self._on_placeholders_refreshed,
+            ),
+            controller.register_event_callback(
+                BUILD_CONTEXT_CHANGED_TOPIC,
+                self._on_build_context_changed,
+            ),
+        ]
 
         self._controller = controller
         self._context_bar = context_bar
@@ -257,6 +261,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._current_identifier: Optional[str] = None
         self._plugin_items: list[PlaceholderPluginItem] = []
         self._placeholder_items_by_id: dict[str, PlaceholderItemInfo] = {}
+        self._hint_notice: Optional[str] = None
 
         self._update_build_state()
         self._update_build_context()
@@ -271,6 +276,18 @@ class WorkfileTemplateBuilderWindow(AYContainer):
                 style.load_stylesheet() + _get_window_stylesheet()
             )
             self.refresh()
+
+    def closeEvent(self, event):
+        if not self._confirm_discard_changes():
+            event.ignore()
+            return
+
+        self._editor_widget.stop_dynamic_timer()
+        for callback in self._event_callbacks:
+            deregister = getattr(callback, "deregister", None)
+            if deregister is not None:
+                deregister()
+        super().closeEvent(event)
 
     # --- Public API ---------------------------------------------------
     def refresh(self):
@@ -350,8 +367,24 @@ class WorkfileTemplateBuilderWindow(AYContainer):
                 editor_identifier is not None
                 and editor_identifier not in self._placeholder_items_by_id
             ):
+                self._hint_notice = (
+                    "The placeholder that was being edited is no longer in"
+                    " the scene. It may have been removed outside of the"
+                    " tool."
+                )
+                if self._editor_widget.has_unsaved_changes():
+                    # Keep the form so unsaved values are not lost.
+                    return
                 self._show_hint_page()
                 return
+            self._hint_notice = None
+            if (
+                editor_identifier is not None
+                and not self._editor_widget.has_unsaved_changes()
+            ):
+                # Rebuild the editor from the refreshed scene data, so
+                #   changes made outside the tool are visible.
+                self._show_editor_page(editor_identifier)
 
         if self._pages_widget.currentIndex() == HINT_PAGE:
             self._update_hint_message()
@@ -396,6 +429,13 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             )
             return
 
+        if self._hint_notice:
+            self._hint_widget.set_unavailable(
+                "Placeholder no longer exists",
+                self._hint_notice,
+            )
+            return
+
         if not self._plugin_items:
             self._hint_widget.set_unavailable(
                 "No placeholder types available",
@@ -437,6 +477,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             return
 
         plugin_item = self._get_plugin_item(placeholder_item.plugin_identifier)
+        self._hint_notice = None
         self._current_identifier = scene_identifier
         self._set_pending_item(None)
         self._editor_widget.set_edit_mode(
@@ -448,6 +489,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._pages_widget.setCurrentIndex(EDITOR_PAGE)
 
     def _show_create_page(self, plugin_item: PlaceholderPluginItem):
+        self._hint_notice = None
         self._current_identifier = None
         self._set_pending_item(plugin_item)
         self._editor_widget.set_create_mode(plugin_item)
@@ -478,13 +520,23 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if not self._editor_widget.has_unsaved_changes():
             return True
 
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "Discard changes?",
-            (
+        if self._editor_widget.is_create_mode():
+            title = "Discard new placeholder?"
+            message = (
+                "The new placeholder has options filled in but is not"
+                " created yet.\nDo you want to discard it?"
+            )
+        else:
+            title = "Discard changes?"
+            message = (
                 "Placeholder options were changed and are not saved."
                 "\nDo you want to discard the changes?"
-            ),
+            )
+
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            title,
+            message,
             QtWidgets.QMessageBox.Discard | QtWidgets.QMessageBox.Cancel,
             QtWidgets.QMessageBox.Cancel,
         )
@@ -521,18 +573,22 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if scene_identifier == self._current_identifier:
             return
 
+        if scene_identifier is None:
+            # Clicking empty space in the list must not close the editor.
+            if self._current_identifier is not None:
+                self._select_silently(self._current_identifier)
+            return
+
         if not self._confirm_discard_changes():
             self._select_silently(self._current_identifier)
             return
 
-        if scene_identifier is None:
-            self._show_hint_page()
-        else:
-            self._show_editor_page(scene_identifier)
+        self._show_editor_page(scene_identifier)
 
     def _on_refresh_request(self):
         if not self._confirm_discard_changes():
             return
+        self._editor_widget.revert_to_original()
         self.refresh()
 
     def _on_run_template_build_request(self):
@@ -735,6 +791,8 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._show_create_page(plugin_item)
 
     def _on_create_cancelled(self):
+        if not self._confirm_discard_changes():
+            return
         self._select_silently(None)
         self._show_hint_page()
 
@@ -798,6 +856,34 @@ class WorkfileTemplateBuilderWindow(AYContainer):
                 self._placeholders_widget.get_selected_identifier()
             )
         if scene_identifier is None:
+            return
+
+        placeholder_item = self._placeholder_items_by_id.get(scene_identifier)
+        label = (
+            placeholder_item.label
+            if placeholder_item is not None
+            else scene_identifier
+        )
+        plugin_label = (
+            placeholder_item.plugin_label
+            if placeholder_item is not None
+            else ""
+        )
+        message = "Remove placeholder \"{}\"?".format(label)
+        if plugin_label:
+            message += "\nType: {}".format(plugin_label)
+        message += (
+            "\n\nThe placeholder is removed from the scene and cannot be"
+            " restored."
+        )
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Remove placeholder?",
+            message,
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
             return
 
         result = self._controller.delete_placeholder(scene_identifier)

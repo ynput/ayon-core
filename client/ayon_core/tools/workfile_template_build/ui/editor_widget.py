@@ -613,6 +613,7 @@ class PlaceholderEditorWidget(AYContainer):
         self._scene_identifier: Optional[str] = None
         self._attrs_widget: Optional[AttributeDefinitionsWidget] = None
         self._original_values: dict[str, Any] = {}
+        self._default_values: dict[str, Any] = {}
         self._last_dynamic_values: Optional[dict[str, Any]] = None
         self._had_unsaved_changes = False
         self._options_source_data: Optional[dict[str, Any]] = None
@@ -699,6 +700,27 @@ class PlaceholderEditorWidget(AYContainer):
         self._last_dynamic_values = None
         self._request_dynamic_update()
 
+    def stop_dynamic_timer(self) -> None:
+        """Stop a pending preview/completions calculation."""
+        self._dynamic_timer.stop()
+
+    def is_create_mode(self) -> bool:
+        """The editor shows a placeholder that is not created yet."""
+        return self._mode == CREATE_MODE
+
+    def revert_to_original(self) -> None:
+        """Restore the values the editor was opened with."""
+        if self._attrs_widget is None:
+            return
+        if self._mode == CREATE_MODE:
+            values = self._default_values
+        else:
+            values = self._original_values
+        self._attrs_widget.set_value(copy.deepcopy(values))
+        self._last_dynamic_values = None
+        self._update_confirm_state()
+        self._request_dynamic_update()
+
     def has_unsaved_changes(self) -> bool:
         """Options were changed since they were last stored.
 
@@ -706,9 +728,12 @@ class PlaceholderEditorWidget(AYContainer):
             bool: There are changes that would be lost.
 
         """
-        if self._mode != EDIT_MODE or self._attrs_widget is None:
+        if self._attrs_widget is None:
             return False
-        return self._attrs_widget.current_value() != self._original_values
+        values = self._attrs_widget.current_value()
+        if self._mode == CREATE_MODE:
+            return values != self._default_values
+        return values != self._original_values
 
     def get_scene_identifier(self) -> Optional[str]:
         """Scene identifier of the edited placeholder.
@@ -819,7 +844,11 @@ class PlaceholderEditorWidget(AYContainer):
         self._attrs_wrapper_layout.insertWidget(0, attrs_widget, 0)
 
         self._attrs_widget = attrs_widget
-        self._original_values = attrs_widget.current_value()
+        current_values = attrs_widget.current_value()
+        if self._mode == CREATE_MODE:
+            self._default_values = copy.deepcopy(current_values)
+        else:
+            self._original_values = current_values
 
         self._update_confirm_state()
         self._request_dynamic_update()
@@ -934,9 +963,7 @@ class PlaceholderEditorWidget(AYContainer):
             self.cancel_requested.emit()
             return
 
-        if self._attrs_widget is not None:
-            self._attrs_widget.set_value(copy.deepcopy(self._original_values))
-            self._update_confirm_state()
+        self.revert_to_original()
 
     def _on_select_click(self) -> None:
         if self._scene_identifier is not None:
