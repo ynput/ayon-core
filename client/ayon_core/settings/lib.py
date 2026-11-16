@@ -105,10 +105,7 @@ class _AyonSettingsCache:
 
     @classmethod
     def _get_project_bundle_name(cls):
-        bundle_name = os.environ.get("AYON_BUNDLE_NAME")
-        if bundle_name:
-            return bundle_name
-        return cls._get_studio_bundle_name()
+        return os.environ["AYON_BUNDLE_NAME"]
 
     @classmethod
     def _update_cache(cls, project_name: Optional[str]) -> None:
