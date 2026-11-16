@@ -1552,7 +1552,7 @@ def oiio_color_convert(
     logger: Optional[logging.Logger] = None,
     *,
     review_layers: Optional[list[str]] = None,
-    input_info: Optional[dict] = None,
+    input_info: dict | None = None,
 ) -> None:
     """Transcode source file to other with colormanagement.
 
@@ -1594,7 +1594,7 @@ def oiio_color_convert(
             the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
         review_layers (Optional[list[str]]): List of reviewable layers.
-        input_info (Optional[dict]): Information about the input from
+        input_info (dict | None): Information about the input from
             'get_oiio_info_for_input'. Pass it if already known to avoid
             reading the input with 'oiiotool' again.
     Raises:
@@ -1755,8 +1755,8 @@ def get_rescaled_command_arguments(
     target_par: float = None,
     bg_color: Optional[list[int]] = None,
     review_layers: Optional[list[str]] = None,
-    log: Optional[logging.Logger] = None,
-    input_info: Optional[dict] = None,
+    input_info: dict | None = None,
+    log: logging.Logger | None = None,
 ) -> list[str]:
     """Get command arguments for rescaling input to target size.
 
@@ -1769,11 +1769,11 @@ def get_rescaled_command_arguments(
         target_par (Optional[float]): Pixel aspect ratio of target.
         bg_color (Optional[list[int]]): List of 8bit int values for
             background color. Should be in range 0 - 255.
-        log (Optional[logging.Logger]): Logger used for logging.
         review_layers (Optional[list[str]]): List of reviewable layers.
-        input_info (Optional[dict]): Information about the input from
+        input_info (dict | None): Information about the input from
             'get_oiio_info_for_input'. Pass it if already known to avoid
             reading the input with 'oiiotool' again.
+        log (logging.Logger | None): Logger used for logging.
 
     Returns:
         list[str]: List of command arguments.
