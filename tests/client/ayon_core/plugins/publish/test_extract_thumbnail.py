@@ -86,12 +86,12 @@ def _fake_main_process_factory(
             before the thumbnail is created.
 
     """
-    def _main_process(self, instance, result):
+    def _main_process(self, instance, result, log):
         dst_staging = tempfile.mkdtemp(prefix="thumb_", dir=root)
         result.staging_dir = dst_staging
         if on_process is not None:
             on_process(self, instance)
-        self.log.info("Creating thumbnail")
+        log.info("Creating thumbnail")
         jpeg_file = "{}_thumb.jpg".format(instance.data["productName"])
         _write_file(os.path.join(dst_staging, jpeg_file))
         result.representations.append({
@@ -255,7 +255,7 @@ def test_main_process_does_not_modify_instance(tmp_path, monkeypatch):
     instance_data = copy.deepcopy(dict(instance.data))
     result = _InstanceResult(instance, plugin.log)
 
-    plugin._main_process(instance, result)
+    plugin._main_process(instance, result, result.log)
 
     assert dict(instance.data) == instance_data
     assert context.data["cleanupFullPaths"] == []
