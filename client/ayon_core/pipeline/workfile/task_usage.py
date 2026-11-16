@@ -46,7 +46,7 @@ from typing import Any, Callable
 
 import ayon_api
 
-from ayon_core.host import WorkfileInUse
+from ayon_core.host import AbstractHost, WorkfileInUse
 from ayon_core.lib import (
     filter_profiles,
     get_ayon_username,
@@ -266,18 +266,18 @@ def is_task_usage_enabled_in_project(
 
 def get_task_usage_settings(
     project_name: str,
-    host_name: str | None,
-    task_type: str | None,
-    task_name: str | None,
+    host_name: str,
+    task_type: str,
+    task_name: str,
     project_settings: dict[str, Any] | None = None,
 ) -> TaskUsageSettings:
     """Task in-use settings for a context.
 
     Args:
         project_name (str): Project name.
-        host_name (str | None): Host name.
-        task_type (str | None): Task type.
-        task_name (str | None): Task name.
+        host_name (str): Host name.
+        task_type (str): Task type.
+        task_name (str): Task name.
         project_settings (dict[str, Any] | None): Prepared project
             settings.
 
@@ -796,9 +796,9 @@ class TaskUsageTracker:
         host (AbstractHost): Host integration.
 
     """
-    def __init__(self, host):
+    def __init__(self, host: AbstractHost):
         self._host = host
-        self._host_name: str | None = getattr(host, "name", None)
+        self._host_name: str = host.name
 
         # Context scheduled in main thread for the background thread
         self._lock = threading.Lock()
@@ -1310,7 +1310,7 @@ def sync_task_usage() -> None:
         tracker.sync()
 
 
-def _is_used_in_host_project(host) -> bool:
+def _is_used_in_host_project(host: AbstractHost) -> bool:
     """Project of the host integration has an enabled profile."""
     try:
         project_name = host.get_current_context()["project_name"]
@@ -1325,7 +1325,9 @@ def _is_used_in_host_project(host) -> bool:
     return False
 
 
-def install_task_usage_tracker(host) -> TaskUsageTracker | None:
+def install_task_usage_tracker(
+    host: AbstractHost,
+) -> TaskUsageTracker | None:
     """Start tracking of task in-use for the host integration.
 
     Should be called from the main thread of the application. Tracking is
