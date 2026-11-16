@@ -5,7 +5,7 @@ import datetime
 import re
 import threading
 from dataclasses import replace
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -32,9 +32,9 @@ def _item(
     session_id: str = "session-1",
     username: str = "artist1",
     site_id: str = "site-1",
-    host_name: Optional[str] = "maya",
+    host_name: str | None = "maya",
     hours_ago: float = 0.0,
-    opened_hours_ago: Optional[float] = None,
+    opened_hours_ago: float | None = None,
 ) -> TaskUsageItem:
     if opened_hours_ago is None:
         opened_hours_ago = hours_ago
@@ -131,7 +131,7 @@ def test_user_full_names(monkeypatch):
     assert task_usage.get_task_usage_user_full_names(items) == {}
 
 
-def _settings(profiles: Optional[list[dict[str, Any]]]) -> dict[str, Any]:
+def _settings(profiles: list[dict[str, Any]] | None) -> dict[str, Any]:
     workfiles = {}
     if profiles is not None:
         workfiles["task_in_use_profiles"] = profiles

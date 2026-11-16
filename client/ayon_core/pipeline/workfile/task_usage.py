@@ -42,7 +42,7 @@ import threading
 import time
 from dataclasses import dataclass, field, replace
 from functools import partial
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import ayon_api
 
@@ -136,8 +136,8 @@ class TaskUsageItem:
         username (str): AYON username.
         machine (str): Name of the machine.
         site_id (str): AYON site id of the machine.
-        host_name (Optional[str]): Name of host integration, e.g. 'maya'.
-        workfile (Optional[str]): Filename of the workfile opened in the
+        host_name (str | None): Name of host integration, e.g. 'maya'.
+        workfile (str | None): Filename of the workfile opened in the
             session.
         opened_at (str): UTC time in ISO format when the session started
             to work on the task. Filled by the server.
@@ -149,17 +149,17 @@ class TaskUsageItem:
     username: str
     machine: str
     site_id: str
-    host_name: Optional[str]
-    workfile: Optional[str]
+    host_name: str | None
+    workfile: str | None
     opened_at: str
     updated_at: str
 
     @classmethod
-    def from_server_data(cls, data: Any) -> Optional[TaskUsageItem]:
+    def from_server_data(cls, data: Any) -> TaskUsageItem | None:
         """Create item from session data received from the server.
 
         Returns:
-            Optional[TaskUsageItem]: Item or None if data are not valid.
+            TaskUsageItem | None: Item or None if data are not valid.
 
         """
         if not isinstance(data, dict):
@@ -194,21 +194,21 @@ class TaskUsageItem:
             "workfile": self.workfile,
         }
 
-    def is_workfile(self, workfile: Optional[str]) -> bool:
+    def is_workfile(self, workfile: str | None) -> bool:
         """The session has opened workfile with the same filename.
 
         Args:
-            workfile (Optional[str]): Path or filename of a workfile.
+            workfile (str | None): Path or filename of a workfile.
 
         """
         if not workfile or not self.workfile:
             return False
         return self.workfile.lower() == os.path.basename(workfile).lower()
 
-    def get_opened_at(self) -> Optional[datetime.datetime]:
+    def get_opened_at(self) -> datetime.datetime | None:
         return _parse_time(self.opened_at)
 
-    def get_updated_at(self) -> Optional[datetime.datetime]:
+    def get_updated_at(self) -> datetime.datetime | None:
         return _parse_time(self.updated_at)
 
 
@@ -216,7 +216,7 @@ def _get_now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-def _parse_time(value: Any) -> Optional[datetime.datetime]:
+def _parse_time(value: Any) -> datetime.datetime | None:
     if not isinstance(value, str):
         return None
     try:
@@ -240,7 +240,7 @@ def _get_profiles(project_settings: dict[str, Any]) -> list[dict[str, Any]]:
 
 def is_task_usage_enabled_in_project(
     project_name: str,
-    project_settings: Optional[dict[str, Any]] = None,
+    project_settings: dict[str, Any] | None = None,
 ) -> bool:
     """Task in-use tracking can be enabled for some context of a project.
 
@@ -249,7 +249,7 @@ def is_task_usage_enabled_in_project(
 
     Args:
         project_name (str): Project name.
-        project_settings (Optional[dict[str, Any]]): Prepared project
+        project_settings (dict[str, Any] | None): Prepared project
             settings.
 
     Returns:
@@ -266,19 +266,19 @@ def is_task_usage_enabled_in_project(
 
 def get_task_usage_settings(
     project_name: str,
-    host_name: Optional[str],
-    task_type: Optional[str],
-    task_name: Optional[str],
-    project_settings: Optional[dict[str, Any]] = None,
+    host_name: str | None,
+    task_type: str | None,
+    task_name: str | None,
+    project_settings: dict[str, Any] | None = None,
 ) -> TaskUsageSettings:
     """Task in-use settings for a context.
 
     Args:
         project_name (str): Project name.
-        host_name (Optional[str]): Host name.
-        task_type (Optional[str]): Task type.
-        task_name (Optional[str]): Task name.
-        project_settings (Optional[dict[str, Any]]): Prepared project
+        host_name (str | None): Host name.
+        task_type (str | None): Task type.
+        task_name (str | None): Task name.
+        project_settings (dict[str, Any] | None): Prepared project
             settings.
 
     Returns:
@@ -315,7 +315,7 @@ def get_task_usage_settings(
 def filter_other_users_items(
     items: list[TaskUsageItem],
     username: str,
-    acknowledged_session_ids: Optional[set[str]] = None,
+    acknowledged_session_ids: set[str] | None = None,
 ) -> list[TaskUsageItem]:
     """Sessions the user should be notified about.
 
@@ -325,7 +325,7 @@ def filter_other_users_items(
     Args:
         items (list[TaskUsageItem]): Active sessions of a task.
         username (str): Current username.
-        acknowledged_session_ids (Optional[set[str]]): Sessions the user
+        acknowledged_session_ids (set[str] | None): Sessions the user
             was already notified about.
 
     Returns:
@@ -345,13 +345,13 @@ def filter_other_users_items(
 
 
 def get_same_workfile_items(
-    items: list[TaskUsageItem], workfile: Optional[str]
+    items: list[TaskUsageItem], workfile: str | None
 ) -> list[TaskUsageItem]:
     """Sessions that have opened workfile with the same filename.
 
     Args:
         items (list[TaskUsageItem]): Sessions working on a task.
-        workfile (Optional[str]): Path or filename of a workfile.
+        workfile (str | None): Path or filename of a workfile.
 
     Returns:
         list[TaskUsageItem]: Sessions working in the same workfile.
@@ -442,7 +442,7 @@ def is_current_process_session_id(session_id: str) -> bool:
 
 
 # 'False' when the server does not have the endpoints
-_endpoints_supported: Optional[bool] = None
+_endpoints_supported: bool | None = None
 
 
 def is_task_usage_supported() -> bool:
@@ -461,7 +461,7 @@ def _get_endpoint(project_name: str, *subpaths: str) -> str:
 
 
 def _request(
-    method: str, endpoint: str, data: Optional[dict[str, Any]] = None
+    method: str, endpoint: str, data: dict[str, Any] | None = None
 ) -> Any:
     """Call task in-use endpoint of the core addon.
 
@@ -555,16 +555,16 @@ def get_other_users_task_usage_items(
 
 
 def create_session_item(
-    workfile: Optional[str] = None,
-    host_name: Optional[str] = None,
-    session_id: Optional[str] = None,
+    workfile: str | None = None,
+    host_name: str | None = None,
+    session_id: str | None = None,
 ) -> TaskUsageItem:
     """Create session item of current process.
 
     Args:
-        workfile (Optional[str]): Filename of the opened workfile.
-        host_name (Optional[str]): Name of host integration.
-        session_id (Optional[str]): Session id, see
+        workfile (str | None): Filename of the opened workfile.
+        host_name (str | None): Name of host integration.
+        session_id (str | None): Session id, see
             'get_workfile_session_id'. Session id of the process is used
             if is not passed.
 
@@ -592,7 +592,7 @@ def claim_task(
     project_name: str,
     task_id: str,
     item: TaskUsageItem,
-    ttl: Optional[int] = None,
+    ttl: int | None = None,
     heartbeat: bool = False,
 ) -> list[TaskUsageItem]:
     """Register or refresh a session as working on a task.
@@ -604,7 +604,7 @@ def claim_task(
         project_name (str): Project name.
         task_id (str): Task id.
         item (TaskUsageItem): Session to register.
-        ttl (Optional[int]): Time to live of the session in seconds.
+        ttl (int | None): Time to live of the session in seconds.
         heartbeat (bool): Only keep the session alive, the time of last
             activity of the session is not changed.
 
@@ -633,7 +633,7 @@ def update_task_session(
     project_name: str,
     task_id: str,
     item: TaskUsageItem,
-    ttl: Optional[int] = None,
+    ttl: int | None = None,
     heartbeat: bool = False,
 ) -> None:
     """Update a session on a task and keep it alive.
@@ -642,7 +642,7 @@ def update_task_session(
         project_name (str): Project name.
         task_id (str): Task id.
         item (TaskUsageItem): Session to update.
-        ttl (Optional[int]): Time to live of the session in seconds.
+        ttl (int | None): Time to live of the session in seconds.
         heartbeat (bool): Only keep the session alive, the time of last
             activity of the session is not changed.
 
@@ -656,14 +656,14 @@ def update_task_session(
 def release_task(
     project_name: str,
     task_id: str,
-    session_id: Optional[str] = None,
+    session_id: str | None = None,
 ) -> None:
     """Unregister a session from a task.
 
     Args:
         project_name (str): Project name.
         task_id (str): Task id.
-        session_id (Optional[str]): Session id. Session of current process
+        session_id (str | None): Session id. Session of current process
             is used if not passed.
 
     """
@@ -687,10 +687,10 @@ class _TaskContext:
 @dataclass(frozen=True)
 class _HostWorkfile:
     """Workfile opened in the application, captured in the main thread."""
-    project_name: Optional[str]
-    folder_path: Optional[str]
-    task_name: Optional[str]
-    workfile: Optional[str]
+    project_name: str | None
+    folder_path: str | None
+    task_name: str | None
+    workfile: str | None
     key: str = ""
 
 
@@ -715,9 +715,9 @@ class TaskInUseNotice:
         items (list[TaskUsageItem]): Sessions of other users.
         user_full_names (dict[str, str]): Full names of the users by
             username.
-        workfile (Optional[str]): Filename of workfile opened in current
+        workfile (str | None): Filename of workfile opened in current
             process when the task was claimed.
-        version_up_callback (Optional[Callable[[], None]]): Callback to
+        version_up_callback (Callable[[], None] | None): Callback to
             save current workfile as next version. Is filled if the same
             workfile is opened by other user. Must be called from the main
             thread of the application.
@@ -725,8 +725,8 @@ class TaskInUseNotice:
     """
     items: list[TaskUsageItem]
     user_full_names: dict[str, str] = field(default_factory=dict)
-    workfile: Optional[str] = None
-    version_up_callback: Optional[Callable[[], None]] = None
+    workfile: str | None = None
+    version_up_callback: Callable[[], None] | None = None
 
 
 _notice_callbacks: list[Callable[[TaskInUseNotice], None]] = []
@@ -800,27 +800,27 @@ class TaskUsageTracker:
     """
     def __init__(self, host):
         self._host = host
-        self._host_name: Optional[str] = getattr(host, "name", None)
+        self._host_name: str | None = getattr(host, "name", None)
 
         # Context scheduled in main thread for the background thread
         self._lock = threading.Lock()
-        self._scheduled: Optional[tuple[_HostWorkfile, ...]] = None
+        self._scheduled: tuple[_HostWorkfile, ...] | None = None
         self._is_scheduled: bool = False
         self._scheduled_at: float = 0.0
 
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._wake_event = threading.Event()
 
         # Only one thread can talk to the server at a time
         self._process_lock = threading.Lock()
         # Attributes below are changed only during the processing
-        self._state: Optional[tuple[_HostWorkfile, ...]] = None
+        self._state: tuple[_HostWorkfile, ...] | None = None
         # Claimed sessions by key of opened workfile
         self._sessions: dict[str, _ClaimedSession] = {}
         self._failed: bool = False
         self._disabled: bool = False
-        self._context_cache: dict[tuple, Optional[_TaskContext]] = {}
+        self._context_cache: dict[tuple, _TaskContext | None] = {}
 
     @property
     def is_disabled(self) -> bool:
@@ -892,14 +892,14 @@ class TaskUsageTracker:
         )
         thread.start()
 
-    def stop(self, timeout: Optional[float] = None) -> None:
+    def stop(self, timeout: float | None = None) -> None:
         """Release all claimed tasks and stop the background thread.
 
         The tasks are released by the thread. They are released in current
         thread if the thread was not started.
 
         Args:
-            timeout (Optional[float]): Seconds to wait until the tasks are
+            timeout (float | None): Seconds to wait until the tasks are
                 released by the thread, e.g. on exit of the application.
                 Does not wait if is not passed.
 
@@ -918,7 +918,7 @@ class TaskUsageTracker:
             thread.join(timeout)
 
     def _schedule(
-        self, state: Optional[tuple[_HostWorkfile, ...]]
+        self, state: tuple[_HostWorkfile, ...] | None
     ) -> None:
         now = time.monotonic()
         with self._lock:
@@ -994,7 +994,7 @@ class TaskUsageTracker:
                 self._is_scheduled = False
 
         # Opened workfiles with enabled tracking by their key
-        workfiles: dict[str, tuple[_TaskContext, Optional[str]]] = {}
+        workfiles: dict[str, tuple[_TaskContext, str | None]] = {}
         for host_workfile in self._state or ():
             context = self._get_task_context(host_workfile)
             if context is not None:
@@ -1066,7 +1066,7 @@ class TaskUsageTracker:
         self,
         key: str,
         context: _TaskContext,
-        workfile: Optional[str],
+        workfile: str | None,
         notified_session_ids: set[str],
     ) -> None:
         item = create_session_item(
@@ -1095,7 +1095,7 @@ class TaskUsageTracker:
             self._notify(other_items, workfile)
 
     def _notify(
-        self, items: list[TaskUsageItem], workfile: Optional[str]
+        self, items: list[TaskUsageItem], workfile: str | None
     ) -> None:
         """Notify user that other users are working on the claimed task.
 
@@ -1152,7 +1152,7 @@ class TaskUsageTracker:
 
         save_next_version()
 
-    def _get_workfile_filepath(self) -> Optional[str]:
+    def _get_workfile_filepath(self) -> str | None:
         get_current_workfile = getattr(
             self._host, "get_current_workfile", None
         )
@@ -1160,7 +1160,7 @@ class TaskUsageTracker:
             return None
         return get_current_workfile() or None
 
-    def _get_workfile_name(self) -> Optional[str]:
+    def _get_workfile_name(self) -> str | None:
         filepath = self._get_workfile_filepath()
         if not filepath:
             return None
@@ -1206,7 +1206,7 @@ class TaskUsageTracker:
 
     def _get_task_context(
         self, host_workfile: _HostWorkfile
-    ) -> Optional[_TaskContext]:
+    ) -> _TaskContext | None:
         """Task of opened workfile with enabled in-use tracking."""
         project_name = host_workfile.project_name
         folder_path = host_workfile.folder_path
@@ -1223,7 +1223,7 @@ class TaskUsageTracker:
 
     def _query_task_context(
         self, project_name: str, folder_path: str, task_name: str
-    ) -> Optional[_TaskContext]:
+    ) -> _TaskContext | None:
         # Avoid queries of entities if the tracking is not used in project
         if not is_task_usage_enabled_in_project(project_name):
             return None
@@ -1254,7 +1254,7 @@ class TaskUsageTracker:
 
 
 # Keep the tracker referenced, event callbacks are stored as weak references
-_tracker: Optional[TaskUsageTracker] = None
+_tracker: TaskUsageTracker | None = None
 
 
 def _on_exit() -> None:
@@ -1327,7 +1327,7 @@ def _is_used_in_host_project(host) -> bool:
     return False
 
 
-def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
+def install_task_usage_tracker(host) -> TaskUsageTracker | None:
     """Start tracking of task in-use for the host integration.
 
     Should be called from the main thread of the application. Tracking is
@@ -1341,7 +1341,7 @@ def install_task_usage_tracker(host) -> Optional[TaskUsageTracker]:
         host (AbstractHost): Installed host integration.
 
     Returns:
-        Optional[TaskUsageTracker]: Tracker or None if tracking is skipped.
+        TaskUsageTracker | None: Tracker or None if tracking is skipped.
 
     """
     global _tracker

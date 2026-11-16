@@ -188,9 +188,9 @@ class TaskInUseDialog(QtWidgets.QDialog):
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
-        full_names (Optional[dict[str, str]]): Full names of users by
+        full_names (dict[str, str] | None): Full names of users by
             username. Username is shown for users without a full name.
-        parent (Optional[QtWidgets.QWidget]): Parent widget.
+        parent (QtWidgets.QWidget | None): Parent widget.
         notice_only (bool): Only inform the user, without the option to
             cancel. Used when the task is already in use by the user.
         confirm_label (str): Label of the button to continue.
@@ -331,11 +331,11 @@ def confirm_task_in_use(
         task_id (str): Task id.
         parent (QtWidgets.QWidget): Parent widget of the dialog.
         confirm_label (str): Label of the button to continue.
-        workfile (Optional[str]): Workfile that will be opened. Version
+        workfile (str | None): Workfile that will be opened. Version
             up is offered if other user works in the same workfile.
 
     Returns:
-        Optional[bool]: None if user did cancel the action, True if
+        bool | None: None if user did cancel the action, True if
             user wants to work in next version of the workfile,
             otherwise False.
 
@@ -403,7 +403,7 @@ def ask_to_launch_on_task_in_use(
             the task.
 
     Returns:
-        Optional[bool]: User wants to launch the application. None if
+        bool | None: User wants to launch the application. None if
             the dialog can't be shown, e.g. in a thread that is not
             the thread of Qt application or without a display.
 
@@ -459,10 +459,10 @@ def show_task_in_use_notice(
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
-        full_names (Optional[dict[str, str]]): Full names of users by
+        full_names (dict[str, str] | None): Full names of users by
             username.
         delay (int): Delay in milliseconds before the dialog is shown.
-        version_up_callback (Optional[Callable[[], None]]): Callback to
+        version_up_callback (Callable[[], None] | None): Callback to
             save current workfile as next version. The dialog offers
             version up if is passed.
 

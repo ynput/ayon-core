@@ -835,10 +835,10 @@ class WorkfileInUse:
     'IWorkfileHost.get_workfiles_in_use'.
 
     Attributes:
-        project_name (Optional[str]): Project name.
-        folder_path (Optional[str]): Folder path.
-        task_name (Optional[str]): Task name.
-        filepath (Optional[str]): Path to the workfile. None if the
+        project_name (str | None): Project name.
+        folder_path (str | None): Folder path.
+        task_name (str | None): Task name.
+        filepath (str | None): Path to the workfile. None if the
             application works on the task without a saved workfile.
         key (str): Identifier of the opened workfile in the application,
             e.g. id of a document. Must be filled if the application can
@@ -848,10 +848,10 @@ class WorkfileInUse:
             a different name.
 
     """
-    project_name: Optional[str]
-    folder_path: Optional[str]
-    task_name: Optional[str]
-    filepath: Optional[str] = None
+    project_name: str | None
+    folder_path: str | None
+    task_name: str | None
+    filepath: str | None = None
     key: str = ""
 
 
