@@ -1018,8 +1018,8 @@ class WorkfileActionPlugin(ABC):
             settings = get_task_usage_settings(
                 self.project_name,
                 self.host_name,
-                task_entity.get("taskType"),
-                task_entity.get("name"),
+                task_entity["taskType"],
+                task_entity["name"],
                 project_settings=self._context.get_project_settings(),
             )
             if not settings.enabled:

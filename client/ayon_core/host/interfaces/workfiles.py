@@ -945,9 +945,9 @@ class IWorkfileHost(AbstractHost):
         context = self.get_current_context()
         return [
             WorkfileInUse(
-                context.get("project_name"),
-                context.get("folder_path"),
-                context.get("task_name"),
+                context["project_name"],
+                context["folder_path"],
+                context["task_name"],
                 self.get_current_workfile() or None,
             )
         ]

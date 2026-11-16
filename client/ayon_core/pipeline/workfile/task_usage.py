@@ -229,13 +229,13 @@ def _parse_time(value: Any) -> datetime.datetime | None:
 
 
 def _get_profiles(project_settings: dict[str, Any]) -> list[dict[str, Any]]:
-    workfiles_settings = (
+    return (
         project_settings
-        .get("core", {})
-        .get("tools", {})
-        .get("Workfiles", {})
+        ["core"]
+        ["tools"]
+        ["Workfiles"]
+        ["task_in_use_profiles"]
     )
-    return workfiles_settings.get("task_in_use_profiles") or []
 
 
 def is_task_usage_enabled_in_project(
@@ -259,7 +259,7 @@ def is_task_usage_enabled_in_project(
     if project_settings is None:
         project_settings = get_project_settings(project_name)
     return any(
-        profile.get("enabled")
+        profile["enabled"]
         for profile in _get_profiles(project_settings)
     )
 
@@ -306,9 +306,7 @@ def get_task_usage_settings(
 
     return TaskUsageSettings(
         enabled=profile["enabled"],
-        session_timeout_minutes=profile.get(
-            "session_timeout_minutes", DEFAULT_SESSION_TIMEOUT_MINUTES
-        ),
+        session_timeout_minutes=profile["session_timeout_minutes"],
     )
 
 
@@ -1181,9 +1179,9 @@ class TaskUsageTracker:
             context = self._host.get_current_context()
             workfiles_in_use = [
                 WorkfileInUse(
-                    context.get("project_name"),
-                    context.get("folder_path"),
-                    context.get("task_name"),
+                    context["project_name"],
+                    context["folder_path"],
+                    context["task_name"],
                     self._get_workfile_filepath(),
                 )
             ]
@@ -1315,7 +1313,7 @@ def sync_task_usage() -> None:
 def _is_used_in_host_project(host) -> bool:
     """Project of the host integration has an enabled profile."""
     try:
-        project_name = host.get_current_context().get("project_name")
+        project_name = host.get_current_context()["project_name"]
         return bool(project_name) and is_task_usage_enabled_in_project(
             project_name
         )

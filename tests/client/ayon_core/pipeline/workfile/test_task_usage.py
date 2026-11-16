@@ -131,10 +131,8 @@ def test_user_full_names(monkeypatch):
     assert task_usage.get_task_usage_user_full_names(items) == {}
 
 
-def _settings(profiles: list[dict[str, Any]] | None) -> dict[str, Any]:
-    workfiles = {}
-    if profiles is not None:
-        workfiles["task_in_use_profiles"] = profiles
+def _settings(profiles: list[dict[str, Any]]) -> dict[str, Any]:
+    workfiles = {"task_in_use_profiles": profiles}
     return {"core": {"tools": {"Workfiles": workfiles}}}
 
 
@@ -151,15 +149,12 @@ def _profile(**kwargs: Any) -> dict[str, Any]:
 
 
 def test_settings_disabled_by_default():
-    for profiles in (None, []):
-        project_settings = _settings(profiles)
-        settings = get_task_usage_settings(
-            "project", "maya", "Animation", "anim", project_settings
-        )
-        assert settings == TaskUsageSettings(enabled=False)
-        assert not is_task_usage_enabled_in_project(
-            "project", project_settings
-        )
+    project_settings = _settings([])
+    settings = get_task_usage_settings(
+        "project", "maya", "Animation", "anim", project_settings
+    )
+    assert settings == TaskUsageSettings(enabled=False)
+    assert not is_task_usage_enabled_in_project("project", project_settings)
 
 
 def test_settings_profile_filtering():
@@ -178,16 +173,6 @@ def test_settings_profile_filtering():
     assert not is_task_usage_enabled_in_project(
         "project", _settings([_profile(enabled=False)])
     )
-
-
-def test_settings_without_timeout():
-    """Profile created before the timeout was added to settings."""
-    profile = _profile()
-    profile.pop("session_timeout_minutes")
-    settings = get_task_usage_settings(
-        "project", "maya", "Animation", "anim", _settings([profile])
-    )
-    assert settings == TaskUsageSettings(True)
 
 
 @pytest.mark.parametrize(
