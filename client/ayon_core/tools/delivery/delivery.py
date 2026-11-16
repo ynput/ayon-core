@@ -534,7 +534,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         #  that directly adds files into `instance.data["transfers"]`
         src_paths = [
             self.anatomy.fill_root(repre_file["path"])
-            for repre_file in repre.get("files") or []
+            for repre_file in repre["files"]
         ]
         sources_and_frames = collect_frames(src_paths)
 
