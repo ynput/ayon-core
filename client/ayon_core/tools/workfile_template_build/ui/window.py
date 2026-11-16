@@ -287,6 +287,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             deregister = getattr(callback, "deregister", None)
             if deregister is not None:
                 deregister()
+        self._controller.close()
         super().closeEvent(event)
 
     # --- Public API ---------------------------------------------------
@@ -818,8 +819,14 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if self._show_action_error(result):
             return
 
+        new_identifier = result.scene_identifier or scene_identifier
+        self._current_identifier = new_identifier
         self._update_placeholders()
-        self._show_editor_page(scene_identifier)
+        if new_identifier in self._placeholder_items_by_id:
+            self._select_silently(new_identifier)
+            self._show_editor_page(new_identifier)
+        else:
+            self._show_hint_page()
 
     def _on_run_request(self, scene_identifier=None):
         if scene_identifier is None:

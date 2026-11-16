@@ -11,7 +11,7 @@ import os
 import traceback
 from typing import Any, Callable, Optional
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, register_event_callback
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import (
@@ -98,17 +98,69 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self._build_history: list[list[BuildStep]] = []
         self._build_durations: dict[str, float] = {}
 
-        if builder is not None:
-            # Builder events are emitted synchronously during the build and
-            #   are used to measure duration of each placeholder.
-            builder.add_event_callback(
-                "template.placeholder_finished",
-                self._on_placeholder_finished,
-            )
+        # Builder event callback is lost when the builder refreshes its
+        #   event system; keep the handle so it can be registered again.
+        self._builder_event_callback = None
+        self._host_event_callbacks: list[Any] = []
+        self._host_project_name = get_current_project_name()
+
+        self._bind_builder_events()
+        self._register_host_events()
 
     # --- Events -------------------------------------------------------
     def register_event_callback(self, topic: str, callback: Callable) -> Any:
         return self._event_system.add_callback(topic, callback)
+
+    def _bind_builder_events(self) -> None:
+        """Register builder event callbacks, e.g. after a builder refresh."""
+        if self._builder is None:
+            return
+        if self._builder_event_callback is not None:
+            deregister = getattr(
+                self._builder_event_callback, "deregister", None
+            )
+            if deregister is not None:
+                deregister()
+        self._builder_event_callback = self._builder.add_event_callback(
+            "template.placeholder_finished",
+            self._on_placeholder_finished,
+        )
+
+    def _register_host_events(self) -> None:
+        """Listen to host scene/context changes while the tool is open."""
+        for topic in ("taskChanged", "open", "new"):
+            callback = register_event_callback(topic, self._on_host_event)
+            self._host_event_callbacks.append(callback)
+
+    def _on_host_event(self, event) -> None:
+        """Invalidate the tool when the host scene or context changed."""
+        project_name = get_current_project_name()
+        if (
+            self._builder is not None
+            and self._host_project_name != project_name
+            and self._builder.get_context_override() is not None
+        ):
+            # The Preview as context belongs to the previous project.
+            self._builder.set_context_override(None)
+        self._host_project_name = project_name
+
+        self.reset()
+        self.emit_event(BUILD_CONTEXT_CHANGED_TOPIC)
+
+    def close(self) -> None:
+        """Deregister callbacks held by the controller."""
+        if self._builder_event_callback is not None:
+            deregister = getattr(
+                self._builder_event_callback, "deregister", None
+            )
+            if deregister is not None:
+                deregister()
+            self._builder_event_callback = None
+        for callback in self._host_event_callbacks:
+            deregister = getattr(callback, "deregister", None)
+            if deregister is not None:
+                deregister()
+        self._host_event_callbacks = []
 
     def emit_event(
         self,
@@ -176,6 +228,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self._invalidate_placeholders()
         if self._builder is not None:
             self._builder.refresh()
+            self._bind_builder_events()
         self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
 
     # --- Data ---------------------------------------------------------
@@ -295,8 +348,9 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             placeholder = plugin.create_placeholder(placeholder_data)
         except Exception:
             return self._action_failed("Failed to create placeholder")
-
-        self._invalidate_placeholders()
+        finally:
+            # A failed plugin may still have changed the scene.
+            self._invalidate_placeholders()
 
         scene_identifier = None
         if isinstance(placeholder, PlaceholderItem):
@@ -319,14 +373,26 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         if placeholder is None:
             return self._placeholder_not_found(scene_identifier)
 
+        known_identifiers = set(self._get_placeholders())
         try:
             self._builder.update_placeholder(placeholder, placeholder_data)
         except Exception:
             return self._action_failed(
                 "Failed to save placeholder changes", scene_identifier
             )
+        finally:
+            # A failed plugin may still have changed the scene.
+            self._invalidate_placeholders()
 
-        self._invalidate_placeholders()
+        # Some hosts (e.g. Houdini) rename the placeholder node when its
+        #   options change. Resolve the identifier so the UI can keep it
+        #   selected.
+        placeholders = self._get_placeholders()
+        if scene_identifier not in placeholders:
+            new_identifiers = set(placeholders) - known_identifiers
+            if len(new_identifiers) == 1:
+                scene_identifier = next(iter(new_identifiers))
+
         self.emit_event(
             PLACEHOLDER_UPDATED_TOPIC,
             {"scene_identifier": scene_identifier},
@@ -338,14 +404,27 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         if placeholder is None:
             return self._placeholder_not_found(scene_identifier)
 
+        plugin = placeholder.plugin
+        if not plugin.is_delete_placeholder_supported():
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title=(
+                    "Deleting placeholders is not supported by placeholder"
+                    " plugin '{}'.".format(plugin.identifier)
+                ),
+            )
+
         try:
             self._builder.delete_placeholder(placeholder)
         except Exception:
             return self._action_failed(
                 "Failed to delete placeholder", scene_identifier
             )
+        finally:
+            # A failed plugin may still have changed the scene.
+            self._invalidate_placeholders()
 
-        self._invalidate_placeholders()
         self.emit_event(
             PLACEHOLDER_DELETED_TOPIC,
             {"scene_identifier": scene_identifier},
@@ -356,6 +435,17 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         placeholder = self._get_placeholder(scene_identifier)
         if placeholder is None:
             return self._placeholder_not_found(scene_identifier)
+
+        plugin = placeholder.plugin
+        if not plugin.is_select_placeholder_supported():
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title=(
+                    "Selecting placeholders is not supported by placeholder"
+                    " plugin '{}'.".format(plugin.identifier)
+                ),
+            )
 
         try:
             self._builder.select_placeholder(placeholder)
@@ -486,6 +576,9 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             self._builder.open_template(preset)
         except Exception:
             return self._action_failed("Failed to open the template")
+        finally:
+            self._invalidate_placeholders()
+            self._bind_builder_events()
 
         # Another scene is opened, everything has to be collected again.
         self.reset()
@@ -500,9 +593,12 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             self._builder.build_template(preset=preset)
         except Exception:
             return self._action_failed("Failed to build from the template")
+        finally:
+            # The template import/population may leave or replace scene
+            #   data even when it fails.
+            self._invalidate_placeholders()
+            self._bind_builder_events()
 
-        # The template added placeholders to the scene.
-        self._invalidate_placeholders()
         self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
         return ActionResult(success=True)
 

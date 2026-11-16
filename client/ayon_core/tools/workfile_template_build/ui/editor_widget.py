@@ -915,21 +915,32 @@ class PlaceholderEditorWidget(AYContainer):
         self._last_dynamic_values = copy.deepcopy(values)
 
         self._preview_widget.set_calculating()
-        completions_error = None
+        # Let the user see that the preview is being calculated before the
+        #   blocking server queries start.
+        self._preview_widget.repaint()
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
         try:
-            completions = self._controller.get_placeholder_completions(
+            completions_error = None
+            try:
+                completions = self._controller.get_placeholder_completions(
+                    self._plugin_identifier, values
+                )
+            except PlaceholderCompletionsError as exc:
+                completions = {}
+                completions_error = str(exc)
+
+            if self._attrs_widget is not None:
+                self._attrs_widget.set_completions(completions or {})
+
+            preview = self._controller.get_placeholder_preview(
                 self._plugin_identifier, values
             )
-        except PlaceholderCompletionsError as exc:
-            completions = {}
-            completions_error = str(exc)
+        finally:
+            if app is not None:
+                app.restoreOverrideCursor()
 
-        if self._attrs_widget is not None:
-            self._attrs_widget.set_completions(completions or {})
-
-        preview = self._controller.get_placeholder_preview(
-            self._plugin_identifier, values
-        )
         if completions_error is not None:
             # The preview is still useful; show it with a warning instead of
             #   hiding the completion failure.

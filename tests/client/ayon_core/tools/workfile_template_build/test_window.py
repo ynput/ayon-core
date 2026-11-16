@@ -1009,3 +1009,37 @@ class TestUnsavedChangeGuards:
             window._context_bar._test_build_btn.geometry().right()
             <= window._context_bar.width()
         )
+
+
+class TestRenamedPlaceholder:
+    def test_save_keeps_renamed_placeholder_selected(
+        self, window, monkeypatch
+    ):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        def rename_update(plugin, placeholder_item, placeholder_data):
+            plugin.nodes.pop(placeholder_item.scene_identifier)
+            plugin.nodes["renamed"] = dict(placeholder_data)
+
+        monkeypatch.setattr(_Plugin, "update_placeholder", rename_update)
+
+        window._on_save_confirmed("node_1", {"name": "renamed"})
+
+        assert window._current_identifier == "renamed"
+        assert window._editor_widget.get_scene_identifier() == "renamed"
+        assert (
+            window._placeholders_widget.get_selected_identifier()
+            == "renamed"
+        )
+
+    def test_host_event_refreshes_window(self, window, builder):
+        from ayon_core.lib import emit_event
+
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        builder.nodes["node_1"]["name"] = "changed outside"
+
+        emit_event("taskChanged", {})
+
+        assert _name_input(window).text() == "changed outside"

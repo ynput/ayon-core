@@ -80,12 +80,17 @@ class _Plugin(PlaceholderPlugin):
         if self.fail_on == "create":
             raise RuntimeError("create boom")
         # Returns nothing on purpose, like some host implementations
+        if self.fail_on == "create_partial":
+            self.scene.add(placeholder_data)
+            raise RuntimeError("create partial boom")
         self.scene.add(placeholder_data)
 
     def update_placeholder(self, placeholder_item, placeholder_data):
         self.scene.nodes[placeholder_item.scene_identifier] = dict(
             placeholder_data
         )
+        if self.fail_on == "update_partial":
+            raise RuntimeError("update partial boom")
 
     def collect_placeholders(self):
         if self.fail_on == "collect":
@@ -100,6 +105,8 @@ class _Plugin(PlaceholderPlugin):
 
     def delete_placeholder(self, placeholder_item):
         self.scene.nodes.pop(placeholder_item.scene_identifier, None)
+        if self.fail_on == "delete_partial":
+            raise RuntimeError("delete partial boom")
 
     def select_placeholder(self, placeholder_item):
         self.scene.selected = [placeholder_item.scene_identifier]
@@ -107,6 +114,9 @@ class _Plugin(PlaceholderPlugin):
     def repopulate_placeholder(self, placeholder):
         if self.fail_on == "run":
             raise RuntimeError("run boom")
+        if self.fail_on == "run_error":
+            placeholder.set_failed(RuntimeError("run error"))
+            return
         self.scene.ran.append(placeholder.scene_identifier)
 
 
@@ -156,7 +166,9 @@ class _Builder(AbstractTemplateBuilder):
 
 @pytest.fixture
 def controller():
-    return WorkfileTemplateBuilderController(_Builder(None))
+    output = WorkfileTemplateBuilderController(_Builder(None))
+    yield output
+    output.close()
 
 
 class TestControllerWithoutBuilder:
@@ -708,3 +720,165 @@ class TestRunSupport:
         assert not result.success
         assert "not supported" in result.error_title
         assert controller._builder.scene.ran == []
+
+
+class TestBuilderEventBinding:
+    def test_durations_are_recorded_after_reset(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+        controller.reset()
+
+        controller.run_template_build()
+
+        steps = controller.get_build_steps()
+        assert steps
+        assert steps[0].duration > 0
+
+    def test_plugin_item_error_is_reported_by_run(self, controller):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+        _Plugin.fail_on = "run_error"
+        try:
+            result = controller.run_placeholder(identifier)
+        finally:
+            _Plugin.fail_on = None
+
+        assert not result.success
+        assert "run error" in result.error_detail
+
+
+class TestFailedActionInvalidation:
+    def test_partial_create_is_visible_after_failure(self, controller):
+        _Plugin.fail_on = "create_partial"
+        try:
+            result = controller.create_placeholder("fake", {"name": "one"})
+        finally:
+            _Plugin.fail_on = None
+
+        assert not result.success
+        assert len(controller.get_placeholder_items()) == 1
+
+    def test_partial_update_is_visible_after_failure(self, controller):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+        _Plugin.fail_on = "update_partial"
+        try:
+            result = controller.update_placeholder(
+                identifier, {"name": "changed"}
+            )
+        finally:
+            _Plugin.fail_on = None
+
+        assert not result.success
+        items = controller.get_placeholder_items()
+        assert items[0].data["name"] == "changed"
+
+    def test_partial_delete_is_visible_after_failure(self, controller):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+        _Plugin.fail_on = "delete_partial"
+        try:
+            result = controller.delete_placeholder(identifier)
+        finally:
+            _Plugin.fail_on = None
+
+        assert not result.success
+        assert controller.get_placeholder_items() == []
+
+
+class TestRenamedPlaceholder:
+    def test_update_resolves_renamed_scene_identifier(
+        self, controller, monkeypatch
+    ):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+
+        def rename_update(plugin, placeholder_item, placeholder_data):
+            plugin.scene.nodes.pop(placeholder_item.scene_identifier)
+            plugin.scene.nodes["renamed"] = dict(placeholder_data)
+
+        monkeypatch.setattr(_Plugin, "update_placeholder", rename_update)
+
+        result = controller.update_placeholder(
+            identifier, {"name": "renamed"}
+        )
+
+        assert result.success
+        assert result.scene_identifier == "renamed"
+        assert "renamed" in controller._builder.scene.nodes
+
+
+class TestCapabilityGuards:
+    def test_delete_requires_plugin_support(
+        self, controller, monkeypatch
+    ):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+        monkeypatch.setattr(
+            _Plugin,
+            "delete_placeholder",
+            PlaceholderPlugin.delete_placeholder,
+        )
+
+        result = controller.delete_placeholder(identifier)
+
+        assert not result.success
+        assert "not supported" in result.error_title
+        assert identifier in controller._builder.scene.nodes
+
+    def test_select_requires_plugin_support(
+        self, controller, monkeypatch
+    ):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
+        monkeypatch.setattr(
+            _Plugin,
+            "select_placeholder",
+            PlaceholderPlugin.select_placeholder,
+        )
+
+        result = controller.select_placeholder(identifier)
+
+        assert not result.success
+        assert "not supported" in result.error_title
+        assert controller._builder.scene.selected == []
+
+
+class TestHostEvents:
+    def test_task_changed_resets_the_controller(self, controller):
+        from ayon_core.lib import emit_event
+
+        before = controller._builder.refresh_count
+        emit_event("taskChanged", {})
+
+        assert controller._builder.refresh_count == before + 1
+
+    def test_closed_controller_stops_listening(self, controller):
+        from ayon_core.lib import emit_event
+
+        controller.close()
+        before = controller._builder.refresh_count
+        emit_event("taskChanged", {})
+
+        assert controller._builder.refresh_count == before
+
+    def test_project_change_clears_context_override(
+        self, controller, monkeypatch
+    ):
+        from ayon_core.lib import emit_event
+        from ayon_core.tools.workfile_template_build import control
+
+        controller.set_build_context("/shots/sh010", "animation")
+        assert controller._builder.get_context_override() is not None
+        monkeypatch.setattr(
+            control, "get_current_project_name", lambda: "other_project"
+        )
+
+        emit_event("taskChanged", {})
+
+        assert controller._builder.get_context_override() is None
