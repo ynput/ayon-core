@@ -182,9 +182,9 @@ def test_settings_profile_filtering():
     [
         (5.0, 300),
         (2.5, 150),
-        # Limits of the server
-        (0.1, task_usage.MIN_TTL_SECONDS),
-        (600.0, task_usage.MAX_TTL_SECONDS),
+        # Limits of the settings
+        (1.0, 60),
+        (60.0, 3600),
     ]
 )
 def test_settings_ttl_and_heartbeat_interval(minutes, ttl):

@@ -64,9 +64,6 @@ log = logging.getLogger(__name__)
 ADDON_NAME = "core"
 
 DEFAULT_SESSION_TIMEOUT_MINUTES = 5.0
-# Limits of time to live of a session on the server
-MIN_TTL_SECONDS = 60
-MAX_TTL_SECONDS = 60 * 60
 # Session survives a few missed heartbeats, e.g. when the application is
 #   busy or the server is not available for a moment
 HEARTBEATS_PER_TTL = 3
@@ -117,10 +114,7 @@ class TaskUsageSettings:
     @property
     def ttl_seconds(self) -> int:
         """Time to live of a session on the server."""
-        return int(max(
-            MIN_TTL_SECONDS,
-            min(MAX_TTL_SECONDS, self.session_timeout_minutes * 60),
-        ))
+        return int(self.session_timeout_minutes * 60)
 
     @property
     def heartbeat_interval(self) -> float:
