@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.ui.components import (
     AYButton,
@@ -180,6 +180,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         context_hint_label = AYLabel(
             parent=context_hint,
             text_color=hint_color,
+            elide_mode=QtCore.Qt.ElideRight,
+            flexible=True,
         )
         context_hint_info = AYLabel(
             parent=context_hint,
