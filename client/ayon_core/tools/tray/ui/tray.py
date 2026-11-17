@@ -798,6 +798,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Timestamps used to filter out unwanted clicks
         self._menu_hidden_at = 0.0
         self._ignore_trigger_until = 0.0
+        self._menu_shown_cursor_pos = QtCore.QPoint()
 
         doubleclick_time_ms = QtWidgets.QApplication.doubleClickInterval()
         if not doubleclick_time_ms or doubleclick_time_ms <= 0:
@@ -810,7 +811,9 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Setup menu in Tray
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
+        self.menu.aboutToShow.connect(self._on_menu_about_to_show)
         self.menu.aboutToHide.connect(self._on_menu_about_to_hide)
+        self.menu.installEventFilter(self)
 
         # Set addons
         self._tray_manager = TrayManager(self, parent)
@@ -1004,6 +1007,29 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         finally:
             self._initializing_addons = False
         self._prepare_menu_size()
+
+    def eventFilter(self, obj, event):
+        # QMenu ignores clicks until the mouse moved away from where it was
+        #   when the menu opened. Since Qt 6.8 it takes that position from
+        #   the last mouse event Qt received, which is stale when the menu
+        #   is opened by a click on the tray icon.
+        if (
+            obj is self.menu
+            and event.type() in (
+                QtCore.QEvent.MouseButtonPress,
+                QtCore.QEvent.MouseButtonRelease,
+                QtCore.QEvent.MouseButtonDblClick,
+            )
+            and (
+                event.globalPos() - self._menu_shown_cursor_pos
+            ).manhattanLength() <= QtWidgets.QApplication.startDragDistance()
+        ):
+            self.menu.hide()
+            return True
+        return super().eventFilter(obj, event)
+
+    def _on_menu_about_to_show(self):
+        self._menu_shown_cursor_pos = QtGui.QCursor.pos()
 
     def _on_menu_about_to_hide(self):
         self._menu_hidden_at = time.monotonic()
