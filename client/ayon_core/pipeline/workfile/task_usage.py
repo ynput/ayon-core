@@ -614,30 +614,6 @@ def claim_task(
     ]
 
 
-def update_task_session(
-    project_name: str,
-    task_id: str,
-    item: TaskUsageItem,
-    ttl: int | None = None,
-    heartbeat: bool = False,
-) -> None:
-    """Update a session on a task and keep it alive.
-
-    Args:
-        project_name (str): Project name.
-        task_id (str): Task id.
-        item (TaskUsageItem): Session to update.
-        ttl (int | None): Time to live of the session in seconds.
-        heartbeat (bool): Only keep the session alive, the time of last
-            activity of the session is not changed.
-
-    Raises:
-        TaskUsageNotSupportedError: The server does not have the endpoints.
-
-    """
-    claim_task(project_name, task_id, item, ttl, heartbeat)
-
-
 def release_task(
     project_name: str,
     task_id: str,
@@ -812,11 +788,6 @@ class TaskUsageTracker:
         self._disabled: bool = False
         self._context_cache: dict[tuple, _TaskContext | None] = {}
 
-    @property
-    def is_disabled(self) -> bool:
-        """The server does not support task in-use tracking."""
-        return self._disabled
-
     def sync(self) -> None:
         """Schedule synchronization with current context of the host.
 
@@ -835,14 +806,6 @@ class TaskUsageTracker:
             )
             return
         self._schedule(state)
-
-    def release(self) -> None:
-        """Schedule release of all claimed tasks.
-
-        Does not wait for the server. The tasks are claimed again with
-        next 'sync' call.
-        """
-        self._schedule(None)
 
     def process(self) -> None:
         """Apply scheduled context on the server and keep session alive.
@@ -1014,7 +977,7 @@ class TaskUsageTracker:
                 and now - session.last_activity >= ACTIVITY_INTERVAL_SECONDS
             ):
                 item = replace(item, workfile=workfile)
-                update_task_session(
+                claim_task(
                     context.project_name, context.task_id, item, ttl
                 )
                 session.item = item
@@ -1024,7 +987,7 @@ class TaskUsageTracker:
                 now - session.last_update
                 >= context.settings.heartbeat_interval - 1.0
             ):
-                update_task_session(
+                claim_task(
                     context.project_name,
                     context.task_id,
                     item,

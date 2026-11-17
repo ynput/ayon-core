@@ -320,14 +320,14 @@ def test_claim_update_and_release(server):
     assert set(server.sessions["task-id"]) == {"other", "mine"}
 
     server.now = NOW + datetime.timedelta(hours=1)
-    task_usage.update_task_session(
+    task_usage.claim_task(
         "project", "task-id", item, 120, heartbeat=True
     )
     assert server.requests[-1][2]["heartbeat"] is True
     session = server.sessions["task-id"]["mine"]
     assert session["openedAt"] == session["updatedAt"] == NOW.isoformat()
 
-    task_usage.update_task_session("project", "task-id", item)
+    task_usage.claim_task("project", "task-id", item)
     assert server.requests[-1][2]["ttl"] == TaskUsageSettings().ttl_seconds
     session = server.sessions["task-id"]["mine"]
     assert session["openedAt"] == NOW.isoformat()
@@ -382,8 +382,6 @@ def test_server_without_endpoints(server):
     task_usage.release_task("project", "task-id")
     with pytest.raises(TaskUsageNotSupportedError):
         task_usage.claim_task("project", "task-id", item)
-    with pytest.raises(TaskUsageNotSupportedError):
-        task_usage.update_task_session("project", "task-id", item)
     assert len(server.requests) == 1
 
 
@@ -437,6 +435,22 @@ def _sync(tracker: TaskUsageTracker) -> None:
     tracker.process()
 
 
+def _claim_call_name(
+    claimed: set[tuple[str, str]],
+    task_id: str,
+    item: TaskUsageItem,
+    heartbeat: bool,
+) -> str:
+    """Name of claim request: claim, update or heartbeat."""
+    key = (task_id, item.session_id)
+    if heartbeat:
+        return "heartbeat"
+    if key in claimed:
+        return "update"
+    claimed.add(key)
+    return "claim"
+
+
 @pytest.fixture
 def tracker_calls(server, monkeypatch):
     """Tracker with mocked server calls.
@@ -450,20 +464,17 @@ def tracker_calls(server, monkeypatch):
     tracker = TaskUsageTracker(host)
     other_user = _item("other-user", username="artist2")
     notices = []
+    claimed = set()
 
-    def _claim_task(project_name, task_id, item, ttl):
-        calls.append(("claim", task_id, item.workfile))
+    def _claim_task(project_name, task_id, item, ttl, heartbeat=False):
+        name = _claim_call_name(claimed, task_id, item, heartbeat)
+        calls.append((name, task_id, item.workfile))
         if task_id == "in-use":
             return [other_user]
         return []
 
-    def _update_task_session(
-        project_name, task_id, item, ttl, heartbeat=False
-    ):
-        name = "heartbeat" if heartbeat else "update"
-        calls.append((name, task_id, item.workfile))
-
     def _release_task(project_name, task_id, session_id):
+        claimed.discard((task_id, session_id))
         calls.append(("release", task_id, session_id))
 
     _mock_task_context(tracker, monkeypatch)
@@ -474,9 +485,6 @@ def tracker_calls(server, monkeypatch):
         lambda items: {"artist2": "Artist Two"},
     )
     monkeypatch.setattr(task_usage, "claim_task", _claim_task)
-    monkeypatch.setattr(
-        task_usage, "update_task_session", _update_task_session
-    )
     monkeypatch.setattr(task_usage, "release_task", _release_task)
     return host, tracker, calls, notices
 
@@ -503,7 +511,6 @@ def test_tracker_sync_does_not_use_server(tracker_calls, monkeypatch):
     tracker.sync()
     host.workfile = "/path/sh010_anim_v002.ma"
     tracker.sync()
-    tracker.release()
     assert calls == []
 
 
@@ -537,8 +544,7 @@ def test_tracker_claims_and_releases(tracker_calls, current_time):
     assert calls[4:] == [("release", "layout", "mine")]
 
     # Nothing is claimed
-    tracker.release()
-    tracker.process()
+    tracker.stop()
     assert len(calls) == 5
 
 
@@ -553,18 +559,6 @@ def test_tracker_processes_only_last_context(tracker_calls):
     tracker.sync()
     tracker.process()
     assert calls == [("claim", "layout", "sh010_layout_v001.ma")]
-
-
-def test_tracker_release_and_claim_again(tracker_calls):
-    host, tracker, calls, _ = tracker_calls
-
-    _sync(tracker)
-    tracker.release()
-    tracker.process()
-    assert calls[1:] == [("release", "anim", "mine")]
-
-    _sync(tracker)
-    assert calls[2:] == [("claim", "anim", "sh010_anim_v001.ma")]
 
 
 def test_tracker_uses_server_times(server, monkeypatch):
@@ -709,8 +703,7 @@ def test_tracker_heartbeat(tracker_calls, current_time):
     assert calls[1:] == [("heartbeat", "anim", "sh010_anim_v001.ma")]
     assert tracker._get_wait_seconds() == interval
 
-    tracker.release()
-    tracker.process()
+    tracker.stop()
     current_time[0] += interval
     tracker.process()
     assert calls[2:] == [("release", "anim", "mine")]
@@ -737,14 +730,14 @@ def test_tracker_does_not_raise(tracker_calls, current_time, monkeypatch):
     # Claim is repeated, the server may be available again
     tracker.process()
     assert len(failed_calls) == 3
-    assert not tracker.is_disabled
+    assert not tracker._disabled
 
     monkeypatch.setattr(task_usage, "claim_task", claim_task)
     tracker.process()
     assert calls == [("claim", "anim", "sh010_anim_v001.ma")]
 
     # Failed heartbeat is not repeated immediately
-    monkeypatch.setattr(task_usage, "update_task_session", _failing)
+    monkeypatch.setattr(task_usage, "claim_task", _failing)
     current_time[0] += interval
     tracker.process()
     assert len(failed_calls) == 4
@@ -765,13 +758,12 @@ def test_tracker_is_disabled_without_endpoints(
     _mock_task_context(tracker, monkeypatch)
 
     _sync(tracker)
-    assert tracker.is_disabled
+    assert tracker._disabled
     assert len(server.requests) == 1
 
     current_time[0] += TaskUsageSettings(True).heartbeat_interval
     host.workfile = "/path/sh010_anim_v002.ma"
     _sync(tracker)
-    tracker.release()
     tracker.start()
     assert tracker._thread is None
     tracker.stop()
@@ -786,12 +778,12 @@ def test_tracker_is_disabled_by_heartbeat(
     _mock_task_context(tracker, monkeypatch)
 
     _sync(tracker)
-    assert not tracker.is_disabled
+    assert not tracker._disabled
 
     server.status_code = 404
     current_time[0] += TaskUsageSettings(True).heartbeat_interval
     tracker.process()
-    assert tracker.is_disabled
+    assert tracker._disabled
 
 
 def test_tracker_thread(tracker_calls, monkeypatch):
@@ -1141,22 +1133,16 @@ def multi_tracker(tracker_calls, monkeypatch):
     tracker = TaskUsageTracker(host)
     _mock_task_context(tracker, monkeypatch)
 
-    def _claim_task(project_name, task_id, item, ttl):
-        calls.append(("claim", task_id, item.session_id, item.workfile))
+    claimed = set()
+
+    def _claim_task(project_name, task_id, item, ttl, heartbeat=False):
+        name = _claim_call_name(claimed, task_id, item, heartbeat)
+        calls.append((name, task_id, item.session_id, item.workfile))
         if task_id == "in-use":
             return [_item("other-user", username="artist2")]
         return []
 
-    def _update_task_session(
-        project_name, task_id, item, ttl, heartbeat=False
-    ):
-        name = "heartbeat" if heartbeat else "update"
-        calls.append((name, task_id, item.session_id, item.workfile))
-
     monkeypatch.setattr(task_usage, "claim_task", _claim_task)
-    monkeypatch.setattr(
-        task_usage, "update_task_session", _update_task_session
-    )
     return host, tracker, calls, notices
 
 
