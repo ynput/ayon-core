@@ -151,9 +151,23 @@ def test_save_as_dialog_copied_from_note(qtbot):
     assert result["description"] == "Copied from: /work/a_v001.ma"
 
 
+def _hint_hidden(dialog):
+    return (
+        dialog._context_hint_label.isHidden()
+        and dialog._context_hint_info.isHidden()
+    )
+
+
+def _hint_visible(dialog):
+    return (
+        not dialog._context_hint_label.isHidden()
+        and not dialog._context_hint_info.isHidden()
+    )
+
+
 def test_save_as_dialog_hint_hidden_in_current_context(qtbot):
     dialog = _make_dialog(qtbot, _FakeController())
-    assert dialog._context_hint.isHidden()
+    assert _hint_hidden(dialog)
 
 
 def test_save_as_dialog_hint_for_other_context(qtbot):
@@ -163,7 +177,7 @@ def test_save_as_dialog_hint_for_other_context(qtbot):
         folder_id="folder-2",
         task_id="task-2",
     )
-    assert not dialog._context_hint.isHidden()
+    assert _hint_visible(dialog)
     assert (
         dialog._context_hint_label.text()
         == "Your context will switch to another folder and task"
@@ -175,7 +189,7 @@ def test_save_as_dialog_hint_for_other_context(qtbot):
 
 def test_save_as_dialog_hint_when_only_task_differs(qtbot):
     dialog = _make_dialog(qtbot, _FakeController(), task_id="task-2")
-    assert not dialog._context_hint.isHidden()
+    assert _hint_visible(dialog)
     assert (
         dialog._context_hint_label.text()
         == "Your context will switch to another task"
@@ -184,7 +198,7 @@ def test_save_as_dialog_hint_when_only_task_differs(qtbot):
 
 def test_save_as_dialog_hint_when_only_folder_differs(qtbot):
     dialog = _make_dialog(qtbot, _FakeController(), folder_id="folder-2")
-    assert not dialog._context_hint.isHidden()
+    assert _hint_visible(dialog)
     assert (
         dialog._context_hint_label.text()
         == "Your context will switch to another folder"
@@ -196,7 +210,7 @@ def test_save_as_dialog_hint_without_current_context(qtbot):
         current_folder_id=None, current_task_name=None
     )
     dialog = _make_dialog(qtbot, controller)
-    assert not dialog._context_hint.isHidden()
+    assert _hint_visible(dialog)
     assert (
         dialog._context_hint_label.text()
         == "Your context will switch to another folder and task"
@@ -205,9 +219,10 @@ def test_save_as_dialog_hint_without_current_context(qtbot):
 
 def test_save_as_dialog_hint_hidden_without_context_data(qtbot):
     dialog = _make_dialog(qtbot, _FakeController())
-    dialog._context_hint.setVisible(True)
+    dialog._context_hint_label.setVisible(True)
+    dialog._context_hint_info.setVisible(True)
     dialog._update_context_hint({"folder_path": None, "task_name": None})
-    assert dialog._context_hint.isHidden()
+    assert _hint_hidden(dialog)
 
 
 def test_save_as_dialog_hint_does_not_widen_dialog(qtbot):
@@ -229,7 +244,7 @@ def test_save_as_dialog_hint_does_not_widen_dialog(qtbot):
 def test_save_as_dialog_hint_hidden_with_empty_entities(qtbot):
     controller = _FakeController(save_as_data=_no_context_save_as_data())
     dialog = _make_dialog(qtbot, controller)
-    assert dialog._context_hint.isHidden()
+    assert _hint_hidden(dialog)
     assert not dialog._btn_ok.isEnabled()
     assert dialog._preview_widget.text() == "Context is not available."
 
@@ -237,7 +252,7 @@ def test_save_as_dialog_hint_hidden_with_empty_entities(qtbot):
 def test_save_as_dialog_hint_hidden_with_empty_labels(qtbot):
     data = _save_as_data("folder-2", "task-2", folder_path="", task_name="")
     dialog = _make_dialog(qtbot, _FakeController(save_as_data=data))
-    assert dialog._context_hint.isHidden()
+    assert _hint_hidden(dialog)
 
 
 def test_save_as_dialog_hint_hidden_with_partial_labels(qtbot):
@@ -245,7 +260,7 @@ def test_save_as_dialog_hint_hidden_with_partial_labels(qtbot):
         "folder-2", "task-2", folder_path="/folder/folder-2", task_name=""
     )
     dialog = _make_dialog(qtbot, _FakeController(save_as_data=data))
-    assert dialog._context_hint.isHidden()
+    assert _hint_hidden(dialog)
 
 
 def test_save_as_dialog_hint_hidden_without_context_keys(qtbot):
@@ -253,4 +268,4 @@ def test_save_as_dialog_hint_hidden_without_context_keys(qtbot):
     data.pop("folder_path")
     data.pop("task_name")
     dialog = _make_dialog(qtbot, _FakeController(save_as_data=data))
-    assert dialog._context_hint.isHidden()
+    assert _hint_hidden(dialog)

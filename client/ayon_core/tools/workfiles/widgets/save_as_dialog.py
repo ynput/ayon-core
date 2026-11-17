@@ -172,26 +172,30 @@ class SaveAsDialog(QtWidgets.QDialog):
         # Hint shown when the save switches the context of the host. The
         # message is intentionally short and constant so it is not elided;
         # the tooltip shows the context the workfile is saved to.
+        # NOTE: The labels must not be wrapped in a plain QWidget here. Hosts
+        #   which still apply ayon_core.style.load_stylesheet() paint every
+        #   plain QWidget with the darker 'bg' color, which shows up as a
+        #   band behind the hint. Use a layout only.
         hint_color = get_ayon_style().model.palette().get(
             "--md-sys-color-warning-dark", ""
         )
-        context_hint = QtWidgets.QWidget(parent=surface)
-        context_hint_layout = AYHBoxLayout(context_hint, margin=0, spacing=4)
+        context_hint_layout = AYHBoxLayout(margin=0, spacing=4)
         context_hint_label = AYLabel(
-            parent=context_hint,
+            parent=surface,
             text_color=hint_color,
             elide_mode=QtCore.Qt.ElideRight,
             flexible=True,
         )
         context_hint_info = AYLabel(
-            parent=context_hint,
+            parent=surface,
             icon="info",
             icon_size=16,
             icon_color=hint_color,
         )
         context_hint_layout.addWidget(context_hint_label, 1)
         context_hint_layout.addWidget(context_hint_info, 0)
-        context_hint.setVisible(False)
+        context_hint_label.setVisible(False)
+        context_hint_info.setVisible(False)
 
         # Btns widget
         btn_ok = AYButton(
@@ -221,7 +225,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(description_frame, 5, 0, 1, 2)
 
         surface.add_layout(inputs_layout, 0)
-        surface.add_widget(context_hint, 0)
+        surface.add_layout(context_hint_layout, 0)
         surface.add_layout(btns_layout, 0)
 
         main_layout = AYVBoxLayout(self, margin=0, spacing=0)
@@ -263,7 +267,6 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_label = extension_label
         self._preview_label = preview_label
         self._description_label = description_label
-        self._context_hint = context_hint
         self._context_hint_label = context_hint_label
         self._context_hint_info = context_hint_info
 
@@ -371,7 +374,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         folder_path = data.get("folder_path")
         task_name = data.get("task_name")
         if not folder_path or not task_name:
-            self._context_hint.setVisible(False)
+            self._set_context_hint_visible(False)
             return
 
         current_folder_id = self._controller.get_current_folder_id()
@@ -379,7 +382,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         folder_changed = self._folder_id != current_folder_id
         task_changed = task_name != current_task_name
         if not folder_changed and not task_changed:
-            self._context_hint.setVisible(False)
+            self._set_context_hint_visible(False)
             return
 
         if folder_changed and task_changed:
@@ -393,7 +396,12 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._context_hint_label.setText(text)
         self._context_hint_label.setToolTip(tooltip)
         self._context_hint_info.setToolTip(tooltip)
-        self._context_hint.setVisible(True)
+        self._set_context_hint_visible(True)
+
+    def _set_context_hint_visible(self, visible):
+        """Show or hide the context switch hint labels."""
+        self._context_hint_label.setVisible(visible)
+        self._context_hint_info.setVisible(visible)
 
     def _on_version_spinbox_change(self, value):
         if value == self._version_value:
