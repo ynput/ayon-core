@@ -168,7 +168,7 @@ def test_save_as_dialog_hint_for_other_context(qtbot):
         dialog._context_hint_label.text()
         == "Your context will switch to another folder and task"
     )
-    tooltip = "Will switch to: /folder/folder-2 / task-2"
+    tooltip = "Will switch to: /folder/folder-2 > task-2"
     assert dialog._context_hint_label.toolTip() == tooltip
     assert dialog._context_hint_info.toolTip() == tooltip
 
