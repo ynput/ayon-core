@@ -389,7 +389,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         else:
             text = "Your context will switch to another task"
 
-        tooltip = f"Will switch to: {folder_path} / {task_name}"
+        tooltip = f"Will switch to: {folder_path} > {task_name}"
         self._context_hint_label.setText(text)
         self._context_hint_label.setToolTip(tooltip)
         self._context_hint_info.setToolTip(tooltip)
