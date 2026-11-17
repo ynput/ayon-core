@@ -26,8 +26,8 @@ class TaskInUsePrompt(PreLaunchHook):
     The prompt does not offer to version up the workfile, a workfile can
     be copied correctly only by the host integration.
 
-    The prompt is skipped for farm, remote and automated launches and in
-    headless mode.
+    The prompt is used only for local launches and is skipped in headless
+    mode.
     """
     # After 'GlobalHostDataHook' which prepares context entities and before
     #   hooks that do changes on disk
