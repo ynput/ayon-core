@@ -1166,8 +1166,11 @@ class TaskUsageTracker:
     def _query_task_context(
         self, project_name: str, folder_path: str, task_name: str
     ) -> _TaskContext | None:
+        project_settings = get_project_settings(project_name)
         # Avoid queries of entities if the tracking is not used in project
-        if not is_task_usage_enabled_in_project(project_name):
+        if not is_task_usage_enabled_in_project(
+            project_name, project_settings
+        ):
             return None
 
         folder_entity = ayon_api.get_folder_by_path(
@@ -1189,6 +1192,7 @@ class TaskUsageTracker:
             self._host_name,
             task_entity["taskType"],
             task_entity["name"],
+            project_settings,
         )
         if not settings.enabled:
             return None
