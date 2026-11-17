@@ -660,9 +660,7 @@ class JSONSettingRegistry(ASettingRegistry):
             if name not in registry:
                 if ignore_missing:
                     return
-                raise RegistryItemNotFound(
-                    f"Registry '{self.name}' doesn't contain value '{name}'."
-                )
+                raise KeyError(f"Registry doesn't contain value {name}")
             registry.pop(name)
             self._write_content(content)
 

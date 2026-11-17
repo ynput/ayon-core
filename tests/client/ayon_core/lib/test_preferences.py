@@ -266,6 +266,15 @@ def test_json_registry_reads_changes_of_others():
 
 
 @pytest.mark.unit
+def test_json_registry_delete_missing_item(local_dir):
+    """A missing item raises 'KeyError', addons may expect it."""
+    registry = JSONSettingRegistry("other_tool", local_dir)
+    registry.delete_item("width")
+    with pytest.raises(KeyError):
+        registry.delete_item("width", ignore_missing=False)
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "content",
     [
