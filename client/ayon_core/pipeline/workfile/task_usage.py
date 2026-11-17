@@ -431,22 +431,8 @@ def get_workfile_session_id(key: str = "") -> str:
     return f"{session_id}-{key_hash}"
 
 
-def is_current_process_session_id(session_id: str) -> bool:
-    """Session is a session of a workfile opened in current process."""
-    process_session_id = _get_session_id()
-    return (
-        session_id == process_session_id
-        or session_id.startswith(f"{process_session_id}-")
-    )
-
-
 # 'False' when the server does not have the endpoints
 _endpoints_supported: bool | None = None
-
-
-def is_task_usage_supported() -> bool:
-    """Server did not report that task in-use endpoints are missing."""
-    return _endpoints_supported is not False
 
 
 def _get_endpoint(project_name: str, *subpaths: str) -> str:

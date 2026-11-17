@@ -372,9 +372,7 @@ def test_server_without_endpoints(server):
     server.status_code = 404
     item = _item("mine")
 
-    assert task_usage.is_task_usage_supported()
     assert task_usage.get_task_usage_items("project", "task-id") == []
-    assert not task_usage.is_task_usage_supported()
     assert len(server.requests) == 1
 
     # Server is not asked again
@@ -394,7 +392,10 @@ def test_server_error_is_raised(server):
     server.status_code = 500
     with pytest.raises(RuntimeError):
         task_usage.get_task_usage_items("project", "task-id")
-    assert task_usage.is_task_usage_supported()
+
+    server.status_code = 200
+    task_usage.get_task_usage_items("project", "task-id")
+    assert len(server.requests) == 2
 
 
 class _MockHost:
@@ -1138,10 +1139,6 @@ def test_workfile_session_id():
     assert session_id == task_usage.get_workfile_session_id("document 1 / ž")
     # Session id is valid for the server
     assert re.match(r"^[a-zA-Z0-9_-]{1,64}$", session_id)
-
-    assert task_usage.is_current_process_session_id(process_id)
-    assert task_usage.is_current_process_session_id(session_id)
-    assert not task_usage.is_current_process_session_id("other-process")
 
 
 def test_default_workfiles_in_use():
