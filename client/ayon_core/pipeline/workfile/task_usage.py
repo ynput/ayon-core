@@ -1284,9 +1284,6 @@ def install_task_usage_tracker(
         "taskChanged",
         "workfile.opened",
         "workfile.saved",
-        # Can be emitted by host integrations with custom
-        #   'get_workfiles_in_use' when a workfile is closed
-        "workfile.closed",
         # Topics emitted by host integrations from native callbacks of
         #   the application
         "new",

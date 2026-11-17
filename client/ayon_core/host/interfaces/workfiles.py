@@ -933,8 +933,8 @@ class IWorkfileHost(AbstractHost):
         context changes and when a workfile is opened or saved. If the
         application can change opened workfiles in a different way, e.g.
         a document is closed, the integration should tell that workfiles
-        did change by emitting 'workfile.closed' event or by calling
-        'sync_task_usage' from 'ayon_core.pipeline.workfile.task_usage'.
+        did change by calling 'sync_task_usage' from
+        'ayon_core.pipeline.workfile.task_usage'.
 
         Returning empty list disables the tracking for the application.
 
