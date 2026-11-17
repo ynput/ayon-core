@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.ui.components import (
     AYButton,
@@ -16,6 +16,7 @@ from ayon_core.ui.components import (
     AYHBoxLayout,
     AYGridLayout,
 )
+from ayon_core.ui.style_types import get_ayon_style
 
 
 class SaveAsDialog(QtWidgets.QDialog):
@@ -168,6 +169,18 @@ class SaveAsDialog(QtWidgets.QDialog):
         preview_label = AYLabel("Preview:", parent=surface)
         description_label = AYLabel("Artist Note:", parent=surface)
 
+        # Hint shown when the save switches the context of the host. It is
+        # hidden when the context does not change. Middle elide keeps the
+        # dialog from growing with long folder paths.
+        palette = get_ayon_style().model.palette()
+        context_hint = AYLabel(
+            parent=surface,
+            text_color=palette.get("--md-sys-color-warning-dark", ""),
+            elide_mode=QtCore.Qt.ElideMiddle,
+            flexible=True,
+        )
+        context_hint.setVisible(False)
+
         # Btns widget
         btn_ok = AYButton(
             "Save",
@@ -196,6 +209,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(description_frame, 5, 0, 1, 2)
 
         surface.add_layout(inputs_layout, 0)
+        surface.add_widget(context_hint, 0)
         surface.add_layout(btns_layout, 0)
 
         main_layout = AYVBoxLayout(self, margin=0, spacing=0)
@@ -237,6 +251,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_label = extension_label
         self._preview_label = preview_label
         self._description_label = description_label
+        self._context_hint = context_hint
 
         # Post init setup
 
@@ -264,6 +279,15 @@ class SaveAsDialog(QtWidgets.QDialog):
             folder_id = folder_id or selected_context["folder_id"]
             task_id = task_id or selected_context["task_id"]
         data = self._controller.get_workarea_save_as_data(folder_id, task_id)
+        if not data or data.get("workdir") is None:
+            # The context could not be resolved, e.g. because the folder or
+            # task entity is empty. Do not allow saving and show no hint.
+            self._folder_id = folder_id
+            self._task_id = task_id
+            self._btn_ok.setEnabled(False)
+            self._preview_widget.set_text_color("red")
+            self._preview_widget.setText("Context is not available.")
+            return
         last_version = data["last_version"]
         comment = data["comment"]
         if self._input_comment is not None:
@@ -326,6 +350,29 @@ class SaveAsDialog(QtWidgets.QDialog):
             self._subversion_input.setText(comment or "")
             self._set_subversion_items(comment_hints)
         self._update_filename()
+        self._update_context_hint(data)
+
+    def _update_context_hint(self, data):
+        """Show a hint when saving switches the context of the host."""
+        folder_path = data.get("folder_path")
+        task_name = data.get("task_name")
+        if not folder_path or not task_name:
+            self._context_hint.setVisible(False)
+            return
+
+        current_folder_id = self._controller.get_current_folder_id()
+        current_task_name = self._controller.get_current_task_name()
+        if (
+            self._folder_id == current_folder_id
+            and task_name == current_task_name
+        ):
+            self._context_hint.setVisible(False)
+            return
+
+        text = f"Your context will switch to {folder_path} / {task_name}."
+        self._context_hint.setText(text)
+        self._context_hint.setToolTip(text)
+        self._context_hint.setVisible(True)
 
     def _on_version_spinbox_change(self, value):
         if value == self._version_value:
