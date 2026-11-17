@@ -591,32 +591,6 @@ class JSONSettingRegistry(ASettingRegistry):
         """Path to the JSON file, it may not exist yet."""
         return self._registry_file
 
-    def get_data(self) -> dict[str, Any]:
-        """All stored items.
-
-        Returns:
-            dict[str, Any]: Items by name.
-
-        """
-        content = self._read_content()
-        if content is None:
-            return {}
-        return content["registry"]
-
-    def clear(self) -> None:
-        """Delete all items, by removing the file."""
-        with self._write_lock:
-            try:
-                os.remove(self._registry_file)
-            except FileNotFoundError:
-                pass
-            except OSError:
-                self.log.warning(
-                    "Failed to remove registry file '%s'.",
-                    self._registry_file,
-                    exc_info=True,
-                )
-
     def _get_item(
         self, name: str, default: Any = _PLACEHOLDER
     ) -> Any:
@@ -626,9 +600,9 @@ class JSONSettingRegistry(ASettingRegistry):
             See :meth:`ayon_core.lib.JSONSettingRegistry.get_item`
 
         """
-        data = self.get_data()
-        if name in data:
-            return data[name]
+        content = self._read_content()
+        if content is not None and name in content["registry"]:
+            return content["registry"][name]
         if default is not _PLACEHOLDER:
             return default
         raise RegistryItemNotFound(
@@ -941,7 +915,7 @@ class LocalPreferences(ASettingRegistry):
 
     """
     # Seconds to wait for another process that changes the database
-    timeout = 10
+    _timeout = 10
     # Guards moving a broken database aside in this process
     _recover_lock = threading.Lock()
 
@@ -962,49 +936,7 @@ class LocalPreferences(ASettingRegistry):
     def log(self) -> logging.Logger:
         return _get_logger("LocalPreferences")
 
-    @property
-    def filepath(self) -> str:
-        """Path to the database, shared by all local preferences."""
-        return self._filepath
-
-    @property
-    def legacy_registry_filepath(self) -> str:
-        """Path to the legacy registry imported on first use.
-
-        It may not exist.
-        """
-        return self._legacy_registry_filepath
-
-    def get_data(self) -> dict[str, Any]:
-        """All stored items.
-
-        Returns:
-            dict[str, Any]: Items by name.
-
-        """
-        rows = self._query(
-            "SELECT item, value FROM preferences WHERE name = ?",
-            (self.name,),
-        )
-        data = {}
-        for item, value in rows or []:
-            try:
-                data[item] = json.loads(value)
-            except ValueError:
-                self.log.warning(
-                    "Failed to read item '%s' of preferences '%s'.",
-                    item,
-                    self.name,
-                )
-        return data
-
-    def clear(self) -> None:
-        """Delete all items."""
-        self._change(
-            "DELETE FROM preferences WHERE name = ?", (self.name,)
-        )
-
-    def import_registry(self, filepath: str) -> bool:
+    def _import_registry(self, filepath: str) -> Optional[bool]:
         """Import items of a 'JSONSettingRegistry' file.
 
         Each file is imported once, it is not imported again when the
@@ -1013,15 +945,6 @@ class LocalPreferences(ASettingRegistry):
 
         Args:
             filepath: Path to the JSON file of the registry.
-
-        Returns:
-            bool: Whether items were imported now.
-
-        """
-        return self._import_registry(filepath) is True
-
-    def _import_registry(self, filepath: str) -> Optional[bool]:
-        """Import items of a registry file, see 'import_registry'.
 
         Returns:
             Optional[bool]: Whether items were imported now. 'None' if the
@@ -1256,7 +1179,7 @@ class LocalPreferences(ASettingRegistry):
         if not os.path.exists(self._filepath):
             return False
         try:
-            connection = sqlite3.connect(self._filepath, timeout=self.timeout)
+            connection = sqlite3.connect(self._filepath, timeout=self._timeout)
             try:
                 result = connection.execute("PRAGMA quick_check").fetchall()
             finally:
@@ -1278,7 +1201,7 @@ class LocalPreferences(ASettingRegistry):
         """
         os.makedirs(os.path.dirname(self._filepath), exist_ok=True)
         connection = sqlite3.connect(
-            self._filepath, timeout=self.timeout, isolation_level=None
+            self._filepath, timeout=self._timeout, isolation_level=None
         )
         try:
             connection.executescript(_LOCAL_PREFERENCES_SCHEMA)
@@ -1458,37 +1381,6 @@ class UserPreferences(ASettingRegistry):
             self._data = data
             return True
 
-    def get_data(self) -> dict[str, Any]:
-        """All items of the preference.
-
-        Returns:
-            dict[str, Any]: Items by name.
-
-        Raises:
-            UserPreferencesNotSupported: If the server has no preferences
-                API.
-
-        """
-        with self._lock:
-            self._ensure_loaded()
-            return copy.deepcopy(self._data)
-
-    def clear(self) -> None:
-        """Delete the preference with all its items.
-
-        Raises:
-            UserPreferencesNotSupported: If the server has no preferences
-                API.
-
-        """
-        with self._lock:
-            if not self._can_change("deleted"):
-                return
-            self._loaded = True
-            self._data = {}
-            # Not found means there is nothing to delete
-            self._request("delete", ignore_codes={404})
-
     def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
         with self._lock:
             self._ensure_loaded()
@@ -1600,32 +1492,22 @@ class UserPreferences(ASettingRegistry):
                     return data
         return {}
 
-    def _request(
-        self,
-        method: str,
-        payload: Optional[dict[str, Any]] = None,
-        ignore_codes: Optional[set[int]] = None,
-    ) -> None:
+    def _request(self, method: str, payload: dict[str, Any]) -> None:
         """Change the preference on the server, failures are logged."""
         endpoint = f"preferences/{self.name}"
         if self._project_name:
             query = urlencode({"project_name": self._project_name})
             endpoint = f"{endpoint}?{query}"
 
-        kwargs = {}
-        if payload is not None:
-            kwargs["json"] = payload
         function = getattr(ayon_api, f"raw_{method}")
         try:
-            response = function(endpoint, **kwargs)
+            response = function(endpoint, json=payload)
         except Exception:
             self.log.warning(
                 "Failed to change preference '%s'.", self.name, exc_info=True
             )
             return
-        if not response.ok and response.status_code not in (
-            ignore_codes or set()
-        ):
+        if not response.ok:
             self._log_failed_request("change", response)
 
     def _log_failed_request(self, action: str, response: Any) -> None:
