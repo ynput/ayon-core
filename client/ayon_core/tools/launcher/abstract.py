@@ -235,58 +235,6 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_action_item(
-        self,
-        action_type: str,
-        identifier: str,
-        addon_name: Optional[str],
-        project_name: Optional[str],
-        folder_id: Optional[str],
-        task_id: Optional[str],
-        workfile_id: Optional[str],
-    ) -> Optional[ActionItem]:
-        """Get a single, already known action available in a context.
-
-        The action is matched by its identifier and the addon providing it.
-        The returned item is the action as the currently enabled bundle
-        provides it, including the addon version to use for it.
-
-        Args:
-            action_type (str): Type of action, 'local' or 'webaction'.
-            identifier (str): Action identifier.
-            addon_name (Optional[str]): Addon name (webactions only).
-            project_name (Optional[str]): Project name.
-            folder_id (Optional[str]): Folder id.
-            task_id (Optional[str]): Task id.
-            workfile_id (Optional[str]): Workfile id.
-
-        Returns:
-            Optional[ActionItem]: Matching action item, 'None' when the
-                action does not exist or is not compatible with the context.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_local_action_label_icon(
-        self, identifier: str
-    ) -> Optional[tuple[str, Optional[dict[str, str]]]]:
-        """Get how a local action is labelled right now.
-
-        Reads the discovered action directly, so it needs no project
-        context and issues no requests.
-
-        Args:
-            identifier (str): Action identifier.
-
-        Returns:
-            Optional[tuple[str, Optional[dict[str, str]]]]: Full label and
-                icon definition, 'None' if no such action exists.
-
-        """
-        pass
-
-    @abstractmethod
     def get_task_entity(self, project_name, task_id):
         """Get task entity by id.
 

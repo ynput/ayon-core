@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import collections
+import os
 import threading
 import time
 import uuid
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
+
+import ayon_api
 
 from ayon_core.lib import Logger, UserPreferences
 from ayon_core.lib.icon_definitions import IconBase
@@ -14,10 +17,7 @@ from ayon_core.tools.launcher.abstract import (
 )
 
 if TYPE_CHECKING:
-    from ayon_core.tools.launcher.abstract import (
-        AbstractLauncherBackend,
-        AbstractLauncherFrontEnd,
-    )
+    from ayon_core.tools.launcher.abstract import AbstractLauncherBackend
 
 
 # User preferences of the launcher and the item of the history in them
@@ -63,7 +63,7 @@ def _action_key(item: RecentActionItem) -> tuple:
     )
 
 
-class RecentActionsModel:
+class RecentActionsHistory:
     """Persistent store for recently triggered launcher actions.
 
     Keeps up to :data:`RECENT_ACTIONS_MAX` entries per user, in the
@@ -80,27 +80,28 @@ class RecentActionsModel:
     What is stored is a snapshot though - whether an action can still run is
     decided from its ids when it is triggered, not when it is displayed.
 
-    Subscribes to ``"action.trigger.finished"`` and
-    ``"webaction.trigger.finished"`` so that callers only need to trigger
-    actions normally. Recording happens on its own, and off the thread that
-    triggered the action.
+    Owned by 'ActionsModel', which records every action it triggered
+    successfully. Recording happens off the thread that triggered the
+    action.
 
     Args:
-        controller (AbstractLauncherBackend): Controller used for event
-            subscription and for resolving what a triggered action and its
-            context looked like. Names and types of the context entities
-            are read through the same methods the UI uses, which are
-            declared by 'AbstractLauncherFrontEnd'.
+        controller (AbstractLauncherBackend): Controller used to get the
+            entities of the context an action ran in.
+        get_local_action_label_icon (Callable[[str], Optional[tuple]]):
+            Current full label and icon of a local action by its
+            identifier, 'None' if there is no such action.
 
     """
 
-    log = Logger.get_logger("RecentActionsModel")
+    log = Logger.get_logger("RecentActionsHistory")
 
     def __init__(
         self,
-        controller: AbstractLauncherBackend | AbstractLauncherFrontEnd,
+        controller: AbstractLauncherBackend,
+        get_local_action_label_icon: Callable[[str], Optional[tuple]],
     ) -> None:
         self._controller = controller
+        self._get_local_action_label_icon = get_local_action_label_icon
         # Thread safe, requests of the threads using it are serialized.
         self._preferences = UserPreferences(PREFERENCES_NAME)
 
@@ -111,22 +112,13 @@ class RecentActionsModel:
         # Changes whenever the items are changed locally, so that a load
         # which was running meanwhile knows its result is outdated.
         self._revision = 0
-        self._queued_triggers = collections.deque()
+        self._queued_items = collections.deque()
         self._save_requested = False
         self._saving = False
         self._worker: Optional[threading.Thread] = None
         self._prewarmed = False
         # Whether the server can store the history, 'None' until checked
         self._supported: Optional[bool] = None
-
-        self._controller.register_event_callback(
-            "action.trigger.finished",
-            self._on_action_trigger_finished,
-        )
-        self._controller.register_event_callback(
-            "webaction.trigger.finished",
-            self._on_webaction_trigger_finished,
-        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -350,9 +342,7 @@ class RecentActionsModel:
         for item in items:
             if item.action_type != "local":
                 continue
-            label_icon = self._controller.get_local_action_label_icon(
-                item.identifier
-            )
+            label_icon = self._get_local_action_label_icon(item.identifier)
             if label_icon is None:
                 continue
             label, icon = label_icon
@@ -370,45 +360,51 @@ class RecentActionsModel:
     # Recording
     # ------------------------------------------------------------------
 
-    def _on_action_trigger_finished(self, event: dict) -> None:
-        if event["failed"]:
-            return
-        self._queue_trigger("local", event)
-
-    def _on_webaction_trigger_finished(self, event: dict) -> None:
-        if (
-            event["trigger_failed"]
-            or event["error_message"]
-            or not event["success"]
-        ):
-            return
-
-        # A 'form' response only means the form was opened, the action
-        # itself runs when the form is submitted - which triggers the
-        # webaction again and records it then.
-        if event["response_type"] == "form":
-            return
-
-        self._queue_trigger("webaction", event)
-
-    def _queue_trigger(self, action_type: str, event: dict) -> None:
-        """Hand a triggered action over to the recording worker.
+    def record(
+        self,
+        action_type: str,
+        identifier: str,
+        addon_name: Optional[str],
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        workfile_id: Optional[str],
+        label: str,
+        icon: Any,
+    ) -> None:
+        """Add a triggered action to the history.
 
         Recording costs a few requests. Doing that while the user launches
-        something would make the launcher feel sluggish, so only the event
-        data is taken here and all the work happens in the background.
+        something would make the launcher feel sluggish, so the context is
+        resolved and the history stored in the background.
+
+        Args:
+            action_type (str): Type of action, 'local' or 'webaction'.
+            identifier (str): Action identifier.
+            addon_name (Optional[str]): Addon name (webactions only).
+            project_name (Optional[str]): Project name.
+            folder_id (Optional[str]): Folder id.
+            task_id (Optional[str]): Task id.
+            workfile_id (Optional[str]): Workfile id.
+            label (str): Full label of the action.
+            icon (Any): Icon definition of the action.
+
         """
+        item = RecentActionItem(
+            record_id=uuid.uuid4().hex,
+            action_type=action_type,
+            identifier=identifier,
+            timestamp=time.time(),
+            project_name=project_name,
+            folder_id=folder_id,
+            task_id=task_id,
+            workfile_id=workfile_id,
+            addon_name=addon_name,
+            label=label or identifier,
+            icon=_icon_to_data(icon),
+        )
         with self._lock:
-            self._queued_triggers.append((action_type, {
-                "identifier": event["identifier"],
-                "addon_name": event["addon_name"],
-                "project_name": event["project_name"],
-                "folder_id": event["folder_id"],
-                "task_id": event["task_id"],
-                "workfile_id": event["workfile_id"],
-                "label": event["full_label"],
-                "timestamp": time.time(),
-            }))
+            self._queued_items.append(item)
             self._start_worker()
 
     def _start_worker(self) -> None:
@@ -427,9 +423,9 @@ class RecentActionsModel:
     def _worker_loop(self) -> None:
         while True:
             with self._lock:
-                job = to_store = None
-                if self._queued_triggers:
-                    job = self._queued_triggers.popleft()
+                item = to_store = None
+                if self._queued_items:
+                    item = self._queued_items.popleft()
                 elif self._save_requested:
                     # Changes made until now are stored by a single write.
                     self._save_requested = False
@@ -444,7 +440,7 @@ class RecentActionsModel:
                     self._worker = None
                     return
 
-            if job is None:
+            if item is None:
                 try:
                     self._store_items(to_store)
                 finally:
@@ -452,54 +448,27 @@ class RecentActionsModel:
                         self._saving = False
                 continue
 
-            action_type, data = job
             try:
-                self._record(action_type, data)
+                self._record(item)
             except Exception:
                 self.log.error(
                     "Failed to record recent action '%s'.",
-                    data["identifier"],
+                    item.identifier,
                     exc_info=True,
                 )
 
-    def _record(self, action_type: str, data: dict) -> None:
+    def _record(self, item: RecentActionItem) -> None:
         # Nowhere to store it, so the lookups below can be skipped
         if not self.check_support():
             self.log.debug(
                 "Recent action '%s' was not recorded, the server can't"
                 " store it or is not reachable.",
-                data["identifier"],
+                item.identifier,
             )
             return
 
-        item = RecentActionItem(
-            record_id=uuid.uuid4().hex,
-            action_type=action_type,
-            identifier=data["identifier"],
-            timestamp=data["timestamp"],
-            project_name=data["project_name"],
-            folder_id=data["folder_id"],
-            task_id=data["task_id"],
-            workfile_id=data["workfile_id"],
-            addon_name=data["addon_name"],
-            label=data["label"] or data["identifier"],
-        )
-
-        # Snapshot how the action and its context look right now, so that
-        # displaying the history later needs no lookups at all.
-        action_item = self._controller.get_action_item(
-            item.action_type,
-            item.identifier,
-            item.addon_name,
-            item.project_name,
-            item.folder_id,
-            item.task_id,
-            item.workfile_id,
-        )
-        if action_item is not None:
-            item.label = action_item.full_label
-            item.icon = _icon_to_data(action_item.icon)
-
+        # Snapshot how the context looks right now, so that displaying the
+        # history later needs no lookups at all.
         self._fill_context_labels(item)
 
         # Storing replaces the whole history, so it has to be known first.
@@ -535,15 +504,17 @@ class RecentActionsModel:
     def _fill_context_labels(self, item: RecentActionItem) -> None:
         """Store names and type icons of the context with the item.
 
-        Served from what the launcher already has loaded whenever possible.
+        Entities are served from what the launcher already has loaded
+        whenever possible, folder and task types are those of the project.
         """
         project_name = item.project_name
         if not project_name:
             return
 
-        project_entity = self._controller.get_project_entity(project_name)
-        if project_entity:
-            item.project_code = project_entity.get("code")
+        project_entity = (
+            self._controller.get_project_entity(project_name) or {}
+        )
+        item.project_code = project_entity.get("code")
 
         if item.folder_id:
             folder_entity = self._controller.get_folder_entity(
@@ -551,12 +522,11 @@ class RecentActionsModel:
             )
             if folder_entity:
                 item.folder_path = folder_entity["path"]
-                folder_type = self._find_type_item(
-                    self._controller.get_folder_type_items(project_name),
+                folder_type = self._find_type(
+                    project_entity.get("folderTypes"),
                     folder_entity.get("folderType"),
                 )
-                if folder_type is not None:
-                    item.folder_icon = folder_type.icon
+                item.folder_icon = folder_type.get("icon")
 
         if not item.task_id:
             return
@@ -566,25 +536,28 @@ class RecentActionsModel:
         )
         if task_entity:
             item.task_name = task_entity["name"]
-            task_type = self._find_type_item(
-                self._controller.get_task_type_items(project_name),
+            task_type = self._find_type(
+                project_entity.get("taskTypes"),
                 task_entity.get("taskType") or task_entity.get("type"),
             )
-            if task_type is not None:
-                item.task_icon = task_type.icon
-                item.task_color = task_type.color
+            item.task_icon = task_type.get("icon")
+            item.task_color = task_type.get("color")
 
         if item.workfile_id:
-            for workfile_item in self._controller.get_workfile_items(
-                project_name, item.task_id
-            ):
-                if workfile_item.workfile_id == item.workfile_id:
-                    item.workfile_name = workfile_item.filename
-                    break
+            workfile_entity = ayon_api.get_workfile_info_by_id(
+                project_name, item.workfile_id, fields={"path"}
+            )
+            if workfile_entity:
+                item.workfile_name = os.path.basename(
+                    workfile_entity["path"]
+                )
 
     @staticmethod
-    def _find_type_item(type_items, type_name):
-        for type_item in type_items:
-            if type_item.name == type_name:
-                return type_item
-        return None
+    def _find_type(
+        types: Optional[list[dict[str, Any]]], type_name: Optional[str]
+    ) -> dict[str, Any]:
+        """Folder or task type of the project by name, empty if unknown."""
+        for type_data in types or []:
+            if type_data["name"] == type_name:
+                return type_data
+        return {}

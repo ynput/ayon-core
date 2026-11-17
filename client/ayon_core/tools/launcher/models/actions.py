@@ -33,7 +33,13 @@ from ayon_core.pipeline.actions import (
     LauncherActionSelection,
     register_launcher_action_path,
 )
-from ayon_core.tools.launcher.abstract import ActionItem, WebactionContext
+from ayon_core.tools.launcher.abstract import (
+    ActionItem,
+    RecentActionItem,
+    WebactionContext,
+)
+
+from .recent_actions import RecentActionsHistory
 
 
 @dataclass
@@ -117,6 +123,10 @@ class ActionsModel:
 
         self._variant = get_settings_variant()
 
+        self._recent_actions = RecentActionsHistory(
+            controller, self._get_local_action_label_icon
+        )
+
     @staticmethod
     def calculate_full_label(label: str, variant_label: str | None) -> str:
         """Calculate full label from label and variant_label."""
@@ -139,6 +149,9 @@ class ActionsModel:
             self._webaction_items.reset()
             self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
+        # Actions are known now, so the history is loaded in the background
+        #   and the first open finds it ready.
+        self._recent_actions.prewarm()
 
     def get_action_items(
         self,
@@ -170,87 +183,6 @@ class ActionsModel:
         output.extend(self._get_webactions(selection))
 
         return output
-
-    def get_action_item(
-        self,
-        action_type: str,
-        identifier: str,
-        addon_name: str | None,
-        project_name: str | None,
-        folder_id: str | None,
-        task_id: str | None,
-        workfile_id: str | None,
-    ) -> ActionItem | None:
-        """Get a single, already known action available in a context.
-
-        Unlike 'get_action_items' this does not build the full list of
-        actions for the context. A local action is resolved from the per
-        project cache without contacting the server, webactions are only
-        queried when a webaction is asked for.
-
-        An action is identified by its identifier and the addon providing
-        it, never by an addon version. The returned item is the action as
-        the currently enabled bundle provides it, so callers re-triggering
-        a previously seen action use the version that is enabled now.
-
-        Args:
-            action_type (str): Type of action, 'local' or 'webaction'.
-            identifier (str): Action identifier.
-            addon_name (str | None): Addon name (webactions only).
-            project_name (str | None): Project name.
-            folder_id (str | None): Folder id.
-            task_id (str | None): Task id.
-            workfile_id (str | None): Workfile id.
-
-        Returns:
-            ActionItem | None: Matching action item, 'None' if the action
-                does not exist or is not compatible with the context.
-
-        """
-        selection = self._prepare_selection(
-            project_name, folder_id, task_id, workfile_id
-        )
-        if action_type == "local":
-            actions, action_items = self._get_actions_snapshot(project_name)
-            action = actions.get(identifier)
-            if action is None or not action.is_compatible(selection):
-                return None
-            return action_items.get(identifier)
-
-        for action_item in self._get_webactions(selection):
-            if (
-                action_item.identifier == identifier
-                and action_item.addon_name == addon_name
-            ):
-                return action_item
-        return None
-
-    def get_local_action_label_icon(
-        self, identifier: str
-    ) -> tuple[str, dict[str, str] | None] | None:
-        """Get how a local action is labelled right now.
-
-        Reads the discovered action itself, so it needs no project context
-        and issues no requests. Meant for relabelling an action that is
-        already known, when paying for a compatibility check is not worth
-        it.
-
-        Args:
-            identifier (str): Action identifier.
-
-        Returns:
-            tuple[str, dict[str, str] | None] | None: Full label and icon
-                definition of the action, 'None' if no such action exists.
-
-        """
-        action = self._get_action_objects().get(identifier)
-        if action is None:
-            return None
-        full_label = self.calculate_full_label(
-            action.label or identifier,
-            getattr(action, "label_variant", None),
-        )
-        return full_label, get_action_icon(action)
 
     def trigger_action(
         self,
@@ -295,14 +227,20 @@ class ActionsModel:
                 "failed": failed,
                 "error_message": error_message,
                 "full_label": action_label,
-                "project_name": project_name,
-                "folder_id": folder_id,
-                "task_id": task_id,
-                "workfile_id": workfile_id,
-                "addon_name": None,
-                "addon_version": None,
             }
         )
+        if not failed:
+            self._recent_actions.record(
+                "local",
+                identifier,
+                None,
+                project_name,
+                folder_id,
+                task_id,
+                workfile_id,
+                action_label,
+                action_item.icon,
+            )
 
     def trigger_webaction(self, context, action_label, form_data):
         entity_type = None
@@ -399,6 +337,127 @@ class ActionsModel:
             "webaction.trigger.finished",
             data,
         )
+
+        # A 'form' response only means the form was opened, the action
+        #   itself runs when the form is submitted - which triggers the
+        #   webaction again and records it then.
+        if (
+            failed
+            or not handle_response.success
+            or handle_response.error_message
+            or handle_response.response_type == "form"
+        ):
+            return
+
+        # Icon of the action as it was listed for the context
+        entity_id = entity_ids[0] if entity_ids else None
+        action_item = self._find_webaction_item(
+            self._webaction_items[project_name][entity_id].get_data(),
+            identifier,
+            addon_name,
+        )
+        self._recent_actions.record(
+            "webaction",
+            identifier,
+            addon_name,
+            project_name,
+            folder_id,
+            task_id,
+            workfile_id,
+            action_label,
+            action_item.icon if action_item is not None else None,
+        )
+
+    # Recent actions
+    def get_recent_action_items(self) -> list[RecentActionItem]:
+        return self._recent_actions.get_recent_action_items()
+
+    def get_recent_action_item(
+        self, record_id: str
+    ) -> RecentActionItem | None:
+        return self._recent_actions.get_recent_action_item(record_id)
+
+    def are_recent_action_items_loaded(self) -> bool:
+        return self._recent_actions.is_loaded()
+
+    def is_recent_actions_supported(self) -> bool | None:
+        return self._recent_actions.is_supported()
+
+    def check_recent_actions_support(self) -> bool:
+        return self._recent_actions.check_support()
+
+    def refresh_recent_action_items(self) -> None:
+        self._recent_actions.refresh()
+
+    def set_recent_action_favorite(
+        self, record_id: str, favorite: bool
+    ) -> None:
+        self._recent_actions.set_favorite(record_id, favorite)
+
+    def remove_recent_action(self, record_id: str) -> None:
+        self._recent_actions.remove_recent_action(record_id)
+
+    def trigger_recent_action(self, record_id: str) -> None:
+        """Re-run a recent action against its stored context.
+
+        What is stored with an entry is only a snapshot of how the action
+        looked when it ran, so the action is looked up in its stored context
+        first, against the addon versions of the bundle that is enabled now.
+        An entry that cannot run anymore is reported and dropped from the
+        history instead.
+
+        Args:
+            record_id (str): Id of the history entry.
+
+        """
+        item = self._recent_actions.get_recent_action_item(record_id)
+        if item is None:
+            return
+
+        action_item = self._get_action_item(
+            item.action_type,
+            item.identifier,
+            item.addon_name,
+            item.project_name,
+            item.folder_id,
+            item.task_id,
+            item.workfile_id,
+        )
+        if action_item is None:
+            self.log.warning(
+                "Action '%s' is not available in its stored context anymore,"
+                " removing it from recent actions.",
+                item.identifier,
+            )
+            self._recent_actions.remove_recent_action(record_id)
+            self._controller.emit_event(
+                "recent_action.unavailable",
+                {"record_id": record_id, "full_label": item.label},
+            )
+            return
+
+        if item.action_type == "local":
+            self.trigger_action(
+                item.identifier,
+                item.project_name,
+                item.folder_id,
+                item.task_id,
+                item.workfile_id,
+            )
+            return
+
+        context = WebactionContext(
+            identifier=item.identifier,
+            project_name=item.project_name,
+            folder_id=item.folder_id,
+            task_id=item.task_id,
+            workfile_id=item.workfile_id,
+            addon_name=item.addon_name,
+            # Version of the addon that provides the action now, not
+            #   the one that happened to provide it back then.
+            addon_version=action_item.addon_version,
+        )
+        self.trigger_webaction(context, action_item.full_label, None)
 
     def get_action_config_values(self, context: WebactionContext):
         selection = self._prepare_selection(
@@ -597,6 +656,70 @@ class ActionsModel:
         cache.update_data(action_items)
         return cache.get_data()
 
+    def _get_action_item(
+        self,
+        action_type: str,
+        identifier: str,
+        addon_name: str | None,
+        project_name: str | None,
+        folder_id: str | None,
+        task_id: str | None,
+        workfile_id: str | None,
+    ) -> ActionItem | None:
+        """Get a single, already known action available in a context.
+
+        Unlike 'get_action_items' this does not build the full list of
+        actions for the context. A local action is resolved from the per
+        project cache without contacting the server, webactions are only
+        queried when a webaction is asked for.
+
+        An action is identified by its identifier and the addon providing
+        it, never by an addon version. The returned item is the action as
+        the currently enabled bundle provides it, so callers re-triggering
+        a previously seen action use the version that is enabled now.
+
+        Args:
+            action_type (str): Type of action, 'local' or 'webaction'.
+            identifier (str): Action identifier.
+            addon_name (str | None): Addon name (webactions only).
+            project_name (str | None): Project name.
+            folder_id (str | None): Folder id.
+            task_id (str | None): Task id.
+            workfile_id (str | None): Workfile id.
+
+        Returns:
+            ActionItem | None: Matching action item, 'None' if the action
+                does not exist or is not compatible with the context.
+
+        """
+        selection = self._prepare_selection(
+            project_name, folder_id, task_id, workfile_id
+        )
+        if action_type == "local":
+            actions, action_items = self._get_actions_snapshot(project_name)
+            action = actions.get(identifier)
+            if action is None or not action.is_compatible(selection):
+                return None
+            return action_items.get(identifier)
+
+        return self._find_webaction_item(
+            self._get_webactions(selection), identifier, addon_name
+        )
+
+    @staticmethod
+    def _find_webaction_item(
+        action_items: list[ActionItem],
+        identifier: str,
+        addon_name: str | None,
+    ) -> ActionItem | None:
+        for action_item in action_items:
+            if (
+                action_item.identifier == identifier
+                and action_item.addon_name == addon_name
+            ):
+                return action_item
+        return None
+
     def _is_service_user(self) -> bool:
         """Check if the connection uses a service user API key.
 
@@ -739,6 +862,33 @@ class ActionsModel:
                     actions[identifier] = obj
                 self._actions = actions
             return self._actions
+
+    def _get_local_action_label_icon(
+        self, identifier: str
+    ) -> tuple[str, dict[str, str] | None] | None:
+        """Get how a local action is labelled right now.
+
+        Reads the discovered action itself, so it needs no project context
+        and issues no requests. Meant for relabelling an action that is
+        already known, when paying for a compatibility check is not worth
+        it.
+
+        Args:
+            identifier (str): Action identifier.
+
+        Returns:
+            tuple[str, dict[str, str] | None] | None: Full label and icon
+                definition of the action, 'None' if no such action exists.
+
+        """
+        action = self._get_action_objects().get(identifier)
+        if action is None:
+            return None
+        full_label = self.calculate_full_label(
+            action.label or identifier,
+            getattr(action, "label_variant", None),
+        )
+        return full_label, get_action_icon(action)
 
     def _get_actions_snapshot(self, project_name):
         """Get action objects and their items from one discovery.
