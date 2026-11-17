@@ -1006,12 +1006,16 @@ def test_tracker_uninstall(monkeypatch):
     monkeypatch.setattr(
         TaskUsageTracker, "stop", lambda self: stopped.append(self)
     )
+    unregistered = []
+    monkeypatch.setattr(task_usage.atexit, "unregister", unregistered.append)
     tracker = task_usage.install_task_usage_tracker(_MockHost())
     task_usage._on_exit()
     task_usage.uninstall_task_usage_tracker()
     task_usage.uninstall_task_usage_tracker()
     task_usage._on_exit()
     assert stopped == [tracker] * 2
+    # Exit callback is not registered more times on next install
+    assert unregistered == [task_usage._on_exit]
 
 
 def test_no_qt_or_tools_imports():

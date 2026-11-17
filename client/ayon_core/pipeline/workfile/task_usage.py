@@ -1309,4 +1309,5 @@ def uninstall_task_usage_tracker() -> None:
 
     tracker, _tracker = _tracker, None
     if tracker is not None:
+        atexit.unregister(_on_exit)
         tracker.stop()
