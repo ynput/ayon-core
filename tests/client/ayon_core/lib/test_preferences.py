@@ -67,9 +67,6 @@ class FakeServer:
     def raw_patch(self, endpoint: str, **kwargs) -> FakeResponse:
         return self._handle("patch", endpoint, kwargs)
 
-    def raw_delete(self, endpoint: str, **kwargs) -> FakeResponse:
-        return self._handle("delete", endpoint, kwargs)
-
     def _handle(self, method: str, endpoint: str, kwargs) -> FakeResponse:
         parsed = urlparse(endpoint)
         query = {
@@ -100,9 +97,6 @@ class FakeServer:
             self.preferences[scope] = dict(body)
         elif method == "patch":
             self.preferences.setdefault(scope, {}).update(body)
-        elif method == "delete":
-            if self.preferences.pop(scope, None) is None:
-                return FakeResponse(404, {"detail": "Not found"})
         return FakeResponse(204)
 
 
@@ -119,7 +113,7 @@ def local_dir(tmp_path_factory, monkeypatch) -> str:
 
 
 def use_server(monkeypatch, server: FakeServer) -> FakeServer:
-    for method in ("get", "put", "patch", "delete"):
+    for method in ("get", "put", "patch"):
         name = f"raw_{method}"
         monkeypatch.setattr(ayon_api, name, getattr(server, name))
     return server
@@ -128,6 +122,23 @@ def use_server(monkeypatch, server: FakeServer) -> FakeServer:
 def read_json(path: str) -> dict:
     with open(path, "r") as stream:
         return json.load(stream)
+
+
+def database_path() -> str:
+    """Database of all local preferences."""
+    return get_launcher_local_dir("tools", "preferences.db")
+
+
+def stored_items(name: str) -> dict[str, Any]:
+    """Items of local preferences, as stored in the database."""
+    connection = sqlite3.connect(database_path())
+    try:
+        rows = connection.execute(
+            "SELECT item, value FROM preferences WHERE name = ?", (name,)
+        ).fetchall()
+    finally:
+        connection.close()
+    return {item: json.loads(value) for item, value in rows}
 
 
 @pytest.mark.unit
@@ -142,22 +153,19 @@ def test_invalid_names_are_refused(name):
 
 
 @pytest.mark.unit
-def test_local_preferences_items(local_dir):
+def test_local_preferences_items():
     prefs = LocalPreferences(KEY)
 
-    assert prefs.filepath == os.path.join(
-        local_dir, "tools", "preferences.db"
-    )
     assert prefs.get_item("sizes", default=[]) == []
     with pytest.raises(RegistryItemNotFound):
         prefs.get_item("sizes")
     # Nothing is written until an item is set
-    assert not os.path.exists(prefs.filepath)
+    assert not os.path.exists(database_path())
 
     prefs.set_item("sizes", [200, 400])
     prefs.set_item("visible", True)
     assert LocalPreferences(KEY).get_item("sizes") == [200, 400]
-    assert prefs.get_data() == {"sizes": [200, 400], "visible": True}
+    assert stored_items(KEY) == {"sizes": [200, 400], "visible": True}
     # Other preferences are in the same database
     LocalPreferences(f"{KEY}.other").set_item("sizes", [1, 2])
     assert prefs.get_item("sizes") == [200, 400]
@@ -166,11 +174,8 @@ def test_local_preferences_items(local_dir):
     prefs.delete_item("missing")
     with pytest.raises(RegistryItemNotFound):
         prefs.delete_item("missing", ignore_missing=False)
-    assert LocalPreferences(KEY).get_data() == {"visible": True}
-
-    prefs.clear()
-    assert prefs.get_data() == {}
-    assert LocalPreferences(f"{KEY}.other").get_data() == {"sizes": [1, 2]}
+    assert stored_items(KEY) == {"visible": True}
+    assert stored_items(f"{KEY}.other") == {"sizes": [1, 2]}
 
 
 @pytest.mark.unit
@@ -180,16 +185,34 @@ def test_local_preferences_import_existing_registry():
     registry.set_item("grouped_hosts", '["maya"]')
 
     prefs = LocalPreferences("launcher")
-    assert prefs.legacy_registry_filepath == registry.filepath
     assert prefs.get_item("grouped_hosts") == '["maya"]'
 
     prefs.set_item("grouped_hosts", '["maya", "nuke"]')
     prefs.delete_item("grouped_hosts")
     # Not imported again, by this process or another one
-    assert LocalPreferences("launcher").get_data() == {}
-    assert prefs.import_registry(registry.filepath) is False
+    assert prefs.get_item("grouped_hosts", default=None) is None
+    other = LocalPreferences("launcher")
+    assert other.get_item("grouped_hosts", default=None) is None
     # The registry is left as it was, for older versions of core
     assert registry.get_item("grouped_hosts") == '["maya"]'
+
+
+@pytest.mark.unit
+def test_local_preferences_import_passed_legacy_registry(local_dir):
+    registry = JSONSettingRegistry("unreal", local_dir)
+    registry.set_item("width", 800)
+    registry.set_item("height", 600)
+    # The default legacy registry is not imported instead
+    default_registry = JSONSettingRegistry(
+        "unreal", get_launcher_local_dir("tools")
+    )
+    default_registry.set_item("height", 1)
+
+    prefs = LocalPreferences(
+        "unreal", legacy_registry_filepath=registry.filepath
+    )
+    assert prefs.get_item("width") == 800
+    assert prefs.get_item("height") == 600
 
 
 @pytest.mark.unit
@@ -197,28 +220,14 @@ def test_local_preferences_import_keeps_items_that_are_set(local_dir):
     registry = JSONSettingRegistry("unreal", local_dir)
     registry.set_item("width", 800)
     registry.set_item("height", 600)
-
-    prefs = LocalPreferences("unreal")
-    prefs.set_item("width", 1000)
-    assert prefs.import_registry(registry.filepath) is True
-    assert prefs.get_data() == {"width": 1000, "height": 600}
-    assert prefs.import_registry(os.path.join(local_dir, "x.json")) is False
-
-
-@pytest.mark.unit
-def test_local_preferences_import_passed_legacy_registry(local_dir):
-    registry = JSONSettingRegistry("unreal", local_dir)
-    registry.set_item("width", 800)
+    # No legacy registry in the default location
+    LocalPreferences("unreal").set_item("width", 1000)
 
     prefs = LocalPreferences(
         "unreal", legacy_registry_filepath=registry.filepath
     )
-    assert prefs.legacy_registry_filepath == registry.filepath
-    assert prefs.get_item("width") == 800
-    # The default legacy registry is not imported instead
-    assert LocalPreferences("unreal").legacy_registry_filepath == (
-        os.path.join(local_dir, "tools", "unreal.json")
-    )
+    assert prefs.get_item("height") == 600
+    assert stored_items("unreal") == {"width": 1000, "height": 600}
 
 
 @pytest.mark.unit
@@ -228,10 +237,10 @@ def test_local_preferences_import_is_tried_again(monkeypatch):
     registry.set_item("width", 800)
     # The database exists, used by other preferences
     LocalPreferences(KEY).set_item("visible", True)
-    monkeypatch.setattr(LocalPreferences, "timeout", 0.1)
+    monkeypatch.setattr(LocalPreferences, "_timeout", 0.1)
 
     prefs = LocalPreferences("unreal")
-    other = sqlite3.connect(prefs.filepath, isolation_level=None)
+    other = sqlite3.connect(database_path(), isolation_level=None)
     try:
         other.execute("BEGIN EXCLUSIVE")
         assert prefs.get_item("width", default=None) is None
@@ -263,6 +272,15 @@ def test_json_registry_reads_changes_of_others():
 
     JSONSettingRegistry("other_tool", path).set_item("width", 800)
     assert registry.get_item("width", default=None) == 800
+
+
+@pytest.mark.unit
+def test_json_registry_delete_missing_item(local_dir):
+    """A missing item raises 'KeyError', addons may expect it."""
+    registry = JSONSettingRegistry("other_tool", local_dir)
+    registry.delete_item("width")
+    with pytest.raises(KeyError):
+        registry.delete_item("width", ignore_missing=False)
 
 
 @pytest.mark.unit
@@ -301,11 +319,11 @@ def test_json_registry_keeps_a_file_it_cannot_open(local_dir, monkeypatch):
         assert registry.get_item("width", default=None) is None
         registry.set_item("height", 600)
         registry.delete_item("width")
-    assert registry.get_data() == {"width": 800}
+    assert read_json(registry.filepath)["registry"] == {"width": 800}
 
 
-def broken_databases(prefs: LocalPreferences) -> list[str]:
-    dirpath = os.path.dirname(prefs.filepath)
+def broken_databases() -> list[str]:
+    dirpath = os.path.dirname(database_path())
     return sorted(
         filename
         for filename in os.listdir(dirpath)
@@ -316,7 +334,7 @@ def broken_databases(prefs: LocalPreferences) -> list[str]:
 def fill_database(prefs: LocalPreferences) -> None:
     """Items for pages after the first one, in one transaction."""
     prefs.set_item("first", True)
-    connection = sqlite3.connect(prefs.filepath)
+    connection = sqlite3.connect(database_path())
     with connection:
         connection.executemany(
             "INSERT INTO preferences (name, item, value) VALUES (?, ?, ?)",
@@ -326,24 +344,24 @@ def fill_database(prefs: LocalPreferences) -> None:
     connection.close()
 
 
-def damage_database(prefs: LocalPreferences) -> None:
+def damage_database() -> None:
     """Overwrite pages after the header, SQLite reports it malformed."""
-    with open(prefs.filepath, "rb") as stream:
+    with open(database_path(), "rb") as stream:
         content = bytearray(stream.read())
     content[4096:] = b"\xab" * (len(content) - 4096)
-    with open(prefs.filepath, "wb") as stream:
+    with open(database_path(), "wb") as stream:
         stream.write(content)
 
 
 @pytest.mark.unit
 def test_local_preferences_replace_a_file_that_is_not_a_database():
     prefs = LocalPreferences(KEY)
-    os.makedirs(os.path.dirname(prefs.filepath))
-    with open(prefs.filepath, "w") as stream:
+    os.makedirs(os.path.dirname(database_path()))
+    with open(database_path(), "w") as stream:
         stream.write("not a database" * 100)
 
     assert prefs.get_item("visible", default=False) is False
-    assert len(broken_databases(prefs)) == 1
+    assert len(broken_databases()) == 1
     prefs.set_item("visible", True)
     assert LocalPreferences(KEY).get_item("visible") is True
 
@@ -352,20 +370,20 @@ def test_local_preferences_replace_a_file_that_is_not_a_database():
 def test_local_preferences_replace_a_malformed_database():
     prefs = LocalPreferences(KEY)
     fill_database(prefs)
-    damage_database(prefs)
+    damage_database()
 
     prefs.set_item("visible", True)
-    assert prefs.get_data() == {"visible": True}
-    assert len(broken_databases(prefs)) == 1
+    assert stored_items(KEY) == {"visible": True}
+    assert len(broken_databases()) == 1
 
 
 @pytest.mark.unit
 def test_local_preferences_keep_a_locked_database(monkeypatch):
     prefs = LocalPreferences(KEY)
     prefs.set_item("visible", True)
-    monkeypatch.setattr(LocalPreferences, "timeout", 0.1)
+    monkeypatch.setattr(LocalPreferences, "_timeout", 0.1)
 
-    other = sqlite3.connect(prefs.filepath, isolation_level=None)
+    other = sqlite3.connect(database_path(), isolation_level=None)
     try:
         other.execute("BEGIN EXCLUSIVE")
         # Failed, logged and not raised
@@ -374,7 +392,7 @@ def test_local_preferences_keep_a_locked_database(monkeypatch):
     finally:
         other.close()
 
-    assert broken_databases(prefs) == []
+    assert broken_databases() == []
     assert prefs.get_item("visible") is True
 
 
@@ -384,7 +402,7 @@ def test_local_preferences_broken_database_that_cannot_be_moved(
 ):
     prefs = LocalPreferences(KEY)
     fill_database(prefs)
-    damage_database(prefs)
+    damage_database()
 
     def replace(src, dst):
         raise PermissionError("Used by another process")
@@ -393,12 +411,12 @@ def test_local_preferences_broken_database_that_cannot_be_moved(
         context.setattr(os, "replace", replace)
         assert prefs.get_item("visible", default=False) is False
         prefs.set_item("visible", True)
-    assert broken_databases(prefs) == []
+    assert broken_databases() == []
 
     # Moved on the next access that can move it
     prefs.set_item("visible", True)
-    assert prefs.get_data() == {"visible": True}
-    assert len(broken_databases(prefs)) == 1
+    assert stored_items(KEY) == {"visible": True}
+    assert len(broken_databases()) == 1
 
 
 @pytest.mark.unit
@@ -433,7 +451,7 @@ def test_local_preferences_changed_by_processes_at_once(local_dir):
     for process in processes:
         assert process.wait(timeout=60) == 0
 
-    assert LocalPreferences(KEY).get_data() == {
+    assert stored_items(KEY) == {
         f"process{number}_{index}": index
         for number in range(4)
         for index in range(20)
@@ -481,13 +499,13 @@ def test_user_preferences_of_project(monkeypatch):
 def test_user_preferences_refresh(monkeypatch):
     server = use_server(monkeypatch, FakeServer())
     prefs = UserPreferences(KEY)
-    assert prefs.get_data() == {}
+    assert prefs.get_item("visible", default=None) is None
 
     # Changed on another machine
     server.preferences[(KEY, None)] = {"visible": True}
-    assert prefs.get_data() == {}
+    assert prefs.get_item("visible", default=None) is None
     assert prefs.refresh() is True
-    assert prefs.get_data() == {"visible": True}
+    assert prefs.get_item("visible") is True
 
 
 @pytest.mark.unit
@@ -503,13 +521,8 @@ def test_user_preferences_delete_keeps_items_of_others(monkeypatch):
     assert server.calls[-1] == ("put", f"preferences/{KEY}", None, {
         "visible": True, "other": 1
     })
-    assert prefs.get_data() == {"visible": True, "other": 1}
-
-    prefs.clear()
-    assert (KEY, None) not in server.preferences
-    assert prefs.get_data() == {}
-    # Deleting what does not exist is fine
-    prefs.clear()
+    assert prefs.get_item("sizes", default=None) is None
+    assert prefs.get_item("other") == 1
 
 
 @pytest.mark.unit
@@ -568,12 +581,11 @@ def test_user_preferences_on_server_without_api(monkeypatch, local_dir):
     assert len(server.calls) == 1
 
     for method, args in (
-        (prefs.get_data, ()),
+        (prefs.get_item, ("visible",)),
         (prefs.refresh, ()),
         (prefs.set_item, ("visible", True)),
         (prefs.delete_item, ("visible",)),
-        (prefs.clear, ()),
-        (UserPreferences(KEY, project_name="demo").get_data, ()),
+        (UserPreferences(KEY, project_name="demo").get_item, ("visible",)),
     ):
         with pytest.raises(UserPreferencesNotSupported):
             method(*args)
@@ -618,7 +630,7 @@ def test_user_preferences_when_requests_raise(monkeypatch, caplog):
     def raise_error(endpoint, **kwargs):
         raise ConnectionError("Connection refused")
 
-    for method in ("get", "put", "patch", "delete"):
+    for method in ("get", "put", "patch"):
         monkeypatch.setattr(ayon_api, f"raw_{method}", raise_error)
     caplog.set_level(logging.WARNING, logger="UserPreferences")
 
