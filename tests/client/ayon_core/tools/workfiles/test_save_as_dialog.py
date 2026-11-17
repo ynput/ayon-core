@@ -163,15 +163,32 @@ def test_save_as_dialog_hint_for_other_context(qtbot):
         folder_id="folder-2",
         task_id="task-2",
     )
-    expected = "Your context will switch to /folder/folder-2 / task-2."
     assert not dialog._context_hint.isHidden()
-    assert dialog._context_hint.text() == expected
-    assert dialog._context_hint.toolTip() == expected
+    assert (
+        dialog._context_hint_label.text()
+        == "Your context will switch to another folder and task"
+    )
+    tooltip = "Will switch to: /folder/folder-2 / task-2"
+    assert dialog._context_hint_label.toolTip() == tooltip
+    assert dialog._context_hint_info.toolTip() == tooltip
 
 
 def test_save_as_dialog_hint_when_only_task_differs(qtbot):
     dialog = _make_dialog(qtbot, _FakeController(), task_id="task-2")
     assert not dialog._context_hint.isHidden()
+    assert (
+        dialog._context_hint_label.text()
+        == "Your context will switch to another task"
+    )
+
+
+def test_save_as_dialog_hint_when_only_folder_differs(qtbot):
+    dialog = _make_dialog(qtbot, _FakeController(), folder_id="folder-2")
+    assert not dialog._context_hint.isHidden()
+    assert (
+        dialog._context_hint_label.text()
+        == "Your context will switch to another folder"
+    )
 
 
 def test_save_as_dialog_hint_without_current_context(qtbot):
@@ -180,6 +197,10 @@ def test_save_as_dialog_hint_without_current_context(qtbot):
     )
     dialog = _make_dialog(qtbot, controller)
     assert not dialog._context_hint.isHidden()
+    assert (
+        dialog._context_hint_label.text()
+        == "Your context will switch to another folder and task"
+    )
 
 
 def test_save_as_dialog_hint_hidden_without_context_data(qtbot):
@@ -198,6 +219,11 @@ def test_save_as_dialog_hint_does_not_widen_dialog(qtbot):
         qtbot, _FakeController(folder_path=long_path, task_name="task-2")
     )
     assert long_dialog.sizeHint().width() == short_dialog.sizeHint().width()
+    # The visible message does not depend on the folder path length
+    assert (
+        long_dialog._context_hint_label.text()
+        == short_dialog._context_hint_label.text()
+    )
 
 
 def test_save_as_dialog_hint_hidden_with_empty_entities(qtbot):
