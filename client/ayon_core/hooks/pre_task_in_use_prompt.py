@@ -11,6 +11,7 @@ from ayon_core.pipeline.workfile.task_usage import (
     ACKNOWLEDGED_SESSIONS_ENV_KEY,
     TaskUsageItem,
     get_task_usage_settings,
+    get_task_usage_user_full_names,
     get_other_users_task_usage_items,
 )
 
@@ -98,7 +99,9 @@ class TaskInUsePrompt(PreLaunchHook):
                 ask_to_launch_on_task_in_use,
             )
 
-            answer = ask_to_launch_on_task_in_use(items)
+            answer = ask_to_launch_on_task_in_use(
+                items, get_task_usage_user_full_names(items)
+            )
         except Exception:
             self.log.warning(
                 "Failed to show task in-use prompt.", exc_info=True

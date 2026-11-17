@@ -388,6 +388,7 @@ def _can_show_dialog() -> bool:
 
 def ask_to_launch_on_task_in_use(
     items: list[TaskUsageItem],
+    full_names: dict[str, str],
 ) -> bool | None:
     """Ask user if wants to launch an application on a task that is in use.
 
@@ -401,6 +402,7 @@ def ask_to_launch_on_task_in_use(
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
+        full_names (dict[str, str]): Full names of users by username.
 
     Returns:
         bool | None: User wants to launch the application. None if
@@ -408,9 +410,6 @@ def ask_to_launch_on_task_in_use(
             the thread of Qt application or without a display.
 
     """
-    from ayon_core.pipeline.workfile.task_usage import (
-        get_task_usage_user_full_names,
-    )
     from ayon_core.tools.utils import get_ayon_qt_app
     from ayon_core.ui.components.task_queue import shutdown_task_queue
 
@@ -423,7 +422,7 @@ def ask_to_launch_on_task_in_use(
     try:
         dialog = TaskInUseDialog(
             items,
-            get_task_usage_user_full_names(items),
+            full_names,
             confirm_label="Launch anyway",
         )
         # The dialog does not have a parent window, make sure it is not

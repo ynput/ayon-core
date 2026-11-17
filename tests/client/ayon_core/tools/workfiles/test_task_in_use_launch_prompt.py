@@ -15,7 +15,6 @@ pytest.importorskip("pytestqt")
 
 from qtpy import QtWidgets  # noqa: E402
 
-from ayon_core.pipeline.workfile import task_usage  # noqa: E402
 from ayon_core.pipeline.workfile.task_usage import (  # noqa: E402
     TaskUsageItem,
 )
@@ -63,9 +62,6 @@ def clicked_button(qtbot, monkeypatch):
         "exec_",
         lambda dialog: click_button(dialog, label[0]),  # noqa: F821
     )
-    monkeypatch.setattr(
-        task_usage, "get_task_usage_user_full_names", lambda items: {}
-    )
     return label
 
 
@@ -83,7 +79,7 @@ def clicked_button(qtbot, monkeypatch):
 def test_ask_to_launch(clicked_button, button, expected):
     clicked_button[0] = button
     items = [TaskUsageItem(**_SESSION)]
-    assert ask_to_launch_on_task_in_use(items) is expected
+    assert ask_to_launch_on_task_in_use(items, {}) is expected
 
 
 def test_ask_to_launch_in_other_thread(clicked_button):
@@ -91,7 +87,7 @@ def test_ask_to_launch_in_other_thread(clicked_button):
     results = []
     thread = threading.Thread(
         target=lambda: results.append(
-            ask_to_launch_on_task_in_use([TaskUsageItem(**_SESSION)])
+            ask_to_launch_on_task_in_use([TaskUsageItem(**_SESSION)], {})
         )
     )
     thread.start()
@@ -124,7 +120,6 @@ import sys
 
 from qtpy import QtWidgets
 
-from ayon_core.pipeline.workfile import task_usage
 from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
 from ayon_core.tools.workfiles.widgets import task_in_use_dialog
 from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
@@ -134,12 +129,11 @@ from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
 
 label, session = sys.argv[1], json.loads(sys.argv[2])
 QtWidgets.QDialog.exec_ = lambda dialog: click_button(dialog, label)
-task_usage.get_task_usage_user_full_names = lambda items: {{}}
 # Linux without display (e.g. CI) would not show the dialog, 'offscreen'
 #   platform is used by the test instead
 task_in_use_dialog._can_show_dialog = lambda: True
 assert QtWidgets.QApplication.instance() is None
-answer = ask_to_launch_on_task_in_use([TaskUsageItem(**session)])
+answer = ask_to_launch_on_task_in_use([TaskUsageItem(**session)], {{}})
 print(json.dumps(answer))
 """.format(click_button=_CLICK_BUTTON)
 
