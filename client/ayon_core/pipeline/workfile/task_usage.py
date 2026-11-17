@@ -930,13 +930,12 @@ class TaskUsageTracker:
             self.process()
 
     def _run(self, stop_event: threading.Event) -> None:
-        while True:
+        while not stop_event.is_set() and not self._disabled:
             self._wake_event.wait(self._get_wait_seconds())
             self._wake_event.clear()
-            # Scheduled release is processed before the thread stops
             self.process()
-            if stop_event.is_set() or self._disabled:
-                break
+        # Release can be scheduled by 'stop' while a request is running
+        self.process()
 
     def _get_wait_seconds(self) -> float:
         """Seconds until the next heartbeat or next try after a failure."""

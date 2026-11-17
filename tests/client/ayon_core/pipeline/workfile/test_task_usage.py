@@ -851,6 +851,35 @@ def test_tracker_thread(tracker_calls, monkeypatch):
     assert host_threads == {main_thread}
 
 
+def test_tracker_stop_during_request(tracker_calls, monkeypatch):
+    """Release is sent when the thread is stopped during a request."""
+    host, tracker, calls, _ = tracker_calls
+    in_request = threading.Event()
+    finish_request = threading.Event()
+    claim_task = task_usage.claim_task
+
+    def _claim_task(*args):
+        in_request.set()
+        finish_request.wait(5)
+        return claim_task(*args)
+
+    monkeypatch.setattr(task_usage, "claim_task", _claim_task)
+    monkeypatch.setattr(task_usage, "EXIT_TIMEOUT_SECONDS", 0.05)
+    tracker.start()
+    thread = tracker._thread
+    tracker.sync()
+    assert in_request.wait(5)
+    tracker.stop()
+
+    finish_request.set()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert calls == [
+        ("claim", "anim", "sh010_anim_v001.ma"),
+        ("release", "anim", "mine"),
+    ]
+
+
 def test_tracker_stop_does_not_wait_for_server(tracker_calls, monkeypatch):
     """Exit of the application is not blocked by slow server."""
     host, tracker, calls, _ = tracker_calls
