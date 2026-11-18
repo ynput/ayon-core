@@ -595,7 +595,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         if context.get("frame") is not None:
             template_data["frame"] = frame
             return False
-        if context.get("udim"):
+        if context.get("udim") is not None:
             template_data["udim"] = frame
             return False
         template_data["frame"] = frame
