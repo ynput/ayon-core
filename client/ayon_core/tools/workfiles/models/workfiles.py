@@ -390,6 +390,8 @@ class WorkfilesModel:
                 "comment_hints": None,
                 "last_version": None,
                 "extensions": None,
+                "folder_path": None,
+                "task_name": None,
             }
 
         anatomy = self._controller.project_anatomy
@@ -449,6 +451,8 @@ class WorkfilesModel:
             "comment_hints": comment_hints,
             "last_version": last_version,
             "extensions": extensions,
+            "folder_path": folder_entity["path"],
+            "task_name": task_entity["name"],
         }
 
     def fill_workarea_filepath(
