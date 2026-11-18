@@ -1550,9 +1550,10 @@ def _get_last_version_files(
 
 
 def get_instance_template_name(instance: pyblish.api.Instance) -> str:
-    """Return anatomy template name to use for integration.
+    """DEPRECATED Return anatomy template name to use for integration.
 
-    Use 'get_publish_template_name_for_instance' instead.
+    Deprecated since 2026/11/18. Please use
+    'get_publish_template_name_for_instance' instead.
 
     Args:
         instance (pyblish.api.Instance): Instance to process.
@@ -1561,6 +1562,13 @@ def get_instance_template_name(instance: pyblish.api.Instance) -> str:
         str: Anatomy template name
 
     """
+    # TODO remove after 2027/02/18 (deprecated since 2026/11/18)
+    msg = (
+        "Function 'get_instance_template_name' is deprecated. Please use"
+        " 'get_publish_template_name_for_instance' instead."
+    )
+    log.warning(msg)
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
     return get_publish_template_name_for_instance(instance, logger=log)
 
 
