@@ -74,7 +74,9 @@ def shared_cache(monkeypatch) -> hierarchy._SharedFoldersCache:
     """Folder items cache is shared by all models, use new one per test."""
     cache = hierarchy._SharedFoldersCache()
     monkeypatch.setattr(hierarchy, "_SHARED_FOLDERS_CACHE", cache)
-    monkeypatch.setattr(hierarchy, "get_existing_event_hub", lambda: None)
+    # No tool started the websocket connection
+    hub = _FakeEventHub(connected=False)
+    monkeypatch.setattr(hierarchy, "get_event_hub", lambda: hub)
     return cache
 
 
@@ -82,7 +84,7 @@ def shared_cache(monkeypatch) -> hierarchy._SharedFoldersCache:
 def event_hub(monkeypatch, shared_cache) -> _FakeEventHub:
     """Connected websocket listening to events since long time ago."""
     hub = _FakeEventHub()
-    monkeypatch.setattr(hierarchy, "get_existing_event_hub", lambda: hub)
+    monkeypatch.setattr(hierarchy, "get_event_hub", lambda: hub)
     # Don't wait for subscription to be sent
     monkeypatch.setattr(shared_cache, "subscribe_delay", 0)
     return hub

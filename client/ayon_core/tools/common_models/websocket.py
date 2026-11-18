@@ -1210,17 +1210,18 @@ class _GlobalContext:
         event_hub.stop()
 
 
-def get_existing_event_hub() -> EventHub | None:
-    """Global event hub, only if it was already created.
+def get_event_hub() -> EventHub:
+    """Global event hub, created if it does not exist yet.
 
-    Can be used to listen to server events without creating websocket
-        connection, e.g. in headless usage.
+    Creating the hub does not connect to server. Callbacks added with
+        'connect=False' receive events once a tool starts the connection
+        (see 'WSEventsModel'), so headless usage stays without websocket.
 
     Returns:
-        EventHub | None: Global event hub or 'None'.
+        EventHub: Global event hub.
 
     """
-    return _GlobalContext.event_hub
+    return _GlobalContext.get_event_hub()
 
 
 class WSEventsModel:

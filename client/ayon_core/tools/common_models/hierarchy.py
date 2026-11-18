@@ -13,7 +13,7 @@ import ayon_api
 from ayon_core.lib import NestedCacheItem
 
 from .projects import TaskTypeItem
-from .websocket import Event, EventCallback, get_existing_event_hub
+from .websocket import Event, EventCallback, get_event_hub
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
 FOLDER_FIELDS = {
@@ -273,17 +273,14 @@ class _SharedFoldersCache:
         return self._now() - valid_from < self.min_lifetime
 
     def _listen_to_events(self) -> None:
-        """Register callbacks to server events once websocket exists."""
+        """Register callbacks to server events, once per process."""
         if self._hub_callbacks:
-            return
-
-        event_hub = get_existing_event_hub()
-        if event_hub is None:
             return
 
         with self._register_lock:
             if self._hub_callbacks:
                 return
+            event_hub = get_event_hub()
             subscribed_at = self._now()
             with self.cond:
                 self._subscribed_at = subscribed_at

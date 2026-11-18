@@ -21,7 +21,10 @@ def shared_cache(monkeypatch):
     monkeypatch.setattr(
         hierarchy, "_SHARED_FOLDERS_CACHE", hierarchy._SharedFoldersCache()
     )
-    monkeypatch.setattr(hierarchy, "get_existing_event_hub", lambda: None)
+    # No tool started the websocket connection
+    hub = Mock()
+    hub.is_connected.return_value = False
+    monkeypatch.setattr(hierarchy, "get_event_hub", lambda: hub)
 
 
 def _model() -> HierarchyModel:
