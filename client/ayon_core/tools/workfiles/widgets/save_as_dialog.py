@@ -296,7 +296,7 @@ class SaveAsDialog(QtWidgets.QDialog):
             folder_id = folder_id or selected_context["folder_id"]
             task_id = task_id or selected_context["task_id"]
         data = self._controller.get_workarea_save_as_data(folder_id, task_id)
-        if not data or data.get("workdir") is None:
+        if data["workdir"] is None:
             # The context could not be resolved, e.g. because the folder or
             # task entity is empty. Do not allow saving and show no hint.
             self._folder_id = folder_id
