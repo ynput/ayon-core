@@ -2279,6 +2279,12 @@ DEFAULT_PUBLISH_VALUES = {
                 "enabled": True,
                 "optional": True,
                 "active": True
+            },
+            {
+                "host_names": ["unreal"],
+                "enabled": False,
+                "optional": True,
+                "active": True
             }
         ]
     },
