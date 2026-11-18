@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from ayon_core.pipeline.delivery import (
+    DeliveryOverrideInfo,
     DeliveryRecipe,
     filter_delivery_template_names,
     get_delivery_recipes,
@@ -85,8 +86,7 @@ def test_no_overrides_uses_default_template():
     )
 
     assert match.template_name == "client"
-    assert match.override is None
-    assert match.override_index is None
+    assert match.override_info is None
     assert not match.is_override
 
 
@@ -102,8 +102,12 @@ def test_extension_match_overrides_template():
 
     assert match.template_name == "client_plates"
     assert match.default_template_name == "client"
-    assert match.override_index == 1
-    assert match.override is overrides[1]
+    assert match.override_info == DeliveryOverrideInfo(
+        index=1,
+        representation_names=[],
+        extensions=["exr"],
+        product_base_types=[],
+    )
     assert match.is_override
 
 
@@ -114,5 +118,5 @@ def test_override_to_default_template_is_not_override():
         overrides, "client", "exr", "render", extension="exr"
     )
 
-    assert match.override is overrides[0]
+    assert match.override_info.index == 0
     assert not match.is_override

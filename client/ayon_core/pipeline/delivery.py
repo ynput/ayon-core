@@ -38,20 +38,37 @@ class DeliveryRecipe:
 
 
 @dataclass
+class DeliveryOverrideInfo:
+    """Recipe override that matched a representation.
+
+    Used to explain in UI why a representation is delivered with another
+    template.
+
+    Attributes:
+        index: Index of the override in the recipe overrides.
+        representation_names: Representation names filter.
+        extensions: Extensions filter.
+        product_base_types: Product base types filter.
+    """
+    index: int
+    representation_names: list[str]
+    extensions: list[str]
+    product_base_types: list[str]
+
+
+@dataclass
 class DeliveryTemplateMatch:
     """Delivery template resolved for a single representation.
 
     Attributes:
         template_name: Name of the anatomy delivery template to use.
         default_template_name: Template used when no override matches.
-        override_index: Index of the matching override, or None when no
-            override matched.
-        override: The matching override, or None when no override matched.
+        override_info: Info about the matching override to explain it
+            in UI, or None when no override matched.
     """
     template_name: str
     default_template_name: str
-    override_index: int | None = None
-    override: dict[str, Any] | None = field(default=None, repr=False)
+    override_info: DeliveryOverrideInfo | None = None
 
     @property
     def is_override(self) -> bool:
@@ -173,8 +190,12 @@ def resolve_delivery_template(
     return DeliveryTemplateMatch(
         template_name=override["template_name"],
         default_template_name=default_template_name,
-        override_index=override_index,
-        override=override,
+        override_info=DeliveryOverrideInfo(
+            index=override_index,
+            representation_names=override["representation_names"],
+            extensions=override["extensions"],
+            product_base_types=override["product_base_types"],
+        ),
     )
 
 

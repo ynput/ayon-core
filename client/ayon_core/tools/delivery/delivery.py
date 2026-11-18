@@ -690,7 +690,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         counts = defaultdict(int)
         unique_matches = {}
         for match in matches:
-            key = (match.template_name, match.override_index)
+            info = match.override_info
+            override_index = info.index if info else None
+            key = (match.template_name, override_index)
             counts[key] += 1
             unique_matches.setdefault(key, match)
 
@@ -708,11 +710,11 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 f" instead of '{match.default_template_name}'."
             )
             lines.append(
-                f"Set by override #{match.override_index + 1}"
+                f"Set by override #{match.override_info.index + 1}"
                 f" of recipe '{recipe.name}'"
             )
             for filter_key, label in _OVERRIDE_FILTER_LABELS:
-                values = match.override.get(filter_key)
+                values = getattr(match.override_info, filter_key)
                 if values:
                     lines.append(f"    {label}: {', '.join(values)}")
             lines.append("")
