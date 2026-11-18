@@ -371,8 +371,8 @@ class SaveAsDialog(QtWidgets.QDialog):
 
     def _update_context_hint(self, data):
         """Show a hint when saving switches the context of the host."""
-        folder_path = data.get("folder_path")
-        task_name = data.get("task_name")
+        folder_path = data["folder_path"]
+        task_name = data["task_name"]
         if not folder_path or not task_name:
             self._set_context_hint_visible(False)
             return
