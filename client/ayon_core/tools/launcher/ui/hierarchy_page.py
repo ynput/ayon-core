@@ -38,6 +38,23 @@ class LauncherFoldersWidget(FoldersWidget):
             self.filtered_folder_requested.emit(folder_id)
         return super().set_selected_folder(folder_id)
 
+    def _update_expected_selection(self, expected_data=None):
+        if expected_data is None:
+            expected_data = self._controller.get_expected_selection_data()
+        folder_data = expected_data.get("folder")
+        if (
+            folder_data
+            and folder_data["current"]
+            and folder_data["id"] is None
+        ):
+            # A context without folder clears the selection, there is
+            #   nothing to wait for
+            self._expected_selection = None
+            self.set_selected_folder(None)
+            self._controller.expected_folder_selected(None)
+            return
+        super()._update_expected_selection(expected_data)
+
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.FocusIn:
             self.focused_in.emit()
@@ -56,19 +73,33 @@ class LauncherTasksWidget(TasksWidget):
     def _set_expected_selection(self):
         expected = self._expected_selection_data
         if (
-            expected is not None
-            and expected["task_name"] is not None
-            and expected["folder_id"] == self._tasks_model.get_last_folder_id()
+            expected is None
+            or expected["folder_id"] != self._tasks_model.get_last_folder_id()
         ):
+            return super()._set_expected_selection()
+
+        index = QtCore.QModelIndex()
+        if expected["task_name"] is not None:
             index = self._tasks_model.get_index_by_name(
                 expected["task_name"]
             )
-            if (
-                index.isValid()
-                and not self._tasks_proxy_model.mapFromSource(index).isValid()
-            ):
-                # Give a chance to turn off what hides the task
-                self.filtered_task_requested.emit()
+        if (
+            index.isValid()
+            and not self._tasks_proxy_model.mapFromSource(index).isValid()
+        ):
+            # Give a chance to turn off what hides the task
+            self.filtered_task_requested.emit()
+
+        proxy_index = self._tasks_proxy_model.mapFromSource(index)
+        if proxy_index.isValid():
+            self._tasks_view.setCurrentIndex(proxy_index)
+            # A task of the same name selected in the previous folder is
+            #   reused, so the view does not report the change. The
+            #   controller has to know before the task is confirmed, the
+            #   workfiles of the task are shown next.
+            self._on_selection_change()
+        else:
+            self._tasks_view.clearSelection()
         return super()._set_expected_selection()
 
     def deselect(self):

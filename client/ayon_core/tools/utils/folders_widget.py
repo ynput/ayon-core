@@ -1221,8 +1221,7 @@ class FoldersWidget(QtWidgets.QWidget):
 
         folder_id = folder_data["id"]
         self._expected_selection = folder_id
-        # No folder to select does not need the folders to be loaded
-        if folder_id is None or not self._folders_model.is_refreshing:
+        if not self._folders_model.is_refreshing:
             self._set_expected_selection()
 
     def _set_expected_selection(self):
@@ -1231,8 +1230,8 @@ class FoldersWidget(QtWidgets.QWidget):
 
         folder_id = self._expected_selection
         self._expected_selection = None
-        # 'None' clears the selection
-        self.set_selected_folder(folder_id)
+        if folder_id is not None:
+            self.set_selected_folder(folder_id)
         self._controller.expected_folder_selected(folder_id)
 
 
