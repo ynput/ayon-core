@@ -304,6 +304,7 @@ class SaveAsDialog(QtWidgets.QDialog):
             self._btn_ok.setEnabled(False)
             self._preview_widget.set_text_color("red")
             self._preview_widget.setText("Context is not available.")
+            self._update_context_hint(data)
             return
         last_version = data["last_version"]
         comment = data["comment"]
