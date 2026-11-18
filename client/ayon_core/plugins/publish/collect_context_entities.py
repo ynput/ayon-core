@@ -40,11 +40,11 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
 
         create_context = context.data.get("create_context")
 
-        if not project_entity and create_context is not None:
-            project_entity = create_context.get_current_project_entity()
-
         if not project_entity:
-            project_entity = ayon_api.get_project(project_name)
+            if create_context is not None:
+                project_entity = create_context.get_current_project_entity()
+            else:
+                project_entity = ayon_api.get_project(project_name)
             if not project_entity:
                 raise PublishError(f"Project '{project_name}' was not found.")
 
@@ -123,17 +123,16 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         if not folder_path:
             return None
 
-        folder_entity = None
         if create_context is not None:
             # Copy so publish plugins can't change CreateContext cache
             folder_entity = copy.deepcopy(
                 create_context.get_folder_entity(folder_path)
             )
-
-        if not folder_entity:
+        else:
             folder_entity = ayon_api.get_folder_by_path(
                 project_name, folder_path
             )
+
         if not folder_entity:
             raise PublishError(
                 f"Folder '{folder_path}' was not found"
@@ -147,7 +146,6 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         if not folder_entity or not task_name:
             return None
 
-        task_entity = None
         if create_context is not None:
             # Copy so publish plugins can't change CreateContext cache
             task_entity = copy.deepcopy(
@@ -155,11 +153,11 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
                     folder_entity["path"], task_name
                 )
             )
-
-        if not task_entity:
+        else:
             task_entity = ayon_api.get_task_by_name(
                 project_name, folder_entity["id"], task_name
             )
+
         if not task_entity:
             task_path = "/".join([folder_entity["path"], task_name])
             raise PublishError(

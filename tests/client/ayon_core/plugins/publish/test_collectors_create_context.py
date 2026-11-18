@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pyblish.api
 import pytest
 
+from ayon_core.pipeline import PublishError
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.plugins.publish.collect_anatomy_instance_data import (
     CollectAnatomyInstanceData,
@@ -266,6 +267,29 @@ def test_collectors_use_create_context_cache(server_calls):
         CONTEXT_FOLDER_PATH, "/shots/sh020", "/shots/sh020", None
     ]
     assert task_names == [CONTEXT_TASK_NAME, "anim", None, None]
+
+
+@pytest.mark.parametrize(
+    "folder_path, task_name",
+    (
+        (MISSING_FOLDER_PATH, CONTEXT_TASK_NAME),
+        (CONTEXT_FOLDER_PATH, "missing"),
+    ),
+)
+def test_missing_context_entity_is_not_queried_again(
+    server_calls, folder_path, task_name
+):
+    """Entity missing in CreateContext is not queried from server again."""
+    create_context = _create_create_context()
+    server_calls.clear()
+
+    context = _create_publish_context(create_context)
+    context.data["folderPath"] = folder_path
+    context.data["task"] = task_name
+    with pytest.raises(PublishError):
+        CollectContextEntities().process(context)
+
+    assert server_calls == {}
 
 
 def test_collected_data_matches_server_data(server_calls):
