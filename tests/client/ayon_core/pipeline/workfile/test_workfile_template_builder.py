@@ -559,3 +559,98 @@ class TestLoadOptionsAvailability:
         assert any(
             attr_def.key == "product_base_type" for attr_def in attr_defs
         )
+
+
+class _CachingPlugin(wtb.PlaceholderPlugin):
+    """Plugin that caches its scene scan like the integrations do."""
+
+    label = "Caching"
+    identifier = "caching"
+
+    def collect_placeholders(self):
+        nodes = self.get_plugin_shared_populate_data("nodes")
+        if nodes is None:
+            nodes = set(self.builder.scene_nodes)
+            self.set_plugin_shared_populate_data("nodes", nodes)
+        return [
+            wtb.PlaceholderItem(scene_identifier, {}, self)
+            for scene_identifier in sorted(nodes)
+        ]
+
+    def create_placeholder(self, placeholder_data):
+        raise NotImplementedError
+
+    def update_placeholder(self, placeholder_item, placeholder_data):
+        raise NotImplementedError
+
+    def populate_placeholder(self, placeholder):
+        self.builder.populated.append(placeholder.scene_identifier)
+
+    def repopulate_placeholder(self, placeholder):
+        self.builder.repopulated.append(placeholder.scene_identifier)
+
+
+class _CachingBuilder(wtb.AbstractTemplateBuilder):
+    def __init__(self):
+        super().__init__(None)
+        self.scene_nodes = set()
+        self.populated = []
+        self.repopulated = []
+
+    def get_placeholder_plugin_classes(self):
+        return [_CachingPlugin]
+
+    def import_template(self, path):
+        self.scene_nodes.update({"imported_1", "imported_2"})
+        return True
+
+
+class TestPopulateDataCache:
+    def test_force_refresh_scans_scene_again(self):
+        builder = _CachingBuilder()
+        builder.scene_nodes = {"old"}
+        builder.get_placeholders()
+
+        builder.scene_nodes = {"new"}
+        placeholders = builder.get_placeholders(force_refresh=True)
+
+        assert [item.scene_identifier for item in placeholders] == ["new"]
+        # The fresh scan replaced the cache instead of leaving it stale.
+        assert builder.get_shared_populate_data("caching")["nodes"] == {
+            "new"
+        }
+
+    def test_force_refresh_preserves_unrelated_shared_data(self):
+        builder = _CachingBuilder()
+        marker = object()
+        builder.set_shared_populate_data("other", marker)
+
+        builder.get_placeholders(force_refresh=True)
+
+        assert builder.get_shared_populate_data("other") is marker
+
+    def test_rebuild_template_forces_a_fresh_scene_scan(self):
+        builder = _CachingBuilder()
+        builder.scene_nodes = {"old"}
+        builder.get_placeholders()
+
+        builder.scene_nodes = {"new"}
+        builder.rebuild_template()
+
+        assert builder.repopulated == ["new"]
+
+    def test_build_template_scans_after_import(self, tmp_path):
+        template_path = tmp_path / "template.ma"
+        template_path.write_text("")
+        preset = wtb.TemplatePreset(
+            path=str(template_path),
+            keep_placeholder=True,
+            profile={"path": str(template_path)},
+        )
+        builder = _CachingBuilder()
+        # Warm the cache before the template import.
+        builder.get_placeholders()
+
+        builder.build_template(preset=preset)
+
+        assert builder.populated == ["imported_1", "imported_2"]

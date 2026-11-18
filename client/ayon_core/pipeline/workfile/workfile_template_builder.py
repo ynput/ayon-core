@@ -17,6 +17,7 @@ import time
 import collections
 import copy
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from functools import wraps
 from typing import Optional, Any, overload
 from dataclasses import dataclass, field
@@ -257,6 +258,9 @@ class AbstractTemplateBuilder(ABC):
         # Shared data across placeholder plugins
         self._shared_data = {}
         self._shared_populate_data = {}
+        # When set, plugins see an empty scene-scan cache and rebuild it.
+        #   The existing cache is replaced instead of cleared.
+        self._shared_populate_cache_ignored = False
 
         # Where created objects of placeholder plugins will be stored
         self._placeholder_plugins = None
@@ -613,8 +617,14 @@ class AbstractTemplateBuilder(ABC):
         Args:
             key (str): Key under which is key stored.
             value (Any): Value that should be stored under the key.
+
+        Returns:
+            Union[None, Any]: Stored value, or None when the cache is being
+                bypassed for a forced scene scan.
         """
 
+        if self._shared_populate_cache_ignored:
+            return None
         return self._shared_populate_data.get(key)
 
     def set_shared_populate_data(self, key, value):
@@ -636,6 +646,22 @@ class AbstractTemplateBuilder(ABC):
         """
 
         self._shared_populate_data[key] = value
+
+    @contextmanager
+    def _ignore_shared_populate_cache(self):
+        """Temporarily make plugins rebuild their scene-scan cache.
+
+        While active, ``get_shared_populate_data`` returns ``None`` so
+        integrations scan the scene and replace their cached values through
+        ``set_shared_populate_data``. Other shared populate data is left
+        untouched.
+        """
+        previous = self._shared_populate_cache_ignored
+        self._shared_populate_cache_ignored = True
+        try:
+            yield
+        finally:
+            self._shared_populate_cache_ignored = previous
 
     @property
     def placeholder_plugins(self):
@@ -679,7 +705,7 @@ class AbstractTemplateBuilder(ABC):
         plugin = self.placeholder_plugins[plugin_identifier]
         return plugin.create_placeholder(placeholder_data)
 
-    def get_placeholders(self):
+    def get_placeholders(self, force_refresh=False):
         """Collect placeholder items from scene.
 
         Each placeholder plugin can collect it's placeholders and return them.
@@ -688,10 +714,26 @@ class AbstractTemplateBuilder(ABC):
         broken plugin does not hide placeholders of other plugins. Use
         'get_placeholder_errors' to get the errors of the last collection.
 
+        Args:
+            force_refresh (bool): Make plugins ignore their cached scene scan
+                in shared populate data for this collection. The cache is
+                updated again while collecting, instead of being cleared.
+
         Returns:
             List[PlaceholderItem]: Sorted placeholder items.
+
+        Note:
+            This method performs a single collection pass. ``force_refresh``
+            only changes whether integrations reuse their cached scan; it does
+            not collect twice.
         """
 
+        if not force_refresh:
+            return self._collect_placeholders()
+        with self._ignore_shared_populate_cache():
+            return self._collect_placeholders()
+
+    def _collect_placeholders(self):
         placeholders = []
         errors = []
         for placeholder_plugin in self.placeholder_plugins.values():
@@ -1053,7 +1095,7 @@ class AbstractTemplateBuilder(ABC):
             self.log.info("There are no placeholder plugins available.")
             return []
 
-        placeholders = self.get_placeholders()
+        placeholders = self.get_placeholders(force_refresh=True)
         if not placeholders:
             self.log.info("No placeholders were found.")
             return []
@@ -1212,17 +1254,21 @@ class AbstractTemplateBuilder(ABC):
 
         This should happen after 'import_template'.
 
-        Collect available placeholders from scene. All of them are processed
-        after that shared data are cleared. Placeholder items are collected
-        again and if there are any new the loop happens again. This is possible
-        to change with defying 'level_limit'.
+        The method intentionally collects placeholders more than once:
 
-        Placeholders are marked as processed so they're not re-processed. To
-        identify which placeholders were already processed is used
-        placeholder's 'scene_identifier'.
+        1. Collect the current placeholders with a forced fresh scene scan.
+        2. Populate them. A load/create placeholder may create or reveal new
+           placeholder items while populating.
+        3. Collect again to discover those new placeholders, then repeat until
+           no new identifiers are found (or ``level_limit`` is reached).
+
+        This is not duplicate work: the later collections only discover
+        placeholders added by the previous population pass. Already processed
+        placeholders are recognised by their ``scene_identifier`` and are not
+        processed again.
 
         Args:
-            level_limit (int): Level of loops that can happen. Default is 1000.
+            level_limit (int): Limit of population loops. Default is 1000.
             keep_placeholders (bool): Add flag to placeholder data for
                 hosts to decide if they want to remove
                 placeholder after it is used.
@@ -1235,7 +1281,7 @@ class AbstractTemplateBuilder(ABC):
             self.log.warning("There are no placeholder plugins available.")
             return []
 
-        placeholders = self.get_placeholders()
+        placeholders = self.get_placeholders(force_refresh=True)
         if not placeholders:
             self.log.warning("No placeholders were found.")
             return []

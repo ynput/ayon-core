@@ -869,14 +869,14 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         placeholders_by_id = {}
         self._placeholders_error = None
         if self._builder is not None:
-            # Placeholder plugins cache collected scene nodes in "populate"
-            #   shared data. Clear it so changes made in the scene since the
-            #   last collection are picked up. Full 'builder.refresh' is
-            #   intentionally avoided, it would also re-create the plugin
-            #   objects.
-            self._builder.clear_shared_populate_data()
+            # Placeholder plugins cache their scene scan in shared populate
+            #   data. Bypass that cache for this collection so changes made
+            #   outside the tool are visible, without clearing the cache that
+            #   the builder manages during population.
             try:
-                placeholders = self._builder.get_placeholders()
+                placeholders = self._builder.get_placeholders(
+                    force_refresh=True
+                )
             except Exception:
                 self._log.warning(
                     "Failed to collect placeholders from scene.",
