@@ -1306,7 +1306,7 @@ class UserPreferences(ASettingRegistry):
     ) -> None:
         _validate_preferences_name(name)
         super().__init__(name)
-        self._project_name = project_name or None
+        self._project_name = project_name
         # Requests are done while holding the lock, so an item is never
         #   stored while an older value is on its way to the server.
         self._lock = threading.RLock()
