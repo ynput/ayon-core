@@ -31,7 +31,7 @@ import copy
 from datetime import datetime
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Callable, Generator, Optional, Any
+from typing import Callable, Generator, Any
 from urllib.parse import urlencode
 
 import platformdirs
@@ -292,7 +292,7 @@ class AYONSecureRegistry(ASettingRegistry):
     @lru_cache(maxsize=32)
     def _get_item(
         self, name: str, default: Any = _PLACEHOLDER
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get value of sensitive item from the system's keyring.
 
         See also `Keyring module`_
@@ -478,7 +478,7 @@ class IniSettingRegistry(ASettingRegistry):
     @lru_cache(maxsize=32)
     def get_item_from_section(
         self, section: str, name: str, default: Any = _PLACEHOLDER
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get item from section of ini file.
 
         This will read ini file and try to get item value from specified
@@ -646,11 +646,11 @@ class JSONSettingRegistry(ASettingRegistry):
             self._registry_file,
         )
 
-    def _read_content(self) -> Optional[dict[str, Any]]:
+    def _read_content(self) -> dict[str, Any] | None:
         """Content of the file, with the items in its 'registry'.
 
         Returns:
-            Optional[dict[str, Any]]: Content of the file, empty registry
+            dict[str, Any] | None: Content of the file, empty registry
                 if the file does not exist. 'None' if it can't be read,
                 e.g. is broken or used by another process.
 
@@ -715,9 +715,9 @@ class AYONSettingsRegistry(JSONSettingRegistry):
     """Class handling AYON general settings registry.
 
     Args:
-        name (Optional[str]): Name of the registry.
+        name (str | None): Name of the registry.
     """
-    def __init__(self, name: Optional[str] = None) -> None:
+    def __init__(self, name: str | None = None) -> None:
         if not name:
             name = "AYON_settings"
             warnings.warn(
@@ -759,7 +759,7 @@ def get_local_site_id():
     return site_id
 
 
-def _get_ayon_service_username() -> Optional[str]:
+def _get_ayon_service_username() -> str | None:
     # TODO @iLLiCiTiT - do not use private attribute of 'ServerAPI', rather
     #      use public method to get username from connection stack.
     con = ayon_api.get_server_api_connection()
@@ -769,14 +769,14 @@ def _get_ayon_service_username() -> Optional[str]:
     return user_stack.username
 
 
-def get_ayon_user_entity(username: Optional[str] = None) -> dict[str, Any]:
+def get_ayon_user_entity(username: str | None = None) -> dict[str, Any]:
     """AYON user entity used for templates and publishing.
 
     Note:
         Usually only service and admin users can receive the full user entity.
 
     Args:
-        username (Optional[str]): Username of the user. If not passed, then
+        username (str | None): Username of the user. If not passed, then
             the current user in 'ayon_api' is used.
 
     Returns:
@@ -920,7 +920,7 @@ class LocalPreferences(ASettingRegistry):
     _recover_lock = threading.Lock()
 
     def __init__(
-        self, name: str, legacy_registry_filepath: Optional[str] = None
+        self, name: str, legacy_registry_filepath: str | None = None
     ) -> None:
         _validate_preferences_name(name)
         super().__init__(name)
@@ -936,7 +936,7 @@ class LocalPreferences(ASettingRegistry):
     def log(self) -> logging.Logger:
         return _get_logger("LocalPreferences")
 
-    def _import_registry(self, filepath: str) -> Optional[bool]:
+    def _import_registry(self, filepath: str) -> bool | None:
         """Import items of a 'JSONSettingRegistry' file.
 
         Each file is imported once, it is not imported again when the
@@ -947,7 +947,7 @@ class LocalPreferences(ASettingRegistry):
             filepath: Path to the JSON file of the registry.
 
         Returns:
-            Optional[bool]: Whether items were imported now. 'None' if the
+            bool | None: Whether items were imported now. 'None' if the
                 import can be tried again, e.g. the database was locked.
 
         """
@@ -1055,7 +1055,7 @@ class LocalPreferences(ASettingRegistry):
 
     def _query(
         self, sql: str, parameters: tuple[str, ...]
-    ) -> Optional[list[tuple[str, ...]]]:
+    ) -> list[tuple[str, ...]] | None:
         """Read rows, 'None' if they could not be read."""
         self._ensure_legacy_registry_imported()
         # Nothing is created by reading
@@ -1223,29 +1223,20 @@ class _ServerSupport:
     by_url: dict[str, bool] = {}
 
 
-def _get_server_url() -> Optional[str]:
-    try:
-        return ayon_api.get_base_url()
-    except Exception:
-        return None
-
-
-def _get_server_support() -> Optional[bool]:
+def _get_server_support() -> bool | None:
     """Cached support of the current server, 'None' when not known."""
-    server_url = _get_server_url()
+    server_url = ayon_api.get_base_url()
     with _ServerSupport.lock:
         return _ServerSupport.by_url.get(server_url)
 
 
 def _set_server_support(supported: bool) -> None:
-    server_url = _get_server_url()
-    if server_url is None:
-        return
+    server_url = ayon_api.get_base_url()
     with _ServerSupport.lock:
         _ServerSupport.by_url[server_url] = supported
 
 
-def _list_preferences(query: dict[str, str]) -> Optional[Any]:
+def _list_preferences(query: dict[str, str]) -> Any | None:
     """Ask the server for preferences of the current user.
 
     The list endpoint tells whether the server has the preferences API,
@@ -1256,7 +1247,7 @@ def _list_preferences(query: dict[str, str]) -> Optional[Any]:
         query: Query of the request, e.g. 'key_prefix'.
 
     Returns:
-        Optional[Any]: Response of the server, 'None' if the request
+        Any | None: Response of the server, 'None' if the request
             failed before the server responded.
 
     """
@@ -1311,11 +1302,11 @@ class UserPreferences(ASettingRegistry):
     min_server_version = "1.17.3"
 
     def __init__(
-        self, name: str, project_name: Optional[str] = None
+        self, name: str, project_name: str | None = None
     ) -> None:
         _validate_preferences_name(name)
         super().__init__(name)
-        self._project_name = project_name or None
+        self._project_name = project_name
         # Requests are done while holding the lock, so an item is never
         #   stored while an older value is on its way to the server.
         self._lock = threading.RLock()
@@ -1354,7 +1345,7 @@ class UserPreferences(ASettingRegistry):
         return bool(supported)
 
     @property
-    def project_name(self) -> Optional[str]:
+    def project_name(self) -> str | None:
         """Project of the preference, 'None' for global preference."""
         return self._project_name
 
@@ -1455,16 +1446,16 @@ class UserPreferences(ASettingRegistry):
     def _raise_if_not_supported(self) -> None:
         if _get_server_support() is False:
             raise UserPreferencesNotSupported(
-                f"AYON server '{_get_server_url()}' can't store user"
+                f"AYON server '{ayon_api.get_base_url()}' can't store user"
                 " preferences, it requires AYON server"
                 f" {self.min_server_version} or newer."
             )
 
-    def _receive_data(self) -> Optional[dict[str, Any]]:
+    def _receive_data(self) -> dict[str, Any] | None:
         """Receive the items of the preference.
 
         Returns:
-            Optional[dict[str, Any]]: Items by name, 'None' if they could
+            dict[str, Any] | None: Items by name, 'None' if they could
                 not be received.
 
         Raises:

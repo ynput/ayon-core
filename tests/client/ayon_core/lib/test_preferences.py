@@ -10,7 +10,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import ayon_api
@@ -31,7 +31,7 @@ KEY = "io.ynput.core.tests"
 
 
 class FakeResponse:
-    def __init__(self, status_code: int, data: Optional[dict] = None):
+    def __init__(self, status_code: int, data: dict | None = None):
         self.status_code = status_code
         self.data = data or {}
 
@@ -52,11 +52,11 @@ class FakeServer:
             e.g. 404 of a server without the API.
 
     """
-    def __init__(self, status_code: Optional[int] = None) -> None:
+    def __init__(self, status_code: int | None = None) -> None:
         self.status_code = status_code
         # Data by (key, project name)
-        self.preferences: dict[tuple[str, Optional[str]], dict] = {}
-        self.calls: list[tuple[str, str, Optional[str], Any]] = []
+        self.preferences: dict[tuple[str, str | None], dict] = {}
+        self.calls: list[tuple[str, str, str | None, Any]] = []
 
     def raw_get(self, endpoint: str, **kwargs) -> FakeResponse:
         return self._handle("get", endpoint, kwargs)
