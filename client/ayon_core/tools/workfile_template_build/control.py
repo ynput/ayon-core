@@ -49,6 +49,18 @@ MAX_BUILD_LOG_LINES = 2000
 MAX_BUILD_HISTORY = 5
 
 
+def _can_run_placeholder(plugin) -> bool:
+    """Plugin can re-run a placeholder.
+
+    Prefer the dedicated 'repopulate_placeholder', but fall back to
+    'populate_placeholder' for older integrations.
+    """
+    return (
+        plugin.is_method_implemented("repopulate_placeholder")
+        or plugin.is_method_implemented("populate_placeholder")
+    )
+
+
 class _BuildLogHandler(logging.Handler):
     """Collect log records emitted during a template build.
 
@@ -103,6 +115,12 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self._builder_event_callback = None
         self._host_event_callbacks: list[Any] = []
         self._host_project_name = get_current_project_name()
+        # Last error while reading template settings, shown instead of
+        #   pretending no template is configured.
+        self._template_preset_error: Optional[str] = None
+        # Optional callback used by the UI to show progress while the
+        #   (blocking) build runs.
+        self._progress_callback = None
 
         self._bind_builder_events()
         self._register_host_events()
@@ -238,9 +256,9 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                 identifier=identifier,
                 label=plugin.label or identifier,
                 icon=plugin.icon,
-                delete_supported=plugin.is_delete_placeholder_supported(),
-                select_supported=plugin.is_select_placeholder_supported(),
-                run_supported=plugin.is_run_placeholder_supported(),
+                delete_supported=plugin.is_method_implemented("delete_placeholder"),
+                select_supported=plugin.is_method_implemented("select_placeholder"),
+                run_supported=_can_run_placeholder(plugin),
             )
             for identifier, plugin in self._get_plugins().items()
         ]
@@ -405,7 +423,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             return self._placeholder_not_found(scene_identifier)
 
         plugin = placeholder.plugin
-        if not plugin.is_delete_placeholder_supported():
+        if not plugin.is_method_implemented("delete_placeholder"):
             return ActionResult(
                 success=False,
                 scene_identifier=scene_identifier,
@@ -437,7 +455,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             return self._placeholder_not_found(scene_identifier)
 
         plugin = placeholder.plugin
-        if not plugin.is_select_placeholder_supported():
+        if not plugin.is_method_implemented("select_placeholder"):
             return ActionResult(
                 success=False,
                 scene_identifier=scene_identifier,
@@ -461,7 +479,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             return self._placeholder_not_found(scene_identifier)
 
         plugin = placeholder.plugin
-        if not plugin.is_run_placeholder_supported():
+        if not _can_run_placeholder(plugin):
             return ActionResult(
                 success=False,
                 scene_identifier=scene_identifier,
@@ -491,7 +509,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             )
         return ActionResult(success=True, scene_identifier=scene_identifier)
 
-    def run_template_build(self) -> ActionResult:
+    def run_template_build(self, progress_callback=None) -> ActionResult:
         if self._builder is None:
             return ActionResult(
                 success=False,
@@ -505,6 +523,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         log_handler = _BuildLogHandler(self._build_log)
         root_logger = Logger.get_root_logger()
         root_logger.addHandler(log_handler)
+        self._progress_callback = progress_callback
         try:
             # Re-populates the placeholders that are already in the scene.
             #   The template file is not imported again, so this can be used
@@ -513,6 +532,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         except Exception:
             return self._action_failed("Failed to run template build")
         finally:
+            self._progress_callback = None
             root_logger.removeHandler(log_handler)
 
         self._build_steps = [
@@ -572,34 +592,47 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         if result is not None:
             return result
 
+        error = None
         try:
             self._builder.open_template(preset)
         except Exception:
-            return self._action_failed("Failed to open the template")
+            error = self._action_failed("Failed to open the template")
         finally:
             self._invalidate_placeholders()
             self._bind_builder_events()
+
+        if error is not None:
+            # The scene may have been left in a usable but different state.
+            self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
+            return error
 
         # Another scene is opened, everything has to be collected again.
         self.reset()
         return ActionResult(success=True)
 
-    def build_template(self) -> ActionResult:
+    def build_template(self, progress_callback=None) -> ActionResult:
         preset, result = self._get_valid_template_preset()
         if result is not None:
             return result
 
+        error = None
+        self._progress_callback = progress_callback
         try:
             self._builder.build_template(preset=preset)
         except Exception:
-            return self._action_failed("Failed to build from the template")
+            error = self._action_failed(
+                "Failed to build from the template"
+            )
         finally:
+            self._progress_callback = None
             # The template import/population may leave or replace scene
             #   data even when it fails.
             self._invalidate_placeholders()
             self._bind_builder_events()
 
         self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
+        if error is not None:
+            return error
         return ActionResult(success=True)
 
     def get_build_steps(self) -> list[BuildStep]:
@@ -649,6 +682,15 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         if scene_identifier is None:
             return
         self._build_durations[scene_identifier] = data.get("duration", 0.0)
+        if self._progress_callback is not None:
+            try:
+                self._progress_callback(
+                    len(self._build_durations), data
+                )
+            except Exception:
+                self._log.debug(
+                    "Failed to report build progress.", exc_info=True
+                )
 
     def _create_build_step(self, placeholder) -> BuildStep:
         """Create a build step for a processed placeholder."""
@@ -659,7 +701,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
 
         plugin = placeholder.plugin
         errors = placeholder.get_errors()
-        if not plugin.is_run_placeholder_supported():
+        if not _can_run_placeholder(plugin):
             status = "skipped"
             error = ""
         elif errors:
@@ -774,8 +816,8 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             order=placeholder.order,
             icon=plugin.icon,
             data=placeholder.to_dict(),
-            delete_supported=plugin.is_delete_placeholder_supported(),
-            run_supported=plugin.is_run_placeholder_supported(),
+            delete_supported=plugin.is_method_implemented("delete_placeholder"),
+            run_supported=_can_run_placeholder(plugin),
         )
 
     def _action_failed(
@@ -793,12 +835,15 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         if self._builder is None:
             return None
         try:
-            return self._builder.get_template_preset()
+            preset = self._builder.get_template_preset()
         except Exception:
+            self._template_preset_error = traceback.format_exc()
             self._log.warning(
                 "Failed to get template preset.", exc_info=True
             )
             return None
+        self._template_preset_error = None
+        return preset
 
     def _get_valid_template_preset(
         self,
@@ -819,6 +864,16 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         preset = self._get_template_preset()
         context_label = self.get_build_context().label
         if preset is None or not preset.profile:
+            if self._template_preset_error:
+                return None, ActionResult(
+                    success=False,
+                    error_title=(
+                        "Failed to read the template settings for {}.".format(
+                            context_label
+                        )
+                    ),
+                    error_detail=self._template_preset_error,
+                )
             return None, ActionResult(
                 success=False,
                 error_title=(

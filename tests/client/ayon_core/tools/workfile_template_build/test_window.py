@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pytest
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import attribute_definitions
 from ayon_core.pipeline.workfile.workfile_template_builder import (
@@ -13,6 +13,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderPreviewItem,
 )
 from ayon_core.tools.workfile_template_build import (
+    ActionResult,
     WorkfileTemplateBuilderController,
     WorkfileTemplateBuilderWindow,
 )
@@ -24,6 +25,8 @@ from ayon_core.tools.workfile_template_build.ui.build_report import (
 )
 from ayon_core.tools.workfile_template_build.ui.placeholders_widget import (
     LABEL_COLUMN,
+    ORDER_COLUMN,
+    TYPE_COLUMN,
     UNSAVED_MARK,
 )
 
@@ -549,24 +552,6 @@ class TestBuildReport:
         finally:
             dialog.close()
 
-    def test_build_report_lists_skipped_steps(self, window, monkeypatch):
-        window._on_create_request()
-        window._on_create_confirmed("fake", {"name": "one"})
-        monkeypatch.setattr(
-            _Plugin,
-            "repopulate_placeholder",
-            PlaceholderPlugin.repopulate_placeholder,
-        )
-
-        window._controller.run_template_build()
-
-        dialog = BuildReportDialog(window._controller, parent=window)
-        try:
-            assert dialog._model.item(0, 2).text() == "SKIPPED"
-            assert "1 skipped" in dialog.get_report_text()
-        finally:
-            dialog.close()
-
     def test_build_report_shows_failure(self, window):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
@@ -688,7 +673,7 @@ class TestTemplateMenu:
             monkeypatch.setattr(
                 controller,
                 name,
-                lambda name=name: (
+                lambda name=name, **kwargs: (
                     output.append(name) or ActionResult(success=True)
                 ),
             )
@@ -829,9 +814,7 @@ class TestCompletionsErrors:
 
 
 class TestRunSupport:
-    def test_run_all_is_disabled_without_plugin_support(
-        self, qtbot, monkeypatch
-    ):
+    def test_run_all_uses_populate_fallback(self, qtbot, monkeypatch):
         monkeypatch.setattr(
             _Plugin,
             "repopulate_placeholder",
@@ -847,22 +830,12 @@ class TestRunSupport:
         window._on_create_confirmed("fake", {"name": "one"})
 
         test_build_btn = window._context_bar._test_build_btn
-        assert not test_build_btn.isEnabled()
-        assert "supports re-running" in test_build_btn.toolTip().lower()
-
-    def test_build_status_reports_skipped(self, window, monkeypatch):
-        window._on_create_request()
-        window._on_create_confirmed("fake", {"name": "one"})
-        monkeypatch.setattr(
-            _Plugin,
-            "repopulate_placeholder",
-            PlaceholderPlugin.repopulate_placeholder,
-        )
+        assert test_build_btn.isEnabled()
 
         result = window._controller.run_template_build()
         window._update_build_status(result)
 
-        assert "1 skipped" in window._build_status_btn.text()
+        assert "1 populated" in window._build_status_btn.text()
 
 
 class TestUnsavedChangeGuards:
@@ -1043,3 +1016,161 @@ class TestRenamedPlaceholder:
         emit_event("taskChanged", {})
 
         assert _name_input(window).text() == "changed outside"
+
+
+class TestListReadability:
+    def test_order_column_is_hidden(self, window):
+        view = window._placeholders_widget._view
+        assert view.isColumnHidden(ORDER_COLUMN)
+        assert view.header().sectionSize(TYPE_COLUMN) == 150
+
+    def test_splitter_starts_with_a_wide_list(self, window):
+        splitter = window.findChild(QtWidgets.QSplitter)
+        assert splitter.sizes()[0] >= 400
+
+    def test_pending_row_is_readable(self, window):
+        window._on_create_request()
+        labels = _list_labels(window)
+        assert "New placeholder" in labels
+
+
+class TestPreviewCopy:
+    def test_preview_rows_are_selectable_and_copyable(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        editor = window._editor_widget
+        editor._on_dynamic_timer()
+
+        preview = editor._preview_widget
+        assert (
+            preview._items_view.selectionMode()
+            == QtWidgets.QAbstractItemView.ExtendedSelection
+        )
+        preview._items_view.selectionModel().select(
+            preview._items_model.index(0, 0),
+            QtCore.QItemSelectionModel.ClearAndSelect
+            | QtCore.QItemSelectionModel.Rows,
+        )
+        preview._copy_selected()
+        clipboard = QtWidgets.QApplication.clipboard().text()
+        assert "/assets/bob" in clipboard
+        assert "v001 - ma" in clipboard
+
+        detail_item = preview._items_model.item(0, 1)
+        assert detail_item.toolTip() == "v001 - ma"
+
+        preview._copy_all()
+        assert QtWidgets.QApplication.clipboard().text() == (
+            "/assets/bob - v001 - ma"
+        )
+
+
+class TestKeyboardShortcuts:
+    def test_save_shortcut_saves_changes(self, window, builder):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        _name_input(window).setText("changed")
+
+        window._on_save_shortcut()
+
+        assert builder.nodes["node_1"]["name"] == "changed"
+
+    def test_escape_reverts_dirty_editor(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        _name_input(window).setText("changed")
+
+        window._on_escape()
+
+        assert _name_input(window).text() == "one"
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert not window._editor_widget.has_unsaved_changes()
+
+    def test_escape_closes_clean_window(self, window):
+        window._on_escape()
+
+        assert window.isHidden()
+
+
+class TestBusyState:
+    def test_run_all_marks_the_window_busy(self, window, answers, monkeypatch):
+        seen = []
+
+        def fake_run(progress_callback=None):
+            seen.append(
+                (window._busy, window._context_bar.isEnabled())
+            )
+            progress_callback(1, {})
+            return ActionResult(success=True)
+
+        monkeypatch.setattr(
+            window._controller, "run_template_build", fake_run
+        )
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+
+        window._on_run_template_build_request()
+
+        assert seen == [(True, False)]
+        assert not window._busy
+        assert window._context_bar.isEnabled()
+
+    def test_run_one_marks_the_window_busy(
+        self, window, monkeypatch
+    ):
+        seen = []
+
+        def fake_run(scene_identifier):
+            seen.append(window._busy)
+            return ActionResult(success=True)
+
+        monkeypatch.setattr(
+            window._controller, "run_placeholder", fake_run
+        )
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        window._on_run_request("node_1")
+
+        assert seen == [True]
+        assert not window._busy
+
+
+class TestWindowSingleton:
+    @pytest.fixture(autouse=True)
+    def _reset_window_ref(self):
+        from ayon_core.tools.workfile_template_build import lib
+
+        lib._WINDOW_REF = None
+        yield
+        lib._WINDOW_REF = None
+
+    def test_window_is_reused(self, builder):
+        from ayon_core.tools.workfile_template_build import (
+            show_workfile_template_builder,
+        )
+
+        first = show_workfile_template_builder(builder)
+        second = show_workfile_template_builder(builder)
+
+        assert first is second
+        assert first.testAttribute(QtCore.Qt.WA_DeleteOnClose)
+        first.close()
+
+
+class TestErrorBoundary:
+    def test_update_failure_is_reported(self, window, monkeypatch):
+        errors = []
+        monkeypatch.setattr(
+            window,
+            "_show_unexpected_error",
+            lambda title: errors.append(title),
+        )
+        monkeypatch.setattr(
+            window._controller,
+            "get_placeholder_plugin_items",
+            lambda: (_ for _ in ()).throw(RuntimeError("boom")),
+        )
+
+        window._update_placeholders()
+
+        assert errors == ["Failed to update placeholders"]

@@ -32,6 +32,7 @@ class _FakeScene:
         self.nodes = {}
         self.selected = []
         self.ran = []
+        self.populated = []
         self._counter = 0
 
     def add(self, data):
@@ -101,7 +102,7 @@ class _Plugin(PlaceholderPlugin):
         ]
 
     def populate_placeholder(self, placeholder):
-        pass
+        self.scene.populated.append(placeholder.scene_identifier)
 
     def delete_placeholder(self, placeholder_item):
         self.scene.nodes.pop(placeholder_item.scene_identifier, None)
@@ -121,7 +122,7 @@ class _Plugin(PlaceholderPlugin):
 
 
 class _ReadOnlyPlugin(_Plugin):
-    """Plugin without delete, select and run support."""
+    """Plugin without delete and select support."""
     label = "Read only"
     identifier = "fake.readonly"
 
@@ -131,6 +132,9 @@ class _ReadOnlyPlugin(_Plugin):
 
     def collect_placeholders(self):
         return []
+
+    def populate_placeholder(self, placeholder):
+        pass
 
 
 class _EventCollector:
@@ -199,7 +203,6 @@ class TestPluginItems:
         assert items_by_id["fake"].run_supported
         assert not items_by_id["fake.readonly"].delete_supported
         assert not items_by_id["fake.readonly"].select_supported
-        assert not items_by_id["fake.readonly"].run_supported
 
     def test_items_are_sorted_by_label(self, controller):
         labels = [
@@ -408,6 +411,17 @@ class TestTemplateBuild:
 
         assert isinstance(controller.get_build_log(), list)
 
+    def test_progress_callback_is_called_per_placeholder(self, controller):
+        controller.create_placeholder("fake", {"name": "one"})
+        controller.create_placeholder("fake", {"name": "two"})
+        progress = []
+
+        controller.run_template_build(
+            progress_callback=lambda count, data: progress.append(count)
+        )
+
+        assert progress == [1, 2]
+
 
 class TestTemplateFile:
     @pytest.fixture
@@ -432,6 +446,22 @@ class TestTemplateFile:
         ):
             assert not result.success
             assert "No template" in result.error_title
+
+    def test_template_settings_error_is_reported(
+        self, controller, monkeypatch
+    ):
+        def fail():
+            raise RuntimeError("settings boom")
+
+        monkeypatch.setattr(
+            controller._builder, "get_template_preset", fail
+        )
+
+        result = controller.open_template()
+
+        assert not result.success
+        assert "Failed to read the template settings" in result.error_title
+        assert "settings boom" in result.error_detail
 
     def test_missing_file_is_reported(self, controller, monkeypatch):
         self._set_preset(controller, monkeypatch, TemplatePreset(
@@ -505,6 +535,29 @@ class TestTemplateFile:
 
         assert not result.success
         assert "Broken template" in result.error_detail
+
+    def test_build_failure_refreshes_the_ui(
+        self, controller, monkeypatch, template_path
+    ):
+        self._set_preset(controller, monkeypatch, TemplatePreset(
+            path=template_path, profile={"path": "x"}
+        ))
+
+        def import_template(path):
+            raise RuntimeError("Broken template")
+
+        monkeypatch.setattr(
+            controller._builder, "import_template", import_template
+        )
+        events = _EventCollector()
+        controller.register_event_callback(
+            PLACEHOLDERS_REFRESHED_TOPIC, events.collect
+        )
+
+        result = controller.build_template()
+
+        assert not result.success
+        assert events.events
 
 
 class TestPlaceholderData:
@@ -685,40 +738,40 @@ class TestPlaceholderPluginErrors:
 
 
 class TestRunSupport:
-    @staticmethod
-    def _disable_repopulation(monkeypatch):
+    def test_run_placeholder_falls_back_to_populate(
+        self, controller, monkeypatch
+    ):
+        identifier = controller.create_placeholder(
+            "fake", {"name": "one"}
+        ).scene_identifier
         monkeypatch.setattr(
             _Plugin,
             "repopulate_placeholder",
             PlaceholderPlugin.repopulate_placeholder,
         )
 
-    def test_run_all_reports_skipped_placeholders(
+        result = controller.run_placeholder(identifier)
+
+        assert result.success
+        assert controller._builder.scene.populated == [identifier]
+        assert controller._builder.scene.ran == []
+
+    def test_run_all_falls_back_to_populate(
         self, controller, monkeypatch
     ):
         controller.create_placeholder("fake", {"name": "one"})
-        self._disable_repopulation(monkeypatch)
+        monkeypatch.setattr(
+            _Plugin,
+            "repopulate_placeholder",
+            PlaceholderPlugin.repopulate_placeholder,
+        )
 
         result = controller.run_template_build()
 
         steps = controller.get_build_steps()
-        assert [step.status for step in steps] == ["skipped"]
-        assert not result.success
-        assert "not support" in result.error_title.lower()
-        assert controller._builder.scene.ran == []
-
-    def test_run_placeholder_without_support_fails(
-        self, controller, monkeypatch
-    ):
-        identifier = controller.create_placeholder(
-            "fake", {"name": "one"}
-        ).scene_identifier
-        self._disable_repopulation(monkeypatch)
-
-        result = controller.run_placeholder(identifier)
-
-        assert not result.success
-        assert "not supported" in result.error_title
+        assert result.success
+        assert [step.status for step in steps] == ["succeeded"]
+        assert controller._builder.scene.populated == ["node_1"]
         assert controller._builder.scene.ran == []
 
 

@@ -165,14 +165,13 @@ def load_plugin(monkeypatch):
 
 class TestPlaceholderCapabilities:
     def test_defaults_are_not_reported_as_implemented(self):
-        assert not _BasePlugin._is_method_implemented("delete_placeholder")
-        assert not _BasePlugin.is_delete_placeholder_supported(_BasePlugin)
-        assert not _BasePlugin.is_select_placeholder_supported(_BasePlugin)
+        assert not _BasePlugin.is_method_implemented("delete_placeholder")
+        assert not _BasePlugin.is_method_implemented("select_placeholder")
 
     def test_mixin_defaults_are_not_reported_as_implemented(self):
         """Mixins define no-op defaults that must not count as support."""
-        assert not _LoadPlugin._is_method_implemented("delete_placeholder")
-        assert not _CreatePlugin._is_method_implemented("delete_placeholder")
+        assert not _LoadPlugin.is_method_implemented("delete_placeholder")
+        assert not _CreatePlugin.is_method_implemented("delete_placeholder")
 
     def test_overrides_are_detected(self):
         class Implemented(_LoadPlugin):
@@ -182,8 +181,8 @@ class TestPlaceholderCapabilities:
             def select_placeholder(self, placeholder_item):
                 pass
 
-        assert Implemented._is_method_implemented("delete_placeholder")
-        assert Implemented._is_method_implemented("select_placeholder")
+        assert Implemented.is_method_implemented("delete_placeholder")
+        assert Implemented.is_method_implemented("select_placeholder")
 
 
 class TestLoadPlaceholderQuery:

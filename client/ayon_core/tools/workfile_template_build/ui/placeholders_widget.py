@@ -356,6 +356,12 @@ class PlaceholdersWidget(AYContainer):
         header.setSectionResizeMode(
             LABEL_COLUMN, QtWidgets.QHeaderView.Stretch
         )
+        # Order is only used for sorting; the label is the primary column.
+        view.setColumnHidden(ORDER_COLUMN, True)
+        header.setSectionResizeMode(
+            TYPE_COLUMN, QtWidgets.QHeaderView.Fixed
+        )
+        header.resizeSection(TYPE_COLUMN, 150)
 
         # Shown instead of the list, and its header, when the scene has no
         #   placeholders
@@ -566,25 +572,9 @@ class PlaceholdersWidget(AYContainer):
             item.setText(UNSAVED_MARK + label if is_unsaved else label)
 
     def _resize_columns(self) -> None:
-        """Fit "Order" and "Type" columns to their content."""
+        """Keep the type column compact; the label column stretches."""
         header = self._view.header()
-        font_metrics = self._view.fontMetrics()
-        for column in (ORDER_COLUMN, TYPE_COLUMN):
-            # Item delegate does not give a size hint based on the text
-            text_width = max(
-                (
-                    font_metrics.horizontalAdvance(
-                        str(self._model.index(row, column).data() or "")
-                    )
-                    for row in range(self._model.rowCount())
-                ),
-                default=0,
-            )
-            header.resizeSection(
-                column,
-                max(header.sectionSizeHint(column), text_width)
-                + COLUMN_PADDING,
-            )
+        header.resizeSection(TYPE_COLUMN, 150)
 
     def set_add_highlighted(self, highlighted: bool) -> None:
         """Show the "Add" button as the main action.

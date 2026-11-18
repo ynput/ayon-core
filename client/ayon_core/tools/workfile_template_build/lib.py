@@ -1,8 +1,13 @@
 import traceback
+import weakref
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.tools.utils.dialogs import show_message_dialog
+
+# Only one template builder window per host process. A weak reference keeps
+#   the module from owning the Qt widget.
+_WINDOW_REF = None
 
 
 def open_template_ui(builder, main_window):
@@ -31,9 +36,8 @@ def open_template_ui(builder, main_window):
 def show_workfile_template_builder(builder, parent=None):
     """Show workfile template builder tool for a host.
 
-    Note:
-        Returned window must be kept alive by the caller, otherwise it is
-            garbage collected right away.
+    A single window is reused per host process. The window is deleted when
+        closed, so a new one is created afterwards.
 
     Args:
         builder (AbstractTemplateBuilder): Template builder implementation
@@ -45,11 +49,23 @@ def show_workfile_template_builder(builder, parent=None):
         WorkfileTemplateBuilderWindow: Shown window.
 
     """
+    global _WINDOW_REF
+
+    if _WINDOW_REF is not None:
+        window = _WINDOW_REF()
+        if window is not None:
+            window.show()
+            window.raise_()
+            window.activateWindow()
+            return window
+
     from .control import WorkfileTemplateBuilderController
     from .ui import WorkfileTemplateBuilderWindow
 
     controller = WorkfileTemplateBuilderController(builder)
     window = WorkfileTemplateBuilderWindow(controller, parent=parent)
+    window.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+    _WINDOW_REF = weakref.ref(window)
     window.show()
     window.raise_()
     window.activateWindow()

@@ -182,10 +182,22 @@ class PreviewWidget(AYContainer):
         items_view.setHeaderHidden(True)
         items_view.setRootIsDecorated(False)
         items_view.setIndentation(0)
-        items_view.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        items_view.setFocusPolicy(QtCore.Qt.NoFocus)
+        items_view.setSelectionMode(
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
+        items_view.setFocusPolicy(QtCore.Qt.StrongFocus)
+        items_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         header = items_view.header()
         header.setStretchLastSection(True)
+
+        copy_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence.Copy, items_view
+        )
+        copy_shortcut.activated.connect(self._copy_selected)
+
+        items_view.customContextMenuRequested.connect(
+            self._on_items_context_menu
+        )
 
         self.add_widget(title_widget)
         self.add_widget(hint_widget)
@@ -198,6 +210,8 @@ class PreviewWidget(AYContainer):
         self._hint_widget = hint_widget
         self._items_model = items_model
         self._items_view = items_view
+        self._copy_shortcut = copy_shortcut
+        self._preview: Optional[PlaceholderPreview] = None
 
     def set_context_label(self, label: str) -> None:
         """Show the context the preview is calculated for.
@@ -224,9 +238,11 @@ class PreviewWidget(AYContainer):
 
         """
         if preview is None:
+            self._preview = None
             self.setVisible(False)
             return
 
+        self._preview = preview
         self.setVisible(True)
         self._title_label.setText(preview.title or "Preview")
         self._set_hint(preview.hint, preview.is_error)
@@ -244,11 +260,15 @@ class PreviewWidget(AYContainer):
             label_item = QtGui.QStandardItem(label)
             label_item.setToolTip(label)
             detail_item = QtGui.QStandardItem(detail)
+            detail_item.setToolTip(detail)
             for item in (label_item, detail_item):
                 item.setEditable(False)
             root_item.appendRow([label_item, detail_item])
 
         self._items_view.setVisible(bool(preview.items))
+        self._items_view.setToolTip(
+            "Select rows and use Ctrl+C or the context menu to copy."
+        )
         # Keep the detail right next to the label so each row reads as one
         #   entry. Column size hints are not reliable while the view is not
         #   shown and don't count with padding of the item delegate.
@@ -261,6 +281,60 @@ class PreviewWidget(AYContainer):
             0, label_width + (2 * COLUMN_PADDING)
         )
         self._update_items_view_height()
+
+    def _on_items_context_menu(self, point: QtCore.QPoint) -> None:
+        menu = QtWidgets.QMenu(self._items_view)
+        copy_action = menu.addAction("Copy")
+        copy_all_action = menu.addAction("Copy all")
+        action = menu.exec_(
+            self._items_view.viewport().mapToGlobal(point)
+        )
+        if action is copy_action:
+            self._copy_selected()
+        elif action is copy_all_action:
+            self._copy_all()
+
+    def _copy_selected(self) -> None:
+        selection_model = self._items_view.selectionModel()
+        rows = sorted({
+            index.row()
+            for index in selection_model.selectedIndexes()
+        })
+        lines = []
+        for row in rows:
+            text = self._row_text(row)
+            if text:
+                lines.append(text)
+        if lines:
+            self._set_clipboard("\n".join(lines))
+
+    def _copy_all(self) -> None:
+        if self._preview is None:
+            return
+        lines = [
+            "{} - {}".format(item.label, item.detail or "").rstrip(" -")
+            for item in self._preview.items
+        ]
+        if self._preview.hidden_items_count:
+            lines.append(
+                "... and {} more".format(
+                    self._preview.hidden_items_count
+                )
+            )
+        if lines:
+            self._set_clipboard("\n".join(lines))
+
+    def _row_text(self, row: int) -> str:
+        label_item = self._items_model.item(row, 0)
+        detail_item = self._items_model.item(row, 1)
+        if label_item is None:
+            return ""
+        label = label_item.text()
+        detail = detail_item.text() if detail_item is not None else ""
+        return "{} - {}".format(label, detail).rstrip(" -")
+
+    def _set_clipboard(self, text: str) -> None:
+        QtWidgets.QApplication.clipboard().setText(text)
 
     def _update_items_view_height(self) -> None:
         """Keep the preview only as tall as the entries it shows."""
@@ -734,6 +808,31 @@ class PlaceholderEditorWidget(AYContainer):
         if self._mode == CREATE_MODE:
             return values != self._default_values
         return values != self._original_values
+
+    def save(self) -> None:
+        """Save or create the placeholder if that is possible now."""
+        if self._confirm_btn.isEnabled():
+            self._on_confirm_click()
+
+    def focus_first_option(self) -> None:
+        """Focus the first editable option input."""
+        if self._attrs_widget is None:
+            return
+        input_types = (
+            QtWidgets.QLineEdit,
+            QtWidgets.QComboBox,
+            QtWidgets.QAbstractSpinBox,
+            QtWidgets.QPlainTextEdit,
+            QtWidgets.QTextEdit,
+        )
+        for widget in self._attrs_widget.findChildren(QtWidgets.QWidget):
+            if (
+                isinstance(widget, input_types)
+                and widget.isVisible()
+                and widget.isEnabled()
+            ):
+                widget.setFocus()
+                return
 
     def get_scene_identifier(self) -> Optional[str]:
         """Scene identifier of the edited placeholder.

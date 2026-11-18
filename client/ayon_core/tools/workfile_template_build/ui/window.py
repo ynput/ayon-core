@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import traceback
 from typing import Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -194,7 +195,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         splitter.addWidget(editor_panel)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([320, 680])
+        splitter.setSizes([400, 600])
 
         self.add_widget(context_bar)
         self.add_widget(divider_widget)
@@ -262,10 +263,46 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._plugin_items: list[PlaceholderPluginItem] = []
         self._placeholder_items_by_id: dict[str, PlaceholderItemInfo] = {}
         self._hint_notice: Optional[str] = None
+        self._busy = False
+        self._busy_previous_status = ("", False)
 
+        self._setup_shortcuts()
+        self._setup_tab_order()
+        self._editor_widget._confirm_btn.setAutoDefault(True)
+        self._editor_widget._confirm_btn.setDefault(True)
         self._update_build_state()
         self._update_build_context()
         self.resize(1000, 680)
+
+    def _setup_shortcuts(self):
+        save_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence.Save, self
+        )
+        save_shortcut.activated.connect(self._on_save_shortcut)
+        refresh_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence.Refresh, self
+        )
+        refresh_shortcut.activated.connect(self._on_refresh_request)
+        escape_shortcut = QtWidgets.QShortcut(
+            QtGui.QKeySequence(QtCore.Qt.Key_Escape), self
+        )
+        escape_shortcut.activated.connect(self._on_escape)
+        # Keep a reference so the shortcuts are not garbage collected.
+        self._shortcuts = [
+            save_shortcut,
+            refresh_shortcut,
+            escape_shortcut,
+        ]
+
+    def _setup_tab_order(self):
+        QtWidgets.QWidget.setTabOrder(
+            self._placeholders_widget._filter_input,
+            self._placeholders_widget._view,
+        )
+        QtWidgets.QWidget.setTabOrder(
+            self._placeholders_widget._view,
+            self._editor_widget._confirm_btn,
+        )
 
     # --- Qt overrides -------------------------------------------------
     def showEvent(self, event):
@@ -275,7 +312,13 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             self.setStyleSheet(
                 style.load_stylesheet() + _get_window_stylesheet()
             )
-            self.refresh()
+            self._refresh_guarded()
+        elif (
+            not self._editor_widget.has_unsaved_changes()
+            and not self._busy
+        ):
+            # Re-showing a hidden window must not show stale scene data.
+            self._refresh_guarded()
 
     def closeEvent(self, event):
         if not self._confirm_discard_changes():
@@ -315,17 +358,25 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
     # --- Implementation -----------------------------------------------
     def _on_placeholders_refreshed(self):
-        self._context_bar.set_workfile(
-            self._controller.get_workfile_name(),
-            self._controller.get_host_name(),
-        )
-        self._update_template_path()
-        self._update_placeholders()
+        try:
+            self._context_bar.set_workfile(
+                self._controller.get_workfile_name(),
+                self._controller.get_host_name(),
+            )
+            self._update_template_path()
+            self._update_placeholders()
+        except Exception:
+            self._show_unexpected_error(
+                "Failed to update the placeholder list"
+            )
 
     def _on_build_context_changed(self):
-        self._update_build_context()
-        if self._pages_widget.currentIndex() == EDITOR_PAGE:
-            self._editor_widget.refresh_preview()
+        try:
+            self._update_build_context()
+            if self._pages_widget.currentIndex() == EDITOR_PAGE:
+                self._editor_widget.refresh_preview()
+        except Exception:
+            self._show_unexpected_error("Failed to update the build context")
 
     def _update_build_context(self):
         context_item = self._controller.get_build_context()
@@ -342,6 +393,12 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         )
 
     def _update_placeholders(self):
+        try:
+            self._update_placeholders_impl()
+        except Exception:
+            self._show_unexpected_error("Failed to update placeholders")
+
+    def _update_placeholders_impl(self):
         self._plugin_items = self._controller.get_placeholder_plugin_items()
         placeholder_items = self._controller.get_placeholder_items()
         self._placeholder_items_by_id = {
@@ -478,6 +535,11 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             return
 
         plugin_item = self._get_plugin_item(placeholder_item.plugin_identifier)
+        focus_widget = QtWidgets.QApplication.focusWidget()
+        restore_focus = (
+            focus_widget is not None
+            and self._editor_widget.isAncestorOf(focus_widget)
+        )
         self._hint_notice = None
         self._current_identifier = scene_identifier
         self._set_pending_item(None)
@@ -488,6 +550,8 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             ),
         )
         self._pages_widget.setCurrentIndex(EDITOR_PAGE)
+        if restore_focus:
+            self._editor_widget.focus_first_option()
 
     def _show_create_page(self, plugin_item: PlaceholderPluginItem):
         self._hint_notice = None
@@ -565,6 +629,73 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         dialog.exec_()
         return True
 
+    def _show_unexpected_error(self, title: str) -> None:
+        """Show an error that happened outside an action result."""
+        self._show_action_error(ActionResult(
+            success=False,
+            error_title=title,
+            error_detail=traceback.format_exc(),
+        ))
+
+    def _refresh_guarded(self) -> None:
+        try:
+            self.refresh()
+        except Exception:
+            self._show_unexpected_error("Failed to refresh the placeholders")
+
+    def _set_busy(self, busy: bool, message: Optional[str] = None) -> None:
+        """Disable actions while a host operation is running."""
+        self._busy = busy
+        self._context_bar.setEnabled(not busy)
+        self._placeholders_widget.setEnabled(not busy)
+        if busy:
+            self._busy_previous_status = (
+                self._build_status_btn.text(),
+                self._build_status_btn.isVisible(),
+            )
+            self._editor_widget.stop_dynamic_timer()
+            self._build_status_btn.setText(message or "Working...")
+            self._build_status_btn.setVisible(True)
+        else:
+            text, visible = self._busy_previous_status
+            self._build_status_btn.setText(text)
+            self._build_status_btn.setVisible(visible)
+            self._update_build_state()
+
+    def _set_status_text(self, text: str) -> None:
+        self._build_status_btn.setText(text)
+        self._build_status_btn.setVisible(bool(text))
+
+    def _on_build_progress(self, count: int, event_data: dict) -> None:
+        """Show progress between populated placeholders."""
+        self._build_status_btn.setText(
+            "Running... {} placeholder(s)".format(count)
+        )
+        # Let the status paint while the host operation keeps running.
+        QtWidgets.QApplication.processEvents(
+            QtCore.QEventLoop.ExcludeUserInputEvents
+        )
+
+    def _on_save_shortcut(self) -> None:
+        if self._busy:
+            return
+        if self._pages_widget.currentIndex() == EDITOR_PAGE:
+            self._editor_widget.save()
+
+    def _on_escape(self) -> None:
+        if self._busy:
+            return
+        if self._pages_widget.currentIndex() != EDITOR_PAGE:
+            self.close()
+            return
+
+        if self._editor_widget.is_create_mode():
+            self._on_create_cancelled()
+        elif self._editor_widget.has_unsaved_changes():
+            self._editor_widget.revert_to_original()
+        else:
+            self.close()
+
     # --- Callbacks ----------------------------------------------------
     def _on_selection_change(self):
         if self._ignore_selection_change:
@@ -587,10 +718,12 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._show_editor_page(scene_identifier)
 
     def _on_refresh_request(self):
+        if self._busy:
+            return
         if not self._confirm_discard_changes():
             return
         self._editor_widget.revert_to_original()
-        self.refresh()
+        self._refresh_guarded()
 
     def _on_run_template_build_request(self):
         if (
@@ -621,7 +754,19 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if answer != QtWidgets.QMessageBox.Yes:
             return
 
-        result = self._controller.run_template_build()
+        self._set_busy(True, "Running all placeholders...")
+        try:
+            result = self._controller.run_template_build(
+                progress_callback=self._on_build_progress
+            )
+        except Exception:
+            result = None
+            self._show_unexpected_error("Failed to run the template build")
+        finally:
+            self._set_busy(False)
+
+        if result is None:
+            return
 
         # Placeholders may have been removed or changed by the build.
         self._update_placeholders()
@@ -654,7 +799,16 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if answer != QtWidgets.QMessageBox.Yes:
             return
 
-        self._show_action_error(self._controller.open_template())
+        self._set_busy(True, "Opening template...")
+        try:
+            result = self._controller.open_template()
+        except Exception:
+            result = None
+            self._show_unexpected_error("Failed to open the template")
+        finally:
+            self._set_busy(False)
+        if result is not None:
+            self._show_action_error(result)
 
     def _on_build_from_template_request(self):
         if not self._confirm_discard_changes():
@@ -677,7 +831,25 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if answer != QtWidgets.QMessageBox.Yes:
             return
 
-        self._show_action_error(self._controller.build_template())
+        self._set_busy(True, "Building from template...")
+        try:
+            result = self._controller.build_template(
+                progress_callback=self._on_build_progress
+            )
+        except Exception:
+            result = None
+            self._show_unexpected_error(
+                "Failed to build the scene from the template"
+            )
+        finally:
+            self._set_busy(False)
+
+        if result is None:
+            return
+        if result.success:
+            self._set_status_text("Template built")
+        else:
+            self._show_action_error(result)
 
     def _update_build_status(self, result: ActionResult) -> None:
         """Show the outcome of the last template build.
@@ -751,11 +923,27 @@ class WorkfileTemplateBuilderWindow(AYContainer):
 
         dialog = ContextDialog(parent=self)
         dialog.setWindowTitle("Preview as")
-        dialog.set_context(self._controller.get_project_name())
+        context_item = self._controller.get_build_context()
+        # Keep the project fixed; preselect the current override so opening
+        #   the dialog again does not silently reset the reviewed context.
+        dialog.set_context(
+            self._controller.get_project_name(),
+            context_item.folder_path if context_item.is_override else None,
+        )
         if not dialog.exec_():
             return None
 
         context = dialog.get_context()
+        if not context.get("initial_context_valid", True):
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Preview as",
+                (
+                    "The selected context no longer exists. Choose another"
+                    " folder or reset to the scene context."
+                ),
+            )
+            return None
         folder_path = context.get("folder_path")
         if not folder_path:
             return None
@@ -850,12 +1038,21 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             )
             return
 
-        result = self._controller.run_placeholder(scene_identifier)
-        if self._show_action_error(result):
+        self._set_busy(True, "Running placeholder...")
+        try:
+            result = self._controller.run_placeholder(scene_identifier)
+        except Exception:
+            result = None
+            self._show_unexpected_error("Failed to run the placeholder")
+        finally:
+            self._set_busy(False)
+
+        if result is None or self._show_action_error(result):
             return
 
         # The placeholder may have been removed by running it.
         self._update_placeholders()
+        self._set_status_text("Placeholder populated")
 
     def _on_remove_request(self, scene_identifier=None):
         if scene_identifier is None:

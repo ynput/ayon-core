@@ -779,11 +779,19 @@ class AbstractTemplateBuilder(ABC):
     def repopulate_placeholder(self, placeholder_item):
         """Re-run placeholder in the host scene.
 
+        Prefers 'repopulate_placeholder' so integrations can avoid running
+        build callbacks again. Plugins that only implement
+        'populate_placeholder' use it as a compatibility fallback.
+
         Args:
             placeholder_item (PlaceholderItem): Placeholder item to re-run.
 
         """
-        placeholder_item.plugin.repopulate_placeholder(placeholder_item)
+        plugin = placeholder_item.plugin
+        if plugin.is_method_implemented("repopulate_placeholder"):
+            plugin.repopulate_placeholder(placeholder_item)
+        else:
+            plugin.populate_placeholder(placeholder_item)
 
     def _backwards_compatibility_build_template(func):
         """Decorator for backwards compatibility of build_template method.
@@ -1044,7 +1052,10 @@ class AbstractTemplateBuilder(ABC):
 
         for placeholder in placeholders:
             plugin = placeholder.plugin
-            if not plugin.is_run_placeholder_supported():
+            if not (
+                plugin.is_method_implemented("repopulate_placeholder")
+                or plugin.is_method_implemented("populate_placeholder")
+            ):
                 self.log.info(
                     "Placeholder '{}' cannot be re-run: plugin '{}' does not"
                     " support it.".format(
@@ -1062,7 +1073,7 @@ class AbstractTemplateBuilder(ABC):
             )
             start = time.perf_counter()
             try:
-                plugin.repopulate_placeholder(placeholder)
+                self.repopulate_placeholder(placeholder)
             except Exception as exc:
                 self.log.warning(
                     "Failed to run placeholder '{}'".format(
@@ -1818,40 +1829,14 @@ class PlaceholderPlugin(ABC):
         """
         self.log.debug("Select of placeholder is not implemented.")
 
-    def is_delete_placeholder_supported(self):
-        """Plugin implements removal of placeholders from the scene.
-
-        Returns:
-            bool: Placeholder can be deleted using 'delete_placeholder'.
-
-        """
-        return self._is_method_implemented("delete_placeholder")
-
-    def is_select_placeholder_supported(self):
-        """Plugin implements selection of placeholders in the scene.
-
-        Returns:
-            bool: Placeholder can be selected using 'select_placeholder'.
-
-        """
-        return self._is_method_implemented("select_placeholder")
-
-    def is_run_placeholder_supported(self):
-        """Plugin implements re-running of placeholders in the scene.
-
-        Returns:
-            bool: Placeholder can be re-run using 'repopulate_placeholder'.
-
-        """
-        return self._is_method_implemented("repopulate_placeholder")
-
     @classmethod
-    def _is_method_implemented(cls, method_name):
-        """Method is overridden by the plugin implementation.
+    def is_method_implemented(cls, method_name):
+        """Check whether the plugin overrides a method.
 
         Both 'PlaceholderPlugin' and the load/create mixins define no-op
         default implementations, so identity against all of them has to be
-        checked.
+        checked. Use this directly for capability checks, e.g.
+        ``plugin.is_method_implemented("delete_placeholder")``.
 
         Args:
             method_name (str): Name of the method to check.
