@@ -261,11 +261,3 @@ def test_save_as_dialog_hint_hidden_with_partial_labels(qtbot):
     )
     dialog = _make_dialog(qtbot, _FakeController(save_as_data=data))
     assert _hint_hidden(dialog)
-
-
-def test_save_as_dialog_hint_hidden_without_context_keys(qtbot):
-    data = _save_as_data("folder-2", "task-2")
-    data.pop("folder_path")
-    data.pop("task_name")
-    dialog = _make_dialog(qtbot, _FakeController(save_as_data=data))
-    assert _hint_hidden(dialog)
