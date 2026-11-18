@@ -1223,24 +1223,15 @@ class _ServerSupport:
     by_url: dict[str, bool] = {}
 
 
-def _get_server_url() -> Optional[str]:
-    try:
-        return ayon_api.get_base_url()
-    except Exception:
-        return None
-
-
 def _get_server_support() -> Optional[bool]:
     """Cached support of the current server, 'None' when not known."""
-    server_url = _get_server_url()
+    server_url = ayon_api.get_base_url()
     with _ServerSupport.lock:
         return _ServerSupport.by_url.get(server_url)
 
 
 def _set_server_support(supported: bool) -> None:
-    server_url = _get_server_url()
-    if server_url is None:
-        return
+    server_url = ayon_api.get_base_url()
     with _ServerSupport.lock:
         _ServerSupport.by_url[server_url] = supported
 
@@ -1455,7 +1446,7 @@ class UserPreferences(ASettingRegistry):
     def _raise_if_not_supported(self) -> None:
         if _get_server_support() is False:
             raise UserPreferencesNotSupported(
-                f"AYON server '{_get_server_url()}' can't store user"
+                f"AYON server '{ayon_api.get_base_url()}' can't store user"
                 " preferences, it requires AYON server"
                 f" {self.min_server_version} or newer."
             )
