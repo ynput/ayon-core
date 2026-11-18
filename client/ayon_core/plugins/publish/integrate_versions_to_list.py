@@ -27,9 +27,9 @@ if TYPE_CHECKING:
 _ENTITY_LIST_FIELDS = {"id", "label", "entityListType", "entityType"}
 
 # TODO: Remove once the minimum required ayon_api version supports the
-#   'labels' argument of 'get_entity_lists'.
-# First ayon_api version that supports 'labels' in 'get_entity_lists'.
-_AYON_API_LABELS_FILTER_VERSION = semver.VersionInfo(1, 2, 29)
+#   'filters' argument of 'get_entity_lists'.
+# First ayon_api version that supports 'filters' in 'get_entity_lists'.
+_AYON_API_LIST_FILTERS_VERSION = semver.VersionInfo(1, 2, 29)
 _ENTITY_LISTS_BY_LABEL_QUERY = """
 query EntityListsByLabel(
     $projectName: String!, $filter: String!, $after: String
@@ -63,21 +63,22 @@ def get_entity_lists_by_labels(
     if not labels:
         return []
 
+    filters = {
+        "conditions": [
+            {"key": "label", "operator": "in", "value": labels}
+        ],
+    }
     api_version = semver.VersionInfo.parse(ayon_api.__version__)
-    if api_version >= _AYON_API_LABELS_FILTER_VERSION:
+    if api_version >= _AYON_API_LIST_FILTERS_VERSION:
         return list(ayon_api.get_entity_lists(
-            project_name, labels=labels, fields=_ENTITY_LIST_FIELDS
+            project_name, filters=filters, fields=_ENTITY_LIST_FIELDS
         ))
 
     # TODO: Remove the workaround below once the minimum required ayon_api
-    #   version supports the 'labels' argument of 'get_entity_lists'.
+    #   version supports the 'filters' argument of 'get_entity_lists'.
     variables = {
         "projectName": project_name,
-        "filter": json.dumps({
-            "conditions": [
-                {"key": "label", "operator": "in", "value": labels}
-            ],
-        }),
+        "filter": json.dumps(filters),
         "after": None,
     }
     output = []
