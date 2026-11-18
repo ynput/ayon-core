@@ -657,7 +657,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
             tooltip = ""
             icon = no_icon
-            if any(match.is_override for match in matches):
+            if any(
+                match.template_name != recipe.template_name
+                for match in matches
+            ):
                 icon = self._override_icon
                 tooltip = self._get_override_tooltip(recipe, matches)
             item.setIcon(_REPRE_ICON_COLUMN, icon)
@@ -698,7 +701,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         lines = []
         for key, match in unique_matches.items():
-            if not match.is_override:
+            if match.template_name == recipe.template_name:
                 continue
             subject = "Delivered"
             if counts[key] != len(matches):
@@ -707,7 +710,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 )
             lines.append(
                 f"{subject} with template '{match.template_name}'"
-                f" instead of '{match.default_template_name}'."
+                f" instead of '{recipe.template_name}'."
             )
             lines.append(
                 f"Set by override #{match.override_info.index + 1}"
@@ -852,7 +855,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                     group = _DestinationGroup(
                         repre_name=repre_name,
                         template_name=match.template_name,
-                        is_override=match.is_override,
+                        is_override=(
+                            match.template_name != recipe.template_name
+                        ),
                     )
                     groups[key] = group
                 group.files_count += len(paths)

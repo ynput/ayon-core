@@ -87,7 +87,6 @@ def test_no_overrides_uses_default_template():
 
     assert match.template_name == "client"
     assert match.override_info is None
-    assert not match.is_override
 
 
 def test_extension_match_overrides_template():
@@ -101,22 +100,20 @@ def test_extension_match_overrides_template():
     )
 
     assert match.template_name == "client_plates"
-    assert match.default_template_name == "client"
     assert match.override_info == DeliveryOverrideInfo(
         index=1,
         representation_names=[],
         extensions=["exr"],
         product_base_types=[],
     )
-    assert match.is_override
 
 
-def test_override_to_default_template_is_not_override():
+def test_override_to_default_template():
     overrides = [_override("client", extensions=["exr"])]
 
     match = resolve_delivery_template(
         overrides, "client", "exr", "render", extension="exr"
     )
 
+    assert match.template_name == "client"
     assert match.override_info.index == 0
-    assert not match.is_override

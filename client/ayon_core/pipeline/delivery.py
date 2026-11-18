@@ -62,18 +62,11 @@ class DeliveryTemplateMatch:
 
     Attributes:
         template_name: Name of the anatomy delivery template to use.
-        default_template_name: Template used when no override matches.
         override_info: Info about the matching override to explain it
             in UI, or None when no override matched.
     """
     template_name: str
-    default_template_name: str
     override_info: DeliveryOverrideInfo | None = None
-
-    @property
-    def is_override(self) -> bool:
-        """Whether an override changed the default template."""
-        return self.template_name != self.default_template_name
 
 
 def get_delivery_tool_settings(
@@ -179,17 +172,13 @@ def resolve_delivery_template(
         logger=logger,
     )
     if override is None:
-        return DeliveryTemplateMatch(
-            template_name=default_template_name,
-            default_template_name=default_template_name,
-        )
+        return DeliveryTemplateMatch(template_name=default_template_name)
 
     override_index = next(
         idx for idx, item in enumerate(overrides) if item is override
     )
     return DeliveryTemplateMatch(
         template_name=override["template_name"],
-        default_template_name=default_template_name,
         override_info=DeliveryOverrideInfo(
             index=override_index,
             representation_names=override["representation_names"],
