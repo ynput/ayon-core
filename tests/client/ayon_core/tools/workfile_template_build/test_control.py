@@ -1,7 +1,9 @@
 """Tests for the workfile template builder tool controller."""
+import logging
+
 import pytest
 
-from ayon_core.lib import Logger, attribute_definitions
+from ayon_core.lib import attribute_definitions
 from ayon_core.pipeline.workfile import (
     workfile_template_builder as wtb,
 )
@@ -651,7 +653,9 @@ class TestTemplateFile:
         ))
 
         def build_template(preset=None):
-            Logger.get_logger("test.build").info("build marker")
+            logging.getLogger(
+                "ayon_core.pipeline.workfile.test"
+            ).warning("build marker")
             return []
 
         monkeypatch.setattr(

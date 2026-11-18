@@ -12,11 +12,14 @@ from ayon_core.ui.components import (
     AYLabel,
     AYTreeView,
 )
-from ayon_core.ui.style import get_ayon_style
 
-_palette = get_ayon_style().model.palette()
-ERROR_COLOR = _palette.get("--md-sys-color-error-dark", "#e55353")
-SKIPPED_COLOR = _palette.get("--md-sys-color-warning-dark", "#ffc671")
+
+def _theme_color(token: str, fallback: str) -> str:
+    """Resolve a palette color lazily, after QApplication exists."""
+    from ayon_core.ui.style import get_ayon_style
+
+    return get_ayon_style().model.palette().get(token, fallback)
+
 
 STATUS_LABELS = {
     "succeeded": "OK",
@@ -179,11 +182,15 @@ class BuildReportDialog(QtWidgets.QDialog):
                 item.setData(step.error, QtCore.Qt.UserRole)
 
             if step.error:
-                color = QtGui.QColor(ERROR_COLOR)
+                color = QtGui.QColor(_theme_color(
+                    "--md-sys-color-error-dark", "#e55353"
+                ))
                 status_item.setForeground(QtGui.QBrush(color))
                 label_item.setForeground(QtGui.QBrush(color))
             elif step.status == "skipped":
-                color = QtGui.QColor(SKIPPED_COLOR)
+                color = QtGui.QColor(_theme_color(
+                    "--md-sys-color-warning-dark", "#ffc671"
+                ))
                 status_item.setForeground(QtGui.QBrush(color))
 
             self._model.appendRow([

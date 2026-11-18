@@ -44,4 +44,6 @@ def get_palette_color(token: str) -> str:
     return _FALLBACK_COLORS.get(token, "#ffffff")
 
 
-WARNING_COLOR = get_palette_color(WARNING_COLOR_TOKEN)
+def get_warning_color() -> str:
+    """Warning color resolved lazily so importing does not create Qt style."""
+    return get_palette_color(WARNING_COLOR_TOKEN)

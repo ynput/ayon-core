@@ -20,7 +20,7 @@ from ayon_core.ui.components.tree_view import TreeViewItemDelegate
 from ayon_core.ui.style_types import get_ayon_style
 
 from ..abstract import PlaceholderItemInfo, PlaceholderPluginItem
-from .utils import WARNING_COLOR
+from .utils import get_warning_color
 
 SCENE_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 1
 PLUGIN_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 2
@@ -303,7 +303,7 @@ class PlaceholdersWidget(AYContainer):
         error_icon = AYLabel(
             parent=error_widget,
             icon="warning",
-            icon_color=WARNING_COLOR,
+            icon_color=get_warning_color(),
             icon_size=16,
         )
         error_label = AYLabel(

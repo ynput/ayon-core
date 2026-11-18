@@ -39,8 +39,8 @@ from .preview_worker import PreviewWorker, create_preview_worker
 from .utils import (
     INPUT_COLOR,
     PANEL_COLOR,
-    WARNING_COLOR,
     get_palette_color,
+    get_warning_color,
 )
 
 # Delay between last change of an option and re-calculation of preview and
@@ -160,7 +160,7 @@ class PreviewWidget(AYContainer):
         warning_label = AYLabel(
             parent=self,
             icon="warning",
-            icon_color=WARNING_COLOR,
+            icon_color=get_warning_color(),
             icon_size=16,
         )
         hint_label = AYLabel(parent=self, dim=True, flexible=True)
@@ -595,7 +595,7 @@ class PlaceholderEditorWidget(AYContainer):
         options_error_icon = AYLabel(
             parent=options_error_widget,
             icon="warning",
-            icon_color=WARNING_COLOR,
+            icon_color=get_warning_color(),
             icon_size=16,
         )
         options_error_label = AYLabel(
@@ -630,8 +630,8 @@ class PlaceholderEditorWidget(AYContainer):
             icon="circle",
             icon_fill=True,
             icon_size=10,
-            icon_color=WARNING_COLOR,
-            text_color=WARNING_COLOR,
+            icon_color=get_warning_color(),
+            text_color=get_warning_color(),
         )
         unsaved_label.setVisible(False)
         cancel_btn = AYButton(

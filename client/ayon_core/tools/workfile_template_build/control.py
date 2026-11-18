@@ -79,6 +79,11 @@ class _BuildLogHandler(logging.Handler):
         ))
 
     def emit(self, record):
+        # The handler may be attached to both the standard and AYON root
+        #   loggers; capture each record only once.
+        if getattr(record, "_ayon_build_log_seen", False):
+            return
+        record._ayon_build_log_seen = True
         try:
             message = self.format(record)
         except Exception:
@@ -751,14 +756,18 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         """Capture log output emitted while a template build runs."""
         self._build_log = []
         handler = _BuildLogHandler(self._build_log)
-        # AYON loggers are reparented under the AYON root, so attach to the
-        #   root to catch builder and host logs without changing logger names.
-        root_logger = Logger.get_root_logger()
-        root_logger.addHandler(handler)
+        # Standard root receives records propagated from the AYON logger
+        #   hierarchy; also attach to the AYON root so logger
+        #   re-initialization or a non-propagating AYON logger cannot hide
+        #   build logs. The handler captures each record only once.
+        loggers = [logging.getLogger(), Logger.get_root_logger()]
+        for logger in loggers:
+            logger.addHandler(handler)
         try:
             yield
         finally:
-            root_logger.removeHandler(handler)
+            for logger in loggers:
+                logger.removeHandler(handler)
             self._trim_build_log()
 
     def _trim_build_log(self) -> None:
