@@ -13,6 +13,7 @@ about its progress.
 from __future__ import annotations
 import os
 import re
+import ast
 import time
 import collections
 import copy
@@ -2432,15 +2433,16 @@ class PlaceholderLoadMixin(object):
             return {}
 
         try:
-            parsed_args = eval(loader_args)
+            parsed_args = ast.literal_eval(loader_args)
             if isinstance(parsed_args, dict):
                 return parsed_args
 
         except Exception as err:
-            print(
+            self.log.warning(
                 "Error while parsing loader arguments '{}'.\n{}: {}\n\n"
                 "Continuing with default arguments. . .".format(
-                    loader_args, err.__class__.__name__, err))
+                    loader_args, err.__class__.__name__, err)
+            )
 
         return {}
 
@@ -2529,6 +2531,33 @@ class PlaceholderLoadMixin(object):
 
         return []
 
+    def _validate_load_option_regexes(self, placeholder_data):
+        """Validate regex filters before querying the server.
+
+        Args:
+            placeholder_data (dict[str, Any]): Placeholder options.
+
+        Raises:
+            ValueError: A filter is not a valid regular expression.
+
+        """
+        errors = []
+        for key, label in (
+            ("folder_path", "Folder path"),
+            ("product_name", "Product name"),
+        ):
+            value = placeholder_data.get(key)
+            if not value:
+                continue
+            try:
+                re.compile(value)
+            except re.error as exc:
+                errors.append(
+                    "Invalid {} filter '{}': {}".format(label, value, exc)
+                )
+        if errors:
+            raise ValueError("\n".join(errors))
+
     def _query_load_options(
         self,
         placeholder_data,
@@ -2561,6 +2590,8 @@ class PlaceholderLoadMixin(object):
             _LoadQueryResult: Matching entities.
 
         """
+        self._validate_load_option_regexes(placeholder_data)
+
         project_name = self.builder.project_name
 
         product_base_type = placeholder_data.get("product_base_type")

@@ -276,6 +276,21 @@ class TestLoadPlaceholderPreview:
         assert not preview.is_error
         assert "folder path filter" in preview.hint
 
+    @pytest.mark.parametrize(
+        "key, label",
+        [("folder_path", "Folder path"), ("product_name", "Product name")],
+    )
+    def test_preview_reports_invalid_regex_filter(
+        self, load_plugin, key, label
+    ):
+        preview = load_plugin.get_placeholder_preview(
+            dict(LOAD_OPTIONS, **{key: "["})
+        )
+
+        assert preview.is_error
+        assert label in preview.hint
+        assert "[" in preview.hint
+
     def test_preview_without_product_base_type(self, load_plugin):
         preview = load_plugin.get_placeholder_preview(
             dict(LOAD_OPTIONS, product_base_type=None)
