@@ -74,6 +74,36 @@ class _DestinationGroup:
     errors: list[str] = field(default_factory=list)
 
 
+class _SeparatorItemDelegate(QtWidgets.QStyledItemDelegate):
+    """Styled item delegate drawing combobox separators as a thin line."""
+
+    @staticmethod
+    def _is_separator(index: QtCore.QModelIndex) -> bool:
+        return index.data(QtCore.Qt.AccessibleDescriptionRole) == "separator"
+
+    def sizeHint(self, option, index):
+        if self._is_separator(index):
+            return QtCore.QSize(0, 9)
+        return super().sizeHint(option, index)
+
+    def paint(self, painter, option, index):
+        if not self._is_separator(index):
+            super().paint(painter, option, index)
+            return
+        color = option.palette.color(
+            QtGui.QPalette.Disabled, QtGui.QPalette.Text
+        )
+        color.setAlphaF(0.25)
+        painter.save()
+        painter.setPen(color)
+        center_y = option.rect.center().y()
+        painter.drawLine(
+            option.rect.left() + 5, center_y,
+            option.rect.right() - 5, center_y,
+        )
+        painter.restore()
+
+
 class DeliveryOptionsDialog(QtWidgets.QDialog):
     """Dialog to select template where to deliver selected representations."""
 
@@ -134,6 +164,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         # Recipes first, then delivery templates as recipes without overrides
         dropdown = QtWidgets.QComboBox()
+        dropdown.setItemDelegate(_SeparatorItemDelegate(dropdown))
         # All valid delivery templates, recipes may use templates that are
         #   not offered in the dropdown
         self.templates = self._get_templates(self.anatomy)
@@ -154,8 +185,6 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             dropdown.addItem(name, DeliveryRecipe(name, name))
         labels = [recipe.name for recipe in recipes] + visible_template_names
         if labels and platform.system() == "Darwin":
-            # fix macos QCombobox Style
-            dropdown.setItemDelegate(QtWidgets.QStyledItemDelegate())
             # update combo box length to longest entry
             longest_key = max(labels, key=len)
             dropdown.setMinimumContentsLength(len(longest_key))
