@@ -33,7 +33,7 @@ REPRE_ENTITIES = [
 
 LOAD_OPTIONS = {
     "builder_type": "all_folders",
-    "folder_path": "",
+    "folder_path": ".*",
     "product_name": "",
     "product_base_type": "model",
     "representation": "ma",
@@ -267,6 +267,15 @@ class TestLoadPlaceholderPreview:
             ("/assets/bob/modelProxy", "v001 - ma"),
         ]
 
+    def test_preview_all_folders_requires_a_folder_filter(self, load_plugin):
+        preview = load_plugin.get_placeholder_preview(
+            dict(LOAD_OPTIONS, folder_path="")
+        )
+
+        assert preview.items == []
+        assert not preview.is_error
+        assert "folder path filter" in preview.hint
+
     def test_preview_without_product_base_type(self, load_plugin):
         preview = load_plugin.get_placeholder_preview(
             dict(LOAD_OPTIONS, product_base_type=None)
@@ -310,6 +319,12 @@ class TestLoadPlaceholderCompletions:
     def test_no_completions_without_product_base_type(self, load_plugin):
         completions = load_plugin.get_placeholder_completions(
             dict(LOAD_OPTIONS, product_base_type=None)
+        )
+        assert completions == {}
+
+    def test_no_completions_for_unfiltered_all_folders(self, load_plugin):
+        completions = load_plugin.get_load_placeholder_completions(
+            dict(LOAD_OPTIONS, folder_path="")
         )
         assert completions == {}
 

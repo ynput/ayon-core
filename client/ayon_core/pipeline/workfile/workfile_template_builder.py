@@ -2712,6 +2712,19 @@ class PlaceholderLoadMixin(object):
                 ),
             )
 
+        if (
+            placeholder_data.get("builder_type") == "all_folders"
+            and not placeholder_data.get("folder_path")
+        ):
+            return PlaceholderPreview(
+                title="Filter folders for preview",
+                hint=(
+                    "Enter a folder path filter to preview what would be"
+                    " loaded from all folders. Unfiltered all-folders"
+                    " previews can query the whole project."
+                ),
+            )
+
         try:
             result = self._query_load_options(placeholder_data)
         except Exception as exc:
@@ -2808,6 +2821,13 @@ class PlaceholderLoadMixin(object):
             or placeholder_data.get("family")
         )
         if not product_base_type:
+            return output
+
+        if (
+            placeholder_data.get("builder_type") == "all_folders"
+            and not placeholder_data.get("folder_path")
+        ):
+            # Avoid querying the whole project for suggestions.
             return output
 
         try:
