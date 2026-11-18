@@ -276,7 +276,7 @@ class ITrayAddon(AYONInterface):
                     str(callback), exc_info=True)
 
             return
-        self._tray_manager.tray_manager.execute_in_main_thread(callback)
+        self._tray_manager.execute_in_main_thread(callback)
 
     def show_tray_message(
             self,
