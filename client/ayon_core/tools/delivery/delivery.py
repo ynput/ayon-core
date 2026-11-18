@@ -207,29 +207,12 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         root_line_edit = QtWidgets.QLineEdit()
         list_label_line_edit = QtWidgets.QLineEdit()
-
-        # Collapsible "Advanced options" section, hidden by default
-        advanced_toggle = self._create_section_toggle("Advanced options")
-
-        advanced_widget = QtWidgets.QWidget(self)
-        advanced_layout = QtWidgets.QFormLayout(advanced_widget)
-        advanced_layout.setContentsMargins(10, 5, 5, 5)
-        advanced_layout.addRow("Renumber Frame", renumber_frame)
-        advanced_layout.addRow("Renumber start frame", first_frame_start)
-        advanced_layout.addRow("Root", root_line_edit)
-        advanced_layout.addRow("List label", list_label_line_edit)
         # set default value if `list_entity_label` arg is provided
         if list_entity_label:
             list_label_line_edit.setText(list_entity_label)
-        advanced_widget.setVisible(False)
 
-        def _on_advanced_toggled(checked):
-            advanced_widget.setVisible(checked)
-            advanced_toggle.setArrowType(
-                QtCore.Qt.DownArrow if checked else QtCore.Qt.RightArrow
-            )
-
-        advanced_toggle.toggled.connect(_on_advanced_toggled)
+        # Collapsible "Advanced options" section, hidden by default
+        advanced_toggle = self._create_section_toggle("Advanced options")
 
         # Collapsible "Destination paths" section. Paths are computed only
         #   when expanded because it formats a path for every file.
@@ -306,25 +289,51 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         repre_list.itemSelectionChanged.connect(self._invalidate_paths)
         btn_select_all.clicked.connect(repre_list.selectAll)
 
-        repre_widget = QtWidgets.QWidget(self)
-        repre_layout = QtWidgets.QVBoxLayout(repre_widget)
-        repre_layout.setContentsMargins(10, 5, 5, 10)
-        repre_layout.addWidget(btn_select_all)
-        repre_layout.addWidget(repre_list)
-
         selected_label = QtWidgets.QLabel()
 
+        # Grid instead of form layout: form layout defaults differ per
+        #   platform (macOS centers it) and Qt 5 keeps spacing of hidden rows
         input_widget = QtWidgets.QWidget(self)
-        input_layout = QtWidgets.QFormLayout(input_widget)
+        input_layout = QtWidgets.QGridLayout(input_widget)
         input_layout.setContentsMargins(10, 15, 5, 5)
+        input_layout.setColumnStretch(1, 1)
+        for row, (label, widget) in enumerate((
+            ("Selected representations", selected_label),
+            ("Delivery template", dropdown),
+            ("Directory template", template_dir_label),
+            ("File template", template_file_label),
+            ("Representations", btn_select_all),
+            (None, repre_list),
+        )):
+            if label:
+                input_layout.addWidget(
+                    QtWidgets.QLabel(label, input_widget), row, 0
+                )
+            input_layout.addWidget(widget, row, 1)
+        input_layout.addWidget(advanced_toggle, row + 1, 0, 1, 2)
+        # Advanced rows share the label column of the rows above
+        advanced_widgets = []
+        for row, (label, widget) in enumerate((
+            ("Renumber Frame", renumber_frame),
+            ("Renumber start frame", first_frame_start),
+            ("Root", root_line_edit),
+            ("List label", list_label_line_edit),
+        ), row + 2):
+            label_widget = QtWidgets.QLabel(label, input_widget)
+            input_layout.addWidget(label_widget, row, 0)
+            input_layout.addWidget(widget, row, 1)
+            advanced_widgets.extend((label_widget, widget))
+        for widget in advanced_widgets:
+            widget.setVisible(False)
 
-        input_layout.addRow("Selected representations", selected_label)
-        input_layout.addRow("Delivery template", dropdown)
-        input_layout.addRow("Directory template", template_dir_label)
-        input_layout.addRow("File template", template_file_label)
-        input_layout.addRow("Representations", repre_widget)
-        input_layout.addRow(advanced_toggle)
-        input_layout.addRow(advanced_widget)
+        def _on_advanced_toggled(checked):
+            for advanced_widget in advanced_widgets:
+                advanced_widget.setVisible(checked)
+            advanced_toggle.setArrowType(
+                QtCore.Qt.DownArrow if checked else QtCore.Qt.RightArrow
+            )
+
+        advanced_toggle.toggled.connect(_on_advanced_toggled)
 
         btn_delivery = QtWidgets.QPushButton("Deliver")
         btn_delivery.setEnabled(False)
