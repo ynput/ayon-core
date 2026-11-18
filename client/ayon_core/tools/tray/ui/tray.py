@@ -744,6 +744,21 @@ class TrayManager:
         self._publish_report_viewer_window.activateWindow()
 
 
+class _MenuLeftClickOnlyFilter(QtCore.QObject):
+    """Allow to trigger menu actions only with left mouse button.
+
+    QMenu triggers action on release of any mouse button, which means
+    right click on an action in tray menu would trigger it.
+    """
+    def eventFilter(self, obj, event):
+        if (
+            event.type() == QtCore.QEvent.MouseButtonRelease
+            and event.button() != QtCore.Qt.LeftButton
+        ):
+            return True
+        return super().eventFilter(obj, event)
+
+
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     """Tray widget.
 
@@ -811,6 +826,8 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
         self.menu.aboutToHide.connect(self._on_menu_about_to_hide)
+        self.menu.aboutToShow.connect(self._on_menu_about_to_show)
+        self._menu_click_filter = _MenuLeftClickOnlyFilter(self.menu)
 
         # Set addons
         self._tray_manager = TrayManager(self, parent)
@@ -1007,6 +1024,19 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def _on_menu_about_to_hide(self):
         self._menu_hidden_at = time.monotonic()
+
+    def _on_menu_about_to_show(self):
+        # Addons can add submenus at any time, so make sure all of them
+        #   have the filter installed before the menu is shown.
+        #   - installing the same filter again is a no-op
+        menus = [self.menu]
+        while menus:
+            menu = menus.pop()
+            menu.installEventFilter(self._menu_click_filter)
+            for action in menu.actions():
+                submenu = action.menu()
+                if submenu is not None:
+                    menus.append(submenu)
 
     def _click_timer_timeout(self):
         self._show_context_menu()
