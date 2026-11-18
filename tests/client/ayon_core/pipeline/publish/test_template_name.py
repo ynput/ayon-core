@@ -61,10 +61,6 @@ def test_product_base_type(instance: pyblish.api.Instance) -> None:
     instance.data["productBaseType"] = "model"
     assert get_publish_template_name_for_instance(instance) == "default"
 
-    assert get_publish_template_name_for_instance(
-        instance, product_base_type="render"
-    ) == "render"
-
 
 def test_task_from_anatomy_data(instance: pyblish.api.Instance) -> None:
     # Anatomy data are preferred over task entity

@@ -20,27 +20,11 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
     label = "Validate publish dir"
 
     checked_template_names = ["source"]
-    # validate instances might have interim family, needs to be mapped to final
-    product_base_type_mapping = {
-        "renderLayer": "render",
-        "renderLocal": "render"
-    }
 
     def process(self, instance):
 
-        product_base_type = (
-            instance.data.get("productBaseType")
-            or instance.data["productType"]
-        )
-        mapped_product_base_type = (
-            self.product_base_type_mapping.get(product_base_type)
-            or product_base_type
-        )
-
         template_name = get_publish_template_name_for_instance(
-            instance,
-            product_base_type=mapped_product_base_type,
-            logger=self.log,
+            instance, logger=self.log
         )
 
         if template_name not in self.checked_template_names:

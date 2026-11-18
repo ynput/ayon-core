@@ -238,7 +238,6 @@ def get_publish_template_name(
 def get_publish_template_name_for_instance(
     instance: pyblish.api.Instance,
     *,
-    product_base_type: str | None = None,
     hero: bool = False,
     logger: logging.Logger | None = None,
 ) -> str:
@@ -246,9 +245,6 @@ def get_publish_template_name_for_instance(
 
     Args:
         instance (pyblish.api.Instance): Instance to get template name for.
-        product_base_type (str | None): Override of product base type
-            used to find the template. By default, it is taken from the
-            instance data.
         hero (bool): Template is for hero version publishing.
         logger (logging.Logger | None): Custom logger used for
             'filter_profiles' function.
@@ -258,11 +254,10 @@ def get_publish_template_name_for_instance(
 
     """
     context = instance.context
-    if not product_base_type:
-        product_base_type = (
-            instance.data.get("productBaseType")
-            or instance.data["productType"]
-        )
+    product_base_type = (
+        instance.data.get("productBaseType")
+        or instance.data["productType"]
+    )
 
     # Anatomy data is pre-filled by Collectors and is what is used on
     #   integration, task entity is used only if it is not collected yet
