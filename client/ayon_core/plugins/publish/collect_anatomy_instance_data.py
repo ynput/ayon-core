@@ -415,7 +415,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     task_type=task_type,
                     product_base_type=product_base_type,
                     product_name=instance.data["productName"],
-                    project_settings=context.data.get("project_settings"),
+                    project_settings=context.data["project_settings"],
                 )
             anatomy_data["version"] = version_number
 
