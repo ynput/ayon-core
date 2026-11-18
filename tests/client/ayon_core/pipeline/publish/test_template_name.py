@@ -62,9 +62,22 @@ def test_product_base_type(instance: pyblish.api.Instance) -> None:
     assert get_publish_template_name_for_instance(instance) == "default"
 
 
-def test_task_from_anatomy_data(instance: pyblish.api.Instance) -> None:
-    # Anatomy data are preferred over task entity
+def test_task_from_task_entity(instance: pyblish.api.Instance) -> None:
+    # Task entity is preferred over anatomy data
     instance.data["taskEntity"] = {"name": "model", "taskType": "Modeling"}
+    instance.data["anatomyData"] = {
+        "task": {"name": "anim", "type": "Animation", "short": "anim"}
+    }
+    assert get_publish_template_name_for_instance(instance) == "modeling"
+
+    instance.data["taskEntity"] = None
+    instance.data["anatomyData"] = {}
+    assert get_publish_template_name_for_instance(instance) == "default"
+
+
+def test_task_from_anatomy_data(instance: pyblish.api.Instance) -> None:
+    # Editorial task that does not exist yet has only anatomy data
+    instance.data["taskEntity"] = None
     instance.data["anatomyData"] = {
         "task": {"name": "anim", "type": "Animation", "short": "anim"}
     }
@@ -76,12 +89,4 @@ def test_task_from_anatomy_data(instance: pyblish.api.Instance) -> None:
 
     # Task is optional in anatomy data
     instance.data["anatomyData"] = {}
-    assert get_publish_template_name_for_instance(instance) == "default"
-
-
-def test_task_from_task_entity(instance: pyblish.api.Instance) -> None:
-    instance.data["taskEntity"] = {"name": "model", "taskType": "Modeling"}
-    assert get_publish_template_name_for_instance(instance) == "modeling"
-
-    instance.data["taskEntity"] = None
     assert get_publish_template_name_for_instance(instance) == "default"

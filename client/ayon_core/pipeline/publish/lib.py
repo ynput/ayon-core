@@ -259,20 +259,22 @@ def get_publish_template_name_for_instance(
         or instance.data["productType"]
     )
 
-    # Anatomy data is pre-filled by Collectors and is what is used on
-    #   integration, task entity is used only if it is not collected yet
     # Task can be optional
     task_name = task_type = None
-    anatomy_data = instance.data.get("anatomyData")
-    if anatomy_data is not None:
+    task_entity = instance.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+    else:
+        # Editorial publishing ('newHierarchyIntegration') can target tasks
+        #   that do not exist yet. Their entity is created and set on the
+        #   instance by 'ExtractHierarchyToAYON', but collectors and
+        #   validators run before that. Anatomy data already has the task
+        #   name and type from 'hierarchyContext' at that point.
+        anatomy_data = instance.data.get("anatomyData") or {}
         task_info = anatomy_data.get("task") or {}
         task_name = task_info.get("name")
         task_type = task_info.get("type")
-    else:
-        task_entity = instance.data.get("taskEntity")
-        if task_entity:
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
 
     return get_publish_template_name(
         project_name=context.data["projectName"],
