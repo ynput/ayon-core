@@ -24,8 +24,6 @@ if TYPE_CHECKING:
     from ayon_core.pipeline.structures import ListConfig, ListConfigFolder
 
 
-_ENTITY_LIST_FIELDS = {"id", "label", "entityListType", "entityType"}
-
 # TODO: Remove once the minimum required ayon_api version supports the
 #   'filters' argument of 'get_entity_lists'.
 # First ayon_api version that supports 'filters' in 'get_entity_lists'.
@@ -71,7 +69,9 @@ def get_entity_lists_by_labels(
     api_version = semver.VersionInfo.parse(ayon_api.__version__)
     if api_version >= _AYON_API_LIST_FILTERS_VERSION:
         return list(ayon_api.get_entity_lists(
-            project_name, filters=filters, fields=_ENTITY_LIST_FIELDS
+            project_name,
+            filters=filters,
+            fields={"id", "label", "entityListType", "entityType"},
         ))
 
     # TODO: Remove the workaround below once the minimum required ayon_api
