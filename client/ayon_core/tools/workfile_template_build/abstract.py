@@ -36,6 +36,15 @@ class PlaceholderCompletionsError(Exception):
 
 
 @dataclass
+class PlaceholderDynamicData:
+    """Preview and completions calculated together for one editor state."""
+
+    completions: dict[str, list[str]] = field(default_factory=dict)
+    completions_error: Optional[str] = None
+    preview: Optional[PlaceholderPreview] = None
+
+
+@dataclass
 class BuildStep:
     """Step of a template build for a single placeholder.
 
@@ -417,6 +426,24 @@ class AbstractTemplateBuilderController(ABC):
 
         Raises:
             PlaceholderCompletionsError: Suggestions could not be collected.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_placeholder_dynamic_data(
+        self, plugin_identifier: str, placeholder_data: dict[str, Any]
+    ) -> PlaceholderDynamicData:
+        """Collect preview and completions together.
+
+        This is the single call the editor runs in its preview worker.
+
+        Args:
+            plugin_identifier (str): Identifier of placeholder plugin.
+            placeholder_data (dict[str, Any]): Currently filled options.
+
+        Returns:
+            PlaceholderDynamicData: Preview and completion suggestions.
 
         """
         pass

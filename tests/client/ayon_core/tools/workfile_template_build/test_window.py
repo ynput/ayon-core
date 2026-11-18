@@ -1,10 +1,15 @@
 """Tests for the workfile template builder tool window."""
 from __future__ import annotations
 
+import time
+
 import pytest
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.lib import attribute_definitions
+from ayon_core.pipeline.workfile import (
+    workfile_template_builder as wtb,
+)
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     AbstractTemplateBuilder,
     PlaceholderItem,
@@ -19,6 +24,7 @@ from ayon_core.tools.workfile_template_build import (
 )
 from ayon_core.tools.workfile_template_build.abstract import (
     BuildContextItem,
+    PlaceholderDynamicData,
 )
 from ayon_core.tools.workfile_template_build.ui.build_report import (
     BuildReportDialog,
@@ -34,6 +40,32 @@ HINT_PAGE = 0
 EDITOR_PAGE = 1
 
 
+@pytest.fixture(autouse=True)
+def _fake_context_entities(monkeypatch):
+    """Resolve folder/task lookups in controller context validation."""
+
+    def get_folder_by_path(project_name, folder_path):
+        if not folder_path:
+            return None
+        return {
+            "id": "folder-1",
+            "path": folder_path,
+            "name": folder_path.rsplit("/", 1)[-1],
+        }
+
+    def get_task_by_name(project_name, folder_id, task_name):
+        if not task_name:
+            return None
+        return {
+            "id": "task-1",
+            "name": task_name,
+            "taskType": "animation",
+        }
+
+    monkeypatch.setattr(wtb, "get_folder_by_path", get_folder_by_path)
+    monkeypatch.setattr(wtb, "get_task_by_name", get_task_by_name)
+
+
 class _Plugin(PlaceholderPlugin):
     label = "Fake"
     identifier = "fake"
@@ -41,6 +73,7 @@ class _Plugin(PlaceholderPlugin):
 
     # Set by tests to make an action fail
     fail_on = None
+    preview_delay = 0
 
     def __init__(self, builder):
         super().__init__(builder)
@@ -60,6 +93,8 @@ class _Plugin(PlaceholderPlugin):
         return placeholder_item.data.get("name") or "<unnamed>"
 
     def get_placeholder_preview(self, placeholder_data):
+        if self.preview_delay:
+            time.sleep(self.preview_delay)
         return PlaceholderPreview(
             title="Would load 1 representation",
             items=[PlaceholderPreviewItem("/assets/bob", "v001 - ma")],
@@ -164,6 +199,16 @@ def window(qtbot, builder):
 def _name_input(window):
     attrs_widget = window._editor_widget._attrs_widget
     return attrs_widget._widgets_by_key["name"]._input_widget
+
+
+def _wait_for_dynamic_preview(qtbot, editor, timeout=5000):
+    qtbot.waitUntil(
+        lambda: (
+            editor._preview_worker is None
+            and not editor._dynamic_timer.isActive()
+        ),
+        timeout=timeout,
+    )
 
 
 class TestFirstShow:
@@ -296,9 +341,10 @@ class TestEdit:
         window._select_silently("node_1")
         window._show_editor_page("node_1")
 
-    def test_preview_and_completions_are_shown(self, window):
+    def test_preview_and_completions_are_shown(self, window, qtbot):
         editor = window._editor_widget
         editor._on_dynamic_timer()
+        _wait_for_dynamic_preview(qtbot, editor)
 
         preview = editor._preview_widget
         assert preview._title_label.text() == "Would load 1 representation"
@@ -514,6 +560,9 @@ class TestBuild:
         assert status_btn.isVisible()
         assert status_btn.text() == "1 populated"
         assert "[OK]" in status_btn.toolTip()
+        dialog = window._build_report_dialog
+        assert dialog is not None
+        dialog.close()
 
     def test_build_reports_failed_placeholder(self, window, answers):
         window._on_create_request()
@@ -646,11 +695,12 @@ class TestContextBar:
         assert not window._controller.get_build_context().is_override
         assert window._context_bar._reset_btn.isHidden()
 
-    def test_context_change_recalculates_preview(self, window):
+    def test_context_change_recalculates_preview(self, window, qtbot):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
         editor = window._editor_widget
         editor._on_dynamic_timer()
+        _wait_for_dynamic_preview(qtbot, editor)
         assert editor._last_dynamic_values is not None
 
         window._controller.set_build_context("/shots/sh010", None)
@@ -797,7 +847,7 @@ class TestCollectionErrors:
 
 
 class TestCompletionsErrors:
-    def test_completion_error_is_shown_in_preview(self, window):
+    def test_completion_error_is_shown_in_preview(self, window, qtbot):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
         editor = window._editor_widget
@@ -805,6 +855,7 @@ class TestCompletionsErrors:
         _Plugin.fail_on = "completions"
         try:
             editor._on_dynamic_timer()
+            _wait_for_dynamic_preview(qtbot, editor)
         finally:
             _Plugin.fail_on = None
 
@@ -1035,11 +1086,12 @@ class TestListReadability:
 
 
 class TestPreviewCopy:
-    def test_preview_rows_are_selectable_and_copyable(self, window):
+    def test_preview_rows_are_selectable_and_copyable(self, window, qtbot):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
         editor = window._editor_widget
         editor._on_dynamic_timer()
+        _wait_for_dynamic_preview(qtbot, editor)
 
         preview = editor._preview_widget
         assert (
@@ -1063,6 +1115,58 @@ class TestPreviewCopy:
         assert QtWidgets.QApplication.clipboard().text() == (
             "/assets/bob - v001 - ma"
         )
+
+
+class TestAsyncPreview:
+    def test_event_loop_keeps_running_during_query(self, window, qtbot):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        editor = window._editor_widget
+        editor._last_dynamic_values = None
+        _Plugin.preview_delay = 0.3
+        heartbeats = []
+        heartbeat_timer = QtCore.QTimer()
+        heartbeat_timer.timeout.connect(lambda: heartbeats.append(True))
+        heartbeat_timer.start(20)
+        try:
+            editor._on_dynamic_timer()
+            qtbot.wait(100)
+            assert editor._preview_worker is not None
+            assert heartbeats
+            _wait_for_dynamic_preview(qtbot, editor)
+        finally:
+            heartbeat_timer.stop()
+            _Plugin.preview_delay = 0
+
+    def test_stale_result_is_dropped(self, window, qtbot, monkeypatch):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        editor = window._editor_widget
+        calls = []
+
+        def fake_dynamic_data(plugin_identifier, values):
+            name = values.get("name")
+            calls.append(name)
+            time.sleep(0.2 if name == "one" else 0.02)
+            return PlaceholderDynamicData(
+                preview=PlaceholderPreview(title="Preview {}".format(name))
+            )
+
+        monkeypatch.setattr(
+            window._controller,
+            "get_placeholder_dynamic_data",
+            fake_dynamic_data,
+        )
+        editor._last_dynamic_values = None
+        editor._on_dynamic_timer()
+        qtbot.wait(50)
+        _name_input(window).setText("two")
+        editor._on_dynamic_timer()
+        _wait_for_dynamic_preview(qtbot, editor)
+
+        assert editor._preview_widget._title_label.text() == "Preview two"
+        assert "one" in calls
+        assert calls[-1] == "two"
 
 
 class TestKeyboardShortcuts:
@@ -1097,9 +1201,11 @@ class TestBusyState:
         seen = []
 
         def fake_run(progress_callback=None):
-            seen.append(
-                (window._busy, window._context_bar.isEnabled())
-            )
+            seen.append((
+                window._busy,
+                window._context_bar.isEnabled(),
+                window._build_progress_bar.isVisible(),
+            ))
             progress_callback(1, {})
             return ActionResult(success=True)
 
@@ -1110,7 +1216,7 @@ class TestBusyState:
 
         window._on_run_template_build_request()
 
-        assert seen == [(True, False)]
+        assert seen == [(True, False, True)]
         assert not window._busy
         assert window._context_bar.isEnabled()
 

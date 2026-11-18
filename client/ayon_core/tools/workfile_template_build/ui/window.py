@@ -162,10 +162,16 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             icon="description",
         )
         build_status_btn.setVisible(False)
+        build_progress_bar = QtWidgets.QProgressBar(placeholders_panel)
+        build_progress_bar.setRange(0, 0)
+        build_progress_bar.setTextVisible(False)
+        build_progress_bar.setFixedHeight(3)
+        build_progress_bar.setVisible(False)
         placeholders_panel.add_widget(placeholders_widget, stretch=1)
         placeholders_panel.layout().addWidget(
             build_status_btn, 0, QtCore.Qt.AlignLeft
         )
+        placeholders_panel.layout().addWidget(build_progress_bar)
 
         # --- Editor panel ---
         editor_panel = AYContainer(
@@ -256,6 +262,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         self._hint_widget = hint_widget
         self._editor_widget = editor_widget
         self._build_status_btn = build_status_btn
+        self._build_progress_bar = build_progress_bar
 
         self._first_show = True
         self._ignore_selection_change = False
@@ -656,7 +663,9 @@ class WorkfileTemplateBuilderWindow(AYContainer):
             self._editor_widget.stop_dynamic_timer()
             self._build_status_btn.setText(message or "Working...")
             self._build_status_btn.setVisible(True)
+            self._build_progress_bar.setVisible(True)
         else:
+            self._build_progress_bar.setVisible(False)
             text, visible = self._busy_previous_status
             self._build_status_btn.setText(text)
             self._build_status_btn.setVisible(visible)
@@ -777,6 +786,9 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         has_results = bool(self._controller.get_last_build_results())
         if not result.success and not has_results:
             self._show_action_error(result)
+        elif self._controller.get_build_steps():
+            # Always finish a build with its report.
+            self._on_show_build_report()
 
     def _on_open_template_request(self):
         if not self._confirm_discard_changes():
@@ -847,7 +859,9 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if result is None:
             return
         if result.success:
-            self._set_status_text("Template built")
+            self._update_build_status(result)
+            if self._controller.get_build_steps():
+                self._on_show_build_report()
         else:
             self._show_action_error(result)
 
@@ -904,7 +918,8 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if context is None:
             return
         folder_path, task_name = context
-        self._controller.set_build_context(folder_path, task_name)
+        result = self._controller.set_build_context(folder_path, task_name)
+        self._show_action_error(result)
 
     def _on_context_reset_request(self):
         self._controller.set_build_context(None)
@@ -957,8 +972,23 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         )
 
     def _on_show_build_report(self):
+        dialog = getattr(self, "_build_report_dialog", None)
+        if dialog is not None:
+            dialog.show()
+            dialog.raise_()
+            dialog.activateWindow()
+            return
+
         dialog = BuildReportDialog(self._controller, parent=self)
-        dialog.exec_()
+        dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        dialog.destroyed.connect(self._on_build_report_destroyed)
+        self._build_report_dialog = dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+
+    def _on_build_report_destroyed(self):
+        self._build_report_dialog = None
 
     def _on_create_request(self, plugin_identifier: Optional[str] = None):
         if not self._controller.is_builder_available():

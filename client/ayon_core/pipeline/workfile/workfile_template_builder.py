@@ -844,12 +844,17 @@ class AbstractTemplateBuilder(ABC):
         return inner
 
     @overload
-    def build_template(self, preset: TemplatePreset | None) -> None:
+    def build_template(
+        self, preset: TemplatePreset | None
+    ) -> list[PlaceholderItem]:
         """Build the workfile template from a preset.
 
         Args:
             preset (TemplatePreset | None): Template preset to use. To use
                 default implementation use 'preset=None'.
+
+        Returns:
+            list[PlaceholderItem]: Placeholders processed by the build.
 
         """
         pass
@@ -899,12 +904,15 @@ class AbstractTemplateBuilder(ABC):
     def build_template(
         self,
         preset: TemplatePreset | None,
-    ) -> None:
+    ) -> list[PlaceholderItem]:
         """Build the workfile template from a preset.
 
         Args:
             preset (TemplatePreset | None): Template preset to use. To use
                 default implementation use 'preset=None'.
+
+        Returns:
+            list[PlaceholderItem]: Placeholders processed by the build.
 
         """
         if preset is None:
@@ -922,7 +930,7 @@ class AbstractTemplateBuilder(ABC):
 
         self.log.info(f"Building the workfile template: {preset.path}")
         self.import_template(preset.path)
-        self.populate_scene_placeholders(
+        return self.populate_scene_placeholders(
             keep_placeholders=preset.keep_placeholder
         )
 
@@ -1218,16 +1226,19 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholders (bool): Add flag to placeholder data for
                 hosts to decide if they want to remove
                 placeholder after it is used.
+
+        Returns:
+            list[PlaceholderItem]: Placeholders processed by the build.
         """
 
         if not self.placeholder_plugins:
             self.log.warning("There are no placeholder plugins available.")
-            return
+            return []
 
         placeholders = self.get_placeholders()
         if not placeholders:
             self.log.warning("No placeholders were found.")
-            return
+            return []
 
         # Avoid infinite loop
         # - 1000 iterations of placeholders processing must be enough
@@ -1322,6 +1333,7 @@ class AbstractTemplateBuilder(ABC):
         )
 
         self.refresh()
+        return placeholders
 
     def _get_build_profiles(self):
         """Get build profiles for workfile build template path.

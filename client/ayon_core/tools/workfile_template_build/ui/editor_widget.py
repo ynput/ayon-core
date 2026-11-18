@@ -22,7 +22,7 @@ from ayon_core.ui.components.scroll_area import AYScrollArea
 
 from ..abstract import (
     AbstractTemplateBuilderController,
-    PlaceholderCompletionsError,
+    PlaceholderDynamicData,
     PlaceholderItemInfo,
     PlaceholderOptionsError,
     PlaceholderPluginItem,
@@ -35,6 +35,7 @@ from .placeholders_widget import (
     SELECT_ICON,
     get_placeholder_icon,
 )
+from .preview_worker import PreviewWorker, create_preview_worker
 from .utils import (
     INPUT_COLOR,
     PANEL_COLOR,
@@ -692,6 +693,14 @@ class PlaceholderEditorWidget(AYContainer):
         self._had_unsaved_changes = False
         self._options_source_data: Optional[dict[str, Any]] = None
 
+        # Preview/completions run in a worker; generation drops stale
+        #   results when the options change again while a query is running.
+        self._preview_generation = 0
+        self._preview_worker: Optional[PreviewWorker] = None
+        self._pending_dynamic_request = None
+        self._last_good_preview: Optional[PlaceholderPreview] = None
+        self._preview_thread_pool = QtCore.QThreadPool.globalInstance()
+
     # --- Public API ---------------------------------------------------
     def set_create_mode(self, plugin_item: PlaceholderPluginItem) -> None:
         """Show options of a placeholder that is not created yet.
@@ -775,8 +784,9 @@ class PlaceholderEditorWidget(AYContainer):
         self._request_dynamic_update()
 
     def stop_dynamic_timer(self) -> None:
-        """Stop a pending preview/completions calculation."""
+        """Stop pending and in-flight preview/completions calculations."""
         self._dynamic_timer.stop()
+        self._invalidate_dynamic_request()
 
     def is_create_mode(self) -> bool:
         """The editor shows a placeholder that is not created yet."""
@@ -920,7 +930,9 @@ class PlaceholderEditorWidget(AYContainer):
 
         self._preview_widget.set_preview(None)
         self._last_dynamic_values = None
+        self._last_good_preview = None
         self._dynamic_timer.stop()
+        self._invalidate_dynamic_request()
 
         try:
             attr_defs = self._controller.get_placeholder_options(
@@ -997,7 +1009,13 @@ class PlaceholderEditorWidget(AYContainer):
         self._confirm_btn.setEnabled(has_changes)
         self._cancel_btn.setEnabled(has_changes)
 
+    def _invalidate_dynamic_request(self) -> None:
+        """Drop in-flight and queued preview results."""
+        self._preview_generation += 1
+        self._pending_dynamic_request = None
+
     def _request_dynamic_update(self) -> None:
+        self._invalidate_dynamic_request()
         self._dynamic_timer.start()
 
     def _on_value_change(self, value=None, attr_id=None) -> None:
@@ -1014,49 +1032,83 @@ class PlaceholderEditorWidget(AYContainer):
         self._last_dynamic_values = copy.deepcopy(values)
 
         self._preview_widget.set_calculating()
-        # Let the user see that the preview is being calculated before the
-        #   blocking server queries start.
-        self._preview_widget.repaint()
-        app = QtWidgets.QApplication.instance()
-        if app is not None:
-            app.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
-        try:
-            completions_error = None
-            try:
-                completions = self._controller.get_placeholder_completions(
-                    self._plugin_identifier, values
-                )
-            except PlaceholderCompletionsError as exc:
-                completions = {}
-                completions_error = str(exc)
-
-            if self._attrs_widget is not None:
-                self._attrs_widget.set_completions(completions or {})
-
-            preview = self._controller.get_placeholder_preview(
-                self._plugin_identifier, values
+        if self._preview_worker is not None:
+            # Keep only the newest request; starting it when the active
+            #   query finishes avoids piling up slow server queries.
+            self._pending_dynamic_request = (
+                self._preview_generation,
+                self._plugin_identifier,
+                copy.deepcopy(values),
             )
-        finally:
-            if app is not None:
-                app.restoreOverrideCursor()
+            return
 
-        if completions_error is not None:
+        self._start_dynamic_worker(
+            self._preview_generation, self._plugin_identifier, values
+        )
+
+    def _start_dynamic_worker(
+        self,
+        generation: int,
+        plugin_identifier: str,
+        values: dict[str, Any],
+    ) -> None:
+        worker = create_preview_worker(
+            self._controller, plugin_identifier, values, generation
+        )
+        worker.signals.finished.connect(self._on_dynamic_data)
+        self._preview_worker = worker
+        self._preview_thread_pool.start(worker)
+
+    def _on_dynamic_data(self, generation: int, data) -> None:
+        self._preview_worker = None
+
+        if generation == self._preview_generation:
+            self._apply_dynamic_data(data)
+
+        pending = self._pending_dynamic_request
+        self._pending_dynamic_request = None
+        if pending is not None:
+            pending_generation, plugin_identifier, values = pending
+            self._start_dynamic_worker(
+                pending_generation, plugin_identifier, values
+            )
+
+    def _apply_dynamic_data(self, data: PlaceholderDynamicData) -> None:
+        if data is None:
+            return
+
+        if self._attrs_widget is not None:
+            self._attrs_widget.set_completions(data.completions or {})
+
+        preview = data.preview
+        if data.completions_error is not None:
             # The preview is still useful; show it with a warning instead of
             #   hiding the completion failure.
             if preview is None:
+                preview = copy.deepcopy(self._last_good_preview)
+            if preview is None:
                 preview = PlaceholderPreview(
                     title="Preview unavailable",
-                    hint=completions_error,
+                    hint=data.completions_error,
                     is_error=True,
                 )
             else:
                 hint = preview.hint
                 preview.hint = (
-                    "{}\n\n{}".format(hint, completions_error)
-                    if hint else completions_error
+                    "{}\n\n{}".format(hint, data.completions_error)
+                    if hint else data.completions_error
                 )
                 preview.is_error = True
-        self._preview_widget.set_preview(preview)
+
+        if preview is None:
+            # Keep the last good preview instead of hiding the panel.
+            preview = copy.deepcopy(self._last_good_preview)
+        if preview is not None:
+            if not preview.is_error:
+                self._last_good_preview = copy.deepcopy(preview)
+            self._preview_widget.set_preview(preview)
+        else:
+            self._preview_widget.set_preview(None)
 
     def _on_confirm_click(self) -> None:
         if self._attrs_widget is None or self._plugin_identifier is None:

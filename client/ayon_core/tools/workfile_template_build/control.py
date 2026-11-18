@@ -37,6 +37,7 @@ from .abstract import (
     BuildContextItem,
     BuildStep,
     PlaceholderCompletionsError,
+    PlaceholderDynamicData,
     PlaceholderItemInfo,
     PlaceholderOptionsError,
     PlaceholderPluginItem,
@@ -236,11 +237,61 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self,
         folder_path: Optional[str] = None,
         task_name: Optional[str] = None,
-    ) -> None:
+    ) -> ActionResult:
+        """Use a different context for previews and test builds.
+
+        The folder and task are validated against the project before the
+        override is applied, so a deleted/invalid context is rejected instead
+        of silently breaking every preview.
+
+        Returns:
+            ActionResult: Whether the context was accepted.
+
+        """
         if self._builder is None:
-            return
+            return ActionResult(
+                success=False,
+                error_title="Template builder is not available.",
+            )
+
+        previous_override = self._builder.get_context_override()
         self._builder.set_context_override(folder_path, task_name)
+
+        if folder_path:
+            validation_error = None
+            try:
+                folder_entity = self._builder.current_folder_entity
+                if not folder_entity:
+                    validation_error = (
+                        "Folder '{}' was not found in the current project."
+                        .format(folder_path)
+                    )
+                elif task_name:
+                    task_entity = self._builder.current_task_entity
+                    if not task_entity:
+                        validation_error = (
+                            "Task '{}' was not found in folder '{}'."
+                            .format(task_name, folder_path)
+                        )
+            except Exception:
+                validation_error = traceback.format_exc()
+
+            if validation_error is not None:
+                if previous_override is None:
+                    self._builder.set_context_override(None)
+                else:
+                    self._builder.set_context_override(*previous_override)
+                self._log.warning(
+                    "Invalid preview context: %s", validation_error
+                )
+                return ActionResult(
+                    success=False,
+                    error_title="Invalid preview context",
+                    error_detail=validation_error,
+                )
+
         self.emit_event(BUILD_CONTEXT_CHANGED_TOPIC)
+        return ActionResult(success=True)
 
     def reset(self) -> None:
         self._invalidate_placeholders()
@@ -342,6 +393,37 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                 "Failed to collect completion suggestions of placeholder"
                 " plugin '{}': {}".format(plugin_identifier, exc)
             ) from exc
+
+    def get_placeholder_dynamic_data(
+        self, plugin_identifier: str, placeholder_data: dict[str, Any]
+    ) -> PlaceholderDynamicData:
+        """Collect preview and completions in one background-safe call.
+
+        Args:
+            plugin_identifier (str): Placeholder plugin identifier.
+            placeholder_data (dict[str, Any]): Current option values.
+
+        Returns:
+            PlaceholderDynamicData: Preview and completion suggestions.
+
+        """
+        completions = {}
+        completions_error = None
+        try:
+            completions = self.get_placeholder_completions(
+                plugin_identifier, placeholder_data
+            )
+        except PlaceholderCompletionsError as exc:
+            completions_error = str(exc)
+
+        preview = self.get_placeholder_preview(
+            plugin_identifier, placeholder_data
+        )
+        return PlaceholderDynamicData(
+            completions=completions,
+            completions_error=completions_error,
+            preview=preview,
+        )
 
     # --- Actions ------------------------------------------------------
     def create_placeholder(
@@ -616,9 +698,13 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             return result
 
         error = None
+        self._build_steps = []
         self._progress_callback = progress_callback
+        processed_placeholders = None
         try:
-            self._builder.build_template(preset=preset)
+            processed_placeholders = self._builder.build_template(
+                preset=preset
+            )
         except Exception:
             error = self._action_failed(
                 "Failed to build from the template"
@@ -629,6 +715,13 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             #   data even when it fails.
             self._invalidate_placeholders()
             self._bind_builder_events()
+
+        if processed_placeholders:
+            self._build_steps = [
+                self._create_build_from_template_step(placeholder)
+                for placeholder in processed_placeholders
+            ]
+            self._store_build_history()
 
         self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
         if error is not None:
@@ -720,6 +813,30 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                 placeholder.scene_identifier, 0.0
             ),
             error=error,
+        )
+
+    def _create_build_from_template_step(self, placeholder) -> BuildStep:
+        """Create a step for a placeholder processed by Build from template.
+
+        A template build processes every placeholder regardless of whether it
+        could be re-run in the current scene, so only success/failure applies.
+        """
+        try:
+            label = placeholder.plugin.get_placeholder_label(placeholder)
+        except Exception:
+            label = placeholder.scene_identifier
+
+        errors = placeholder.get_errors()
+        status = "failed" if errors else "succeeded"
+        return BuildStep(
+            scene_identifier=placeholder.scene_identifier,
+            label=label or placeholder.scene_identifier,
+            order=placeholder.order,
+            status=status,
+            duration=self._build_durations.get(
+                placeholder.scene_identifier, 0.0
+            ),
+            error="\n".join(errors),
         )
 
     def _store_build_history(self) -> None:

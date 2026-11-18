@@ -2,6 +2,9 @@
 import pytest
 
 from ayon_core.lib import attribute_definitions
+from ayon_core.pipeline.workfile import (
+    workfile_template_builder as wtb,
+)
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     AbstractTemplateBuilder,
     PlaceholderItem,
@@ -23,6 +26,32 @@ from ayon_core.tools.workfile_template_build.control import (
     MAX_BUILD_HISTORY,
     WorkfileTemplateBuilderController,
 )
+
+
+@pytest.fixture(autouse=True)
+def _fake_context_entities(monkeypatch):
+    """Resolve folder/task lookups in controller context validation."""
+
+    def get_folder_by_path(project_name, folder_path):
+        if not folder_path:
+            return None
+        return {
+            "id": "folder-1",
+            "path": folder_path,
+            "name": folder_path.rsplit("/", 1)[-1],
+        }
+
+    def get_task_by_name(project_name, folder_id, task_name):
+        if not task_name:
+            return None
+        return {
+            "id": "task-1",
+            "name": task_name,
+            "taskType": "animation",
+        }
+
+    monkeypatch.setattr(wtb, "get_folder_by_path", get_folder_by_path)
+    monkeypatch.setattr(wtb, "get_task_by_name", get_task_by_name)
 
 
 class _FakeScene:
@@ -102,6 +131,8 @@ class _Plugin(PlaceholderPlugin):
         ]
 
     def populate_placeholder(self, placeholder):
+        if self.fail_on == "populate":
+            raise RuntimeError("populate boom")
         self.scene.populated.append(placeholder.scene_identifier)
 
     def delete_placeholder(self, placeholder_item):
@@ -516,6 +547,34 @@ class TestTemplateFile:
         assert result.success
         assert imported == [template_path]
         assert len(controller.get_placeholder_items()) == 1
+        steps = controller.get_build_steps()
+        assert len(steps) == 1
+        assert steps[0].status == "succeeded"
+        assert steps[0].label == "from_template"
+
+    def test_build_from_template_reports_failed_steps(
+        self, controller, monkeypatch, template_path
+    ):
+        self._set_preset(controller, monkeypatch, TemplatePreset(
+            path=template_path, profile={"path": "x"}
+        ))
+
+        def import_template(path):
+            controller._builder.scene.add({"name": "from_template"})
+
+        monkeypatch.setattr(
+            controller._builder, "import_template", import_template
+        )
+        _Plugin.fail_on = "populate"
+        try:
+            controller.build_template()
+        finally:
+            _Plugin.fail_on = None
+
+        steps = controller.get_build_steps()
+        assert len(steps) == 1
+        assert steps[0].status == "failed"
+        assert "populate boom" in steps[0].error
 
     def test_build_failure_is_reported(
         self, controller, monkeypatch, template_path
@@ -593,6 +652,29 @@ class TestPlaceholderData:
             "name": ["one", "two"]
         }
 
+    def test_dynamic_data_combines_preview_and_completions(
+        self, controller
+    ):
+        data = controller.get_placeholder_dynamic_data(
+            "fake", {"name": "one"}
+        )
+
+        assert data.preview.title == "Preview of one"
+        assert data.completions == {"name": ["one", "two"]}
+        assert data.completions_error is None
+
+    def test_dynamic_data_reports_completion_error(self, controller):
+        _Plugin.fail_on = "completions"
+        try:
+            data = controller.get_placeholder_dynamic_data(
+                "fake", {"name": "one"}
+            )
+        finally:
+            _Plugin.fail_on = None
+
+        assert data.preview.title == "Preview of one"
+        assert "completions boom" in data.completions_error
+
 
 class TestReset:
     def test_reset_refreshes_the_builder(self, controller):
@@ -666,6 +748,34 @@ class TestBuildContext:
         context_item = controller.get_build_context()
         assert not context_item.is_override
         assert context_item.folder_path == "/assets/bob"
+
+    def test_invalid_folder_is_rejected(self, controller, monkeypatch):
+        monkeypatch.setattr(
+            wtb, "get_folder_by_path", lambda *args: None
+        )
+
+        result = controller.set_build_context("/missing", "animation")
+
+        assert not result.success
+        assert "not found" in result.error_detail
+        assert controller._builder.get_context_override() is None
+
+    def test_invalid_task_restores_previous_context(
+        self, controller, monkeypatch
+    ):
+        controller.set_build_context("/shots/sh010", "animation")
+        monkeypatch.setattr(
+            wtb, "get_task_by_name", lambda *args: None
+        )
+
+        result = controller.set_build_context("/shots/sh020", "missing")
+
+        assert not result.success
+        assert "not found" in result.error_detail
+        assert controller._builder.get_context_override() == (
+            "/shots/sh010",
+            "animation",
+        )
 
     def test_context_item_serialization(self):
         context_item = BuildContextItem("/shots/sh010", None, True)
