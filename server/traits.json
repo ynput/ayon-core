@@ -502,6 +502,56 @@
       "deprecated": false,
       "behaviorChanges": []
     },
+    "ayon.content.FileLocation.v1": {
+      "definition": {
+        "id": "ayon.content.FileLocation.v1",
+        "versionlessId": "ayon.content.FileLocation",
+        "version": 1,
+        "name": "FileLocation",
+        "description": "FileLocation Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "FileLocation",
+          "description": "FileLocation trait model.",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "format": "path",
+              "description": "File path."
+            },
+            "file_size": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "File size in bytes."
+            },
+            "file_hash": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "File hash."
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:4aa3d36ebe8295ae5f21e25401bfd4d1b5e7a6cbd1bb9ccdf0c12f33ca0d50ac",
+        "behavior": "sha256:8d3d347623df87a6ce7b4dc7f4cd452adf4e00b45fe97629933ea1abb305c61b",
+        "meta": "sha256:4a3cad7bb085f098bdf005631d48feada6950ebd82435af0178960800763c2dc"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": true,
+      "behaviorChanges": []
+    },
     "ayon.content.FileLocation.v2": {
       "definition": {
         "id": "ayon.content.FileLocation.v2",
@@ -558,6 +608,75 @@
       },
       "introducedIn": "1.10.0+dev",
       "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.content.FileLocations.v1": {
+      "definition": {
+        "id": "ayon.content.FileLocations.v1",
+        "versionlessId": "ayon.content.FileLocations",
+        "version": 1,
+        "name": "FileLocations",
+        "description": "FileLocations Trait Model",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "FileLocations",
+          "description": "FileLocations trait model.",
+          "properties": {
+            "file_paths": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ayon.content.FileLocation.v1"
+              },
+              "description": "File locations."
+            }
+          },
+          "required": [
+            "file_paths"
+          ],
+          "$defs": {
+            "ayon.content.FileLocation.v1": {
+              "type": "object",
+              "title": "FileLocation",
+              "description": "FileLocation trait model.",
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "format": "path",
+                  "description": "File path."
+                },
+                "file_size": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "default": null,
+                  "description": "File size in bytes."
+                },
+                "file_hash": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "default": null,
+                  "description": "File hash."
+                }
+              },
+              "required": [
+                "file_path"
+              ]
+            }
+          }
+        }
+      },
+      "hashes": {
+        "schema": "sha256:6d7e6796daacedeb0c91a482bedcd52cade51482a6496ba299f01c310d969884",
+        "behavior": "sha256:7a971b61ea2ee5b0a0e4655b89689ec2fd01c74250d3e906cd415b35e4b3637e",
+        "meta": "sha256:5abe188f3e7477a7dcc8fa755ab1a07ec09d0539563e63bd21e5a6449c71798a"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": true,
       "behaviorChanges": []
     },
     "ayon.content.FileLocations.v2": {
@@ -1317,6 +1436,73 @@
       },
       "introducedIn": "1.10.0+dev",
       "deprecated": false,
+      "behaviorChanges": []
+    },
+    "ayon.time.FrameRanged.v1": {
+      "definition": {
+        "id": "ayon.time.FrameRanged.v1",
+        "versionlessId": "ayon.time.FrameRanged",
+        "version": 1,
+        "name": "FrameRanged",
+        "description": "Frame Ranged Trait",
+        "persistent": true,
+        "schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "title": "FrameRanged",
+          "description": "Frame ranged trait model.",
+          "properties": {
+            "frame_start": {
+              "type": "integer",
+              "description": "Frame start."
+            },
+            "frame_end": {
+              "type": "integer",
+              "description": "Frame end."
+            },
+            "frame_in": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame in."
+            },
+            "frame_out": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Frame out."
+            },
+            "frames_per_second": {
+              "type": "string",
+              "default": null,
+              "description": "Frames per second."
+            },
+            "step": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "default": null,
+              "description": "Step."
+            }
+          },
+          "required": [
+            "frame_start",
+            "frame_end"
+          ]
+        }
+      },
+      "hashes": {
+        "schema": "sha256:a61821f2fef4e824ba64a111594fbbbc8375490c042a6b2732e89cf4227fe5e3",
+        "behavior": "sha256:aa58132be742b0fb0bc32d53f6d56e95c304af362f89857b6b874efea294c40c",
+        "meta": "sha256:9918fb062721916b8607832675eaad014df4d73bbcb31901676dc71179ea2ba9"
+      },
+      "introducedIn": "1.10.0+dev",
+      "deprecated": true,
       "behaviorChanges": []
     },
     "ayon.time.FrameRanged.v2": {

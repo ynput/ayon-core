@@ -323,6 +323,60 @@ def deliver(
         log.warning("Failed to deliver versions.", exc_info=True)
 
 
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+@click.option(
+    "--event_id",
+    type=str,
+    help="Id of the event carrying the version ids",
+    default=None)
+@click.option(
+    "--version_ids",
+    type=str,
+    help="Comma separated version ids",
+    default=None)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Only report what would be upgraded.")
+def upgrade_representation_traits(
+    project, event_id, version_ids, dry_run
+):
+    """Upgrade traits of representations to the latest trait versions.
+
+    Traits stored with representations keep the version of the trait
+    used on publishing. This rewrites them to the latest trait versions.
+    Representations of all versions of the project are upgraded if
+    version ids are not passed ('--version_ids' or '--event_id').
+
+    Args:
+        project (str): The name of the project.
+        event_id (str): Id of the event carrying the version ids.
+        version_ids (str): Comma separated version ids.
+        dry_run (bool): Only report what would be upgraded.
+
+    """
+    from ayon_core.pipeline.traits.migration import (
+        upgrade_representation_traits as _upgrade,
+    )
+
+    log = Logger.get_logger("upgrade_representation_traits")
+    if event_id:
+        event = ayon_api.get_event(event_id)
+        version_ids = event["payload"].get("version_ids")
+        if not version_ids:
+            raise click.ClickException("No version_ids in event payload.")
+    elif version_ids:
+        version_ids = version_ids.split(",")
+
+    report = _upgrade(project, version_ids=version_ids, dry_run=dry_run)
+    log.info(report.summary())
+
+
 def _set_global_environments() -> None:
     """Set global AYON environments."""
     # First resolve general environment

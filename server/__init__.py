@@ -92,6 +92,37 @@ class CoreAddon(BaseServerAddon):
                     allow_multiselection=False,
                 )
             )
+            # Rewrite traits stored with representations to the latest
+            #   trait versions. Upgrade code is part of the client, so
+            #   it runs in the launcher.
+            output.append(
+                SimpleActionManifest(
+                    identifier="core.traits.upgrade.project",
+                    label="Upgrade representation traits (launcher action)",
+                    icon={
+                        "type": "material-symbols",
+                        "name": "upgrade",
+                    },
+                    order=110,
+                    entity_type="project",
+                    entity_subtypes=None,
+                    allow_multiselection=False,
+                )
+            )
+            output.append(
+                SimpleActionManifest(
+                    identifier="core.traits.upgrade.version",
+                    label="Upgrade representation traits (launcher action)",
+                    icon={
+                        "type": "material-symbols",
+                        "name": "upgrade",
+                    },
+                    order=110,
+                    entity_type="version",
+                    entity_subtypes=None,
+                    allow_multiselection=True,
+                )
+            )
 
         return output
 
@@ -165,6 +196,36 @@ class CoreAddon(BaseServerAddon):
                 "--event_id", event_id,
             ]
 
+            return await executor.get_launcher_response(args)
+
+        if executor.identifier == "core.traits.upgrade.project":
+            if not project_name:
+                return await executor.get_server_action_response(
+                    message="Missing project name.",
+                    success=False
+                )
+            args = ["upgrade-representation-traits", "--project", project_name]
+            return await executor.get_launcher_response(args)
+
+        if executor.identifier == "core.traits.upgrade.version":
+            version_ids = list(executor.context.entity_ids or [])
+            if not version_ids:
+                return await executor.get_server_action_response(
+                    message="No versions selected.",
+                    success=False
+                )
+            # Version ids are passed in an event, there can be too many
+            #   for command line arguments
+            event_id = await dispatch_event(
+                topic="core.traits.upgrade.requested",
+                project=project_name,
+                payload={"version_ids": version_ids},
+                finished=True,
+            )
+            args = [
+                "upgrade-representation-traits", "--project", project_name,
+                "--event_id", event_id,
+            ]
             return await executor.get_launcher_response(args)
 
         logger.debug(f"Unknown action: {executor.identifier}")

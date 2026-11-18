@@ -185,10 +185,30 @@ def test_removed_trait_is_kept() -> None:
     assert entry["deprecated"] is True
     assert entry["hashes"] == released["traits"][SAMPLE_ID]["hashes"]
 
-    # Unreleased trait can be removed
-    manifest, _ = update_manifest(
-        [SampleV2], "test", "2.0.0", current=released, released={})
+    # Unreleased trait without a newer version can be removed
+    manifest, report = update_manifest(
+        [], "test", "2.0.0", current=released, released={})
+    assert not report.errors
     assert SAMPLE_ID not in manifest["traits"]
+
+
+def test_unreleased_older_version_is_kept() -> None:
+    """Test older version is kept when superseded before a release."""
+    current = _release([Sample])
+    manifest, report = update_manifest(
+        [SampleV2], "test", "1.1.0", current=current, released={})
+    assert not report.errors
+    assert len(report.warnings) == 1
+    entry = manifest["traits"][SAMPLE_ID]
+    assert entry["deprecated"] is True
+    assert entry["hashes"] == current["traits"][SAMPLE_ID]["hashes"]
+    assert manifest["traits"][SampleV2.id]["deprecated"] is False
+
+    # Following exports keep it
+    again, report = update_manifest(
+        [SampleV2], "test", "1.1.0", current=manifest, released={})
+    assert not report.errors
+    assert again == manifest
 
 
 def test_hand_edited_manifest() -> None:

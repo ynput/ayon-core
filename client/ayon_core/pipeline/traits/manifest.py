@@ -15,8 +15,11 @@ compared with the released manifest (the one on the base branch):
     * ``meta`` change (descriptions, UI hints) is allowed with
       a warning.
 
-Entries are never removed. An entry is marked as deprecated if a newer
-version of the trait exists or its class was removed.
+Released entries are never removed. Older versions of a trait are kept
+even if they were not released, published data may still use them (stored
+data are upgraded on load by ``upgrade()`` of the newer version). An entry
+is marked as deprecated if a newer version of the trait exists or its class
+was removed.
 
 Usage::
 
@@ -88,6 +91,22 @@ def _get_hashes(entry: Optional[dict[str, Any]]) -> dict[str, Any]:
 def _get_version(entry: dict[str, Any]) -> int:
     version = (entry.get("definition") or {}).get("version")
     return version if isinstance(version, int) else 0
+
+
+def _get_versionless_id(entry: dict[str, Any]) -> str:
+    return str((entry.get("definition") or {}).get("versionlessId"))
+
+
+def _get_latest_versions(
+        entries: Iterable[dict[str, Any]]) -> dict[str, int]:
+    """Latest version of each trait by versionless id."""
+    latest_versions: dict[str, int] = {}
+    for entry in entries:
+        versionless_id = _get_versionless_id(entry)
+        version = _get_version(entry)
+        if version > latest_versions.get(versionless_id, -1):
+            latest_versions[versionless_id] = version
+    return latest_versions
 
 
 def _update_released_entry(  # noqa: PLR0913, PLR0917
@@ -264,17 +283,26 @@ def update_manifest(  # noqa: C901, PLR0913
         entries[trait_id] = copy.deepcopy(entry)
         removed.add(trait_id)
 
-    latest_versions: dict[str, int] = {}
-    for entry in entries.values():
-        versionless_id = str((entry.get("definition") or {}).get(
-            "versionlessId"))
-        version = _get_version(entry)
-        if version > latest_versions.get(versionless_id, -1):
-            latest_versions[versionless_id] = version
+    latest_versions = _get_latest_versions(entries.values())
+
+    # Older versions of a trait are kept even if they were not released
+    #   yet, data published by development builds may still use them.
+    #   Unreleased traits without a newer version are removed.
+    for trait_id, entry in current_entries.items():
+        if trait_id in entries:
+            continue
+        versionless_id = _get_versionless_id(entry)
+        if _get_version(entry) >= latest_versions.get(versionless_id, -1):
+            continue
+        report.warnings.append(
+            f"{trait_id}: trait class not found, older version of"
+            " the trait is kept as deprecated."
+        )
+        entries[trait_id] = copy.deepcopy(entry)
+        removed.add(trait_id)
 
     for trait_id, entry in entries.items():
-        versionless_id = str((entry.get("definition") or {}).get(
-            "versionlessId"))
+        versionless_id = _get_versionless_id(entry)
         entry["deprecated"] = (
             trait_id in removed
             or _get_version(entry) < latest_versions[versionless_id]
