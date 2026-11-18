@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.ui.components import (
     AYButton,
@@ -16,6 +16,7 @@ from ayon_core.ui.components import (
     AYHBoxLayout,
     AYGridLayout,
 )
+from ayon_core.ui.style_types import get_ayon_style
 
 
 class SaveAsDialog(QtWidgets.QDialog):
@@ -168,6 +169,34 @@ class SaveAsDialog(QtWidgets.QDialog):
         preview_label = AYLabel("Preview:", parent=surface)
         description_label = AYLabel("Artist Note:", parent=surface)
 
+        # Hint shown when the save switches the context of the host. The
+        # message is intentionally short and constant so it is not elided;
+        # the tooltip shows the context the workfile is saved to.
+        # NOTE: The labels must not be wrapped in a plain QWidget here. Hosts
+        #   which still apply ayon_core.style.load_stylesheet() paint every
+        #   plain QWidget with the darker 'bg' color, which shows up as a
+        #   band behind the hint. Use a layout only.
+        hint_color = get_ayon_style().model.palette().get(
+            "--md-sys-color-warning-dark", ""
+        )
+        context_hint_layout = AYHBoxLayout(margin=0, spacing=4)
+        context_hint_label = AYLabel(
+            parent=surface,
+            text_color=hint_color,
+            elide_mode=QtCore.Qt.ElideRight,
+            flexible=True,
+        )
+        context_hint_info = AYLabel(
+            parent=surface,
+            icon="info",
+            icon_size=16,
+            icon_color=hint_color,
+        )
+        context_hint_layout.addWidget(context_hint_label, 1)
+        context_hint_layout.addWidget(context_hint_info, 0)
+        context_hint_label.setVisible(False)
+        context_hint_info.setVisible(False)
+
         # Btns widget
         btn_ok = AYButton(
             "Save",
@@ -196,6 +225,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(description_frame, 5, 0, 1, 2)
 
         surface.add_layout(inputs_layout, 0)
+        surface.add_layout(context_hint_layout, 0)
         surface.add_layout(btns_layout, 0)
 
         main_layout = AYVBoxLayout(self, margin=0, spacing=0)
@@ -237,6 +267,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_label = extension_label
         self._preview_label = preview_label
         self._description_label = description_label
+        self._context_hint_label = context_hint_label
+        self._context_hint_info = context_hint_info
 
         # Post init setup
 
@@ -264,6 +296,16 @@ class SaveAsDialog(QtWidgets.QDialog):
             folder_id = folder_id or selected_context["folder_id"]
             task_id = task_id or selected_context["task_id"]
         data = self._controller.get_workarea_save_as_data(folder_id, task_id)
+        if data["workdir"] is None:
+            # The context could not be resolved, e.g. because the folder or
+            # task entity is empty. Do not allow saving and show no hint.
+            self._folder_id = folder_id
+            self._task_id = task_id
+            self._btn_ok.setEnabled(False)
+            self._preview_widget.set_text_color("red")
+            self._preview_widget.setText("Context is not available.")
+            self._update_context_hint(data)
+            return
         last_version = data["last_version"]
         comment = data["comment"]
         if self._input_comment is not None:
@@ -326,6 +368,41 @@ class SaveAsDialog(QtWidgets.QDialog):
             self._subversion_input.setText(comment or "")
             self._set_subversion_items(comment_hints)
         self._update_filename()
+        self._update_context_hint(data)
+
+    def _update_context_hint(self, data):
+        """Show a hint when saving switches the context of the host."""
+        folder_path = data["folder_path"]
+        task_name = data["task_name"]
+        if not folder_path or not task_name:
+            self._set_context_hint_visible(False)
+            return
+
+        current_folder_id = self._controller.get_current_folder_id()
+        current_task_name = self._controller.get_current_task_name()
+        folder_changed = self._folder_id != current_folder_id
+        task_changed = task_name != current_task_name
+        if not folder_changed and not task_changed:
+            self._set_context_hint_visible(False)
+            return
+
+        if folder_changed and task_changed:
+            text = "Your context will switch to another folder and task"
+        elif folder_changed:
+            text = "Your context will switch to another folder"
+        else:
+            text = "Your context will switch to another task"
+
+        tooltip = f"Will switch to: {folder_path} > {task_name}"
+        self._context_hint_label.setText(text)
+        self._context_hint_label.setToolTip(tooltip)
+        self._context_hint_info.setToolTip(tooltip)
+        self._set_context_hint_visible(True)
+
+    def _set_context_hint_visible(self, visible):
+        """Show or hide the context switch hint labels."""
+        self._context_hint_label.setVisible(visible)
+        self._context_hint_info.setVisible(visible)
 
     def _on_version_spinbox_change(self, value):
         if value == self._version_value:
