@@ -259,22 +259,22 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
 
         if folder_path:
             validation_error = None
-            try:
-                folder_entity = self._builder.current_folder_entity
-                if not folder_entity:
-                    validation_error = (
-                        "Folder '{}' was not found in the current project."
-                        .format(folder_path)
+            task_entity = self._builder.current_task_entity
+            if not task_name or not task_entity:
+                validation_error = (
+                    "Task '{}' was not found in folder '{}'."
+                    .format(task_name, folder_path)
                     )
-                elif task_name:
-                    task_entity = self._builder.current_task_entity
-                    if not task_entity:
-                        validation_error = (
-                            "Task '{}' was not found in folder '{}'."
-                            .format(task_name, folder_path)
-                        )
-            except Exception:
-                validation_error = traceback.format_exc()
+            folder_entity = self._builder.current_folder_entity
+            if not folder_entity:
+                validation_error = (
+                    "Folder '{}' was not found in the current project."
+                    .format(folder_path)
+                )
+            if folder_entity and (not task_name or not task_entity):
+                validation_error = (
+                    "Task name must be specified when folder exists."
+                )
 
             if validation_error is not None:
                 if previous_override is None:
