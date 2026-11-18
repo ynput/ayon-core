@@ -182,6 +182,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         pages_widget = QtWidgets.QStackedWidget(editor_panel)
         pages_widget.setObjectName(PAGES_OBJECT_NAME)
         hint_widget = PlaceholderGuideWidget(pages_widget)
+        hint_widget.set_add_target(placeholders_widget._create_btn)
         editor_widget = PlaceholderEditorWidget(controller, pages_widget)
         # The guide has no left margin, so its arrow gets closer to the
         #   "Add" button. The editor keeps the margin of the panel.
@@ -229,6 +230,8 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         placeholders_widget.select_in_scene_requested.connect(
             self._on_select_in_scene_request
         )
+        placeholders_widget.run_requested.connect(self._on_run_request)
+        placeholders_widget.delete_requested.connect(self._on_remove_request)
         placeholders_widget.refresh_requested.connect(self._on_refresh_request)
         pages_widget.currentChanged.connect(self._update_add_highlight)
         editor_widget.create_requested.connect(self._on_create_confirmed)
@@ -339,6 +342,11 @@ class WorkfileTemplateBuilderWindow(AYContainer):
                 deregister()
         self._controller.close()
         super().closeEvent(event)
+
+    def hideEvent(self, event):
+        # Do not keep a preview/completion timer running while hidden.
+        self._editor_widget.stop_dynamic_timer()
+        super().hideEvent(event)
 
     # --- Public API ---------------------------------------------------
     def refresh(self):
@@ -678,7 +686,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
     def _on_build_progress(self, count: int, event_data: dict) -> None:
         """Show progress between populated placeholders."""
         self._build_status_btn.setText(
-            "Running... {} placeholder(s)".format(count)
+            "Populating... {} placeholder(s)".format(count)
         )
         # Let the status paint while the host operation keeps running.
         QtWidgets.QApplication.processEvents(
@@ -743,7 +751,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
                 self,
                 "Unsaved changes",
                 (
-                    "Save or revert the placeholder changes before building"
+                    "Save or discard the placeholder changes before building"
                     " the template."
                 ),
             )
@@ -752,7 +760,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         context_label = self._controller.get_build_context().label
         answer = QtWidgets.QMessageBox.question(
             self,
-            "Run all placeholders?",
+            "Populate all placeholders?",
             (
                 "This will populate all placeholders in the current scene"
                 " for {}.\nDo you want to continue?".format(context_label)
@@ -763,7 +771,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if answer != QtWidgets.QMessageBox.Yes:
             return
 
-        self._set_busy(True, "Running all placeholders...")
+        self._set_busy(True, "Populating all placeholders...")
         try:
             result = self._controller.run_template_build(
                 progress_callback=self._on_build_progress
@@ -937,7 +945,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         from ayon_core.tools.context_dialog import ContextDialog
 
         dialog = ContextDialog(parent=self)
-        dialog.setWindowTitle("Preview as")
+        dialog.setWindowTitle("Test context")
         context_item = self._controller.get_build_context()
         # Keep the project fixed; preselect the current override so opening
         #   the dialog again does not silently reset the reviewed context.
@@ -952,7 +960,7 @@ class WorkfileTemplateBuilderWindow(AYContainer):
         if not context.get("initial_context_valid", True):
             QtWidgets.QMessageBox.warning(
                 self,
-                "Preview as",
+                "Test context",
                 (
                     "The selected context no longer exists. Choose another"
                     " folder or reset to the scene context."
@@ -1062,13 +1070,13 @@ class WorkfileTemplateBuilderWindow(AYContainer):
                 self,
                 "Unsaved changes",
                 (
-                    "Save or revert the placeholder changes before running"
+                    "Save or discard the placeholder changes before populating"
                     " the placeholder."
                 ),
             )
             return
 
-        self._set_busy(True, "Running placeholder...")
+        self._set_busy(True, "Populating placeholder...")
         try:
             result = self._controller.run_placeholder(scene_identifier)
         except Exception:

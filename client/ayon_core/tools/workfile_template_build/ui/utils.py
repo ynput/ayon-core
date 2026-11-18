@@ -13,9 +13,7 @@ PANEL_COLOR = "--md-sys-color-background-dark"
 INPUT_COLOR = "--md-sys-color-surface-container-low-dark"
 DIVIDER_COLOR = "--md-sys-color-surface-container-high-dark"
 HIGHEST_SURFACE_COLOR = "--md-sys-color-surface-container-highest-dark"
-
-# Color used for warnings that do not have a dedicated palette token
-WARNING_COLOR = "#ffc671"
+WARNING_COLOR_TOKEN = "--md-sys-color-warning-dark"
 
 _FALLBACK_COLORS = {
     PRIMARY_COLOR: "#8fceff",
@@ -26,6 +24,7 @@ _FALLBACK_COLORS = {
     INPUT_COLOR: "#1c2026",
     DIVIDER_COLOR: "#353b46",
     HIGHEST_SURFACE_COLOR: "#424a57",
+    WARNING_COLOR_TOKEN: "#ffc671",
 }
 
 
@@ -43,3 +42,6 @@ def get_palette_color(token: str) -> str:
     if color:
         return color
     return _FALLBACK_COLORS.get(token, "#ffffff")
+
+
+WARNING_COLOR = get_palette_color(WARNING_COLOR_TOKEN)

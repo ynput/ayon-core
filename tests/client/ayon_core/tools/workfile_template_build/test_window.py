@@ -472,6 +472,20 @@ class TestEdit:
         widget._filter_input.setText("nothing")
         assert widget._proxy_model.rowCount() == 0
 
+    def test_filter_no_match_state_and_count(self, window):
+        widget = window._placeholders_widget
+        widget._filter_input.setText("nothing")
+
+        assert not widget._no_match_widget.isHidden()
+        assert widget._view.isHidden()
+        assert widget._count_label.text() == "0 of 2"
+
+        widget._clear_filter()
+
+        assert widget._no_match_widget.isHidden()
+        assert not widget._view.isHidden()
+        assert widget._count_label.text() == "2"
+
 
 class TestEditorActions:
     def test_actions_are_hidden_in_create_mode(self, window):
@@ -1250,7 +1264,7 @@ class TestWindowSingleton:
         yield
         lib._WINDOW_REF = None
 
-    def test_window_is_reused(self, builder):
+    def test_window_is_reused(self, qtbot, builder):
         from ayon_core.tools.workfile_template_build import (
             show_workfile_template_builder,
         )
@@ -1261,6 +1275,22 @@ class TestWindowSingleton:
         assert first is second
         assert first.testAttribute(QtCore.Qt.WA_DeleteOnClose)
         first.close()
+        qtbot.wait(100)
+
+    def test_deleted_window_is_recreated(self, qtbot, builder):
+        from ayon_core.tools.workfile_template_build import (
+            show_workfile_template_builder,
+        )
+
+        first = show_workfile_template_builder(builder)
+        first.close()
+        qtbot.wait(100)
+
+        second = show_workfile_template_builder(builder)
+
+        assert second is not first
+        second.close()
+        qtbot.wait(100)
 
 
 class TestErrorBoundary:

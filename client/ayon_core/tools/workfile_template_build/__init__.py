@@ -18,7 +18,11 @@ from .control import WorkfileTemplateBuilderController
 
 if typing.TYPE_CHECKING:
     # Lazily imported at runtime, see '__getattr__'
-    from .lib import open_template_ui, show_workfile_template_builder
+    from .lib import (
+        get_workfile_template_builder_window,
+        open_template_ui,
+        show_workfile_template_builder,
+    )
     from .ui import WorkfileTemplateBuilderWindow
     from .window import WorkfileBuildPlaceholderDialog
 
@@ -28,6 +32,7 @@ _UI_OBJECTS = {
     "WorkfileBuildPlaceholderDialog": ".window",
     "open_template_ui": ".lib",
     "show_workfile_template_builder": ".lib",
+    "get_workfile_template_builder_window": ".lib",
 }
 
 
@@ -57,6 +62,7 @@ __all__ = (
 
     "open_template_ui",
     "show_workfile_template_builder",
+    "get_workfile_template_builder_window",
 
     "WorkfileTemplateBuilderWindow",
 

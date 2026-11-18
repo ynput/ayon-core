@@ -12,13 +12,13 @@ from ayon_core.ui.components import (
     AYLabel,
     AYTreeView,
 )
+from ayon_core.ui.style import get_ayon_style
 
-ERROR_COLOR = "#e55353"
-SKIPPED_COLOR = "#ffc671"
+_palette = get_ayon_style().model.palette()
+ERROR_COLOR = _palette.get("--md-sys-color-error-dark", "#e55353")
+SKIPPED_COLOR = _palette.get("--md-sys-color-warning-dark", "#ffc671")
 
 STATUS_LABELS = {
-    "pending": "PENDING",
-    "running": "RUNNING",
     "succeeded": "OK",
     "failed": "FAILED",
     "skipped": "SKIPPED",
@@ -59,7 +59,7 @@ class BuildReportDialog(QtWidgets.QDialog):
 
         model = QtGui.QStandardItemModel()
         model.setHorizontalHeaderLabels(
-            ["Order", "Placeholder", "Status", "Duration"]
+            ["Build order", "Placeholder", "Status", "Duration"]
         )
 
         view = AYTreeView(self, variant=AYTreeView.Variants.Low)
@@ -91,9 +91,14 @@ class BuildReportDialog(QtWidgets.QDialog):
         log_view.setReadOnly(True)
         log_view.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
 
+        history_view = QtWidgets.QPlainTextEdit(self)
+        history_view.setReadOnly(True)
+        history_view.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+
         tabs = QtWidgets.QTabWidget(self)
         tabs.addTab(steps_widget, "Steps")
         tabs.addTab(log_view, "Log")
+        tabs.addTab(history_view, "History")
 
         copy_report_btn = AYButton(
             "Copy report",
@@ -142,6 +147,7 @@ class BuildReportDialog(QtWidgets.QDialog):
         self._summary_label = summary_label
         self._details_view = details_view
         self._log_view = log_view
+        self._history_view = history_view
 
         self.refresh()
 
@@ -201,6 +207,7 @@ class BuildReportDialog(QtWidgets.QDialog):
 
         log_lines = self._controller.get_build_log()
         self._log_view.setPlainText("\n".join(log_lines))
+        self._history_view.setPlainText(self._format_history())
 
         self._details_view.setPlainText("")
         if steps:
@@ -211,6 +218,32 @@ class BuildReportDialog(QtWidgets.QDialog):
                 QtCore.QItemSelectionModel.ClearAndSelect
                 | QtCore.QItemSelectionModel.Rows,
             )
+
+    def _format_history(self) -> str:
+        """Summarize the recent builds kept by the controller."""
+        history = self._controller.get_build_history()
+        if not history:
+            return "No build history yet."
+        lines = []
+        for index, steps in enumerate(history, 1):
+            failed = sum(step.status == "failed" for step in steps)
+            skipped = sum(step.status == "skipped" for step in steps)
+            duration = sum(step.duration for step in steps)
+            lines.append(
+                "Build {}: {} step(s), {} failed, {} skipped, {:.2f}s".format(
+                    index, len(steps), failed, skipped, duration
+                )
+            )
+            for step in steps:
+                lines.append(
+                    "  [{}] {} ({})".format(
+                        STATUS_LABELS.get(step.status, step.status),
+                        step.label,
+                        step.scene_identifier,
+                    )
+                )
+            lines.append("")
+        return "\n".join(lines).rstrip()
 
     def get_report_text(self) -> str:
         """Plain text report of the last build."""

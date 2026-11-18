@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 import traceback
+from contextlib import contextmanager
 from typing import Any, Callable, Optional
 
 from ayon_core.lib import Logger, register_event_callback
@@ -73,7 +74,9 @@ class _BuildLogHandler(logging.Handler):
     def __init__(self, lines: list[str]):
         super().__init__()
         self._lines = lines
-        self.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        self.setFormatter(logging.Formatter(
+            "%(levelname)s [%(name)s]: %(message)s"
+        ))
 
     def emit(self, record):
         try:
@@ -81,7 +84,6 @@ class _BuildLogHandler(logging.Handler):
         except Exception:
             return
         self._lines.append(message)
-        del self._lines[:-MAX_BUILD_LOG_LINES]
 
 
 class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
@@ -600,20 +602,17 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self._build_log = []
         self._build_durations = {}
 
-        log_handler = _BuildLogHandler(self._build_log)
-        root_logger = Logger.get_root_logger()
-        root_logger.addHandler(log_handler)
         self._progress_callback = progress_callback
         try:
-            # Re-populates the placeholders that are already in the scene.
-            #   The template file is not imported again, so this can be used
-            #   to test the template that is currently opened.
-            placeholders = self._builder.rebuild_template() or []
+            with self._capture_build_log():
+                # Re-populates the placeholders that are already in the
+                #   scene. The template file is not imported again, so this
+                #   can be used to test the currently opened template.
+                placeholders = self._builder.rebuild_template() or []
         except Exception:
             return self._action_failed("Failed to run template build")
         finally:
             self._progress_callback = None
-            root_logger.removeHandler(log_handler)
 
         self._build_steps = [
             self._create_build_step(placeholder)
@@ -645,6 +644,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                                           step.error)
                     for step in failed
                 ),
+                steps=self.get_build_steps(),
             )
 
         if self._build_steps and not succeeded:
@@ -658,8 +658,11 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                     "{} ({})".format(step.label, step.scene_identifier)
                     for step in skipped
                 ),
+                steps=self.get_build_steps(),
             )
-        return ActionResult(success=True)
+        return ActionResult(
+            success=True, steps=self.get_build_steps()
+        )
 
     def get_template_path(self) -> Optional[str]:
         preset = self._get_template_preset()
@@ -700,9 +703,10 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self._progress_callback = progress_callback
         processed_placeholders = None
         try:
-            processed_placeholders = self._builder.build_template(
-                preset=preset
-            )
+            with self._capture_build_log():
+                processed_placeholders = self._builder.build_template(
+                    preset=preset
+                )
         except Exception:
             error = self._action_failed(
                 "Failed to build from the template"
@@ -724,7 +728,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
         if error is not None:
             return error
-        return ActionResult(success=True)
+        return ActionResult(success=True, steps=self.get_build_steps())
 
     def get_build_steps(self) -> list[BuildStep]:
         """Steps of the last template build.
@@ -741,6 +745,34 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
     def get_build_log(self) -> list[str]:
         """Log lines captured during the last template build."""
         return list(self._build_log)
+
+    @contextmanager
+    def _capture_build_log(self):
+        """Capture log output emitted while a template build runs."""
+        self._build_log = []
+        handler = _BuildLogHandler(self._build_log)
+        # AYON loggers are reparented under the AYON root, so attach to the
+        #   root to catch builder and host logs without changing logger names.
+        root_logger = Logger.get_root_logger()
+        root_logger.addHandler(handler)
+        try:
+            yield
+        finally:
+            root_logger.removeHandler(handler)
+            self._trim_build_log()
+
+    def _trim_build_log(self) -> None:
+        """Keep the head and tail so the build report stays readable."""
+        if len(self._build_log) <= MAX_BUILD_LOG_LINES:
+            return
+        head_count = MAX_BUILD_LOG_LINES // 2
+        tail_count = MAX_BUILD_LOG_LINES - head_count
+        omitted = len(self._build_log) - MAX_BUILD_LOG_LINES
+        self._build_log = (
+            self._build_log[:head_count]
+            + ["... {} log lines omitted ...".format(omitted)]
+            + self._build_log[-tail_count:]
+        )
 
     def get_build_history(self) -> list[list[BuildStep]]:
         """Last build results, oldest first, limited to 5 builds."""
@@ -895,10 +927,41 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
                 if not placeholders:
                     return {}
 
-            placeholders_by_id = {
-                placeholder.scene_identifier: placeholder
-                for placeholder in placeholders
-            }
+            placeholders_by_id = {}
+            duplicate_ids = {}
+            for placeholder in placeholders:
+                scene_identifier = placeholder.scene_identifier
+                existing = placeholders_by_id.get(scene_identifier)
+                if existing is not None:
+                    duplicate_ids.setdefault(scene_identifier, [existing])
+                    duplicate_ids[scene_identifier].append(placeholder)
+                    continue
+                placeholders_by_id[scene_identifier] = placeholder
+
+            if duplicate_ids:
+                parts = []
+                for scene_identifier, duplicates in duplicate_ids.items():
+                    plugins = sorted({
+                        placeholder.plugin.identifier
+                        for placeholder in duplicates
+                    })
+                    parts.append(
+                        "'{}' (plugins: {})".format(
+                            scene_identifier, ", ".join(plugins)
+                        )
+                    )
+                message = (
+                    "Duplicate placeholder scene identifiers were found: {}."
+                    " Only the first placeholder of each identifier can be"
+                    " managed.".format("; ".join(parts))
+                )
+                self._log.warning(message)
+                if self._placeholders_error:
+                    self._placeholders_error = "{}\n{}".format(
+                        self._placeholders_error, message
+                    )
+                else:
+                    self._placeholders_error = message
 
         self._placeholders_by_id = placeholders_by_id
         return placeholders_by_id

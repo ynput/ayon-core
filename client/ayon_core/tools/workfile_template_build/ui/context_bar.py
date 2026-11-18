@@ -146,7 +146,7 @@ class ContextBarWidget(AYContainer):
         )
         host_label = AYLabel(parent=self, dim=True)
 
-        context_label = AYLabel("Preview as", parent=self, dim=True)
+        context_label = AYLabel("Test context", parent=self, dim=True)
         context_btn = _MenuButton(
             "",
             parent=self,
@@ -169,13 +169,13 @@ class ContextBarWidget(AYContainer):
         )
         reset_btn.setVisible(False)
         test_build_btn = AYButton(
-            "Run all",
+            "Populate all",
             parent=self,
             variant=AYButton.Variants.Surface,
             icon=RUN_ICON,
             tooltip=(
                 "Populate every placeholder in the open scene for the"
-                " \"Preview as\" context.\n"
+                " test context.\n"
                 "This changes the scene: reopen the template to undo it."
             ),
         )
@@ -187,7 +187,7 @@ class ContextBarWidget(AYContainer):
             icon="description",
             tooltip=(
                 "Open or build the template set in settings for the"
-                " \"Preview as\" context"
+                " \"Test context\" context"
             ),
         )
 
@@ -195,7 +195,7 @@ class ContextBarWidget(AYContainer):
         # Says why the actions are disabled. Shown only when no template
         #   is set, the button stays enabled so the reason can be found.
         missing_action = template_menu.addAction(
-            "No template is set in settings for the \"Preview as\""
+            "No template is set in settings for the \"Test context\""
             " context"
         )
         missing_action.setEnabled(False)
@@ -285,7 +285,7 @@ class ContextBarWidget(AYContainer):
     def set_test_build_enabled(
         self, enabled: bool, reason: Optional[str] = None
     ) -> None:
-        """Allow to run all placeholders.
+        """Allow populating all placeholders.
 
         Args:
             enabled (bool): All placeholders can be run.
@@ -314,7 +314,7 @@ class ContextBarWidget(AYContainer):
             tooltip = "Template: {}".format(template_path)
         else:
             tooltip = (
-                "No template is set in settings for the \"Preview as\""
+                "No template is set in settings for the \"Test context\""
                 " context"
             )
         self._template_btn.setToolTip(tooltip)

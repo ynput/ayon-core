@@ -2,15 +2,15 @@
 
 The tool is split to a controller (backend) and a UI (frontend). The
 controller does all communication with the host and the AYON server, the UI
-only shows data that the controller provides. All objects passed between the
-two are plain data or serializable objects, so the UI can potentially live in
-a different process than the host.
+only shows data that the controller provides. Data transfer objects have
+``to_data``/``from_data`` helpers for serialization; attribute definitions
+provided by plugins are in-process UI data and are not serialized.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Optional
 
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
@@ -24,6 +24,16 @@ PLACEHOLDER_CREATED_TOPIC = "placeholder.created"
 PLACEHOLDER_UPDATED_TOPIC = "placeholder.updated"
 PLACEHOLDER_DELETED_TOPIC = "placeholder.deleted"
 BUILD_CONTEXT_CHANGED_TOPIC = "build_context.changed"
+
+
+def _from_data(cls, data: dict[str, Any]):
+    """Create a dataclass while ignoring unknown serialized keys."""
+    field_names = {item.name for item in fields(cls)}
+    return cls(**{
+        key: value
+        for key, value in data.items()
+        if key in field_names
+    })
 
 
 class PlaceholderOptionsError(Exception):
@@ -52,8 +62,8 @@ class BuildStep:
         scene_identifier (str): Scene identifier of the placeholder.
         label (str): Label of the placeholder.
         order (int): Order in which the placeholder was processed.
-        status (str): Status of the step, one of 'pending', 'running',
-            'succeeded', 'failed' or 'skipped'.
+        status (str): Outcome of the step, one of 'succeeded', 'failed' or
+            'skipped'.
         duration (float): Duration of the step in seconds.
         error (str): Error message when the step failed.
 
@@ -62,8 +72,8 @@ class BuildStep:
     scene_identifier: str
     label: str
     order: int
-    # pending | running | succeeded | failed | skipped
-    status: str = "pending"
+    # succeeded | failed | skipped
+    status: str
     duration: float = 0.0
     error: str = ""
 
@@ -79,7 +89,7 @@ class BuildStep:
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> BuildStep:
-        return cls(**data)
+        return _from_data(cls, data)
 
 
 @dataclass
@@ -115,7 +125,7 @@ class PlaceholderPluginItem:
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "PlaceholderPluginItem":
-        return cls(**data)
+        return _from_data(cls, data)
 
 
 @dataclass
@@ -160,7 +170,7 @@ class PlaceholderItemInfo:
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "PlaceholderItemInfo":
-        return cls(**data)
+        return _from_data(cls, data)
 
 
 @dataclass
@@ -172,12 +182,15 @@ class ActionResult:
         scene_identifier (Optional[str]): Placeholder the action was about.
         error_title (Optional[str]): Short description of the failure.
         error_detail (Optional[str]): Formatted traceback of the failure.
+        steps (list[BuildStep]): Build steps when the action ran a build, so
+            callers do not have to read them from the controller separately.
 
     """
     success: bool
     scene_identifier: Optional[str] = None
     error_title: Optional[str] = None
     error_detail: Optional[str] = None
+    steps: list[BuildStep] = field(default_factory=list)
 
     def to_data(self) -> dict[str, Any]:
         return {
@@ -185,11 +198,19 @@ class ActionResult:
             "scene_identifier": self.scene_identifier,
             "error_title": self.error_title,
             "error_detail": self.error_detail,
+            "steps": [step.to_data() for step in self.steps],
         }
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "ActionResult":
-        return cls(**data)
+        data = dict(data)
+        steps = [
+            BuildStep.from_data(step)
+            for step in data.get("steps") or []
+        ]
+        result = _from_data(cls, data)
+        result.steps = steps
+        return result
 
 
 @dataclass
@@ -225,7 +246,7 @@ class BuildContextItem:
 
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> "BuildContextItem":
-        return cls(**data)
+        return _from_data(cls, data)
 
 
 class AbstractTemplateBuilderController(ABC):

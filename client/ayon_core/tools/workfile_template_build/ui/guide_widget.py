@@ -30,15 +30,15 @@ GUIDE_STEPS = (
     (
         "Check the preview",
         (
-            "Select a placeholder to see what it would load. Use"
-            " \"Preview as\" to try a real asset or shot."
+            "Select a placeholder to see what it would load. Use the"
+            " test context to try a real asset or shot."
         ),
     ),
     (
         "Test the template",
         (
-            "Run all populates every placeholder in the open scene for the"
-            " \"Preview as\" context. Reopen the template to undo it."
+            "Populate all fills every placeholder in the open scene for the"
+            " test context. Reopen the template to undo it."
         ),
     ),
 )
@@ -64,6 +64,22 @@ class _ArrowWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.setFixedSize(ARROW_SIZE)
         self._color = QtGui.QColor(get_palette_color(PRIMARY_COLOR))
+        self._target_widget: Optional[QtWidgets.QWidget] = None
+
+    def set_target_widget(self, widget: QtWidgets.QWidget) -> None:
+        """Point the arrow at the center of a widget when possible."""
+        self._target_widget = widget
+        self.update()
+
+    def _get_tip_y(self) -> int:
+        target = self._target_widget
+        if target is None:
+            return ARROW_TIP_Y
+        try:
+            center = target.mapTo(self, target.rect().center())
+        except RuntimeError:
+            return ARROW_TIP_Y
+        return max(6, min(self.height() - 6, center.y()))
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -73,16 +89,29 @@ class _ArrowWidget(QtWidgets.QWidget):
         pen.setJoinStyle(QtCore.Qt.RoundJoin)
         painter.setPen(pen)
 
+        tip_y = self._get_tip_y()
+        tail_y = min(self.height() - 6, tip_y + 24)
         # A swoop with a small loop, drawn from the text on the right
         #   towards the tip on the left.
         point = QtCore.QPointF
-        tip = point(3, ARROW_TIP_Y)
-        path = QtGui.QPainterPath(point(ARROW_SIZE.width() - 2, ARROW_TAIL_Y))
-        path.cubicTo(point(70, ARROW_TAIL_Y), point(58, 39), point(55, 31))
-        path.cubicTo(point(52, 22), point(62, 16), point(65, 24))
-        path.cubicTo(point(68, 32), point(55, 36), point(45, 31))
+        tip = point(3, tip_y)
+        path = QtGui.QPainterPath(
+            point(ARROW_SIZE.width() - 2, tail_y)
+        )
+        path.cubicTo(
+            point(70, tail_y), point(58, tail_y), point(55, tail_y - 8)
+        )
+        path.cubicTo(
+            point(52, tip_y + 7), point(62, tip_y + 1), point(65, tip_y + 9)
+        )
+        path.cubicTo(
+            point(68, tip_y + 17), point(55, tip_y + 21),
+            point(45, tip_y + 16)
+        )
         # Ends level, so the line comes in straight towards the button
-        path.cubicTo(point(34, 25), point(26, ARROW_TIP_Y), tip)
+        path.cubicTo(
+            point(34, tip_y + 10), point(26, tip_y), tip
+        )
         painter.drawPath(path)
 
         # The head is symmetric around the direction the line comes in
@@ -287,9 +316,14 @@ class PlaceholderGuideWidget(AYContainer):
         self.addStretch(1)
 
         self._pointer_widget = pointer_widget
+        self._arrow_widget = arrow_widget
         self._title_label = title_label
         self._message_label = message_label
         self._steps_widget = steps_widget
+
+    def set_add_target(self, widget: QtWidgets.QWidget) -> None:
+        """Align the arrow with the Add button of the placeholders panel."""
+        self._arrow_widget.set_target_widget(widget)
 
     def set_guide(self, has_placeholders: bool) -> None:
         """Show the steps of building a template.

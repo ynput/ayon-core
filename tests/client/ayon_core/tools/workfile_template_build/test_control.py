@@ -1,7 +1,7 @@
 """Tests for the workfile template builder tool controller."""
 import pytest
 
-from ayon_core.lib import attribute_definitions
+from ayon_core.lib import Logger, attribute_definitions
 from ayon_core.pipeline.workfile import (
     workfile_template_builder as wtb,
 )
@@ -13,7 +13,9 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     TemplatePreset,
 )
 from ayon_core.tools.workfile_template_build.abstract import (
+    ActionResult,
     BuildContextItem,
+    BuildStep,
     BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDER_CREATED_TOPIC,
     PLACEHOLDERS_REFRESHED_TOPIC,
@@ -241,6 +243,26 @@ class TestPluginItems:
         ]
         assert labels == sorted(labels)
 
+    def test_duplicate_scene_identifiers_are_reported(
+        self, controller, monkeypatch
+    ):
+        plugin = controller._builder.placeholder_plugins["fake"]
+        placeholders = [
+            PlaceholderItem("same", {"name": "one"}, plugin),
+            PlaceholderItem("same", {"name": "two"}, plugin),
+        ]
+        monkeypatch.setattr(
+            controller._builder,
+            "get_placeholders",
+            lambda **_kwargs: placeholders,
+        )
+
+        items = controller.get_placeholder_items()
+
+        assert len(items) == 1
+        assert items[0].scene_identifier == "same"
+        assert "Duplicate" in controller.get_placeholders_error()
+
 
 class TestCreatePlaceholder:
     def test_scene_identifier_is_resolved_without_return_value(
@@ -454,6 +476,32 @@ class TestTemplateBuild:
         assert progress == [1, 2]
 
 
+class TestBuildResultsSerialization:
+    def test_build_step_ignores_unknown_keys(self):
+        step = BuildStep.from_data({
+            "scene_identifier": "node_1",
+            "label": "one",
+            "order": 1,
+            "status": "succeeded",
+            "unknown": "ignored",
+        })
+
+        assert step.scene_identifier == "node_1"
+        assert step.status == "succeeded"
+
+    def test_action_result_serializes_steps(self):
+        result = ActionResult(
+            success=True,
+            steps=[BuildStep("node_1", "one", 1, "succeeded")],
+        )
+
+        restored = ActionResult.from_data(result.to_data())
+
+        assert restored.success
+        assert len(restored.steps) == 1
+        assert restored.steps[0].scene_identifier == "node_1"
+
+
 class TestTemplateFile:
     @pytest.fixture
     def template_path(self, tmp_path_factory):
@@ -594,6 +642,27 @@ class TestTemplateFile:
 
         assert not result.success
         assert "Broken template" in result.error_detail
+
+    def test_build_template_captures_log(
+        self, controller, monkeypatch, template_path
+    ):
+        self._set_preset(controller, monkeypatch, TemplatePreset(
+            path=template_path, profile={"path": "x"}
+        ))
+
+        def build_template(preset=None):
+            Logger.get_logger("test.build").info("build marker")
+            return []
+
+        monkeypatch.setattr(
+            controller._builder, "build_template", build_template
+        )
+
+        controller.build_template()
+
+        assert any(
+            "build marker" in line for line in controller.get_build_log()
+        )
 
     def test_build_failure_refreshes_the_ui(
         self, controller, monkeypatch, template_path

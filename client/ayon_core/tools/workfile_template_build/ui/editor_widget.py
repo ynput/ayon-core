@@ -551,7 +551,7 @@ class PlaceholderEditorWidget(AYContainer):
             icon=SELECT_ICON,
         )
         run_btn = AYButton(
-            "Run this one",
+            "Populate this placeholder",
             parent=actions_widget,
             variant=AYButton.Variants.Surface,
             icon=RUN_ICON,
@@ -756,7 +756,7 @@ class PlaceholderEditorWidget(AYContainer):
         )
         self._confirm_btn.setText("Save changes")
         self._confirm_btn.set_icon("save")
-        self._cancel_btn.setText("Revert")
+        self._cancel_btn.setText("Discard changes")
         self._cancel_btn.set_icon("undo")
         self._set_placeholder_action_state(placeholder_item, select_supported)
 
@@ -892,7 +892,7 @@ class PlaceholderEditorWidget(AYContainer):
         self._run_btn.setToolTip(
             (
                 "Populate only this placeholder in the open scene for the"
-                " \"Preview as\" context. Use \"Run all\" to populate"
+                " test context. Use \"Populate all\" to populate"
                 " all of them."
             )
             if placeholder_item.run_supported

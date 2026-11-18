@@ -1,7 +1,20 @@
+"""Host-facing helpers to open the workfile template builder UI.
+
+Host contract:
+
+- Implement ``AbstractTemplateBuilder`` and create one instance per tool
+  launch.
+- Call ``show_workfile_template_builder(builder, parent)`` from the host menu
+  or operator; the helper owns the per-process window.
+- Use ``open_template_ui`` for the destructive "open template" confirmation.
+- Keep the Qt objects in the main thread; the controller backend does not
+  require Qt.
+"""
+
 import traceback
 import weakref
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets, shiboken
 
 from ayon_core.tools.utils.dialogs import show_message_dialog
 
@@ -33,6 +46,53 @@ def open_template_ui(builder, main_window):
             )
 
 
+def _is_window_valid(window) -> bool:
+    """Check that the Python wrapper still has a live C++ object."""
+    if window is None:
+        return False
+    try:
+        return shiboken.isValid(window)
+    except RuntimeError:
+        return False
+
+
+def get_workfile_template_builder_window(builder, parent=None):
+    """Get the single template builder window of the process.
+
+    Reuses and refreshes the existing window when its C++ object is still
+    alive. If the window was deleted, a new controller and window are
+    created. The window is not shown; use ``show_workfile_template_builder``
+    or let a host operator show it.
+
+    Args:
+        builder (AbstractTemplateBuilder): Template builder implementation.
+        parent (Optional[QtWidgets.QWidget]): Parent window.
+
+    Returns:
+        WorkfileTemplateBuilderWindow: Window for the builder.
+
+    """
+    global _WINDOW_REF
+
+    window = _WINDOW_REF() if _WINDOW_REF is not None else None
+    if _is_window_valid(window):
+        try:
+            window.refresh()
+            return window
+        except RuntimeError:
+            pass
+    _WINDOW_REF = None
+
+    from .control import WorkfileTemplateBuilderController
+    from .ui import WorkfileTemplateBuilderWindow
+
+    controller = WorkfileTemplateBuilderController(builder)
+    window = WorkfileTemplateBuilderWindow(controller, parent=parent)
+    window.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+    _WINDOW_REF = weakref.ref(window)
+    return window
+
+
 def show_workfile_template_builder(builder, parent=None):
     """Show workfile template builder tool for a host.
 
@@ -49,23 +109,7 @@ def show_workfile_template_builder(builder, parent=None):
         WorkfileTemplateBuilderWindow: Shown window.
 
     """
-    global _WINDOW_REF
-
-    if _WINDOW_REF is not None:
-        window = _WINDOW_REF()
-        if window is not None:
-            window.show()
-            window.raise_()
-            window.activateWindow()
-            return window
-
-    from .control import WorkfileTemplateBuilderController
-    from .ui import WorkfileTemplateBuilderWindow
-
-    controller = WorkfileTemplateBuilderController(builder)
-    window = WorkfileTemplateBuilderWindow(controller, parent=parent)
-    window.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
-    _WINDOW_REF = weakref.ref(window)
+    window = get_workfile_template_builder_window(builder, parent=parent)
     window.show()
     window.raise_()
     window.activateWindow()
