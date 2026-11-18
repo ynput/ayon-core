@@ -592,7 +592,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 the frame was supplied to 'frame' as fallback.
         """
         context = repre["context"]
-        if context.get("frame"):
+        if context.get("frame") is not None:
             template_data["frame"] = frame
             return False
         if context.get("udim"):
