@@ -275,7 +275,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         paths_widget = QtWidgets.QWidget(self)
         paths_layout = QtWidgets.QVBoxLayout(paths_widget)
         paths_layout.setContentsMargins(10, 0, 5, 5)
-        paths_layout.addWidget(paths_toggle, 0, QtCore.Qt.AlignLeft)
+        paths_layout.addWidget(paths_toggle, 0)
         paths_layout.addWidget(paths_view, 1)
 
         btn_select_all = QtWidgets.QPushButton("Select All")
@@ -508,6 +508,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         toggle.setChecked(False)
         toggle.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         toggle.setArrowType(QtCore.Qt.RightArrow)
+        toggle.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
         return toggle
 
     def _resolve_template(
