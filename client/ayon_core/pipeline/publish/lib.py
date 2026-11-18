@@ -235,6 +235,59 @@ def get_publish_template_name(
     return template or default_template
 
 
+def get_publish_template_name_for_instance(
+    instance: pyblish.api.Instance,
+    *,
+    hero: bool = False,
+    logger: logging.Logger | None = None,
+) -> str:
+    """Get template name which should be used for integration of instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to get template name for.
+        hero (bool): Template is for hero version publishing.
+        logger (logging.Logger | None): Custom logger used for
+            'filter_profiles' function.
+
+    Returns:
+        str: Template name which should be used for integration.
+
+    """
+    context = instance.context
+    product_base_type = (
+        instance.data.get("productBaseType")
+        or instance.data["productType"]
+    )
+
+    # Task can be optional
+    task_name = task_type = None
+    task_entity = instance.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+    else:
+        # Editorial publishing ('newHierarchyIntegration') can target tasks
+        #   that do not exist yet. Their entity is created and set on the
+        #   instance by 'ExtractHierarchyToAYON', but collectors and
+        #   validators run before that. Anatomy data already has the task
+        #   name and type from 'hierarchyContext' at that point.
+        anatomy_data = instance.data.get("anatomyData") or {}
+        task_info = anatomy_data.get("task") or {}
+        task_name = task_info.get("name")
+        task_type = task_info.get("type")
+
+    return get_publish_template_name(
+        project_name=context.data["projectName"],
+        host_name=context.data["hostName"],
+        product_base_type=product_base_type,
+        task_name=task_name,
+        task_type=task_type,
+        project_settings=context.data["project_settings"],
+        hero=hero,
+        logger=logger,
+    )
+
+
 class HelpContent:
     def __init__(self, title, description, detail=None):
         self.title = title
@@ -943,28 +996,7 @@ def replace_with_published_scene_path(
     template_data["ext"] = rep.get("ext")
     template_data["comment"] = None
 
-    anatomy = instance.context.data["anatomy"]
-    project_name = anatomy.project_name
-    task_name = task_type = None
-    task_entity = instance.data.get("taskEntity")
-    if task_entity:
-        task_name = task_entity["name"]
-        task_type = task_entity["taskType"]
-
-    project_settings = instance.context.data["project_settings"]
-    product_base_type = workfile_instance.data.get("productBaseType")
-    if not product_base_type:
-        product_base_type = workfile_instance.data["productType"]
-
-    template_name = get_publish_template_name(
-        project_name=project_name,
-        host_name=instance.context.data["hostName"],
-        product_base_type=product_base_type,
-        task_name=task_name,
-        task_type=task_type,
-        project_settings=project_settings,
-    )
-    template = anatomy.get_template_item("publish", template_name, "path")
+    template = get_publish_template_object(workfile_instance)["path"]
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
@@ -1130,9 +1162,6 @@ def get_instance_expected_output_path(
     if version is None:
         version = instance.data["version"]
 
-    context = instance.context
-    anatomy = context.data["anatomy"]
-
     template_data = copy.deepcopy(instance.data["anatomyData"])
     template_data.update({
         "ext": ext,
@@ -1141,30 +1170,9 @@ def get_instance_expected_output_path(
         "version": version
     })
 
-    # Get instance publish template name
-    task_name = task_type = None
-    task_entity = instance.data.get("taskEntity")
-    if task_entity:
-        task_name = task_entity["name"]
-        task_type = task_entity["taskType"]
-
-    product_base_type = instance.data.get("productBaseType")
-    if not product_base_type:
-        product_base_type = instance.data["productType"]
-
-    template_name = get_publish_template_name(
-        project_name=instance.context.data["projectName"],
-        host_name=instance.context.data["hostName"],
-        product_base_type=product_base_type,
-        task_name=task_name,
-        task_type=task_type,
-        project_settings=instance.context.data["project_settings"],
+    path_template_obj: AnatomyStringTemplate = (
+        get_publish_template_object(instance)["path"]
     )
-
-    path_template_obj: AnatomyStringTemplate = anatomy.get_template_item(
-        "publish",
-        template_name
-    )["path"]
 
     # Define {originalBasename} template key which can be used in publish
     # template to use to original filename.
@@ -1544,7 +1552,10 @@ def _get_last_version_files(
 
 
 def get_instance_template_name(instance: pyblish.api.Instance) -> str:
-    """Return anatomy template name to use for integration.
+    """DEPRECATED Return anatomy template name to use for integration.
+
+    Deprecated since 2026/11/18. Please use
+    'get_publish_template_name_for_instance' instead.
 
     Args:
         instance (pyblish.api.Instance): Instance to process.
@@ -1553,28 +1564,14 @@ def get_instance_template_name(instance: pyblish.api.Instance) -> str:
         str: Anatomy template name
 
     """
-    # Anatomy data is pre-filled by Collectors
-    context = instance.context
-    project_name = context.data["projectName"]
-
-    # Task can be optional in anatomy data
-    host_name = context.data["hostName"]
-    anatomy_data = instance.data["anatomyData"]
-    product_type = instance.data["productType"]
-    product_base_type = instance.data.get("productBaseType")
-    if not product_base_type:
-        product_base_type = product_type
-    task_info = anatomy_data.get("task") or {}
-
-    return get_publish_template_name(
-        project_name,
-        host_name,
-        product_base_type=product_base_type,
-        task_name=task_info.get("name"),
-        task_type=task_info.get("type"),
-        project_settings=context.data["project_settings"],
-        logger=log,
+    # TODO remove after 2027/02/18 (deprecated since 2026/11/18)
+    msg = (
+        "Function 'get_instance_template_name' is deprecated. Please use"
+        " 'get_publish_template_name_for_instance' instead."
     )
+    log.warning(msg)
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    return get_publish_template_name_for_instance(instance, logger=log)
 
 
 def get_instance_publish_template(instance: pyblish.api.Instance) -> str:
@@ -1596,6 +1593,8 @@ def get_publish_template_object(
     instance: pyblish.api.Instance,
     category_name: str = "publish",
     template_name: str | None = None,
+    *,
+    logger: logging.Logger | None = None,
 ) -> "AnatomyTemplateItem":
     """Return anatomy template object to use for integration.
 
@@ -1608,6 +1607,8 @@ def get_publish_template_object(
         template_name (str | None): Template name to use.
             If not provided, it will get the template name from
             the provided instance.
+        logger (logging.Logger | None): Custom logger used to find
+            the template name. Defaults to logger of this module.
 
     Returns:
         AnatomyTemplateItem: Anatomy template object
@@ -1615,7 +1616,9 @@ def get_publish_template_object(
     """
     # Anatomy data is pre-filled by Collectors
     if not template_name:
-        template_name = get_instance_template_name(instance)
+        template_name = get_publish_template_name_for_instance(
+            instance, logger=logger or log
+        )
     anatomy: Anatomy = instance.context.data["anatomy"]
     return anatomy.get_template_item(
         category_name=category_name,
