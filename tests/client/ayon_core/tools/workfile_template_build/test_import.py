@@ -11,11 +11,9 @@ def test_package_import_does_not_import_qt():
         "import ayon_core.tools.workfile_template_build;"
         "assert 'qtpy' not in sys.modules"
     )
-    env = os.environ.copy()
-    env["PYTHONPATH"] = os.pathsep.join(sys.path)
     result = subprocess.run(
         [sys.executable, "-c", code],
-        env=env,
+        env=os.environ.copy(),
         capture_output=True,
         text=True,
     )
