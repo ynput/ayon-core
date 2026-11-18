@@ -24,7 +24,6 @@ dispatches them as one :class:`AsyncTask` via a zero-delay
 
 from __future__ import annotations
 
-import logging
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -41,9 +40,11 @@ from qtpy.QtCore import (
 )
 from qtpy.QtGui import QBrush, QColor
 
+from ayon_core.lib import Logger
+
 from .task_queue import AsyncTask, get_task_queue
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 class _TableNode:
@@ -875,6 +876,37 @@ class PaginatedTableModel(QAbstractItemModel):
             self._all_nodes if self._tree_mode else set(self._root.children)
         )
         return [node.row_data for node in nodes if not node.is_root]
+
+    def get_children_rows(
+        self, node_id: str
+    ) -> list[tuple[dict[str, Any], QModelIndex]] | None:
+        """Return the row data and index of all children of a node.
+
+        Lets callers use the children without fetching them again, but
+        only when every page of them is in the model already.
+
+        Args:
+            node_id: Row ``id`` of the parent node.
+
+        Returns:
+            Row-data dict and index of each child, or ``None`` when the
+            node is not loaded or more of its children can still be
+            fetched.
+        """
+        for node in self._all_nodes:
+            if node.node_id != node_id or node.is_root:
+                continue
+            if (
+                not node.children_loaded
+                or node.has_more
+                or node.is_fetching
+            ):
+                return None
+            return [
+                (child.row_data, self.createIndex(row, 0, child))
+                for row, child in enumerate(node.children)
+            ]
+        return None
 
     def get_distinct_values(self, key: str) -> list[str]:
         """Return sorted distinct non-empty string values for a column.

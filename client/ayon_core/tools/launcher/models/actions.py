@@ -266,8 +266,25 @@ class ActionsModel:
             )
 
             response = ayon_api.raw_post(url, json=request_data)
-            response.raise_for_status()
-            handle_response = self._handle_webaction_response(response.data)
+            if response.status == 403 and self._is_service_user():
+                # Server requires 'Authorization' header to execute actions,
+                #   but service users authorize using 'X-Api-Key' header.
+                self.log.warning(
+                    "Action trigger failed. Actions can't be executed"
+                    f" by a service user: {response.data}"
+                )
+                handle_response = WebactionResponse(
+                    "unknown",
+                    False,
+                    error_message=(
+                        "Service users can't run actions."
+                    ),
+                )
+            else:
+                response.raise_for_status()
+                handle_response = self._handle_webaction_response(
+                    response.data
+                )
 
         except Exception:
             failed = True
@@ -484,6 +501,21 @@ class ActionsModel:
 
         cache.update_data(action_items)
         return cache.get_data()
+
+    def _is_service_user(self) -> bool:
+        """Check if the connection uses a service user API key.
+
+        Uses cached token info of the connection, no request is made.
+
+        Returns:
+            bool: True if the connection uses a service user API key.
+
+        """
+        try:
+            return ayon_api.is_service_user()
+        except ValueError:
+            # Raised when the connection is not logged in
+            return False
 
     def _handle_webaction_response(self, data) -> WebactionResponse:
         response_type = data["type"]

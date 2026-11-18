@@ -12,16 +12,19 @@ from ayon_core.ui.components import (
     AYContainer,
     AYLabel,
     AYHBoxLayout,
+    AYMenu,
     AYTreeView
 )
 from ayon_core.ui.style_types import get_ayon_style
 
 from .utils import (
     USERNAME_ROLE,
+    NaturalSortProxyModel,
     BaseOverlayFrame,
     WorkfilesDelegate,
     create_avatar_cache,
 )
+from .actions_widgets import add_actions_to_menu
 
 REPRE_ID_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -293,7 +296,7 @@ class SelectContextOverlay(BaseOverlayFrame):
         super(SelectContextOverlay, self).__init__(parent)
 
         label_widget = AYLabel(
-            "Please choose context on the left<br/>&lt",
+            "Please choose context on the left.",
             self
         )
         label_widget.setAlignment(QtCore.Qt.AlignCenter)
@@ -334,9 +337,8 @@ class PublishedFilesWidget(AYContainer):
         view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = PublishedFilesModel(controller)
-        proxy_model = QtCore.QSortFilterProxyModel()
+        proxy_model = NaturalSortProxyModel()
         proxy_model.setSourceModel(model)
-        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         proxy_model.setDynamicSortFilter(True)
 
         view.setModel(proxy_model)
@@ -360,6 +362,7 @@ class PublishedFilesWidget(AYContainer):
         selection_model = view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
         view.double_clicked.connect(self._on_mouse_double_click)
+        view.customContextMenuRequested.connect(self._on_context_menu)
 
         controller.register_event_callback(
             "expected_selection_changed",
@@ -406,6 +409,33 @@ class PublishedFilesWidget(AYContainer):
     def _on_mouse_double_click(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self.save_as_requested.emit()
+
+    def _on_context_menu(self, point):
+        index = self._view.indexAt(point)
+        # Context menu is related only to the area if is not triggered
+        #   on a published workfile
+        on_workfile = (
+            index.isValid()
+            and bool(index.flags() & QtCore.Qt.ItemIsEnabled)
+        )
+        selection = self._controller.get_workfile_action_selection(
+            True, with_workfile=on_workfile
+        )
+        action_items = self._controller.get_workfile_action_items(selection)
+        if not action_items:
+            return
+
+        menu = AYMenu(self)
+        items_by_action = add_actions_to_menu(menu, action_items)
+        action = menu.exec_(self._view.mapToGlobal(point))
+        action_item = items_by_action.get(action)
+        if action_item is not None:
+            self._controller.trigger_workfile_action(
+                action_item.identifier,
+                selection,
+                action_item.data,
+                {},
+            )
 
     def _on_expected_selection_change(self, event):
         repre_info = event["representation"]

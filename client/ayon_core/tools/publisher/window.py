@@ -20,6 +20,7 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     MessageOverlayObject,
     PixmapLabel,
+    ConnectionOverlay,
 )
 from ayon_core.tools.utils.lib import center_window
 
@@ -257,6 +258,8 @@ class PublisherWindow(QtWidgets.QDialog):
 
         create_overlay_button = CreateNextPageOverlay(self)
 
+        connection_overlay = ConnectionOverlay(controller, self)
+
         show_timer = QtCore.QTimer()
         show_timer.setInterval(1)
         show_timer.timeout.connect(self._on_show_timer)
@@ -317,6 +320,10 @@ class PublisherWindow(QtWidgets.QDialog):
         )
         controller.register_event_callback(
             "controller.reset.finished", self._on_controller_reset
+        )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
         )
         controller.register_event_callback(
             "publish.process.started", self._on_publish_start
@@ -418,6 +425,9 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_visibility(False)
 
         self._create_overlay_button = create_overlay_button
+        self._connection_overlay = connection_overlay
+        # Reset was postponed because server was not available
+        self._reset_on_connection = False
         self._app_event_listener_installed = False
 
         self._show_timer = show_timer
@@ -606,6 +616,15 @@ class PublisherWindow(QtWidgets.QDialog):
         # Reset if requested
         if self._reset_on_show:
             self._reset_on_show = False
+            # Postpone reset until server is available
+            if self._controller.check_server_available():
+                self.reset()
+            else:
+                self._reset_on_connection = True
+
+    def _on_server_connection_opened(self):
+        if self._reset_on_connection:
+            self._reset_on_connection = False
             self.reset()
 
     def _checks_before_save(self, explicit_save: bool) -> bool:

@@ -4,7 +4,7 @@ import json
 import typing
 from typing import Optional
 
-from ayon_core.lib import Logger, JSONSettingRegistry, get_launcher_local_dir
+from ayon_core.lib import Logger, LocalPreferences
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.common_models import (
@@ -12,6 +12,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
     ThumbnailsModel,
     UserItem,
 )
@@ -40,10 +41,9 @@ class BaseLauncherController(
         self._event_system = None
         self._log = None
 
-        self._launcher_registry = JSONSettingRegistry(
-            "launcher",
-            get_launcher_local_dir("tools")
-        )
+        # Name of the registry the launcher used before, so its file
+        #   'tools/launcher.json' is imported on first use.
+        self._launcher_preferences = LocalPreferences("launcher")
 
         self._addons_manager = None
 
@@ -55,6 +55,7 @@ class BaseLauncherController(
         self._actions_model = ActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -91,6 +92,15 @@ class BaseLauncherController(
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
 
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
+
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
             self._addons_manager = AddonsManager()
@@ -98,7 +108,7 @@ class BaseLauncherController(
 
     def get_grouped_host_names(self) -> list[str | None]:
         try:
-            value = self._launcher_registry.get_item(
+            value = self._launcher_preferences.get_item(
                 "grouped_hosts", default="[]"
             )
             return json.loads(value)
@@ -108,8 +118,9 @@ class BaseLauncherController(
             return []
 
     def set_grouped_host_names(self, host_names: list[str | None]):
+        # JSON string, as in the imported registry of previous versions
         value = json.dumps(host_names)
-        self._launcher_registry.set_item("grouped_hosts", value)
+        self._launcher_preferences.set_item("grouped_hosts", value)
 
     # Entity items for UI
     def get_project_items(self, sender=None):

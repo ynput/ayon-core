@@ -365,6 +365,7 @@ class InstanceCardWidget(CardWidget):
             return
         if active is None:
             active = not self._is_active
+        self._is_active = active
         self._set_checked(active)
 
     def is_parent_active(self) -> bool:
@@ -619,7 +620,7 @@ class InstanceCardView(AbstractInstanceView):
             affected_ids.add(instance_id)
             parent_id = instance_id
             while True:
-                parent_id = self._parent_id_by_id[parent_id]
+                parent_id = self._parent_id_by_id.get(parent_id)
                 if parent_id is None:
                     break
                 affected_ids.add(parent_id)
@@ -627,6 +628,23 @@ class InstanceCardView(AbstractInstanceView):
             child_ids = set(self._instance_ids_by_parent_id[instance_id])
             affected_queue.extend(child_ids - affected_ids)
         return affected_ids
+
+    def _get_root_ids_with_active(self) -> list[tuple[set[str], bool]]:
+        """Top level instance ids with their parent active state.
+
+        Orphaned instances, which parent is not available, are considered
+            to have inactive parent.
+
+        Returns:
+            list[tuple[set[str], bool]]: Instance ids with parent active
+                state.
+
+        """
+        output = [(set(self._instance_ids_by_parent_id.get(None, ())), True)]
+        for parent_id, children_ids in self._instance_ids_by_parent_id.items():
+            if parent_id is not None and parent_id not in self._widgets_by_id:
+                output.append((set(children_ids), False))
+        return output
 
     def _toggle_instances(
         self,
@@ -646,8 +664,7 @@ class InstanceCardView(AbstractInstanceView):
 
         affected_ids = self._get_affected_ids(instance_ids)
 
-        _queue = deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        _queue = deque(self._get_root_ids_with_active())
         discarted_ids = set()
         while _queue:
             if not instance_ids:
@@ -670,8 +687,10 @@ class InstanceCardView(AbstractInstanceView):
                     if value is None:
                         value = not old_value
 
-                    widget.set_active(value)
-                    if widget.is_parent_active():
+                    # Skip instances that can't be changed by user
+                    #   (mandatory, or disabled by parent)
+                    if widget.is_checkbox_enabled():
+                        widget.set_active(value)
                         active_by_id[instance_id] = widget.is_active()
 
                 children_ids = self._instance_ids_by_parent_id[instance_id]
@@ -787,6 +806,10 @@ class InstanceCardView(AbstractInstanceView):
         }
         _queue = deque()
         _queue.append((None, True))
+        # Orphaned instances have inactive parent
+        for parent_id in instance_ids_by_parent_id:
+            if parent_id is not None and parent_id not in instances_by_id:
+                _queue.append((parent_id, False))
         while _queue:
             parent_id, is_parent_active = _queue.popleft()
             for instance_id in instance_ids_by_parent_id[parent_id]:
@@ -1038,8 +1061,7 @@ class InstanceCardView(AbstractInstanceView):
 
         affected_ids = self._get_affected_ids(instance_ids)
 
-        _queue = deque()
-        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        _queue = deque(self._get_root_ids_with_active())
         while _queue:
             if not affected_ids:
                 break

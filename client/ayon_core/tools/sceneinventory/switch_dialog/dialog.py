@@ -1,5 +1,4 @@
 import collections
-import logging
 
 import ayon_api
 from qtpy import QtWidgets, QtCore
@@ -14,6 +13,7 @@ from ayon_core.pipeline.load import (
     IncompatibleLoaderError,
     LoaderNotFoundError
 )
+from ayon_core.lib import Logger
 
 from .widgets import (
     ButtonWithMenu,
@@ -21,7 +21,7 @@ from .widgets import (
 )
 from .folders_input import FoldersField
 
-log = logging.getLogger("SwitchAssetDialog")
+log = Logger.get_logger("SwitchAssetDialog")
 
 
 class ValidationState:
@@ -449,15 +449,24 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if not loaders:
             return
 
-        # Build new action group
-        group = QtWidgets.QActionGroup(self._accept_btn)
-
+        loader_items = []
         for loader in loaders:
-            # Label
             label = getattr(loader, "label", None)
             if label is None:
                 label = loader.__name__
+            loader_items.append((label, loader))
 
+        # Sort by loader order and label like the Loader tool does. Class
+        #   name is used to keep the order stable for loaders with the same
+        #   order and label.
+        loader_items.sort(
+            key=lambda item: (item[1].order, item[0], item[1].__name__)
+        )
+
+        # Build new action group
+        group = QtWidgets.QActionGroup(self._accept_btn)
+
+        for label, loader in loader_items:
             action = group.addAction(label)
             # action = QtWidgets.QAction(label)
             action.setData(loader)

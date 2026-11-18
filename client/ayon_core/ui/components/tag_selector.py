@@ -6,7 +6,6 @@ selected tags as badges, and opens a floating dropdown for tag selection.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
 from qtpy.QtCore import Signal
@@ -17,6 +16,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from ayon_core.lib import Logger
+
 from ..style_types import get_ayon_style
 from .buttons import AYButton
 from .dropdown import AYDropdownPopup
@@ -26,7 +27,7 @@ from .label import AYLabel
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .style_mixin import StyleMixin
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 @dataclass

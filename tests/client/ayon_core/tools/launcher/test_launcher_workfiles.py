@@ -15,7 +15,11 @@ from ayon_core.ui.components import user_avatars
 from ayon_core.ui.components.task_queue import shutdown_task_queue
 
 
-def _workfile_item(idx: int, updated_by: str | None) -> WorkfileItem:
+def _workfile_item(
+    idx: int,
+    updated_by: str | None,
+    description: str = "",
+) -> WorkfileItem:
     return WorkfileItem(
         workfile_id=str(idx),
         filename=f"sh010_comp_v{idx:03d}.nk",
@@ -26,19 +30,28 @@ def _workfile_item(idx: int, updated_by: str | None) -> WorkfileItem:
         updated_at_time=1000.0 * idx,
         file_size=1024,
         updated_by=updated_by,
+        description=description,
     )
 
 
 class _Controller:
-    def __init__(self, workfile_items: list[WorkfileItem]) -> None:
+    def __init__(
+        self,
+        workfile_items: list[WorkfileItem],
+        grouped_host_names: list[str] | None = None,
+    ) -> None:
         self.workfile_items = workfile_items
+        self.grouped_host_names = grouped_host_names or []
         self.users_thread_ids: list[int] = []
 
     def register_event_callback(self, topic, callback) -> None:
         pass
 
     def get_grouped_host_names(self) -> list[str]:
-        return []
+        return list(self.grouped_host_names)
+
+    def set_grouped_host_names(self, host_names: list[str]) -> None:
+        self.grouped_host_names = list(host_names)
 
     def get_workfile_items(self, project_name, task_id):
         return self.workfile_items
@@ -112,6 +125,156 @@ def test_modified_column_has_user_of_last_change(qtbot, task_queue):
     assert threading.get_ident() not in controller.users_thread_ids
 
 
+def _sorting_item(
+    filename: str,
+    host_name: str,
+    updated_at: float,
+    file_size: int | None,
+) -> WorkfileItem:
+    return WorkfileItem(
+        workfile_id=filename,
+        filename=filename,
+        exists=True,
+        host_name=host_name,
+        icon=None,
+        version=None,
+        updated_at_time=updated_at,
+        file_size=file_size,
+        updated_by=None,
+    )
+
+
+# Sorting by displayed text would give different order for each column
+SORTING_ITEMS = [
+    # Displayed as '9.00 KB'
+    _sorting_item("sh010_comp_v001.comp", "fusion", 3000.0, 9 * 1024),
+    # Displayed as '526.00 KB'
+    _sorting_item("sh010_comp_v002.nk", "nuke", 1000.0, 526 * 1024),
+    # Displayed as '2.00 MB'
+    _sorting_item("sh010_comp_v003.comp", "fusion", 2000.0, 2 * 1024 ** 2),
+    _sorting_item("sh010_comp_v004.nk", "nuke", 4000.0, None),
+]
+
+
+def _sorted_names(qtbot, grouped_host_names, column, order) -> list[str]:
+    controller = _Controller(SORTING_ITEMS, grouped_host_names)
+    model = workfiles_page.WorkfilesModel(controller)
+    _refresh(qtbot, model)
+    proxy = workfiles_page.WorkfileSortFilterProxy()
+    proxy.setSourceModel(model)
+    proxy.sort(column, order)
+    return [
+        proxy.index(row, 0).data(QtCore.Qt.DisplayRole)
+        for row in range(proxy.rowCount())
+    ]
+
+
+@pytest.mark.parametrize(
+    "column, ascending, descending",
+    [
+        # Name, workfiles of the same host are together
+        (0, [0, 2, 1, 3], [2, 0, 3, 1]),
+        # Modified time, workfiles of different hosts are not separated
+        (1, [1, 2, 0, 3], [3, 0, 2, 1]),
+        # Size in bytes, unknown size is lowest
+        (2, [3, 0, 1, 2], [2, 1, 0, 3]),
+    ],
+)
+def test_workfiles_are_sorted_by_raw_values(
+    qtbot, task_queue, column, ascending, descending
+):
+    for order, expected_order in (
+        (QtCore.Qt.AscendingOrder, ascending),
+        (QtCore.Qt.DescendingOrder, descending),
+    ):
+        expected = [SORTING_ITEMS[idx].filename for idx in expected_order]
+        assert _sorted_names(qtbot, [], column, order) == expected
+
+
+@pytest.mark.parametrize(
+    "order", [QtCore.Qt.AscendingOrder, QtCore.Qt.DescendingOrder]
+)
+def test_grouped_hosts_are_on_top(qtbot, task_queue, order):
+    names = _sorted_names(qtbot, ["nuke", "fusion"], 2, order)
+    assert names == ["fusion", "nuke"]
+
+    names = _sorted_names(qtbot, ["nuke"], 2, order)
+    assert names[0] == "nuke"
+    assert sorted(names[1:]) == [
+        "sh010_comp_v001.comp",
+        "sh010_comp_v003.comp",
+    ]
+
+    # Sorting by name keeps the order of hosts
+    names = _sorted_names(qtbot, ["nuke"], 0, order)
+    assert names[-1] == "nuke"
+
+
+def _child_names(model, parent=QtCore.QModelIndex()) -> list[str]:
+    return sorted(
+        model.index(row, 0, parent).data(QtCore.Qt.DisplayRole)
+        for row in range(model.rowCount(parent))
+    )
+
+
+def test_grouped_workfiles_are_nested_under_host(qtbot, task_queue):
+    controller = _Controller(SORTING_ITEMS, ["nuke"])
+    model = workfiles_page.WorkfilesModel(controller)
+    _refresh(qtbot, model)
+
+    assert model.has_grouped_hosts()
+    assert _child_names(model) == [
+        "nuke", "sh010_comp_v001.comp", "sh010_comp_v003.comp"
+    ]
+    nuke_index = next(
+        model.index(row, 0)
+        for row in range(model.rowCount())
+        if model.index(row, 0).data(workfiles_page.ITEM_TYPE_ROLE) == 1
+    )
+    assert _child_names(model, nuke_index) == [
+        "sh010_comp_v002.nk", "sh010_comp_v004.nk"
+    ]
+    # Nested workfiles have values in all columns
+    child_index = model.index(0, 2, nuke_index)
+    assert child_index.data(workfiles_page.WORKFILE_ID_ROLE)
+
+    # Ungroup moves workfiles to the root
+    model.set_group_by_host_name("nuke", False)
+    assert not model.has_grouped_hosts()
+    assert _child_names(model) == [item.filename for item in SORTING_ITEMS]
+    assert controller.grouped_host_names == []
+
+    # Group nests workfiles under the host item
+    model.set_group_by_host_name("fusion", True)
+    assert model.is_host_grouped("fusion")
+    assert _child_names(model) == [
+        "fusion", "sh010_comp_v002.nk", "sh010_comp_v004.nk"
+    ]
+    assert controller.grouped_host_names == ["fusion"]
+
+
+def test_delegate_formats_size_column(qtbot, task_queue, avatar_tasks):
+    controller = _Controller(SORTING_ITEMS)
+    model = workfiles_page.WorkfilesModel(controller)
+    _refresh(qtbot, model)
+    delegate = workfiles_page.WorkfilesDelegate(
+        user_avatars.UserAvatarCache(model)
+    )
+
+    # Model holds size in bytes, delegate shows formatted size
+    index = _index_by_filename(model, "sh010_comp_v002.nk", 2)
+    assert index.data(QtCore.Qt.DisplayRole) == 526 * 1024
+    option = QtWidgets.QStyleOptionViewItem()
+    delegate.initStyleOption(option, index)
+    assert option.text == "526.00 KB"
+
+    index = _index_by_filename(model, "sh010_comp_v004.nk", 2)
+    assert index.data(QtCore.Qt.DisplayRole) is None
+    option = QtWidgets.QStyleOptionViewItem()
+    delegate.initStyleOption(option, index)
+    assert option.text == ""
+
+
 def test_users_are_not_queried_without_a_user(qtbot, task_queue):
     controller = _Controller([_workfile_item(1, None)])
     model = workfiles_page.WorkfilesModel(controller)
@@ -150,6 +313,32 @@ def test_delegate_paints_avatar_in_modified_column(
     assert option.icon.isNull()
 
 
+def test_filename_description_tooltip_and_icon(
+    qtbot, task_queue, avatar_tasks
+):
+    controller = _Controller([
+        _workfile_item(1, "roy", description="Looks good"),
+        _workfile_item(2, "roy"),
+    ])
+    model = workfiles_page.WorkfilesModel(controller)
+    _refresh(qtbot, model)
+    delegate = workfiles_page.WorkfilesDelegate(
+        user_avatars.UserAvatarCache(model)
+    )
+
+    with_desc = _index_by_filename(model, "sh010_comp_v001.nk", 0)
+    assert with_desc.data(workfiles_page.DESCRIPTION_ROLE) == "Looks good"
+    assert with_desc.data(QtCore.Qt.ToolTipRole) == "Looks good"
+    option = QtWidgets.QStyleOptionViewItem()
+    option.rect = QtCore.QRect(0, 0, 200, 28)
+    assert delegate._get_reserved_right_width(option, with_desc) > 0
+
+    without_desc = _index_by_filename(model, "sh010_comp_v002.nk", 0)
+    assert without_desc.data(workfiles_page.DESCRIPTION_ROLE) == ""
+    assert without_desc.data(QtCore.Qt.ToolTipRole) is None
+    assert delegate._get_reserved_right_width(option, without_desc) == 0
+
+
 def test_backend_fills_user_of_last_change(monkeypatch, tmp_path):
     queried_fields = []
 
@@ -169,13 +358,19 @@ def test_backend_fills_user_of_last_change(monkeypatch, tmp_path):
 
     def get_workfiles_info(project_name, task_ids, fields):
         queried_fields.extend(fields)
-        for idx, updated_by in enumerate(("roy", None), 1):
+        entities = (
+            ("roy", {"description": "Artist note"}),
+            (None, {"description": "Incremented by publishing v002"}),
+            ("roy", None),
+        )
+        for idx, (updated_by, attrib) in enumerate(entities, 1):
             yield {
                 "id": str(idx),
                 "path": f"{{root}}/sh010_comp_v{idx:03d}.nk",
                 "data": {"host_name": "nuke", "version": idx},
                 "updatedAt": None,
                 "updatedBy": updated_by,
+                "attrib": attrib,
             }
 
     monkeypatch.setattr(backend_workfiles, "Anatomy", _Anatomy)
@@ -187,4 +382,6 @@ def test_backend_fills_user_of_last_change(monkeypatch, tmp_path):
     items = model.get_workfile_items("demo", "task-id")
 
     assert "updatedBy" in queried_fields
-    assert [item.updated_by for item in items] == ["roy", None]
+    assert "attrib" in queried_fields
+    assert [item.updated_by for item in items] == ["roy", None, "roy"]
+    assert [item.description for item in items] == ["Artist note", "", ""]

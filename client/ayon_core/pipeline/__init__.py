@@ -80,9 +80,6 @@ from .context_tools import (
     uninstall_host,
     is_installed,
 
-    register_root,
-    registered_root,
-
     register_host,
     registered_host,
     deregister_host,
@@ -192,9 +189,6 @@ __all__ = (
     "install_host",
     "uninstall_host",
     "is_installed",
-
-    "register_root",
-    "registered_root",
 
     "register_host",
     "registered_host",

@@ -7,6 +7,7 @@ from ayon_core.tools.launcher.control import BaseLauncherController
 from ayon_core.tools.utils import (
     MessageOverlayObject,
     ProjectsWidget,
+    ConnectionOverlay,
 )
 from ayon_core.ui.components import (
     AYContainer,
@@ -166,8 +167,17 @@ class LauncherWindow(AYContainer):
             "webaction.trigger.finished",
             self._on_webaction_trigger_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
+
+        connection_overlay = ConnectionOverlay(controller, self)
 
         self._overlay_object = overlay_object
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
 
         self._controller = controller
 
@@ -195,7 +205,11 @@ class LauncherWindow(AYContainer):
         self._window_is_active = True
         if not self._actions_refresh_timer.isActive():
             self._actions_refresh_timer.start()
-        self._controller.refresh()
+        # Postpone refresh until server is available
+        if self._controller.check_server_available():
+            self._controller.refresh()
+        else:
+            self._refresh_on_connection = True
 
     def closeEvent(self, event):
         super().closeEvent(event)
@@ -216,7 +230,15 @@ class LauncherWindow(AYContainer):
 
         super().changeEvent(event)
 
+    def _on_server_connection_opened(self):
+        if self._refresh_on_connection:
+            self._refresh_on_connection = False
+            self._controller.refresh()
+
     def _on_actions_refresh_timeout(self):
+        # Skip actions refresh while server is not available
+        if self._controller.get_server_connection_state() is False:
+            return
         # Stop timer if widget is not visible
         if self._window_is_active:
             self._controller.refresh_actions()
