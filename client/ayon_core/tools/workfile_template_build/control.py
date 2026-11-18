@@ -260,20 +260,18 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
         if folder_path:
             validation_error = None
             task_entity = self._builder.current_task_entity
-            if not task_name or not task_entity:
+            # Plate product types have no task name, so only validate a task
+            #   when one was supplied.
+            if task_name and not task_entity:
                 validation_error = (
                     "Task '{}' was not found in folder '{}'."
                     .format(task_name, folder_path)
-                    )
+                )
             folder_entity = self._builder.current_folder_entity
             if not folder_entity:
                 validation_error = (
                     "Folder '{}' was not found in the current project."
                     .format(folder_path)
-                )
-            if folder_entity and (not task_name or not task_entity):
-                validation_error = (
-                    "Task name must be specified when folder exists."
                 )
 
             if validation_error is not None:
