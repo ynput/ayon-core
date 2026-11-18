@@ -95,6 +95,29 @@ def test_click_where_menu_opened_closes_menu(tray_icon, menu_actions):
     assert not menu.isVisible()
 
 
+def test_release_without_press_is_ignored(tray_icon, menu_actions):
+    """Qt on Windows sends a release on the first mouse move after a window
+    was closed with its title bar close button."""
+    actions, triggered = menu_actions
+    menu = tray_icon.menu
+    cursor_pos = _popup_with_cursor_on(menu, actions[-1])
+
+    left = QtCore.Qt.LeftButton
+    no_button = QtCore.Qt.NoButton
+    pos = cursor_pos + QtCore.QPoint(2, 1)
+    _send_mouse(menu, QtCore.QEvent.MouseMove, pos, no_button, left)
+    _send_mouse(menu, QtCore.QEvent.MouseButtonRelease, pos, left, no_button)
+
+    assert triggered == []
+    assert menu.isVisible()
+
+    target = menu.mapToGlobal(menu.actionGeometry(actions[0]).center())
+    _send_mouse(menu, QtCore.QEvent.MouseMove, target, no_button, no_button)
+    _click(menu, target)
+
+    assert triggered == ["Launcher"]
+
+
 def test_click_after_moving_triggers_action(tray_icon, menu_actions):
     actions, triggered = menu_actions
     menu = tray_icon.menu

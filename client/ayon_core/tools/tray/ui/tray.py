@@ -799,6 +799,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._menu_hidden_at = 0.0
         self._ignore_trigger_until = 0.0
         self._menu_shown_cursor_pos = QtCore.QPoint()
+        self._menu_pressed = False
 
         doubleclick_time_ms = QtWidgets.QApplication.doubleClickInterval()
         if not doubleclick_time_ms or doubleclick_time_ms <= 0:
@@ -1009,27 +1010,39 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._prepare_menu_size()
 
     def eventFilter(self, obj, event):
-        # QMenu ignores clicks until the mouse moved away from where it was
-        #   when the menu opened. Since Qt 6.8 it takes that position from
-        #   the last mouse event Qt received, which is stale when the menu
-        #   is opened by a click on the tray icon.
-        if (
-            obj is self.menu
-            and event.type() in (
-                QtCore.QEvent.MouseButtonPress,
-                QtCore.QEvent.MouseButtonRelease,
-                QtCore.QEvent.MouseButtonDblClick,
-            )
-            and (
-                event.globalPos() - self._menu_shown_cursor_pos
-            ).manhattanLength() <= QtWidgets.QApplication.startDragDistance()
+        if obj is not self.menu:
+            return super().eventFilter(obj, event)
+
+        event_type = event.type()
+        if event_type in (
+            QtCore.QEvent.MouseButtonPress,
+            QtCore.QEvent.MouseButtonDblClick,
         ):
-            self.menu.hide()
-            return True
+            # QMenu ignores clicks until the mouse moved away from where it
+            #   was when the menu opened. Since Qt 6.8 it takes that position
+            #   from the last mouse event Qt received, which is stale when
+            #   the menu is opened by a click on the tray icon.
+            distance = (
+                event.globalPos() - self._menu_shown_cursor_pos
+            ).manhattanLength()
+            if distance <= QtWidgets.QApplication.startDragDistance():
+                self.menu.hide()
+                return True
+            self._menu_pressed = True
+
+        elif event_type == QtCore.QEvent.MouseButtonRelease:
+            # Qt on Windows sends a release without a press on the first
+            #   mouse move after a press on a window title bar, e.g. after
+            #   closing a window with its close button.
+            if not self._menu_pressed:
+                return True
+            self._menu_pressed = False
+
         return super().eventFilter(obj, event)
 
     def _on_menu_about_to_show(self):
         self._menu_shown_cursor_pos = QtGui.QCursor.pos()
+        self._menu_pressed = False
 
     def _on_menu_about_to_hide(self):
         self._menu_hidden_at = time.monotonic()
