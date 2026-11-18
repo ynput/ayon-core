@@ -451,8 +451,8 @@ class WorkfilesModel:
             "comment_hints": comment_hints,
             "last_version": last_version,
             "extensions": extensions,
-            "folder_path": folder_entity.get("path"),
-            "task_name": task_entity.get("name"),
+            "folder_path": folder_entity["path"],
+            "task_name": task_entity["name"],
         }
 
     def fill_workarea_filepath(
