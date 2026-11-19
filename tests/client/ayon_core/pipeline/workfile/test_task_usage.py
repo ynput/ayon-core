@@ -83,21 +83,6 @@ def test_item_to_server_data():
     }
 
 
-@pytest.mark.parametrize(
-    "data",
-    [
-        None,
-        "invalid",
-        {},
-        {"sessionId": "a", "username": "b"},
-        {"sessionId": "a", "username": "b", "updatedAt": "invalid"},
-        {"sessionId": "", "username": "b", "updatedAt": NOW.isoformat()},
-    ]
-)
-def test_item_from_invalid_server_data(data):
-    assert TaskUsageItem.from_server_data(data) is None
-
-
 def test_filter_other_users_items():
     mine = _item("mine-other-host", host_name="nuke")
     other = _item("other", username="artist2")
@@ -344,7 +329,6 @@ def test_get_task_usage_items(server):
     mine = _item("mine")
     other = _item("other", username="artist2")
     server.add("task-id", mine, other)
-    server.sessions["task-id"]["invalid"] = {"sessionId": "invalid"}
 
     assert task_usage.get_task_usage_items("project", "task-id") == [
         mine, other

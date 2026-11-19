@@ -48,7 +48,7 @@ class TaskInUsePrompt(PreLaunchHook):
             self.host_name,
             task_entity["taskType"],
             task_entity["name"],
-            project_settings=self.data.get("project_settings"),
+            project_settings=self.data["project_settings"],
         )
         if not settings.enabled:
             return

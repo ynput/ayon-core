@@ -150,32 +150,18 @@ class TaskUsageItem:
     updated_at: str
 
     @classmethod
-    def from_server_data(cls, data: Any) -> TaskUsageItem | None:
-        """Create item from session data received from the server.
-
-        Returns:
-            TaskUsageItem | None: Item or None if data are not valid.
-
-        """
-        if not isinstance(data, dict):
-            return None
-        item = cls(
-            session_id=data.get("sessionId"),
-            username=data.get("username"),
-            machine=data.get("machine"),
-            site_id=data.get("siteId"),
-            host_name=data.get("hostName"),
-            workfile=data.get("workfile"),
-            opened_at=data.get("openedAt"),
-            updated_at=data.get("updatedAt"),
+    def from_server_data(cls, data: dict[str, Any]) -> TaskUsageItem:
+        """Create item from session data received from the server."""
+        return cls(
+            session_id=data["sessionId"],
+            username=data["username"],
+            machine=data["machine"],
+            site_id=data["siteId"],
+            host_name=data["hostName"],
+            workfile=data["workfile"],
+            opened_at=data["openedAt"],
+            updated_at=data["updatedAt"],
         )
-        if (
-            not item.session_id
-            or not item.username
-            or item.get_updated_at() is None
-        ):
-            return None
-        return item
 
     def to_server_data(self) -> dict[str, Any]:
         """Data of the session sent to the server.
@@ -393,7 +379,7 @@ def get_task_usage_user_full_names(
 
     output = {}
     for user in users:
-        full_name = (user.get("attrib") or {}).get("fullName")
+        full_name = user["attrib"]["fullName"]
         if full_name:
             output[user["name"]] = full_name
     return output
@@ -477,15 +463,11 @@ def _request(
     return response.data
 
 
-def _parse_server_items(sessions: Any) -> list[TaskUsageItem]:
-    if not isinstance(sessions, list):
-        return []
-    items = []
-    for session in sessions:
-        item = TaskUsageItem.from_server_data(session)
-        if item is not None:
-            items.append(item)
-    return items
+def _parse_server_items(data: dict[str, Any]) -> list[TaskUsageItem]:
+    return [
+        TaskUsageItem.from_server_data(session)
+        for session in data["sessions"]
+    ]
 
 
 def get_task_usage_items(
@@ -507,7 +489,7 @@ def get_task_usage_items(
         data = _request("get", _get_endpoint(project_name, task_id))
     except TaskUsageNotSupportedError:
         return []
-    return _parse_server_items((data or {}).get("sessions"))
+    return _parse_server_items(data)
 
 
 def get_other_users_task_usage_items(
@@ -603,7 +585,7 @@ def claim_task(
     )
     return [
         other_item
-        for other_item in _parse_server_items((data or {}).get("sessions"))
+        for other_item in _parse_server_items(data)
         if other_item.session_id != item.session_id
     ]
 
