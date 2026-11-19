@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import signal
 import threading
 
 import pytest
@@ -119,3 +120,30 @@ def test_no_response_to_ping_is_connection_lost(run_hub):
 
     assert topics == ["connection.opened", "connection.closed"]
     assert fake_ws.pings == 2
+
+
+@pytest.mark.skipif(
+    not hasattr(signal, "pthread_sigmask"), reason="SIGPIPE is POSIX only"
+)
+def test_hub_thread_blocks_sigpipe(monkeypatch):
+    """Writing to a closed connection must not terminate the host.
+
+    Some hosts (e.g. Silhouette on Linux) reset SIGPIPE to the default
+        action. Server closes connection of a client that did not answer
+        its pings, the hub thread then answers the stale pings and writes
+        to the closed connection, which would terminate the process.
+
+    """
+    hub = ws_model.EventHub(FakeConnection())
+    blocked = []
+    monkeypatch.setattr(
+        hub,
+        "_loop",
+        lambda stop_event: blocked.append(
+            signal.SIGPIPE in signal.pthread_sigmask(signal.SIG_BLOCK, [])
+        ),
+    )
+    hub.start()
+    hub._loop_thread.join(5)
+
+    assert blocked == [True]
