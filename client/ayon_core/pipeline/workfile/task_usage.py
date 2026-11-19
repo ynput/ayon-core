@@ -129,8 +129,8 @@ class TaskUsageItem:
     Attributes:
         session_id (str): Unique id of the process.
         username (str): AYON username.
-        machine (str): Name of the machine.
-        site_id (str): AYON site id of the machine.
+        machine (str | None): Name of the machine.
+        site_id (str | None): AYON site id of the machine.
         host_name (str | None): Name of host integration, e.g. 'maya'.
         workfile (str | None): Filename of the workfile opened in the
             session.
@@ -142,8 +142,8 @@ class TaskUsageItem:
     """
     session_id: str
     username: str
-    machine: str
-    site_id: str
+    machine: str | None
+    site_id: str | None
     host_name: str | None
     workfile: str | None
     opened_at: str
