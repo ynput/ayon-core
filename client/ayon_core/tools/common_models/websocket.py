@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import signal
 import socket
 import ssl
 import threading
@@ -642,6 +643,9 @@ class EventHub:
     Internal topics:
         - 'connection.opened' first message received after (re)connection.
         - 'connection.closed' connection was lost or could not be created.
+        - 'connection.interrupted' connection was lost and is reconnected
+            without reporting it as closed. Events might have been missed,
+            'connection.opened' is emitted once reconnected.
         - 'auth.failed' server rejected the token.
 
     Args:
@@ -1090,6 +1094,11 @@ class EventHub:
             self._log.info(
                 "Websocket connection closed, reconnecting: %s", reason
             )
+            # State is unknown until reconnected, tools don't show it as
+            #   lost and 'connection.opened' is emitted on first message
+            with self._state_lock:
+                state.connected = None
+            self.emit_event(Event("connection.interrupted"))
             self._wait(stop_event, _RECONNECT_DELAYS[0])
             return
 
@@ -1130,6 +1139,11 @@ class EventHub:
                 state.catch_up_until = now + _CATCH_UP_TIME
 
     def _thread_loop(self, stop_event: threading.Event) -> None:
+        # Writing to a connection closed by the server raises SIGPIPE.
+        #   Python ignores it, but some hosts reset it to the default
+        #   action which terminates the process (e.g. Silhouette on Linux).
+        if hasattr(signal, "pthread_sigmask"):
+            signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGPIPE})
         try:
             self._loop(stop_event)
         except Exception:
@@ -1280,6 +1294,20 @@ class _GlobalContext:
             return
         event_hub, cls.event_hub = cls.event_hub, None
         event_hub.stop()
+
+
+def get_event_hub() -> EventHub:
+    """Global event hub, created if it does not exist yet.
+
+    Creating the hub does not connect to server. Callbacks added with
+        'connect=False' receive events once a tool starts the connection
+        (see 'WSEventsModel'), so headless usage stays without websocket.
+
+    Returns:
+        EventHub: Global event hub.
+
+    """
+    return _GlobalContext.get_event_hub()
 
 
 class WSEventsModel:
