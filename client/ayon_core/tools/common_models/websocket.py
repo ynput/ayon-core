@@ -12,6 +12,7 @@ import re
 import socket
 import ssl
 import threading
+import time
 import typing
 from typing import Any, Callable
 import weakref
@@ -516,6 +517,15 @@ _AUTH_FAILED_DELAY: float = 30.0
 # How long to wait for the loop thread on stop. The thread is daemon so
 #   it can't block process exit even if it does not finish in time.
 _STOP_TIMEOUT: float = 1.0
+# Loop thread is considered starved when it did not run this long after
+#   its blocking call should have returned (host holds the GIL).
+_STARVED_MARGIN: float = 0.5
+# Keep giving time to the loop thread after it was starved, so messages
+#   buffered in the meantime are processed.
+_CATCH_UP_TIME: float = 1.0
+# Main thread gives time to the loop thread at most once per interval,
+#   no matter how many tools process server events.
+_YIELD_INTERVAL: float = 0.1
 
 
 def _get_requests_ca_bundle() -> str | None:
@@ -610,6 +620,12 @@ class _LoopState:
     failed_attempts: int = 0
     registered_topics: set[str] = field(default_factory=set)
     server_is_restarting: bool = False
+    # Loop thread should run again by this time ('time.monotonic'). Set
+    #   before blocking calls with timeout, stays in the past while the
+    #   thread works (e.g. connecting) so it gets time when starved.
+    wake_by: float = 0.0
+    # Give time to the loop thread until this time ('time.monotonic')
+    catch_up_until: float = 0.0
 
 
 class EventHub:
@@ -647,6 +663,7 @@ class EventHub:
         self._callbacks_lock = threading.RLock()
         self._state_lock = threading.Lock()
         self._registered_callbacks: list[EventCallback] = []
+        self._last_yield: float = 0.0
         self._internal_callbacks: list[EventCallback] = [
             EventCallback(
                 "server.restart_requested", self._on_server_restart,
@@ -689,6 +706,34 @@ class EventHub:
 
     def is_server_restarting(self) -> bool:
         return self._loop_state.server_is_restarting
+
+    def give_loop_thread_time(self) -> None:
+        """Let the loop thread run if the host does not let it.
+
+        Some hosts (e.g. Silhouette) hold the GIL while their main thread
+            is idle, so the loop thread does not run. It can't answer
+            server pings, process messages nor send auth message before
+            the server closes the new connection. Should be called from
+            the main thread, e.g. while a tool processes server events.
+
+        Does nothing while the loop thread waits on the socket or between
+            reconnect attempts. Also yields while the loop thread connects
+            to a server that responds slowly.
+
+        """
+        if not self.is_running():
+            return
+        state = self._loop_state
+        now = time.monotonic()
+        if now - self._last_yield < _YIELD_INTERVAL:
+            return
+        if (
+            now > state.wake_by + _STARVED_MARGIN
+            or now < state.catch_up_until
+        ):
+            self._last_yield = now
+            # Sleep releases the GIL so the loop thread can take it
+            time.sleep(0.001)
 
     def check_server_available(self) -> bool | None:
         """Quick synchronous check if server is available.
@@ -1045,7 +1090,7 @@ class EventHub:
             self._log.info(
                 "Websocket connection closed, reconnecting: %s", reason
             )
-            stop_event.wait(_RECONNECT_DELAYS[0])
+            self._wait(stop_event, _RECONNECT_DELAYS[0])
             return
 
         # Log only first failure, reconnection attempts would spam the log
@@ -1068,7 +1113,21 @@ class EventHub:
             idx = min(state.failed_attempts, len(_RECONNECT_DELAYS) - 1)
             delay = _RECONNECT_DELAYS[idx]
         state.failed_attempts += 1
-        stop_event.wait(delay)
+        self._wait(stop_event, delay)
+
+    def _wait(self, stop_event: threading.Event, timeout: float) -> None:
+        self._loop_state.wake_by = time.monotonic() + timeout
+        stop_event.wait(timeout)
+
+    def _recv_data(self, ws_con: WebSocket) -> tuple[int, Any]:
+        state = self._loop_state
+        state.wake_by = time.monotonic() + _PING_INTERVAL
+        try:
+            return ws_con.recv_data(control_frame=True)
+        finally:
+            now = time.monotonic()
+            if now > state.wake_by + _STARVED_MARGIN:
+                state.catch_up_until = now + _CATCH_UP_TIME
 
     def _thread_loop(self, stop_event: threading.Event) -> None:
         try:
@@ -1085,7 +1144,7 @@ class EventHub:
             ws_con = self._ws_connection
             if ws_con is None:
                 if not self._connection.access_token:
-                    stop_event.wait(1.0)
+                    self._wait(stop_event, 1.0)
                     continue
 
                 try:
@@ -1119,7 +1178,7 @@ class EventHub:
                 continue
 
             try:
-                op_code, message = ws_con.recv_data(control_frame=True)
+                op_code, message = self._recv_data(ws_con)
             except WebSocketTimeoutException as exc:
                 state.recv_timeouts += 1
                 if state.recv_timeouts * _PING_INTERVAL >= _RECV_TIMEOUT:
@@ -1294,6 +1353,7 @@ class WSEventsModel:
 
         """
         self._register_connection_callbacks()
+        _GlobalContext.get_event_hub().give_loop_thread_time()
         while True:
             try:
                 callback, event = self._queue.popleft()

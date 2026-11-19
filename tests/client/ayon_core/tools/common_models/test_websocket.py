@@ -181,3 +181,91 @@ def test_server_restart_is_connection_lost(run_hub):
     assert topics == [
         "connection.opened", "connection.closed", "connection.opened"
     ]
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.value = 1000.0
+        self.slept: list[float] = []
+
+    def monotonic(self) -> float:
+        return self.value
+
+    def sleep(self, seconds: float) -> None:
+        self.slept.append(seconds)
+
+
+@pytest.fixture
+def clock_hub(monkeypatch):
+    """Event hub with fake time, its loop thread is considered running."""
+    clock = FakeClock()
+    monkeypatch.setattr(ws_model, "time", clock)
+    hub = ws_model.EventHub(FakeConnection())
+    monkeypatch.setattr(hub, "is_running", lambda: True)
+    return hub, clock
+
+
+def test_loop_thread_gets_time_only_when_starved(clock_hub, monkeypatch):
+    """Main thread yields only when loop thread is overdue.
+
+    Host (e.g. Silhouette) can hold the GIL while idle, so the loop thread
+        does not run until main thread releases the GIL.
+
+    """
+    hub, clock = clock_hub
+    # Loop thread waits as expected ('wait' returns at once, event is set)
+    stop_event = threading.Event()
+    stop_event.set()
+    hub._wait(stop_event, ws_model._PING_INTERVAL)
+    hub.give_loop_thread_time()
+    assert clock.slept == []
+
+    # Loop thread should have run already
+    clock.value += ws_model._PING_INTERVAL + ws_model._STARVED_MARGIN + 0.1
+    hub.give_loop_thread_time()
+    # Other tool processing events at the same time
+    hub.give_loop_thread_time()
+    assert len(clock.slept) == 1
+
+    clock.value += ws_model._YIELD_INTERVAL
+    hub.give_loop_thread_time()
+    assert len(clock.slept) == 2
+
+    # Loop thread is not running
+    monkeypatch.setattr(hub, "is_running", lambda: False)
+    clock.value += ws_model._YIELD_INTERVAL
+    hub.give_loop_thread_time()
+    assert len(clock.slept) == 2
+
+
+def test_starved_loop_thread_catches_up(clock_hub):
+    """Receive returning long after its timeout means thread was starved.
+
+    Messages buffered meanwhile should be processed, so main thread keeps
+        giving time to the loop thread for a while.
+
+    """
+    hub, clock = clock_hub
+
+    class FakeRecvWebSocket:
+        def __init__(self, duration: float) -> None:
+            self._duration = duration
+
+        def recv_data(self, control_frame: bool = False):
+            clock.value += self._duration
+            return HEARTBEAT
+
+    hub._recv_data(FakeRecvWebSocket(0.1))
+    hub.give_loop_thread_time()
+    assert clock.slept == []
+
+    # Data was waiting in the socket but thread did not run for a while
+    hub._recv_data(FakeRecvWebSocket(ws_model._PING_INTERVAL + 1.0))
+    # Loop thread waits on socket for the next message
+    hub._loop_state.wake_by = clock.value + ws_model._PING_INTERVAL
+    hub.give_loop_thread_time()
+    assert len(clock.slept) == 1
+
+    clock.value += ws_model._CATCH_UP_TIME
+    hub.give_loop_thread_time()
+    assert len(clock.slept) == 1
