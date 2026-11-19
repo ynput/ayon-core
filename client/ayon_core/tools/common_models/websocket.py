@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import signal
 import socket
 import ssl
 import threading
@@ -1071,6 +1072,11 @@ class EventHub:
         stop_event.wait(delay)
 
     def _thread_loop(self, stop_event: threading.Event) -> None:
+        # Writing to a connection closed by the server raises SIGPIPE.
+        #   Python ignores it, but some hosts reset it to the default
+        #   action which terminates the process (e.g. Silhouette on Linux).
+        if hasattr(signal, "pthread_sigmask"):
+            signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGPIPE})
         try:
             self._loop(stop_event)
         except Exception:
@@ -1221,6 +1227,20 @@ class _GlobalContext:
             return
         event_hub, cls.event_hub = cls.event_hub, None
         event_hub.stop()
+
+
+def get_event_hub() -> EventHub:
+    """Global event hub, created if it does not exist yet.
+
+    Creating the hub does not connect to server. Callbacks added with
+        'connect=False' receive events once a tool starts the connection
+        (see 'WSEventsModel'), so headless usage stays without websocket.
+
+    Returns:
+        EventHub: Global event hub.
+
+    """
+    return _GlobalContext.get_event_hub()
 
 
 class WSEventsModel:
