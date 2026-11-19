@@ -57,7 +57,8 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
     Custom data of the reviewable are taken from representation key
     'reviewable_data' (e.g. 'overlay' with burnins drawn by the player).
     Number of slate frames at the start of the reviewable from
-    representation key 'slate_frames' is stored as 'slateFrames'.
+    representation key 'slate_frames' is stored as 'slateFrames'. The data
+    are stored to 'reviewableData' of the reviewable activity data.
     """
 
     label = "Integrate AYON Review"
@@ -226,14 +227,16 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
     def _update_reviewable_data(
         self, project_name: str, upload: ReviewableUpload, activity_id: str
     ) -> None:
-        # NOTE Servers without support of reviewable data ignore the key
-        response = ayon_api.raw_patch(
-            f"projects/{project_name}/versions/{upload.version_id}"
-            f"/reviewables/{activity_id}",
-            json={"data": upload.data},
-        )
-        if response.status_code >= 400:
+        # Data are stored to the activity of the reviewable, so they are
+        #   shared with files transcoded from the reviewable
+        try:
+            ayon_api.update_activity(
+                project_name,
+                activity_id,
+                data={"reviewableData": upload.data},
+            )
+        except Exception as exc:
             raise KnownPublishError(
                 f"Failed to store data of reviewable '{upload.path}'."
-                f" Server response: {response.status_code} {response.text}"
-            )
+                f" {exc}"
+            ) from exc
