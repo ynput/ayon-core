@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import signal
 import socket
 import ssl
 import threading
@@ -1058,6 +1059,11 @@ class EventHub:
         stop_event.wait(delay)
 
     def _thread_loop(self, stop_event: threading.Event) -> None:
+        # Writing to a connection closed by the server raises SIGPIPE.
+        #   Python ignores it, but some hosts reset it to the default
+        #   action which terminates the process (e.g. Silhouette on Linux).
+        if hasattr(signal, "pthread_sigmask"):
+            signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGPIPE})
         try:
             self._loop(stop_event)
         except Exception:
