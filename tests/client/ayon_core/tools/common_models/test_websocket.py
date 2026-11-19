@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 
 import pytest
 from websocket import ABNF, WebSocketTimeoutException
@@ -13,25 +14,18 @@ from ayon_core.tools.common_models import websocket as ws_model
 HEARTBEAT = (ABNF.OPCODE_TEXT, json.dumps({"topic": "heartbeat"}))
 PONG = (ABNF.OPCODE_PONG, b"")
 TIMEOUT = "timeout"
-
-
-class FakeClock:
-    def __init__(self) -> None:
-        self.value = 1000.0
-
-    def monotonic(self) -> float:
-        return self.value
+# Thread did not run for longer than '_RECV_TIMEOUT' (e.g. DCC main thread
+#   held the GIL), then the socket timed out
+STALL = "stall"
 
 
 class FakeWebSocket:
     """Replays scripted results of 'recv_data'.
 
-    Timeout moves the clock forward by the socket timeout as a real
-        socket would. When the script is exhausted the test is stopped.
+    When the script is exhausted the test is stopped.
 
     """
-    def __init__(self, clock, responses, stop_event) -> None:
-        self._clock = clock
+    def __init__(self, responses, stop_event) -> None:
         self._responses = list(responses)
         self._stop_event = stop_event
         self.pings = 0
@@ -50,8 +44,10 @@ class FakeWebSocket:
             self._stop_event.set()
             raise ConnectionError("End of test")
         response = self._responses.pop(0)
+        if response == STALL:
+            time.sleep(ws_model._RECV_TIMEOUT * 2)
+            raise WebSocketTimeoutException("timed out")
         if response == TIMEOUT:
-            self._clock.value += ws_model._PING_INTERVAL
             raise WebSocketTimeoutException("timed out")
         return response
 
@@ -71,13 +67,11 @@ class EventsRecorder:
 @pytest.fixture
 def run_hub(monkeypatch):
     """Run event hub loop with scripted websocket responses."""
-    clock = FakeClock()
-    monkeypatch.setattr(ws_model, "time", clock)
     monkeypatch.setattr(ws_model, "_RECONNECT_DELAYS", (0.0,))
 
     def _run_hub(responses):
         stop_event = threading.Event()
-        fake_ws = FakeWebSocket(clock, responses, stop_event)
+        fake_ws = FakeWebSocket(responses, stop_event)
         connections = [fake_ws]
 
         def create_ws_connection():
@@ -119,3 +113,19 @@ def test_no_response_to_ping_is_connection_lost(run_hub):
 
     assert topics == ["connection.opened", "connection.closed"]
     assert fake_ws.pings == 2
+
+
+def test_stalled_thread_is_not_connection_lost(run_hub, monkeypatch):
+    """Thread that did not run for a while did not lose connection.
+
+    DCC main thread can hold the GIL for a long time (e.g. while
+        rendering), messages from server wait in the socket meanwhile.
+
+    """
+    monkeypatch.setattr(ws_model, "_PING_INTERVAL", 0.01)
+    monkeypatch.setattr(ws_model, "_RECV_TIMEOUT", 0.03)
+    responses = [HEARTBEAT, STALL, HEARTBEAT, HEARTBEAT]
+    topics, fake_ws = run_hub(responses)
+
+    assert topics == ["connection.opened"]
+    assert fake_ws.pings == 1

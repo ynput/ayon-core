@@ -12,7 +12,6 @@ import re
 import socket
 import ssl
 import threading
-import time
 import typing
 from typing import Any, Callable
 import weakref
@@ -503,7 +502,10 @@ class EventCallback:
 #   when nothing was received for this amount of time.
 _PING_INTERVAL: float = 5.0
 # Connection is considered dead if nothing (not even pong) was received
-#   for this amount of time.
+#   while waiting on the socket for this amount of time. Wall-clock time
+#   is not used, the thread might not run for a long time (e.g. DCC main
+#   thread holds the GIL while rendering) while server messages are
+#   waiting in the socket.
 _RECV_TIMEOUT: float = 15.0
 # Timeout for opening websocket connection and for the auth check request.
 _CONNECT_TIMEOUT: float = 5.0
@@ -599,9 +601,8 @@ class _LoopState:
     auth_required: bool = False
     # Some message was received with current websocket connection
     received_message: bool = False
-    # When last frame (message, ping or pong) was received
-    #   ('time.monotonic')
-    last_received: float = 0.0
+    # Receive timeouts in a row with current websocket connection
+    recv_timeouts: int = 0
     # Connection state reported via events
     #   - 'None' means unknown (nothing was reported yet)
     connected: bool | None = None
@@ -1089,7 +1090,7 @@ class EventHub:
                         break
                     self._ws_connection = ws_con
                 state.received_message = False
-                state.last_received = time.monotonic()
+                state.recv_timeouts = 0
                 state.auth_required = True
 
             if state.auth_required:
@@ -1108,8 +1109,8 @@ class EventHub:
             try:
                 op_code, message = ws_con.recv_data(control_frame=True)
             except WebSocketTimeoutException as exc:
-                elapsed = time.monotonic() - state.last_received
-                if elapsed >= _RECV_TIMEOUT:
+                state.recv_timeouts += 1
+                if state.recv_timeouts * _PING_INTERVAL >= _RECV_TIMEOUT:
                     # Server did not respond to ping
                     self._on_connection_lost(stop_event, exc)
                     continue
@@ -1125,7 +1126,7 @@ class EventHub:
                 self._on_connection_lost(stop_event, exc)
                 continue
 
-            state.last_received = time.monotonic()
+            state.recv_timeouts = 0
             if op_code == ABNF.OPCODE_CLOSE:
                 self._on_connection_lost(stop_event)
                 continue
