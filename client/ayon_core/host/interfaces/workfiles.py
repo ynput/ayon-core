@@ -899,6 +899,18 @@ class IWorkfileHost(AbstractHost):
         """
         return []
 
+    def get_workfile_save_extensions(self) -> list[str]:
+        """Extensions the current workfile can be saved as.
+
+        Override when the host can open more workfile extensions than it
+            can save to. The first extension is the default.
+
+        Returns:
+            list[str]: List of extensions that can be used for saving.
+
+        """
+        return self.get_workfile_extensions()
+
     def save_workfile_with_context(
         self,
         filepath: str,
