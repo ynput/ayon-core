@@ -288,7 +288,7 @@ def test_claim_update_and_release(server):
     other = _item("other", username="artist3")
     server.add("task-id", other)
 
-    item = task_usage.create_session_item("file.ma", "maya")
+    item = task_usage.create_session_item("file.ma", "maya", "mine")
     assert task_usage.claim_task("project", "task-id", item, 120) == [other]
     assert server.requests == [(
         "put",
@@ -312,13 +312,13 @@ def test_claim_update_and_release(server):
     session = server.sessions["task-id"]["mine"]
     assert session["openedAt"] == session["updatedAt"] == NOW.isoformat()
 
-    task_usage.claim_task("project", "task-id", item)
-    assert server.requests[-1][2]["ttl"] == TaskUsageSettings().ttl_seconds
+    task_usage.claim_task("project", "task-id", item, 300)
+    assert server.requests[-1][2]["ttl"] == 300
     session = server.sessions["task-id"]["mine"]
     assert session["openedAt"] == NOW.isoformat()
     assert session["updatedAt"] == server.now.isoformat()
 
-    task_usage.release_task("project", "task-id")
+    task_usage.release_task("project", "task-id", "mine")
     assert server.requests[-1][:2] == (
         "delete", f"{ENDPOINT}/task-id/mine"
     )
@@ -363,9 +363,9 @@ def test_server_without_endpoints(server):
     assert task_usage.get_other_users_task_usage_items(
         "project", "task-id"
     ) == []
-    task_usage.release_task("project", "task-id")
+    task_usage.release_task("project", "task-id", "mine")
     with pytest.raises(TaskUsageNotSupportedError):
-        task_usage.claim_task("project", "task-id", item)
+        task_usage.claim_task("project", "task-id", item, 120)
     assert len(server.requests) == 1
 
 

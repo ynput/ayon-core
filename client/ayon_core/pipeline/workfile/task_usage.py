@@ -516,18 +516,16 @@ def get_other_users_task_usage_items(
 
 
 def create_session_item(
-    workfile: str | None = None,
-    host_name: str | None = None,
-    session_id: str | None = None,
+    workfile: str | None,
+    host_name: str,
+    session_id: str,
 ) -> TaskUsageItem:
     """Create session item of current process.
 
     Args:
         workfile (str | None): Filename of the opened workfile.
-        host_name (str | None): Name of host integration.
-        session_id (str | None): Session id, see
-            'get_workfile_session_id'. Session id of the process is used
-            if is not passed.
+        host_name (str): Name of host integration.
+        session_id (str): Session id, see 'get_workfile_session_id'.
 
     Returns:
         TaskUsageItem: Session of current process.
@@ -535,8 +533,6 @@ def create_session_item(
     """
     # Times are only informative, the server does fill its own
     now = _get_now().isoformat()
-    if session_id is None:
-        session_id = _get_session_id()
     return TaskUsageItem(
         session_id=session_id,
         username=get_ayon_username(),
@@ -553,7 +549,7 @@ def claim_task(
     project_name: str,
     task_id: str,
     item: TaskUsageItem,
-    ttl: int | None = None,
+    ttl: int,
     heartbeat: bool = False,
 ) -> list[TaskUsageItem]:
     """Register or refresh a session as working on a task.
@@ -565,7 +561,7 @@ def claim_task(
         project_name (str): Project name.
         task_id (str): Task id.
         item (TaskUsageItem): Session to register.
-        ttl (int | None): Time to live of the session in seconds.
+        ttl (int): Time to live of the session in seconds.
         heartbeat (bool): Only keep the session alive, the time of last
             activity of the session is not changed.
 
@@ -576,8 +572,6 @@ def claim_task(
         TaskUsageNotSupportedError: The server does not have the endpoints.
 
     """
-    if ttl is None:
-        ttl = TaskUsageSettings().ttl_seconds
     data = _request(
         "put",
         _get_endpoint(project_name, task_id, item.session_id),
@@ -593,19 +587,16 @@ def claim_task(
 def release_task(
     project_name: str,
     task_id: str,
-    session_id: str | None = None,
+    session_id: str,
 ) -> None:
     """Unregister a session from a task.
 
     Args:
         project_name (str): Project name.
         task_id (str): Task id.
-        session_id (str | None): Session id. Session of current process
-            is used if not passed.
+        session_id (str): Session id.
 
     """
-    if session_id is None:
-        session_id = _get_session_id()
     try:
         _request(
             "delete", _get_endpoint(project_name, task_id, session_id)
