@@ -1035,11 +1035,23 @@ class EventHub:
         if stop_event.is_set():
             return
 
+        reason = exc if exc is not None else "Closed by server"
+        # Working connection can be closed by the server when the client
+        #   did not answer its pings (host held the GIL for a long time),
+        #   by a proxy or a network hiccup. Report it as lost only if
+        #   reconnecting fails. Server restart is reported right away, the
+        #   restart overlay is hidden only by 'connection.opened'.
+        if received_message and not state.server_is_restarting:
+            self._log.info(
+                "Websocket connection closed, reconnecting: %s", reason
+            )
+            stop_event.wait(_RECONNECT_DELAYS[0])
+            return
+
         # Log only first failure, reconnection attempts would spam the log
         if state.connected is not False:
             self._log.warning(
-                "Lost connection to AYON server websocket: %s",
-                exc if exc is not None else "Closed by server",
+                "Lost connection to AYON server websocket: %s", reason
             )
         self._set_connected(False)
 

@@ -12,11 +12,17 @@ from websocket import ABNF, WebSocketTimeoutException
 from ayon_core.tools.common_models import websocket as ws_model
 
 HEARTBEAT = (ABNF.OPCODE_TEXT, json.dumps({"topic": "heartbeat"}))
+RESTART = (
+    ABNF.OPCODE_TEXT, json.dumps({"topic": "server.restart_requested"})
+)
 PONG = (ABNF.OPCODE_PONG, b"")
+CLOSE = (ABNF.OPCODE_CLOSE, b"")
 TIMEOUT = "timeout"
 # Thread did not run for longer than '_RECV_TIMEOUT' (e.g. DCC main thread
 #   held the GIL), then the socket timed out
 STALL = "stall"
+# Creating websocket connection fails (e.g. server is not running)
+CREATE_FAILED = "create_failed"
 
 
 class FakeWebSocket:
@@ -66,19 +72,29 @@ class EventsRecorder:
 
 @pytest.fixture
 def run_hub(monkeypatch):
-    """Run event hub loop with scripted websocket responses."""
+    """Run event hub loop with scripted websocket responses.
+
+    Each argument is a script of one connection, 'CREATE_FAILED' makes
+        the connection attempt fail.
+
+    """
     monkeypatch.setattr(ws_model, "_RECONNECT_DELAYS", (0.0,))
 
-    def _run_hub(responses):
+    def _run_hub(*scripts):
         stop_event = threading.Event()
-        fake_ws = FakeWebSocket(responses, stop_event)
-        connections = [fake_ws]
+        scripts = list(scripts)
+        sockets = []
 
         def create_ws_connection():
-            if connections:
-                return connections.pop(0)
-            stop_event.set()
-            raise ConnectionError("End of test")
+            if not scripts:
+                stop_event.set()
+                raise ConnectionError("End of test")
+            script = scripts.pop(0)
+            if script == CREATE_FAILED:
+                raise ConnectionError("Connection refused")
+            fake_ws = FakeWebSocket(script, stop_event)
+            sockets.append(fake_ws)
+            return fake_ws
 
         hub = ws_model.EventHub(FakeConnection())
         monkeypatch.setattr(
@@ -88,7 +104,7 @@ def run_hub(monkeypatch):
         recorder = EventsRecorder()
         hub.add_callback("connection.*", recorder.on_event, connect=False)
         hub._loop(stop_event)
-        return recorder.topics, fake_ws
+        return recorder.topics, sockets
 
     return _run_hub
 
@@ -101,18 +117,18 @@ def test_busy_server_without_heartbeat_is_connected(run_hub):
 
     """
     responses = [HEARTBEAT] + [TIMEOUT, PONG] * 10
-    topics, fake_ws = run_hub(responses)
+    topics, sockets = run_hub(responses)
 
     assert topics == ["connection.opened"]
-    assert fake_ws.pings == 10
+    assert sockets[0].pings == 10
 
 
 def test_no_response_to_ping_is_connection_lost(run_hub):
     responses = [HEARTBEAT, TIMEOUT, TIMEOUT, TIMEOUT]
-    topics, fake_ws = run_hub(responses)
+    topics, sockets = run_hub(responses, CREATE_FAILED)
 
     assert topics == ["connection.opened", "connection.closed"]
-    assert fake_ws.pings == 2
+    assert sockets[0].pings == 2
 
 
 def test_stalled_thread_is_not_connection_lost(run_hub, monkeypatch):
@@ -125,7 +141,43 @@ def test_stalled_thread_is_not_connection_lost(run_hub, monkeypatch):
     monkeypatch.setattr(ws_model, "_PING_INTERVAL", 0.01)
     monkeypatch.setattr(ws_model, "_RECV_TIMEOUT", 0.03)
     responses = [HEARTBEAT, STALL, HEARTBEAT, HEARTBEAT]
-    topics, fake_ws = run_hub(responses)
+    topics, sockets = run_hub(responses)
 
     assert topics == ["connection.opened"]
-    assert fake_ws.pings == 1
+    assert sockets[0].pings == 1
+
+
+def test_closed_connection_reconnects_without_reporting(run_hub):
+    """Closed working connection is reported only if reconnect fails.
+
+    Server closes connection of a client that did not answer its pings,
+        e.g. when host held the GIL for a long time.
+
+    """
+    topics, _ = run_hub([HEARTBEAT, CLOSE], [HEARTBEAT])
+
+    assert topics == ["connection.opened"]
+
+
+def test_failed_reconnect_is_connection_lost(run_hub):
+    topics, _ = run_hub([HEARTBEAT, CLOSE], CREATE_FAILED, [HEARTBEAT])
+
+    assert topics == [
+        "connection.opened", "connection.closed", "connection.opened"
+    ]
+
+
+def test_reconnect_closed_before_message_is_connection_lost(run_hub):
+    """New connection closed by server without a message, e.g. bad token."""
+    topics, _ = run_hub([HEARTBEAT, CLOSE], [CLOSE])
+
+    assert topics == ["connection.opened", "connection.closed"]
+
+
+def test_server_restart_is_connection_lost(run_hub):
+    """Restart is reported, 'connection.opened' hides restart overlay."""
+    topics, _ = run_hub([HEARTBEAT, RESTART, CLOSE], [HEARTBEAT])
+
+    assert topics == [
+        "connection.opened", "connection.closed", "connection.opened"
+    ]
