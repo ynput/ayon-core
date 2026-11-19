@@ -563,7 +563,8 @@ def install_task_in_use_notifier() -> TaskInUseNotifier:
     Must be called from the main thread of the application, the notices
     are shown in the thread of Qt application. Claimed tasks are released
     when Qt application quits, as not all applications call 'atexit'
-    callbacks on exit, e.g. Maya.
+    callbacks on exit, e.g. Maya. That requires Qt application to exist
+    when this is called.
 
     Returns:
         TaskInUseNotifier: Object that is showing the notices.

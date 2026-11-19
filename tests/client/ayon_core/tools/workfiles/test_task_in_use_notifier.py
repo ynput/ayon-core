@@ -19,6 +19,11 @@ from ayon_core.tools.workfiles.widgets import (  # noqa: E402
 )
 
 
+class _App(QtCore.QObject):
+    """Stand-in of Qt application with its quit signal."""
+    aboutToQuit = QtCore.Signal()
+
+
 def _notice() -> TaskInUseNotice:
     item = TaskUsageItem(
         session_id="other-user",
@@ -96,21 +101,21 @@ def test_install_notifier(qtbot, monkeypatch):
     monkeypatch.setattr(task_usage, "_notice_callbacks", [])
     monkeypatch.setattr(task_in_use_dialog, "_notifier", None)
     uninstalled = []
+    monkeypatch.setattr(
+        task_usage,
+        "uninstall_task_usage_tracker",
+        lambda: uninstalled.append(True),
+    )
+    # Quit of the application used by other tests is not emitted
+    app = _App()
+    with monkeypatch.context() as patch:
+        patch.setattr(QtCore.QCoreApplication, "instance", lambda: app)
+        notifier = task_in_use_dialog.install_task_in_use_notifier()
 
-    def _uninstall():
-        uninstalled.append(True)
-
-    monkeypatch.setattr(task_usage, "uninstall_task_usage_tracker", _uninstall)
-    app = QtCore.QCoreApplication.instance()
-
-    notifier = task_in_use_dialog.install_task_in_use_notifier()
     assert task_in_use_dialog.install_task_in_use_notifier() is notifier
     assert task_usage._notice_callbacks == [notifier.request_notice]
     assert notifier.thread() is app.thread()
 
     # Tasks are released when the application quits
-    try:
-        app.aboutToQuit.emit()
-    finally:
-        app.aboutToQuit.disconnect(_uninstall)
+    app.aboutToQuit.emit()
     assert uninstalled == [True]
