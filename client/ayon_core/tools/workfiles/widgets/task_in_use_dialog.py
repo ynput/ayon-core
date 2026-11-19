@@ -561,7 +561,9 @@ def install_task_in_use_notifier() -> TaskInUseNotifier:
     host, so the notice can be shown when the tracking is started.
 
     Must be called from the main thread of the application, the notices
-    are shown in the thread of Qt application.
+    are shown in the thread of Qt application. Claimed tasks are released
+    when Qt application quits, as not all applications call 'atexit'
+    callbacks on exit, e.g. Maya.
 
     Returns:
         TaskInUseNotifier: Object that is showing the notices.
@@ -574,12 +576,15 @@ def install_task_in_use_notifier() -> TaskInUseNotifier:
 
     from ayon_core.pipeline.workfile.task_usage import (
         register_task_in_use_notice_callback,
+        uninstall_task_usage_tracker,
     )
 
     notifier = TaskInUseNotifier()
     app = QtCore.QCoreApplication.instance()
-    if app is not None and notifier.thread() is not app.thread():
-        notifier.moveToThread(app.thread())
+    if app is not None:
+        if notifier.thread() is not app.thread():
+            notifier.moveToThread(app.thread())
+        app.aboutToQuit.connect(uninstall_task_usage_tracker)
 
     register_task_in_use_notice_callback(notifier.request_notice)
     _notifier = notifier

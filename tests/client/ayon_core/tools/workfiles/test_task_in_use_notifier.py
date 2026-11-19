@@ -95,8 +95,22 @@ def test_sessions_stay_unconfirmed_if_notice_is_not_shown(qtbot, shown):
 def test_install_notifier(qtbot, monkeypatch):
     monkeypatch.setattr(task_usage, "_notice_callbacks", [])
     monkeypatch.setattr(task_in_use_dialog, "_notifier", None)
+    uninstalled = []
+
+    def _uninstall():
+        uninstalled.append(True)
+
+    monkeypatch.setattr(task_usage, "uninstall_task_usage_tracker", _uninstall)
+    app = QtCore.QCoreApplication.instance()
 
     notifier = task_in_use_dialog.install_task_in_use_notifier()
     assert task_in_use_dialog.install_task_in_use_notifier() is notifier
     assert task_usage._notice_callbacks == [notifier.request_notice]
-    assert notifier.thread() is QtCore.QCoreApplication.instance().thread()
+    assert notifier.thread() is app.thread()
+
+    # Tasks are released when the application quits
+    try:
+        app.aboutToQuit.emit()
+    finally:
+        app.aboutToQuit.disconnect(_uninstall)
+    assert uninstalled == [True]

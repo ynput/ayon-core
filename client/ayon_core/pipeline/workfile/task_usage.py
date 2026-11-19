@@ -1231,10 +1231,11 @@ def install_task_usage_tracker(
     any enabled profile of task in-use notification, so the feature does
     not cost anything when it is not used.
 
-    The tasks are released on exit with 'atexit'. Host integration of an
-    application that does not call 'atexit' callbacks on exit, e.g. Maya,
-    should call 'uninstall_task_usage_tracker' on exit of the application.
-    Otherwise the session expires after the session timeout.
+    The tasks are released on exit with 'atexit', and when Qt application
+    quits if the host uses 'install_task_in_use_notifier'. Other host
+    integration of an application that does not call 'atexit' callbacks
+    on exit should call 'uninstall_task_usage_tracker' on exit of the
+    application. Otherwise the session expires after the session timeout.
 
     Args:
         host (AbstractHost): Installed host integration.
