@@ -1210,6 +1210,20 @@ class _GlobalContext:
         event_hub.stop()
 
 
+def get_event_hub() -> EventHub:
+    """Global event hub, created if it does not exist yet.
+
+    Creating the hub does not connect to server. Callbacks added with
+        'connect=False' receive events once a tool starts the connection
+        (see 'WSEventsModel'), so headless usage stays without websocket.
+
+    Returns:
+        EventHub: Global event hub.
+
+    """
+    return _GlobalContext.get_event_hub()
+
+
 class WSEventsModel:
     """Receive AYON server events in a tool controller.
 

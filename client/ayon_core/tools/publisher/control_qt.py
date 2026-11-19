@@ -82,10 +82,10 @@ class QtPublisherController(PublisherController):
         #   '_main_thread_processor' loop
         self._item_process_in_loop = False
 
-    def reset(self):
+    def reset(self, force: bool = False):
         self._main_thread_processor.clear()
         self._item_process_in_loop = False
-        super().reset()
+        super().reset(force)
 
     def _start_publish(self, stop_after_validation: bool) -> None:
         self._publish_model.set_publish_stop_after_validation(
