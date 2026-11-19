@@ -7,19 +7,96 @@ requested folder hierarchy on the server.
 
 from __future__ import annotations
 
+import json
 import platform
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Iterable
 
 import ayon_api
 import pyblish.api
+import semver
 from ayon_api.utils import create_entity_id
 from ayon_core.lib import StringTemplate
 
 if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
     from ayon_core.pipeline.structures import ListConfig, ListConfigFolder
+
+
+# TODO: Remove once the minimum required ayon_api version supports the
+#   'filters' argument of 'get_entity_lists'.
+# First ayon_api version that supports 'filters' in 'get_entity_lists'.
+_AYON_API_LIST_FILTERS_VERSION = semver.VersionInfo(1, 2, 29)
+_ENTITY_LISTS_BY_LABEL_QUERY = """
+query EntityListsByLabel(
+    $projectName: String!, $filter: String!, $after: String
+) {
+  project(name: $projectName) {
+    entityLists(filter: $filter, first: 100, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id label entityListType entityType } }
+    }
+  }
+}
+"""
+
+
+def get_entity_lists_by_labels(
+    project_name: str,
+    labels: Iterable[str],
+) -> list[dict[str, Any]]:
+    """Get entity lists by label with only the fields the plugin needs.
+
+    Args:
+        project_name (str): Project name where entity lists live.
+        labels (Iterable[str]): Entity list labels to fetch.
+
+    Returns:
+        list[dict[str, Any]]: Entity lists with 'id', 'label',
+            'entityListType' and 'entityType' fields.
+
+    """
+    labels = list(set(labels))
+    if not labels:
+        return []
+
+    filters = {
+        "conditions": [
+            {"key": "label", "operator": "in", "value": labels}
+        ],
+    }
+    api_version = semver.VersionInfo.parse(ayon_api.__version__)
+    if api_version >= _AYON_API_LIST_FILTERS_VERSION:
+        return list(ayon_api.get_entity_lists(
+            project_name,
+            filters=filters,
+            fields={"id", "label", "entityListType", "entityType"},
+        ))
+
+    # TODO: Remove the workaround below once the minimum required ayon_api
+    #   version supports the 'filters' argument of 'get_entity_lists'.
+    variables = {
+        "projectName": project_name,
+        "filter": json.dumps(filters),
+        "after": None,
+    }
+    output = []
+    while True:
+        response = ayon_api.query_graphql(
+            _ENTITY_LISTS_BY_LABEL_QUERY, variables
+        )
+        if response.errors:
+            raise RuntimeError(
+                f"Failed to query entity lists: {response.errors}"
+            )
+        entity_lists = response.data["data"]["project"]["entityLists"]
+        output.extend(edge["node"] for edge in entity_lists["edges"])
+        page_info = entity_lists["pageInfo"]
+        if not page_info["hasNextPage"]:
+            break
+        variables["after"] = page_info["endCursor"]
+    return output
 
 
 # TODO: ayon_api future compatibility, remove once ayon_api supports it
@@ -219,11 +296,13 @@ class IntegrateVersionToList(pyblish.api.ContextPlugin):
         if not list_config_by_list_label:
             return
 
-        # Get all list entities for the project from server
+        # Get existing list entities with matching labels from server
         project_name: str = context.data["projectName"]
         existing_list_entities_by_label: dict[str, dict] = {
             entity_list["label"]: entity_list
-            for entity_list in ayon_api.get_entity_lists(project_name)
+            for entity_list in get_entity_lists_by_labels(
+                project_name, list_config_by_list_label
+            )
         }
         existing_list_folders = get_entity_list_folders(project_name)
 

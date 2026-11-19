@@ -11,7 +11,11 @@ Provides:
         'folderPath' is set in context data.
     context -> taskEntity - Task entity from AYON server only if 'folderPath'
         and 'task' are set in context data.
+
+Entities and anatomy are taken from the CreateContext cache when the publish
+    was started from a CreateContext (e.g. Publisher).
 """
+import copy
 
 import pyblish.api
 import ayon_api
@@ -34,15 +38,24 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         folder_entity = context.data.get("folderEntity")
         task_entity = context.data.get("taskEntity")
 
+        create_context = context.data.get("create_context")
+
         if not project_entity:
-            project_entity = ayon_api.get_project(project_name)
+            if create_context is not None:
+                project_entity = create_context.get_current_project_entity()
+            else:
+                project_entity = ayon_api.get_project(project_name)
             if not project_entity:
                 raise PublishError(f"Project '{project_name}' was not found.")
 
+        if create_context is not None:
+            # Anatomy is read-only, CreateContext shares it with creators too
+            anatomy = create_context.get_current_project_anatomy()
+        else:
+            anatomy = Anatomy(project_name, project_entity=project_entity)
+
         context.data["projectEntity"] = project_entity
-        context.data["anatomy"] = Anatomy(
-            project_name, project_entity=project_entity
-        )
+        context.data["anatomy"] = anatomy
 
         self.log.debug(f"Project entity \"{project_entity}\"")
         self.log.debug(
@@ -54,13 +67,15 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
             return
 
         if not folder_entity:
-            folder_entity = self._get_folder_entity(project_name, folder_path)
+            folder_entity = self._get_folder_entity(
+                project_name, folder_path, create_context
+            )
 
         self.log.debug(f"Folder entity \"{folder_entity}\"")
 
         if not task_entity:
             task_entity = self._get_task_entity(
-                project_name, folder_entity, task_name
+                project_name, folder_entity, task_name, create_context
             )
 
         self.log.debug(f"Task entity \"{task_entity}\"")
@@ -102,10 +117,22 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
 
         context.data["fps"] = context_attributes["fps"]
 
-    def _get_folder_entity(self, project_name, folder_path):
+    def _get_folder_entity(
+        self, project_name, folder_path, create_context=None
+    ):
         if not folder_path:
             return None
-        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+
+        if create_context is not None:
+            # Copy so publish plugins can't change CreateContext cache
+            folder_entity = copy.deepcopy(
+                create_context.get_folder_entity(folder_path)
+            )
+        else:
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+
         if not folder_entity:
             raise PublishError(
                 f"Folder '{folder_path}' was not found"
@@ -113,12 +140,24 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
             )
         return folder_entity
 
-    def _get_task_entity(self, project_name, folder_entity, task_name):
+    def _get_task_entity(
+        self, project_name, folder_entity, task_name, create_context=None
+    ):
         if not folder_entity or not task_name:
             return None
-        task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
-        )
+
+        if create_context is not None:
+            # Copy so publish plugins can't change CreateContext cache
+            task_entity = copy.deepcopy(
+                create_context.get_task_entity(
+                    folder_entity["path"], task_name
+                )
+            )
+        else:
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+
         if not task_entity:
             task_path = "/".join([folder_entity["path"], task_name])
             raise PublishError(
