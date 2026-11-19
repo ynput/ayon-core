@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+from typing import Any
 from concurrent.futures import ThreadPoolExecutor
 
 import ayon_api
@@ -9,6 +10,7 @@ import pyblish.api
 
 from ayon_core.lib import get_media_mime_type, format_file_size
 from ayon_core.pipeline.publish import (
+    KnownPublishError,
     PublishXmlValidationError,
     get_publish_repre_path,
 )
@@ -36,11 +38,13 @@ class ReviewableUpload:
         path: str,
         content_type: str,
         label: str | None,
+        data: dict[str, Any] | None = None,
     ) -> None:
         self.version_id = version_id
         self.path = path
         self.content_type = content_type
         self.label = label
+        self.data = data or {}
 
 
 class IntegrateAYONReview(pyblish.api.ContextPlugin):
@@ -49,6 +53,11 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
     This is a context plugin so uploads of all instances can run
     concurrently, which reduces the impact of per-request latency to the
     server when publishing many instances.
+
+    Custom data of the reviewable are taken from representation key
+    'reviewable_data' (e.g. 'overlay' with burnins drawn by the player).
+    Number of slate frames at the start of the reviewable from
+    representation key 'slate_frames' is stored as 'slateFrames'.
     """
 
     label = "Integrate AYON Review"
@@ -144,9 +153,17 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
                     path=repre_path,
                     content_type=content_type,
                     label=label,
+                    data=self._get_reviewable_data(repre),
                 )
             )
         return uploads
+
+    def _get_reviewable_data(self, repre: dict[str, Any]) -> dict[str, Any]:
+        data = dict(repre.get("reviewable_data") or {})
+        slate_frames = repre.get("slate_frames")
+        if slate_frames:
+            data["slateFrames"] = int(slate_frames)
+        return data
 
     def _upload_reviewable(
         self, project_name: str, upload: ReviewableUpload
@@ -158,7 +175,7 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
             f"Uploading '{repre_path}' (size: {format_file_size(size)})"
         )
         try:
-            ayon_api.upload_reviewable(
+            response = ayon_api.upload_reviewable(
                 project_name,
                 upload.version_id,
                 repre_path,
@@ -189,6 +206,11 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
                 help_filename="upload_file.xml",
             )
 
+        if upload.data:
+            self._update_reviewable_data(
+                project_name, upload, response.json()["activityId"]
+            )
+
     def _get_review_label(self, repre, uploaded_labels):
         # Use output name as label if available
         label = repre.get("outputName")
@@ -200,3 +222,18 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
             idx += 1
             label = f"{orig_label}_{idx}"
         return label
+
+    def _update_reviewable_data(
+        self, project_name: str, upload: ReviewableUpload, activity_id: str
+    ) -> None:
+        # NOTE Servers without support of reviewable data ignore the key
+        response = ayon_api.raw_patch(
+            f"projects/{project_name}/versions/{upload.version_id}"
+            f"/reviewables/{activity_id}",
+            json={"data": upload.data},
+        )
+        if response.status_code >= 400:
+            raise KnownPublishError(
+                f"Failed to store data of reviewable '{upload.path}'."
+                f" Server response: {response.status_code} {response.text}"
+            )
