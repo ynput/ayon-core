@@ -6,10 +6,25 @@ import threading
 import time
 from unittest.mock import Mock
 
+import pytest
+
+from ayon_core.tools.common_models import hierarchy
 from ayon_core.tools.common_models.hierarchy import HierarchyModel
 
 PROJECT_NAME = "demo"
 FOLDERS = {"folder_id": Mock()}
+
+
+@pytest.fixture(autouse=True)
+def shared_cache(monkeypatch):
+    """Folder items cache is shared by all models, use new one per test."""
+    monkeypatch.setattr(
+        hierarchy, "_SHARED_FOLDERS_CACHE", hierarchy._SharedFoldersCache()
+    )
+    # No tool started the websocket connection
+    hub = Mock()
+    hub.is_connected.return_value = False
+    monkeypatch.setattr(hierarchy, "get_event_hub", lambda: hub)
 
 
 def _model() -> HierarchyModel:

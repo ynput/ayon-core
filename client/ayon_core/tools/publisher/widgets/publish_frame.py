@@ -497,7 +497,7 @@ class PublishFrame(QtWidgets.QWidget):
             self.details_page_requested.emit()
 
     def _on_reset_clicked(self):
-        self._controller.reset()
+        self._controller.reset(force=True)
 
     def _on_stop_clicked(self):
         self._controller.stop_publish()

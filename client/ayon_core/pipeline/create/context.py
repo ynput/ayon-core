@@ -499,7 +499,9 @@ class CreateContext:
         """
         if self._current_project_anatomy is None:
             self._current_project_anatomy = Anatomy(
-                self._current_project_name)
+                self._current_project_name,
+                project_entity=self.get_current_project_entity(),
+            )
         return self._current_project_anatomy
 
     def get_current_project_settings(self) -> dict[str, Any]:
