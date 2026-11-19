@@ -128,7 +128,9 @@ def test_no_response_to_ping_is_connection_lost(run_hub):
     responses = [HEARTBEAT, TIMEOUT, TIMEOUT, TIMEOUT]
     topics, sockets = run_hub(responses, CREATE_FAILED)
 
-    assert topics == ["connection.opened", "connection.closed"]
+    assert topics == [
+        "connection.opened", "connection.interrupted", "connection.closed"
+    ]
     assert sockets[0].pings == 2
 
 
@@ -157,14 +159,20 @@ def test_closed_connection_reconnects_without_reporting(run_hub):
     """
     topics, _ = run_hub([HEARTBEAT, CLOSE], [HEARTBEAT])
 
-    assert topics == ["connection.opened"]
+    # Events might have been missed while reconnecting
+    assert topics == [
+        "connection.opened", "connection.interrupted", "connection.opened"
+    ]
 
 
 def test_failed_reconnect_is_connection_lost(run_hub):
     topics, _ = run_hub([HEARTBEAT, CLOSE], CREATE_FAILED, [HEARTBEAT])
 
     assert topics == [
-        "connection.opened", "connection.closed", "connection.opened"
+        "connection.opened",
+        "connection.interrupted",
+        "connection.closed",
+        "connection.opened",
     ]
 
 
@@ -172,7 +180,9 @@ def test_reconnect_closed_before_message_is_connection_lost(run_hub):
     """New connection closed by server without a message, e.g. bad token."""
     topics, _ = run_hub([HEARTBEAT, CLOSE], [CLOSE])
 
-    assert topics == ["connection.opened", "connection.closed"]
+    assert topics == [
+        "connection.opened", "connection.interrupted", "connection.closed"
+    ]
 
 
 def test_server_restart_is_connection_lost(run_hub):

@@ -627,6 +627,9 @@ class EventHub:
     Internal topics:
         - 'connection.opened' first message received after (re)connection.
         - 'connection.closed' connection was lost or could not be created.
+        - 'connection.interrupted' connection was lost and is reconnected
+            without reporting it as closed. Events might have been missed,
+            'connection.opened' is emitted once reconnected.
         - 'auth.failed' server rejected the token.
 
     Args:
@@ -1046,6 +1049,11 @@ class EventHub:
             self._log.info(
                 "Websocket connection closed, reconnecting: %s", reason
             )
+            # State is unknown until reconnected, tools don't show it as
+            #   lost and 'connection.opened' is emitted on first message
+            with self._state_lock:
+                state.connected = None
+            self.emit_event(Event("connection.interrupted"))
             stop_event.wait(_RECONNECT_DELAYS[0])
             return
 

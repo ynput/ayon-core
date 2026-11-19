@@ -218,6 +218,7 @@ def test_subscribes_only_to_folder_items_topics(get_rest_folders, event_hub):
     assert event_hub.topics == {
         "connection.opened",
         "connection.closed",
+        "connection.interrupted",
         *hierarchy._FOLDER_ITEMS_TOPICS,
         *hierarchy._PROJECT_TOPICS,
     }
@@ -276,15 +277,18 @@ def test_project_rename_invalidates_old_project_name(
     assert _query_count(get_rest_folders) == 2
 
 
+@pytest.mark.parametrize(
+    "lost_topic", ["connection.closed", "connection.interrupted"]
+)
 def test_brief_connection_loss_keeps_folders(
-    get_rest_folders, shared_cache, event_hub, clock
+    lost_topic, get_rest_folders, shared_cache, event_hub, clock
 ):
     model = hierarchy.HierarchyModel(Mock())
     _get_folders(model)
     clock[0] += 3 * shared_cache.min_lifetime
 
     # Brief interruption does not cause query
-    event_hub.emit("connection.closed", project_name=None)
+    event_hub.emit(lost_topic, project_name=None)
     event_hub.emit("connection.opened", project_name=None)
     _get_folders(model)
     clock[0] += shared_cache.min_lifetime - 1
