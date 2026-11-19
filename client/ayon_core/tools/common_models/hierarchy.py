@@ -297,6 +297,9 @@ class _SharedFoldersCache:
                 EventCallback(
                     "connection.closed", self._on_connection_closed
                 ),
+                EventCallback(
+                    "connection.interrupted", self._on_connection_closed
+                ),
             ]
             for topic in _FOLDER_ITEMS_TOPICS + _PROJECT_TOPICS:
                 callbacks.append(
