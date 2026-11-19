@@ -43,17 +43,16 @@ class TaskInUsePrompt(PreLaunchHook):
         if not project_name or not task_entity:
             return
 
-        settings = get_task_usage_settings(
-            project_name,
-            self.host_name,
-            task_entity["taskType"],
-            task_entity["name"],
-            project_settings=self.data["project_settings"],
-        )
-        if not settings.enabled:
-            return
-
         try:
+            settings = get_task_usage_settings(
+                project_name,
+                self.host_name,
+                task_entity["taskType"],
+                task_entity["name"],
+                project_settings=self.data["project_settings"],
+            )
+            if not settings.enabled:
+                return
             items = get_other_users_task_usage_items(
                 project_name, task_entity["id"]
             )

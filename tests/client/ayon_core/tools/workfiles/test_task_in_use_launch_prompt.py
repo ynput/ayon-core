@@ -1,11 +1,14 @@
 """Test task in-use prompts before launch and in the Workfiles tool."""
 from __future__ import annotations
 
+import importlib.util
 import json
+import logging
 import os
 import subprocess
 import sys
 import threading
+import types
 from pathlib import Path
 from unittest import mock
 
@@ -219,3 +222,47 @@ def test_confirm_task_not_in_use(qtbot):
         assert confirm_task_in_use(controller, "task-1", None) is False
     dialog_mock.assert_not_called()
     controller.confirm_task_usage_items.assert_not_called()
+
+
+def _load_launch_hook(monkeypatch):
+    """Load the launch hook with a stub of 'ayon_applications'."""
+    applications = types.ModuleType("ayon_applications")
+
+    class PreLaunchHook:
+        log = logging.getLogger("test_task_in_use_hook")
+
+    applications.PreLaunchHook = PreLaunchHook
+    applications.LaunchTypes = types.SimpleNamespace(local="local")
+    applications.ApplicationLaunchFailed = RuntimeError
+    monkeypatch.setitem(sys.modules, "ayon_applications", applications)
+
+    path = CLIENT_ROOT / "ayon_core" / "hooks" / "pre_task_in_use_prompt.py"
+    spec = importlib.util.spec_from_file_location(
+        "_test_pre_task_in_use_prompt", path
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_launch_hook_without_settings(monkeypatch):
+    """Launch is not blocked if project settings have no profiles.
+
+    E.g. project uses older version of the core addon.
+    """
+    module = _load_launch_hook(monkeypatch)
+    monkeypatch.setattr(
+        module,
+        "get_other_users_task_usage_items",
+        mock.Mock(side_effect=AssertionError("Server must not be asked")),
+    )
+    hook = module.TaskInUsePrompt()
+    hook.host_name = "maya"
+    hook.data = {
+        "project_name": "project",
+        "task_entity": {
+            "id": "task-1", "name": "animation", "taskType": "Animation"
+        },
+        "project_settings": {"core": {"tools": {"Workfiles": {}}}},
+    }
+    assert hook.execute() is None
