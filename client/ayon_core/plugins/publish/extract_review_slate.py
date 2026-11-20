@@ -368,9 +368,7 @@ class ExtractReviewSlate(publish.Extractor):
             repre_update = {
                 "files": output_file,
                 "name": repre["name"],
-                "tags": [x for x in repre["tags"] if x != "delete"],
-                # Number of slate frames at the start of the output
-                "slate_frames": repre.get("slate_frames", 0) + 1,
+                "tags": [x for x in repre["tags"] if x != "delete"]
             }
             inst_data["representations"][idx].update(repre_update)
             self.log.debug(

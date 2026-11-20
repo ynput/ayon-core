@@ -56,9 +56,9 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
 
     Custom data of the reviewable are taken from representation key
     'reviewable_data' (e.g. 'overlay' with burnins drawn by the player).
-    Number of slate frames at the start of the reviewable from
-    representation key 'slate_frames' is stored as 'slateFrames'. The data
-    are stored to 'reviewableData' of the reviewable activity data.
+    Representations tagged 'slate-frame' have one slate frame at the start,
+    which is added to 'slateFrames'. The data are stored to
+    'reviewableData' of the reviewable activity data.
     """
 
     label = "Integrate AYON Review"
@@ -161,9 +161,8 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
 
     def _get_reviewable_data(self, repre: dict[str, Any]) -> dict[str, Any]:
         data = dict(repre.get("reviewable_data") or {})
-        slate_frames = repre.get("slate_frames")
-        if slate_frames:
-            data["slateFrames"] = int(slate_frames)
+        if "slate-frame" in (repre.get("tags") or []):
+            data["slateFrames"] = int(data.get("slateFrames") or 0) + 1
         return data
 
     def _upload_reviewable(
