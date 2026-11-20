@@ -783,6 +783,8 @@ class PublisherWindow(QtWidgets.QDialog):
             )
             self._update_publish_details_widget()
             self._publish_details_widget.set_active(True)
+            if self._controller.get_autoselect_failed_items():
+                self.select_errored_items()
 
         elif new_tab == "report":
             self._content_stacked_layout.setCurrentWidget(
