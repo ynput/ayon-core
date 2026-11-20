@@ -26,7 +26,7 @@ application is handled by 'TaskUsageTracker' in a background thread, the
 main thread only passes current context to it. A notice about other users
 is passed to callbacks registered by the host integration, which shows it
 in its own thread, see 'register_task_in_use_notice_callback'. Without
-a callback the user is asked in the launcher and in the Workfiles tool.
+a callback the user is asked in the Workfiles tool.
 """
 from __future__ import annotations
 
@@ -80,10 +80,6 @@ FARM_JOB_ENV_KEYS = (
     "AYON_PUBLISH_JOB",
     "AYON_REMOTE_PUBLISH",
 )
-
-# Environment variable with comma separated session ids the user did
-#   confirm before the application was launched
-ACKNOWLEDGED_SESSIONS_ENV_KEY = "AYON_TASK_IN_USE_ACKNOWLEDGED"
 
 # Sessions of other users the user of current process was notified about
 _acknowledged_session_ids: set[str] = set()
@@ -586,8 +582,8 @@ class TaskUsageTracker:
 
     When a task is claimed and other users are working on it, callbacks
     registered with 'register_task_in_use_notice_callback' are called,
-    unless the user did already confirm the sessions, e.g. in the launcher
-    or in the Workfiles tool.
+    unless the user did already confirm the sessions, e.g. in the Workfiles
+    tool.
 
     Failures are only logged. The tracker must never break host callbacks.
 
@@ -1056,15 +1052,6 @@ def install_task_usage_tracker(
         or not _is_used_in_host_project(host)
     ):
         return None
-
-    # Sessions confirmed by the user before the application was launched
-    _acknowledged_session_ids.update(
-        session_id
-        for session_id in os.environ.get(
-            ACKNOWLEDGED_SESSIONS_ENV_KEY, ""
-        ).split(",")
-        if session_id
-    )
 
     _tracker = tracker = TaskUsageTracker(host)
     for topic in (

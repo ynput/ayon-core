@@ -840,15 +840,6 @@ def _prepare_install(monkeypatch):
     return started
 
 
-def test_tracker_install_uses_acknowledged_env(monkeypatch):
-    started = _prepare_install(monkeypatch)
-    monkeypatch.setenv(task_usage.ACKNOWLEDGED_SESSIONS_ENV_KEY, "a,b,")
-
-    assert task_usage.install_task_usage_tracker(_MockHost()) is not None
-    assert task_usage._acknowledged_session_ids == {"a", "b"}
-    assert started == ["sync", "start"]
-
-
 def test_tracker_install_follows_host_events(monkeypatch):
     """Opened workfiles are synced when the host changes them.
 

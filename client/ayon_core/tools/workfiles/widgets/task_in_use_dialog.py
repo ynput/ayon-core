@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import datetime
 import logging
-import os
-import platform
-import threading
 import typing
 
 from qtpy import QtWidgets, QtGui, QtCore
@@ -296,70 +293,6 @@ def confirm_task_in_use(
     if confirmed:
         controller.confirm_task_usage_items(items)
     return confirmed
-
-
-def _can_show_dialog() -> bool:
-    """A dialog can be shown and executed in current thread."""
-    app = QtWidgets.QApplication.instance()
-    if app is not None:
-        # 'QCoreApplication' is used in applications without UI
-        return (
-            isinstance(app, QtWidgets.QApplication)
-            and app.thread() == QtCore.QThread.currentThread()
-        )
-
-    # Qt application will be created
-    if threading.current_thread() is not threading.main_thread():
-        return False
-    if platform.system().lower() == "linux":
-        return bool(
-            os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
-        )
-    return True
-
-
-def ask_to_launch_on_task_in_use(
-    items: list[TaskUsageItem],
-) -> bool | None:
-    """Ask user if wants to launch an application on a task that is in use.
-
-    The dialog is shown in current process. Qt application is created if
-    it does not exist, which is the case in a process that only launches
-    an application.
-
-    Args:
-        items (list[TaskUsageItem]): Sessions of other users working on
-            the task.
-
-    Returns:
-        bool | None: User wants to launch the application. None if
-            the dialog can't be shown, e.g. in a thread that is not
-            the thread of Qt application or without a display.
-
-    """
-    from ayon_core.tools.utils import get_ayon_qt_app
-    from ayon_core.ui.components.task_queue import shutdown_task_queue
-
-    if not _can_show_dialog():
-        return None
-
-    app_created = QtWidgets.QApplication.instance() is None
-    if app_created:
-        get_ayon_qt_app()
-    try:
-        dialog = TaskInUseDialog(items, confirm_label="Launch anyway")
-        # The dialog does not have a parent window, make sure it is not
-        #   hidden behind other windows while the launch waits for it
-        dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
-        return dialog.exec_() == QtWidgets.QDialog.Accepted
-
-    finally:
-        # Avatars of users are loaded by threads of the shared task queue,
-        #   which is stopped when Qt application quits. Event loop of
-        #   created application is not used, so the process would crash
-        #   on exit with the threads still running.
-        if app_created:
-            shutdown_task_queue()
 
 
 # Keep reference to the shown notice
