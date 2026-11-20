@@ -1656,6 +1656,66 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._pending_scroll_index: QtCore.QPersistentModelIndex | None = None
+        """Index of the item to scroll to once the view is shown."""
+
+    def select_by_role(self, role: int, value: typing.Any) -> bool:
+        """Select all items with matching value, replacing the selection.
+
+        Args:
+            role (int): Item data role to compare.
+            value (typing.Any): Value of the role to select.
+
+        Returns:
+            bool: True if at least one item was selected.
+
+        """
+        model = self.model()
+        matches = model.match(
+            model.index(0, 0),
+            role,
+            value,
+            -1,
+            QtCore.Qt.MatchFlag.MatchExactly
+            | QtCore.Qt.MatchFlag.MatchRecursive,
+        )
+
+        # convert matches to selection
+        selection = QtCore.QItemSelection()
+        for index in matches:
+            selection.select(index, index)
+
+        # apply selection to the view
+        self.selectionModel().select(
+            selection,
+            QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+        )
+
+        if matches:
+            match = matches[0]
+            self._pending_scroll_index = QtCore.QPersistentModelIndex(match)
+            if self.isVisible():
+                self._scroll_to_pending_index()
+
+        return bool(matches)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._scroll_to_pending_index()
+
+    def _scroll_to_pending_index(self) -> None:
+        """Scroll to the "pending_index" if it is set."""
+        if (index := self._pending_scroll_index) and index.isValid():
+            self._pending_scroll_index = None
+            self.scrollTo(
+                index,
+                QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
+            )
+
     def mousePressEvent(self, event):
         index = self.indexAt(event.pos())
         clear_selection = False
@@ -1709,18 +1769,6 @@ class DetailsPopup(QtWidgets.QDialog):
     def closeEvent(self, event):
         super().closeEvent(event)
         self.closed.emit()
-
-
-def _scroll_to_index(
-    view: QtWidgets.QAbstractItemView,
-    index: QtCore.QPersistentModelIndex,
-) -> None:
-    if not index.isValid():
-        return
-    view.scrollTo(
-        QtCore.QModelIndex(index),
-        QtWidgets.QAbstractItemView.PositionAtCenter,
-    )
 
 
 class PublishReportViewerWidget(QtWidgets.QFrame):
@@ -1945,47 +1993,15 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             bool: True if at least one errored item was selected.
 
         """
-        selected = False
-        for view in (self._instances_view, self._plugins_view):
-            if self._select_errored_in_view(view):
-                selected = True
-        return selected
-
-    @staticmethod
-    def _select_errored_in_view(view: QtWidgets.QTreeView) -> bool:
-
-        # find all items with "ITEM_ERRORED_ROLE=True"
-        model = view.model()
-        matches = model.match(
-            model.index(0, 0),
-            ITEM_ERRORED_ROLE,
-            True,
-            -1,
-            QtCore.Qt.MatchFlag.MatchExactly
-            | QtCore.Qt.MatchFlag.MatchRecursive,
+        instances_selected = self._instances_view.select_by_role(
+            role=ITEM_ERRORED_ROLE,
+            value=True,
         )
-
-        # convert matches to selection
-        selection = QtCore.QItemSelection()
-        for index in matches:
-            selection.select(index, index)
-
-        # apply selection to the view
-        selection_model = view.selectionModel()
-        selection_model.select(
-            selection,
-            QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
-            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+        plugins_selected = self._plugins_view.select_by_role(
+            role=ITEM_ERRORED_ROLE,
+            value=True,
         )
-
-        if matches:
-            # View may not be laid out yet (e.g. tab was just shown),
-            #   so scrolling must wait for the layout to be done.
-            first_index = QtCore.QPersistentModelIndex(matches[0])
-            QtCore.QTimer.singleShot(
-                0, lambda: _scroll_to_index(view, first_index)
-            )
-        return bool(matches)
+        return instances_selected or plugins_selected
 
     def _on_tab_change(self, new_idx):
         if self._current_tab_idx == new_idx:
