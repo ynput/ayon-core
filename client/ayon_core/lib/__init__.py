@@ -70,6 +70,12 @@ from .attribute_definitions import (
     BoolDef,
     FileDef,
     FileDefItem,
+    get_attr_defs_visibility,
+)
+from .attribute_conditions import (
+    AttrDefCondition,
+    ValueCondition,
+    GroupCondition,
 )
 
 from .env_tools import (
@@ -238,6 +244,11 @@ __all__ = [
     "BoolDef",
     "FileDef",
     "FileDefItem",
+    "get_attr_defs_visibility",
+
+    "AttrDefCondition",
+    "ValueCondition",
+    "GroupCondition",
 
     "import_filepath",
     "modules_from_path",
