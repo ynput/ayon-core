@@ -60,7 +60,7 @@ class WorkfilesModel:
         self._log = Logger.get_logger("WorkfilesModel")
         extensions = None
         if controller.is_host_valid():
-            extensions = controller.get_workfile_extensions()
+            extensions = controller.get_workfile_save_extensions()
         self._extensions: list[str] | None = extensions
 
         self._current_username: str | None = None
@@ -406,7 +406,7 @@ class WorkfilesModel:
             current_ext = os.path.splitext(current_filename)[1].lower()
 
         extensions = self._extensions
-        if not current_ext and extensions:
+        if extensions and current_ext not in extensions:
             current_ext = extensions[0]
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)

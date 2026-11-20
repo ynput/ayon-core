@@ -202,6 +202,18 @@ class AbstractWorkfilesCommon(ABC):
         pass
 
     @abstractmethod
+    def get_workfile_save_extensions(self) -> list[str]:
+        """Get extensions the workfile can be saved as.
+
+        Defined by host implementation.
+
+        Returns:
+            list[str]: List of extensions.
+
+        """
+        pass
+
+    @abstractmethod
     def is_save_enabled(self) -> bool:
         """Is workfile save enabled.
 
