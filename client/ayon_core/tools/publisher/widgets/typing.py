@@ -1,3 +1,3 @@
 from typing import Literal
 
-TabIdentifier = Literal["create", "publish", "details", "report"]
+TabIdentifier = Literal["create", "publish", "details", "report", "debug"]
