@@ -181,6 +181,10 @@ class TaskInUseDialog(QtWidgets.QDialog):
         notice_only (bool): Only inform the user, without the option to
             cancel. Used when the task is already in use by the user.
         confirm_label (str): Label of the button to continue.
+        increment_and_open (bool): Offer to open a new version of the
+            workfile, if the user is about to open the workfile other user
+            has opened. Use 'is_increment_and_open_requested' to find out
+            if the user did choose it.
 
     """
     def __init__(
@@ -189,6 +193,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         parent: QtWidgets.QWidget | None = None,
         notice_only: bool = False,
         confirm_label: str = "Open anyway",
+        increment_and_open: bool = False,
     ):
         super().__init__(parent)
         self.setWindowTitle("Task is in use")
@@ -209,7 +214,18 @@ class TaskInUseDialog(QtWidgets.QDialog):
         question_label = AYLabel(
             "Do you want to work on the task anyway?", parent=self
         )
-        question_label.setVisible(not notice_only)
+        question_label.setVisible(not notice_only and not increment_and_open)
+
+        increment_widget = QtWidgets.QWidget(self)
+        increment_layout = AYVBoxLayout(increment_widget, margin=0, spacing=2)
+        for text in (
+            "This file is currently open by another user.",
+            "Increment and open to work in a new version of the workfile.",
+        ):
+            increment_layout.addWidget(
+                AYLabel(text, parent=increment_widget), 0
+            )
+        increment_widget.setVisible(increment_and_open)
 
         btns_widget = QtWidgets.QWidget(self)
 
@@ -220,6 +236,11 @@ class TaskInUseDialog(QtWidgets.QDialog):
             confirm_label, variant=AYButton.Variants.Danger,
             parent=btns_widget,
         )
+        increment_btn = AYButton(
+            "Increment and open", variant=AYButton.Variants.Filled,
+            parent=btns_widget,
+        )
+        increment_btn.setVisible(increment_and_open)
         cancel_btn = AYButton(
             "Cancel", variant=AYButton.Variants.Surface,
             parent=btns_widget,
@@ -235,6 +256,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=10)
         btns_layout.addWidget(confirm_btn, 0)
         btns_layout.addStretch(1)
+        btns_layout.addWidget(increment_btn, 0)
         btns_layout.addWidget(cancel_btn, 0)
         btns_layout.addWidget(ok_btn, 0)
 
@@ -242,14 +264,26 @@ class TaskInUseDialog(QtWidgets.QDialog):
         main_layout.addWidget(header_label, 0)
         main_layout.addWidget(items_widget, 0)
         main_layout.addWidget(question_label, 0)
+        main_layout.addWidget(increment_widget, 0)
         main_layout.addStretch(1)
         main_layout.addWidget(btns_widget, 0)
 
         cancel_btn.clicked.connect(self.reject)
         confirm_btn.clicked.connect(self.accept)
         ok_btn.clicked.connect(self.accept)
+        increment_btn.clicked.connect(self._on_increment_and_open)
+
+        self._increment_and_open_requested = False
 
         self.setMinimumWidth(420)
+
+    def is_increment_and_open_requested(self) -> bool:
+        """User wants to open a new version of the workfile."""
+        return self._increment_and_open_requested
+
+    def _on_increment_and_open(self) -> None:
+        self._increment_and_open_requested = True
+        self.accept()
 
     def showEvent(self, event):
         super().showEvent(event)

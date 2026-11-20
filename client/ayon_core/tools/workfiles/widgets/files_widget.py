@@ -216,7 +216,9 @@ class FilesWidget(AYContainer):
     # Workarea workfiles
     # -------------------------------------------------------------
     def _open_workfile(self, folder_id, task_id, filepath):
-        if not confirm_task_in_use(self._controller, task_id, self):
+        if not confirm_task_in_use(
+            self._controller, task_id, self, workfile=filepath
+        ):
             return
 
         if self._controller.has_unsaved_changes():

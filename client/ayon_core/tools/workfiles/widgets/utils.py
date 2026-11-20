@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import typing
 
@@ -56,16 +57,24 @@ def save_changes_prompt(parent: QtWidgets.QWidget) -> bool | None:
     return None
 
 
+INCREMENT_AND_OPEN_IDENTIFIER = "core.increment-and-open"
+
+
 def confirm_task_in_use(
     controller: AbstractWorkfilesFrontend,
     task_id: str,
     parent: QtWidgets.QWidget,
     confirm_label: str = "Open anyway",
+    workfile: str | None = None,
 ) -> bool:
     """Ask user before working on a task that is in use by other users.
 
     Nothing is shown if the task is not in use. Sessions confirmed by
     the user are not asked about again in the same process.
+
+    If other user has opened the selected workfile that is about to be
+    opened, the user can choose 'Increment and open' workfile action
+    instead.
 
     Args:
         controller (AbstractWorkfilesFrontend): Controller of the
@@ -73,22 +82,55 @@ def confirm_task_in_use(
         task_id (str): Task id.
         parent (QtWidgets.QWidget): Parent widget of the dialog.
         confirm_label (str): Label of the button to continue.
+        workfile (str | None): Workfile that is about to be opened.
 
     Returns:
-        bool: False if user did cancel the action.
+        bool: False if user did cancel, or did choose 'Increment and
+            open' which was triggered.
 
     """
     items = controller.get_task_usage_items(task_id)
     if not items:
         return True
+
+    increment_selection = None
+    filename = os.path.basename(workfile or "").lower()
+    if filename and any(
+        (item.workfile or "").lower() == filename for item in items
+    ):
+        selection = controller.get_workfile_action_selection(False)
+        if (
+            selection.filepath
+            and os.path.normpath(selection.filepath)
+            == os.path.normpath(workfile)
+            and any(
+                action_item.identifier == INCREMENT_AND_OPEN_IDENTIFIER
+                for action_item in controller.get_workfile_action_items(
+                    selection
+                )
+            )
+        ):
+            increment_selection = selection
+
     dialog = TaskInUseDialog(
-        items, parent=parent, confirm_label=confirm_label
+        items,
+        parent=parent,
+        confirm_label=confirm_label,
+        increment_and_open=increment_selection is not None,
     )
     confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
+    increment_and_open = dialog.is_increment_and_open_requested()
     dialog.deleteLater()
-    if confirmed:
-        controller.confirm_task_usage_items(items)
-    return confirmed
+    if not confirmed:
+        return False
+
+    controller.confirm_task_usage_items(items)
+    if increment_and_open:
+        controller.trigger_workfile_action(
+            INCREMENT_AND_OPEN_IDENTIFIER, increment_selection, None, {}
+        )
+        return False
+    return True
 
 
 # Login name of the user shown in the 'Author' column

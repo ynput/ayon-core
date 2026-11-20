@@ -83,3 +83,73 @@ def test_confirm_task_not_in_use(qtbot):
         assert confirm_task_in_use(controller, "task-1", None) is True
     dialog_mock.assert_not_called()
     controller.confirm_task_usage_items.assert_not_called()
+
+
+def _increment_controller(selected_path: str, action_identifiers: list[str]):
+    controller = mock.Mock()
+    controller.get_task_usage_items.return_value = [
+        TaskUsageItem(**_SESSION)
+    ]
+    selection = mock.Mock(filepath=selected_path)
+    controller.get_workfile_action_selection.return_value = selection
+    controller.get_workfile_action_items.return_value = [
+        mock.Mock(identifier=identifier)
+        for identifier in action_identifiers
+    ]
+    return controller, selection
+
+
+def test_confirm_task_in_use_increment_and_open(clicked_button, qtbot):
+    """Other user has opened the workfile that is about to be opened."""
+    clicked_button[0] = "Increment and open"
+    workfile = "/work/sh010_anim_v001.ma"
+    controller, selection = _increment_controller(
+        workfile, [utils.INCREMENT_AND_OPEN_IDENTIFIER]
+    )
+
+    assert confirm_task_in_use(
+        controller, "task-1", None, workfile=workfile
+    ) is False
+    controller.confirm_task_usage_items.assert_called_once()
+    controller.trigger_workfile_action.assert_called_once_with(
+        utils.INCREMENT_AND_OPEN_IDENTIFIER, selection, None, {}
+    )
+
+
+@pytest.mark.parametrize(
+    "workfile, selected_path, action_identifiers",
+    [
+        # Other user has opened a different workfile
+        (
+            "/work/sh010_anim_v002.ma",
+            "/work/sh010_anim_v002.ma",
+            ["core.increment-and-open"],
+        ),
+        # Opened workfile is not the selected workfile, e.g. browsed file
+        (
+            "/other/sh010_anim_v001.ma",
+            "/work/sh010_anim_v002.ma",
+            ["core.increment-and-open"],
+        ),
+        # The action is disabled
+        ("/work/sh010_anim_v001.ma", "/work/sh010_anim_v001.ma", []),
+    ]
+)
+def test_confirm_task_in_use_without_increment(
+    clicked_button, qtbot, workfile, selected_path, action_identifiers
+):
+    clicked_button[0] = "Increment and open"
+    controller, _ = _increment_controller(selected_path, action_identifiers)
+
+    # The button is not available, the dialog is rejected
+    assert confirm_task_in_use(
+        controller, "task-1", None, workfile=workfile
+    ) is False
+    controller.confirm_task_usage_items.assert_not_called()
+    controller.trigger_workfile_action.assert_not_called()
+
+    clicked_button[0] = "Open anyway"
+    assert confirm_task_in_use(
+        controller, "task-1", None, workfile=workfile
+    ) is True
+    controller.trigger_workfile_action.assert_not_called()
