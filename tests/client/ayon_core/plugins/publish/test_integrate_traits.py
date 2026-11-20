@@ -18,7 +18,7 @@ from ayon_core.lib.file_transaction import (
 from ayon_core.pipeline.anatomy import Anatomy
 from ayon_core.pipeline.publish import (
     IntegrationTemplateItem,
-    get_instance_template_name,
+    get_publish_template_name_for_instance,
 )
 from ayon_core.pipeline.traits import (
     Bundle,
@@ -263,7 +263,7 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
         to set up the studio overrides in the test environment.
 
     """
-    template_name = get_instance_template_name(
+    template_name = get_publish_template_name_for_instance(
         mock_context[0])
 
     assert template_name == "default"
