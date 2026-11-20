@@ -502,6 +502,14 @@ class PublishToolModel(BaseSettingsModel):
             "before the publisher UI is allowed to continue publishing"
         )
     )
+    autoselect_failed_items: bool = SettingsField(
+        False,
+        title="Auto-select failed items in details",
+        description=(
+            "Select the failed instances and plugins when switching to "
+            "the publisher 'Details' tab"
+        )
+    )
 
 
 class DeliveryRecipeOverrideModel(BaseSettingsModel):
@@ -932,6 +940,7 @@ DEFAULT_TOOLS_VALUES = {
             "ignore_paths": [],
         },
         "comment_minimum_required_chars": 0,
+        "autoselect_failed_items": False,
     },
     "delivery": {
         "filter_type": "is_deny_list",

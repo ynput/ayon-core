@@ -713,3 +713,14 @@ class PublisherController(
         return CommentDef(
             minimum_chars_required=comment_minimum_required_chars
         )
+
+    def get_autoselect_failed_items(self) -> bool:
+        # Take the cached settings from the Create Context
+        settings = self.get_create_context().get_current_project_settings()
+        return bool(
+            settings
+            .get("core", {})
+            .get("tools", {})
+            .get("publish", {})
+            .get("autoselect_failed_items", False)
+        )
