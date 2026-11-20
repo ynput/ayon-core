@@ -20,8 +20,39 @@ from .constants import (
     ITEM_ERRORED_ROLE,
     PLUGIN_SKIPPED_ROLE,
     PLUGIN_PASSED_ROLE,
-    INSTANCE_REMOVED_ROLE
+    INSTANCE_REMOVED_ROLE,
+    PLUGIN_NAME_ROLE,
+    PLUGIN_FILEPATH_ROLE,
+    PLUGIN_PROCESS_TIME_ROLE,
+    PLUGIN_PROCESS_TIME_RATIO_ROLE,
+    PLUGIN_STATE_SKIPPED,
+    PLUGIN_STATE_PENDING,
+    PLUGIN_STATE_SUCCESSFUL,
+    PLUGIN_STATE_FAILED,
 )
+from .lib import text_filter_matches
+
+
+def get_plugin_state(index: QtCore.QModelIndex) -> str:
+    """Get state of plugin item.
+
+    Same priority as icons in delegate: failed > skipped > successful,
+        anything else is pending (did not run yet).
+
+    Args:
+        index (QtCore.QModelIndex): Index of plugin item.
+
+    Returns:
+        str: One of 'PLUGIN_STATE_*' constants.
+
+    """
+    if index.data(ITEM_ERRORED_ROLE):
+        return PLUGIN_STATE_FAILED
+    if index.data(PLUGIN_SKIPPED_ROLE):
+        return PLUGIN_STATE_SKIPPED
+    if index.data(PLUGIN_PASSED_ROLE):
+        return PLUGIN_STATE_SUCCESSFUL
+    return PLUGIN_STATE_PENDING
 
 
 class InstancesModel(QtGui.QStandardItemModel):
@@ -202,6 +233,7 @@ class PluginsModel(QtGui.QStandardItemModel):
                 continue
 
             items = []
+            group_process_time = None
             for plugin_item in plugin_items:
                 errored = plugin_item.id in errored_plugin_ids
                 label = plugin_item.label or plugin_item.name
@@ -212,10 +244,43 @@ class PluginsModel(QtGui.QStandardItemModel):
                 item.setData(plugin_item.skipped, PLUGIN_SKIPPED_ROLE)
                 item.setData(plugin_item.passed, PLUGIN_PASSED_ROLE)
                 item.setData(errored, ITEM_ERRORED_ROLE)
+                item.setData(plugin_item.name, PLUGIN_NAME_ROLE)
+                item.setData(plugin_item.filepath, PLUGIN_FILEPATH_ROLE)
+
+                process_time = None
+                if plugin_item.process_reports:
+                    process_time = sum(
+                        process_report.process_time
+                        for process_report in plugin_item.process_reports
+                    )
+                item.setData(process_time, PLUGIN_PROCESS_TIME_ROLE)
+
                 items.append(item)
                 self._items_by_id[plugin_item.id] = item
                 self._plugin_items_by_id[plugin_item.id] = item
+
+                if process_time is not None and not plugin_item.skipped:
+                    group_process_time = (
+                        (group_process_time or 0.0) + process_time
+                    )
             group_item.appendRows(items)
+            group_item.setData(group_process_time, PLUGIN_PROCESS_TIME_ROLE)
+
+        max_process_time = max(
+            (
+                item.data(PLUGIN_PROCESS_TIME_ROLE) or 0.0
+                for item in self._plugin_items_by_id.values()
+            ),
+            default=0.0,
+        )
+        for item in self._plugin_items_by_id.values():
+            ratio = 0.0
+            if max_process_time > 0:
+                ratio = (
+                    (item.data(PLUGIN_PROCESS_TIME_ROLE) or 0.0)
+                    / max_process_time
+                )
+            item.setData(ratio, PLUGIN_PROCESS_TIME_RATIO_ROLE)
 
         root_item.appendRows(group_items)
 
@@ -224,16 +289,78 @@ class PluginProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._ignore_skipped: bool = True
+        self._visible_states: set[str] = {
+            PLUGIN_STATE_PENDING,
+            PLUGIN_STATE_SUCCESSFUL,
+            PLUGIN_STATE_FAILED,
+        }
+        self._filter_text: str = ""
+        self.setRecursiveFilteringEnabled(True)
 
     @property
     def ignore_skipped(self) -> bool:
-        return self._ignore_skipped
+        return not self.is_state_visible(PLUGIN_STATE_SKIPPED)
 
     def set_ignore_skipped(self, value: bool) -> None:
-        if value == self._ignore_skipped:
+        self.set_state_visible(PLUGIN_STATE_SKIPPED, not value)
+
+    def is_state_visible(self, state: str) -> bool:
+        return state in self._visible_states
+
+    def set_state_visible(self, state: str, visible: bool) -> None:
+        """Show or hide plugins in a state.
+
+        Args:
+            state (str): One of 'PLUGIN_STATE_*' constants.
+            visible (bool): Show plugins in the state.
+
+        """
+        if visible == (state in self._visible_states):
             return
-        self._ignore_skipped = value
+        if visible:
+            self._visible_states.add(state)
+        else:
+            self._visible_states.discard(state)
+
+        if self.sourceModel():
+            self.invalidateFilter()
+
+    def has_active_filter(self) -> bool:
+        """Check if any filter hides plugins that could have logs.
+
+        Skipped plugins did not run, so hiding them does not count.
+
+        Returns:
+            bool: Text filter is set or any non-skipped state is hidden.
+
+        """
+        if self._filter_text:
+            return True
+        return any(
+            state not in self._visible_states
+            for state in (
+                PLUGIN_STATE_PENDING,
+                PLUGIN_STATE_SUCCESSFUL,
+                PLUGIN_STATE_FAILED,
+            )
+        )
+
+    @property
+    def filter_text(self) -> str:
+        return self._filter_text
+
+    def set_filter_text(self, value: str) -> None:
+        """Set text filter for plugin label, name or filepath.
+
+        Args:
+            value (str): Filter text. Supports wildcards, see
+                'text_filter_matches' for more information.
+
+        """
+        value = value.strip()
+        if value == self._filter_text:
+            return
+        self._filter_text = value
 
         if self.sourceModel():
             self.invalidateFilter()
@@ -241,9 +368,28 @@ class PluginProxyModel(QtCore.QSortFilterProxyModel):
     def filterAcceptsRow(self, row, parent):
         model = self.sourceModel()
         source_index = model.index(row, 0, parent)
-        if source_index.data(ITEM_IS_GROUP_ROLE):
-            return model.rowCount(source_index) > 0
 
-        if self._ignore_skipped and source_index.data(PLUGIN_SKIPPED_ROLE):
+        # Groups are visible only if any plugin is accepted, handled by
+        #   recursive filtering.
+        if source_index.data(ITEM_IS_GROUP_ROLE):
             return False
-        return True
+
+        # handle plugin visibility
+        return self._plugin_accepted(source_index)
+
+    def _plugin_accepted(self, source_index: QtCore.QModelIndex) -> bool:
+        if get_plugin_state(source_index) not in self._visible_states:
+            return False
+
+        # empty filter -> show all plugins
+        if not self._filter_text:
+            return True
+
+        return text_filter_matches(
+            self._filter_text,
+            (
+                source_index.data(ITEM_LABEL_ROLE),
+                source_index.data(PLUGIN_NAME_ROLE),
+                source_index.data(PLUGIN_FILEPATH_ROLE),
+            )
+        )
