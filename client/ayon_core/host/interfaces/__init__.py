@@ -3,7 +3,6 @@ from .workfiles import (
     IWorkfileHost,
     WorkfileInfo,
     PublishedWorkfileInfo,
-    WorkfileInUse,
 
     OpenWorkfileOptionalData,
     ListWorkfilesOptionalData,
@@ -39,7 +38,6 @@ __all__ = (
     "IWorkfileHost",
     "WorkfileInfo",
     "PublishedWorkfileInfo",
-    "WorkfileInUse",
 
     "OpenWorkfileOptionalData",
     "ListWorkfilesOptionalData",

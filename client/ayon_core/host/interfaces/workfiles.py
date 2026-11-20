@@ -827,34 +827,6 @@ class PublishedWorkfileInfo:
         return PublishedWorkfileInfo(**data)
 
 
-@dataclass(frozen=True)
-class WorkfileInUse:
-    """Workfile that is opened in the application.
-
-    Is used for task in-use tracking, see
-    'IWorkfileHost.get_workfiles_in_use'.
-
-    Attributes:
-        project_name (str | None): Project name.
-        folder_path (str | None): Folder path.
-        task_name (str | None): Task name.
-        filepath (str | None): Path to the workfile. None if the
-            application works on the task without a saved workfile.
-        key (str): Identifier of the opened workfile in the application,
-            e.g. id of a document. Must be filled if the application can
-            have opened more workfiles at the same time. Workfile with
-            the same key is considered the same opened workfile even if
-            its path or context changes, e.g. when it is saved under
-            a different name.
-
-    """
-    project_name: str | None
-    folder_path: str | None
-    task_name: str | None
-    filepath: str | None = None
-    key: str = ""
-
-
 class IWorkfileHost(AbstractHost):
     """Implementation requirements to be able to use workfiles utils and tool.
 
@@ -898,59 +870,6 @@ class IWorkfileHost(AbstractHost):
 
         """
         return None
-
-    def get_workfiles_in_use(self) -> list[WorkfileInUse]:
-        """Workfiles that are opened in the application right now.
-
-        Is used for task in-use tracking. Each returned workfile marks its
-        task as in use by current user, until the workfile is not returned
-        anymore or the application is closed.
-
-        The default implementation expects that the application has opened
-        one workfile, which is replaced when another workfile is opened or
-        when it is saved under a different name. The workfile is in
-        current context of the host.
-
-        Should be overridden if the application behaves differently, e.g.
-        if more workfiles can be opened at the same time. In that case
-        each workfile must have filled its 'key'. Example:
-
-        ```
-        def get_workfiles_in_use(self):
-            return [
-                WorkfileInUse(
-                    document.project_name,
-                    document.folder_path,
-                    document.task_name,
-                    document.filepath,
-                    key=document.id,
-                )
-                for document in get_opened_documents()
-            ]
-        ```
-
-        The method is called in the main thread of the application when
-        context changes and when a workfile is opened or saved. If the
-        application can change opened workfiles in a different way, e.g.
-        a document is closed, the integration should tell that workfiles
-        did change by calling 'sync_task_usage' from
-        'ayon_core.pipeline.workfile.task_usage'.
-
-        Returning empty list disables the tracking for the application.
-
-        Returns:
-            list[WorkfileInUse]: Workfiles opened in the application.
-
-        """
-        context = self.get_current_context()
-        return [
-            WorkfileInUse(
-                context["project_name"],
-                context["folder_path"],
-                context["task_name"],
-                self.get_current_workfile() or None,
-            )
-        ]
 
     def workfile_has_unsaved_changes(self) -> Optional[bool]:
         """Currently opened scene is saved.
