@@ -96,6 +96,8 @@ from .path_templates import (
     TemplateUnsolved,
     StringTemplate,
     FormatObject,
+    register_template_format_spec,
+    get_template_format_specs,
 )
 
 from .dateutils import (
@@ -277,6 +279,8 @@ __all__ = [
     "TemplateUnsolved",
     "StringTemplate",
     "FormatObject",
+    "register_template_format_spec",
+    "get_template_format_specs",
 
     "terminal",
 

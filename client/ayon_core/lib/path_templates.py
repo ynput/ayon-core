@@ -7,11 +7,169 @@ import numbers
 import warnings
 import platform
 from string import Formatter
-from typing import Any, Union, Iterable, Optional
+from typing import Any, Callable, Union, Iterable, Optional
 
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
 _IS_WINDOWS = platform.system().lower() == "windows"
+_FORMATTER = Formatter()
+_FIRST_CHAR_REGEX = re.compile(r"[a-zA-Z0-9]")
+# List slice key, e.g. '0:2', '-2:' or '::2'
+_SLICE_REGEX = re.compile(r"(-?\d+)?:(-?\d+)?(?::(-?\d+)?)?")
+# Separator used to join sliced list
+_SLICE_SEPARATOR = " "
+# Join list at the end of key, e.g. '{items.join}', '{items.join(/)}'
+_JOIN_REGEX = re.compile(r"\.join(?:\((?P<separator>[^()]*)\))?$")
+# Value that is a single template key without format spec, e.g. '{layer}'
+_PLACEHOLDER_REGEX = re.compile(r"\{([^{}!:]+)\}")
+# Value that is a single template key with format spec or conversion
+_PLACEHOLDER_WITH_SPEC_REGEX = re.compile(r"\{[^{}]+\}")
+_FORMAT_SPEC_NAME_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]+$")
+# Named format specs that can be used in templates, e.g. '{key:upper}'
+_FORMAT_SPECS: dict[str, Callable[[str], str]] = {}
+
+
+def register_template_format_spec(
+    name: str, func: Callable[[str], str]
+) -> None:
+    """Register named format spec usable in templates.
+
+    Registered name can be used as format spec of any template key
+        formatted with 'StringTemplate' (that includes anatomy templates).
+
+    Example:
+        >>> register_template_format_spec("reverse", lambda v: v[::-1])
+        >>> str(StringTemplate("{name:reverse}").format({"name": "abc"}))
+        'cba'
+
+    Args:
+        name (str): Name of the format spec. Must start with a letter
+            and contain at least 2 letters, digits or underscores so
+            it cannot clash with the python format spec mini-language.
+        func (Callable[[str], str]): Function that receives a value
+            converted to string and returns the formatted string.
+
+    Raises:
+        ValueError: If the name is not valid.
+
+    """
+    if not isinstance(name, str) or not _FORMAT_SPEC_NAME_REGEX.match(name):
+        raise ValueError(
+            f"Invalid template format spec name \"{name}\"."
+            " Name must start with a letter and contain at least"
+            " 2 letters, digits or underscores."
+        )
+    _FORMAT_SPECS[name] = func
+
+
+def get_template_format_specs() -> dict[str, Callable[[str], str]]:
+    """Named format specs that can be used in templates.
+
+    Returns:
+        dict[str, Callable[[str], str]]: Format function by spec name.
+
+    """
+    return dict(_FORMAT_SPECS)
+
+
+def _upper_first(value: str) -> str:
+    """Uppercase first ascii letter or digit, the rest is not changed.
+
+    Same as legacy '{Key}' did. Leading symbols are skipped, a leading digit
+        is the first character so the value does not change.
+        'str.capitalize' is not used because it does lowercase the rest
+        of the string.
+
+    Example:
+        >>> _upper_first("mainBeauty")
+        'MainBeauty'
+        >>> _upper_first("_shot")
+        '_Shot'
+        >>> _upper_first("{layer}")
+        '{Layer}'
+        >>> _upper_first("01_shot")
+        '01_shot'
+
+    """
+    match = _FIRST_CHAR_REGEX.search(value)
+    if match is None:
+        return value
+    idx = match.start()
+    return f"{value[:idx]}{value[idx].upper()}{value[idx + 1:]}"
+
+
+def _lower_first(value: str) -> str:
+    """Lowercase first ascii letter or digit, the rest is not changed."""
+    match = _FIRST_CHAR_REGEX.search(value)
+    if match is None:
+        return value
+    idx = match.start()
+    return f"{value[:idx]}{value[idx].lower()}{value[idx + 1:]}"
+
+
+def _split_words(value: str) -> list[str]:
+    """Split string to words by symbols and by camel case.
+
+    Example:
+        >>> _split_words("char_SuperHero")
+        ['char', 'Super', 'Hero']
+        >>> _split_words("sh010 HTTPServer")
+        ['sh010', 'HTTP', 'Server']
+
+    """
+    words = []
+    word = ""
+    for idx, char in enumerate(value):
+        if not char.isalnum():
+            if word:
+                words.append(word)
+                word = ""
+            continue
+
+        if (
+            word
+            and char.isupper()
+            and (
+                not word[-1].isupper()
+                or value[idx + 1:idx + 2].islower()
+            )
+        ):
+            words.append(word)
+            word = ""
+        word += char
+
+    if word:
+        words.append(word)
+    return words
+
+
+def _camel_case(value: str) -> str:
+    words = _split_words(value)
+    if not words:
+        return ""
+    first_word = words.pop(0).lower()
+    return first_word + "".join(word.capitalize() for word in words)
+
+
+def _pascal_case(value: str) -> str:
+    return "".join(word.capitalize() for word in _split_words(value))
+
+
+def _snake_case(value: str) -> str:
+    return "_".join(word.lower() for word in _split_words(value))
+
+
+for _name, _func in (
+    ("upper", str.upper),
+    ("lower", str.lower),
+    ("upperfirst", _upper_first),
+    ("lowerfirst", _lower_first),
+    ("title", str.title),
+    ("camel", _camel_case),
+    ("pascal", _pascal_case),
+    ("snake", _snake_case),
+):
+    register_template_format_spec(_name, _func)
 
 
 class TemplateUnsolved(Exception):
@@ -91,7 +249,33 @@ class DefaultKeysDict(dict):
 
 
 class StringTemplate:
-    """String that can be formatted."""
+    """String that can be formatted.
+
+    Template keys use python formatting syntax with a few additions.
+
+    Optional parts are wrapped in '<' and '>', the part is skipped if any
+        of its keys is not available in the data.
+        >>> template = StringTemplate("{name}<_{comment}>")
+        >>> str(template.format({"name": "review"}))
+        'review'
+
+    Named format specs change the formatted value, more can be added
+        with 'register_template_format_spec'. Available by default are:
+        - 'upper': 'char_superHero' -> 'CHAR_SUPERHERO'
+        - 'lower': 'char_superHero' -> 'char_superhero'
+        - 'upperfirst': 'char_superHero' -> 'Char_superHero'
+        - 'lowerfirst': 'Char_superHero' -> 'char_superHero'
+        - 'title': 'char_superHero' -> 'Char_Superhero'
+        - 'camel': 'char_superHero' -> 'charSuperHero'
+        - 'pascal': 'char_superHero' -> 'CharSuperHero'
+        - 'snake': 'char_superHero' -> 'char_super_hero'
+        >>> data = {"task": {"name": "lightRig"}}
+        >>> str(StringTemplate("{task[name]:upper}").format(data))
+        'LIGHTRIG'
+        >>> str(StringTemplate("{task[name]:snake}").format(data))
+        'light_rig'
+
+    """
     def __init__(self, template: str):
         if not isinstance(template, str):
             raise TypeError(
@@ -552,6 +736,86 @@ class TemplatePartResult:
             self._invalid_types[key] = type(value)
 
 
+def _get_list_slice(key: str) -> Optional[slice]:
+    """Convert template key to list slice.
+
+    Example:
+        >>> _get_list_slice("0:2")
+        slice(0, 2, None)
+        >>> _get_list_slice("-2:")
+        slice(-2, None, None)
+        >>> _get_list_slice("name") is None
+        True
+
+    Args:
+        key (str): Key from template, e.g. '0:2' from '{items[0:2]}'.
+
+    Returns:
+        Optional[slice]: Slice or None if key is not a valid slice.
+
+    """
+    match = _SLICE_REGEX.fullmatch(key)
+    if match is None:
+        return None
+    start, stop, step = (
+        None if value is None else int(value)
+        for value in match.groups()
+    )
+    if step == 0:
+        return None
+    return slice(start, stop, step)
+
+
+def _get_join_separator(separator: Optional[str]) -> str:
+    """Separator from '.join' in template key.
+
+    Example:
+        >>> _get_join_separator(None)
+        ' '
+        >>> _get_join_separator("/")
+        '/'
+        >>> _get_join_separator('"/"')
+        '/'
+
+    Args:
+        separator (Optional[str]): Content of brackets, None if join
+            does not have brackets.
+
+    Returns:
+        str: Separator, space is used by default.
+
+    """
+    if separator is None:
+        return _SLICE_SEPARATOR
+    # Quotes are optional
+    if (
+        len(separator) >= 2
+        and separator[0] == separator[-1]
+        and separator[0] in ("'", '"')
+    ):
+        return separator[1:-1]
+    return separator
+
+
+class FormatSpecStr(str):
+    """String that supports named format specs in python formatting.
+
+    Python formatting does not know named format specs used in templates,
+        this string applies them when used in 'str.format'.
+        >>> "{name:upperfirst}".format(name=FormatSpecStr("main"))
+        'Main'
+
+    """
+    __slots__ = ()
+
+    def __format__(self, format_spec: str) -> str:
+        if format_spec:
+            format_func = _FORMAT_SPECS.get(format_spec)
+            if format_func is not None:
+                return format_func(str(self))
+        return super().__format__(format_spec)
+
+
 class FormatObject:
     """Object that can be used for formatting.
 
@@ -597,10 +861,30 @@ class FormattingPart:
         self._field_name: str = field_name
         self._format_spec: str = format_spec_v
         self._conversion: str = conversion_v
+        # Name of possible named format spec, e.g. 'upper'
+        self._format_spec_name: Optional[str] = format_spec or None
+        self._conversion_char: Optional[str] = conversion or None
 
         template_base = f"{field_name}{conversion_v}{format_spec_v}"
         self._template_base: str = template_base
         self._template: str = f"{{{template_base}}}"
+
+        # Separator to join list, e.g. '/' from '{items.join(/)}'
+        self._join_separator: Optional[str] = None
+        keys_field_name = field_name
+        join_match = _JOIN_REGEX.search(field_name)
+        if join_match is not None:
+            keys_field_name = field_name[:join_match.start()]
+            self._join_separator = _get_join_separator(
+                join_match.group("separator")
+            )
+
+        # Template is parsed once and can be formatted many times
+        self._keys: tuple[str, ...] = tuple(
+            SUB_DICT_PATTERN.findall(keys_field_name)
+        )
+        # Validated on first formatting
+        self._key_is_matched: Optional[bool] = None
 
     @property
     def template(self) -> str:
@@ -668,7 +952,7 @@ class FormattingPart:
             tuple[str]: Keys of the template.
 
         """
-        return tuple(SUB_DICT_PATTERN.findall(self._field_name))
+        return self._keys
 
     def format(
         self, data: dict[str, Any], result: TemplatePartResult
@@ -683,13 +967,18 @@ class FormattingPart:
         key = self._template_base
 
         # ensure key is properly formed [({})] properly closed.
-        if not self.validate_key_is_matched(key):
+        key_is_matched = self._key_is_matched
+        if key_is_matched is None:
+            key_is_matched = self.validate_key_is_matched(key)
+            self._key_is_matched = key_is_matched
+
+        if not key_is_matched:
             result.add_missing_key(key)
             result.add_output(self.template)
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])
-        key_subdict = self.keys()
+        key_subdict = self._keys
 
         value = data
         missing_key = False
@@ -698,7 +987,27 @@ class FormattingPart:
         keys_to_value = None
         used_value = None
 
+        # Sliced list is joined to string, e.g. '{items[0:2]}'
+        join_list = False
+        # Value from sliced list cannot be formatted with 'str.format_map'
+        used_slice = False
         for sub_key in key_subdict:
+            if isinstance(value, list) and ":" in sub_key:
+                list_slice = _get_list_slice(sub_key)
+                if list_slice is None:
+                    invalid_type = True
+                    break
+
+                used_keys.append(sub_key)
+                if keys_to_value is None:
+                    keys_to_value = list(used_keys)
+                    keys_to_value.pop(-1)
+                    used_value = copy.deepcopy(value)
+                value = value[list_slice]
+                join_list = used_slice = True
+                continue
+
+            join_list = False
             if isinstance(value, list):
                 if not sub_key.lstrip("-").isdigit():
                     invalid_type = True
@@ -756,10 +1065,52 @@ class FormattingPart:
             except KeyError:
                 pass
 
+        if self._join_separator is not None:
+            if not isinstance(value, list):
+                result.add_invalid_type(field_name, value)
+                result.add_output(self.template)
+                return result
+
+            if keys_to_value is None:
+                keys_to_value = list(used_keys)
+                used_value = copy.deepcopy(value)
+            return self._format_list(
+                value,
+                self._join_separator,
+                field_name,
+                keys_to_value,
+                used_value,
+                result,
+            )
+
+        if join_list and isinstance(value, list):
+            return self._format_list(
+                value,
+                _SLICE_SEPARATOR,
+                field_name,
+                keys_to_value,
+                used_value,
+                result,
+            )
+
         if not self.validate_value_type(value):
             result.add_invalid_type(key, value)
             result.add_output(self.template)
             return result
+
+        format_func = None
+        if self._format_spec_name is not None:
+            format_func = _FORMAT_SPECS.get(self._format_spec_name)
+
+        if format_func is not None:
+            return self._format_named_spec(
+                value, format_func, keys_to_value, used_value, result
+            )
+
+        if used_slice:
+            return self._format_value(
+                value, keys_to_value, used_value, result
+            )
 
         fill_data = root_fill_data = {}
         parent_fill_data = None
@@ -794,6 +1145,160 @@ class FormattingPart:
         result.add_used_value(used_key, used_value)
         result.add_output(formatted_value)
         return result
+
+    def _format_list(
+        self,
+        value: list,
+        separator: str,
+        field_name: str,
+        keys_to_value: Optional[list[Any]],
+        used_value: Any,
+        result: TemplatePartResult,
+    ) -> TemplatePartResult:
+        """Join list items and format the joined string.
+
+        Empty list is handled as missing key so optional parts are skipped.
+
+        Args:
+            value (list): List to join.
+            separator (str): Separator of items.
+            field_name (str): Field name used to the list.
+            keys_to_value (Optional[list[Any]]): Keys to the source list.
+            used_value (Any): Copy of the source list.
+            result (TemplatePartResult): Object where result is stored.
+
+        """
+        if not value:
+            result.add_missing_key(field_name)
+            result.add_output(self.template)
+            return result
+
+        items = []
+        for item in value:
+            if isinstance(item, DefaultKeysDict):
+                try:
+                    item = item.get_default_value()
+                except KeyError:
+                    pass
+            if not self.validate_value_type(item):
+                result.add_invalid_type(self._template_base, item)
+                result.add_output(self.template)
+                return result
+            items.append(item if isinstance(item, str) else str(item))
+        joined_value = separator.join(items)
+
+        format_func = None
+        if self._format_spec_name is not None:
+            format_func = _FORMAT_SPECS.get(self._format_spec_name)
+
+        if format_func is not None:
+            return self._format_named_spec(
+                joined_value, format_func, keys_to_value, used_value, result
+            )
+
+        return self._format_value(
+            joined_value, keys_to_value, used_value, result
+        )
+
+    def _format_value(
+        self,
+        value: Any,
+        keys_to_value: list[Any],
+        used_value: Any,
+        result: TemplatePartResult,
+    ) -> TemplatePartResult:
+        """Format value from list with conversion and format spec.
+
+        Args:
+            value (Any): Value to format.
+            keys_to_value (list[Any]): Keys to the source list.
+            used_value (Any): Copy of the source list.
+            result (TemplatePartResult): Object where result is stored.
+
+        """
+        if self._conversion_char is not None:
+            value = _FORMATTER.convert_field(value, self._conversion_char)
+        formatted_value = format(value, self._format_spec[1:])
+
+        used_key = self.keys_to_template_base(keys_to_value)
+        result.add_really_used_value(self._field_name, used_value)
+        result.add_used_value(used_key, used_value)
+        result.add_output(formatted_value)
+        return result
+
+    def _format_named_spec(
+        self,
+        value: Any,
+        format_func: Callable[[str], str],
+        keys_to_value: Optional[list[Any]],
+        used_value: Any,
+        result: TemplatePartResult,
+    ) -> TemplatePartResult:
+        """Format value using named format spec, e.g. '{key:upper}'.
+
+        Args:
+            value (Any): Value that should be formatted.
+            format_func (Callable[[str], str]): Function of the format spec.
+            keys_to_value (Optional[list[Any]]): Keys to the list in which
+                is the value stored.
+            used_value (Any): The list in which is the value stored.
+            result (TemplatePartResult): Object where result is stored.
+
+        """
+        str_value = value
+        if self._conversion_char is not None:
+            str_value = _FORMATTER.convert_field(
+                str_value, self._conversion_char
+            )
+        if not isinstance(str_value, str):
+            str_value = format(str_value, "")
+
+        used_key = self._template_base
+        if keys_to_value is not None:
+            used_key = self.keys_to_template_base(keys_to_value)
+
+        # Used value is the source value, the format spec is not applied
+        if used_value is None:
+            if isinstance(value, numbers.Number):
+                used_value = value
+            else:
+                used_value = str_value
+        result.add_really_used_value(self._field_name, used_value)
+        result.add_used_value(used_key, used_value)
+        result.add_output(
+            self._apply_named_spec(str_value, format_func)
+        )
+        return result
+
+    def _apply_named_spec(
+        self, value: str, format_func: Callable[[str], str]
+    ) -> str:
+        """Apply named format spec on string value.
+
+        Value that is a template key, e.g. '{layer}', is kept as template
+            key with the format spec, e.g. '{layer:upper}'. Some integrations
+            fill the key later and the spec should be applied then.
+
+        Args:
+            value (str): String value.
+            format_func (Callable[[str], str]): Function of the format spec.
+
+        Returns:
+            str: Formatted value.
+
+        """
+        if (
+            self._conversion_char is None
+            and value.startswith("{")
+            and value.endswith("}")
+        ):
+            match = _PLACEHOLDER_REGEX.fullmatch(value)
+            if match is not None:
+                return f"{{{match.group(1)}:{self._format_spec_name}}}"
+            # Key already has format spec or conversion, keep it as it is
+            if _PLACEHOLDER_WITH_SPEC_REGEX.fullmatch(value):
+                return value
+        return format_func(value)
 
 
 class OptionalPart:
