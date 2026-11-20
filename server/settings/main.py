@@ -388,6 +388,56 @@ class FilterEnvsProfileModel(BaseSettingsModel):
     )
 
 
+class TraitFieldSynonymModel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField(
+        "",
+        title="Typed name",
+        description="Name accepted in the search bar, e.g. 'resolution:width'.",
+    )
+    field: str = SettingsField(
+        "",
+        title="Trait field",
+        description=(
+            "Versionless trait ID and field the name stands for, e.g."
+            " 'ayon.2d.PixelBased/display_window_width'."
+        ),
+    )
+
+
+class TraitsFilteringModel(BaseSettingsModel):
+    """Representation trait filters in the web UI.
+
+    The filter bar offers only the trait fields listed here, and only
+    when representations of the project use them. "Has Trait" still
+    lists every used trait. The lists only change what the filter bar
+    offers, other trait fields still work in API filters.
+    """
+
+    exposed_traits: list[str] = SettingsField(
+        default_factory=list,
+        title="Exposed traits",
+        description=(
+            "Versionless trait IDs whose fields are all offered in the"
+            " filter bar, e.g. 'ayon.2d.PixelBased'."
+        ),
+    )
+    exposed_fields: list[str] = SettingsField(
+        default_factory=list,
+        title="Exposed fields",
+        description=(
+            "Single trait fields offered in the filter bar, as"
+            " '<versionless trait ID>/<field>', e.g."
+            " 'ayon.time.Sequence/frame_padding'."
+        ),
+    )
+    synonyms: list[TraitFieldSynonymModel] = SettingsField(
+        default_factory=list,
+        title="Synonyms",
+        description="Extra names for trait fields in the typed filter syntax.",
+    )
+
+
 class CoreSettings(BaseSettingsModel):
     studio_name: str = SettingsField("", title="Studio name", scope=["studio"])
     studio_code: str = SettingsField("", title="Studio code", scope=["studio"])
@@ -477,6 +527,14 @@ class CoreSettings(BaseSettingsModel):
             "Remove or modify environment variables of farm jobs.\n\n"
             "Applies to publish jobs sent to the render farm. The first"
             " profile matching the host, task and folder is used."
+        ),
+    )
+    traits_filtering: TraitsFilteringModel = SettingsField(
+        default_factory=TraitsFilteringModel,
+        title="Representation trait filters",
+        description=(
+            "Trait fields offered when filtering representations"
+            " in the web UI."
         ),
     )
 
@@ -584,4 +642,22 @@ DEFAULT_VALUES = {
         indent=4
     ),
     "filter_env_profiles": [],
+    "traits_filtering": {
+        "exposed_traits": [
+            "ayon.2d.PixelBased",
+            "ayon.time.FrameRanged",
+            "ayon.time.Handles",
+        ],
+        "exposed_fields": [],
+        "synonyms": [
+            {
+                "name": "resolution:width",
+                "field": "ayon.2d.PixelBased/display_window_width",
+            },
+            {
+                "name": "resolution:height",
+                "field": "ayon.2d.PixelBased/display_window_height",
+            },
+        ],
+    },
 }
