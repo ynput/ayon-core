@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import logging
 import os
 import subprocess
@@ -34,6 +33,84 @@ from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
 if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
+
+
+def get_sequence_thumbnail_file(
+    files: list[str],
+    duration_split: float,
+    has_slate: bool = False,
+) -> str:
+    """Pick the file of an image sequence used for the thumbnail.
+
+    Args:
+        files: Sorted files of the sequence.
+        duration_split: Position in the sequence, from 0.0 to 1.0.
+        has_slate: The first file is a slate and is never picked.
+
+    Returns:
+        str: Name of the picked file.
+
+    """
+    content_files = list(files)
+    if has_slate and len(content_files) > 1:
+        content_files = content_files[1:]
+    index = int(len(content_files) * duration_split)
+    index = max(0, min(index, len(content_files) - 1))
+    return content_files[index]
+
+
+def get_video_seek_position(
+    duration: float,
+    duration_split: float,
+    fps: float | None = None,
+    has_slate: bool = False,
+) -> float:
+    """Get the time in seconds of the video frame used for the thumbnail.
+
+    Args:
+        duration: Duration of the video in seconds.
+        duration_split: Position in the video, from 0.0 to 1.0.
+        fps: Frame rate of the video, needed to skip the slate.
+        has_slate: The first frame is a slate and is never picked.
+
+    Returns:
+        float: Seek position in seconds, 0.0 for the first frame.
+
+    """
+    # For very short videos just use the first frame
+    if duration <= 0.1:
+        return 0.0
+
+    if not has_slate or not fps:
+        return duration * duration_split
+
+    frame_duration = 1.0 / fps
+    content_duration = duration - frame_duration
+    if content_duration < frame_duration:
+        return 0.0
+    # ffmpeg takes the first frame at or after the seek position, so
+    # seeking half a frame in picks the frame after the slate. Stay half
+    # a frame before the start of the last frame so a frame is found.
+    seek_position = frame_duration * 0.5 + content_duration * duration_split
+    return min(
+        max(seek_position, frame_duration * 0.5),
+        duration - frame_duration * 1.5,
+    )
+
+
+def _parse_frame_rate(value: str | None) -> float | None:
+    """Convert ffprobe frame rate like '24000/1001' to float."""
+    if not value:
+        return None
+    try:
+        if "/" in value:
+            num, den = value.split("/", 1)
+            if float(den) == 0:
+                return None
+            return float(num) / float(den)
+        return float(value)
+    except ValueError:
+        return None
 
 
 class ThumbnailDef:
@@ -408,6 +485,7 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
             repre_thumb_created = False
             repre_files = repre["files"]
             src_staging = os.path.normpath(repre["stagingDir"])
+            has_slate = "slate-frame" in repre.get("tags", [])
             if not isinstance(repre_files, (list, tuple)):
                 # convert any video file to frame so oiio doesn't need to
                 # read video file (it is slow) and also we are having control
@@ -424,6 +502,7 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
                         dst_staging,
                         thumbnail_def,
                         log,
+                        has_slate=has_slate,
                     )
                     if file_path:
                         src_staging, input_file = os.path.split(file_path)
@@ -431,14 +510,11 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
                     # if it is not video file then just use first file
                     input_file = repre_files
             else:
-                repre_files_thumb = copy.deepcopy(repre_files)
-                # exclude first frame if slate in representation tags
-                if "slate-frame" in repre.get("tags", []):
-                    repre_files_thumb = repre_files_thumb[1:]
-                file_index = int(
-                    float(len(repre_files_thumb)) * thumbnail_def.duration_split  # noqa: E501
+                input_file = get_sequence_thumbnail_file(
+                    repre_files,
+                    thumbnail_def.duration_split,
+                    has_slate=has_slate,
                 )
-                input_file = repre_files[file_index]
 
             full_input_path = os.path.join(src_staging, input_file)
             log.debug("input {}".format(full_input_path))
@@ -876,6 +952,7 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
         output_dir: str,
         thumbnail_def: ThumbnailDef,
         log: logging.Logger | logging.LoggerAdapter,
+        has_slate: bool = False,
     ) -> str | None:
         """Convert video file to one frame image via ffmpeg"""
         # create output file path
@@ -890,18 +967,23 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
 
         # Get duration or use a safe default (single frame)
         duration = 0
+        fps = None
         for stream in video_data["streams"]:
             if stream.get("codec_type") == "video":
                 stream_duration = float(stream.get("duration", 0))
                 if stream_duration > duration:
                     duration = stream_duration
+                    fps = (
+                        _parse_frame_rate(stream.get("avg_frame_rate"))
+                        or _parse_frame_rate(stream.get("r_frame_rate"))
+                    )
 
-        # For very short videos, just use the first frame
-        # Calculate seek position safely
-        seek_position = 0.0
-        # Only use timestamp calculation for videos longer than 0.1 seconds
-        if duration > 0.1:
-            seek_position = duration * thumbnail_def.duration_split
+        seek_position = get_video_seek_position(
+            duration,
+            thumbnail_def.duration_split,
+            fps=fps,
+            has_slate=has_slate,
+        )
 
         # Build command args
         cmd_args = []
