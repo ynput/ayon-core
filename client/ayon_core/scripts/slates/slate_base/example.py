@@ -16,7 +16,6 @@ def example():
         "project": {
             "name": "Testing project"
         },
-        "intent": "WIP",
         "version_name": "seq01_sh0100_compositing_v01",
         "date": "2019-08-09",
         "shot_type": "2d comp",
