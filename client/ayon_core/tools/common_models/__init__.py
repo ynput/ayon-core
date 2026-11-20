@@ -22,6 +22,12 @@ from .hierarchy import (
 from .thumbnails import ThumbnailsModel
 from .selection import HierarchyExpectedSelection
 from .users import UsersModel, UserItem
+from .activities import (
+    ActivitiesModel,
+    ActivityItem,
+    ActivityFileItem,
+    ActivityAnnotationItem,
+)
 from .websocket import WSEventsModel
 
 
@@ -53,5 +59,9 @@ __all__ = (
     "UsersModel",
     "UserItem",
 
+    "ActivitiesModel",
+    "ActivityItem",
+    "ActivityFileItem",
+    "ActivityAnnotationItem",
     "WSEventsModel",
 )

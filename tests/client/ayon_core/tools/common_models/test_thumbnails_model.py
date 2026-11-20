@@ -261,6 +261,27 @@ def test_result_received_during_reset_is_not_cached(
     assert get_thumbnail_path.call_count == 2
 
 
+def test_thumbnail_with_known_id_does_not_query_the_entity(
+    monkeypatch, create_file
+):
+    thumbnail_path = create_file()
+    get_thumbnail_path = Mock(return_value=thumbnail_path)
+    get_versions = Mock(side_effect=AssertionError("Thumbnail id is known"))
+    monkeypatch.setattr(thumbnails, "get_thumbnail_path", get_thumbnail_path)
+    monkeypatch.setattr(thumbnails.ayon_api, "get_versions", get_versions)
+
+    model = thumbnails.ThumbnailsModel()
+    for _ in range(2):
+        path = model.get_thumbnail_path("demo", "version", "v1", "t1")
+        assert path == thumbnail_path
+    # The path is cached by the thumbnail id
+    get_thumbnail_path.assert_called_once_with("demo", "version", "v1", "t1")
+
+    assert model.get_thumbnail_path("demo", "version", "v1", None) is None
+    assert model.get_thumbnail_path(None, "version", "v1", "t1") is None
+    assert get_thumbnail_path.call_count == 1
+
+
 def _mock_projects(monkeypatch, model, updated_at_by_name):
     query = Mock(side_effect=lambda: dict(updated_at_by_name))
     monkeypatch.setattr(model, "_query_projects_updated_at", query)

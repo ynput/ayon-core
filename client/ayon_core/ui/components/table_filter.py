@@ -38,6 +38,7 @@ from .label import AYLabel
 from .layouts import AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
 from .table_model import (
+    FLAG_VALUE,
     FilterEntry,
     PaginatedTableModel,
     TableColumn,
@@ -63,6 +64,9 @@ NO_VALUE = "noValue"
 #: Criterion value matching rows where the filtered field is not empty.
 HAS_VALUE = "hasValue"
 EMPTY_VALUE_OPTIONS = (NO_VALUE, HAS_VALUE)
+
+#: Values of a filter found in the data, called with the key of the filter.
+ValuesGetter = Callable[[str], Iterable["str | ValueOption"]]
 
 
 def is_empty_filter_value(value: Any) -> bool:
@@ -176,7 +180,9 @@ class FilterCriterion:
         )
 
 
-def criterion_text(criterion: "FilterCriterion") -> str:
+def criterion_text(
+    criterion: "FilterCriterion", compact: bool = False
+) -> str:
     """Return the one-line description shown for a criterion.
 
     Shared by the inline badge, the bar's tooltip and its context menu so
@@ -184,11 +190,17 @@ def criterion_text(criterion: "FilterCriterion") -> str:
 
     Args:
         criterion: The criterion to describe.
+        compact: Leave out the label, for a badge showing the icon of
+            the filter instead.
 
     Returns:
         Text of the form ``"Label: value or other"``, or
-        ``"Label: not value or other"`` for an excluding criterion.
+        ``"Label: not value or other"`` for an excluding criterion. Only
+        the label, ``"Label"`` or ``"Not label"``, for a flag.
     """
+    if criterion.values == [FLAG_VALUE]:
+        label = criterion.attribute_label
+        return f"Not {label.lower()}" if criterion.exclude else label
     names = {NO_VALUE: "No value", HAS_VALUE: "Has value"}
     values_text = (
         " or ".join(names.get(value, value) for value in criterion.values)
@@ -197,6 +209,8 @@ def criterion_text(criterion: "FilterCriterion") -> str:
     )
     if criterion.exclude:
         values_text = f"not {values_text}"
+    if compact:
+        return values_text
     return f"{criterion.attribute_label}: {values_text}"
 
 
@@ -438,18 +452,22 @@ class _FilterDropdown(AYDropdownPopup):
 
     def __init__(
         self,
-        model: PaginatedTableModel,
-        table_filter: AYTableFilter,
+        values_getter: ValuesGetter | None,
+        filter_bar: QWidget,
         filters: list[FilterEntry],
         parent: QWidget | None = None,
+        search_key: str | None = None,
     ) -> None:
         super().__init__(
             parent,
             variant=AYDropdownPopup.Variants.Low_Framed_Thin,
             translucent_bg=False,
         )
-        self._model = model
-        self._table_filter = table_filter
+        self._values_getter = values_getter
+        self._filter_bar = filter_bar
+        # Filter that typed text is searched with, offered as the first
+        #   result of a search
+        self._search_key = search_key
         self._filters = filters
         self._column_values: dict[str, list[str]] = {}
         self._filters_by_key: dict[str, FilterEntry] = {}
@@ -731,13 +749,15 @@ class _FilterDropdown(AYDropdownPopup):
     def _show_entity_page(self) -> None:
         """Show the top-level entity selection page."""
         entities = {entry.entity for entry in self._filters}
+        # Filters without entities are listed right away
         self._selected_entity = "Other" if entities == {"Other"} else None
         self._attr_breadcrumb.setText("")
         self._attr_breadcrumb.setVisible(False)
         self._attr_search.blockSignals(True)
         self._attr_search.clear()
         self._attr_search.blockSignals(False)
-        self._attr_back_btn.setVisible(self._selected_entity is not None)
+        # This is the first page, there is nothing to go back to
+        self._attr_back_btn.setVisible(False)
         self._populate_attribute_page(self._selected_entity)
         self._attr_search.setFocus()
 
@@ -823,6 +843,37 @@ class _FilterDropdown(AYDropdownPopup):
         self._attr_layout.addWidget(btn)
         btn.show()
 
+    def _add_search_button(self, entry: FilterEntry) -> None:
+        """Add the option to search for the typed text.
+
+        It is the first option, so pressing Enter right after typing
+        searches for the text.
+        """
+        text = self._attr_search.text().strip()
+        btn = AYButton(
+            self._label_with_icon_spacing(f'Search "{text}"', "search"),
+            icon="search",
+            icon_color="#dedede",
+            variant=AYButton.Variants.Text,
+            checkable=True,
+            fixed_width=False,
+            label_alignment=Qt.AlignmentFlag.AlignLeft,
+        )
+        btn.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        btn.installEventFilter(self)
+        btn.clicked.connect(
+            lambda _checked=False, k=entry.key, t=text: (
+                self._apply_criterion(k, [t], True, False)
+            )
+        )
+        # Keyed so it can not collide with the key of a filter
+        self._attr_buttons[f"__search__{entry.key}"] = btn
+        self._attr_layout.addWidget(btn)
+        btn.show()
+
     def _show_entity_filters(self, entity: str) -> None:
         """Show filters belonging to one entity."""
         self._selected_entity = entity
@@ -887,6 +938,10 @@ class _FilterDropdown(AYDropdownPopup):
                 ):
                     matching_attributes.append((entity_name, entry))
 
+        search_entry = self._filters_by_key.get(self._search_key or "")
+        if search_entry is not None:
+            self._add_search_button(search_entry)
+
         if entity is None:
             for entity_name in matching_entities:
                 self._add_entity_button(entity_name)
@@ -919,6 +974,11 @@ class _FilterDropdown(AYDropdownPopup):
         self._attr_layout.addStretch()
 
     def _on_attr_selected(self, key: str, label: str) -> None:
+        entry = self._filters_by_key.get(key)
+        if entry is not None and entry.flag:
+            # Nothing to pick, the flag is the whole choice
+            self._apply_criterion(key, [FLAG_VALUE], False, False)
+            return
         self._populate_value_page(key, label, [], preselect=True)
         self._stack.setCurrentIndex(1)
         self._adjust_height()
@@ -1003,10 +1063,12 @@ class _FilterDropdown(AYDropdownPopup):
         self._value_content_layout.clear()
 
         entry = self._filters_by_key.get(key)
-        if entry is not None:
+        if entry is not None and entry.entity != "Other":
             self._value_breadcrumb.setText(
                 f"{entry.entity} / {entry.label}"
             )
+        elif entry is not None:
+            self._value_breadcrumb.setText(entry.label)
         else:
             self._value_breadcrumb.setText(label)
         # Whether this filter takes typed text is declared by the entry.
@@ -1031,7 +1093,11 @@ class _FilterDropdown(AYDropdownPopup):
             for source in (
                 list(entry.options) if entry is not None else [],
                 self._column_values.get(key) or [],
-                self._model.get_distinct_values(key),
+                (
+                    self._values_getter(key)
+                    if self._values_getter is not None
+                    else []
+                ),
                 selected_values,
             ):
                 for value in source:
@@ -1374,14 +1440,24 @@ class _FilterDropdown(AYDropdownPopup):
             return
 
         values, use_substring = self._current_values()
+        self._apply_criterion(
+            self._current_key,
+            values,
+            use_substring,
+            self._exclude_checkbox.isChecked(),
+        )
+
+    def _apply_criterion(
+        self,
+        key: str,
+        values: list[str],
+        use_substring: bool,
+        exclude: bool,
+    ) -> None:
+        """Report a criterion and close the popup."""
         self._applying = True
         try:
-            self.criterion_ready.emit(
-                self._current_key,
-                values,
-                use_substring,
-                self._exclude_checkbox.isChecked(),
-            )
+            self.criterion_ready.emit(key, values, use_substring, exclude)
             self.close()
         finally:
             self._applying = False
@@ -1517,7 +1593,7 @@ class _FilterDropdown(AYDropdownPopup):
         self.setMaximumHeight(
             height + search_extra_height + vertical_margins
         )
-        self.setMinimumWidth(max(220, self._table_filter.width()))
+        self.setMinimumWidth(max(220, self._filter_bar.width()))
 
 
 # ---------------------------------------------------------------------------
@@ -1540,6 +1616,7 @@ class _CriterionBadge(AYContainer):
         self,
         criterion: FilterCriterion,
         parent: QWidget | None = None,
+        icon: str | None = None,
     ) -> None:
         super().__init__(
             parent=parent,
@@ -1551,17 +1628,25 @@ class _CriterionBadge(AYContainer):
         )
         self._criterion = criterion
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        # A badge with the icon of its filter does not repeat its label
+        self.setToolTip(criterion_text(criterion) if icon else "")
 
-        front_icon = AYLabel(
-            icon="do_not_disturb_on" if criterion.exclude else "check_small",
-            icon_size=12 if criterion.exclude else 16,
-        )
+        if icon:
+            front_icon = AYLabel(icon=icon, icon_size=14)
+        else:
+            front_icon = AYLabel(
+                icon=(
+                    "do_not_disturb_on" if criterion.exclude
+                    else "check_small"
+                ),
+                icon_size=12 if criterion.exclude else 16,
+            )
         front_icon.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents
         )
         self.add_widget(front_icon)
 
-        self._label = AYLabel(criterion_text(criterion))
+        self._label = AYLabel(criterion_text(criterion, compact=bool(icon)))
         self._label.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents
         )
@@ -1702,19 +1787,30 @@ class _CriterionListPopup(AYDropdownPopup):
 # ---------------------------------------------------------------------------
 
 
-class AYTableFilter(AYContainer):
-    """Horizontal filter bar bound to a PaginatedTableModel.
+class AYFilterBar(AYContainer):
+    """Search and filter field showing the active criteria as badges.
 
-    Displays active criteria as badges and manages a floating two-page
-    dropdown for adding/editing criteria.  Applies filtering via an
-    internal ``AYTableFilterProxyModel``.
+    Picking a filter from its dropdown adds a criterion, clicking a badge
+    edits it. The bar does not filter anything itself: its owner applies
+    the criteria reported by :attr:`filters_changed`, e.g. with
+    :func:`filter_values_match`. :class:`AYTableFilter` is the bar that
+    applies them to a table model.
 
-    Typical usage::
+    Quick actions are buttons that toggle a flag filter with one click,
+    placed next to the bar by its owner, see :meth:`create_quick_action`.
 
-        filter_bar = AYTableFilter(model=source_model)
-        table.setModel(filter_bar.filter_model)
-        layout.addWidget(filter_bar)
-        layout.addWidget(table)
+    Args:
+        filters: Filters offered by the dropdown.
+        parent: Parent widget.
+        values_getter: Values of a filter found in the data, offered after
+            the options of its entry.
+        placeholder: Text of the bar without criteria.
+        search_key: Key of a text filter that typed text is searched
+            with, offered as the first option of the dropdown.
+        shortcut: Key sequence that opens the dropdown, e.g. "Ctrl+F".
+            Only one bar of a window should have it.
+        compact: Badges show the icon of their filter with the values
+            only, to fit narrow panels.
 
     Signals:
         filters_changed: Emitted after any criteria change.
@@ -1725,12 +1821,13 @@ class AYTableFilter(AYContainer):
 
     def __init__(
         self,
-        model: PaginatedTableModel,
-        parent: QWidget | None = None,
-        extra_filters: list[FilterEntry] | None = None,
         filters: list[FilterEntry] | None = None,
-        filter_locally: bool = True,
-        local_filter_keys: set[str] | None = None,
+        parent: QWidget | None = None,
+        values_getter: ValuesGetter | None = None,
+        placeholder: str = "Filter",
+        search_key: str | None = None,
+        shortcut: str | None = None,
+        compact: bool = False,
     ) -> None:
         super().__init__(
             parent=parent,
@@ -1739,75 +1836,27 @@ class AYTableFilter(AYContainer):
             layout_margin=4,
             hover_enabled=True,
         )
-        self.setObjectName("AYTableFilter")
+        # Room before the search icon, as in the field of the frontend
+        self._layout.setContentsMargins(8, 4, 4, 4)
+        self._compact = compact
         self.setFixedHeight(32)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Fixed,
         )
 
-        self._model = model
-        self._filter_locally = filter_locally
-        self._local_filter_keys = set(local_filter_keys or set())
-        self._filter_columns = list(model.columns)
-        if filters is not None:
-            self._filters = list(filters)
-        else:
-            self._filters = [
-                FilterEntry(
-                    key=column.key,
-                    label=column.label,
-                    options=[],
-                    icon=column.icon,
-                    entity=column.entity,
-                )
-                for column in model.columns
-                if column.filterable
-            ]
-        if extra_filters:
-            self._filters.extend(extra_filters)
+        self._filters = list(filters or [])
+        self._placeholder = placeholder
         self._criteria: list[FilterCriterion] = []
         self._editing_criterion: FilterCriterion | None = None
-
-        # Proxy model wraps the source model
-        self._proxy = AYTableFilterProxyModel(self)
-        self._proxy.setSourceModel(model)
-        self._proxy.set_row_value_getter(self._get_row_value)
-        self._proxy.set_tree_state_getters(
-            self._is_tree_mode,
-            self._has_unloaded_children,
-        )
-        # Force a full re-scan whenever new rows are loaded, but only in
-        # tree mode. There a parent folder can be tentatively accepted
-        # while its children are still unloaded (see
-        # `AYTableFilterProxyModel.filterAcceptsRow`); once children
-        # arrive that parent's real verdict can only be resolved by
-        # re-running the filter. `QSortFilterProxyModel` already runs
-        # `filterAcceptsRow` automatically for every newly inserted row on
-        # its own, and again for a row whose `dataChanged` fires, so in
-        # flat mode - where a leaf row's verdict depends only on its own
-        # (already-enriched) data - forcing a full O(loaded rows) re-scan
-        # on every page is pure waste. That waste compounds badly with a
-        # local (client-side-only) filter: matches can be rare, pages keep
-        # arriving, and each re-scan gets more expensive than the last.
-        # Debounced for the tree-mode case, so a burst of pages arriving
-        # in quick succession triggers one re-scan instead of one per page.
-        self._refresh_filter_timer = QTimer(self)
-        self._refresh_filter_timer.setSingleShot(True)
-        self._refresh_filter_timer.setInterval(60)
-        self._refresh_filter_timer.timeout.connect(self._proxy.refresh_filter)
-
-        def _on_source_rows_inserted(*_args: Any) -> None:
-            if self._is_tree_mode():
-                self._refresh_filter_timer.start()
-
-        model.rowsInserted.connect(_on_source_rows_inserted)
+        self._quick_actions: dict[str, AYButton] = {}
 
         # Shared dropdown instance (reused across open calls)
         self._dropdown = _FilterDropdown(
-            model,
+            values_getter,
             self,
             filters=self._filters,
+            search_key=search_key,
         )
         self._dropdown.criterion_ready.connect(self._on_criterion_ready)
 
@@ -1825,8 +1874,11 @@ class AYTableFilter(AYContainer):
         self._search_btn.setFixedSize(24, 24)
         self._search_btn.clicked.connect(self._open_filter_dropdown)
         self.add_widget(self._search_btn)
-        self._filter_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
-        self._filter_shortcut.activated.connect(self._open_filter_dropdown)
+        if shortcut:
+            self._filter_shortcut = QShortcut(QKeySequence(shortcut), self)
+            self._filter_shortcut.activated.connect(
+                self._open_filter_dropdown
+            )
 
         # main container for criteria badges
         self._criteria_container = AYHBoxLayout(spacing=4, margin=0)
@@ -1843,33 +1895,9 @@ class AYTableFilter(AYContainer):
         self._editing_criterion = None
         self._dropdown.open_for_new(self)
 
-    def _get_row_value(self, index: QModelIndex, key: str) -> Any:
-        """Return an extra filter value for a source-model row."""
-        node = index.internalPointer()
-        return getattr(node, "row_data", {}).get(key)
-
-    def _is_tree_mode(self) -> bool:
-        """Return whether the source model currently represents a tree."""
-        return bool(getattr(self._model, "_tree_mode", False))
-
-    @staticmethod
-    def _has_unloaded_children(index: QModelIndex) -> bool:
-        """Return whether a tree row has children that are not loaded."""
-        node = index.internalPointer()
-        return bool(
-            node is not None
-            and getattr(node, "row_has_children", False)
-            and not getattr(node, "children_loaded", True)
-        )
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-
-    @property
-    def filter_model(self) -> AYTableFilterProxyModel:
-        """Return the proxy model to set on the view."""
-        return self._proxy
 
     def get_criteria(self) -> list[FilterCriterion]:
         """Return a copy of the currently active filter criteria.
@@ -1880,13 +1908,7 @@ class AYTableFilter(AYContainer):
         return list(self._criteria)
 
     def set_active_criteria(self, criteria: list[FilterCriterion]) -> None:
-        """Replace the active filter criteria and refresh the bar/proxy.
-
-        Distinct from :meth:`AYTableFilterProxyModel.set_criteria` —
-        the proxy method takes ``(criteria, columns)`` and lives on the
-        proxy instance returned by :attr:`filter_model`.  Calling that
-        proxy method directly bypasses the bar's badge rendering and is
-        unsupported for external callers.
+        """Replace the active filter criteria and refresh the bar.
 
         Args:
             criteria: New criteria to apply.  An empty list clears the
@@ -1895,12 +1917,7 @@ class AYTableFilter(AYContainer):
         self._criteria = list(criteria)
         self._editing_criterion = None
         self._rebuild_bar()
-        self._update_proxy()
-
-    def set_columns(self, columns: list[TableColumn]) -> None:
-        """Update the source columns used for local filtering."""
-        self._filter_columns = list(columns)
-        self._update_proxy()
+        self._on_criteria_changed()
 
     def set_filters(
         self,
@@ -1913,8 +1930,7 @@ class AYTableFilter(AYContainer):
         if retain_unavailable_criteria:
             return
 
-        available_keys = {item.key for item in self._filters}
-        available_keys.update(column.key for column in self._filter_columns)
+        available_keys = self._get_available_filter_keys()
         criteria = [
             item for item in self._criteria
             if item.key in available_keys
@@ -1923,22 +1939,14 @@ class AYTableFilter(AYContainer):
             return
         self._criteria = criteria
         self._rebuild_bar()
-        self._update_proxy()
-
-    def set_local_filter_keys(self, keys: set[str]) -> None:
-        """Set criteria that should always be evaluated by the proxy."""
-        normalized = set(keys)
-        if self._local_filter_keys == normalized:
-            return
-        self._local_filter_keys = normalized
-        self._update_proxy()
+        self._on_criteria_changed()
 
     def set_filter_entry_values(
         self,
         key: str,
-        values: list[str],
+        values: list[str | ValueOption],
     ) -> None:
-        """Update the fixed values offered by an extra filter entry."""
+        """Update the fixed values offered by a filter entry."""
         for entry in self._filters:
             if entry.key == key:
                 entry.options = list(values)
@@ -1950,6 +1958,47 @@ class AYTableFilter(AYContainer):
     ) -> None:
         """Set project-wide values offered for regular column filters."""
         self._dropdown.set_column_values(values)
+
+    def create_quick_action(
+        self,
+        key: str,
+        icon: str,
+        tooltip: str = "",
+        parent: QWidget | None = None,
+    ) -> AYButton:
+        """Create a button toggling a flag filter of the bar.
+
+        The button is checked while the filter is active. It is not part
+        of the bar, the owner places it, e.g. next to the bar as the
+        frontend does.
+
+        Args:
+            key: Key of a filter entry that is a flag.
+            icon: Material symbol of the button.
+            tooltip: Tooltip of the button.
+            parent: Parent widget of the button.
+
+        Returns:
+            The button, e.g. to show a count with its text.
+        """
+        # Filled, as the buttons next to the field of the frontend
+        button = AYButton(
+            icon=icon,
+            icon_size=18,
+            variant=AYButton.Variants.Surface,
+            checkable=True,
+            tooltip=tooltip,
+            parent=parent,
+        )
+        button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        button.setFixedHeight(self.minimumHeight())
+        button.setMinimumWidth(self.minimumHeight())
+        button.clicked.connect(
+            lambda _checked=False, k=key: self._toggle_flag(k)
+        )
+        self._quick_actions[key] = button
+        self._update_quick_actions()
+        return button
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """Open the add-filter menu when unused bar space is clicked."""
@@ -1965,6 +2014,18 @@ class AYTableFilter(AYContainer):
             self,
         )
         event.accept()
+
+    # ------------------------------------------------------------------
+    # Overridable hooks
+    # ------------------------------------------------------------------
+
+    def _on_criteria_changed(self) -> None:
+        """Called after the criteria changed, reports them."""
+        self.filters_changed.emit(list(self._criteria))
+
+    def _get_available_filter_keys(self) -> set[str]:
+        """Keys of the criteria kept when the filters are replaced."""
+        return {item.key for item in self._filters}
 
     def _update_tooltip(self) -> None:
         """Describe every active criterion, one per line.
@@ -1992,10 +2053,11 @@ class AYTableFilter(AYContainer):
         """Clear and repopulate the bar with current criteria."""
         self._criteria_container.clear()
         self._update_tooltip()
+        self._update_quick_actions()
 
         if not self._criteria:
             empty_btn = AYButton(
-                "Filter",
+                self._placeholder,
                 variant=AYButton.Variants.Table_Filter,
                 label_alignment=Qt.AlignmentFlag.AlignLeft,
                 fixed_width=False,
@@ -2004,8 +2066,9 @@ class AYTableFilter(AYContainer):
             self._criteria_container.addWidget(empty_btn)
             return
 
+        icons = {entry.key: entry.icon for entry in self._filters}
         for i, criterion in enumerate(self._criteria):
-            if i > 0:
+            if i > 0 and not self._compact:
                 sep = AYLabel("and", dim=True)
                 sep.setContentsMargins(2, 0, 2, 0)
                 sep.setAttribute(
@@ -2013,7 +2076,10 @@ class AYTableFilter(AYContainer):
                 )
                 self._criteria_container.addWidget(sep)
 
-            badge = _CriterionBadge(criterion)
+            badge = _CriterionBadge(
+                criterion,
+                icon=icons.get(criterion.key) if self._compact else None,
+            )
             badge.edit_requested.connect(self._on_badge_edit)
             badge.remove_requested.connect(self._on_badge_remove)
             self._criteria_container.addWidget(badge)
@@ -2029,6 +2095,11 @@ class AYTableFilter(AYContainer):
 
         self._criteria_container.addStretch()
 
+    def _update_quick_actions(self) -> None:
+        active_keys = {criterion.key for criterion in self._criteria}
+        for key, button in self._quick_actions.items():
+            button.setChecked(key in active_keys)
+
     # ------------------------------------------------------------------
     # Criterion handlers
     # ------------------------------------------------------------------
@@ -2042,6 +2113,19 @@ class AYTableFilter(AYContainer):
         if entry is None or entry.entity == "Other":
             return entry.label if entry is not None else key
         return f"{entry.entity} {entry.label}"
+
+    def _toggle_flag(self, key: str) -> None:
+        """Add the criterion of a flag filter, or remove it."""
+        criteria = [c for c in self._criteria if c.key != key]
+        if len(criteria) == len(self._criteria):
+            criteria.append(
+                FilterCriterion(
+                    key=key,
+                    attribute_label=self._get_criterion_label(key),
+                    values=[FLAG_VALUE],
+                )
+            )
+        self.set_active_criteria(criteria)
 
     def _on_criterion_ready(
         self,
@@ -2081,7 +2165,7 @@ class AYTableFilter(AYContainer):
 
         self._editing_criterion = None
         self._rebuild_bar()
-        self._update_proxy()
+        self._on_criteria_changed()
 
     def _on_badge_edit(self, criterion: FilterCriterion) -> None:
         self._editing_criterion = criterion
@@ -2090,7 +2174,7 @@ class AYTableFilter(AYContainer):
     def _on_badge_remove(self, criterion: FilterCriterion) -> None:
         self._criteria = [c for c in self._criteria if c is not criterion]
         self._rebuild_bar()
-        self._update_proxy()
+        self._on_criteria_changed()
         self._refresh_criteria_popup()
 
     def _refresh_criteria_popup(self) -> None:
@@ -2110,6 +2194,149 @@ class AYTableFilter(AYContainer):
             {entry.key: entry for entry in self._filters},
             self,
         )
+
+
+class AYTableFilter(AYFilterBar):
+    """Filter bar bound to a PaginatedTableModel.
+
+    Applies the criteria via an internal ``AYTableFilterProxyModel``,
+    and offers the values found in the loaded rows of a column.
+
+    Typical usage::
+
+        filter_bar = AYTableFilter(model=source_model)
+        table.setModel(filter_bar.filter_model)
+        layout.addWidget(filter_bar)
+        layout.addWidget(table)
+
+    Signals:
+        filters_changed: Emitted after any criteria change.
+                         Passes the current list of FilterCriterion.
+    """
+
+    def __init__(
+        self,
+        model: PaginatedTableModel,
+        parent: QWidget | None = None,
+        extra_filters: list[FilterEntry] | None = None,
+        filters: list[FilterEntry] | None = None,
+        filter_locally: bool = True,
+        local_filter_keys: set[str] | None = None,
+    ) -> None:
+        if filters is not None:
+            filters = list(filters)
+        else:
+            filters = [
+                FilterEntry(
+                    key=column.key,
+                    label=column.label,
+                    options=[],
+                    icon=column.icon,
+                    entity=column.entity,
+                )
+                for column in model.columns
+                if column.filterable
+            ]
+        if extra_filters:
+            filters.extend(extra_filters)
+
+        self._model = model
+        self._filter_locally = filter_locally
+        self._local_filter_keys = set(local_filter_keys or set())
+        self._filter_columns = list(model.columns)
+
+        # Proxy model wraps the source model
+        self._proxy = AYTableFilterProxyModel()
+        self._proxy.setSourceModel(model)
+        self._proxy.set_row_value_getter(self._get_row_value)
+        self._proxy.set_tree_state_getters(
+            self._is_tree_mode,
+            self._has_unloaded_children,
+        )
+
+        super().__init__(
+            filters,
+            parent=parent,
+            values_getter=model.get_distinct_values,
+            shortcut="Ctrl+F",
+        )
+        self.setObjectName("AYTableFilter")
+        self._proxy.setParent(self)
+
+        # Force a full re-scan whenever new rows are loaded, but only in
+        # tree mode. There a parent folder can be tentatively accepted
+        # while its children are still unloaded (see
+        # `AYTableFilterProxyModel.filterAcceptsRow`); once children
+        # arrive that parent's real verdict can only be resolved by
+        # re-running the filter. `QSortFilterProxyModel` already runs
+        # `filterAcceptsRow` automatically for every newly inserted row on
+        # its own, and again for a row whose `dataChanged` fires, so in
+        # flat mode - where a leaf row's verdict depends only on its own
+        # (already-enriched) data - forcing a full O(loaded rows) re-scan
+        # on every page is pure waste. That waste compounds badly with a
+        # local (client-side-only) filter: matches can be rare, pages keep
+        # arriving, and each re-scan gets more expensive than the last.
+        # Debounced for the tree-mode case, so a burst of pages arriving
+        # in quick succession triggers one re-scan instead of one per page.
+        self._refresh_filter_timer = QTimer(self)
+        self._refresh_filter_timer.setSingleShot(True)
+        self._refresh_filter_timer.setInterval(60)
+        self._refresh_filter_timer.timeout.connect(self._proxy.refresh_filter)
+
+        def _on_source_rows_inserted(*_args: Any) -> None:
+            if self._is_tree_mode():
+                self._refresh_filter_timer.start()
+
+        model.rowsInserted.connect(_on_source_rows_inserted)
+
+    def _get_row_value(self, index: QModelIndex, key: str) -> Any:
+        """Return an extra filter value for a source-model row."""
+        node = index.internalPointer()
+        return getattr(node, "row_data", {}).get(key)
+
+    def _is_tree_mode(self) -> bool:
+        """Return whether the source model currently represents a tree."""
+        return bool(getattr(self._model, "_tree_mode", False))
+
+    @staticmethod
+    def _has_unloaded_children(index: QModelIndex) -> bool:
+        """Return whether a tree row has children that are not loaded."""
+        node = index.internalPointer()
+        return bool(
+            node is not None
+            and getattr(node, "row_has_children", False)
+            and not getattr(node, "children_loaded", True)
+        )
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    @property
+    def filter_model(self) -> AYTableFilterProxyModel:
+        """Return the proxy model to set on the view."""
+        return self._proxy
+
+    def set_columns(self, columns: list[TableColumn]) -> None:
+        """Update the source columns used for local filtering."""
+        self._filter_columns = list(columns)
+        self._update_proxy()
+
+    def set_local_filter_keys(self, keys: set[str]) -> None:
+        """Set criteria that should always be evaluated by the proxy."""
+        normalized = set(keys)
+        if self._local_filter_keys == normalized:
+            return
+        self._local_filter_keys = normalized
+        self._update_proxy()
+
+    def _on_criteria_changed(self) -> None:
+        self._update_proxy()
+
+    def _get_available_filter_keys(self) -> set[str]:
+        available_keys = super()._get_available_filter_keys()
+        available_keys.update(column.key for column in self._filter_columns)
+        return available_keys
 
     def _update_proxy(self) -> None:
         if self._filter_locally:
