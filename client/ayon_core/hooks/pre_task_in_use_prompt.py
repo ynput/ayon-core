@@ -23,9 +23,6 @@ class TaskInUsePrompt(PreLaunchHook):
     the launch. Confirmed sessions are passed to the launched application,
     so the user is not notified about them again there.
 
-    The prompt does not offer to version up the workfile, a workfile can
-    be copied correctly only by the host integration.
-
     The prompt is used only for local launches and is skipped in headless
     mode.
     """

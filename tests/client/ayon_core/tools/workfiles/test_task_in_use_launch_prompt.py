@@ -73,10 +73,6 @@ def clicked_button(qtbot, monkeypatch):
     [
         ("Launch anyway", True),
         ("Cancel", False),
-        # Version up is never offered before launch, even if the other
-        #   user has opened the workfile that will be opened. The dialog
-        #   is rejected if the button is not available.
-        ("Version up", False),
     ]
 )
 def test_ask_to_launch(clicked_button, button, expected):
@@ -183,8 +179,6 @@ def test_ask_to_launch_in_launch_process(button, expected):
     [
         ("Open anyway", True),
         ("Cancel", False),
-        # Version up is offered only by the notice in the application
-        ("Version up", False),
     ]
 )
 def test_confirm_task_in_use(clicked_button, qtbot, button, expected):

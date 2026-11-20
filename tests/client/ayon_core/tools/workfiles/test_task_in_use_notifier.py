@@ -44,14 +44,11 @@ def shown(monkeypatch):
     calls = []
     result = [True]
 
-    def _show_task_in_use_notice(
-        items, full_names=None, delay=1000, version_up_callback=None
-    ):
+    def _show_task_in_use_notice(items, full_names=None, delay=1000):
         calls.append({
             "thread": QtCore.QThread.currentThread(),
             "items": items,
             "full_names": full_names,
-            "version_up_callback": version_up_callback,
         })
         return result[0]
 

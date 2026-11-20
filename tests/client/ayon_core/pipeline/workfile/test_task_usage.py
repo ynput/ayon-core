@@ -6,7 +6,6 @@ import datetime
 import inspect
 import re
 import threading
-from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -19,7 +18,6 @@ from ayon_core.pipeline.workfile.task_usage import (
     TaskUsageSettings,
     TaskUsageTracker,
     filter_other_users_items,
-    get_same_workfile_items,
     get_task_usage_settings,
     is_task_usage_enabled_in_project,
 )
@@ -584,24 +582,8 @@ def test_tracker_notifies_about_other_users(tracker_calls):
     (notice,) = notices
     assert [item.session_id for item in notice.items] == ["other-user"]
     assert notice.user_full_names == {"artist2": "Artist Two"}
-    assert notice.workfile == "sh010_anim_v002.ma"
-    # Other user has opened different workfile
-    assert notice.version_up_callback is None
     # Sessions are acknowledged by the frontend that did show the notice
     assert task_usage._acknowledged_session_ids == set()
-
-
-def test_tracker_notice_offers_version_up(tracker_calls, monkeypatch):
-    """Version up is offered if other user has opened the same workfile."""
-    host, tracker, calls, notices = tracker_calls
-    version_ups = []
-    monkeypatch.setattr(tracker, "_version_up", version_ups.append)
-
-    host.task_name = "in-use"
-    _sync(tracker)
-    (notice,) = notices
-    notice.version_up_callback()
-    assert version_ups == ["sh010_anim_v001.ma"]
 
 
 def test_tracker_notice_without_frontend(tracker_calls, monkeypatch):
@@ -1048,39 +1030,6 @@ def test_tracker_install_skipped_in_farm_jobs(monkeypatch, env_key):
     monkeypatch.setattr(task_usage, "_tracker", None)
     monkeypatch.setenv(env_key, "1")
     assert task_usage.install_task_usage_tracker(_MockHost()) is None
-
-
-def test_same_workfile_items():
-    same = _item("same", username="artist2")
-    other = replace(_item("other", username="artist3"), workfile="b_v002.ma")
-    no_file = replace(_item("none", username="artist4"), workfile=None)
-    items = [same, other, no_file]
-
-    assert get_same_workfile_items(items, None) == []
-    assert get_same_workfile_items(items, "sh010_anim_v001.ma") == [same]
-    # Path can be used and letter case is ignored
-    assert get_same_workfile_items(
-        items, "/work/SH010_anim_v001.ma"
-    ) == [same]
-    assert get_same_workfile_items(items, "sh010_anim_v003.ma") == []
-    assert same.is_workfile("C:/work/SH010_ANIM_v001.ma")
-    assert not same.is_workfile(None)
-    assert not no_file.is_workfile("sh010_anim_v001.ma")
-
-
-def test_tracker_version_up_only_for_opened_workfile(monkeypatch):
-    from ayon_core.pipeline.workfile import utils
-
-    calls = []
-    monkeypatch.setattr(utils, "save_next_version", lambda: calls.append(1))
-    host = _MockHost()
-    tracker = TaskUsageTracker(host)
-
-    tracker._version_up("other_v001.ma")
-    assert calls == []
-
-    tracker._version_up("sh010_anim_v001.ma")
-    assert calls == [1]
 
 
 def test_endpoint():

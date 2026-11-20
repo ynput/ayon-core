@@ -6,7 +6,6 @@ import os
 import platform
 import threading
 import typing
-from typing import Callable
 
 from qtpy import QtWidgets, QtGui, QtCore
 
@@ -194,10 +193,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
         notice_only (bool): Only inform the user, without the option to
             cancel. Used when the task is already in use by the user.
         confirm_label (str): Label of the button to continue.
-        version_up (bool): Offer to work in next version of the workfile.
-            Should be used if the user works in the same workfile as
-            other user. Use 'is_version_up_requested' to find out if the
-            user did choose it.
 
     """
     def __init__(
@@ -207,7 +202,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
         parent: QtWidgets.QWidget | None = None,
         notice_only: bool = False,
         confirm_label: str = "Open anyway",
-        version_up: bool = False,
     ):
         super().__init__(parent)
         self.setWindowTitle("Task is in use")
@@ -234,20 +228,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         question_label = AYLabel(
             "Do you want to work on the task anyway?", parent=self
         )
-        question_label.setVisible(not notice_only and not version_up)
-
-        version_up_widget = QtWidgets.QWidget(self)
-        version_up_layout = AYVBoxLayout(
-            version_up_widget, margin=0, spacing=2
-        )
-        for text in (
-            "This file is currently open by another user.",
-            "Version up to work in a new version of the workfile.",
-        ):
-            version_up_layout.addWidget(
-                AYLabel(text, parent=version_up_widget), 0
-            )
-        version_up_widget.setVisible(version_up)
+        question_label.setVisible(not notice_only)
 
         btns_widget = QtWidgets.QWidget(self)
 
@@ -258,11 +239,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
             confirm_label, variant=AYButton.Variants.Danger,
             parent=btns_widget,
         )
-        version_up_btn = AYButton(
-            "Version up", variant=AYButton.Variants.Filled,
-            parent=btns_widget,
-        )
-        version_up_btn.setVisible(version_up)
         cancel_btn = AYButton(
             "Cancel", variant=AYButton.Variants.Surface,
             parent=btns_widget,
@@ -278,7 +254,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
         btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=10)
         btns_layout.addWidget(confirm_btn, 0)
         btns_layout.addStretch(1)
-        btns_layout.addWidget(version_up_btn, 0)
         btns_layout.addWidget(cancel_btn, 0)
         btns_layout.addWidget(ok_btn, 0)
 
@@ -286,26 +261,14 @@ class TaskInUseDialog(QtWidgets.QDialog):
         main_layout.addWidget(header_label, 0)
         main_layout.addWidget(items_widget, 0)
         main_layout.addWidget(question_label, 0)
-        main_layout.addWidget(version_up_widget, 0)
         main_layout.addStretch(1)
         main_layout.addWidget(btns_widget, 0)
 
         cancel_btn.clicked.connect(self.reject)
         confirm_btn.clicked.connect(self.accept)
         ok_btn.clicked.connect(self.accept)
-        version_up_btn.clicked.connect(self._on_version_up)
-
-        self._version_up_requested = False
 
         self.setMinimumWidth(420)
-
-    def is_version_up_requested(self) -> bool:
-        """User wants to work in next version of the workfile."""
-        return self._version_up_requested
-
-    def _on_version_up(self) -> None:
-        self._version_up_requested = True
-        self.accept()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -388,9 +351,6 @@ def ask_to_launch_on_task_in_use(
     it does not exist, which is the case in a process that only launches
     an application.
 
-    Version up is not offered, the workfile can be copied correctly only
-    by the host integration, which is not running yet.
-
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
@@ -439,7 +399,6 @@ def show_task_in_use_notice(
     items: list[TaskUsageItem],
     full_names: dict[str, str] | None = None,
     delay: int = 1000,
-    version_up_callback: Callable[[], None] | None = None,
 ) -> bool:
     """Inform user that other users are working on the current task.
 
@@ -453,9 +412,6 @@ def show_task_in_use_notice(
         full_names (dict[str, str] | None): Full names of users by
             username.
         delay (int): Delay in milliseconds before the dialog is shown.
-        version_up_callback (Callable[[], None] | None): Callback to
-            save current workfile as next version. The dialog offers
-            version up if is passed.
 
     Returns:
         bool: The dialog will be shown.
@@ -472,15 +428,6 @@ def show_task_in_use_notice(
         if _notice_dialog is dialog:
             _notice_dialog = None
         dialog.deleteLater()
-        if not dialog.is_version_up_requested():
-            return
-        try:
-            version_up_callback()
-        except Exception:
-            log.warning("Failed to version up workfile.", exc_info=True)
-            QtWidgets.QMessageBox.warning(
-                None, "Version up failed", "Failed to version up workfile."
-            )
 
     def _show():
         global _notice_dialog
@@ -491,7 +438,6 @@ def show_task_in_use_notice(
             items,
             full_names,
             notice_only=True,
-            version_up=version_up_callback is not None,
         )
         dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
         dialog.finished.connect(lambda *_: _on_finished(dialog))
@@ -534,9 +480,7 @@ class TaskInUseNotifier(QtCore.QObject):
             # User is asked in the Workfiles tool if the notice can't be
             #   shown
             if show_task_in_use_notice(
-                notice.items,
-                notice.user_full_names,
-                version_up_callback=notice.version_up_callback,
+                notice.items, notice.user_full_names
             ):
                 acknowledge_task_usage_items(notice.items)
         except Exception:

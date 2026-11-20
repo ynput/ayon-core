@@ -42,7 +42,6 @@ import socket
 import threading
 import time
 from dataclasses import dataclass, field, replace
-from functools import partial
 from typing import Any, Callable
 
 import ayon_api
@@ -174,17 +173,6 @@ class TaskUsageItem:
             "hostName": self.host_name,
             "workfile": self.workfile,
         }
-
-    def is_workfile(self, workfile: str | None) -> bool:
-        """The session has opened workfile with the same filename.
-
-        Args:
-            workfile (str | None): Path or filename of a workfile.
-
-        """
-        if not workfile or not self.workfile:
-            return False
-        return self.workfile.lower() == os.path.basename(workfile).lower()
 
     def get_opened_at(self) -> datetime.datetime | None:
         return _parse_time(self.opened_at)
@@ -321,22 +309,6 @@ def filter_other_users_items(
             and item.session_id not in acknowledged_session_ids
         )
     ]
-
-
-def get_same_workfile_items(
-    items: list[TaskUsageItem], workfile: str | None
-) -> list[TaskUsageItem]:
-    """Sessions that have opened workfile with the same filename.
-
-    Args:
-        items (list[TaskUsageItem]): Sessions working on a task.
-        workfile (str | None): Path or filename of a workfile.
-
-    Returns:
-        list[TaskUsageItem]: Sessions working in the same workfile.
-
-    """
-    return [item for item in items if item.is_workfile(workfile)]
 
 
 def acknowledge_task_usage_items(items: list[TaskUsageItem]) -> None:
@@ -643,18 +615,10 @@ class TaskInUseNotice:
         items (list[TaskUsageItem]): Sessions of other users.
         user_full_names (dict[str, str]): Full names of the users by
             username.
-        workfile (str | None): Filename of workfile opened in current
-            process when the task was claimed.
-        version_up_callback (Callable[[], None] | None): Callback to
-            save current workfile as next version. Is filled if the same
-            workfile is opened by other user. Must be called from the main
-            thread of the application.
 
     """
     items: list[TaskUsageItem]
     user_full_names: dict[str, str] = field(default_factory=dict)
-    workfile: str | None = None
-    version_up_callback: Callable[[], None] | None = None
 
 
 _notice_callbacks: list[Callable[[TaskInUseNotice], None]] = []
@@ -1007,11 +971,9 @@ class TaskUsageTracker:
             notified_session_ids.update(
                 other_item.session_id for other_item in other_items
             )
-            self._notify(other_items, workfile)
+            self._notify(other_items)
 
-    def _notify(
-        self, items: list[TaskUsageItem], workfile: str | None
-    ) -> None:
+    def _notify(self, items: list[TaskUsageItem]) -> None:
         """Notify user that other users are working on the claimed task.
 
         Is called from the background thread, so the notice is only passed
@@ -1027,15 +989,8 @@ class TaskUsageTracker:
         if not callbacks:
             return
 
-        version_up_callback = None
-        if get_same_workfile_items(items, workfile):
-            version_up_callback = partial(self._version_up, workfile)
-
         notice = TaskInUseNotice(
-            items,
-            get_task_usage_user_full_names(items),
-            workfile,
-            version_up_callback,
+            items, get_task_usage_user_full_names(items)
         )
         for callback in callbacks:
             try:
@@ -1045,28 +1000,6 @@ class TaskUsageTracker:
                     "Failed to pass task in-use notice.", exc_info=True
                 )
 
-    def _version_up(self, workfile: str) -> None:
-        """Save current workfile as next version.
-
-        Must be called from the main thread of the application. Nothing is
-        saved if the workfile is not opened anymore.
-
-        Args:
-            workfile (str): Filename of workfile the user was notified
-                about.
-
-        """
-        if self._get_workfile_name() != workfile:
-            log.warning(
-                "Workfile '%s' is not opened anymore. Skipping version up.",
-                workfile,
-            )
-            return
-
-        from .utils import save_next_version
-
-        save_next_version()
-
     def _get_workfile_filepath(self) -> str | None:
         get_current_workfile = getattr(
             self._host, "get_current_workfile", None
@@ -1074,12 +1007,6 @@ class TaskUsageTracker:
         if get_current_workfile is None:
             return None
         return get_current_workfile() or None
-
-    def _get_workfile_name(self) -> str | None:
-        filepath = self._get_workfile_filepath()
-        if not filepath:
-            return None
-        return os.path.basename(filepath)
 
     def _get_host_state(self) -> tuple[_HostWorkfile, ...]:
         """Workfiles opened in the application.
