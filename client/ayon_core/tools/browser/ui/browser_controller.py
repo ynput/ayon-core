@@ -35,6 +35,7 @@ from qtpy import QtCore
 from ayon_core.lib import Logger
 from ayon_core.tools.browser.abstract import (
     ActionItem,
+    DefaultActionTrigger,
     LoadersGrouping,
     ProductGroupsInfo,
 )
@@ -2180,6 +2181,27 @@ class BrowserWidgetController(QtCore.QObject):
         """
         self._loader_controller.prefetch_version_action_contexts(
             project_name, version_ids
+        )
+
+    def trigger_default_action(
+        self,
+        project_name: str,
+        version_id: str,
+        trigger: DefaultActionTrigger,
+    ) -> bool:
+        """Trigger the action set in settings for a double click or space bar.
+
+        Args:
+            project_name: AYON project name.
+            version_id: Version id the user double clicked or pressed
+                space bar on.
+            trigger: What the user did.
+
+        Returns:
+            False if no action is set for the trigger.
+        """
+        return self._loader_controller.trigger_default_action(
+            project_name, version_id, trigger
         )
 
     def get_representation_items(
