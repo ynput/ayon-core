@@ -368,26 +368,23 @@ def test_window_asks_if_task_in_use():
     }
     window = mock.Mock()
 
-    # Same prompt as on workfile open of the tool, also continues if
-    #   nobody works on the task anymore
-    for answer in (False, True):
-        window.reset_mock()
-        with mock.patch.object(
-            window_module, "confirm_task_in_use", return_value=answer
-        ) as prompt_mock:
-            WorkfilesToolWindow._on_workfile_action_finished(window, event)
-        prompt_mock.assert_called_once_with(
-            window._controller, "task-2", window, confirm_label="Open anyway"
-        )
-        window._controller.trigger_workfile_action.assert_called_once_with(
-            "test.open", selection, None, {TASK_IN_USE_FORM_KEY: True}
-        )
-        window._apply_action_result.assert_not_called()
+    # Same prompt as on workfile open of the tool
+    with mock.patch.object(
+        window_module, "confirm_task_in_use", return_value=True
+    ) as prompt_mock:
+        WorkfilesToolWindow._on_workfile_action_finished(window, event)
+    prompt_mock.assert_called_once_with(
+        window._controller, "task-2", window, confirm_label="Open anyway"
+    )
+    window._controller.trigger_workfile_action.assert_called_once_with(
+        "test.open", selection, None, {TASK_IN_USE_FORM_KEY: True}
+    )
+    window._apply_action_result.assert_not_called()
 
     # Cancel does not trigger the action again
     window.reset_mock()
     with mock.patch.object(
-        window_module, "confirm_task_in_use", return_value=None
+        window_module, "confirm_task_in_use", return_value=False
     ):
         WorkfilesToolWindow._on_workfile_action_finished(window, event)
     window._controller.trigger_workfile_action.assert_not_called()

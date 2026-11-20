@@ -195,9 +195,9 @@ class TaskInUseDialog(QtWidgets.QDialog):
             cancel. Used when the task is already in use by the user.
         confirm_label (str): Label of the button to continue.
         version_up (bool): Offer to work in next version of the workfile.
-            Should be used if the user is about to work in the same
-            workfile as other user. Use 'is_version_up_requested' to find
-            out if the user did choose it.
+            Should be used if the user works in the same workfile as
+            other user. Use 'is_version_up_requested' to find out if the
+            user did choose it.
 
     """
     def __init__(
@@ -318,8 +318,7 @@ def confirm_task_in_use(
     task_id: str,
     parent: QtWidgets.QWidget,
     confirm_label: str = "Open anyway",
-    workfile: str | None = None,
-) -> bool | None:
+) -> bool:
     """Ask user before working on a task that is in use by other users.
 
     Nothing is shown if the task is not in use. Sessions confirmed by
@@ -331,18 +330,14 @@ def confirm_task_in_use(
         task_id (str): Task id.
         parent (QtWidgets.QWidget): Parent widget of the dialog.
         confirm_label (str): Label of the button to continue.
-        workfile (str | None): Workfile that will be opened. Version
-            up is offered if other user works in the same workfile.
 
     Returns:
-        bool | None: None if user did cancel the action, True if
-            user wants to work in next version of the workfile,
-            otherwise False.
+        bool: False if user did cancel the action.
 
     """
     items = controller.get_task_usage_items(task_id)
     if not items:
-        return False
+        return True
     full_names = {
         username: user_item.full_name
         for username, user_item in (
@@ -355,15 +350,12 @@ def confirm_task_in_use(
         full_names,
         parent=parent,
         confirm_label=confirm_label,
-        version_up=any(item.is_workfile(workfile) for item in items),
     )
     confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
-    version_up = dialog.is_version_up_requested()
     dialog.deleteLater()
-    if not confirmed:
-        return None
-    controller.confirm_task_usage_items(items)
-    return version_up
+    if confirmed:
+        controller.confirm_task_usage_items(items)
+    return confirmed
 
 
 def _can_show_dialog() -> bool:

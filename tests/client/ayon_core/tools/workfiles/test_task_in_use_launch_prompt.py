@@ -179,19 +179,15 @@ def test_ask_to_launch_in_launch_process(button, expected):
 
 
 @pytest.mark.parametrize(
-    "button, workfile, expected",
+    "button, expected",
     [
-        ("Open anyway", "/work/sh010_anim_v001.ma", False),
-        ("Version up", "/work/sh010_anim_v001.ma", True),
-        ("Cancel", "/work/sh010_anim_v001.ma", None),
-        # Version up is offered only for the workfile of the other user
-        ("Version up", "/work/sh010_anim_v002.ma", None),
-        ("Version up", None, None),
+        ("Open anyway", True),
+        ("Cancel", False),
+        # Version up is offered only by the notice in the application
+        ("Version up", False),
     ]
 )
-def test_confirm_task_in_use(
-    clicked_button, qtbot, button, workfile, expected
-):
+def test_confirm_task_in_use(clicked_button, qtbot, button, expected):
     """Prompt of the Workfiles tool and its workfile actions."""
     clicked_button[0] = button
     item = TaskUsageItem(**_SESSION)
@@ -201,16 +197,14 @@ def test_confirm_task_in_use(
     parent = QtWidgets.QWidget()
     qtbot.addWidget(parent)
 
-    answer = confirm_task_in_use(
-        controller, "task-1", parent, workfile=workfile
-    )
+    answer = confirm_task_in_use(controller, "task-1", parent)
     assert answer is expected
     controller.get_task_usage_items.assert_called_once_with("task-1")
     # Only confirmed sessions are not asked about again
-    if expected is None:
-        controller.confirm_task_usage_items.assert_not_called()
-    else:
+    if expected:
         controller.confirm_task_usage_items.assert_called_once_with([item])
+    else:
+        controller.confirm_task_usage_items.assert_not_called()
 
 
 def test_confirm_task_not_in_use(qtbot):
@@ -219,7 +213,7 @@ def test_confirm_task_not_in_use(qtbot):
     with mock.patch.object(
         task_in_use_dialog, "TaskInUseDialog"
     ) as dialog_mock:
-        assert confirm_task_in_use(controller, "task-1", None) is False
+        assert confirm_task_in_use(controller, "task-1", None) is True
     dialog_mock.assert_not_called()
     controller.confirm_task_usage_items.assert_not_called()
 
