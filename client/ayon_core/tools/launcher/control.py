@@ -20,9 +20,11 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractLauncherFrontEnd,
     AbstractLauncherBackend,
+    RecentActionItem,
     WorkfileItem,
 )
 from .models import (
+    LauncherExpectedSelection,
     LauncherSelectionModel,
     ActionsModel,
     WorkfilesModel,
@@ -53,6 +55,7 @@ class BaseLauncherController(
         self._hierarchy_model = HierarchyModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._actions_model = ActionsModel(self)
+        self._expected_selection = LauncherExpectedSelection(self)
         self._workfiles_model = WorkfilesModel(self)
         self._users_model = UsersModel(self)
         self._ws_events_model = WSEventsModel(self)
@@ -271,6 +274,7 @@ class BaseLauncherController(
         self._hierarchy_model.reset(force)
         self._thumbnails_model.reset()
         self._users_model.reset()
+        self._workfiles_model.reset()
 
         self._actions_model.refresh()
         self._projects_model.refresh()
@@ -304,3 +308,87 @@ class BaseLauncherController(
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
+
+    # Recent actions
+    def get_recent_action_items(self) -> list[RecentActionItem]:
+        return self._actions_model.get_recent_action_items()
+
+    def are_recent_action_items_loaded(self) -> bool:
+        return self._actions_model.are_recent_action_items_loaded()
+
+    def is_recent_actions_supported(self) -> Optional[bool]:
+        return self._actions_model.is_recent_actions_supported()
+
+    def check_recent_actions_support(self) -> bool:
+        return self._actions_model.check_recent_actions_support()
+
+    def refresh_recent_action_items(self):
+        self._actions_model.refresh_recent_action_items()
+
+    def set_recent_action_favorite(self, record_id: str, favorite: bool):
+        self._actions_model.set_recent_action_favorite(record_id, favorite)
+
+    def remove_recent_action(self, record_id: str):
+        self._actions_model.remove_recent_action(record_id)
+
+    def trigger_recent_action(self, record_id: str):
+        self._actions_model.trigger_recent_action(record_id)
+
+    def apply_recent_action_context(self, record_id: str):
+        """Ask the UI to navigate to the context of a recent action.
+
+        This is the "Locate" affordance - it does not re-run the action.
+
+        Only states which context is expected to end up selected, the
+        widgets select it once their data is loaded and report the
+        selection back like for any selection made by the user.
+        """
+        item = self._actions_model.get_recent_action_item(record_id)
+        if item is None:
+            return
+
+        # Tasks are selected by name, which may have changed since the
+        #   entry was stored.
+        task_name = item.task_name
+        if item.project_name and item.task_id:
+            task_entity = self.get_task_entity(
+                item.project_name, item.task_id
+            )
+            if task_entity:
+                task_name = task_entity["name"]
+
+        self.set_expected_selection(
+            item.project_name,
+            item.folder_id,
+            task_name,
+            item.workfile_id,
+        )
+
+    # Expected selection
+    def set_expected_selection(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str] = None,
+        task_name: Optional[str] = None,
+        workfile_id: Optional[str] = None,
+    ):
+        self._expected_selection.set_expected_selection(
+            project_name, folder_id, task_name, workfile_id
+        )
+
+    def get_expected_selection_data(self):
+        return self._expected_selection.get_expected_selection_data()
+
+    def expected_project_selected(self, project_name):
+        self._expected_selection.expected_project_selected(project_name)
+
+    def expected_folder_selected(self, folder_id):
+        self._expected_selection.expected_folder_selected(folder_id)
+
+    def expected_task_selected(self, folder_id, task_name):
+        self._expected_selection.expected_task_selected(
+            folder_id, task_name
+        )
+
+    def expected_workfile_selected(self, workfile_id):
+        self._expected_selection.expected_workfile_selected(workfile_id)
