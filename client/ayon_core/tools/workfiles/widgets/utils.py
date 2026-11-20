@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import typing
 
 from qtpy import QtWidgets, QtCore
 
@@ -11,6 +12,12 @@ from ayon_core.ui.components.user_avatars import (
     set_avatar_decoration,
 )
 from ayon_core.tools.utils.delegates import pretty_timestamp
+from ayon_core.tools.task_in_use import TaskInUseDialog
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.workfiles.abstract import (
+        AbstractWorkfilesFrontend,
+    )
 
 
 def save_changes_prompt(parent: QtWidgets.QWidget) -> bool | None:
@@ -47,6 +54,41 @@ def save_changes_prompt(parent: QtWidgets.QWidget) -> bool | None:
     if result == QtWidgets.QMessageBox.No:
         return False
     return None
+
+
+def confirm_task_in_use(
+    controller: AbstractWorkfilesFrontend,
+    task_id: str,
+    parent: QtWidgets.QWidget,
+    confirm_label: str = "Open anyway",
+) -> bool:
+    """Ask user before working on a task that is in use by other users.
+
+    Nothing is shown if the task is not in use. Sessions confirmed by
+    the user are not asked about again in the same process.
+
+    Args:
+        controller (AbstractWorkfilesFrontend): Controller of the
+            Workfiles tool.
+        task_id (str): Task id.
+        parent (QtWidgets.QWidget): Parent widget of the dialog.
+        confirm_label (str): Label of the button to continue.
+
+    Returns:
+        bool: False if user did cancel the action.
+
+    """
+    items = controller.get_task_usage_items(task_id)
+    if not items:
+        return True
+    dialog = TaskInUseDialog(
+        items, parent=parent, confirm_label=confirm_label
+    )
+    confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
+    dialog.deleteLater()
+    if confirmed:
+        controller.confirm_task_usage_items(items)
+    return confirmed
 
 
 # Login name of the user shown in the 'Author' column

@@ -12,10 +12,8 @@ from qtpy import QtWidgets  # noqa: E402
 from ayon_core.pipeline.workfile.task_usage import (  # noqa: E402
     TaskUsageItem,
 )
-from ayon_core.tools.workfiles.widgets import (  # noqa: E402
-    task_in_use_dialog,
-)
-from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (  # noqa: E402, E501
+from ayon_core.tools.workfiles.widgets import utils  # noqa: E402
+from ayon_core.tools.workfiles.widgets.utils import (  # noqa: E402
     confirm_task_in_use,
 )
 
@@ -81,9 +79,7 @@ def test_confirm_task_in_use(clicked_button, qtbot, button, expected):
 def test_confirm_task_not_in_use(qtbot):
     controller = mock.Mock()
     controller.get_task_usage_items.return_value = []
-    with mock.patch.object(
-        task_in_use_dialog, "TaskInUseDialog"
-    ) as dialog_mock:
+    with mock.patch.object(utils, "TaskInUseDialog") as dialog_mock:
         assert confirm_task_in_use(controller, "task-1", None) is True
     dialog_mock.assert_not_called()
     controller.confirm_task_usage_items.assert_not_called()

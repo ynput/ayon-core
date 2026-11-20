@@ -33,8 +33,11 @@ from ayon_core.ui.components import (
 from .files_widget import FilesWidget
 from .save_as_dialog import SaveAsDialog
 from .side_panel import SidePanelWidget
-from .task_in_use_dialog import confirm_task_in_use
-from .utils import BaseOverlayFrame, save_changes_prompt
+from .utils import (
+    BaseOverlayFrame,
+    save_changes_prompt,
+    confirm_task_in_use,
+)
 
 WORKFILE_CSS_PATH = Path(__file__).parent / "workfiles_style.css"
 

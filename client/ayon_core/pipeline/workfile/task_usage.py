@@ -519,7 +519,7 @@ def register_task_in_use_notice_callback(
     Host integration should register the callback in its 'install', the
     tracking is started by 'install_host' after that. Integrations based
     on Qt can use 'install_task_in_use_notifier' from
-    'ayon_core.tools.workfiles.widgets.task_in_use_dialog'.
+    'ayon_core.tools.task_in_use'.
 
     Warning:
         The callback is called from a background thread. It must not
@@ -932,11 +932,10 @@ def install_task_usage_tracker(
     any enabled profile of task in-use notification, so the feature does
     not cost anything when it is not used.
 
-    The tasks are released on exit with 'atexit', and when Qt application
-    quits if the host uses 'install_task_in_use_notifier'. Other host
-    integration of an application that does not call 'atexit' callbacks
-    on exit should call 'uninstall_task_usage_tracker' on exit of the
-    application. Otherwise the session expires after the session timeout.
+    The task is released on exit with 'atexit'. Host integration of an
+    application that does not call 'atexit' callbacks on exit, e.g. Maya,
+    should call 'uninstall_task_usage_tracker' on exit of the application.
+    Otherwise the session expires after the session timeout.
 
     Args:
         host (AbstractHost): Installed host integration.
