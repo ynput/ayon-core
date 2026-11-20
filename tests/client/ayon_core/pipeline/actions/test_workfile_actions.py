@@ -152,7 +152,6 @@ OTHER_USER_SESSION = TaskUsageItem(
     session_id="other-session",
     username="artist2",
     machine="machine",
-    site_id="site-1",
     host_name="testhost",
     workfile="file_v001.ma",
     opened_at="2026-01-01T12:00:00+00:00",

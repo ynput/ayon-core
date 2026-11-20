@@ -36,7 +36,6 @@ _SESSION = {
     "session_id": "other-user",
     "username": "artist2",
     "machine": "machine",
-    "site_id": "site-1",
     "host_name": "maya",
     "workfile": "sh010_anim_v001.ma",
     "opened_at": "2026-01-01T12:00:00+00:00",

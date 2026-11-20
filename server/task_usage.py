@@ -57,7 +57,6 @@ class TaskSessionModel(OPModel):
     username: str = Field(..., title="User name")
     full_name: str | None = Field(None, title="Full name of the user")
     machine: str | None = Field(None, title="Machine name")
-    site_id: str | None = Field(None, title="Site ID")
     host_name: str | None = Field(None, title="Host name", example="maya")
     workfile: str | None = Field(None, title="Workfile name")
     opened_at: str = Field(
@@ -74,7 +73,6 @@ class TaskSessionModel(OPModel):
 
 class ClaimTaskModel(OPModel):
     machine: str | None = Field(None, title="Machine name", max_length=255)
-    site_id: str | None = Field(None, title="Site ID", max_length=255)
     host_name: str | None = Field(None, title="Host name", max_length=255)
     workfile: str | None = Field(None, title="Workfile name", max_length=1024)
     ttl: int = Field(
@@ -101,10 +99,6 @@ class TaskSessionsModel(OPModel):
         title="Sessions",
         description="Sessions that are working on the task",
     )
-
-
-class ClaimTaskResponseModel(TaskSessionsModel):
-    ttl: int = Field(..., title="Time to live of the session in seconds")
 
 
 SessionID = Path(..., title="Session ID", regex=SESSION_ID_REGEX)
@@ -170,7 +164,7 @@ async def claim_task(
     task_id: TaskID,
     payload: ClaimTaskModel,
     session_id: str = SessionID,
-) -> ClaimTaskResponseModel:
+) -> TaskSessionsModel:
     """Register or refresh a session working on a task.
 
     The session expires if is not refreshed in the time to live. Returns
@@ -200,7 +194,6 @@ async def claim_task(
         username=user.name,
         full_name=user.attrib.fullName or None,
         machine=payload.machine,
-        site_id=payload.site_id,
         host_name=payload.host_name,
         workfile=payload.workfile,
         opened_at=opened_at,
@@ -214,7 +207,7 @@ async def claim_task(
         pipe.hgetall(task_key)
         _, _, payloads = await pipe.execute()
 
-    return ClaimTaskResponseModel(sessions=_parse_sessions(payloads), ttl=ttl)
+    return TaskSessionsModel(sessions=_parse_sessions(payloads))
 
 
 async def release_task(
@@ -225,17 +218,13 @@ async def release_task(
 ) -> EmptyResponse:
     """Unregister a session from a task.
 
-    A session can be released by the user who did claim it or by
-    a manager. Session that does not exist is ignored.
+    A session can be released only by the user who did claim it.
+    Session that does not exist is ignored.
     """
     pool = await _get_redis_pool()
     task_key = _task_key(project_name, task_id)
     existing = _parse_session(await pool.hget(task_key, session_id))
-    if (
-        existing is not None
-        and existing.username != user.name
-        and not user.is_manager
-    ):
+    if existing is not None and existing.username != user.name:
         raise ForbiddenException("Session is owned by a different user")
 
     await pool.hdel(task_key, session_id)

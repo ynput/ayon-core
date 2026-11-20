@@ -30,7 +30,6 @@ ENDPOINT = (
 def _item(
     session_id: str = "session-1",
     username: str = "artist1",
-    site_id: str = "site-1",
     host_name: str | None = "maya",
     hours_ago: float = 0.0,
     opened_hours_ago: float | None = None,
@@ -43,7 +42,6 @@ def _item(
         session_id=session_id,
         username=username,
         machine="machine",
-        site_id=site_id,
         host_name=host_name,
         workfile="sh010_anim_v001.ma",
         opened_at=opened_at.isoformat(),
@@ -57,7 +55,6 @@ def _server_data(item: TaskUsageItem) -> dict[str, Any]:
         "sessionId": item.session_id,
         "username": item.username,
         "machine": item.machine,
-        "siteId": item.site_id,
         "hostName": item.host_name,
         "workfile": item.workfile,
         "openedAt": item.opened_at,
@@ -76,7 +73,6 @@ def test_item_to_server_data():
     """Username and times are filled by the server."""
     assert _item().to_server_data() == {
         "machine": "machine",
-        "siteId": "site-1",
         "hostName": "maya",
         "workfile": "sh010_anim_v001.ma",
     }
@@ -213,7 +209,6 @@ class _MockServer:
             "sessionId": session_id,
             "username": self.username,
             "machine": kwargs["machine"],
-            "siteId": kwargs["siteId"],
             "hostName": kwargs["hostName"],
             "workfile": kwargs["workfile"],
             "openedAt": opened_at,
@@ -222,7 +217,6 @@ class _MockServer:
         }
         return _Response(data={
             "sessions": self._task_sessions(task_id),
-            "ttl": kwargs["ttl"],
         })
 
     def delete(self, endpoint, **kwargs):
@@ -241,7 +235,6 @@ def server(monkeypatch):
     monkeypatch.setattr(task_usage, "_get_now", lambda: NOW)
     monkeypatch.setattr(task_usage, "_get_session_id", lambda: "mine")
     monkeypatch.setattr(task_usage, "get_ayon_username", lambda: "artist1")
-    monkeypatch.setattr(task_usage, "get_local_site_id", lambda: "site-1")
     monkeypatch.setattr(task_usage, "_acknowledged_session_ids", set())
 
     def _raw_request(method):
@@ -271,7 +264,6 @@ def test_claim_update_and_release(server):
             "ttl": 120,
             "heartbeat": False,
             "machine": item.machine,
-            "siteId": "site-1",
             "hostName": "maya",
             "workfile": "file.ma",
         },

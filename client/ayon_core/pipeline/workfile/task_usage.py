@@ -47,7 +47,6 @@ from ayon_core.host import AbstractHost, WorkfileInUse
 from ayon_core.lib import (
     filter_profiles,
     get_ayon_username,
-    get_local_site_id,
     is_headless_mode_enabled,
     is_in_tests,
 )
@@ -122,7 +121,6 @@ class TaskUsageItem:
         session_id (str): Unique id of the process.
         username (str): AYON username.
         machine (str | None): Name of the machine.
-        site_id (str | None): AYON site id of the machine.
         host_name (str | None): Name of host integration, e.g. 'maya'.
         workfile (str | None): Filename of the workfile opened in the
             session.
@@ -137,7 +135,6 @@ class TaskUsageItem:
     session_id: str
     username: str
     machine: str | None
-    site_id: str | None
     host_name: str | None
     workfile: str | None
     opened_at: str
@@ -158,7 +155,6 @@ class TaskUsageItem:
             session_id=data["sessionId"],
             username=data["username"],
             machine=data["machine"],
-            site_id=data["siteId"],
             host_name=data["hostName"],
             workfile=data["workfile"],
             opened_at=data["openedAt"],
@@ -173,7 +169,6 @@ class TaskUsageItem:
         """
         return {
             "machine": self.machine,
-            "siteId": self.site_id,
             "hostName": self.host_name,
             "workfile": self.workfile,
         }
@@ -446,7 +441,6 @@ def create_session_item(
         session_id=session_id,
         username=get_ayon_username(),
         machine=socket.gethostname(),
-        site_id=get_local_site_id(),
         host_name=host_name,
         workfile=workfile,
         opened_at=now,
