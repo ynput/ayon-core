@@ -10,7 +10,6 @@ import pyblish.api
 
 from ayon_core.lib import get_media_mime_type, format_file_size
 from ayon_core.pipeline.publish import (
-    KnownPublishError,
     PublishXmlValidationError,
     get_publish_repre_path,
 )
@@ -56,9 +55,9 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
 
     Custom data of the reviewable are taken from representation key
     'reviewable_data' (e.g. 'overlay' with burnins drawn by the player).
-    Representations tagged 'slate-frame' have one slate frame at the start,
-    which is added to 'slateFrames'. The data are stored to
-    'reviewableData' of the reviewable activity data.
+    Number of slate frames at the start of the file is added to them as
+    'slateFrames'. The data are stored to 'reviewableData' of the reviewable
+    activity data.
     """
 
     label = "Integrate AYON Review"
@@ -154,14 +153,22 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
                     path=repre_path,
                     content_type=content_type,
                     label=label,
-                    data=self._get_reviewable_data(repre),
+                    data=self._get_reviewable_data(instance, repre),
                 )
             )
         return uploads
 
-    def _get_reviewable_data(self, repre: dict[str, Any]) -> dict[str, Any]:
+    def _get_reviewable_data(
+        self, instance: pyblish.api.Instance, repre: dict[str, Any]
+    ) -> dict[str, Any]:
         data = dict(repre.get("reviewable_data") or {})
-        if "slate-frame" in (repre.get("tags") or []):
+        # Slate frame is added only to tagged representations of instances
+        #   with slate, see 'ExtractReviewSlate'
+        if (
+            data
+            and "slate" in (instance.data.get("families") or [])
+            and "slate-frame" in (repre.get("tags") or [])
+        ):
             data["slateFrames"] = int(data.get("slateFrames") or 0) + 1
         return data
 
@@ -207,9 +214,7 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
             )
 
         if upload.data:
-            self._update_reviewable_data(
-                project_name, upload, response.json()["activityId"]
-            )
+            self._update_reviewable_data(project_name, upload, response)
 
     def _get_review_label(self, repre, uploaded_labels):
         # Use output name as label if available
@@ -224,18 +229,21 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
         return label
 
     def _update_reviewable_data(
-        self, project_name: str, upload: ReviewableUpload, activity_id: str
+        self, project_name: str, upload: ReviewableUpload, response: Any
     ) -> None:
         # Data are stored to the activity of the reviewable, so they are
         #   shared with files transcoded from the reviewable
+        # The reviewable is already uploaded, missing data should not fail
+        #   the publish
         try:
             ayon_api.update_activity(
                 project_name,
-                activity_id,
+                response.json()["activityId"],
                 data={"reviewableData": upload.data},
             )
-        except Exception as exc:
-            raise KnownPublishError(
-                f"Failed to store data of reviewable '{upload.path}'."
-                f" {exc}"
-            ) from exc
+        except Exception:
+            self.log.warning(
+                f"Failed to store data of reviewable '{upload.path}',"
+                " it won't have its overlay in review.",
+                exc_info=True,
+            )
