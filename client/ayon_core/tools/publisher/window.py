@@ -736,6 +736,15 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._publish_details_widget.set_report(report)
 
+    def select_errored_items(self) -> bool:
+        """Select errored instances and plugins in publish details.
+
+        Returns:
+            bool: True if at least one errored item was selected.
+
+        """
+        return self._publish_details_widget.select_errored_items()
+
     def _on_help_click(self) -> None:
         if self._help_dialog.isVisible():
             return

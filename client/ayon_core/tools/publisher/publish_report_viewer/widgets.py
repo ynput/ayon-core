@@ -27,6 +27,7 @@ from ayon_core.style import get_objected_colors
 from ayon_core.ui.components import AYButton, AYLineEdit, AYSpinBox
 
 from .constants import (
+    ITEM_ERRORED_ROLE,
     ITEM_ID_ROLE,
     ITEM_IS_GROUP_ROLE
 )
@@ -1710,6 +1711,18 @@ class DetailsPopup(QtWidgets.QDialog):
         self.closed.emit()
 
 
+def _scroll_to_index(
+    view: QtWidgets.QAbstractItemView,
+    index: QtCore.QPersistentModelIndex,
+) -> None:
+    if not index.isValid():
+        return
+    view.scrollTo(
+        QtCore.QModelIndex(index),
+        QtWidgets.QAbstractItemView.PositionAtCenter,
+    )
+
+
 class PublishReportViewerWidget(QtWidgets.QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1921,6 +1934,58 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
 
         self._instances_view.expandAll()
         self._plugins_view.expandAll()
+
+    def select_errored_items(self) -> bool:
+        """Select errored instances and plugins in the report views.
+
+        Previous selection in both views is replaced. Hidden (filtered
+        out) items are not selected.
+
+        Returns:
+            bool: True if at least one errored item was selected.
+
+        """
+        selected = False
+        for view in (self._instances_view, self._plugins_view):
+            if self._select_errored_in_view(view):
+                selected = True
+        return selected
+
+    @staticmethod
+    def _select_errored_in_view(view: QtWidgets.QTreeView) -> bool:
+
+        # find all items with "ITEM_ERRORED_ROLE=True"
+        model = view.model()
+        matches = model.match(
+            model.index(0, 0),
+            ITEM_ERRORED_ROLE,
+            True,
+            -1,
+            QtCore.Qt.MatchFlag.MatchExactly
+            | QtCore.Qt.MatchFlag.MatchRecursive,
+        )
+
+        # convert matches to selection
+        selection = QtCore.QItemSelection()
+        for index in matches:
+            selection.select(index, index)
+
+        # apply selection to the view
+        selection_model = view.selectionModel()
+        selection_model.select(
+            selection,
+            QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+        )
+
+        if matches:
+            # View may not be laid out yet (e.g. tab was just shown),
+            #   so scrolling must wait for the layout to be done.
+            first_index = QtCore.QPersistentModelIndex(matches[0])
+            QtCore.QTimer.singleShot(
+                0, lambda: _scroll_to_index(view, first_index)
+            )
+        return bool(matches)
 
     def _on_tab_change(self, new_idx):
         if self._current_tab_idx == new_idx:
