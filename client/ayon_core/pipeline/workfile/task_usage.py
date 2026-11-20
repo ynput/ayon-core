@@ -27,9 +27,6 @@ main thread only passes current context to it. A notice about other users
 is passed to callbacks registered by the host integration, which shows it
 in its own thread, see 'register_task_in_use_notice_callback'. Without
 a callback the user is asked in the launcher and in the Workfiles tool.
-
-The endpoints are not available if the server runs older version of the
-core addon. In that case the tracking is disabled and nothing is reported.
 """
 from __future__ import annotations
 
@@ -91,10 +88,6 @@ ACKNOWLEDGED_SESSIONS_ENV_KEY = "AYON_TASK_IN_USE_ACKNOWLEDGED"
 
 # Sessions of other users the user of current process was notified about
 _acknowledged_session_ids: set[str] = set()
-
-
-class TaskUsageNotSupportedError(Exception):
-    """AYON server does not have task in-use endpoints of the core addon."""
 
 
 @dataclass
@@ -360,10 +353,6 @@ def get_workfile_session_id(key: str = "") -> str:
     return f"{session_id}-{key_hash}"
 
 
-# 'False' when the server does not have the endpoints
-_endpoints_supported: bool | None = None
-
-
 def _get_endpoint(project_name: str, *subpaths: str) -> str:
     # NOTE 'ayon_api.get_addon_endpoint' can't be used, it fails when
     #   subpaths are passed
@@ -377,38 +366,12 @@ def _get_endpoint(project_name: str, *subpaths: str) -> str:
 def _request(
     method: str, endpoint: str, data: dict[str, Any] | None = None
 ) -> Any:
-    """Call task in-use endpoint of the core addon.
-
-    Raises:
-        TaskUsageNotSupportedError: The server does not have the endpoints.
-
-    """
-    global _endpoints_supported
-
-    if _endpoints_supported is False:
-        raise TaskUsageNotSupportedError(
-            "Task in-use endpoints are not available on the server."
-        )
-
+    """Call task in-use endpoint of the core addon."""
     kwargs: dict[str, Any] = {"timeout": REQUEST_TIMEOUT_SECONDS}
     if data is not None:
         kwargs["json"] = data
     response = getattr(ayon_api, f"raw_{method}")(endpoint, **kwargs)
-    # The endpoints do not use status 404 for their own responses
-    if response.status_code == 404:
-        _endpoints_supported = False
-        log.warning(
-            "Task in-use notification is disabled. AYON server does not"
-            " have task in-use endpoints of '%s' addon version '%s',"
-            " the server addon is probably older than the client.",
-            ADDON_NAME,
-            __version__,
-        )
-        raise TaskUsageNotSupportedError(
-            "Task in-use endpoints are not available on the server."
-        )
     response.raise_for_status()
-    _endpoints_supported = True
     return response.data
 
 
@@ -430,15 +393,12 @@ def get_task_usage_items(
         task_id (str): Task id.
 
     Returns:
-        list[TaskUsageItem]: Active sessions of the task. Empty list if
-            the server does not support task in-use tracking.
+        list[TaskUsageItem]: Active sessions of the task.
 
     """
-    try:
-        data = _request("get", _get_endpoint(project_name, task_id))
-    except TaskUsageNotSupportedError:
-        return []
-    return _parse_server_items(data)
+    return _parse_server_items(
+        _request("get", _get_endpoint(project_name, task_id))
+    )
 
 
 def get_other_users_task_usage_items(
@@ -517,9 +477,6 @@ def claim_task(
     Returns:
         list[TaskUsageItem]: Other active sessions working on the task.
 
-    Raises:
-        TaskUsageNotSupportedError: The server does not have the endpoints.
-
     """
     data = _request(
         "put",
@@ -546,12 +503,7 @@ def release_task(
         session_id (str): Session id.
 
     """
-    try:
-        _request(
-            "delete", _get_endpoint(project_name, task_id, session_id)
-        )
-    except TaskUsageNotSupportedError:
-        pass
+    _request("delete", _get_endpoint(project_name, task_id, session_id))
 
 
 @dataclass
@@ -644,8 +596,6 @@ class TaskUsageTracker:
     or in the Workfiles tool.
 
     Failures are only logged. The tracker must never break host callbacks.
-    The tracker disables itself if the server does not support task in-use
-    tracking.
 
     Args:
         host (AbstractHost): Host integration.
@@ -672,7 +622,6 @@ class TaskUsageTracker:
         # Claimed sessions by key of opened workfile
         self._sessions: dict[str, _ClaimedSession] = {}
         self._failed: bool = False
-        self._disabled: bool = False
         self._context_cache: dict[tuple, _TaskContext | None] = {}
 
     def sync(self) -> None:
@@ -682,8 +631,6 @@ class TaskUsageTracker:
         from callbacks of the host integration. Does not wait for the
         server, the context is processed in the background thread.
         """
-        if self._disabled:
-            return
         try:
             state = self._get_host_state()
         except Exception:
@@ -706,8 +653,6 @@ class TaskUsageTracker:
         try:
             self._process()
             self._failed = False
-        except TaskUsageNotSupportedError:
-            self._disable()
         except Exception:
             # Server may be temporarily not available, is repeated later
             log_method = log.debug if self._failed else log.warning
@@ -721,7 +666,7 @@ class TaskUsageTracker:
 
         The thread is a daemon, so it does not block exit of the process.
         """
-        if self._thread is not None or self._disabled:
+        if self._thread is not None:
             return
         self._stop_event = stop_event = threading.Event()
         self._thread = thread = threading.Thread(
@@ -780,7 +725,7 @@ class TaskUsageTracker:
             self.process()
 
     def _run(self, stop_event: threading.Event) -> None:
-        while not stop_event.is_set() and not self._disabled:
+        while not stop_event.is_set():
             self._wake_event.wait(self._get_wait_seconds())
             self._wake_event.clear()
             self.process()
@@ -806,17 +751,7 @@ class TaskUsageTracker:
             for session in sessions
         )
 
-    def _disable(self) -> None:
-        self._disabled = True
-        self._sessions = {}
-        self._thread = None
-        self._stop_event.set()
-        self._wake_event.set()
-
     def _process(self) -> None:
-        if self._disabled:
-            return
-
         is_activity = False
         with self._lock:
             if self._is_scheduled:

@@ -30,7 +30,7 @@ from fastapi import Path
 
 from ayon_server.api.dependencies import CurrentUser, ProjectName, TaskID
 from ayon_server.api.responses import EmptyResponse
-from ayon_server.exceptions import BadRequestException, ForbiddenException
+from ayon_server.exceptions import ForbiddenException, NotFoundException
 from ayon_server.lib.postgres import Postgres
 from ayon_server.lib.redis import Redis
 from ayon_server.types import Field, OPModel
@@ -161,9 +161,7 @@ async def _ensure_task_exists(project_name: str, task_id: str) -> None:
         task_id,
     )
     if row is None:
-        # Not found (404) is not used, so clients can use it to detect
-        #   that the endpoints are not available
-        raise BadRequestException(f"Task {task_id} does not exist")
+        raise NotFoundException(f"Task {task_id} does not exist")
 
 
 async def claim_task(

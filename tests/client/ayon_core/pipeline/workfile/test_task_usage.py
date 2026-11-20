@@ -14,7 +14,6 @@ from ayon_core.host import IWorkfileHost, WorkfileInUse
 from ayon_core.pipeline.workfile import task_usage
 from ayon_core.pipeline.workfile.task_usage import (
     TaskUsageItem,
-    TaskUsageNotSupportedError,
     TaskUsageSettings,
     TaskUsageTracker,
     filter_other_users_items,
@@ -239,7 +238,6 @@ def server(monkeypatch):
     """Mocked server calls."""
     mock_server = _MockServer()
 
-    monkeypatch.setattr(task_usage, "_endpoints_supported", None)
     monkeypatch.setattr(task_usage, "_get_now", lambda: NOW)
     monkeypatch.setattr(task_usage, "_get_session_id", lambda: "mine")
     monkeypatch.setattr(task_usage, "get_ayon_username", lambda: "artist1")
@@ -327,26 +325,7 @@ def test_other_users_task_usage_items(server):
     ) == []
 
 
-def test_server_without_endpoints(server):
-    """Older server addon does not have the endpoints."""
-    server.status_code = 404
-    item = _item("mine")
-
-    assert task_usage.get_task_usage_items("project", "task-id") == []
-    assert len(server.requests) == 1
-
-    # Server is not asked again
-    assert task_usage.get_other_users_task_usage_items(
-        "project", "task-id"
-    ) == []
-    task_usage.release_task("project", "task-id", "mine")
-    with pytest.raises(TaskUsageNotSupportedError):
-        task_usage.claim_task("project", "task-id", item, 120)
-    assert len(server.requests) == 1
-
-
 def test_server_error_is_raised(server):
-    """Failed request is not considered as missing endpoints."""
     server.status_code = 500
     with pytest.raises(RuntimeError):
         task_usage.get_task_usage_items("project", "task-id")
@@ -664,7 +643,6 @@ def test_tracker_does_not_raise(tracker_calls, current_time, monkeypatch):
     # Claim is repeated, the server may be available again
     tracker.process()
     assert len(failed_calls) == 3
-    assert not tracker._disabled
 
     monkeypatch.setattr(task_usage, "claim_task", claim_task)
     tracker.process()
@@ -680,44 +658,6 @@ def test_tracker_does_not_raise(tracker_calls, current_time, monkeypatch):
     monkeypatch.setattr(task_usage, "release_task", _failing)
     tracker.stop()
     assert len(failed_calls) == 5
-
-
-def test_tracker_is_disabled_without_endpoints(
-    server, current_time, monkeypatch
-):
-    """Tracker does nothing if the server addon is older."""
-    server.status_code = 404
-    host = _MockHost()
-    tracker = TaskUsageTracker(host)
-    _mock_task_context(tracker, monkeypatch)
-
-    _sync(tracker)
-    assert tracker._disabled
-    assert len(server.requests) == 1
-
-    current_time[0] += TaskUsageSettings(True).heartbeat_interval
-    host.workfile = "/path/sh010_anim_v002.ma"
-    _sync(tracker)
-    tracker.start()
-    assert tracker._thread is None
-    tracker.stop()
-    assert len(server.requests) == 1
-
-
-def test_tracker_is_disabled_by_heartbeat(
-    server, current_time, monkeypatch
-):
-    host = _MockHost()
-    tracker = TaskUsageTracker(host)
-    _mock_task_context(tracker, monkeypatch)
-
-    _sync(tracker)
-    assert not tracker._disabled
-
-    server.status_code = 404
-    current_time[0] += TaskUsageSettings(True).heartbeat_interval
-    tracker.process()
-    assert tracker._disabled
 
 
 def test_tracker_thread(tracker_calls, monkeypatch):
