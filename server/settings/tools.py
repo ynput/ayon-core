@@ -504,6 +504,89 @@ class PublishToolModel(BaseSettingsModel):
     )
 
 
+class DeliveryRecipeOverrideModel(BaseSettingsModel):
+    _layout = "expanded"
+    representation_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names",
+        description="Regex supported. Empty matches any representation.",
+    )
+    extensions: list[str] = SettingsField(
+        default_factory=list,
+        title="Extensions",
+        description=(
+            "Lowercase extensions without dot, e.g. 'exr'. Regex supported."
+            " Empty matches any extension."
+        ),
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+        description="Empty matches any product base type.",
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Template",
+        description="Anatomy delivery template for matching representations.",
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+
+
+class DeliveryRecipeModel(BaseSettingsModel):
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Name offered in the Delivery tool.",
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Default template",
+        description=(
+            "Anatomy delivery template for representations without"
+            " a matching override."
+        ),
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+    overrides: list[DeliveryRecipeOverrideModel] = SettingsField(
+        default_factory=list,
+        title="Overrides",
+        description="Other template for matching representations",
+    )
+
+
+class DeliveryToolModel(BaseSettingsModel):
+    filter_type: str = SettingsField(
+        "is_deny_list",
+        title="Filter type",
+        section="Templates shown in Delivery tool",
+        description=(
+            "Limit which anatomy delivery templates artists can pick."
+            " Recipes can still use hidden templates."
+        ),
+        enum_resolver=filter_type_enum,
+    )
+    filter_templates: list[str] = SettingsField(
+        default_factory=list,
+        title="Delivery templates",
+        description=(
+            "Deny list hides these templates, allow list shows only these."
+            " Empty deny list shows all templates."
+        ),
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+    recipes: list[DeliveryRecipeModel] = SettingsField(
+        default_factory=list,
+        title="Delivery recipes",
+        section="Delivery recipes",
+        description="Offered before the delivery templates",
+    )
+
+    @validator("recipes")
+    def validate_unique_name(cls, value):
+        ensure_unique_names(value)
+        return value
+
+
 class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
@@ -528,6 +611,20 @@ class GlobalToolsModel(BaseSettingsModel):
     publish: PublishToolModel = SettingsField(
         default_factory=PublishToolModel,
         title="Publish"
+    )
+    delivery: DeliveryToolModel = SettingsField(
+        default_factory=DeliveryToolModel,
+        title="Delivery",
+        description=(
+            "Templates and recipes offered in the Delivery tool\n\n"
+            "A recipe delivers with its default template, and with another"
+            " template for representations matching one of its overrides,"
+            " e.g. EXRs into a plates folder. Recipes can use templates"
+            " hidden from the Delivery tool.\n\n"
+            "The override matching most filters wins. On a tie"
+            " representation names go before extensions before product base"
+            " types, then the first override in the list."
+        ),
     )
 
 
@@ -835,5 +932,10 @@ DEFAULT_TOOLS_VALUES = {
             "ignore_paths": [],
         },
         "comment_minimum_required_chars": 0,
-    }
+    },
+    "delivery": {
+        "filter_type": "is_deny_list",
+        "filter_templates": [],
+        "recipes": [],
+    },
 }

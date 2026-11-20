@@ -82,7 +82,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             self._on_hierarchy_view_change
         )
         view.data_changed.connect(self._on_refresh_request)
-        refresh_button.clicked.connect(self._on_refresh_request)
+        refresh_button.clicked.connect(self._on_refresh_clicked)
         update_all_button.clicked.connect(self._on_update_all)
         controller.register_event_callback(
             "ayon.connection.opened",
@@ -126,8 +126,11 @@ class SceneInventoryWindow(QtWidgets.QDialog):
 
         self.refresh()
 
-    def refresh(self):
-        self._controller.reset()
+    def _on_refresh_clicked(self):
+        self.refresh(force=True)
+
+    def refresh(self, force=False):
+        self._controller.reset(force)
         self._view.refresh()
 
     def _on_show_timer(self):
