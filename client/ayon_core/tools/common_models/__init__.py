@@ -1,7 +1,7 @@
 """Backend models that can be used in controllers."""
 
 from .cache import CacheItem, NestedCacheItem
-from .settings import SettingsModel
+from .settings import SettingsModel, TaskSortMode
 from .projects import (
     TagItem,
     StatusItem,
@@ -30,6 +30,7 @@ __all__ = (
     "NestedCacheItem",
 
     "SettingsModel",
+    "TaskSortMode",
 
     "TagItem",
     "StatusItem",
