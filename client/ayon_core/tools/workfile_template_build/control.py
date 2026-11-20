@@ -1,0 +1,1088 @@
+"""Controller of workfile template builder tool.
+
+Wraps 'AbstractTemplateBuilder' of a host and converts its objects to plain
+data that the UI can consume.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import traceback
+from contextlib import contextmanager
+from typing import Any, Callable, Optional
+
+from ayon_core.lib import Logger, register_event_callback
+from ayon_core.lib.attribute_definitions import AbstractAttrDef
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.pipeline import (
+    get_current_host_name,
+    get_current_project_name,
+)
+from ayon_core.pipeline.workfile.workfile_template_builder import (
+    AbstractTemplateBuilder,
+    PlaceholderItem,
+    PlaceholderPlugin,
+    PlaceholderPreview,
+    TemplatePreset,
+)
+
+from .abstract import (
+    BUILD_CONTEXT_CHANGED_TOPIC,
+    PLACEHOLDERS_REFRESHED_TOPIC,
+    PLACEHOLDER_CREATED_TOPIC,
+    PLACEHOLDER_UPDATED_TOPIC,
+    PLACEHOLDER_DELETED_TOPIC,
+    AbstractTemplateBuilderController,
+    ActionResult,
+    BuildContextItem,
+    BuildStep,
+    PlaceholderCompletionsError,
+    PlaceholderDynamicData,
+    PlaceholderItemInfo,
+    PlaceholderOptionsError,
+    PlaceholderPluginItem,
+)
+
+# Maximum number of log lines kept from a single build
+MAX_BUILD_LOG_LINES = 2000
+
+# Maximum number of builds kept in the history
+MAX_BUILD_HISTORY = 5
+
+
+def _can_run_placeholder(plugin) -> bool:
+    """Plugin can re-run a placeholder.
+
+    Prefer the dedicated 'repopulate_placeholder', but fall back to
+    'populate_placeholder' for older integrations.
+    """
+    return (
+        plugin.is_method_implemented("repopulate_placeholder")
+        or plugin.is_method_implemented("populate_placeholder")
+    )
+
+
+class _BuildLogHandler(logging.Handler):
+    """Collect log records emitted during a template build.
+
+    Args:
+        lines (list[str]): List the formatted records are appended to.
+
+    """
+
+    def __init__(self, lines: list[str]):
+        super().__init__()
+        self._lines = lines
+        self.setFormatter(logging.Formatter(
+            "%(levelname)s [%(name)s]: %(message)s"
+        ))
+
+    def emit(self, record):
+        # The handler may be attached to both the standard and AYON root
+        #   loggers; capture each record only once.
+        if getattr(record, "_ayon_build_log_seen", False):
+            return
+        record._ayon_build_log_seen = True
+        try:
+            message = self.format(record)
+        except Exception:
+            return
+        self._lines.append(message)
+
+
+class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
+    """In-process controller of workfile template builder tool.
+
+    Args:
+        builder (Optional[AbstractTemplateBuilder]): Template builder
+            implementation of the host. Tool shows an explanation message
+            when the host does not have one.
+
+    """
+
+    def __init__(self, builder: Optional[AbstractTemplateBuilder] = None):
+        self._log = Logger.get_logger(self.__class__.__name__)
+        self._builder = builder
+        self._event_system = QueuedEventSystem()
+
+        # Cache of collected placeholders by scene identifier. Cleared on
+        #   'reset' and after any action that changes the scene.
+        self._placeholders_by_id = None
+        # Error from the last placeholder collection, shown in the UI.
+        self._placeholders_error: Optional[str] = None
+
+        # Results of the last template build
+        self._build_steps: list[BuildStep] = []
+        self._build_log: list[str] = []
+        self._build_history: list[list[BuildStep]] = []
+        self._build_durations: dict[str, float] = {}
+
+        # Builder event callback is lost when the builder refreshes its
+        #   event system; keep the handle so it can be registered again.
+        self._builder_event_callback = None
+        self._host_event_callbacks: list[Any] = []
+        self._host_project_name = get_current_project_name()
+        # Last error while reading template settings, shown instead of
+        #   pretending no template is configured.
+        self._template_preset_error: Optional[str] = None
+        # Optional callback used by the UI to show progress while the
+        #   (blocking) build runs.
+        self._progress_callback = None
+
+        self._bind_builder_events()
+        self._register_host_events()
+
+    # --- Events -------------------------------------------------------
+    def register_event_callback(self, topic: str, callback: Callable) -> Any:
+        return self._event_system.add_callback(topic, callback)
+
+    def _bind_builder_events(self) -> None:
+        """Register builder event callbacks, e.g. after a builder refresh."""
+        if self._builder is None:
+            return
+        if self._builder_event_callback is not None:
+            deregister = getattr(
+                self._builder_event_callback, "deregister", None
+            )
+            if deregister is not None:
+                deregister()
+        self._builder_event_callback = self._builder.add_event_callback(
+            "template.placeholder_finished",
+            self._on_placeholder_finished,
+        )
+
+    def _register_host_events(self) -> None:
+        """Listen to host scene/context changes while the tool is open."""
+        for topic in ("taskChanged", "open", "new"):
+            callback = register_event_callback(topic, self._on_host_event)
+            self._host_event_callbacks.append(callback)
+
+    def _on_host_event(self, event) -> None:
+        """Invalidate the tool when the host scene or context changed."""
+        project_name = get_current_project_name()
+        if (
+            self._builder is not None
+            and self._host_project_name != project_name
+            and self._builder.get_context_override() is not None
+        ):
+            # The Preview as context belongs to the previous project.
+            self._builder.set_context_override(None)
+        self._host_project_name = project_name
+
+        self.reset()
+        self.emit_event(BUILD_CONTEXT_CHANGED_TOPIC)
+
+    def close(self) -> None:
+        """Deregister callbacks held by the controller."""
+        if self._builder_event_callback is not None:
+            deregister = getattr(
+                self._builder_event_callback, "deregister", None
+            )
+            if deregister is not None:
+                deregister()
+            self._builder_event_callback = None
+        for callback in self._host_event_callbacks:
+            deregister = getattr(callback, "deregister", None)
+            if deregister is not None:
+                deregister()
+        self._host_event_callbacks = []
+
+    def emit_event(
+        self,
+        topic: str,
+        data: Optional[dict[str, Any]] = None,
+        source: Optional[str] = None,
+    ) -> None:
+        if data is None:
+            data = {}
+        self._event_system.emit(topic, data, source)
+
+    # --- Context ------------------------------------------------------
+    def get_host_name(self) -> str:
+        if self._builder is not None:
+            host_name = self._builder.host_name
+            if host_name:
+                return host_name
+        return get_current_host_name() or "NA"
+
+    def is_builder_available(self) -> bool:
+        return self._builder is not None
+
+    def get_project_name(self) -> Optional[str]:
+        if self._builder is not None:
+            return self._builder.project_name
+        return get_current_project_name()
+
+    def get_workfile_name(self) -> Optional[str]:
+        if self._builder is None:
+            return None
+        get_current_workfile = getattr(
+            self._builder.host, "get_current_workfile", None
+        )
+        if get_current_workfile is None:
+            return None
+        try:
+            filepath = get_current_workfile()
+        except Exception:
+            self._log.debug("Failed to get current workfile.", exc_info=True)
+            return None
+        if not filepath:
+            return None
+        return os.path.basename(filepath)
+
+    def get_build_context(self) -> BuildContextItem:
+        if self._builder is None:
+            return BuildContextItem()
+        return BuildContextItem(
+            folder_path=self._builder.current_folder_path,
+            task_name=self._builder.current_task_name,
+            is_override=self._builder.get_context_override() is not None,
+        )
+
+    def set_build_context(
+        self,
+        folder_path: Optional[str] = None,
+        task_name: Optional[str] = None,
+    ) -> ActionResult:
+        """Use a different context for previews and test builds.
+
+        The folder and task are validated against the project before the
+        override is applied, so a deleted/invalid context is rejected instead
+        of silently breaking every preview.
+
+        Returns:
+            ActionResult: Whether the context was accepted.
+
+        """
+        if self._builder is None:
+            return ActionResult(
+                success=False,
+                error_title="Template builder is not available.",
+            )
+
+        previous_override = self._builder.get_context_override()
+        self._builder.set_context_override(folder_path, task_name)
+
+        if folder_path:
+            validation_error = None
+            task_entity = self._builder.current_task_entity
+            # Plate product types have no task name, so only validate a task
+            #   when one was supplied.
+            if task_name and not task_entity:
+                validation_error = (
+                    "Task '{}' was not found in folder '{}'."
+                    .format(task_name, folder_path)
+                )
+            folder_entity = self._builder.current_folder_entity
+            if not folder_entity:
+                validation_error = (
+                    "Folder '{}' was not found in the current project."
+                    .format(folder_path)
+                )
+
+            if validation_error is not None:
+                if previous_override is None:
+                    self._builder.set_context_override(None)
+                else:
+                    self._builder.set_context_override(*previous_override)
+                self._log.warning(
+                    "Invalid preview context: %s", validation_error
+                )
+                return ActionResult(
+                    success=False,
+                    error_title="Invalid preview context",
+                    error_detail=validation_error,
+                )
+
+        self.emit_event(BUILD_CONTEXT_CHANGED_TOPIC)
+        return ActionResult(success=True)
+
+    def reset(self) -> None:
+        self._invalidate_placeholders()
+        if self._builder is not None:
+            self._builder.refresh()
+            self._bind_builder_events()
+        self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
+
+    # --- Data ---------------------------------------------------------
+    def get_placeholder_plugin_items(self) -> list[PlaceholderPluginItem]:
+        plugin_items = [
+            PlaceholderPluginItem(
+                identifier=identifier,
+                label=plugin.label or identifier,
+                icon=plugin.icon,
+                delete_supported=plugin.is_method_implemented("delete_placeholder"),
+                select_supported=plugin.is_method_implemented("select_placeholder"),
+                run_supported=_can_run_placeholder(plugin),
+            )
+            for identifier, plugin in self._get_plugins().items()
+        ]
+        plugin_items.sort(key=lambda item: item.label.lower())
+        return plugin_items
+
+    def get_placeholder_items(self) -> list[PlaceholderItemInfo]:
+        return [
+            self._create_placeholder_item_info(placeholder)
+            for placeholder in self._get_placeholders().values()
+        ]
+
+    def get_placeholders_error(self) -> Optional[str]:
+        """Error from the last placeholder collection.
+
+        Returns:
+            Optional[str]: Short user-facing error message, or None when the
+                last collection did not fail.
+
+        """
+        return self._placeholders_error
+
+    def get_placeholder_options(
+        self,
+        plugin_identifier: str,
+        placeholder_data: Optional[dict[str, Any]] = None,
+    ) -> list[AbstractAttrDef]:
+        plugin = self._get_plugin(plugin_identifier)
+        if plugin is None:
+            return []
+        try:
+            return list(plugin.get_placeholder_options(placeholder_data))
+        except Exception as exc:
+            self._log.warning(
+                "Failed to collect options of placeholder plugin"
+                f" '{plugin_identifier}'.",
+                exc_info=True
+            )
+            raise PlaceholderOptionsError(
+                "Failed to collect options of placeholder plugin"
+                " '{}': {}".format(plugin_identifier, exc)
+            ) from exc
+
+    def get_placeholder_preview(
+        self, plugin_identifier: str, placeholder_data: dict[str, Any]
+    ) -> Optional[PlaceholderPreview]:
+        plugin = self._get_plugin(plugin_identifier)
+        if plugin is None:
+            return None
+
+        try:
+            return plugin.get_placeholder_preview(placeholder_data)
+        except Exception:
+            self._log.warning(
+                "Failed to calculate preview of placeholder plugin"
+                f" '{plugin_identifier}'.",
+                exc_info=True
+            )
+            return PlaceholderPreview(
+                title="Preview failed",
+                hint=traceback.format_exc(limit=0).strip(),
+                is_error=True,
+            )
+
+    def get_placeholder_completions(
+        self, plugin_identifier: str, placeholder_data: dict[str, Any]
+    ) -> dict[str, list[str]]:
+        plugin = self._get_plugin(plugin_identifier)
+        if plugin is None:
+            return {}
+
+        try:
+            return plugin.get_placeholder_completions(placeholder_data) or {}
+        except Exception as exc:
+            self._log.warning(
+                "Failed to collect completions of placeholder plugin"
+                f" '{plugin_identifier}'.",
+                exc_info=True
+            )
+            raise PlaceholderCompletionsError(
+                "Failed to collect completion suggestions of placeholder"
+                " plugin '{}': {}".format(plugin_identifier, exc)
+            ) from exc
+
+    def get_placeholder_dynamic_data(
+        self, plugin_identifier: str, placeholder_data: dict[str, Any]
+    ) -> PlaceholderDynamicData:
+        """Collect preview and completions in one background-safe call.
+
+        Args:
+            plugin_identifier (str): Placeholder plugin identifier.
+            placeholder_data (dict[str, Any]): Current option values.
+
+        Returns:
+            PlaceholderDynamicData: Preview and completion suggestions.
+
+        """
+        completions = {}
+        completions_error = None
+        try:
+            completions = self.get_placeholder_completions(
+                plugin_identifier, placeholder_data
+            )
+        except PlaceholderCompletionsError as exc:
+            completions_error = str(exc)
+
+        preview = self.get_placeholder_preview(
+            plugin_identifier, placeholder_data
+        )
+        return PlaceholderDynamicData(
+            completions=completions,
+            completions_error=completions_error,
+            preview=preview,
+        )
+
+    # --- Actions ------------------------------------------------------
+    def create_placeholder(
+        self, plugin_identifier: str, placeholder_data: dict[str, Any]
+    ) -> ActionResult:
+        plugin = self._get_plugin(plugin_identifier)
+        if plugin is None:
+            return ActionResult(
+                success=False,
+                error_title=(
+                    f"Placeholder plugin '{plugin_identifier}' is not"
+                    " available."
+                ),
+            )
+
+        # Placeholder plugins are not required to return the created item,
+        #   so identifiers before creation are used to find out which
+        #   placeholder is the new one.
+        known_identifiers = set(self._get_placeholders())
+
+        try:
+            placeholder = plugin.create_placeholder(placeholder_data)
+        except Exception:
+            return self._action_failed("Failed to create placeholder")
+        finally:
+            # A failed plugin may still have changed the scene.
+            self._invalidate_placeholders()
+
+        scene_identifier = None
+        if isinstance(placeholder, PlaceholderItem):
+            scene_identifier = placeholder.scene_identifier
+        else:
+            new_identifiers = set(self._get_placeholders()) - known_identifiers
+            if len(new_identifiers) == 1:
+                scene_identifier = next(iter(new_identifiers))
+
+        self.emit_event(
+            PLACEHOLDER_CREATED_TOPIC,
+            {"scene_identifier": scene_identifier},
+        )
+        return ActionResult(success=True, scene_identifier=scene_identifier)
+
+    def update_placeholder(
+        self, scene_identifier: str, placeholder_data: dict[str, Any]
+    ) -> ActionResult:
+        placeholder = self._get_placeholder(scene_identifier)
+        if placeholder is None:
+            return self._placeholder_not_found(scene_identifier)
+
+        known_identifiers = set(self._get_placeholders())
+        try:
+            self._builder.update_placeholder(placeholder, placeholder_data)
+        except Exception:
+            return self._action_failed(
+                "Failed to save placeholder changes", scene_identifier
+            )
+        finally:
+            # A failed plugin may still have changed the scene.
+            self._invalidate_placeholders()
+
+        # Some hosts (e.g. Houdini) rename the placeholder node when its
+        #   options change. Resolve the identifier so the UI can keep it
+        #   selected.
+        placeholders = self._get_placeholders()
+        if scene_identifier not in placeholders:
+            new_identifiers = set(placeholders) - known_identifiers
+            if len(new_identifiers) == 1:
+                scene_identifier = next(iter(new_identifiers))
+
+        self.emit_event(
+            PLACEHOLDER_UPDATED_TOPIC,
+            {"scene_identifier": scene_identifier},
+        )
+        return ActionResult(success=True, scene_identifier=scene_identifier)
+
+    def delete_placeholder(self, scene_identifier: str) -> ActionResult:
+        placeholder = self._get_placeholder(scene_identifier)
+        if placeholder is None:
+            return self._placeholder_not_found(scene_identifier)
+
+        plugin = placeholder.plugin
+        if not plugin.is_method_implemented("delete_placeholder"):
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title=(
+                    "Deleting placeholders is not supported by placeholder"
+                    " plugin '{}'.".format(plugin.identifier)
+                ),
+            )
+
+        try:
+            self._builder.delete_placeholder(placeholder)
+        except Exception:
+            return self._action_failed(
+                "Failed to delete placeholder", scene_identifier
+            )
+        finally:
+            # A failed plugin may still have changed the scene.
+            self._invalidate_placeholders()
+
+        self.emit_event(
+            PLACEHOLDER_DELETED_TOPIC,
+            {"scene_identifier": scene_identifier},
+        )
+        return ActionResult(success=True, scene_identifier=scene_identifier)
+
+    def select_placeholder(self, scene_identifier: str) -> ActionResult:
+        placeholder = self._get_placeholder(scene_identifier)
+        if placeholder is None:
+            return self._placeholder_not_found(scene_identifier)
+
+        plugin = placeholder.plugin
+        if not plugin.is_method_implemented("select_placeholder"):
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title=(
+                    "Selecting placeholders is not supported by placeholder"
+                    " plugin '{}'.".format(plugin.identifier)
+                ),
+            )
+
+        try:
+            self._builder.select_placeholder(placeholder)
+        except Exception:
+            return self._action_failed(
+                "Failed to select placeholder in scene", scene_identifier
+            )
+        return ActionResult(success=True, scene_identifier=scene_identifier)
+
+    def run_placeholder(self, scene_identifier: str) -> ActionResult:
+        placeholder = self._get_placeholder(scene_identifier)
+        if placeholder is None:
+            return self._placeholder_not_found(scene_identifier)
+
+        plugin = placeholder.plugin
+        if not _can_run_placeholder(plugin):
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title=(
+                    "Running a placeholder is not supported by placeholder"
+                    " plugin '{}'.".format(plugin.identifier)
+                ),
+            )
+
+        try:
+            self._builder.repopulate_placeholder(placeholder)
+            errors = list(placeholder.get_errors())
+        except Exception:
+            return self._action_failed(
+                "Failed to run placeholder", scene_identifier
+            )
+        finally:
+            # Running a placeholder can change or remove it from the scene.
+            self._invalidate_placeholders()
+
+        if errors:
+            return ActionResult(
+                success=False,
+                scene_identifier=scene_identifier,
+                error_title="Placeholder failed to populate",
+                error_detail="\n".join(errors),
+            )
+        return ActionResult(success=True, scene_identifier=scene_identifier)
+
+    def run_template_build(self, progress_callback=None) -> ActionResult:
+        if self._builder is None:
+            return ActionResult(
+                success=False,
+                error_title="Template builder is not available.",
+            )
+
+        self._build_steps = []
+        self._build_log = []
+        self._build_durations = {}
+
+        self._progress_callback = progress_callback
+        try:
+            with self._capture_build_log():
+                # Re-populates the placeholders that are already in the
+                #   scene. The template file is not imported again, so this
+                #   can be used to test the currently opened template.
+                placeholders = self._builder.rebuild_template() or []
+        except Exception:
+            return self._action_failed("Failed to run template build")
+        finally:
+            self._progress_callback = None
+
+        self._build_steps = [
+            self._create_build_step(placeholder)
+            for placeholder in placeholders
+        ]
+        if self._build_steps:
+            self._store_build_history()
+
+        # The build can change or remove placeholders in the scene.
+        self._invalidate_placeholders()
+
+        failed = [
+            step for step in self._build_steps if step.status == "failed"
+        ]
+        skipped = [
+            step for step in self._build_steps if step.status == "skipped"
+        ]
+        succeeded = [
+            step for step in self._build_steps if step.status == "succeeded"
+        ]
+        if failed:
+            return ActionResult(
+                success=False,
+                error_title="{} placeholder(s) failed during build".format(
+                    len(failed)
+                ),
+                error_detail="\n\n".join(
+                    "{} ({}):\n{}".format(step.label, step.scene_identifier,
+                                          step.error)
+                    for step in failed
+                ),
+                steps=self.get_build_steps(),
+            )
+
+        if self._build_steps and not succeeded:
+            return ActionResult(
+                success=False,
+                error_title=(
+                    "No placeholder could be run: the host does not"
+                    " support re-running placeholders."
+                ),
+                error_detail="\n".join(
+                    "{} ({})".format(step.label, step.scene_identifier)
+                    for step in skipped
+                ),
+                steps=self.get_build_steps(),
+            )
+        return ActionResult(
+            success=True, steps=self.get_build_steps()
+        )
+
+    def get_template_path(self) -> Optional[str]:
+        preset = self._get_template_preset()
+        if preset is None or not preset.profile:
+            return None
+        return preset.path
+
+    def open_template(self) -> ActionResult:
+        preset, result = self._get_valid_template_preset()
+        if result is not None:
+            return result
+
+        error = None
+        try:
+            self._builder.open_template(preset)
+        except Exception:
+            error = self._action_failed("Failed to open the template")
+        finally:
+            self._invalidate_placeholders()
+            self._bind_builder_events()
+
+        if error is not None:
+            # The scene may have been left in a usable but different state.
+            self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
+            return error
+
+        # Another scene is opened, everything has to be collected again.
+        self.reset()
+        return ActionResult(success=True)
+
+    def build_template(self, progress_callback=None) -> ActionResult:
+        preset, result = self._get_valid_template_preset()
+        if result is not None:
+            return result
+
+        error = None
+        self._build_steps = []
+        self._progress_callback = progress_callback
+        processed_placeholders = None
+        try:
+            with self._capture_build_log():
+                processed_placeholders = self._builder.build_template(
+                    preset=preset
+                )
+        except Exception:
+            error = self._action_failed(
+                "Failed to build from the template"
+            )
+        finally:
+            self._progress_callback = None
+            # The template import/population may leave or replace scene
+            #   data even when it fails.
+            self._invalidate_placeholders()
+            self._bind_builder_events()
+
+        if processed_placeholders:
+            self._build_steps = [
+                self._create_build_from_template_step(placeholder)
+                for placeholder in processed_placeholders
+            ]
+            self._store_build_history()
+
+        self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
+        if error is not None:
+            return error
+        return ActionResult(success=True, steps=self.get_build_steps())
+
+    def get_build_steps(self) -> list[BuildStep]:
+        """Steps of the last template build.
+
+        Returns:
+            list[BuildStep]: Processed placeholders with status, duration and
+                error.
+
+        """
+        return [
+            BuildStep.from_data(step.to_data()) for step in self._build_steps
+        ]
+
+    def get_build_log(self) -> list[str]:
+        """Log lines captured during the last template build."""
+        return list(self._build_log)
+
+    @contextmanager
+    def _capture_build_log(self):
+        """Capture log output emitted while a template build runs."""
+        self._build_log = []
+        handler = _BuildLogHandler(self._build_log)
+        # Standard root receives records propagated from the AYON logger
+        #   hierarchy; also attach to the AYON root so logger
+        #   re-initialization or a non-propagating AYON logger cannot hide
+        #   build logs. The handler captures each record only once.
+        loggers = [logging.getLogger(), Logger.get_root_logger()]
+        for logger in loggers:
+            logger.addHandler(handler)
+        try:
+            yield
+        finally:
+            for logger in loggers:
+                logger.removeHandler(handler)
+            self._trim_build_log()
+
+    def _trim_build_log(self) -> None:
+        """Keep the head and tail so the build report stays readable."""
+        if len(self._build_log) <= MAX_BUILD_LOG_LINES:
+            return
+        head_count = MAX_BUILD_LOG_LINES // 2
+        tail_count = MAX_BUILD_LOG_LINES - head_count
+        omitted = len(self._build_log) - MAX_BUILD_LOG_LINES
+        self._build_log = (
+            self._build_log[:head_count]
+            + ["... {} log lines omitted ...".format(omitted)]
+            + self._build_log[-tail_count:]
+        )
+
+    def get_build_history(self) -> list[list[BuildStep]]:
+        """Last build results, oldest first, limited to 5 builds."""
+        return [
+            [
+                BuildStep.from_data(step.to_data())
+                for step in build_steps
+            ]
+            for build_steps in self._build_history
+        ]
+
+    def get_last_build_results(self) -> list[tuple[str, str, str]]:
+        """Results of the last template build.
+
+        Returns:
+            list[tuple[str, str, str]]: Scene identifier, label and error
+                message of each placeholder. The error message is empty when
+                the placeholder was processed successfully or skipped.
+
+        """
+        return [
+            (step.scene_identifier, step.label, step.error)
+            for step in self._build_steps
+        ]
+
+    def _on_placeholder_finished(self, event):
+        """Store duration of a finished placeholder from builder event."""
+        data = event.data or {}
+        scene_identifier = data.get("scene_identifier")
+        if scene_identifier is None:
+            return
+        self._build_durations[scene_identifier] = data.get("duration", 0.0)
+        if self._progress_callback is not None:
+            try:
+                self._progress_callback(
+                    len(self._build_durations), data
+                )
+            except Exception:
+                self._log.debug(
+                    "Failed to report build progress.", exc_info=True
+                )
+
+    def _create_build_step(self, placeholder) -> BuildStep:
+        """Create a build step for a processed placeholder."""
+        try:
+            label = placeholder.plugin.get_placeholder_label(placeholder)
+        except Exception:
+            label = placeholder.scene_identifier
+
+        plugin = placeholder.plugin
+        errors = placeholder.get_errors()
+        if not _can_run_placeholder(plugin):
+            status = "skipped"
+            error = ""
+        elif errors:
+            status = "failed"
+            error = "\n".join(errors)
+        else:
+            status = "succeeded"
+            error = ""
+
+        return BuildStep(
+            scene_identifier=placeholder.scene_identifier,
+            label=label or placeholder.scene_identifier,
+            order=placeholder.order,
+            status=status,
+            duration=self._build_durations.get(
+                placeholder.scene_identifier, 0.0
+            ),
+            error=error,
+        )
+
+    def _create_build_from_template_step(self, placeholder) -> BuildStep:
+        """Create a step for a placeholder processed by Build from template.
+
+        A template build processes every placeholder regardless of whether it
+        could be re-run in the current scene, so only success/failure applies.
+        """
+        try:
+            label = placeholder.plugin.get_placeholder_label(placeholder)
+        except Exception:
+            label = placeholder.scene_identifier
+
+        errors = placeholder.get_errors()
+        status = "failed" if errors else "succeeded"
+        return BuildStep(
+            scene_identifier=placeholder.scene_identifier,
+            label=label or placeholder.scene_identifier,
+            order=placeholder.order,
+            status=status,
+            duration=self._build_durations.get(
+                placeholder.scene_identifier, 0.0
+            ),
+            error="\n".join(errors),
+        )
+
+    def _store_build_history(self) -> None:
+        """Keep results of the last few builds."""
+        self._build_history.append(
+            [BuildStep.from_data(step.to_data()) for step in self._build_steps]
+        )
+        del self._build_history[:-MAX_BUILD_HISTORY]
+
+    # --- Implementation -----------------------------------------------
+    def _get_plugins(self) -> dict[str, PlaceholderPlugin]:
+        if self._builder is None:
+            return {}
+        return self._builder.placeholder_plugins
+
+    def _get_plugin(
+        self, plugin_identifier: str
+    ) -> Optional[PlaceholderPlugin]:
+        return self._get_plugins().get(plugin_identifier)
+
+    def _invalidate_placeholders(self) -> None:
+        """Drop cached placeholders so they are collected from scene again."""
+        self._placeholders_by_id = None
+        self._placeholders_error = None
+
+    def _get_placeholders(self) -> dict[str, PlaceholderItem]:
+        if self._placeholders_by_id is not None:
+            return self._placeholders_by_id
+
+        placeholders_by_id = {}
+        self._placeholders_error = None
+        if self._builder is not None:
+            # Placeholder plugins cache their scene scan in shared populate
+            #   data. Bypass that cache for this collection so changes made
+            #   outside the tool are visible, without clearing the cache that
+            #   the builder manages during population.
+            try:
+                placeholders = self._builder.get_placeholders(
+                    force_refresh=True
+                )
+            except Exception:
+                self._log.warning(
+                    "Failed to collect placeholders from scene.",
+                    exc_info=True
+                )
+                self._placeholders_error = (
+                    "Failed to read placeholders from the scene. See the"
+                    " AYON log for details."
+                )
+                # Do not cache a failed collection, so it can be retried.
+                return {}
+
+            plugin_errors = self._builder.get_placeholder_errors()
+            if plugin_errors:
+                self._placeholders_error = "\n".join(plugin_errors)
+                # If nothing could be collected, do not cache the empty
+                #   result so the collection is retried.
+                if not placeholders:
+                    return {}
+
+            placeholders_by_id = {}
+            duplicate_ids = {}
+            for placeholder in placeholders:
+                scene_identifier = placeholder.scene_identifier
+                existing = placeholders_by_id.get(scene_identifier)
+                if existing is not None:
+                    duplicate_ids.setdefault(scene_identifier, [existing])
+                    duplicate_ids[scene_identifier].append(placeholder)
+                    continue
+                placeholders_by_id[scene_identifier] = placeholder
+
+            if duplicate_ids:
+                parts = []
+                for scene_identifier, duplicates in duplicate_ids.items():
+                    plugins = sorted({
+                        placeholder.plugin.identifier
+                        for placeholder in duplicates
+                    })
+                    parts.append(
+                        "'{}' (plugins: {})".format(
+                            scene_identifier, ", ".join(plugins)
+                        )
+                    )
+                message = (
+                    "Duplicate placeholder scene identifiers were found: {}."
+                    " Only the first placeholder of each identifier can be"
+                    " managed.".format("; ".join(parts))
+                )
+                self._log.warning(message)
+                if self._placeholders_error:
+                    self._placeholders_error = "{}\n{}".format(
+                        self._placeholders_error, message
+                    )
+                else:
+                    self._placeholders_error = message
+
+        self._placeholders_by_id = placeholders_by_id
+        return placeholders_by_id
+
+    def _get_placeholder(
+        self, scene_identifier: str
+    ) -> Optional[PlaceholderItem]:
+        return self._get_placeholders().get(scene_identifier)
+
+    def _create_placeholder_item_info(
+        self, placeholder: PlaceholderItem
+    ) -> PlaceholderItemInfo:
+        plugin = placeholder.plugin
+        plugin_label = plugin.label or plugin.identifier
+        try:
+            label = plugin.get_placeholder_label(placeholder)
+        except Exception:
+            self._log.warning(
+                "Failed to get label of placeholder"
+                f" '{placeholder.scene_identifier}'.",
+                exc_info=True
+            )
+            label = placeholder.scene_identifier
+
+        return PlaceholderItemInfo(
+            scene_identifier=placeholder.scene_identifier,
+            plugin_identifier=plugin.identifier,
+            plugin_label=plugin_label,
+            label=label or placeholder.scene_identifier,
+            order=placeholder.order,
+            icon=plugin.icon,
+            data=placeholder.to_dict(),
+            delete_supported=plugin.is_method_implemented("delete_placeholder"),
+            run_supported=_can_run_placeholder(plugin),
+        )
+
+    def _action_failed(
+        self, error_title: str, scene_identifier: Optional[str] = None
+    ) -> ActionResult:
+        self._log.warning(error_title, exc_info=True)
+        return ActionResult(
+            success=False,
+            scene_identifier=scene_identifier,
+            error_title=error_title,
+            error_detail=traceback.format_exc(),
+        )
+
+    def _get_template_preset(self) -> Optional[TemplatePreset]:
+        if self._builder is None:
+            return None
+        try:
+            preset = self._builder.get_template_preset()
+        except Exception:
+            self._template_preset_error = traceback.format_exc()
+            self._log.warning(
+                "Failed to get template preset.", exc_info=True
+            )
+            return None
+        self._template_preset_error = None
+        return preset
+
+    def _get_valid_template_preset(
+        self,
+    ) -> tuple[Optional[TemplatePreset], Optional[ActionResult]]:
+        """Template preset of the build context that can be used.
+
+        Returns:
+            tuple[Optional[TemplatePreset], Optional[ActionResult]]: The
+                preset, or result with the reason why there is none.
+
+        """
+        if self._builder is None:
+            return None, ActionResult(
+                success=False,
+                error_title="Template builder is not available.",
+            )
+
+        preset = self._get_template_preset()
+        context_label = self.get_build_context().label
+        if preset is None or not preset.profile:
+            if self._template_preset_error:
+                return None, ActionResult(
+                    success=False,
+                    error_title=(
+                        "Failed to read the template settings for {}.".format(
+                            context_label
+                        )
+                    ),
+                    error_detail=self._template_preset_error,
+                )
+            return None, ActionResult(
+                success=False,
+                error_title=(
+                    "No template is set in settings for {}.".format(
+                        context_label
+                    )
+                ),
+            )
+
+        if not preset.has_valid_path():
+            return None, ActionResult(
+                success=False,
+                error_title="Template file does not exist.",
+                error_detail=str(preset.path),
+            )
+        return preset, None
+
+    def _placeholder_not_found(self, scene_identifier: str) -> ActionResult:
+        return ActionResult(
+            success=False,
+            scene_identifier=scene_identifier,
+            error_title=(
+                "Placeholder is not available in the scene anymore."
+            ),
+        )

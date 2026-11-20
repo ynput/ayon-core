@@ -8,8 +8,16 @@ from ayon_core.tools.attribute_defs import AttributeDefinitionsWidget
 
 
 class WorkfileBuildPlaceholderDialog(QtWidgets.QDialog):
+    """Legacy single-placeholder dialog.
+
+    Deprecated: new host integrations should use
+    ``WorkfileTemplateBuilderWindow`` instead. The class is kept importable for
+    older addons until they migrate.
+
+    """
+
     def __init__(self, host, builder, parent=None):
-        super(WorkfileBuildPlaceholderDialog, self).__init__(parent)
+        super().__init__(parent)
         self.setWindowTitle("Workfile Placeholder Manager")
 
         self._log = None
@@ -232,7 +240,7 @@ class WorkfileBuildPlaceholderDialog(QtWidgets.QDialog):
         self.reject()
 
     def showEvent(self, event):
-        super(WorkfileBuildPlaceholderDialog, self).showEvent(event)
+        super().showEvent(event)
         if not self._first_refreshed:
             self.refresh()
 
