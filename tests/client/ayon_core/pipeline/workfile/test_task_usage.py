@@ -63,6 +63,7 @@ def _server_data(item: TaskUsageItem) -> dict[str, Any]:
         "workfile": item.workfile,
         "openedAt": item.opened_at,
         "updatedAt": item.updated_at,
+        "fullName": item.full_name,
     }
 
 
@@ -89,31 +90,6 @@ def test_filter_other_users_items():
     assert filter_other_users_items(
         [mine, other], "artist1", {"other"}
     ) == []
-
-
-def test_user_full_names(monkeypatch):
-    items = [
-        _item("a", username="artist1"),
-        _item("b", username="artist2"),
-        _item("c", username="restricted"),
-    ]
-    monkeypatch.setattr(
-        task_usage.ayon_api,
-        "get_users",
-        lambda **kwargs: iter([
-            {"name": "artist1", "attrib": {"fullName": "Artist One"}},
-            {"name": "artist2", "attrib": {"fullName": None}},
-        ]),
-    )
-    assert task_usage.get_task_usage_user_full_names(items) == {
-        "artist1": "Artist One"
-    }
-
-    def _failing(**kwargs):
-        raise RuntimeError("Not allowed")
-
-    monkeypatch.setattr(task_usage.ayon_api, "get_users", _failing)
-    assert task_usage.get_task_usage_user_full_names(items) == {}
 
 
 def _settings(profiles: list[dict[str, Any]]) -> dict[str, Any]:
@@ -242,6 +218,7 @@ class _MockServer:
             "workfile": kwargs["workfile"],
             "openedAt": opened_at,
             "updatedAt": updated_at,
+            "fullName": None,
         }
         return _Response(data={
             "sessions": self._task_sessions(task_id),
@@ -461,11 +438,6 @@ def tracker_calls(server, monkeypatch):
 
     _mock_task_context(tracker, monkeypatch)
     monkeypatch.setattr(task_usage, "_notice_callbacks", [notices.append])
-    monkeypatch.setattr(
-        task_usage,
-        "get_task_usage_user_full_names",
-        lambda items: {"artist2": "Artist Two"},
-    )
     monkeypatch.setattr(task_usage, "claim_task", _claim_task)
     monkeypatch.setattr(task_usage, "release_task", _release_task)
     return host, tracker, calls, notices
@@ -581,7 +553,6 @@ def test_tracker_notifies_about_other_users(tracker_calls):
     assert calls == [("claim", "in-use", "sh010_anim_v002.ma")]
     (notice,) = notices
     assert [item.session_id for item in notice.items] == ["other-user"]
-    assert notice.user_full_names == {"artist2": "Artist Two"}
     # Sessions are acknowledged by the frontend that did show the notice
     assert task_usage._acknowledged_session_ids == set()
 

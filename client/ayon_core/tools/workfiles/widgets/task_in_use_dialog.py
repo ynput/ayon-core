@@ -109,13 +109,12 @@ class _SessionWidget(QtWidgets.QWidget):
     def __init__(
         self,
         item: TaskUsageItem,
-        full_name: str | None,
         now: datetime.datetime,
         parent: QtWidgets.QWidget,
     ):
         super().__init__(parent)
 
-        user_label = full_name or item.username
+        user_label = item.full_name or item.username
         avatar_label = _UserAvatarLabel(item.username, user_label, self)
 
         info_widget = QtWidgets.QWidget(self)
@@ -187,8 +186,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
-        full_names (dict[str, str] | None): Full names of users by
-            username. Username is shown for users without a full name.
         parent (QtWidgets.QWidget | None): Parent widget.
         notice_only (bool): Only inform the user, without the option to
             cancel. Used when the task is already in use by the user.
@@ -198,7 +195,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
     def __init__(
         self,
         items: list[TaskUsageItem],
-        full_names: dict[str, str] | None = None,
         parent: QtWidgets.QWidget | None = None,
         notice_only: bool = False,
         confirm_label: str = "Open anyway",
@@ -206,9 +202,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Task is in use")
         self.setWindowIcon(QtGui.QIcon(get_app_icon_path()))
-
-        if full_names is None:
-            full_names = {}
 
         header_label = AYLabel(
             "Somebody else is already working on this task.", parent=self
@@ -219,10 +212,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         items_layout = AYVBoxLayout(items_widget, margin=0, spacing=14)
         for item in items:
             items_layout.addWidget(
-                _SessionWidget(
-                    item, full_names.get(item.username), now, items_widget
-                ),
-                0,
+                _SessionWidget(item, now, items_widget), 0
             )
 
         question_label = AYLabel(
@@ -301,18 +291,8 @@ def confirm_task_in_use(
     items = controller.get_task_usage_items(task_id)
     if not items:
         return True
-    full_names = {
-        username: user_item.full_name
-        for username, user_item in (
-            controller.get_user_items_by_name().items()
-        )
-        if user_item.full_name
-    }
     dialog = TaskInUseDialog(
-        items,
-        full_names,
-        parent=parent,
-        confirm_label=confirm_label,
+        items, parent=parent, confirm_label=confirm_label
     )
     confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted
     dialog.deleteLater()
@@ -343,7 +323,6 @@ def _can_show_dialog() -> bool:
 
 def ask_to_launch_on_task_in_use(
     items: list[TaskUsageItem],
-    full_names: dict[str, str],
 ) -> bool | None:
     """Ask user if wants to launch an application on a task that is in use.
 
@@ -354,7 +333,6 @@ def ask_to_launch_on_task_in_use(
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
-        full_names (dict[str, str]): Full names of users by username.
 
     Returns:
         bool | None: User wants to launch the application. None if
@@ -372,11 +350,7 @@ def ask_to_launch_on_task_in_use(
     if app_created:
         get_ayon_qt_app()
     try:
-        dialog = TaskInUseDialog(
-            items,
-            full_names,
-            confirm_label="Launch anyway",
-        )
+        dialog = TaskInUseDialog(items, confirm_label="Launch anyway")
         # The dialog does not have a parent window, make sure it is not
         #   hidden behind other windows while the launch waits for it
         dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
@@ -397,7 +371,6 @@ _notice_dialog: TaskInUseDialog | None = None
 
 def show_task_in_use_notice(
     items: list[TaskUsageItem],
-    full_names: dict[str, str] | None = None,
     delay: int = 1000,
 ) -> bool:
     """Inform user that other users are working on the current task.
@@ -409,8 +382,6 @@ def show_task_in_use_notice(
     Args:
         items (list[TaskUsageItem]): Sessions of other users working on
             the task.
-        full_names (dict[str, str] | None): Full names of users by
-            username.
         delay (int): Delay in milliseconds before the dialog is shown.
 
     Returns:
@@ -434,11 +405,7 @@ def show_task_in_use_notice(
 
         if _notice_dialog is not None:
             _notice_dialog.close()
-        dialog = TaskInUseDialog(
-            items,
-            full_names,
-            notice_only=True,
-        )
+        dialog = TaskInUseDialog(items, notice_only=True)
         dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
         dialog.finished.connect(lambda *_: _on_finished(dialog))
         _notice_dialog = dialog
@@ -479,9 +446,7 @@ class TaskInUseNotifier(QtCore.QObject):
         try:
             # User is asked in the Workfiles tool if the notice can't be
             #   shown
-            if show_task_in_use_notice(
-                notice.items, notice.user_full_names
-            ):
+            if show_task_in_use_notice(notice.items):
                 acknowledge_task_usage_items(notice.items)
         except Exception:
             log.warning("Failed to show task in-use notice.", exc_info=True)

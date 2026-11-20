@@ -41,7 +41,7 @@ import os
 import socket
 import threading
 import time
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 import ayon_api
@@ -137,6 +137,8 @@ class TaskUsageItem:
             to work on the task. Filled by the server.
         updated_at (str): UTC time in ISO format of the last activity,
             e.g. opened or saved workfile. Filled by the server.
+        full_name (str | None): Full name of the user. Filled by the
+            server.
 
     """
     session_id: str
@@ -147,6 +149,7 @@ class TaskUsageItem:
     workfile: str | None
     opened_at: str
     updated_at: str
+    full_name: str | None = None
 
     @classmethod
     def from_server_data(cls, data: dict[str, Any]) -> TaskUsageItem:
@@ -160,6 +163,7 @@ class TaskUsageItem:
             workfile=data["workfile"],
             opened_at=data["openedAt"],
             updated_at=data["updatedAt"],
+            full_name=data["fullName"],
         )
 
     def to_server_data(self) -> dict[str, Any]:
@@ -321,40 +325,6 @@ def acknowledge_task_usage_items(items: list[TaskUsageItem]) -> None:
 
     """
     _acknowledged_session_ids.update(item.session_id for item in items)
-
-
-def get_task_usage_user_full_names(
-    items: list[TaskUsageItem]
-) -> dict[str, str]:
-    """Get full names of users from sessions.
-
-    Users without filled full name and users that are not accessible for
-    current user are not in the output.
-
-    Args:
-        items (list[TaskUsageItem]): Sessions of users.
-
-    Returns:
-        dict[str, str]: Full name by username.
-
-    """
-    usernames = {item.username for item in items}
-    if not usernames:
-        return {}
-    try:
-        users = list(ayon_api.get_users(
-            usernames=usernames, fields={"name", "attrib.fullName"}
-        ))
-    except Exception:
-        log.debug("Failed to receive users information.", exc_info=True)
-        return {}
-
-    output = {}
-    for user in users:
-        full_name = user["attrib"]["fullName"]
-        if full_name:
-            output[user["name"]] = full_name
-    return output
 
 
 def _get_session_id() -> str:
@@ -613,12 +583,9 @@ class TaskInUseNotice:
 
     Attributes:
         items (list[TaskUsageItem]): Sessions of other users.
-        user_full_names (dict[str, str]): Full names of the users by
-            username.
 
     """
     items: list[TaskUsageItem]
-    user_full_names: dict[str, str] = field(default_factory=dict)
 
 
 _notice_callbacks: list[Callable[[TaskInUseNotice], None]] = []
@@ -989,9 +956,7 @@ class TaskUsageTracker:
         if not callbacks:
             return
 
-        notice = TaskInUseNotice(
-            items, get_task_usage_user_full_names(items)
-        )
+        notice = TaskInUseNotice(items)
         for callback in callbacks:
             try:
                 callback(notice)

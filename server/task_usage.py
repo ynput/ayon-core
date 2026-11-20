@@ -55,6 +55,7 @@ EXPIRES_AT_KEY = "expiresAt"
 class TaskSessionModel(OPModel):
     session_id: str = Field(..., title="Session ID")
     username: str = Field(..., title="User name")
+    full_name: str | None = Field(None, title="Full name of the user")
     machine: str | None = Field(None, title="Machine name")
     site_id: str | None = Field(None, title="Site ID")
     host_name: str | None = Field(None, title="Host name", example="maya")
@@ -199,6 +200,7 @@ async def claim_task(
     session = TaskSessionModel(
         session_id=session_id,
         username=user.name,
+        full_name=user.attrib.fullName or None,
         machine=payload.machine,
         site_id=payload.site_id,
         host_name=payload.host_name,

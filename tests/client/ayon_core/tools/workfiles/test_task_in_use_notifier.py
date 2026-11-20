@@ -34,8 +34,9 @@ def _notice() -> TaskInUseNotice:
         workfile="sh010_anim_v001.ma",
         opened_at="2026-01-01T12:00:00+00:00",
         updated_at="2026-01-01T12:00:00+00:00",
+        full_name="Artist Two",
     )
-    return TaskInUseNotice([item], {"artist2": "Artist Two"})
+    return TaskInUseNotice([item])
 
 
 @pytest.fixture
@@ -44,11 +45,10 @@ def shown(monkeypatch):
     calls = []
     result = [True]
 
-    def _show_task_in_use_notice(items, full_names=None, delay=1000):
+    def _show_task_in_use_notice(items, delay=1000):
         calls.append({
             "thread": QtCore.QThread.currentThread(),
             "items": items,
-            "full_names": full_names,
         })
         return result[0]
 
@@ -78,7 +78,6 @@ def test_notice_is_shown_in_thread_of_notifier(qtbot, shown):
     assert call["thread"] is notifier.thread()
     assert call["thread"] is QtCore.QThread.currentThread()
     assert call["items"] == notice.items
-    assert call["full_names"] == {"artist2": "Artist Two"}
     # User is not asked about the sessions again
     assert task_usage._acknowledged_session_ids == {"other-user"}
 
