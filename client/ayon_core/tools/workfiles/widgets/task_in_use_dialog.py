@@ -19,10 +19,7 @@ from ayon_core.ui.components import (
 from ayon_core.ui.components.user_avatars import UserAvatarCache
 
 if typing.TYPE_CHECKING:
-    from ayon_core.pipeline.workfile.task_usage import (
-        TaskInUseNotice,
-        TaskUsageItem,
-    )
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
     from ayon_core.tools.workfiles.abstract import AbstractWorkfilesFrontend
 
 log = logging.getLogger(__name__)
@@ -372,7 +369,7 @@ _notice_dialog: TaskInUseDialog | None = None
 def show_task_in_use_notice(
     items: list[TaskUsageItem],
     delay: int = 1000,
-) -> bool:
+) -> None:
     """Inform user that other users are working on the current task.
 
     The dialog is not modal and is shown when the Qt event loop is free,
@@ -384,14 +381,11 @@ def show_task_in_use_notice(
             the task.
         delay (int): Delay in milliseconds before the dialog is shown.
 
-    Returns:
-        bool: The dialog will be shown.
-
     """
     app = QtWidgets.QApplication.instance()
     # 'QCoreApplication' is returned in applications without UI
     if not isinstance(app, QtWidgets.QApplication):
-        return False
+        return
 
     def _on_finished(dialog):
         global _notice_dialog
@@ -414,14 +408,13 @@ def show_task_in_use_notice(
         dialog.activateWindow()
 
     QtCore.QTimer.singleShot(delay, _show)
-    return True
 
 
 class TaskInUseNotifier(QtCore.QObject):
     """Show notices about task in use requested from other threads.
 
     Task in-use tracking does requests to the server in a background
-    thread, where UI can't be shown. The notice is passed with a queued
+    thread, where UI can't be shown. The sessions are passed with a queued
     signal to the thread of this object, which should be the thread of Qt
     application. The notice is shown when the event loop of the
     application is processed.
@@ -434,20 +427,13 @@ class TaskInUseNotifier(QtCore.QObject):
             self._on_notice_request, QtCore.Qt.QueuedConnection
         )
 
-    def request_notice(self, notice: TaskInUseNotice) -> None:
+    def request_notice(self, items: list[TaskUsageItem]) -> None:
         """Request to show a notice, can be called from any thread."""
-        self._notice_requested.emit(notice)
+        self._notice_requested.emit(items)
 
-    def _on_notice_request(self, notice: TaskInUseNotice) -> None:
-        from ayon_core.pipeline.workfile.task_usage import (
-            acknowledge_task_usage_items,
-        )
-
+    def _on_notice_request(self, items: list[TaskUsageItem]) -> None:
         try:
-            # User is asked in the Workfiles tool if the notice can't be
-            #   shown
-            if show_task_in_use_notice(notice.items):
-                acknowledge_task_usage_items(notice.items)
+            show_task_in_use_notice(items)
         except Exception:
             log.warning("Failed to show task in-use notice.", exc_info=True)
 

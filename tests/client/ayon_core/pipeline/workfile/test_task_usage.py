@@ -70,6 +70,7 @@ def _server_data(item: TaskUsageItem) -> dict[str, Any]:
 def test_item_data_roundtrip():
     item = _item()
     assert TaskUsageItem.from_server_data(_server_data(item)) == item
+    assert TaskUsageItem.from_data(item.to_data()) == item
 
 
 def test_item_to_server_data():
@@ -551,17 +552,17 @@ def test_tracker_notifies_about_other_users(tracker_calls):
     host.workfile = "/path/sh010_anim_v002.ma"
     _sync(tracker)
     assert calls == [("claim", "in-use", "sh010_anim_v002.ma")]
-    (notice,) = notices
-    assert [item.session_id for item in notice.items] == ["other-user"]
-    # Sessions are acknowledged by the frontend that did show the notice
-    assert task_usage._acknowledged_session_ids == set()
+    (items,) = notices
+    assert [item.session_id for item in items] == ["other-user"]
+    # User is not notified or asked about the sessions again
+    assert task_usage._acknowledged_session_ids == {"other-user"}
 
 
 def test_tracker_notice_without_frontend(tracker_calls, monkeypatch):
     """User is asked in the Workfiles tool if nothing shows the notice."""
     host, tracker, calls, notices = tracker_calls
 
-    def _failing(notice):
+    def _failing(items):
         raise RuntimeError("Frontend is broken")
 
     for callbacks in ([], [_failing]):
@@ -582,10 +583,6 @@ def test_notice_callbacks_registration(monkeypatch):
     task_usage.register_task_in_use_notice_callback(notices.append)
     task_usage.register_task_in_use_notice_callback(notices.append)
     assert len(task_usage._notice_callbacks) == 1
-
-    task_usage.deregister_task_in_use_notice_callback(notices.append)
-    task_usage.deregister_task_in_use_notice_callback(notices.append)
-    assert task_usage._notice_callbacks == []
 
 
 def test_tracker_skips_acknowledged_users(tracker_calls):

@@ -41,7 +41,7 @@ import os
 import socket
 import threading
 import time
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from typing import Any, Callable
 
 import ayon_api
@@ -150,6 +150,13 @@ class TaskUsageItem:
     opened_at: str
     updated_at: str
     full_name: str | None = None
+
+    def to_data(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> TaskUsageItem:
+        return cls(**data)
 
     @classmethod
     def from_server_data(cls, data: dict[str, Any]) -> TaskUsageItem:
@@ -573,32 +580,21 @@ class _ClaimedSession:
     last_activity: float
 
 
-@dataclass
-class TaskInUseNotice:
-    """Other users are working on the task claimed by current process.
-
-    The task is already in use by current process at this point, e.g. the
-    application was launched with a workfile, so the user can only be
-    informed.
-
-    Attributes:
-        items (list[TaskUsageItem]): Sessions of other users.
-
-    """
-    items: list[TaskUsageItem]
-
-
-_notice_callbacks: list[Callable[[TaskInUseNotice], None]] = []
+_notice_callbacks: list[Callable[[list[TaskUsageItem]], None]] = []
 
 
 def register_task_in_use_notice_callback(
-    callback: Callable[[TaskInUseNotice], None]
+    callback: Callable[[list[TaskUsageItem]], None]
 ) -> None:
     """Register callback called when the claimed task is in use.
 
-    The callback is a way how a frontend can show the notice to the user.
-    The frontend should call 'acknowledge_task_usage_items' with sessions
-    it did show, so the user is not asked about them again.
+    The callback is a way how a frontend can show a notice to the user.
+    It receives sessions of other users working on the task. The task is
+    already in use by current process at this point, e.g. the application
+    was launched with a workfile, so the user can only be informed.
+
+    Sessions passed to a callback are not passed again and the user is not
+    asked about them in the Workfiles tool.
 
     Host integration should register the callback in its 'install', the
     tracking is started by 'install_host' after that. Integrations based
@@ -608,23 +604,16 @@ def register_task_in_use_notice_callback(
     Warning:
         The callback is called from a background thread. It must not
         block and must not touch the application or its UI directly. It
-        has to pass the notice to the thread where it can be shown on
-        its own, e.g. with a queued Qt signal.
+        has to pass the sessions to the thread where it can show them
+        on its own, e.g. with a queued Qt signal.
 
     Args:
-        callback (Callable[[TaskInUseNotice], None]): Callback to register.
+        callback (Callable[[list[TaskUsageItem]], None]): Callback to
+            register.
 
     """
     if callback not in _notice_callbacks:
         _notice_callbacks.append(callback)
-
-
-def deregister_task_in_use_notice_callback(
-    callback: Callable[[TaskInUseNotice], None]
-) -> None:
-    """Remove callback registered for notices about task in use."""
-    if callback in _notice_callbacks:
-        _notice_callbacks.remove(callback)
 
 
 class TaskUsageTracker:
@@ -943,27 +932,26 @@ class TaskUsageTracker:
     def _notify(self, items: list[TaskUsageItem]) -> None:
         """Notify user that other users are working on the claimed task.
 
-        Is called from the background thread, so the notice is only passed
-        to registered callbacks. Sessions stay unconfirmed until a frontend
-        does acknowledge them, the user is asked about them when opens
-        a workfile of the task otherwise.
+        Is called from the background thread, so the sessions are only
+        passed to registered callbacks. Sessions are acknowledged when
+        a callback did receive them, the user is asked about them when
+        opens a workfile of the task otherwise.
         """
         log.warning(
             "Task is in use by other users: %s",
             ", ".join(sorted({item.username for item in items})),
         )
-        callbacks = list(_notice_callbacks)
-        if not callbacks:
-            return
-
-        notice = TaskInUseNotice(items)
-        for callback in callbacks:
+        received = False
+        for callback in list(_notice_callbacks):
             try:
-                callback(notice)
+                callback(list(items))
+                received = True
             except Exception:
                 log.debug(
                     "Failed to pass task in-use notice.", exc_info=True
                 )
+        if received:
+            acknowledge_task_usage_items(items)
 
     def _get_workfile_filepath(self) -> str | None:
         get_current_workfile = getattr(
