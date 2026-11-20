@@ -834,7 +834,8 @@
                     "separator-height": 1,
                     "hover": {
                         "background-color": "--md-sys-color-surface-container-dark",
-                        "shortcut-background-color": "--md-sys-color-surface-container-high-dark"
+                        "shortcut-background-color": "--md-sys-color-surface-container-high-dark",
+                        "option-hover-background-color": "--md-sys-color-surface-container-highest-dark"
                     },
                     "disabled": {
                         "opacity": 0.5

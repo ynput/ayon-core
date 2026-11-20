@@ -480,7 +480,7 @@ class BrowserWidget(AYContainer):
             len(version_ids) == 1,
             self,
         )
-        action_item, options = result
+        action_item, options, alternative_identifier = result
         if action_item is None or options is None:
             return
 
@@ -492,4 +492,5 @@ class BrowserWidget(AYContainer):
             data=action_item.data,
             options=options,
             form_values={},
+            alternative_identifier=alternative_identifier,
         )

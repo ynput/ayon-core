@@ -351,6 +351,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
+        alternative_identifier: str | None,
     ):
         self._loader_actions_model.trigger_action_item(
             identifier=identifier,
@@ -360,6 +361,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             data=data,
             options=options,
             form_values=form_values,
+            alternative_identifier=alternative_identifier,
         )
 
     # Selection model wrappers

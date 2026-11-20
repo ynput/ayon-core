@@ -8,8 +8,8 @@ Replicates the context menu built by
 * ``02_open_submenu``: main menu + Sub-menu open, sub-menu row hovered.
 * ``03_open_subsubmenu``: main menu + Sub-menu + Sub-sub-menu open,
   sub-sub-menu row hovered.
-* ``04_hover_optional_action``: first AYOptionalAction in the main menu
-  hovered.
+* ``04_hover_optional_action``: option box of the first AYOptionalAction
+  in the main menu hovered.
 """
 
 from __future__ import annotations
@@ -202,13 +202,14 @@ class MenuTest(WidgetTest):
         self._show_subsubmenu()
 
     def hover_optional_action(self) -> None:
-        """Hover the first AYOptionalAction row in the main menu."""
+        """Hover option box of the first AYOptionalAction in the main menu."""
         assert self._qbot is not None
         self._show_menu()
         self._menu.setActiveAction(self._opt_action)
         QtWidgets.QApplication.processEvents()
-        if self._opt_action.widget is not None:
-            self._qbot.mouseMove(self._opt_action.widget)
+        widget = self._opt_action.widget
+        if widget is not None:
+            self._qbot.mouseMove(widget, widget._option_rect().center())
         QtWidgets.QApplication.processEvents()
 
     def cleanup(self, step_name: str) -> None:
