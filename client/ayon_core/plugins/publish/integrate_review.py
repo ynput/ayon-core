@@ -55,7 +55,8 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
 
     Custom data of the reviewable are taken from representation key
     'reviewable_data' (e.g. 'overlay' with burnins drawn by the player).
-    Number of slate frames at the start of the file is added to them as
+    Number of slate frames at the start of the file, representation key
+    'slate_frames' set by the slate extractor, is added to them as
     'slateFrames'. The data are stored to 'reviewableData' of the reviewable
     activity data.
     """
@@ -153,23 +154,18 @@ class IntegrateAYONReview(pyblish.api.ContextPlugin):
                     path=repre_path,
                     content_type=content_type,
                     label=label,
-                    data=self._get_reviewable_data(instance, repre),
+                    data=self._get_reviewable_data(repre),
                 )
             )
         return uploads
 
-    def _get_reviewable_data(
-        self, instance: pyblish.api.Instance, repre: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _get_reviewable_data(self, repre: dict[str, Any]) -> dict[str, Any]:
         data = dict(repre.get("reviewable_data") or {})
-        # Slate frame is added only to tagged representations of instances
-        #   with slate, see 'ExtractReviewSlate'
-        if (
-            data
-            and "slate" in (instance.data.get("families") or [])
-            and "slate-frame" in (repre.get("tags") or [])
-        ):
-            data["slateFrames"] = int(data.get("slateFrames") or 0) + 1
+        # Slate frames matter only to reviewables with data (their overlay
+        #   starts after them)
+        slate_frames = repre.get("slate_frames")
+        if data and slate_frames:
+            data["slateFrames"] = int(slate_frames)
         return data
 
     def _upload_reviewable(
