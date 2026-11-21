@@ -1211,7 +1211,6 @@ class UserPreferencesNotSupported(RuntimeError):
 
 class _ServerSupport:
     """Whether servers have the preferences API, by url of the server."""
-    lock = threading.Lock()
     # Held while a server is asked, so threads asking at the same time
     #   share one request.
     check_lock = threading.Lock()
@@ -1220,15 +1219,11 @@ class _ServerSupport:
 
 def _get_server_support() -> bool | None:
     """Cached support of the current server, 'None' when not known."""
-    server_url = ayon_api.get_base_url()
-    with _ServerSupport.lock:
-        return _ServerSupport.by_url.get(server_url)
+    return _ServerSupport.by_url.get(ayon_api.get_base_url())
 
 
 def _set_server_support(supported: bool) -> None:
-    server_url = ayon_api.get_base_url()
-    with _ServerSupport.lock:
-        _ServerSupport.by_url[server_url] = supported
+    _ServerSupport.by_url[ayon_api.get_base_url()] = supported
 
 
 def _list_preferences(query: dict[str, str]) -> Any | None:
