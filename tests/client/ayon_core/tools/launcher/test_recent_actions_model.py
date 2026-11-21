@@ -133,8 +133,11 @@ class Webactions:
         self.addon_version = "1.0.0"
         self.response_type = "simple"
         self.executed: list[str] = []
+        self.status_code = 200
 
     def post(self, endpoint, **kwargs) -> Response:
+        if self.status_code != 200:
+            return Response(self.status_code)
         return Response(200, {"actions": [{
             "identifier": "publish",
             "label": "Publish",
@@ -364,6 +367,20 @@ def test_action_triggered_before_the_history_was_loaded_keeps_it(
     ]
 
 
+def test_action_recorded_after_another_machine_changed_the_history_keeps_it(
+    model, server, maya
+):
+    trigger(model, folder_id="a")
+    other_machine = create_model(FakeController(), maya)
+    trigger(other_machine, folder_id="b")
+
+    trigger(model, folder_id="c")
+
+    assert [entry["folder_id"] for entry in stored_items(server)] == [
+        "c", "b", "a"
+    ]
+
+
 def test_action_is_not_recorded_if_the_history_cannot_be_loaded(
     model, server, maya
 ):
@@ -399,12 +416,28 @@ def test_refresh_does_not_undo_a_change_made_while_it_was_loading(
     assert item.favorite
 
 
-def test_server_support_is_known_after_it_was_checked(model, server):
+def test_server_support_is_known_after_the_history_was_loaded(
+    model, server
+):
     assert model.is_recent_actions_supported() is None
 
-    assert model.check_recent_actions_support() is True
+    model.refresh_recent_action_items()
 
     assert model.is_recent_actions_supported() is True
+
+
+def test_server_support_is_unknown_while_the_server_is_not_reachable(
+    model, server, monkeypatch
+):
+    def raw_get(endpoint, **kwargs):
+        raise ConnectionError("Server is not reachable")
+
+    monkeypatch.setattr(ayon_api, "raw_get", raw_get)
+
+    model.refresh_recent_action_items()
+
+    assert model.is_recent_actions_supported() is None
+    assert not model.are_recent_action_items_loaded()
 
 
 def test_nothing_is_recorded_without_preferences_api(model, server, maya):
@@ -504,23 +537,42 @@ def test_recent_webaction_runs_with_the_enabled_addon_version(
     assert "identifier=publish" in webactions.executed[-1]
 
 
-def test_unavailable_recent_action_is_removed_and_reported(
+def test_unavailable_recent_action_is_reported_and_kept(
     model, controller, server, maya
 ):
     trigger(model)
     (item,) = model.get_recent_action_items()
+    # E.g. the addon of the action is not installed on this machine
     maya.compatible = False
 
     model.trigger_recent_action(item.record_id)
     wait_idle(model)
 
     assert len(maya.processed) == 1
-    assert model.get_recent_action_items() == []
-    assert stored_items(server) == []
     assert controller.events[-1] == (
         "recent_action.unavailable",
         {"record_id": item.record_id, "full_label": "Maya"},
     )
+    # The history is shared with other machines
+    assert model.get_recent_action_items() == [item]
+    assert len(stored_items(server)) == 1
+
+
+def test_recent_webaction_is_kept_when_actions_cannot_be_listed(
+    model, server, webactions, maya
+):
+    trigger_webaction(model)
+    webactions.status_code = 500
+    controller = FakeController()
+    other_session = create_model(controller, maya)
+    other_session.refresh_recent_action_items()
+    (item,) = other_session.get_recent_action_items()
+
+    other_session.trigger_recent_action(item.record_id)
+    wait_idle(other_session)
+
+    assert controller.events[-1][0] == "recent_action.unavailable"
+    assert len(stored_items(server)) == 1
 
 
 def test_worker_is_forgotten_when_it_runs_out_of_work(model):
