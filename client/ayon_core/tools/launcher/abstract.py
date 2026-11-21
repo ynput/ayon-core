@@ -800,8 +800,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         This is the "Locate" affordance - it does **not** re-run the action.
         The selection is not changed here, the context is set as expected
-        selection (see :meth:`set_expected_selection`) and the widgets select
-        it themselves.
+        selection (see :meth:`get_expected_selection_data`) and the widgets
+        select it themselves.
 
         Args:
             record_id (str): The :attr:`RecentActionItem.record_id` of the
@@ -812,31 +812,13 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
     # Expected selection
     @abstractmethod
-    def set_expected_selection(
-        self,
-        project_name: Optional[str],
-        folder_id: Optional[str] = None,
-        task_name: Optional[str] = None,
-        workfile_id: Optional[str] = None,
-    ):
-        """Set which context the UI should navigate to.
-
-        Triggers 'expected_selection_changed' event. Each widget selects its
-        part once the previous part is selected and its own data is loaded,
-        and confirms it with the 'expected_*_selected' methods.
-
-        Args:
-            project_name (Optional[str]): Project name.
-            folder_id (Optional[str]): Folder id.
-            task_name (Optional[str]): Task name.
-            workfile_id (Optional[str]): Workfile id.
-
-        """
-        pass
-
-    @abstractmethod
     def get_expected_selection_data(self) -> dict[str, dict[str, Any]]:
         """Get the expected selection and how far it got.
+
+        The 'expected_selection_changed' event is triggered when it
+        changes. Each widget selects its part once the previous part is
+        selected and its own data is loaded, and confirms it with the
+        'expected_*_selected' methods.
 
         Returns:
             dict[str, dict[str, Any]]: Data of 'project', 'folder', 'task'

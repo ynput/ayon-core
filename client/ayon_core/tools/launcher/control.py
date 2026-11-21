@@ -354,7 +354,7 @@ class BaseLauncherController(
             if task_entity:
                 task_name = task_entity["name"]
 
-        self.set_expected_selection(
+        self._expected_selection.set_expected_selection(
             item.project_name,
             item.folder_id,
             task_name,
@@ -362,17 +362,6 @@ class BaseLauncherController(
         )
 
     # Expected selection
-    def set_expected_selection(
-        self,
-        project_name: Optional[str],
-        folder_id: Optional[str] = None,
-        task_name: Optional[str] = None,
-        workfile_id: Optional[str] = None,
-    ):
-        self._expected_selection.set_expected_selection(
-            project_name, folder_id, task_name, workfile_id
-        )
-
     def get_expected_selection_data(self):
         return self._expected_selection.get_expected_selection_data()
 
