@@ -936,7 +936,7 @@ class LocalPreferences(ASettingRegistry):
     def log(self) -> logging.Logger:
         return _get_logger("LocalPreferences")
 
-    def _import_registry(self, filepath: str) -> bool | None:
+    def _import_registry(self, filepath: str) -> bool:
         """Import items of a 'JSONSettingRegistry' file.
 
         Each file is imported once, it is not imported again when the
@@ -947,12 +947,14 @@ class LocalPreferences(ASettingRegistry):
             filepath: Path to the JSON file of the registry.
 
         Returns:
-            bool | None: Whether items were imported now. 'None' if the
-                import can be tried again, e.g. the database was locked.
+            bool: Whether the file is done and should not be tried again,
+                also when it was imported before or there is nothing to
+                import. 'False' if the import can be tried again, e.g.
+                the database was locked.
 
         """
         if not os.path.isfile(filepath):
-            return False
+            return True
         try:
             with open(filepath, "r", encoding="utf-8") as stream:
                 registry = json.load(stream).get("registry")
@@ -967,11 +969,11 @@ class LocalPreferences(ASettingRegistry):
                 "Failed to read registry file '%s'.", filepath, exc_info=True
             )
             # The file may be used by another process, broken stays broken
-            return None if isinstance(exc, OSError) else False
+            return not isinstance(exc, OSError)
 
         source = os.path.normcase(os.path.abspath(filepath))
 
-        def _import(connection: sqlite3.Connection) -> bool:
+        def _import(connection: sqlite3.Connection) -> None:
             # Locks the database, so the file is imported once also when
             #   processes import it at the same time.
             connection.execute("BEGIN IMMEDIATE")
@@ -992,14 +994,11 @@ class LocalPreferences(ASettingRegistry):
                     (self.name, source),
                 )
             connection.execute("COMMIT")
-            return not imported
 
-        success, imported = self._run(
+        success, _ = self._run(
             _import, f"import registry file '{filepath}' to"
         )
-        if not success:
-            return None
-        return imported
+        return success
 
     def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
         rows = self._query(
@@ -1076,8 +1075,9 @@ class LocalPreferences(ASettingRegistry):
             return
         # Tried again on the next access if it failed for now. Otherwise
         #   items stored meanwhile would be kept over the imported ones.
-        imported = self._import_registry(self._legacy_registry_filepath)
-        self._legacy_registry_imported = imported is not None
+        self._legacy_registry_imported = self._import_registry(
+            self._legacy_registry_filepath
+        )
 
     def _run(
         self,
