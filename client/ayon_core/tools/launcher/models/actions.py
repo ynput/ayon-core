@@ -403,8 +403,8 @@ class ActionsModel:
         What is stored with an entry is only a snapshot of how the action
         looked when it ran, so the action is looked up in its stored context
         first, against the addon versions of the bundle that is enabled now.
-        An entry that cannot run anymore is reported and dropped from the
-        history instead.
+        An entry that cannot run is reported and kept, the history is
+        shared with other machines and the action may be available there.
 
         Args:
             record_id (str): Id of the history entry.
@@ -425,11 +425,9 @@ class ActionsModel:
         )
         if action_item is None:
             self.log.warning(
-                "Action '%s' is not available in its stored context anymore,"
-                " removing it from recent actions.",
+                "Recent action '%s' is not available in its stored context.",
                 item.identifier,
             )
-            self._recent_actions.remove_recent_action(record_id)
             self._controller.emit_event(
                 "recent_action.unavailable",
                 {"record_id": record_id, "full_label": item.label},

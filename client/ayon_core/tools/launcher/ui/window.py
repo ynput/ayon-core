@@ -328,7 +328,7 @@ class LauncherWindow(AYContainer):
 
     def _on_recent_action_unavailable(self, event):
         self._show_toast_message(
-            "Not available anymore: {}".format(event["full_label"]),
+            "Not available: {}".format(event["full_label"]),
             success=False,
             message_id=event["record_id"],
         )

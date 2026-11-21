@@ -403,10 +403,6 @@ class RecentActionsPopup(AYDropdownPopup):
         main_layout = AYVBoxLayout(self, margin=0, spacing=0)
         main_layout.addWidget(scroll_area, 1)
 
-        controller.register_event_callback(
-            "recent_action.unavailable", self._on_recent_action_unavailable
-        )
-
     def refresh(self):
         """Show what is loaded and reload the history in the background.
 
@@ -599,11 +595,6 @@ class RecentActionsPopup(AYDropdownPopup):
         self._rebuild_rows(self._controller.get_recent_action_items())
         if self.isVisible() and self._anchor_widget is not None:
             self._place(self._anchor_widget)
-
-    def _on_recent_action_unavailable(self, event):
-        # The entry was dropped from the history, take it off screen too.
-        if self.isVisible():
-            self._reload_rows()
 
 
 class RecentActionsButton(AYButton):

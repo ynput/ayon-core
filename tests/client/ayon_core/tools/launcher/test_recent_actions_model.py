@@ -133,8 +133,11 @@ class Webactions:
         self.addon_version = "1.0.0"
         self.response_type = "simple"
         self.executed: list[str] = []
+        self.status_code = 200
 
     def post(self, endpoint, **kwargs) -> Response:
+        if self.status_code != 200:
+            return Response(self.status_code)
         return Response(200, {"actions": [{
             "identifier": "publish",
             "label": "Publish",
@@ -518,23 +521,42 @@ def test_recent_webaction_runs_with_the_enabled_addon_version(
     assert "identifier=publish" in webactions.executed[-1]
 
 
-def test_unavailable_recent_action_is_removed_and_reported(
+def test_unavailable_recent_action_is_reported_and_kept(
     model, controller, server, maya
 ):
     trigger(model)
     (item,) = model.get_recent_action_items()
+    # E.g. the addon of the action is not installed on this machine
     maya.compatible = False
 
     model.trigger_recent_action(item.record_id)
     wait_idle(model)
 
     assert len(maya.processed) == 1
-    assert model.get_recent_action_items() == []
-    assert stored_items(server) == []
     assert controller.events[-1] == (
         "recent_action.unavailable",
         {"record_id": item.record_id, "full_label": "Maya"},
     )
+    # The history is shared with other machines
+    assert model.get_recent_action_items() == [item]
+    assert len(stored_items(server)) == 1
+
+
+def test_recent_webaction_is_kept_when_actions_cannot_be_listed(
+    model, server, webactions, maya
+):
+    trigger_webaction(model)
+    webactions.status_code = 500
+    controller = FakeController()
+    other_session = create_model(controller, maya)
+    other_session.refresh_recent_action_items()
+    (item,) = other_session.get_recent_action_items()
+
+    other_session.trigger_recent_action(item.record_id)
+    wait_idle(other_session)
+
+    assert controller.events[-1][0] == "recent_action.unavailable"
+    assert len(stored_items(server)) == 1
 
 
 def test_worker_is_forgotten_when_it_runs_out_of_work(model):
