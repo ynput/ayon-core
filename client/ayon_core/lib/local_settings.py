@@ -1380,7 +1380,7 @@ class UserPreferences(ASettingRegistry):
             if self._can_change("stored"):
                 # The server merges the item into the stored preference,
                 #   so items changed meanwhile by other processes are kept.
-                self._request("patch", payload={name: value})
+                self._request(ayon_api.raw_patch, payload={name: value})
 
     def _delete_item(self, name: str, ignore_missing: bool = True) -> None:
         with self._lock:
@@ -1402,7 +1402,7 @@ class UserPreferences(ASettingRegistry):
                 return
             data.pop(name)
             self._data = data
-            self._request("put", payload=data)
+            self._request(ayon_api.raw_put, payload=data)
 
     def _ensure_loaded(self) -> None:
         """Receive the preference on first use. Expects '_lock' held."""
@@ -1473,14 +1473,15 @@ class UserPreferences(ASettingRegistry):
                     return data
         return {}
 
-    def _request(self, method: str, payload: dict[str, Any]) -> None:
+    def _request(
+        self, function: Callable[..., Any], payload: dict[str, Any]
+    ) -> None:
         """Change the preference on the server, failures are logged."""
         endpoint = f"preferences/{self.name}"
         if self._project_name:
             query = urlencode({"project_name": self._project_name})
             endpoint = f"{endpoint}?{query}"
 
-        function = getattr(ayon_api, f"raw_{method}")
         try:
             response = function(endpoint, json=payload)
         except Exception:
