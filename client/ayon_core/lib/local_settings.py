@@ -975,28 +975,23 @@ class LocalPreferences(ASettingRegistry):
             # Locks the database, so the file is imported once also when
             #   processes import it at the same time.
             connection.execute("BEGIN IMMEDIATE")
-            try:
-                imported = connection.execute(
-                    "SELECT 1 FROM imported_registries"
-                    " WHERE name = ? AND filepath = ?",
+            imported = connection.execute(
+                "SELECT 1 FROM imported_registries"
+                " WHERE name = ? AND filepath = ?",
+                (self.name, source),
+            ).fetchone()
+            if not imported:
+                connection.executemany(
+                    "INSERT OR IGNORE INTO preferences"
+                    " (name, item, value) VALUES (?, ?, ?)",
+                    rows,
+                )
+                connection.execute(
+                    "INSERT INTO imported_registries"
+                    " (name, filepath) VALUES (?, ?)",
                     (self.name, source),
-                ).fetchone()
-                if not imported:
-                    connection.executemany(
-                        "INSERT OR IGNORE INTO preferences"
-                        " (name, item, value) VALUES (?, ?, ?)",
-                        rows,
-                    )
-                    connection.execute(
-                        "INSERT INTO imported_registries"
-                        " (name, filepath) VALUES (?, ?)",
-                        (self.name, source),
-                    )
-                connection.execute("COMMIT")
-            except BaseException:
-                with contextlib.suppress(sqlite3.Error):
-                    connection.execute("ROLLBACK")
-                raise
+                )
+            connection.execute("COMMIT")
             return not imported
 
         success, imported = self._run(
