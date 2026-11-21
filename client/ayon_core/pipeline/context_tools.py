@@ -274,7 +274,11 @@ def install_ayon_plugins(project_name=None, host_name=None):
 
 def uninstall_host():
     """Undo all of what `install()` did"""
+    from .workfile.task_usage import uninstall_task_usage_tracker
+
     host = registered_host()
+
+    uninstall_task_usage_tracker()
 
     try:
         host.uninstall()

@@ -16,7 +16,8 @@ from ayon_core.pipeline.actions import (
 class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
     """Duplicate selected workfile to next version and open the copy.
 
-    A user is asked what to do with unsaved changes of the current workfile
+    A user is asked if wants to work on a task that is in use by other
+        users and what to do with unsaved changes of the current workfile
         before anything happens, so cancelling does not leave a new version
         on disk. The selected workfile is then copied to the next version
         and the copy is opened.
@@ -65,8 +66,15 @@ class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
                 success=False,
             )
 
-        # Ask about unsaved changes before the copy is created, cancel of
-        #   the form does not trigger the action again
+        # Ask the same way as the tool does on open, if other users work
+        #   on the task and about unsaved changes, before the copy is
+        #   created. Cancel of the prompts does not trigger the action again
+        result = self.ask_to_confirm_task_in_use(
+            task_entity, form_values, confirm_label="Open anyway"
+        )
+        if result is not None:
+            return result
+
         result = self.ask_to_save_changes(form_values)
         if isinstance(result, WorkfileActionResult):
             return result

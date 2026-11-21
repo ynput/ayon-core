@@ -59,6 +59,12 @@ class SetContextAction(WorkfileSimpleActionPlugin):
                 success=False,
             )
 
+        result = self.ask_to_confirm_task_in_use(
+            task_entity, form_values, confirm_label="Set context anyway"
+        )
+        if result is not None:
+            return result
+
         self.host.set_current_context(
             folder_entity,
             task_entity,
