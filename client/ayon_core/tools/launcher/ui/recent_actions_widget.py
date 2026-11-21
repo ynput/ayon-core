@@ -1,4 +1,5 @@
 from collections import namedtuple
+from functools import partial
 
 from qtpy import QtWidgets, QtCore
 
@@ -558,8 +559,13 @@ class RecentActionsPopup(AYDropdownPopup):
         self.hide()
 
     def _on_replay(self, record_id):
-        self._controller.trigger_recent_action(record_id)
         self.hide()
+        # Called from the mouse event of the row. The action may open a
+        #   dialog, and rows rebuilt meanwhile would delete the row while
+        #   it still handles the event.
+        QtCore.QTimer.singleShot(
+            0, partial(self._controller.trigger_recent_action, record_id)
+        )
 
     def _on_favorite_toggled(self, record_id, favorite):
         self._controller.set_recent_action_favorite(record_id, favorite)

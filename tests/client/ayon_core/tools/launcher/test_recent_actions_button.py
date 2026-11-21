@@ -7,8 +7,10 @@ import time
 from typing import Optional
 
 import pytest
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
+from qtpy.QtTest import QTest
 
+from ayon_core.tools.launcher.abstract import RecentActionItem
 from ayon_core.tools.launcher.ui.recent_actions_widget import (
     RecentActionsButton,
     RecentActionsPopup,
@@ -23,6 +25,7 @@ class FakeController:
         self.supported: Optional[bool] = None
         self.check_thread_ids: list[int] = []
         self.callbacks = {}
+        self.items: list[RecentActionItem] = []
 
     def register_event_callback(self, topic, callback) -> None:
         self.callbacks[topic] = callback
@@ -38,8 +41,8 @@ class FakeController:
         self.supported = self.server_supported
         return self.supported
 
-    def get_recent_action_items(self) -> list:
-        return []
+    def get_recent_action_items(self) -> list[RecentActionItem]:
+        return list(self.items)
 
     def are_recent_action_items_loaded(self) -> bool:
         return False
@@ -111,3 +114,42 @@ def test_popup_tells_the_server_is_not_supported(qapp, parent):
     assert popup._empty_label.text() == (
         "Recent actions require AYON server 1.17.3+"
     )
+
+
+def test_recent_action_runs_after_the_click_on_its_row(qapp, parent):
+    controller = FakeController(supported=True)
+    controller.items = [RecentActionItem(
+        record_id="r1",
+        action_type="local",
+        identifier="maya",
+        timestamp=time.time(),
+        label="Maya",
+    )]
+    popup = RecentActionsPopup(controller, parent)
+    popup.show()
+    popup._rebuild_rows(controller.get_recent_action_items())
+    (row,) = popup._rows
+    triggered = []
+
+    def trigger_recent_action(record_id):
+        # The action shows a dialog, the history finishes loading
+        #   meanwhile and the rows are rebuilt.
+        loop = QtCore.QEventLoop()
+        QtCore.QTimer.singleShot(
+            0,
+            lambda: popup._rebuild_rows(controller.get_recent_action_items())
+        )
+        QtCore.QTimer.singleShot(50, loop.quit)
+        loop.exec_()
+        triggered.append(record_id)
+
+    controller.trigger_recent_action = trigger_recent_action
+
+    QTest.mouseClick(row, QtCore.Qt.LeftButton)
+    end = time.time() + 5.0
+    while not triggered and time.time() < end:
+        qapp.processEvents()
+        time.sleep(0.005)
+
+    assert triggered == ["r1"]
+    assert not popup.isVisible()
