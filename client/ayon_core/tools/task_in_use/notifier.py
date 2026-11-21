@@ -57,6 +57,9 @@ def show_task_in_use_notice(
             _notice_dialog.close()
         dialog = TaskInUseDialog(items, notice_only=True)
         dialog.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, True)
+        # The notice does not keep the application running when its main
+        #   window is closed, e.g. Silhouette quits on last window closed
+        dialog.setAttribute(QtCore.Qt.WA_QuitOnClose, False)
         dialog.finished.connect(lambda *_: _on_finished(dialog))
         _notice_dialog = dialog
         dialog.show()

@@ -67,6 +67,21 @@ def test_notice_is_shown_in_thread_of_notifier(qtbot, shown):
     assert call["items"] == items
 
 
+def test_notice_does_not_keep_application_running(qtbot):
+    """Application quits when its main window is closed."""
+    notifier_module.show_task_in_use_notice(_items(), delay=0)
+    qtbot.waitUntil(
+        lambda: notifier_module._notice_dialog is not None, timeout=5000
+    )
+    dialog = notifier_module._notice_dialog
+    assert dialog.isVisible()
+    assert not dialog.testAttribute(QtCore.Qt.WA_QuitOnClose)
+    dialog.close()
+    qtbot.waitUntil(
+        lambda: notifier_module._notice_dialog is None, timeout=5000
+    )
+
+
 def test_install_notifier(qtbot, monkeypatch):
     monkeypatch.setattr(task_usage, "_notice_callbacks", [])
     monkeypatch.setattr(notifier_module, "_notifier", None)
