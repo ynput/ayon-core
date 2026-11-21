@@ -416,12 +416,28 @@ def test_refresh_does_not_undo_a_change_made_while_it_was_loading(
     assert item.favorite
 
 
-def test_server_support_is_known_after_it_was_checked(model, server):
+def test_server_support_is_known_after_the_history_was_loaded(
+    model, server
+):
     assert model.is_recent_actions_supported() is None
 
-    assert model.check_recent_actions_support() is True
+    model.refresh_recent_action_items()
 
     assert model.is_recent_actions_supported() is True
+
+
+def test_server_support_is_unknown_while_the_server_is_not_reachable(
+    model, server, monkeypatch
+):
+    def raw_get(endpoint, **kwargs):
+        raise ConnectionError("Server is not reachable")
+
+    monkeypatch.setattr(ayon_api, "raw_get", raw_get)
+
+    model.refresh_recent_action_items()
+
+    assert model.is_recent_actions_supported() is None
+    assert not model.are_recent_action_items_loaded()
 
 
 def test_nothing_is_recorded_without_preferences_api(model, server, maya):

@@ -600,10 +600,11 @@ class RecentActionsPopup(AYDropdownPopup):
 class RecentActionsButton(AYButton):
     """Icon-only button that shows/hides the recent-actions popup.
 
-    Disabled on AYON servers that can't store the history. The server is
-    asked in a thread after each refresh of the launcher, until it
-    answered. The button stays usable until then, an open popup tells the
-    same once it knows.
+    Disabled on AYON servers that can't store the history. The history is
+    loaded in a thread after each refresh of the launcher until it was
+    loaded, which tells whether the server can store it and has it ready
+    for the first open of the popup. The button stays usable until the
+    server answered, an open popup tells the same once it knows.
     """
 
     def __init__(self, controller, parent=None):
@@ -616,7 +617,7 @@ class RecentActionsButton(AYButton):
         self._controller = controller
         # Created when it is first asked for
         self._popup = None
-        self._support_thread = None
+        self._load_thread = None
         self.clicked.connect(self._on_clicked)
         controller.register_event_callback(
             "controller.refresh.finished", self._on_controller_refresh
@@ -624,29 +625,23 @@ class RecentActionsButton(AYButton):
         self._set_supported(controller.is_recent_actions_supported())
 
     def _on_controller_refresh(self):
-        self._check_support()
-
-    def _check_support(self):
-        # Servers don't lose the API once they have it
         if (
-            self._support_thread is not None
-            or self._controller.is_recent_actions_supported()
+            self._load_thread is not None
+            or self._controller.are_recent_action_items_loaded()
         ):
             return
 
-        support_thread = RefreshThread(
-            "recent_actions_support",
-            self._controller.check_recent_actions_support,
+        load_thread = RefreshThread(
+            "recent_actions_load",
+            self._controller.refresh_recent_action_items,
         )
-        support_thread.refresh_finished.connect(self._on_support_checked)
-        self._support_thread = support_thread
-        support_thread.start()
+        load_thread.refresh_finished.connect(self._on_load_finished)
+        self._load_thread = load_thread
+        load_thread.start()
 
-    def _on_support_checked(self):
-        support_thread = self._support_thread
-        self._support_thread = None
-        # 'None' if the check failed, the button is kept as it is then
-        self._set_supported(support_thread.get_result())
+    def _on_load_finished(self):
+        self._load_thread = None
+        self._set_supported(self._controller.is_recent_actions_supported())
 
     def _set_supported(self, supported):
         if supported is None:

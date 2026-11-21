@@ -149,9 +149,6 @@ class ActionsModel:
             self._webaction_items.reset()
             self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
-        # Actions are known now, so the history is loaded in the background
-        #   and the first open finds it ready.
-        self._recent_actions.prewarm()
 
     def get_action_items(
         self,
@@ -382,9 +379,6 @@ class ActionsModel:
 
     def is_recent_actions_supported(self) -> bool | None:
         return self._recent_actions.is_supported()
-
-    def check_recent_actions_support(self) -> bool:
-        return self._recent_actions.check_support()
 
     def refresh_recent_action_items(self) -> None:
         self._recent_actions.refresh()

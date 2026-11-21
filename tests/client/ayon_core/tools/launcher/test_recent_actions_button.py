@@ -20,10 +20,12 @@ from ayon_core.tools.launcher.ui.recent_actions_widget import (
 class FakeController:
     """Just what the button asks of the launcher controller."""
 
-    def __init__(self, supported: bool) -> None:
+    def __init__(self, supported: Optional[bool]) -> None:
+        # What the server answers a load, 'None' if it is not reachable
         self.server_supported = supported
         self.supported: Optional[bool] = None
-        self.check_thread_ids: list[int] = []
+        self.loaded = False
+        self.load_thread_ids: list[int] = []
         self.callbacks = {}
         self.items: list[RecentActionItem] = []
 
@@ -36,23 +38,23 @@ class FakeController:
     def is_recent_actions_supported(self) -> Optional[bool]:
         return self.supported
 
-    def check_recent_actions_support(self) -> bool:
-        self.check_thread_ids.append(threading.get_ident())
+    def refresh_recent_action_items(self) -> None:
+        self.load_thread_ids.append(threading.get_ident())
         self.supported = self.server_supported
-        return self.supported
+        self.loaded = bool(self.server_supported)
 
     def get_recent_action_items(self) -> list[RecentActionItem]:
         return list(self.items)
 
     def are_recent_action_items_loaded(self) -> bool:
-        return False
+        return self.loaded
 
 
-def wait_for_check(qapp, button: RecentActionsButton) -> None:
+def wait_for_load(qapp, button: RecentActionsButton) -> None:
     end = time.time() + 5.0
-    while button._support_thread is not None:
+    while button._load_thread is not None:
         if time.time() > end:
-            raise AssertionError("Support check did not finish.")
+            raise AssertionError("Loading of the history did not finish.")
         qapp.processEvents()
         time.sleep(0.005)
 
@@ -71,13 +73,13 @@ def test_button_is_disabled_on_server_without_support(qapp, parent):
     assert button.isEnabled()
 
     controller.refresh()
-    wait_for_check(qapp, button)
+    wait_for_load(qapp, button)
 
     assert not button.isEnabled()
     assert button.toolTip() == "Recent actions require AYON server 1.17.3+"
-    # Asked in a thread, never in the one of the UI
-    assert controller.check_thread_ids
-    assert threading.get_ident() not in controller.check_thread_ids
+    # Loaded in a thread, never in the one of the UI
+    assert controller.load_thread_ids
+    assert threading.get_ident() not in controller.load_thread_ids
 
 
 def test_button_stays_enabled_on_server_with_support(qapp, parent):
@@ -85,14 +87,25 @@ def test_button_stays_enabled_on_server_with_support(qapp, parent):
     button = RecentActionsButton(controller, parent)
 
     controller.refresh()
-    wait_for_check(qapp, button)
+    wait_for_load(qapp, button)
     controller.refresh()
 
     assert button.isEnabled()
     assert button.toolTip() == "Recent Actions"
-    # Not asked again once the server told
-    assert button._support_thread is None
-    assert len(controller.check_thread_ids) == 1
+    # Not loaded again once it was loaded, the popup loads it when opened
+    assert button._load_thread is None
+    assert len(controller.load_thread_ids) == 1
+
+
+def test_button_stays_enabled_while_server_is_not_reachable(qapp, parent):
+    controller = FakeController(supported=None)
+    button = RecentActionsButton(controller, parent)
+
+    controller.refresh()
+    wait_for_load(qapp, button)
+
+    assert button.isEnabled()
+    assert button.toolTip() == "Recent Actions"
 
 
 def test_button_created_after_the_check_uses_its_result(qapp, parent):
