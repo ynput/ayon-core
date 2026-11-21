@@ -364,6 +364,20 @@ def test_action_triggered_before_the_history_was_loaded_keeps_it(
     ]
 
 
+def test_action_recorded_after_another_machine_changed_the_history_keeps_it(
+    model, server, maya
+):
+    trigger(model, folder_id="a")
+    other_machine = create_model(FakeController(), maya)
+    trigger(other_machine, folder_id="b")
+
+    trigger(model, folder_id="c")
+
+    assert [entry["folder_id"] for entry in stored_items(server)] == [
+        "c", "b", "a"
+    ]
+
+
 def test_action_is_not_recorded_if_the_history_cannot_be_loaded(
     model, server, maya
 ):

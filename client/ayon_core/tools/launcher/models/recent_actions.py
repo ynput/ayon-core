@@ -272,7 +272,13 @@ class RecentActionsHistory:
     # Persistence
     # ------------------------------------------------------------------
 
-    def _load(self) -> None:
+    def _load(self) -> bool:
+        """Load the stored history.
+
+        Returns:
+            bool: Whether it could be loaded.
+
+        """
         with self._lock:
             revision = self._revision
             # What the server returns while a change is on its way to it
@@ -281,11 +287,12 @@ class RecentActionsHistory:
 
         items = self._fetch_items()
         if items is None:
-            return
+            return False
 
         with self._lock:
             if not is_storing and revision == self._revision:
                 self._items = items
+        return True
 
     def _fetch_items(self) -> Optional[list[RecentActionItem]]:
         """Get the stored history, ready to be shown.
@@ -458,11 +465,12 @@ class RecentActionsHistory:
                 )
 
     def _record(self, item: RecentActionItem) -> None:
-        # Nowhere to store it, so the lookups below can be skipped
-        if not self.check_support():
+        # Storing replaces the whole history, so the stored one is loaded
+        #   first, another machine may have changed it.
+        if not self._load():
             self.log.debug(
-                "Recent action '%s' was not recorded, the server can't"
-                " store it or is not reachable.",
+                "Recent action '%s' was not recorded, the history could"
+                " not be loaded.",
                 item.identifier,
             )
             return
@@ -471,22 +479,7 @@ class RecentActionsHistory:
         # history later needs no lookups at all.
         self._fill_context_labels(item)
 
-        # Storing replaces the whole history, so it has to be known first.
-        loaded_items = None
-        if not self.is_loaded():
-            loaded_items = self._fetch_items()
-            if loaded_items is None:
-                self.log.warning(
-                    "Recent action '%s' was not recorded, the history"
-                    " could not be loaded.",
-                    item.identifier,
-                )
-                return
-
         with self._lock:
-            if self._items is None:
-                self._items = loaded_items
-
             # Drop the same action executed on the same context, but carry
             # over whether it was favorited - re-running a favorite must
             # not quietly unpin it.
