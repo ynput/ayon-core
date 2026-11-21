@@ -1144,7 +1144,7 @@ class LocalPreferences(ASettingRegistry):
             now = datetime.now().strftime("%Y%m%d-%H%M%S")
             broken_path = f"{self._filepath}.broken-{now}"
             # Journal first, it would be applied to the new database
-            for suffix in ("-journal", "-wal", "-shm", ""):
+            for suffix in ("-journal", ""):
                 try:
                     os.replace(
                         f"{self._filepath}{suffix}",
