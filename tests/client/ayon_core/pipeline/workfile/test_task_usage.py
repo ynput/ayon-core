@@ -820,13 +820,9 @@ def _prepare_install(monkeypatch):
     started = []
     monkeypatch.setattr(task_usage, "_tracker", None)
     monkeypatch.setattr(task_usage, "_acknowledged_session_ids", set())
-    monkeypatch.setattr(task_usage, "is_headless_mode_enabled", lambda: False)
-    monkeypatch.setattr(task_usage, "is_in_tests", lambda: False)
     monkeypatch.setattr(
         task_usage, "is_task_usage_enabled_in_project", lambda *args: True
     )
-    for key in task_usage.FARM_JOB_ENV_KEYS:
-        monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(task_usage, "register_event_callback", lambda *a: None)
     monkeypatch.setattr(task_usage.atexit, "register", lambda *a: None)
     monkeypatch.setattr(
@@ -894,31 +890,16 @@ def test_no_qt_or_tools_imports():
     ]
 
 
-def test_tracker_install_skipped_in_headless(monkeypatch):
-    started = _prepare_install(monkeypatch)
-    monkeypatch.setattr(task_usage, "is_headless_mode_enabled", lambda: True)
-    assert task_usage.install_task_usage_tracker(_MockHost()) is None
-    assert started == []
-
-
-def test_tracker_install_skipped_in_tests(monkeypatch):
-    started = _prepare_install(monkeypatch)
-    monkeypatch.setattr(task_usage, "is_in_tests", lambda: True)
-    assert task_usage.install_task_usage_tracker(_MockHost()) is None
-    assert started == []
-
-
-@pytest.mark.parametrize("env_key", task_usage.FARM_JOB_ENV_KEYS)
-def test_tracker_install_skipped_in_farm_jobs(monkeypatch, env_key):
+def test_tracker_install_failure_is_logged(monkeypatch):
+    """Failed install does not break startup of the application."""
     _prepare_install(monkeypatch)
-    # Deadline sets all the keys in a job, only one of them to "1"
-    for key in task_usage.FARM_JOB_ENV_KEYS:
-        monkeypatch.setenv(key, "0")
-    assert task_usage.install_task_usage_tracker(_MockHost()) is not None
 
-    monkeypatch.setattr(task_usage, "_tracker", None)
-    monkeypatch.setenv(env_key, "1")
+    def _failing(*args, **kwargs):
+        raise RuntimeError("Broken")
+
+    monkeypatch.setattr(task_usage, "register_event_callback", _failing)
     assert task_usage.install_task_usage_tracker(_MockHost()) is None
+    assert task_usage._tracker is None
 
 
 def test_endpoint():

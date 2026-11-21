@@ -16,9 +16,11 @@ A session must report itself to the server (heartbeat) to stay alive.
 The heartbeat is sent a few times per the time to live, so sessions of
 crashed applications expire on their own.
 
-The session follows the current context and workfile of the host
-integration. It is released when the context changes to a different task
-and when the application is closed.
+Host integration starts the tracking with 'install_task_usage_tracker'
+when the user works in the application interactively. The session follows
+the current context and workfile of the host integration. It is released
+when the context changes to a different task and when the application is
+closed.
 
 Callbacks of the application do not wait for the server. Session of the
 application is handled by 'TaskUsageTracker' in a background thread, the
@@ -45,8 +47,6 @@ from ayon_core.host import AbstractHost
 from ayon_core.lib import (
     filter_profiles,
     get_ayon_username,
-    is_headless_mode_enabled,
-    is_in_tests,
 )
 from ayon_core.lib.events import register_event_callback
 from ayon_core.settings import get_project_settings
@@ -71,13 +71,6 @@ ACTIVITY_INTERVAL_SECONDS = 30.0
 STARVED_THREAD_SECONDS = 10.0
 # How long is exit of the application blocked to release the task
 EXIT_TIMEOUT_SECONDS = 3.0
-
-# Environment variables with value "1" in farm jobs
-FARM_JOB_ENV_KEYS = (
-    "AYON_RENDER_JOB",
-    "AYON_PUBLISH_JOB",
-    "AYON_REMOTE_PUBLISH",
-)
 
 # Sessions of other users the user of current process was notified about
 _acknowledged_session_ids: set[str] = set()
@@ -516,9 +509,9 @@ def register_task_in_use_notice_callback(
     Sessions passed to a callback are not passed again and the user is not
     asked about them in the Workfiles tool.
 
-    Host integration should register the callback in its 'install', the
-    tracking is started by 'install_host' after that. Integrations based
-    on Qt can use 'install_task_in_use_notifier' from
+    Host integration should register the callback before it starts the
+    tracking with 'install_task_usage_tracker'. Integrations based on Qt
+    can use 'install_task_in_use_notifier' from
     'ayon_core.tools.task_in_use'.
 
     Warning:
@@ -924,13 +917,16 @@ def install_task_usage_tracker(
 ) -> TaskUsageTracker | None:
     """Start tracking of task in-use for the host integration.
 
-    Is called by 'install_host' from the main thread of the application.
-    Tracking is skipped in headless mode, in farm jobs and in automated
-    tests.
+    Host integration calls it from the main thread of the application when
+    the user works in the application interactively, e.g. in 'install'
+    when the application has UI. It must not be called in batch processes,
+    farm jobs or background processes of the application, those would
+    register sessions as well.
 
     Nothing is started if project of the host integration does not have
     any enabled profile of task in-use notification, so the feature does
-    not cost anything when it is not used.
+    not cost anything when it is not used. Failures are only logged, so
+    the tracking never breaks startup of the application.
 
     The task is released on exit with 'atexit'. Host integration of an
     application that does not call 'atexit' callbacks on exit, e.g. Maya,
@@ -949,31 +945,29 @@ def install_task_usage_tracker(
     if _tracker is not None:
         return _tracker
 
-    if (
-        is_headless_mode_enabled()
-        or is_in_tests()
-        or any(os.environ.get(key) == "1" for key in FARM_JOB_ENV_KEYS)
-        or not _is_used_in_host_project(host)
-    ):
+    if not _is_used_in_host_project(host):
         return None
 
-    _tracker = tracker = TaskUsageTracker(host)
-    for topic in (
-        "taskChanged",
-        "workfile.opened",
-        "workfile.saved",
-        # Topics emitted by host integrations from native callbacks of
-        #   the application
-        "new",
-        "open",
-        "save",
-    ):
-        register_event_callback(topic, tracker.sync)
-
-    atexit.register(_on_exit)
-
-    tracker.sync()
-    tracker.start()
+    try:
+        tracker = TaskUsageTracker(host)
+        for topic in (
+            "taskChanged",
+            "workfile.opened",
+            "workfile.saved",
+            # Topics emitted by host integrations from native callbacks of
+            #   the application
+            "new",
+            "open",
+            "save",
+        ):
+            register_event_callback(topic, tracker.sync)
+        atexit.register(_on_exit)
+        tracker.sync()
+        tracker.start()
+    except Exception:
+        log.warning("Failed to install task in-use tracking.", exc_info=True)
+        return None
+    _tracker = tracker
     return tracker
 
 
