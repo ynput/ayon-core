@@ -106,27 +106,34 @@ def _profile(**kwargs: Any) -> dict[str, Any]:
 def test_settings_disabled_by_default():
     project_settings = _settings([])
     settings = get_task_usage_settings(
-        "project", "maya", "Animation", "anim", project_settings
+        "project", "maya", "Animation", "anim",
+        project_settings=project_settings,
     )
     assert settings == TaskUsageSettings(enabled=False)
-    assert not is_task_usage_enabled_in_project("project", project_settings)
+    assert not is_task_usage_enabled_in_project(
+        "project", project_settings=project_settings
+    )
 
 
 def test_settings_profile_filtering():
     project_settings = _settings([_profile(host_names=["maya"])])
-    assert is_task_usage_enabled_in_project("project", project_settings)
+    assert is_task_usage_enabled_in_project(
+        "project", project_settings=project_settings
+    )
     settings = get_task_usage_settings(
-        "project", "maya", "Animation", "anim", project_settings
+        "project", "maya", "Animation", "anim",
+        project_settings=project_settings,
     )
     assert settings == TaskUsageSettings(True, 2.0)
 
     settings = get_task_usage_settings(
-        "project", "nuke", "Compositing", "comp", project_settings
+        "project", "nuke", "Compositing", "comp",
+        project_settings=project_settings,
     )
     assert settings.enabled is False
 
     assert not is_task_usage_enabled_in_project(
-        "project", _settings([_profile(enabled=False)])
+        "project", project_settings=_settings([_profile(enabled=False)])
     )
 
 

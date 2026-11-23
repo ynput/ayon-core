@@ -195,6 +195,7 @@ def _get_profiles(project_settings: dict[str, Any]) -> list[dict[str, Any]]:
 
 def is_task_usage_enabled_in_project(
     project_name: str,
+    *,
     project_settings: dict[str, Any] | None = None,
 ) -> bool:
     """Task in-use tracking can be enabled for some context of a project.
@@ -224,6 +225,7 @@ def get_task_usage_settings(
     host_name: str,
     task_type: str,
     task_name: str,
+    *,
     project_settings: dict[str, Any] | None = None,
 ) -> TaskUsageSettings:
     """Task in-use settings for a context.
@@ -858,7 +860,7 @@ class TaskUsageTracker:
         project_settings = get_project_settings(project_name)
         # Avoid queries of entities if the tracking is not used in project
         if not is_task_usage_enabled_in_project(
-            project_name, project_settings
+            project_name, project_settings=project_settings
         ):
             return None
 
@@ -881,7 +883,7 @@ class TaskUsageTracker:
             self._host_name,
             task_entity["taskType"],
             task_entity["name"],
-            project_settings,
+            project_settings=project_settings,
         )
         if not settings.enabled:
             return None
