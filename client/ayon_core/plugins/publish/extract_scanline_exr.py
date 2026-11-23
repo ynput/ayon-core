@@ -74,7 +74,7 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
                     "Another representation is already named 'exr'; the"
                     " converted representation may clash with it."
                 )
-            repre['name'] = "exr"
+
             if "toScanline" in tags:
                 tags.remove("toScanline")
 
