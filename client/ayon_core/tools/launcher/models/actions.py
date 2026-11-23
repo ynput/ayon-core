@@ -149,9 +149,6 @@ class ActionsModel:
             self._webaction_items.reset()
             self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
-        # Actions are known now, so the history is loaded in the background
-        #   and the first open finds it ready.
-        self._recent_actions.prewarm()
 
     def get_action_items(
         self,
@@ -383,9 +380,6 @@ class ActionsModel:
     def is_recent_actions_supported(self) -> bool | None:
         return self._recent_actions.is_supported()
 
-    def check_recent_actions_support(self) -> bool:
-        return self._recent_actions.check_support()
-
     def refresh_recent_action_items(self) -> None:
         self._recent_actions.refresh()
 
@@ -403,8 +397,8 @@ class ActionsModel:
         What is stored with an entry is only a snapshot of how the action
         looked when it ran, so the action is looked up in its stored context
         first, against the addon versions of the bundle that is enabled now.
-        An entry that cannot run anymore is reported and dropped from the
-        history instead.
+        An entry that cannot run is reported and kept, the history is
+        shared with other machines and the action may be available there.
 
         Args:
             record_id (str): Id of the history entry.
@@ -425,11 +419,9 @@ class ActionsModel:
         )
         if action_item is None:
             self.log.warning(
-                "Action '%s' is not available in its stored context anymore,"
-                " removing it from recent actions.",
+                "Recent action '%s' is not available in its stored context.",
                 item.identifier,
             )
-            self._recent_actions.remove_recent_action(record_id)
             self._controller.emit_event(
                 "recent_action.unavailable",
                 {"record_id": record_id, "full_label": item.label},

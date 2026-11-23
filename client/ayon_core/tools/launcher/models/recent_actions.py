@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import ayon_api
 
-from ayon_core.lib import Logger, UserPreferences
+from ayon_core.lib import (
+    Logger,
+    UserPreferences,
+    UserPreferencesNotSupported,
+)
 from ayon_core.lib.icon_definitions import IconBase
 from ayon_core.tools.launcher.abstract import (
     RecentActionItem,
@@ -70,7 +74,7 @@ class RecentActionsHistory:
     ``recent_actions`` item of the ``io.ynput.core.launcher`` user
     preferences - so the history follows the user to any machine. AYON
     servers without the preferences API can't store it, nothing is
-    recorded there, see 'check_support'. Duplicate
+    recorded there, see 'is_supported'. Duplicate
     entries (same action in the same context) are deduplicated, the newest
     execution ends up on top. Favorited entries are pinned - they are listed
     first and newer actions never push them out.
@@ -116,8 +120,8 @@ class RecentActionsHistory:
         self._save_requested = False
         self._saving = False
         self._worker: Optional[threading.Thread] = None
-        self._prewarmed = False
-        # Whether the server can store the history, 'None' until checked
+        # Whether the server can store the history, 'None' until the
+        #   server answered a load of it
         self._supported: Optional[bool] = None
 
     # ------------------------------------------------------------------
@@ -129,31 +133,16 @@ class RecentActionsHistory:
         return self._items is not None
 
     def is_supported(self) -> Optional[bool]:
-        """Whether the server can store the history, as last checked.
+        """Whether the server can store the history.
 
-        Does not query anything.
+        Known once the server answered a load of the history, see
+        'refresh'. Does not query anything.
 
         Returns:
-            Optional[bool]: 'None' until 'check_support' ran.
+            Optional[bool]: 'None' until the server answered.
 
         """
         return self._supported
-
-    def check_support(self) -> bool:
-        """Ask whether the server can store the history.
-
-        The server is asked only until it told whether it has the
-        preferences API, see 'UserPreferences.is_supported'. Blocks while
-        it is asked, so it is meant to be called from a worker thread.
-
-        Returns:
-            bool: Whether the server has the preferences API. 'False' also
-                while the server is not reachable.
-
-        """
-        supported = UserPreferences.is_supported()
-        self._supported = supported
-        return supported
 
     def get_recent_action_items(self) -> list[RecentActionItem]:
         """Return the loaded history, favorites first.
@@ -181,29 +170,11 @@ class RecentActionsHistory:
     def refresh(self) -> None:
         """Load the history from where it is stored.
 
-        A single request. Blocks, so it is meant to be called from a worker
+        A single request, which also tells whether the server can store
+        the history. Blocks, so it is meant to be called from a worker
         thread.
         """
         self._load()
-
-    def prewarm(self) -> None:
-        """Load the history in the background, once.
-
-        Meant to be called when the launcher finished starting up, so that
-        the history is already there the first time it is opened. Returns
-        immediately and never loads more than once - every later open
-        refreshes the history anyway.
-        """
-        with self._lock:
-            if self._prewarmed:
-                return
-            self._prewarmed = True
-
-        threading.Thread(
-            target=self._load,
-            name="recent-actions-prewarm",
-            daemon=True,
-        ).start()
 
     def remove_recent_action(self, record_id: str) -> None:
         """Drop an entry from the history and persist the change."""
@@ -272,7 +243,13 @@ class RecentActionsHistory:
     # Persistence
     # ------------------------------------------------------------------
 
-    def _load(self) -> None:
+    def _load(self) -> bool:
+        """Load the stored history.
+
+        Returns:
+            bool: Whether it could be loaded.
+
+        """
         with self._lock:
             revision = self._revision
             # What the server returns while a change is on its way to it
@@ -281,11 +258,12 @@ class RecentActionsHistory:
 
         items = self._fetch_items()
         if items is None:
-            return
+            return False
 
         with self._lock:
             if not is_storing and revision == self._revision:
                 self._items = items
+        return True
 
     def _fetch_items(self) -> Optional[list[RecentActionItem]]:
         """Get the stored history, ready to be shown.
@@ -295,18 +273,21 @@ class RecentActionsHistory:
                 could not be loaded.
 
         """
-        if not self.check_support():
+        try:
+            loaded = self._preferences.refresh()
+        except UserPreferencesNotSupported:
+            self._supported = False
             self.log.debug(
-                "Recent actions were not loaded, the server can't store"
-                " them or is not reachable."
+                "Recent actions were not loaded, the server can't store them."
             )
             return None
 
         # Storing replaces the whole history, so an empty history must not
         #   be used when it could not be received.
-        if not self._preferences.refresh():
+        if not loaded:
             self.log.warning("Failed to load recent actions.")
             return None
+        self._supported = True
 
         raw = self._preferences.get_item(PREFERENCES_ITEM, default=None)
         if not isinstance(raw, list):
@@ -458,11 +439,12 @@ class RecentActionsHistory:
                 )
 
     def _record(self, item: RecentActionItem) -> None:
-        # Nowhere to store it, so the lookups below can be skipped
-        if not self.check_support():
+        # Storing replaces the whole history, so the stored one is loaded
+        #   first, another machine may have changed it.
+        if not self._load():
             self.log.debug(
-                "Recent action '%s' was not recorded, the server can't"
-                " store it or is not reachable.",
+                "Recent action '%s' was not recorded, the history could"
+                " not be loaded.",
                 item.identifier,
             )
             return
@@ -471,22 +453,7 @@ class RecentActionsHistory:
         # history later needs no lookups at all.
         self._fill_context_labels(item)
 
-        # Storing replaces the whole history, so it has to be known first.
-        loaded_items = None
-        if not self.is_loaded():
-            loaded_items = self._fetch_items()
-            if loaded_items is None:
-                self.log.warning(
-                    "Recent action '%s' was not recorded, the history"
-                    " could not be loaded.",
-                    item.identifier,
-                )
-                return
-
         with self._lock:
-            if self._items is None:
-                self._items = loaded_items
-
             # Drop the same action executed on the same context, but carry
             # over whether it was favorited - re-running a favorite must
             # not quietly unpin it.

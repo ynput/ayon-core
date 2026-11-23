@@ -754,29 +754,15 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
     @abstractmethod
     def is_recent_actions_supported(self) -> Optional[bool]:
-        """Whether the server can store the history, as last checked.
-
-        Does not query anything, so it is safe to call in the main thread.
-
-        Returns:
-            Optional[bool]: 'None' until
-                :meth:`check_recent_actions_support` ran.
-
-        """
-        pass
-
-    @abstractmethod
-    def check_recent_actions_support(self) -> bool:
-        """Ask whether the server can store the history.
+        """Whether the server can store the history.
 
         The history is stored with the user preferences, which need the
-        preferences API of AYON server 1.17.3 or newer. The server is
-        asked until it told whether it has it. Blocks while it is asked,
-        so it is expected to be called from a worker thread.
+        preferences API of AYON server 1.17.3 or newer. Known once the
+        server answered :meth:`refresh_recent_action_items`. Does not
+        query anything, so it is safe to call in the main thread.
 
         Returns:
-            bool: Whether the server can store the history. 'False' also
-                while the server is not reachable.
+            Optional[bool]: 'None' until the server answered.
 
         """
         pass
@@ -786,9 +772,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Load the recent actions history.
 
         Single request, everything needed to display the history is stored
-        with it. Blocks, so it is expected to be called from a worker
-        thread, after which :meth:`get_recent_action_items` returns the
-        loaded items.
+        with it. It also tells whether the server can store the history.
+        Blocks, so it is expected to be called from a worker thread, after
+        which :meth:`get_recent_action_items` returns the loaded items.
 
         """
         pass
@@ -814,8 +800,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         This is the "Locate" affordance - it does **not** re-run the action.
         The selection is not changed here, the context is set as expected
-        selection (see :meth:`set_expected_selection`) and the widgets select
-        it themselves.
+        selection (see :meth:`get_expected_selection_data`) and the widgets
+        select it themselves.
 
         Args:
             record_id (str): The :attr:`RecentActionItem.record_id` of the
@@ -826,31 +812,13 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
     # Expected selection
     @abstractmethod
-    def set_expected_selection(
-        self,
-        project_name: Optional[str],
-        folder_id: Optional[str] = None,
-        task_name: Optional[str] = None,
-        workfile_id: Optional[str] = None,
-    ):
-        """Set which context the UI should navigate to.
-
-        Triggers 'expected_selection_changed' event. Each widget selects its
-        part once the previous part is selected and its own data is loaded,
-        and confirms it with the 'expected_*_selected' methods.
-
-        Args:
-            project_name (Optional[str]): Project name.
-            folder_id (Optional[str]): Folder id.
-            task_name (Optional[str]): Task name.
-            workfile_id (Optional[str]): Workfile id.
-
-        """
-        pass
-
-    @abstractmethod
     def get_expected_selection_data(self) -> dict[str, dict[str, Any]]:
         """Get the expected selection and how far it got.
+
+        The 'expected_selection_changed' event is triggered when it
+        changes. Each widget selects its part once the previous part is
+        selected and its own data is loaded, and confirms it with the
+        'expected_*_selected' methods.
 
         Returns:
             dict[str, dict[str, Any]]: Data of 'project', 'folder', 'task'
