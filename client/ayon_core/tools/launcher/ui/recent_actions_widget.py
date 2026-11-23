@@ -135,8 +135,9 @@ def _build_breadcrumb(action_item):
         segments.append(_Segment(project_text, None, None))
     if folder_name:
         segments.append(_Segment(
-            folder_name, action_item.folder_icon or _DEFAULT_FOLDER_ICON,
-            default_color,
+            folder_name,
+            action_item.folder_icon or _DEFAULT_FOLDER_ICON,
+            action_item.folder_color or default_color,
         ))
     if action_item.task_name:
         segments.append(_Segment(

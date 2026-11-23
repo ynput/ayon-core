@@ -494,6 +494,7 @@ class RecentActionsHistory:
                     folder_entity.get("folderType"),
                 )
                 item.folder_icon = folder_type.get("icon")
+                item.folder_color = folder_type.get("color")
 
         if not item.task_id:
             return

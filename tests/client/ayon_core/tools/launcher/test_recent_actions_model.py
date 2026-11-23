@@ -39,7 +39,9 @@ class FakeController:
         return {
             "name": project_name,
             "code": "PRJ",
-            "folderTypes": [{"name": "Asset", "icon": "category"}],
+            "folderTypes": [
+                {"name": "Asset", "icon": "category", "color": "#00ff00"}
+            ],
             "taskTypes": [
                 {"name": "Modeling", "icon": "language", "color": "#ff0000"}
             ],
@@ -288,6 +290,7 @@ def test_context_is_stored_with_names_and_type_icons(model, monkeypatch):
     assert item.project_code == "PRJ"
     assert item.folder_path == "/f1"
     assert item.folder_icon == "category"
+    assert item.folder_color == "#00ff00"
     assert item.task_name == "name_t1"
     assert item.task_icon == "language"
     assert item.task_color == "#ff0000"

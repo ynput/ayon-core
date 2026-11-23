@@ -118,6 +118,8 @@ class RecentActionItem:
         workfile_name (Optional[str]): Workfile filename at trigger time.
         folder_icon (Optional[str]): Material symbol of the folder type at
             trigger time.
+        folder_color (Optional[str]): Color of the folder type at trigger
+            time.
         task_icon (Optional[str]): Material symbol of the task type at
             trigger time.
         task_color (Optional[str]): Color of the task type at trigger time.
@@ -143,6 +145,7 @@ class RecentActionItem:
     task_name: Optional[str] = None
     workfile_name: Optional[str] = None
     folder_icon: Optional[str] = None
+    folder_color: Optional[str] = None
     task_icon: Optional[str] = None
     task_color: Optional[str] = None
     icon: Optional[dict[str, str]] = None
