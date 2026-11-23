@@ -66,15 +66,6 @@ class ExtractScanlineExr(pyblish.api.InstancePlugin):
                 raise PublishError("OIIO tool not found")
 
             self._convert_to_scanline(input_files, stagingdir, oiio_tool_args)
-            if any(
-                other is not repre and other.get("name") == "exr"
-                for other in representations
-            ):
-                self.log.warning(
-                    "Another representation is already named 'exr'; the"
-                    " converted representation may clash with it."
-                )
-
             if "toScanline" in tags:
                 tags.remove("toScanline")
 

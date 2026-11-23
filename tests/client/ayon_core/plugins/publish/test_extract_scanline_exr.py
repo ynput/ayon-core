@@ -132,7 +132,7 @@ def test_single_frame_success(tmp_path, monkeypatch):
     _run_plugin(monkeypatch, instance, _success_run(calls))
 
     assert _read(path) == b"scanline"
-    assert repre["name"] == "exr"
+    assert repre["name"] == "exr_tiled"
     assert repre["tags"] == []
     # The representation is updated in place, not duplicated
     assert instance.data["representations"] == [repre]
@@ -472,10 +472,10 @@ def test_stale_temp_file_does_not_block_retry(tmp_path, monkeypatch):
     assert _temp_files(tmp_path) == [stale.name]
 
 
-def test_existing_exr_representation_logs_warning(
+def test_existing_exr_representation_preserves_converted_name(
     tmp_path, monkeypatch, caplog
 ):
-    """Converting to the generic 'exr' name warns about a collision."""
+    """Conversion does not rename the tagged representation to 'exr'."""
     converted = tmp_path / "y.1001.exr"
     existing = tmp_path / "z.1001.exr"
     _write(converted)
@@ -495,7 +495,8 @@ def test_existing_exr_representation_logs_warning(
         _run_plugin(monkeypatch, instance, _success_run(calls))
 
     assert _read(converted) == b"scanline"
-    assert "already named 'exr'" in caplog.text
+    assert representations[1]["name"] == "converted"
+    assert "already named 'exr'" not in caplog.text
     _assert_no_temp_files(tmp_path)
 
 
