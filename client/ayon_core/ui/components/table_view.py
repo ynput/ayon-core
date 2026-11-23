@@ -5,7 +5,6 @@ A flat, paginated table built on QTreeView with AYON styling.
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from qtmaterialsymbols import get_icon
@@ -39,6 +38,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from ayon_core.lib import Logger
+
 from ..drawers._utils import enum_to_str
 from ..style_types import StyleData, get_ayon_style
 from ..variants import AYTableViewVariants
@@ -46,7 +47,7 @@ from .scroll_area import AYScrollBar
 from .style_mixin import StyleMixin
 from .table_model import PaginatedTableModel
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 
 class AYTableHeader(StyleMixin, QHeaderView):

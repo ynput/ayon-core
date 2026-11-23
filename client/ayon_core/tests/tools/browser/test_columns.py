@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from ayon_core.tools.browser.columns import (
     BrowserColumnContext,
@@ -36,6 +36,34 @@ def _context(
         group_by_key="none",
         include_folder_children=False,
     )
+
+
+def _sitesync_addon(
+    *,
+    enabled: bool = True,
+    availability: dict[str, tuple[int, int]] | None = None,
+) -> Mock:
+    addon = Mock()
+    addon.enabled = enabled
+    addon.DEFAULT_SITE = "studio"
+    addon.is_project_enabled.return_value = enabled
+    addon.get_active_site.return_value = "local"
+    addon.get_remote_site.return_value = "studio"
+    addon.get_provider_for_site.return_value = "local_drive"
+    addon.get_site_icons.return_value = {}
+    addon.get_version_availability.return_value = availability or {}
+    return addon
+
+
+def _sitesync_provider(
+    services: BrowserColumnServices,
+    sitesync_addon: Mock,
+) -> SiteSyncBrowserColumnProvider:
+    with patch(
+        "ayon_core.tools.browser.sitesync_columns.AddonsManager"
+    ) as addons_manager:
+        addons_manager.return_value.get.return_value = sitesync_addon
+        return SiteSyncBrowserColumnProvider(services)
 
 
 class _TestProvider(BrowserColumnProvider):
@@ -88,21 +116,17 @@ def test_provider_filter_requests_enrichment_when_column_is_hidden():
 
 
 def test_sitesync_provider_batches_version_data_from_preloaded_rows():
-    loader_controller = Mock()
-    loader_controller.is_sitesync_enabled.return_value = True
-    loader_controller.get_version_sync_availability.return_value = {
+    sitesync_addon = _sitesync_addon(availability={
         "version_a": (2, 1),
         "version_b": (1, 3),
-    }
+    })
+    loader_controller = Mock()
     loader_controller.get_versions_representation_count.return_value = {
         "version_a": 2,
         "version_b": 4,
     }
     services = BrowserColumnServices(loader_controller)
-    provider = SiteSyncBrowserColumnProvider(
-        loader_controller,
-        services,
-    )
+    provider = _sitesync_provider(services, sitesync_addon)
     rows = [
         {"id": "version_a"},
         {"id": "version_b"},
@@ -115,9 +139,11 @@ def test_sitesync_provider_batches_version_data_from_preloaded_rows():
         rows,
     )
 
-    loader_controller.get_version_sync_availability.assert_called_once_with(
+    sitesync_addon.get_version_availability.assert_called_once_with(
         "test",
         {"version_a", "version_b"},
+        "local",
+        "studio",
     )
     loader_controller.get_versions_representation_count.assert_called_once_with(
         "test",
@@ -132,21 +158,17 @@ def test_sitesync_provider_batches_version_data_from_preloaded_rows():
 
 
 def test_sitesync_filter_requests_deferred_status_values():
-    loader_controller = Mock()
-    loader_controller.is_sitesync_enabled.return_value = True
-    loader_controller.get_version_sync_availability.return_value = {
+    sitesync_addon = _sitesync_addon(availability={
         "version_a": (2, 0),
         "version_b": (1, 0),
-    }
+    })
+    loader_controller = Mock()
     loader_controller.get_versions_representation_count.return_value = {
         "version_a": 2,
         "version_b": 4,
     }
     services = BrowserColumnServices(loader_controller)
-    provider = SiteSyncBrowserColumnProvider(
-        loader_controller,
-        services,
-    )
+    provider = _sitesync_provider(services, sitesync_addon)
     manager = BrowserColumnManager(
         [provider],
     )
@@ -161,11 +183,9 @@ def test_sitesync_filter_requests_deferred_status_values():
 
 
 def test_sitesync_filter_keys_remain_owned_when_provider_is_disabled():
-    loader_controller = Mock()
-    loader_controller.is_sitesync_enabled.return_value = False
-    services = BrowserColumnServices(loader_controller)
+    services = BrowserColumnServices(Mock())
     manager = BrowserColumnManager(
-        [SiteSyncBrowserColumnProvider(loader_controller, services)],
+        [_sitesync_provider(services, _sitesync_addon(enabled=False))],
     )
 
     assert manager.get_columns(_context()) == []
@@ -174,3 +194,114 @@ def test_sitesync_filter_keys_remain_owned_when_provider_is_disabled():
         ACTIVE_FILTER_KEY,
         REMOTE_FILTER_KEY,
     }
+
+
+class _ColumnOnlyProvider(BrowserColumnProvider):
+    identifier = "column_only"
+    column_keys = frozenset({"other:value"})
+
+    def __init__(self) -> None:
+        self.enrich_calls = 0
+
+    def get_columns(self, context):
+        return [TableColumn("other:value", "Other Value")]
+
+    def enrich_rows(self, context, rows):
+        self.enrich_calls += 1
+
+
+def _status_rows() -> list[dict]:
+    return [
+        {"id": "v1", "status": "Keep"},
+        {"id": "v2", "status": "Drop"},
+        {"id": "v3", "status": None},
+    ]
+
+
+def test_filter_rows_skips_providers_without_active_filter():
+    provider = _TestProvider()
+    manager = BrowserColumnManager([provider])
+    rows = _status_rows()
+
+    # A visible column alone does not need the rows filtered.
+    context = _context(enabled={"test:value"})
+
+    assert manager.get_filtering_providers(context) == []
+    assert manager.filter_rows(context, rows) is rows
+    assert provider.enrich_calls == 0
+
+
+def test_filter_rows_applies_only_provider_filters():
+    provider = _TestProvider()
+    column_provider = _ColumnOnlyProvider()
+    manager = BrowserColumnManager([provider, column_provider])
+    enriched_contexts = []
+    original_enrich = provider.enrich_rows
+
+    def enrich_rows(context, rows):
+        enriched_contexts.append(context)
+        original_enrich(context, rows)
+
+    provider.enrich_rows = enrich_rows
+    context = _context(
+        enabled={"other:value"},
+        filters=(
+            BrowserFilter("test:status", ("Keep",)),
+            # Applied by the server, not by the providers.
+            BrowserFilter("status", ("Drop",)),
+        ),
+    )
+
+    assert manager.get_filtering_providers(context) == [provider]
+    rows = manager.filter_rows(context, _status_rows())
+
+    assert [row["id"] for row in rows] == ["v1"]
+    # Providers owning only a visible column are not called.
+    assert column_provider.enrich_calls == 0
+    assert enriched_contexts[0].enabled_column_keys == frozenset()
+
+
+def test_filter_rows_supports_exclude_and_empty_values():
+    manager = BrowserColumnManager([_TestProvider()])
+
+    excluded = manager.filter_rows(
+        _context(filters=(
+            BrowserFilter("test:status", ("Keep",), exclude=True),
+        )),
+        _status_rows(),
+    )
+    without_value = manager.filter_rows(
+        _context(filters=(BrowserFilter("test:status", ("noValue",)),)),
+        _status_rows(),
+    )
+
+    assert [row["id"] for row in excluded] == ["v2", "v3"]
+    assert [row["id"] for row in without_value] == ["v3"]
+
+
+def test_filter_rows_ignores_filters_not_offered():
+    provider = _TestProvider()
+    provider.get_filters = lambda context: []
+    manager = BrowserColumnManager([provider])
+    rows = _status_rows()
+
+    filtered = manager.filter_rows(
+        _context(filters=(BrowserFilter("test:status", ("Keep",)),)),
+        rows,
+    )
+
+    # Like the table, a filter the provider does not offer is ignored.
+    assert filtered == rows
+    assert provider.enrich_calls == 0
+
+
+def test_filter_query_keys_only_of_filtering_providers():
+    manager = BrowserColumnManager([_TestProvider()])
+
+    # The provider's column is visible, but its filter is not active.
+    assert manager.get_filter_query_keys(
+        _context(enabled={"test:value"})
+    ) == set()
+    assert manager.get_filter_query_keys(
+        _context(filters=(BrowserFilter("test:status", ("Keep",)),))
+    ) == {"status"}

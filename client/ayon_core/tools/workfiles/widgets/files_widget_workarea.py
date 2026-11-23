@@ -1,16 +1,22 @@
 import os
 
 import qtawesome
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui
 
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from ayon_core.ui.components import AYContainer, AYTreeView
+from ayon_core.ui.components import AYContainer, AYMenu, AYTreeView
 from ayon_core.ui.style_types import get_ayon_style
 
-from .utils import WorkfilesDelegate
+from .utils import (
+    USERNAME_ROLE,
+    NaturalSortProxyModel,
+    WorkfilesDelegate,
+    create_avatar_cache,
+)
+from .actions_widgets import add_actions_to_menu
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
@@ -50,10 +56,6 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         controller.register_event_callback(
             "selection.task.changed",
             self._on_task_changed
-        )
-        controller.register_event_callback(
-            "workfile_duplicate.finished",
-            self._on_duplicate_finished
         )
         controller.register_event_callback(
             "save_as.finished",
@@ -163,13 +165,6 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         if not self._published_mode:
             self._fill_items()
 
-    def _on_duplicate_finished(self, event):
-        if event["failed"]:
-            return
-
-        if not self._published_mode:
-            self._fill_items()
-
     def _on_save_as_finished(self, event):
         if event["failed"]:
             return
@@ -220,10 +215,11 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             if file_item.available:
                 flags |= QtCore.Qt.ItemIsEnabled
             item.setFlags(flags)
-            updated_by = file_item.updated_by
-            user_item = user_items_by_name.get(updated_by)
+            username = file_item.updated_by
+            user_label = username
+            user_item = user_items_by_name.get(username)
             if user_item is not None and user_item.full_name:
-                updated_by = user_item.full_name
+                user_label = user_item.full_name
 
             item.setData(
                 file_item.workfile_entity_id, WORKFILE_ENTITY_ID_ROLE
@@ -231,7 +227,8 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             item.setData(file_item.filepath, FILEPATH_ROLE)
             item.setData(file_item.rootless_path, ROOTLESS_PATH_ROLE)
             item.setData(file_item.file_modified, DATE_MODIFIED_ROLE)
-            item.setData(updated_by, AUTHOR_ROLE)
+            item.setData(user_label, AUTHOR_ROLE)
+            item.setData(username, USERNAME_ROLE)
 
             self._items_by_filename[filename] = item
 
@@ -292,7 +289,6 @@ class WorkAreaFilesWidget(AYContainer):
 
     selection_changed = QtCore.Signal()
     open_current_requested = QtCore.Signal()
-    duplicate_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
         super().__init__(
@@ -312,14 +308,14 @@ class WorkAreaFilesWidget(AYContainer):
         view.setSelectionMode(AYTreeView.SelectionMode.SingleSelection)
 
         model = WorkAreaFilesModel(controller)
-        proxy_model = QtCore.QSortFilterProxyModel()
+        proxy_model = NaturalSortProxyModel()
         proxy_model.setSourceModel(model)
-        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         proxy_model.setDynamicSortFilter(True)
 
         view.setModel(proxy_model)
 
         work_files_delegate = WorkfilesDelegate(
+            create_avatar_cache(view),
             parent=view,
             style_model=get_ayon_style().model
         )
@@ -411,28 +407,34 @@ class WorkAreaFilesWidget(AYContainer):
 
     def _on_context_menu(self, point):
         index = self._view.indexAt(point)
-        if not index.isValid():
+        # Context menu is related only to the work area if is not
+        #   triggered on a workfile
+        on_workfile = (
+            index.isValid()
+            and bool(index.flags() & QtCore.Qt.ItemIsEnabled)
+        )
+
+        selection = self._controller.get_workfile_action_selection(
+            False, with_workfile=on_workfile
+        )
+        action_items = self._controller.get_workfile_action_items(selection)
+        if not action_items:
             return
 
-        if not index.flags() & QtCore.Qt.ItemIsEnabled:
-            return
-
-        menu = QtWidgets.QMenu(self)
-
-        # Duplicate
-        action = QtWidgets.QAction("Duplicate", menu)
-        tip = "Duplicate selected file."
-        action.setToolTip(tip)
-        action.setStatusTip(tip)
-        action.triggered.connect(self._on_duplicate_pressed)
-        menu.addAction(action)
+        menu = AYMenu(self)
+        items_by_action = add_actions_to_menu(menu, action_items)
 
         # Show the context action menu
         global_point = self._view.mapToGlobal(point)
-        _ = menu.exec_(global_point)
-
-    def _on_duplicate_pressed(self):
-        self.duplicate_requested.emit()
+        action = menu.exec_(global_point)
+        action_item = items_by_action.get(action)
+        if action_item is not None:
+            self._controller.trigger_workfile_action(
+                action_item.identifier,
+                selection,
+                action_item.data,
+                {},
+            )
 
     def _on_expected_selection_change(self, event):
         workfile_info = event["workfile"]

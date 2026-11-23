@@ -34,12 +34,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin/:$PATH"
-RUN uv python install 3.11.9
+# CI uses actions/setup-python with '3.11', i.e. the latest 3.11 patch
+RUN uv python install 3.11
 
 FROM testsbase
+# Keep the venv outside '/core' so mounting the repository there does not
+#   hide it (or expose the host's venv).
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 RUN mkdir /core
-COPY ./pyproject.toml /core/pyproject.toml
+COPY ./pyproject.toml ./uv.lock /core/
 WORKDIR /core
 
-RUN uv sync
+# Same steps as CI ('manage.sh create-env' and 'manage.sh run-tests')
+RUN uv sync --all-extras
 RUN uv sync --extra test

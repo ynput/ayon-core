@@ -496,10 +496,15 @@ def _filter_dir_files_by_ext(
     if not os.path.exists(dirpath):
         return [], dotted_extensions
 
+    # Hidden files are skipped, e.g. macOS AppleDouble '._<name>' files
+    #   created on network shares without Apple metadata support
     filtered_paths = [
         os.path.join(dirpath, filename)
         for filename in os.listdir(dirpath)
-        if os.path.splitext(filename)[-1] in dotted_extensions
+        if (
+            not filename.startswith(".")
+            and os.path.splitext(filename)[-1] in dotted_extensions
+        )
     ]
     return filtered_paths, dotted_extensions
 

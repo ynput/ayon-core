@@ -1,9 +1,10 @@
-"""Visual regression tests for AYEntityThumbnail."""
+"""Visual regression and behavioral tests for AYEntityThumbnail."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from qtpy.QtGui import QColor, QImage
 from qtpy.QtWidgets import QWidget
 
 from widget_test import WidgetTest
@@ -242,3 +243,37 @@ class EntityThumbnailMultiImageTest(WidgetTest):
 
     def steps(self):
         return [self.swap_composite_images, self.disable_all]
+
+
+def test_fill_area_image_clipped_to_rounded_corners(qtbot, tmp_path) -> None:
+    """A ``fill_area`` image stays inside the variant's rounded corners.
+
+    The image covers the whole widget, so without clipping it to the
+    rounded background its square corners poke out of the entity card.
+    """
+    image_color = QColor("#ff0000")
+    image = QImage(64, 64, QImage.Format.Format_RGB32)
+    image.fill(image_color)
+    image_path = tmp_path / "red.png"
+    image.save(str(image_path))
+
+    width, height = 160, 90
+    thumbnail = AYEntityThumbnail(
+        src=image_path,
+        size=(width, height),
+        variant=AYEntityThumbnail.Variants.Entity_Card,
+        fill_area=True,
+    )
+    qtbot.addWidget(thumbnail)
+
+    rendered = thumbnail.grab().toImage()
+    assert rendered.pixelColor(width // 2, height // 2) == image_color
+    for x, y in (
+        (1, 1),
+        (width - 2, 1),
+        (1, height - 2),
+        (width - 2, height - 2),
+    ):
+        assert rendered.pixelColor(x, y) != image_color, (
+            f"Image is painted outside the rounded corner at ({x}, {y})"
+        )

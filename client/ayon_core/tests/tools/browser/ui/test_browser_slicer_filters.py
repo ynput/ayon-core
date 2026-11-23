@@ -14,6 +14,7 @@ if "qargparse" not in sys.modules:
 
 from qtpy import QtGui
 
+from ayon_core.tools.browser.abstract import LoadersGrouping
 from ayon_core.tools.browser.control import BrowserController
 from ayon_core.tools.browser.ui._browser_slicer import SlicerCategories
 from ayon_core.tools.browser.ui.browser_controller import (
@@ -336,6 +337,8 @@ def test_capture_view_extras_includes_my_tasks_filter():
             featured_version_order=["latest"],
             latest_per_folder=False,
             include_folder_children=False,
+            ungroup_empty_values=False,
+            loaders_grouping=LoadersGrouping.GROUPED_IF_MULTIPLE,
         ),
         _card_view=SimpleNamespace(card_width=200),
         _display_type=SimpleNamespace(display_type="table"),
@@ -344,14 +347,88 @@ def test_capture_view_extras_includes_my_tasks_filter():
     extra = BrowserTable._capture_view_extras(table)
 
     assert extra["myTasksFilter"] is True
+    assert extra["ungroupEmptyValues"] is False
+    assert extra["loadersGrouping"] == "grouped_if_multiple"
 
 
 def test_apply_view_extras_forwards_my_tasks_filter_to_controller():
     from ayon_core.tools.browser.ui._browser_table import BrowserTable
 
     controller = Mock()
-    table = SimpleNamespace(_controller=controller)
+    table = SimpleNamespace(
+        _controller=controller, _customize=Mock(), _model=Mock()
+    )
 
     BrowserTable._apply_view_extras(table, {"myTasksFilter": True})
 
     controller.set_my_tasks_filter.assert_called_once_with(True)
+
+
+def test_apply_view_extras_defaults_ungroup_empty_values():
+    """Views saved before the setting existed get the default."""
+    from ayon_core.tools.browser.ui._browser_table import BrowserTable
+
+    controller = Mock()
+    customize = Mock()
+    table = SimpleNamespace(
+        _controller=controller, _customize=customize, _model=Mock()
+    )
+
+    BrowserTable._apply_view_extras(table, {})
+    controller.set_ungroup_empty_values.assert_called_once_with(True)
+    customize.set_ungroup_empty_values.assert_called_once_with(True)
+
+    controller.reset_mock()
+    BrowserTable._apply_view_extras(table, {"ungroupEmptyValues": False})
+    controller.set_ungroup_empty_values.assert_called_once_with(False)
+
+
+@pytest.mark.parametrize(
+    ("extra", "expected"),
+    [
+        # Views saved before the setting existed get the default
+        ({}, LoadersGrouping.GROUPED_IF_MULTIPLE),
+        ({"loadersGrouping": "grouped"}, LoadersGrouping.GROUPED),
+        (
+            {"loadersGrouping": "grouped_if_multiple"},
+            LoadersGrouping.GROUPED_IF_MULTIPLE,
+        ),
+        ({"loadersGrouping": "unknown"}, LoadersGrouping.GROUPED_IF_MULTIPLE),
+        ({"loadersGrouping": None}, LoadersGrouping.GROUPED_IF_MULTIPLE),
+    ],
+)
+def test_apply_view_extras_loaders_grouping(extra, expected):
+    from ayon_core.tools.browser.ui._browser_table import BrowserTable
+
+    controller = Mock()
+    customize = Mock()
+    table = SimpleNamespace(
+        _controller=controller, _customize=customize, _model=Mock()
+    )
+
+    BrowserTable._apply_view_extras(table, extra)
+
+    controller.set_loaders_grouping.assert_called_once_with(expected)
+    customize.set_loaders_grouping.assert_called_once_with(expected)
+
+
+def test_loaders_grouping_is_passed_to_action_items(monkeypatch):
+    controller = BrowserWidgetController(BrowserController())
+    get_action_items = Mock(return_value=[])
+    monkeypatch.setattr(
+        controller._loader_controller, "get_action_items", get_action_items
+    )
+
+    assert controller.loaders_grouping is LoadersGrouping.GROUPED_IF_MULTIPLE
+    controller.set_loaders_grouping(LoadersGrouping.GROUPED)
+    assert controller.loaders_grouping is LoadersGrouping.GROUPED
+
+    controller.get_action_items(
+        "demo",
+        {"version1"},
+        "version",
+        loaders_grouping=controller.loaders_grouping,
+    )
+    get_action_items.assert_called_once_with(
+        "demo", {"version1"}, "version", LoadersGrouping.GROUPED
+    )

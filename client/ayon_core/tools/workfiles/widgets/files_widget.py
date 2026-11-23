@@ -1,7 +1,7 @@
 import os
 
 import qtpy
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets
 
 from ayon_core.ui.components import (
     AYContainer,
@@ -13,6 +13,7 @@ from ayon_core.ui.components import (
 from .save_as_dialog import SaveAsDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
+from .utils import save_changes_prompt
 
 
 class FilesWidget(AYContainer):
@@ -121,8 +122,6 @@ class FilesWidget(AYContainer):
 
         workarea_widget.open_current_requested.connect(
             self._on_current_open_requests)
-        workarea_widget.duplicate_requested.connect(
-            self._on_duplicate_request)
         workarea_btn_open.clicked.connect(self._on_workarea_open_clicked)
         workarea_btn_browse.clicked.connect(self._on_workarea_browse_clicked)
         workarea_btn_save.clicked.connect(self._on_workarea_save_clicked)
@@ -196,7 +195,7 @@ class FilesWidget(AYContainer):
         self._workarea_widget.set_text_filter(text_filter)
         self._published_widget.set_text_filter(text_filter)
 
-    def _exec_save_as_dialog(self, extension=None):
+    def _exec_save_as_dialog(self, extension=None, copied_from=None):
         """Show SaveAs dialog using currently selected context.
 
         Returns:
@@ -207,6 +206,7 @@ class FilesWidget(AYContainer):
             self._controller,
             self,
             extension=extension,
+            copied_from=copied_from,
         )
         dialog.update_context()
         dialog.exec_()
@@ -215,15 +215,15 @@ class FilesWidget(AYContainer):
     # -------------------------------------------------------------
     # Workarea workfiles
     # -------------------------------------------------------------
-    def _open_workfile(self, folder_id, task_name, filepath):
+    def _open_workfile(self, folder_id, task_id, filepath):
         if self._controller.has_unsaved_changes():
-            result = self._save_changes_prompt()
+            result = save_changes_prompt(self)
             if result is None:
                 return
 
             if result:
                 self._controller.save_current_workfile()
-        self._controller.open_workfile(folder_id, task_name, filepath)
+        self._controller.open_workfile(folder_id, task_id, filepath)
 
     def _on_workarea_open_clicked(self):
         path = self._workarea_widget.get_selected_path()
@@ -238,28 +238,6 @@ class FilesWidget(AYContainer):
         # - this uses selected item, but that does not have to be the one
         #   under mouse
         self._on_workarea_open_clicked()
-
-    def _on_duplicate_request(self):
-        filepath = self._workarea_widget.get_selected_path()
-        if filepath is None:
-            return
-
-        result = self._exec_save_as_dialog()
-        if result is None:
-            return
-        folder_id = self._selected_folder_id
-        task_id = self._selected_task_id
-        self._controller.duplicate_workfile(
-            folder_id,
-            task_id,
-            filepath,
-            result["rootless_workdir"],
-            result["workdir"],
-            result["filename"],
-            version=result["version"],
-            comment=result["comment"],
-            description=result["description"]
-        )
 
     def _on_workarea_browse_clicked(self):
         extnsions = self._controller.get_workfile_extensions()
@@ -353,6 +331,7 @@ class FilesWidget(AYContainer):
         extension = os.path.splitext(repre_info["filepath"])[1].lower()
         result = self._exec_save_as_dialog(
             extension=extension,
+            copied_from=repre_info["filepath"],
         )
         if result is None:
             return
@@ -435,34 +414,3 @@ class FilesWidget(AYContainer):
         self._is_save_enabled = enabled
         self._update_published_btns_state()
         self._update_workarea_btns_state()
-
-    def _save_changes_prompt(self):
-        """Ask user if wants to save changes to current file.
-
-        Returns:
-            Union[bool, None]: True if user wants to save changes, False if
-                user does not want to save changes, None if user cancels
-                operation.
-        """
-        messagebox = QtWidgets.QMessageBox(parent=self)
-        messagebox.setWindowFlags(
-            messagebox.windowFlags() | QtCore.Qt.FramelessWindowHint
-        )
-        messagebox.setIcon(QtWidgets.QMessageBox.Warning)
-        messagebox.setWindowTitle("Unsaved Changes!")
-        messagebox.setText(
-            "There are unsaved changes to the current file."
-            "\nDo you want to save the changes?"
-        )
-        messagebox.setStandardButtons(
-            QtWidgets.QMessageBox.Yes
-            | QtWidgets.QMessageBox.No
-            | QtWidgets.QMessageBox.Cancel
-        )
-
-        result = messagebox.exec_()
-        if result == QtWidgets.QMessageBox.Yes:
-            return True
-        if result == QtWidgets.QMessageBox.No:
-            return False
-        return None

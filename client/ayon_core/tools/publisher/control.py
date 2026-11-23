@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import tempfile
 import shutil
 import typing
@@ -20,7 +19,10 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
+    ThumbnailsModel,
 )
+from ayon_core.lib import Logger
 
 from .models import (
     PublishModel,
@@ -105,7 +107,10 @@ class PublisherController(
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._users_model = UsersModel(self)
+        # Websocket connection is created only when UI processes events
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
@@ -116,7 +121,7 @@ class PublisherController(
         """
 
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def get_window_subtitle(self) -> Optional[str]:
@@ -126,6 +131,15 @@ class PublisherController(
 
     def is_headless(self):
         return self._headless
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> Optional[bool]:
+        return self._ws_events_model.get_connection_state()
 
     def get_host(self):
         return self._host
@@ -259,6 +273,17 @@ class PublisherController(
             project_name, folder_id, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     def get_folder_entity(self, project_name, folder_id):
         return self._hierarchy_model.get_folder_entity(
             project_name, folder_id
@@ -371,13 +396,19 @@ class PublisherController(
             for product_entity in product_entities
         }
 
-    def reset(self):
-        """Reset everything related to creation and publishing."""
+    def reset(self, force: bool = False):
+        """Reset everything related to creation and publishing.
+
+        Args:
+            force (bool): Reset also data shared with other tools.
+
+        """
         self.stop_publish()
 
         self._emit_event("controller.reset.started")
 
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
+        self._thumbnails_model.reset()
         self._users_model.reset()
 
         # Publish part must be reset after plugins

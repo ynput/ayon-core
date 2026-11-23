@@ -110,9 +110,12 @@ class PreCreateWidget(QtWidgets.QWidget):
         self._no_creator_label.setVisible(not creator_selected)
 
     def _pre_create_attr_changed(self, event):
-        identifier = event["identifiers"]
-        self._attrs_cache.pop(identifier, None)
-        if self._current_identifier != identifier:
+        identifiers = event["identifiers"]
+        for identifier in identifiers:
+            self._attrs_cache.pop(identifier, None)
+
+        identifier = self._current_identifier
+        if identifier not in identifiers:
             return
 
         attr_defs = self._get_pre_create_attr_defs(identifier)
@@ -208,6 +211,7 @@ class AttributesWidget(QtWidgets.QWidget):
 
             if label:
                 label_widget = QtWidgets.QLabel(label, self)
+                label_widget.setVisible(attr_def.visible)
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)

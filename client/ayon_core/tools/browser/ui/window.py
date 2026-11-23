@@ -14,6 +14,7 @@ from ayon_core.tools.utils import (
     ErrorMessageBox,
     MessageOverlayObject,
     get_qt_icon,
+    ConnectionOverlay,
 )
 from ayon_core.tools.utils.lib import center_window
 
@@ -127,8 +128,17 @@ class BrowserWindow(AYContainer):
             "loader.action.finished",
             self._on_loader_action_finished,
         )
+        controller.register_event_callback(
+            "ayon.connection.opened",
+            self._on_server_connection_opened,
+        )
+
+        connection_overlay = ConnectionOverlay(controller, self)
 
         self._overlay_object = overlay_object
+        self._connection_overlay = connection_overlay
+        # Refresh was postponed because server was not available
+        self._refresh_on_connection = False
 
         self._controller = controller
         self._first_show = True
@@ -172,7 +182,21 @@ class BrowserWindow(AYContainer):
         self._show_timer.stop()
 
         if self._reset_on_show:
+            # Postpone refresh until server is available
+            if not self._controller.check_server_available():
+                self._refresh_on_connection = True
+                return
             self.refresh()
+        QtCore.QTimer.singleShot(
+            0,
+            self.browser_widget.select_current_context_if_empty,
+        )
+
+    def _on_server_connection_opened(self):
+        if not self._refresh_on_connection:
+            return
+        self._refresh_on_connection = False
+        self.refresh()
         QtCore.QTimer.singleShot(
             0,
             self.browser_widget.select_current_context_if_empty,

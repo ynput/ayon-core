@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import logging
 import typing
 from typing import Any
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem
+from ayon_core.lib import NestedCacheItem, Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import AbstractHost
@@ -15,9 +14,16 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     UsersModel,
+    WSEventsModel,
+    ThumbnailsModel,
 )
 
-from .abstract import AbstractBrowserController, ActionItem
+from .abstract import (
+    AbstractBrowserController,
+    ActionItem,
+    LoadersGrouping,
+    ProductGroupsInfo,
+)
 from .models import ProductsModel, LoaderActionsModel
 
 if typing.TYPE_CHECKING:
@@ -46,15 +52,17 @@ class BrowserController(AbstractBrowserController):
 
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._thumbnails_model = ThumbnailsModel()
         self._products_model = ProductsModel()
         self._loader_actions_model = LoaderActionsModel(self)
         self._users_model = UsersModel(self)
         self._settings_model = SettingsModel()
+        self._ws_events_model = WSEventsModel(self)
 
     @property
     def log(self):
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     # ---------------------------------
@@ -64,6 +72,15 @@ class BrowserController(AbstractBrowserController):
         if self._host is None:
             return None
         return self._host.name
+
+    def process_server_events(self) -> None:
+        self._ws_events_model.process_events()
+
+    def check_server_available(self) -> bool:
+        return self._ws_events_model.check_server_available()
+
+    def get_server_connection_state(self) -> bool | None:
+        return self._ws_events_model.get_connection_state()
 
     # Events system
     def emit_event(
@@ -90,6 +107,7 @@ class BrowserController(AbstractBrowserController):
 
         self._products_model.reset()
         self._hierarchy_model.reset()
+        self._thumbnails_model.reset()
         self._loader_actions_model.reset()
         self._projects_model.reset()
         self._users_model.reset()
@@ -123,6 +141,17 @@ class BrowserController(AbstractBrowserController):
                 project_name, folder_id, sender
             ))
         return output
+
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+        use_server_fallback=True,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
 
     def get_task_type_items(self, project_name, sender=None):
         return self._projects_model.get_task_type_items(
@@ -162,14 +191,50 @@ class BrowserController(AbstractBrowserController):
             project_name, version_ids
         )
 
+    def get_product_groups_info(
+        self, project_name: str, product_ids: set[str]
+    ) -> ProductGroupsInfo:
+        return self._products_model.get_product_groups_info(
+            project_name, product_ids
+        )
+
+    def can_change_products_group(self, project_name: str) -> bool:
+        return self._products_model.can_change_products_group(project_name)
+
+    def change_products_group(
+        self, project_name: str, product_ids: set[str], group_name: str
+    ) -> None:
+        self._products_model.change_products_group(
+            project_name, product_ids, group_name
+        )
+        self._emit_event(
+            "products.group.changed",
+            {
+                "project_name": project_name,
+                "product_ids": product_ids,
+                "group_name": group_name,
+            },
+        )
+
     def get_action_items(
         self,
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        loaders_grouping: LoadersGrouping,
     ) -> list[ActionItem]:
         return self._loader_actions_model.get_action_items(
-            project_name, entity_ids, entity_type
+            project_name, entity_ids, entity_type, loaders_grouping
+        )
+
+    def warm_up_action_items(self, project_name: str) -> None:
+        self._loader_actions_model.warm_up(project_name)
+
+    def prefetch_version_action_contexts(
+        self, project_name: str, version_ids: set[str]
+    ) -> None:
+        self._loader_actions_model.prefetch_versions_context(
+            project_name, version_ids
         )
 
     def trigger_action_item(

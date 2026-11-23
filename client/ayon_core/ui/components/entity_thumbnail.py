@@ -14,6 +14,7 @@ from qtpy.QtCore import (
     QEasingCurve,
     QPointF,
     QRect,
+    QRectF,
     QSize,
     Qt,
     QVariantAnimation,
@@ -168,11 +169,16 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         self._anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self._anim.valueChanged.connect(self._on_fade_tick)
         self._anim.finished.connect(self._on_fade_done)
-        self._bg_color = QColor(
-            get_ayon_style()
-            .model.get_style("QPushButton", variant=self._variant_str)
-            .get("background-color", "#000000")
+        style_data = get_ayon_style().model.get_style(
+            "QPushButton", variant=self._variant_str
         )
+        self._bg_color = QColor(style_data.get("background-color", "#000000"))
+        # Corner radius the image is clipped to, matching the rounded
+        # background the style draws.  A transparent thumbnail has no
+        # background of its own, so its image keeps square corners.
+        self._clip_radius: float = 0.0
+        if not transparent and style_data.get("clip-icon-to-radius", False):
+            self._clip_radius = float(style_data.get("border-radius", 0))
 
         self.set_thumbnail(src)
         self.setFixedSize(*self._size)
@@ -506,7 +512,7 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         """Load and smoothly scale an image for the current widget size.
 
         With ``fill_area`` the image covers the widget and the overflow is
-        cropped by the clip rect in :meth:`paintEvent`; otherwise it is
+        cropped by the clip in :meth:`paintEvent`; otherwise it is
         fitted inside the widget.
         """
         raw = QPixmap(fpath)
@@ -649,7 +655,8 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         Draws the styled button base using the AYON style model, then
         overlays the incoming pixmap with the current fade opacity for
         smooth transition animations. The configured image inset prevents
-        the image from overlapping any border drawn around the widget.
+        the image from overlapping any border drawn around the widget, and
+        the image is clipped to the variant's rounded corners.
 
         Args:
             arg__1: The paint event containing the update region.
@@ -679,14 +686,17 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             y = (size.height() - self._incoming_pixmap.height() // dpr) // 2
             p.save()
             inset = self._image_inset
-            p.setClipRect(
-                QRect(
-                    inset,
-                    inset,
-                    size.width() - inset * 2,
-                    size.height() - inset * 2,
-                )
+            clip_rect = QRectF(option.rect).adjusted(
+                inset, inset, -inset, -inset
             )
+            radius = max(0.0, self._clip_radius - inset)
+            if radius:
+                clip_path = QPainterPath()
+                clip_path.addRoundedRect(clip_rect, radius, radius)
+                p.setRenderHint(QPainter.RenderHint.Antialiasing)
+                p.setClipPath(clip_path)
+            else:
+                p.setClipRect(clip_rect)
             p.setOpacity(self._opacity)
             if not self._transparent:
                 p.fillRect(option.rect, self._bg_color)

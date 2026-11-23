@@ -561,16 +561,6 @@ class LoaderActionPlugin(ABC):
 
     def __init__(self, context: "LoaderActionsContext") -> None:
         self._context = context
-        self.apply_settings(context.get_studio_settings())
-
-    def apply_settings(self, studio_settings: dict[str, Any]) -> None:
-        """Apply studio settings to the plugin.
-
-        Args:
-            studio_settings (dict[str, Any]): Studio settings.
-
-        """
-        pass
 
     @property
     def log(self) -> logging.Logger:
@@ -699,6 +689,14 @@ class LoaderActionsContext:
         if self._studio_settings is None:
             self._studio_settings = get_studio_settings()
         return copy.deepcopy(self._studio_settings)
+
+    def prepare_plugins(self) -> None:
+        """Discover and initialize plugins if not done yet.
+
+        Can be used to warm up the context before action items are needed.
+
+        """
+        self._get_plugins()
 
     def get_action_items(
         self, selection: LoaderActionSelection

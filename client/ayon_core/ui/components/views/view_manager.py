@@ -13,15 +13,16 @@ used by the tester / demos / unit tests.  Real consumer apps subclass
 
 from __future__ import annotations
 
-import logging
 import uuid
 from abc import abstractmethod
 
 from qtpy.QtCore import QObject, Signal  # type: ignore[attr-defined]
 
+from ayon_core.lib import Logger
+
 from .data_models import View, Scope
 
-log = logging.getLogger(__name__)
+log = Logger.get_logger(__name__)
 
 # Keep match with web: default views are persisted with this label.
 DEFAULT_VIEW_LABEL = "__base__"

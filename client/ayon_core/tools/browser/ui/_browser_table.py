@@ -33,6 +33,7 @@ from ayon_core.ui.style import get_ayon_style_data
 from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, get_ayon_username
+from ayon_core.tools.browser.abstract import LoadersGrouping
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
 )
@@ -41,7 +42,10 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     GroupByOption,
     get_attribute_icon,
 )
-from ayon_core.tools.browser.ui.browser_types import BrowserSlicerCategory
+from ayon_core.tools.browser.ui.browser_types import (
+    FOLDER_SLICER_CATEGORIES,
+    BrowserSlicerCategory,
+)
 from ayon_core.tools.browser.view_defaults import BROWSER_VIEW_DEFAULTS
 
 from ._browser_cell_delegates import (
@@ -253,6 +257,10 @@ class BrowserTable(AYContainer):
             initial_show_empty_groups=(
                 BROWSER_VIEW_DEFAULTS.show_empty_groups
             ),
+            initial_ungroup_empty_values=(
+                self._controller.ungroup_empty_values
+            ),
+            initial_display_type=self._display_type.display_type,
             initial_featured_version_order=(
                 BROWSER_VIEW_DEFAULTS.featured_version_order
             ),
@@ -262,6 +270,7 @@ class BrowserTable(AYContainer):
             initial_include_children=(
                 BROWSER_VIEW_DEFAULTS.include_children
             ),
+            initial_loaders_grouping=self._controller.loaders_grouping,
         )
         self._add_column_btn = AddColumnButton(self._table.header())
         self._add_column_btn.set_columns(self._model.columns)
@@ -293,6 +302,9 @@ class BrowserTable(AYContainer):
         self._customize.show_empty_groups_changed.connect(
             self._on_show_empty_groups_changed
         )
+        self._customize.ungroup_empty_values_changed.connect(
+            self._on_ungroup_empty_values_changed
+        )
         self._customize.card_size_changed.connect(
             self._card_view.set_card_width
         )
@@ -309,15 +321,19 @@ class BrowserTable(AYContainer):
             self._controller.include_folder_children,
             disabled=(
                 self._controller.current_category
-                != BrowserSlicerCategory.HIERARCHY.value
+                not in FOLDER_SLICER_CATEGORIES
             ),
         )
         self._customize.set_latest_per_folder(
             self._controller.latest_per_folder,
             disabled=self._controller.group_by_key == GROUP_BY_PRODUCT_KEY,
+            supported=self._controller.supports_latest_per_folder,
         )
         self._customize.latest_per_folder_changed.connect(
             self._on_latest_per_folder_changed
+        )
+        self._customize.loaders_grouping_changed.connect(
+            self._controller.set_loaders_grouping
         )
 
         self._view_manager = ServerViewManager(
@@ -371,6 +387,9 @@ class BrowserTable(AYContainer):
         self._customize.show_empty_groups_changed.connect(
             self._view_selector.notify_view_modified
         )
+        self._customize.ungroup_empty_values_changed.connect(
+            self._view_selector.notify_view_modified
+        )
         self._customize.card_size_committed.connect(
             self._view_selector.notify_view_modified
         )
@@ -381,6 +400,9 @@ class BrowserTable(AYContainer):
             self._view_selector.notify_view_modified
         )
         self._customize.latest_per_folder_changed.connect(
+            self._view_selector.notify_view_modified
+        )
+        self._customize.loaders_grouping_changed.connect(
             self._view_selector.notify_view_modified
         )
         self._controller.my_tasks_filter_changed.connect(
@@ -499,9 +521,9 @@ class BrowserTable(AYContainer):
             self._on_viewport_resize()
         elif obj is self._table.header():
             if event.type() == QtCore.QEvent.Type.Enter:
-                self._add_column_btn.show()
+                self._add_column_btn.set_revealed(True)
             elif event.type() == QtCore.QEvent.Type.Leave:
-                self._add_column_btn.hide()
+                self._add_column_btn.set_revealed(False)
         return False
 
     def _on_viewport_resize(self) -> None:
@@ -609,6 +631,31 @@ class BrowserTable(AYContainer):
     # Public methods
     # ------------------------------------------------------------------
 
+    def get_all_child_rows(
+        self, row_id: str
+    ) -> list[dict[str, Any]] | None:
+        """Return the rows under a row when all of them are loaded.
+
+        Only rows passing the table's filters are returned, which
+        includes the filters of column providers applied client-side.
+
+        Args:
+            row_id: Row ``id`` of the parent row.
+
+        Returns:
+            Row-data dicts of the shown children, or ``None`` when not
+            all of them are loaded.
+        """
+        children = self._model.get_children_rows(row_id)
+        if children is None:
+            return None
+        proxy = self._table_filter.filter_model
+        return [
+            row_data
+            for row_data, index in children
+            if proxy.mapFromSource(index).isValid()
+        ]
+
     def reset_data(self) -> None:
         """Reset the underlying model data."""
         self._model.set_fetch_enabled(self._controller.has_selection)
@@ -685,6 +732,7 @@ class BrowserTable(AYContainer):
                 criterion.key,
                 tuple(sorted(criterion.values)),
                 criterion.use_substring,
+                criterion.exclude,
             )
             for criterion in criteria
             if criterion.key not in local_keys
@@ -844,7 +892,7 @@ class BrowserTable(AYContainer):
         )
         self._customize.set_include_children(
             self._controller.include_folder_children,
-            disabled=category != BrowserSlicerCategory.HIERARCHY.value,
+            disabled=category not in FOLDER_SLICER_CATEGORIES,
         )
         self._view_selector.set_view_type(BROWSER_VIEW_TYPE)
         self._update_empty_state()
@@ -863,6 +911,13 @@ class BrowserTable(AYContainer):
 
     def _on_display_type_changed(self, display_type: str) -> None:
         log.debug("Display type changed: %s", display_type)
+        self._customize.set_display_type(display_type)
+        # The views query different fields and group versions without a
+        # value differently, so the loaded rows may need a refetch.
+        if self._controller.set_display_type(display_type):
+            self._model.set_fetch_enabled(self._controller.has_selection)
+            self._reset_expansion_state()
+            self._model.reset_data()
         if display_type == "grid":
             self._views_stack.setCurrentWidget(self._card_view)
         else:
@@ -886,7 +941,7 @@ class BrowserTable(AYContainer):
         self.display_type_changed.emit(active)
 
     def _on_include_children_changed(self, enabled: bool) -> None:
-        """Update descendant-folder querying for the hierarchy slicer."""
+        """Update descendant-folder querying for the slicer's folders."""
         self._controller.set_include_folder_children(enabled)
         self._model.reset_data()
         self._update_empty_state()
@@ -1001,6 +1056,7 @@ class BrowserTable(AYContainer):
         self._customize.set_latest_per_folder(
             self._controller.latest_per_folder,
             disabled=group_by_key == GROUP_BY_PRODUCT_KEY,
+            supported=self._controller.supports_latest_per_folder,
         )
         self._model.set_tree_mode(tree_mode)
         self._reset_expansion_state()
@@ -1010,6 +1066,11 @@ class BrowserTable(AYContainer):
         self._view_bindings._last_grouping.group_by = (
             None if group_by_key == "none" else group_by_key
         )
+
+    def _on_ungroup_empty_values_changed(self, enabled: bool) -> None:
+        if self._controller.set_ungroup_empty_values(enabled):
+            self._reset_expansion_state()
+            self._model.reset_data()
 
     def _on_show_empty_groups_changed(self, show_empty: bool) -> None:
         self._controller.set_hide_empty_groups(not show_empty)
@@ -1035,6 +1096,12 @@ class BrowserTable(AYContainer):
             ``gridHeight`` (card width),
             ``featuredVersionOrder`` (hero/latest version order),
             ``displayType`` (``"table"`` or ``"grid"``),
+            ``ungroupEmptyValues`` (whether versions without a value
+            for the grouped field are listed below the groups, defaults
+            to ``True`` for views saved before it existed),
+            ``loadersGrouping`` (how the actions menu groups the
+            representations of a loader in a submenu, defaults to
+            "group if multiple" for views saved before it existed),
             ``myTasksFilter`` (whether the "My Tasks" slicer filter
             is active).
 
@@ -1081,6 +1148,19 @@ class BrowserTable(AYContainer):
                     log.debug(
                         "Failed to set featuredVersionOrder: %r", order
                     )
+        ungroup_empty_values = bool(extra.get(
+            "ungroupEmptyValues",
+            BROWSER_VIEW_DEFAULTS.ungroup_empty_values,
+        ))
+        self._customize.set_ungroup_empty_values(ungroup_empty_values)
+        if self._controller.set_ungroup_empty_values(ungroup_empty_values):
+            self._model.reset_data()
+        try:
+            loaders_grouping = LoadersGrouping(extra["loadersGrouping"])
+        except (KeyError, ValueError):
+            loaders_grouping = BROWSER_VIEW_DEFAULTS.loaders_grouping
+        self._customize.set_loaders_grouping(loaders_grouping)
+        self._controller.set_loaders_grouping(loaders_grouping)
         if "displayType" in extra:
             display_type: Literal["table", "grid"] = extra["displayType"]
             self._display_type.set_display_type(display_type)
@@ -1091,6 +1171,7 @@ class BrowserTable(AYContainer):
                 disabled=(
                     self._controller.group_by_key == GROUP_BY_PRODUCT_KEY
                 ),
+                supported=self._controller.supports_latest_per_folder,
             )
             self._controller.set_latest_per_folder(latest_per_folder)
             self._model.reset_data()
@@ -1100,7 +1181,7 @@ class BrowserTable(AYContainer):
                 include_children,
                 disabled=(
                     self._controller.current_category
-                    != BrowserSlicerCategory.HIERARCHY.value
+                    not in FOLDER_SLICER_CATEGORIES
                 ),
             )
             self._controller.set_include_folder_children(include_children)
@@ -1118,8 +1199,9 @@ class BrowserTable(AYContainer):
         drops known keys from ``extra``).
 
         Captured loader-specific extras include card width, featured
-        version order, current display type (table or grid), and
-        whether the "My Tasks" slicer filter is active.
+        version order, current display type (table or grid), how the
+        actions menu groups loaders in submenus, and whether the
+        "My Tasks" slicer filter is active.
 
         Returns:
             A dict merged into :attr:`ViewSettings.extra`.
@@ -1132,6 +1214,8 @@ class BrowserTable(AYContainer):
             ),
             "latestPerFolder": self._controller.latest_per_folder,
             "includeChildren": self._controller.include_folder_children,
+            "ungroupEmptyValues": self._controller.ungroup_empty_values,
+            "loadersGrouping": self._controller.loaders_grouping.value,
             "myTasksFilter": self._controller.my_tasks_filter_enabled,
         }
         return extra
@@ -1965,12 +2049,21 @@ class BrowserTable(AYContainer):
                 icon="local_offer", entity="Task", show_has_value_filters=True,
             ),
         ]
-        # Older servers cannot filter versions by their representations,
-        # so the whole Representation scope is left out for them.
-        supports_representation_filter = (
-            self._controller.supports_representation_filter
-        )
-        if supports_representation_filter:
+        # Older servers cannot filter versions by their folders or
+        # representations, so those whole scopes are left out for them.
+        unsupported_scopes = set()
+        # TODO: Backwards compatibility for AYON server < 1.16.1.
+        #   Remove this once 1.16.1 is the minimum supported server.
+        if not self._controller.supports_folder_filter:
+            unsupported_scopes.add("folder")
+            filters = [
+                item for item in filters if item.entity != "Folder"
+            ]
+        # TODO: Backwards compatibility for AYON server < 1.16.7.
+        #   Remove this once 1.16.7 is the minimum supported server.
+        if not self._controller.supports_representation_filter:
+            unsupported_scopes.add("representation")
+        else:
             filters.extend([
                 FilterEntry(
                     "representationName", "Name",
@@ -1998,10 +2091,7 @@ class BrowserTable(AYContainer):
         for scope, definitions in (
             self._controller.attributes_by_scope.items()
         ):
-            if (
-                scope == "representation"
-                and not supports_representation_filter
-            ):
+            if scope in unsupported_scopes:
                 continue
             entity = scope.capitalize()
             for name, data in definitions.items():

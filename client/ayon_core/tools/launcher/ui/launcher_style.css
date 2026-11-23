@@ -32,30 +32,11 @@ QSplitter::handle:horizontal, QSplitter::handle:vertical, QSplitter::handle:hori
 /* Messages overlay */
 OverlayMessageWidget {
     border-radius: 0.2em;
-    background: #458056;
-}
-
-OverlayMessageWidget:hover {
-    background: #55a066;
-}
-
-OverlayMessageWidget[type="error"] {
-    background: #AD2E2E;
-}
-
-OverlayMessageWidget[type="error"]:hover {
-    background: #C93636;
-}
-
-OverlayMessageWidget[type="info"] {
-    background: rgb(63, 98, 121);
-}
-
-OverlayMessageWidget[type="info"]:hover {
-    background: rgb(81, 146, 181);
+    background: #121212;
 }
 
 OverlayMessageWidget QWidget {
+    color: #F4F5F5;
     background: transparent;
 }
 

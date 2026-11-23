@@ -248,6 +248,9 @@ class InSceneColumnProvider(BrowserColumnProvider):
         # Query version and product ids from server
         loaded = None
         if repre_ids:
+            # TODO: Backwards compatibility for AYON server < 1.16.7.
+            #   Remove this once 1.16.7 is the minimum supported server.
+            #   Always resolve via the representation filter.
             if server_supports_representation_filter():
                 loaded = self._resolve_via_representation_filter(
                     project_name, repre_ids

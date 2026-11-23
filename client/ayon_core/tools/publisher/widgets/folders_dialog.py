@@ -49,6 +49,17 @@ class FoldersDialogController:
             project_name, sender
         )
 
+    def get_thumbnail_paths(
+        self,
+        project_name: str,
+        entity_type: str,
+        entity_ids: set[str],
+        use_server_fallback: bool = True,
+    ) -> dict[str, str | None]:
+        return self._controller.get_thumbnail_paths(
+            project_name, entity_type, entity_ids, use_server_fallback
+        )
+
     def set_selected_folder(self, folder_id: str) -> None:
         pass
 

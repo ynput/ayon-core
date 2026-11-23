@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ayon_core.tools.browser.abstract import LoadersGrouping
 from ayon_core.ui.components.views.data_models import (
     ColumnState,
     FilterDef,
@@ -23,11 +24,13 @@ class BrowserViewDefaults:
     group_by_key: str
     group_sort_desc: bool
     show_empty_groups: bool
+    ungroup_empty_values: bool
     card_width: int
     display_type: str
     featured_version_order: tuple[str, ...]
     latest_per_folder: bool
     include_children: bool
+    loaders_grouping: LoadersGrouping
 
     def create_settings(self, column_keys: list[str]) -> ViewSettings:
         """Create independent view settings for the available columns."""
@@ -69,6 +72,8 @@ class BrowserViewDefaults:
                 ),
                 "latestPerFolder": self.latest_per_folder,
                 "includeChildren": self.include_children,
+                "ungroupEmptyValues": self.ungroup_empty_values,
+                "loadersGrouping": self.loaders_grouping.value,
                 "myTasksFilter": False,
             },
         )
@@ -95,9 +100,11 @@ BROWSER_VIEW_DEFAULTS = BrowserViewDefaults(
     group_by_key="none",
     group_sort_desc=False,
     show_empty_groups=False,
+    ungroup_empty_values=True,
     card_width=200,
     display_type="table",
     featured_version_order=("latestDone", "latest", "hero"),
     latest_per_folder=False,
     include_children=False,
+    loaders_grouping=LoadersGrouping.GROUPED_IF_MULTIPLE,
 )

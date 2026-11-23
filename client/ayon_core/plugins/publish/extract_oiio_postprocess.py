@@ -37,8 +37,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
     supported_exts = {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}
 
     # Configurable by Settings
-    profiles = None
-    options = None
+    profiles = []
 
     def process(self, instance):
         if instance.data.get("farm"):

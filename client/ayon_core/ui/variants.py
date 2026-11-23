@@ -10,6 +10,7 @@ class QPushButtonVariants(Enum):
     Nav = "nav"
     Nav_Small = "nav-small"
     Nav_Small_Circle = "nav-small-circle"
+    Header_Action = "header-action"
     Danger = "danger"
     Tertiary = "tertiary"
     Text = "text"
@@ -102,6 +103,7 @@ class QMenuVariants(Enum):
     Default = "default"
     Surface = "surface"
     Danger = "danger"
+    Low = "low"
 
 
 class QLabelVariants(Enum):
@@ -157,6 +159,11 @@ class AYCardViewVariants(Enum):
     Default = "default"
     Low = "low"
     High = "high"
+
+
+class AYProgressBarVariants(Enum):
+    Default = "default"
+    Inline = "inline"
 
 
 # END OF VARIANTs DEFINITIONS -------------------------------------------------

@@ -9,7 +9,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 import tempfile
 
-import clique
 import pyblish.api
 
 from ayon_core.lib import (
@@ -19,7 +18,8 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.pipeline.publish.lib import (
-    fill_sequence_gaps_with_previous_version
+    fill_sequence_gaps_with_previous_version,
+    get_file_collections,
 )
 from ayon_core.lib.file_transaction import copyfile
 from ayon_core.lib.transcoding import (
@@ -38,6 +38,39 @@ from ayon_core.pipeline.publish.lib import (
     add_repre_files_for_cleanup,
     get_default_reviewable_layers,
 )
+
+
+def is_sequence_output(
+    repre_files: list[str] | str,
+    input_ext: str,
+    output_ext: str,
+    image_exts: set[str],
+) -> bool:
+    """Whether the output of the review is a frame sequence.
+
+    The output has to be a frame sequence when images are written and the input
+    was a sequence (files stored as a list) or a video (which is split into
+    image frames). A single image file, and any video output, stays a single
+    file.
+
+    Args:
+        repre_files (list[str] | str): `files` of the origin representation.
+        input_ext (str): Extension of the input, without the dot.
+        output_ext (str): Extension of the output, without the dot.
+        image_exts (set[str]): Supported image extensions.
+
+    Returns:
+        bool: True when the output has to be a frame sequence.
+    """
+    # Output extension is not image
+    if output_ext.lower() not in image_exts:
+        return False
+
+    # Input is sequence or video
+    return (
+        isinstance(repre_files, (list, tuple))
+        and input_ext.lower() not in image_exts
+    )
 
 
 class TempData:
@@ -485,9 +518,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 self.log.debug("Checking sequence to fill gaps in sequence..")
 
                 files = temp_data.origin_repre["files"]
-                collections = clique.assemble(
-                    files,
-                )[0]
+                collections, _ = get_file_collections(files)
                 if len(collections) != 1:
                     raise PublishError(
                         "Found multiple collections, expected one."
@@ -621,7 +652,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "outputDef": output_def,
                 "ffmpeg_cmd": subprcs_cmd
             })
-
             # Force to pop these key if are in new repre
             new_repre.pop("thumbnail", None)
             if "clean_name" in new_repre.get("tags", []):
@@ -706,7 +736,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         if input_is_sequence and repre["files"]:
             # Calculate first frame that should be used
-            cols, _ = clique.assemble(repre["files"])
+            cols, _ = get_file_collections(repre["files"])
             input_frames = list(sorted(cols[0].indexes))
             first_sequence_frame = input_frames[0]
             # WARNING: This is an issue as we don't know if first frame
@@ -1187,7 +1217,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         dst_staging_dir = new_repre["stagingDir"]
 
         if temp_data.input_is_sequence:
-            collections = clique.assemble(repre["files"])[0]
+            collections, _ = get_file_collections(repre["files"])
             full_input_path = os.path.join(
                 src_staging_dir,
                 collections[0].format("{head}{padding}{tail}")
@@ -1239,9 +1269,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         # Output is image file sequence with frames
         output_ext_is_image = bool(output_ext in self.image_exts)
-        output_is_sequence = bool(
-            output_ext_is_image
-            and "sequence" in output_def["tags"]
+        output_is_sequence = is_sequence_output(
+            temp_data.origin_repre["files"],
+            temp_data.input_ext,
+            output_ext,
+            self.image_exts,
         )
         if output_is_sequence:
             new_repre_files = []
@@ -2071,14 +2103,22 @@ class OverscanCrop:
 
     Resolution: 2000px 1000px
 
-    | String        | Output        |
-    |---------------|---------------|
-    | "100px 120px" | 2100px 1120px |
-    | "-10% -200px" | 1800px 800px  |
+    | String          | Output        |
+    |-----------------|---------------|
+    | "+100px +120px" | 2100px 1120px |
+    | "-10% -200px"   | 1800px 800px  |
+    | "3072px 1728px" | 3072px 1728px |
+    | "3072 1728"     | 3072px 1728px |
+    | "+100 -200"     | 2100px 800px  |
+    | "50% 300"       | 1000px 300px  |
+
+    Only suffixes "px", "%", "%+" and "%-" are supported, where "%+" and "%-"
+    are valid only for relative values (with sign). Any other suffix,
+    e.g. "300p" or "10%+", or more than two values raise 'ValueError'.
     """
 
-    item_regex = re.compile(r"([\+\-])?([0-9]+)(.+)?")
-    relative_source_regex = re.compile(r"%([\+\-])")
+    # Optional sign, number and optional suffix "px", "%", "%+" or "%-"
+    item_regex = re.compile(r"([\+\-])?([0-9]+)(px|%[\+\-]?)?")
 
     def __init__(
         self, input_width, input_height, string_value, overscan_color=None
@@ -2167,9 +2207,8 @@ class OverscanCrop:
         if not string_value:
             return [PixValueRelative(0), PixValueRelative(0)]
 
-        # Replace "px" (and spaces before) with single space
-        string_value = re.sub(r"([ ]+)?px", " ", string_value)
-        string_value = re.sub(r"([ ]+)%", "%", string_value)
+        # Remove spaces before "px" and "%" suffix
+        string_value = re.sub(r"[ ]+(px|%)", r"\g<1>", string_value)
         # Make sure +/- sign at the beginning of string is next to number
         string_value = re.sub(r"^([\+\-])[ ]+", r"\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
@@ -2188,35 +2227,42 @@ class OverscanCrop:
         error_msg = "Invalid string for rescaling \"{}\"".format(
             orig_string_value
         )
-        if 1 > len(string_parts) > 2:
+        if not 1 <= len(string_parts) <= 2:
             raise ValueError(error_msg)
 
         output = []
         for item in string_parts:
-            groups = self.item_regex.findall(item)
-            if not groups:
+            match = self.item_regex.fullmatch(item)
+            if not match:
                 raise ValueError(error_msg)
 
-            relative_sign, value, ending = groups[0]
+            relative_sign, value, ending = match.groups()
+            # Value without suffix is the same as value with "px"
+            if ending == "px":
+                ending = None
             if not relative_sign:
+                # Value without suffix is explicit pixel size
                 if not ending:
                     output.append(PixValueExplicit(value))
-                else:
+                elif ending == "%":
                     output.append(PercentValueExplicit(value))
-            else:
-                source_sign_group = self.relative_source_regex.findall(ending)
-                if not ending:
-                    output.append(PixValueRelative(int(relative_sign + value)))
-
-                elif source_sign_group:
-                    source_sign = source_sign_group[0]
-                    output.append(PercentValueRelativeSource(
-                        float(relative_sign + value), source_sign
-                    ))
                 else:
-                    output.append(
-                        PercentValueRelative(float(relative_sign + value))
-                    )
+                    # Suffix "%+" and "%-" is valid only for relative value
+                    raise ValueError(error_msg)
+
+            elif not ending:
+                output.append(PixValueRelative(int(relative_sign + value)))
+
+            elif ending == "%":
+                output.append(
+                    PercentValueRelative(float(relative_sign + value))
+                )
+
+            else:
+                source_sign = ending[-1]
+                output.append(PercentValueRelativeSource(
+                    float(relative_sign + value), source_sign
+                ))
 
         if len(output) == 1:
             width = output.pop(0)

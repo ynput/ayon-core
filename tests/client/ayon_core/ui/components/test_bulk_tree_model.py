@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
+from qtpy.QtCore import Qt
+
 from ayon_core.ui.components.tree_model import BulkTreeModel, TreeNode
 
 
@@ -183,3 +185,19 @@ def test_get_index_by_id_finds_nested_nodes(qtbot) -> None:
     assert model.get_index_by_id("a1").isValid()
     assert model.get_index_by_id("a1x").isValid()
     assert not model.get_index_by_id("does-not-exist").isValid()
+
+
+def test_unselectable_nodes_are_not_selectable(qtbot) -> None:
+    model = _started_model(
+        lambda: {
+            None: [
+                TreeNode("group", "Group", selectable=False),
+                TreeNode("item", "Item"),
+            ],
+        },
+        no_async=True,
+    )
+
+    selectable = Qt.ItemFlag.ItemIsSelectable
+    assert not model.flags(model.get_index_by_id("group")) & selectable
+    assert model.flags(model.get_index_by_id("item")) & selectable
