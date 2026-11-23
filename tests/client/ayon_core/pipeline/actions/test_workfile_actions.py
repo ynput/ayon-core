@@ -183,7 +183,7 @@ class _TaskInUseAction(WorkfileSimpleActionPlugin):
 
     def execute_simple_action(self, selection, form_values):
         result = self.ask_to_confirm_task_in_use(
-            selection.get_task_entity(), form_values, "Open anyway"
+            selection.get_task_entity(), form_values
         )
         if result is not None:
             return result
@@ -354,7 +354,7 @@ def test_ask_to_confirm_task_in_use(tmp_path, task_sessions):
     # Other user works on the task, the user is asked first
     result = _execute(TASK_IN_USE_SETTINGS, {})
     assert result.show_task_in_use_form == WorkfileActionTaskInUseFormInputs(
-        task_id="task-1", confirm_label="Open anyway"
+        task_id="task-1"
     )
     assert result.message is None
     task_sessions.assert_called_once_with("test_project", "task-1")
@@ -518,7 +518,7 @@ def test_set_context_task_in_use(tmp_path, task_sessions):
     # User is asked before the context is changed
     result = context.execute_action(identifier, selection, None, {})
     assert result.show_task_in_use_form == WorkfileActionTaskInUseFormInputs(
-        task_id="task-1", confirm_label="Set context anyway"
+        task_id="task-1"
     )
     host.set_current_context.assert_not_called()
 
@@ -572,9 +572,7 @@ def test_increment_and_open_task_in_use(tmp_path, task_sessions):
     ) as copy_mock:
         result = context.execute_action(identifier, selection, None, {})
         assert result.show_task_in_use_form == (
-            WorkfileActionTaskInUseFormInputs(
-                task_id="task-1", confirm_label="Open anyway"
-            )
+            WorkfileActionTaskInUseFormInputs(task_id="task-1")
         )
         assert result.show_save_changes_form is False
 
@@ -864,7 +862,7 @@ def test_result_json_conversion():
         ),
         show_save_changes_form=True,
         show_task_in_use_form=WorkfileActionTaskInUseFormInputs(
-            task_id="task-2", confirm_label="Open anyway"
+            task_id="task-2"
         ),
         redirect=WorkfileActionRedirect(
             folder_id="folder-1",

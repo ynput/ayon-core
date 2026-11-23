@@ -569,11 +569,9 @@ class WorkfileActionTaskInUseFormInputs:
 
     Attributes:
         task_id (str): Task the action is about to work on.
-        confirm_label (str): Label of the button to continue.
 
     """
     task_id: str
-    confirm_label: str = "Continue anyway"
 
     def to_json_data(self) -> dict[str, Any]:
         return asdict(self)
@@ -966,7 +964,6 @@ class WorkfileActionPlugin(ABC):
         self,
         task_entity: dict[str, Any],
         form_values: dict[str, Any],
-        confirm_label: str = "Continue anyway",
     ) -> WorkfileActionResult | None:
         """Make sure a user knows that other users work on a task.
 
@@ -991,9 +988,7 @@ class WorkfileActionPlugin(ABC):
         Example:
             >>> def execute_action(self, selection, data, form_values):
             ...     result = self.ask_to_confirm_task_in_use(
-            ...         selection.get_task_entity(),
-            ...         form_values,
-            ...         confirm_label="Open anyway",
+            ...         selection.get_task_entity(), form_values
             ...     )
             ...     if result is not None:
             ...         return result
@@ -1004,7 +999,6 @@ class WorkfileActionPlugin(ABC):
                 work on.
             form_values (dict[str, Any]): Form values passed to
                 'execute_action'.
-            confirm_label (str): Label of the button to continue.
 
         Returns:
             WorkfileActionResult | None: Result to return from
@@ -1037,8 +1031,7 @@ class WorkfileActionPlugin(ABC):
             return None
         return WorkfileActionResult(
             show_task_in_use_form=WorkfileActionTaskInUseFormInputs(
-                task_id=task_entity["id"],
-                confirm_label=confirm_label,
+                task_id=task_entity["id"]
             )
         )
 

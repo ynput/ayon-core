@@ -41,7 +41,7 @@ def _click_button(dialog, label):
 @pytest.fixture
 def clicked_button(qtbot, monkeypatch):
     """Label of button that is clicked when the dialog is executed."""
-    label = ["Open anyway"]
+    label = ["Continue anyway"]
     monkeypatch.setattr(
         QtWidgets.QDialog,
         "exec_",
@@ -53,7 +53,7 @@ def clicked_button(qtbot, monkeypatch):
 @pytest.mark.parametrize(
     "button, expected",
     [
-        ("Open anyway", True),
+        ("Continue anyway", True),
         ("Cancel", False),
     ]
 )
@@ -148,7 +148,7 @@ def test_confirm_task_in_use_without_increment(
     controller.confirm_task_usage_items.assert_not_called()
     controller.trigger_workfile_action.assert_not_called()
 
-    clicked_button[0] = "Open anyway"
+    clicked_button[0] = "Continue anyway"
     assert confirm_task_in_use(
         controller, "task-1", None, workfile=workfile
     ) is True

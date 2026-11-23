@@ -478,10 +478,7 @@ class WorkfilesToolWindow(AYContainer):
         elif result.show_task_in_use_form is not None:
             task_in_use_form = result.show_task_in_use_form
             if confirm_task_in_use(
-                self._controller,
-                task_in_use_form.task_id,
-                self,
-                confirm_label=task_in_use_form.confirm_label,
+                self._controller, task_in_use_form.task_id, self
             ):
                 form_values = {TASK_IN_USE_FORM_KEY: True}
         else:

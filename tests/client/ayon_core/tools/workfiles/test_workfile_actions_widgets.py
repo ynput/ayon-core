@@ -362,7 +362,7 @@ def test_window_asks_if_task_in_use():
         "data": None,
         "result": WorkfileActionResult(
             show_task_in_use_form=WorkfileActionTaskInUseFormInputs(
-                task_id="task-2", confirm_label="Open anyway"
+                task_id="task-2"
             ),
         ),
     }
@@ -373,9 +373,7 @@ def test_window_asks_if_task_in_use():
         window_module, "confirm_task_in_use", return_value=True
     ) as prompt_mock:
         WorkfilesToolWindow._on_workfile_action_finished(window, event)
-    prompt_mock.assert_called_once_with(
-        window._controller, "task-2", window, confirm_label="Open anyway"
-    )
+    prompt_mock.assert_called_once_with(window._controller, "task-2", window)
     window._controller.trigger_workfile_action.assert_called_once_with(
         "test.open", selection, None, {TASK_IN_USE_FORM_KEY: True}
     )

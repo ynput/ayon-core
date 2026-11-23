@@ -284,7 +284,7 @@ class FilesWidget(AYContainer):
         if result is None:
             return
         if not confirm_task_in_use(
-            self._controller, result["task_id"], self, "Save anyway"
+            self._controller, result["task_id"], self
         ):
             return
         self._controller.save_as_workfile(

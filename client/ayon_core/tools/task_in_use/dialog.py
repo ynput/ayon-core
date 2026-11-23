@@ -180,7 +180,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
         parent (QtWidgets.QWidget | None): Parent widget.
         notice_only (bool): Only inform the user, without the option to
             cancel. Used when the task is already in use by the user.
-        confirm_label (str): Label of the button to continue.
         increment_and_open (bool): Offer to open a new version of the
             workfile, if the user is about to open the workfile other user
             has opened. Use 'is_increment_and_open_requested' to find out
@@ -192,7 +191,6 @@ class TaskInUseDialog(QtWidgets.QDialog):
         items: list[TaskUsageItem],
         parent: QtWidgets.QWidget | None = None,
         notice_only: bool = False,
-        confirm_label: str = "Open anyway",
         increment_and_open: bool = False,
     ):
         super().__init__(parent)
@@ -233,7 +231,7 @@ class TaskInUseDialog(QtWidgets.QDialog):
         #   is always on the left side, the button that closes the dialog
         #   without any action is always the last one on the right side
         confirm_btn = AYButton(
-            confirm_label, variant=AYButton.Variants.Danger,
+            "Continue anyway", variant=AYButton.Variants.Danger,
             parent=btns_widget,
         )
         increment_btn = AYButton(

@@ -64,7 +64,6 @@ def confirm_task_in_use(
     controller: AbstractWorkfilesFrontend,
     task_id: str,
     parent: QtWidgets.QWidget,
-    confirm_label: str = "Open anyway",
     workfile: str | None = None,
 ) -> bool:
     """Ask user before working on a task that is in use by other users.
@@ -81,7 +80,6 @@ def confirm_task_in_use(
             Workfiles tool.
         task_id (str): Task id.
         parent (QtWidgets.QWidget): Parent widget of the dialog.
-        confirm_label (str): Label of the button to continue.
         workfile (str | None): Workfile that is about to be opened.
 
     Returns:
@@ -115,7 +113,6 @@ def confirm_task_in_use(
     dialog = TaskInUseDialog(
         items,
         parent=parent,
-        confirm_label=confirm_label,
         increment_and_open=increment_selection is not None,
     )
     confirmed = dialog.exec_() == QtWidgets.QDialog.Accepted

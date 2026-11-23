@@ -59,9 +59,7 @@ class SetContextAction(WorkfileSimpleActionPlugin):
                 success=False,
             )
 
-        result = self.ask_to_confirm_task_in_use(
-            task_entity, form_values, confirm_label="Set context anyway"
-        )
+        result = self.ask_to_confirm_task_in_use(task_entity, form_values)
         if result is not None:
             return result
 

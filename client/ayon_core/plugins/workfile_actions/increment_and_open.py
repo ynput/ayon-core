@@ -69,9 +69,7 @@ class IncrementAndOpenAction(WorkfileSimpleActionPlugin):
         # Ask the same way as the tool does on open, if other users work
         #   on the task and about unsaved changes, before the copy is
         #   created. Cancel of the prompts does not trigger the action again
-        result = self.ask_to_confirm_task_in_use(
-            task_entity, form_values, confirm_label="Open anyway"
-        )
+        result = self.ask_to_confirm_task_in_use(task_entity, form_values)
         if result is not None:
             return result
 
