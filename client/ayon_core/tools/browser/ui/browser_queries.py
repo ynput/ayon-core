@@ -462,7 +462,7 @@ COLUMN_TO_SORT_BY: dict[str, str] = {
 #   'productBaseType' is the only one of these it does not have.
 #: Maps table column keys to ``sortBy`` values that only newer servers
 #: accept (the server rejects unknown values), matching the frontend's
-#: mapping. They are used only when the server lists them, see
+#: mapping. They are used only when the server accepts them, see
 #: :func:`get_sort_by`.
 OPTIONAL_COLUMN_TO_SORT_BY: dict[str, str] = {
     "author": "author",
@@ -495,8 +495,8 @@ def get_sort_by(
 
     Args:
         sort_key: Key of the sorted table column, or ``None``.
-        server_sort_options: ``sortBy`` values the server lists. Queried
-            from the server when not passed.
+        server_sort_options: ``sortBy`` values the server accepts. Based
+            on the server version when not passed.
 
     Returns:
         The ``sortBy`` value, or ``None`` when the column cannot be
@@ -544,13 +544,13 @@ def get_product_sort_by(
 
     Product rows (e.g. the Group By Product headers) are sorted by the
     same column as the versions, like the frontend's Products page does.
-    Only values the server lists are returned - it rejects unknown ones
+    Only values the server accepts are returned - it rejects unknown ones
     and some version sorts (e.g. ``author``) have no product equivalent.
 
     Args:
         version_sort_by: ``sortBy`` value used for the versions.
         server_sort_options: ``sortBy`` values the products resolver
-            lists. Queried from the server when not passed.
+            accepts. Based on the server version when not passed.
 
     Returns:
         The products ``sortBy`` value, or ``None`` when products cannot
