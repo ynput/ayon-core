@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from typing import Any
 
+import ayon_api
 import pytest
 
-from ayon_core.tools.browser.server_capabilities import (
-    parse_sort_by_options,
-)
+from ayon_core.tools.browser import server_capabilities
 from ayon_core.tools.browser.ui import browser_queries
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
@@ -237,13 +237,53 @@ def test_reset_pagination_invalidates_running_listing() -> None:
     ) == []
 
 
+@pytest.fixture
+def clear_sort_options_cache() -> Iterator[None]:
+    """Forget the sort options cached for another server version."""
+    cached = (
+        server_capabilities.get_server_versions_sort_options,
+        server_capabilities.get_server_products_sort_options,
+    )
+    for func in cached:
+        func.cache_clear()
+    yield
+    for func in cached:
+        func.cache_clear()
+
+
 @pytest.mark.unit
-def test_parse_sort_by_options() -> None:
-    assert parse_sort_by_options(
-        "Sort by one of author, version, folderName, path"
-    ) == frozenset({"author", "version", "folderName", "path"})
-    assert parse_sort_by_options("") == frozenset()
-    assert parse_sort_by_options("Something else") == frozenset()
+@pytest.mark.usefixtures("clear_sort_options_cache")
+@pytest.mark.parametrize(
+    "server_version, has_1_15_5_sorts",
+    [
+        ((1, 15, 0, "", ""), False),
+        ((1, 15, 4, "", ""), False),
+        ((1, 15, 5, "", ""), True),
+        ((1, 16, 8, "", ""), True),
+        ((1, 17, 8, "", "DEVELOP"), True),
+    ],
+)
+def test_sort_by_follows_server_version(
+    monkeypatch, server_version: tuple, has_1_15_5_sorts: bool
+) -> None:
+    monkeypatch.setattr(
+        ayon_api, "get_server_version_tuple", lambda: server_version
+    )
+    get_sort_by = browser_queries.get_sort_by
+    get_product_sort_by = browser_queries.get_product_sort_by
+
+    assert get_sort_by("product/version") == "productName"
+    assert get_sort_by("folderName") == "folderName"
+    assert get_sort_by("task") == "taskName"
+    assert get_sort_by("productBaseType") == (
+        "productBaseType" if has_1_15_5_sorts else None
+    )
+    assert get_product_sort_by("productName") == "name"
+    assert get_product_sort_by("status") == "status"
+    assert get_product_sort_by("author") is None
+    assert get_product_sort_by("version") == (
+        "version" if has_1_15_5_sorts else None
+    )
 
 
 @pytest.mark.unit
