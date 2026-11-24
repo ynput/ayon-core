@@ -29,10 +29,10 @@ import re
 
 import ayon_api
 
-#: Prefix of the ``sortBy`` argument description of the server's
-#: connection resolvers, followed by a comma-separated list of the
-#: accepted values.
-_SORT_BY_DESCRIPTION_PREFIX = "Sort by one of "
+#: Captures a list of values from the server's ``sortBy`` argument description.
+_SORT_BY_DESCRIPTION_RE = re.compile(
+    r"^Sort by one(?: or more)? of (.+?)(?:\.{1}|\s{1}$)"
+)
 
 #: Oldest AYON server version the Browser works with.
 BROWSER_MINIMUM_SERVER_VERSION = (1, 15, 0)
@@ -203,19 +203,15 @@ def parse_sort_by_options(description: str) -> frozenset[str]:
     """Parse the values listed in a ``sortBy`` argument description.
 
     Args:
-        description: Description such as ``"Sort by one of a, b, c"``.
+        description: Description such as ``"Sort by one (or more) of a, b, c"``.
 
     Returns:
         The listed values, empty when the description does not list any.
     """
-    if not description.startswith(_SORT_BY_DESCRIPTION_PREFIX):
-        return frozenset()
-    values = description[len(_SORT_BY_DESCRIPTION_PREFIX):]
-    return frozenset(
-        value
-        for value in re.split(r"\s*,\s*", values.strip())
-        if value
-    )
+    if match := _SORT_BY_DESCRIPTION_RE.match(description):
+        values = match.group(1)
+        return frozenset(attrib.strip() for attrib in values.split(","))
+    return frozenset()
 
 
 def get_server_versions_sort_options() -> frozenset[str]:
