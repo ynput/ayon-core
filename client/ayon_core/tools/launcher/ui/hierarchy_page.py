@@ -168,7 +168,7 @@ class HierarchyPage(QtWidgets.QWidget):
         self._controller.set_selected_project(None)
 
     def _on_refresh_clicked(self):
-        self._controller.refresh()
+        self._controller.refresh(force=True)
 
     def _on_filter_text_changed(self, text):
         self._folders_widget.set_name_filter(text)

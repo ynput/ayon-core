@@ -2,7 +2,7 @@ import pyblish.api
 from ayon_core.pipeline.publish import ValidateContentsOrder
 from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
-    get_publish_template_name,
+    get_publish_template_name_for_instance,
 )
 
 
@@ -20,15 +20,12 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
     label = "Validate publish dir"
 
     checked_template_names = ["source"]
-    # validate instances might have interim family, needs to be mapped to final
-    product_base_type_mapping = {
-        "renderLayer": "render",
-        "renderLocal": "render"
-    }
 
     def process(self, instance):
 
-        template_name = self._get_template_name_from_instance(instance)
+        template_name = get_publish_template_name_for_instance(
+            instance, logger=self.log
+        )
 
         if template_name not in self.checked_template_names:
             return
@@ -57,27 +54,3 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
                 key="not_in_dir",
                 formatting_data={"original_dirname": original_dirname}
             )
-
-    def _get_template_name_from_instance(self, instance):
-        """Find template which will be used during integration."""
-        project_name = instance.context.data["projectName"]
-        host_name = instance.context.data["hostName"]
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = instance.data["productType"]
-        mapped_product_base_type = (
-            self.product_base_type_mapping.get(product_base_type)
-            or product_base_type
-        )
-        anatomy_data = instance.data["anatomyData"]
-        task_info = anatomy_data.get("task") or {}
-
-        return get_publish_template_name(
-            project_name,
-            host_name,
-            product_base_type=mapped_product_base_type,
-            task_name=task_info.get("name"),
-            task_type=task_info.get("type"),
-            project_settings=instance.context.data["project_settings"],
-            logger=self.log
-        )

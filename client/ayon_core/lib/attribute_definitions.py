@@ -545,6 +545,9 @@ class TextDef(AbstractAttrDef):
         multiline(bool): Text has single or multiline support.
         regex(str, re.Pattern): Regex validation.
         placeholder(str): UI placeholder for attribute.
+        syntax(Optional[str]): Name of the syntax used to highlight
+            the text in UI, e.g. 'python'. Accepts pygments lexer names
+            and aliases. Only used when 'multiline' is enabled.
         default(str, None): Default value. Empty string used when not defined.
 
     """
@@ -560,6 +563,7 @@ class TextDef(AbstractAttrDef):
         multiline: Optional[bool] = None,
         regex: Optional[str] = None,
         placeholder: Optional[str] = None,
+        syntax: Optional[str] = None,
         default: Optional[str] = None,
         **kwargs
     ):
@@ -582,6 +586,7 @@ class TextDef(AbstractAttrDef):
         self.multiline: bool = multiline
         self.placeholder: Optional[str] = placeholder
         self.regex: Optional["Pattern"] = regex
+        self.syntax: Optional[str] = syntax
 
     def is_value_valid(self, value: Any) -> bool:
         if not isinstance(value, str):
@@ -603,12 +608,14 @@ class TextDef(AbstractAttrDef):
         data["regex"] = regex
         data["multiline"] = self.multiline
         data["placeholder"] = self.placeholder
+        data["syntax"] = self.syntax
         return data
 
     def _def_type_compare(self, other: "TextDef") -> bool:
         return (
             self.multiline == other.multiline
             and self.regex == other.regex
+            and self.syntax == other.syntax
         )
 
 

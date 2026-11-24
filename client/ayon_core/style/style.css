@@ -930,6 +930,10 @@ SearchItemDisplayWidget #ValueWidget {
     border-radius: 0px;
 }
 
+#CodePlainTextEdit {
+    font-family: "Noto Sans Mono";
+}
+
 #ProductView::item, #RepresentationView:item {
     padding: 5px 1px;
     border: 0px;

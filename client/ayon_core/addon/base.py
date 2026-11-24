@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 import sys
 import time
@@ -12,7 +12,6 @@ import logging
 import threading
 import warnings
 from uuid import uuid4
-from urllib.parse import urlencode
 from types import ModuleType
 import typing
 from typing import Any
@@ -25,9 +24,9 @@ from ayon_core.lib import (
     is_dev_mode_enabled,
     get_launcher_storage_dir,
     is_headless_mode_enabled,
-    get_settings_variant,
 )
 from ayon_core.settings import get_studio_settings
+from ayon_core.settings.lib import get_studio_addon_versions
 
 from .interfaces import (
     IPluginPaths,
@@ -104,14 +103,21 @@ class ProcessContext:
             print(f"Unknown keys in ProcessContext: {unknown_keys}")
 
 
-def _get_ayon_bundle_data() -> tuple[
-    dict[str, Any], dict[str, Any] | None
-]:
+def _get_bundle_names() -> tuple[str, str | None]:
     studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
     project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
     # If AYON launcher <1.4.0 was used
     if not studio_bundle_name:
         studio_bundle_name = project_bundle_name
+    return studio_bundle_name, project_bundle_name
+
+
+def _get_ayon_bundle_data(
+    studio_bundle_name: str,
+    project_bundle_name: str | None,
+) -> tuple[
+    dict[str, Any], dict[str, Any] | None
+]:
     bundles = ayon_api.get_bundles()["bundles"]
     studio_bundle = next(
         (
@@ -152,44 +158,63 @@ class BundleAddon:
 
 @dataclass(frozen=True)
 class BundleInformation:
-    studio_bundle: dict[str, Any]
-    project_bundle: dict[str, Any] | None
+    """Bundles and addons used by the process.
+
+    Bundle entities are requested from server on first access, only dev
+    mode and custom code need them.
+
+    """
+    studio_bundle_name: str
+    project_bundle_name: str | None
     addons: list[BundleAddon]
+    _bundles: dict[str, Any] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
+
+    @property
+    def studio_bundle(self) -> dict[str, Any]:
+        return self._get_bundles()[0]
+
+    @property
+    def project_bundle(self) -> dict[str, Any] | None:
+        return self._get_bundles()[1]
+
+    def _get_bundles(
+        self
+    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        if "studio" not in self._bundles:
+            studio_bundle, project_bundle = _get_ayon_bundle_data(
+                self.studio_bundle_name, self.project_bundle_name
+            )
+            self._bundles["project"] = project_bundle
+            self._bundles["studio"] = studio_bundle
+        return self._bundles["studio"], self._bundles["project"]
 
 
 def _load_bundle_information() -> BundleInformation:
     """Receive information about addons to use from server.
 
+    Addons and their versions are taken from studio settings response. It
+        lists the same addons as a 'summary' settings request, and studio
+        settings are needed to initialize the addons anyway.
+
     Todos:
-        Actually ask server for the information.
         Allow project name as optional argument to be able to query
             information about used addons for specific project.
-        Wrap versions into an object.
 
     Returns:
         BundleInformation: List of addon information to use.
 
     """
-    studio_bundle, project_bundle = _get_ayon_bundle_data()
-    key_values = {
-        "summary": "true",
-        "bundle_name": studio_bundle["name"],
-        "variant": get_settings_variant(),
-    }
-    if project_bundle:
-        key_values["project_bundle_name"] = project_bundle["name"]
-
-    query = urlencode(key_values)
-
-    response = ayon_api.get(f"settings?{query}")
+    studio_bundle_name, project_bundle_name = _get_bundle_names()
     addons = [
-        BundleAddon(name=addon["name"], version=addon["version"])
-        for addon in response.data["addons"]
+        BundleAddon(name=name, version=version)
+        for name, version in get_studio_addon_versions().items()
     ]
 
     _LoadCache.bundle_information = BundleInformation(
-        studio_bundle=studio_bundle,
-        project_bundle=project_bundle,
+        studio_bundle_name=studio_bundle_name,
+        project_bundle_name=project_bundle_name,
         addons=addons,
     )
     return _LoadCache.bundle_information
