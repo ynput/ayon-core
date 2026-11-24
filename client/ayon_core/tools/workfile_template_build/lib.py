@@ -6,6 +6,8 @@ Host contract:
   launch.
 - Call ``show_workfile_template_builder(builder, parent)`` from the host menu
   or operator; the helper owns the per-process window.
+- Use ``get_workfile_template_builder_window`` when the host operator must
+  perform the single show itself (e.g. to avoid double-show flicker).
 - Use ``open_template_ui`` for the destructive "open template" confirmation.
 - Keep the Qt objects in the main thread; the controller backend does not
   require Qt.

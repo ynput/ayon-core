@@ -47,9 +47,6 @@ ARROW_SIZE = QtCore.QSize(82, 48)
 # Vertical position of the arrow tip. Matches the middle of the "Add" button
 #   at the top of the placeholders panel next to the guide.
 ARROW_TIP_Y = 15
-# Vertical position of the arrow tail. Matches the middle of the text next
-#   to the arrow.
-ARROW_TAIL_Y = 39
 ARROW_HEAD_LENGTH = 9
 ARROW_SPACING = 8
 STEP_BADGE_SIZE = 22

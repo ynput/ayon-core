@@ -166,7 +166,7 @@ class WorkfileTemplateBuilderController(AbstractTemplateBuilderController):
             and self._host_project_name != project_name
             and self._builder.get_context_override() is not None
         ):
-            # The Preview as context belongs to the previous project.
+            # The test context belongs to the previous project.
             self._builder.set_context_override(None)
         self._host_project_name = project_name
 
