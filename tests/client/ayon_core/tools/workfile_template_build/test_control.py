@@ -26,8 +26,10 @@ from ayon_core.tools.workfile_template_build.abstract import (
     PlaceholderCompletionsError,
     PlaceholderOptionsError,
 )
-from ayon_core.tools.workfile_template_build.control import (
+from ayon_core.tools.workfile_template_build.build_results import (
     MAX_BUILD_HISTORY,
+)
+from ayon_core.tools.workfile_template_build.control import (
     WorkfileTemplateBuilderController,
 )
 

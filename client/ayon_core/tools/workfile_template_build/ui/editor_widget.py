@@ -5,19 +5,13 @@ from __future__ import annotations
 import copy
 from typing import Any, Optional
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderPreview,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsWidget
-from ayon_core.tools.attribute_defs.widgets import LabelAttrWidget
-from ayon_core.ui.components import (
-    AYButton,
-    AYContainer,
-    AYLabel,
-    AYTreeView,
-)
+from ayon_core.ui.components import AYButton, AYContainer, AYLabel
 from ayon_core.ui.components.scroll_area import AYScrollArea
 
 from ..abstract import (
@@ -27,32 +21,30 @@ from ..abstract import (
     PlaceholderOptionsError,
     PlaceholderPluginItem,
 )
-from .placeholders_widget import (
-    COLUMN_PADDING,
+from .options_polish import _polish_options
+from .placeholder_header import (
+    HEADER_SPACING,  # noqa: F401
+    PlaceholderHeaderWidget,
+)
+from .placeholder_icons import (
     CREATE_ICON,
     DELETE_ICON,
     RUN_ICON,
     SELECT_ICON,
     get_placeholder_icon,
 )
-from .preview_worker import PreviewWorker, create_preview_worker
-from .utils import (
-    INPUT_COLOR,
-    PANEL_COLOR,
-    get_palette_color,
-    get_warning_color,
+from .preview_widget import (
+    MAX_PREVIEW_HEIGHT,  # noqa: F401
+    PreviewWidget,
+    _HintingFilter,  # noqa: F401
 )
+from .preview_worker import PreviewWorker, create_preview_worker
+from .utils import get_warning_color
 
 # Delay between last change of an option and re-calculation of preview and
 #   completions. Both may query the AYON server so they are not calculated
 #   on every keystroke.
 DYNAMIC_UPDATE_DELAY_MS = 400
-
-# Maximum height of the preview entries view
-MAX_PREVIEW_HEIGHT = 200
-
-# Space between the icon, name and actions of the edited placeholder
-HEADER_SPACING = 10
 
 # Object names used by the window stylesheet
 OPTIONS_SCROLL_OBJECT_NAME = "PlaceholderOptionsScroll"
@@ -60,443 +52,6 @@ OPTIONS_CONTENT_OBJECT_NAME = "PlaceholderOptionsContent"
 
 CREATE_MODE = "create"
 EDIT_MODE = "edit"
-
-
-class _HintingFilter(QtCore.QObject):
-    """Keep the default font hinting of a widget.
-
-    The AYON style sets its font again whenever the widget is polished,
-    so the hinting is set again after each font change.
-    """
-
-    @classmethod
-    def install(cls, widget: QtWidgets.QWidget) -> None:
-        """Use the default hinting for the widget font.
-
-        Args:
-            widget (QtWidgets.QWidget): Widget to change.
-
-        """
-        hinting_filter = cls(widget)
-        widget.installEventFilter(hinting_filter)
-        cls._set_hinting(widget)
-
-    @staticmethod
-    def _set_hinting(widget: QtWidgets.QWidget) -> None:
-        hinting = QtGui.QFont.HintingPreference.PreferDefaultHinting
-        font = widget.font()
-        if font.hintingPreference() == hinting:
-            return
-        font = QtGui.QFont(font)
-        font.setHintingPreference(hinting)
-        widget.setFont(font)
-
-    def eventFilter(self, obj, event):
-        if event.type() in (
-            QtCore.QEvent.Type.Polish,
-            QtCore.QEvent.Type.FontChange,
-        ):
-            self._set_hinting(obj)
-        return False
-
-
-def _polish_options(attrs_widget: AttributeDefinitionsWidget) -> None:
-    """Fix how option widgets look in the tool.
-
-    - The AYON font disables hinting. Qt on Windows then renders bold rich
-        text, like the bold section labels of the options, with the regular
-        weight. Labels of the options use the default hinting instead.
-    - Multiline text inputs paint their text on a viewport which the
-        stylesheet of the window does not reach, so they would show no
-        background at all. The viewport gets the color of the other inputs.
-
-    Args:
-        attrs_widget (AttributeDefinitionsWidget): Widget with the options.
-
-    """
-    for label_widget in attrs_widget.findChildren(LabelAttrWidget):
-        for label in label_widget.findChildren(QtWidgets.QLabel):
-            _HintingFilter.install(label)
-
-    viewport_stylesheet = (
-        "QWidget {{ background: {}; }}"
-        " QWidget:disabled {{ background: {}; }}"
-    ).format(
-        get_palette_color(INPUT_COLOR), get_palette_color(PANEL_COLOR)
-    )
-    multiline_inputs = (
-        attrs_widget.findChildren(QtWidgets.QPlainTextEdit)
-        + attrs_widget.findChildren(QtWidgets.QTextEdit)
-    )
-    for input_widget in multiline_inputs:
-        input_widget.viewport().setStyleSheet(viewport_stylesheet)
-
-
-class PreviewWidget(AYContainer):
-    """Shows what a placeholder would do when the template is built."""
-
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
-        super().__init__(
-            parent,
-            layout=AYContainer.Layout.VBox,
-            variant=AYContainer.Variants.Low,
-            layout_margin=10,
-            layout_spacing=6,
-        )
-
-        title_widget = AYContainer(
-            self,
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            layout_spacing=8,
-        )
-        title_label = AYLabel("Preview", parent=title_widget, bold=True)
-        context_label = AYLabel(
-            parent=title_widget, dim=True, elide_mode=QtCore.Qt.ElideLeft
-        )
-        title_widget.add_widget(title_label)
-        title_widget.add_widget(context_label, stretch=1)
-
-        warning_label = AYLabel(
-            parent=self,
-            icon="warning",
-            icon_color=get_warning_color(),
-            icon_size=16,
-        )
-        hint_label = AYLabel(parent=self, dim=True, flexible=True)
-        hint_label.setWordWrap(True)
-
-        hint_widget = AYContainer(
-            self,
-            layout=AYContainer.Layout.HBox,
-            variant=AYContainer.Variants.Low,
-            layout_spacing=6,
-        )
-        hint_widget.add_widget(warning_label)
-        hint_widget.add_widget(hint_label, stretch=1)
-
-        items_model = QtGui.QStandardItemModel()
-        items_model.setColumnCount(2)
-
-        items_view = AYTreeView(self, variant=AYTreeView.Variants.Low)
-        items_view.setModel(items_model)
-        items_view.setHeaderHidden(True)
-        items_view.setRootIsDecorated(False)
-        items_view.setIndentation(0)
-        items_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection
-        )
-        items_view.setFocusPolicy(QtCore.Qt.StrongFocus)
-        items_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        header = items_view.header()
-        header.setStretchLastSection(True)
-
-        copy_shortcut = QtWidgets.QShortcut(
-            QtGui.QKeySequence.Copy, items_view
-        )
-        copy_shortcut.activated.connect(self._copy_selected)
-
-        items_view.customContextMenuRequested.connect(
-            self._on_items_context_menu
-        )
-
-        self.add_widget(title_widget)
-        self.add_widget(hint_widget)
-        self.add_widget(items_view, stretch=1)
-
-        self._title_label = title_label
-        self._context_label = context_label
-        self._warning_label = warning_label
-        self._hint_label = hint_label
-        self._hint_widget = hint_widget
-        self._items_model = items_model
-        self._items_view = items_view
-        self._copy_shortcut = copy_shortcut
-        self._preview: Optional[PlaceholderPreview] = None
-
-    def set_context_label(self, label: str) -> None:
-        """Show the context the preview is calculated for.
-
-        Args:
-            label (str): Label of the context.
-
-        """
-        text = "for {}".format(label) if label else ""
-        self._context_label.setText(text)
-        self._context_label.setToolTip(text)
-
-    def set_calculating(self) -> None:
-        """Show that the preview is being re-calculated."""
-        self._title_label.setText("Calculating preview...")
-        self._set_hint(None, False)
-
-    def set_preview(self, preview: Optional[PlaceholderPreview]) -> None:
-        """Show result of a preview calculation.
-
-        Args:
-            preview (Optional[PlaceholderPreview]): Preview to show. Widget
-                hides itself when None is passed.
-
-        """
-        if preview is None:
-            self._preview = None
-            self.setVisible(False)
-            return
-
-        self._preview = preview
-        self.setVisible(True)
-        self._title_label.setText(preview.title or "Preview")
-        self._set_hint(preview.hint, preview.is_error)
-
-        root_item = self._items_model.invisibleRootItem()
-        root_item.removeRows(0, root_item.rowCount())
-
-        rows = [(item.label, item.detail or "") for item in preview.items]
-        if preview.hidden_items_count:
-            rows.append(
-                ("... and {} more".format(preview.hidden_items_count), "")
-            )
-
-        for label, detail in rows:
-            label_item = QtGui.QStandardItem(label)
-            label_item.setToolTip(label)
-            detail_item = QtGui.QStandardItem(detail)
-            detail_item.setToolTip(detail)
-            for item in (label_item, detail_item):
-                item.setEditable(False)
-            root_item.appendRow([label_item, detail_item])
-
-        self._items_view.setVisible(bool(preview.items))
-        self._items_view.setToolTip(
-            "Select rows and use Ctrl+C or the context menu to copy."
-        )
-        # Keep the detail right next to the label so each row reads as one
-        #   entry. Column size hints are not reliable while the view is not
-        #   shown and don't count with padding of the item delegate.
-        font_metrics = self._items_view.fontMetrics()
-        label_width = max(
-            (font_metrics.horizontalAdvance(label) for label, _ in rows),
-            default=0,
-        )
-        self._items_view.header().resizeSection(
-            0, label_width + (2 * COLUMN_PADDING)
-        )
-        self._update_items_view_height()
-
-    def _on_items_context_menu(self, point: QtCore.QPoint) -> None:
-        menu = QtWidgets.QMenu(self._items_view)
-        copy_action = menu.addAction("Copy")
-        copy_all_action = menu.addAction("Copy all")
-        action = menu.exec_(
-            self._items_view.viewport().mapToGlobal(point)
-        )
-        if action is copy_action:
-            self._copy_selected()
-        elif action is copy_all_action:
-            self._copy_all()
-
-    def _copy_selected(self) -> None:
-        selection_model = self._items_view.selectionModel()
-        rows = sorted({
-            index.row()
-            for index in selection_model.selectedIndexes()
-        })
-        lines = []
-        for row in rows:
-            text = self._row_text(row)
-            if text:
-                lines.append(text)
-        if lines:
-            self._set_clipboard("\n".join(lines))
-
-    def _copy_all(self) -> None:
-        if self._preview is None:
-            return
-        lines = [
-            "{} - {}".format(item.label, item.detail or "").rstrip(" -")
-            for item in self._preview.items
-        ]
-        if self._preview.hidden_items_count:
-            lines.append(
-                "... and {} more".format(
-                    self._preview.hidden_items_count
-                )
-            )
-        if lines:
-            self._set_clipboard("\n".join(lines))
-
-    def _row_text(self, row: int) -> str:
-        label_item = self._items_model.item(row, 0)
-        detail_item = self._items_model.item(row, 1)
-        if label_item is None:
-            return ""
-        label = label_item.text()
-        detail = detail_item.text() if detail_item is not None else ""
-        return "{} - {}".format(label, detail).rstrip(" -")
-
-    def _set_clipboard(self, text: str) -> None:
-        QtWidgets.QApplication.clipboard().setText(text)
-
-    def _update_items_view_height(self) -> None:
-        """Keep the preview only as tall as the entries it shows."""
-        rows = self._items_model.rowCount()
-        if not rows:
-            return
-
-        row_height = self._items_view.sizeHintForRow(0)
-        if row_height <= 0:
-            row_height = 24
-        frame = 2 * self._items_view.frameWidth()
-        self._items_view.setFixedHeight(
-            min(rows * row_height + frame + 4, MAX_PREVIEW_HEIGHT)
-        )
-
-    def _set_hint(self, hint: Optional[str], is_error: bool) -> None:
-        self._hint_label.setText(hint or "")
-        self._warning_label.setVisible(bool(hint) and is_error)
-        self._hint_widget.setVisible(bool(hint))
-
-
-class PlaceholderHeaderWidget(AYContainer):
-    """Icon, name and actions of the edited placeholder.
-
-    Actions are next to the name. They move to a row below the name when
-    the name would not fit next to them.
-    """
-
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
-        super().__init__(
-            parent,
-            layout=AYContainer.Layout.Grid,
-            layout_spacing=HEADER_SPACING,
-        )
-
-        # Icon and title are separate labels, a label with both an icon
-        #   and text may clip the last character of a bold text.
-        icon_label = AYLabel(parent=self, icon="extension", icon_size=24)
-        icon_label.set_icon(get_placeholder_icon(None))
-
-        titles_widget = AYContainer(
-            self,
-            layout=AYContainer.Layout.VBox,
-            layout_spacing=0,
-        )
-        title_label = AYLabel(
-            parent=titles_widget,
-            rel_text_size=3,
-            bold=True,
-            elide_mode=QtCore.Qt.ElideRight,
-        )
-        subtitle_label = AYLabel(
-            parent=titles_widget,
-            dim=True,
-            elide_mode=QtCore.Qt.ElideRight,
-        )
-        titles_widget.add_widget(title_label)
-        titles_widget.add_widget(subtitle_label)
-
-        actions_widget = AYContainer(
-            self,
-            layout=AYContainer.Layout.HBox,
-            layout_spacing=6,
-        )
-        actions_widget.setVisible(False)
-
-        layout = self.layout()
-        layout.addWidget(icon_label, 0, 0, QtCore.Qt.AlignTop)
-        layout.addWidget(titles_widget, 0, 1)
-        layout.setColumnStretch(1, 1)
-
-        self._icon_label = icon_label
-        self._title_label = title_label
-        self._subtitle_label = subtitle_label
-        self._titles_widget = titles_widget
-        self._actions_widget = actions_widget
-        self._actions_below: Optional[bool] = None
-        self._place_actions()
-
-    def get_actions_widget(self) -> AYContainer:
-        """Container of the placeholder action buttons.
-
-        Returns:
-            AYContainer: Container with horizontal layout.
-
-        """
-        return self._actions_widget
-
-    def set_actions_visible(self, visible: bool) -> None:
-        """Show the placeholder actions.
-
-        Args:
-            visible (bool): Actions are visible.
-
-        """
-        self._actions_widget.setVisible(visible)
-        self._place_actions()
-
-    def are_actions_below(self) -> bool:
-        """Actions are on a row below the name.
-
-        Returns:
-            bool: Actions are below the name.
-
-        """
-        return bool(self._actions_below)
-
-    def set_header(
-        self, icon: Optional[QtGui.QIcon], title: str, subtitle: str
-    ) -> None:
-        """Show the placeholder.
-
-        Args:
-            icon (Optional[QtGui.QIcon]): Icon of the placeholder type.
-            title (str): Name of the placeholder.
-            subtitle (str): Text below the name.
-
-        """
-        if icon is not None:
-            self._icon_label.set_icon(icon)
-        self._title_label.setText(title)
-        self._title_label.setToolTip(title)
-        self._subtitle_label.setText(subtitle)
-        self._subtitle_label.setToolTip(subtitle)
-        self._place_actions()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._place_actions()
-
-    def _get_titles_width(self) -> int:
-        """Width the name and subtitle need to be shown in full."""
-        return max(
-            label.fontMetrics().horizontalAdvance(label.text())
-            for label in (self._title_label, self._subtitle_label)
-        )
-
-    def _place_actions(self) -> None:
-        """Put actions next to the name, or below it when it doesn't fit."""
-        actions_below = False
-        if self._actions_widget.isVisibleTo(self):
-            needed_width = (
-                self._icon_label.sizeHint().width()
-                + self._get_titles_width()
-                + self._actions_widget.sizeHint().width()
-                + (2 * HEADER_SPACING)
-            )
-            actions_below = needed_width > self.width()
-
-        if actions_below == self._actions_below:
-            return
-        self._actions_below = actions_below
-
-        layout = self.layout()
-        layout.removeWidget(self._actions_widget)
-        if actions_below:
-            layout.addWidget(self._actions_widget, 1, 1, 1, 2)
-        else:
-            layout.addWidget(
-                self._actions_widget, 0, 2, QtCore.Qt.AlignVCenter
-            )
 
 
 class PlaceholderEditorWidget(AYContainer):

@@ -10,7 +10,7 @@ from ayon_core.tools.utils import get_qt_icon
 from ayon_core.ui.components import AYButton, AYContainer, AYLabel
 
 from ..abstract import BuildContextItem
-from .placeholders_widget import RUN_ICON
+from .placeholder_icons import RUN_ICON
 
 
 MENU_ARROW_SIZE = 16
