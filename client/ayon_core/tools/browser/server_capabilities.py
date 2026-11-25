@@ -16,6 +16,8 @@ servers lack, and the Browser does without on them:
   so there are no Folder filters and no "Latest per folder" option.
 - Up to 1.16.6: the ``representationFilter`` argument, so there are no
   Representation filters.
+- Up to 1.17.4: the ``contains`` filter operator, so typed text is
+  matched with an escaped ``like`` pattern instead.
 
 Server 1.14 and older can't be supported the same way: they lack more
 than optional arguments, e.g. filtering by product base type (1.15.0),
@@ -239,6 +241,30 @@ def server_supports_representation_filter() -> bool:
         RuntimeError: If there is no server connection.
     """
     return "representationFilter" in _get_versions_field_args()
+
+
+#: Server version that added the ``contains`` filter operator.
+CONTAINS_OPERATOR_SERVER_VERSION = (1, 17, 5)
+
+
+# TODO: Backwards compatibility for AYON server < 1.17.5.
+#   Remove this once 1.17.5 is the minimum supported server.
+@functools.cache
+def server_supports_contains_operator() -> bool:
+    """Return whether the server's filters take the ``contains`` operator.
+
+    ``contains`` matches a case-insensitive substring literally, unlike
+    ``like``, in which ``%``, ``_`` and ``\\`` are special. Operators are
+    not part of the GraphQL schema, so the server version is compared.
+
+    The result is cached for the lifetime of the process. A call that
+    raises is not cached, so a failed request is retried on the next call.
+
+    Returns:
+        ``True`` when the server is 1.17.5 or newer.
+    """
+    server_version = ayon_api.get_server_version_tuple()
+    return tuple(server_version[:3]) >= CONTAINS_OPERATOR_SERVER_VERSION
 
 
 def _get_sort_options(

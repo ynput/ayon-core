@@ -27,6 +27,7 @@ from ayon_core.ui.components.table_model import (
 from ayon_core.ui.components.table_filter import (
     EMPTY_VALUE_OPTIONS,
     HAS_VALUE,
+    split_filter_text,
 )
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.tree_model import TreeNode
@@ -65,6 +66,7 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     parse_attribute_group_key,
 )
 from ayon_core.tools.browser.server_capabilities import (
+    server_supports_contains_operator,
     server_supports_folder_filter,
     server_supports_latest_per_folder,
     server_supports_representation_filter,
@@ -104,8 +106,13 @@ _GRID_COLUMN_KEYS: frozenset[str] = frozenset({
     "productBaseType",
 })
 
+# Operator of a condition matching text typed into a filter, holding the
+# typed parts as its value. Internal only: each part is turned into a
+# 'contains' or 'like' condition before the filter is sent to the server.
+_TEXT_MATCH_OPERATOR = "textMatch"
+
 # Server filter operators and their negation, used to exclude values.
-# 'like' and 're' have no negated counterpart on the server.
+# 'like', 'contains' and 're' have no negated counterpart on the server.
 _NEGATED_OPERATORS: dict[str, str] = {
     "eq": "ne",
     "ne": "eq",
@@ -647,6 +654,19 @@ class BrowserWidgetController(QtCore.QObject):
             server_supports_latest_per_folder, "latest per folder"
         )
 
+    # TODO: Backwards compatibility for AYON server < 1.17.5.
+    #   Remove this once 1.17.5 is the minimum supported server.
+    @property
+    def supports_contains_operator(self) -> bool:
+        """Whether the server's filters take the 'contains' operator.
+
+        Servers up to 1.17.4 match typed text with an escaped 'like'
+        pattern instead.
+        """
+        return self._server_supports(
+            server_supports_contains_operator, "contains operator"
+        )
+
     @property
     def has_selection(self) -> bool:
         """Return whether the slicer has at least one selected entity."""
@@ -1145,11 +1165,13 @@ class BrowserWidgetController(QtCore.QObject):
                     condition = {
                         "key": attribute_key,
                         "value": (
-                            self._like_pattern(values[0])
+                            split_filter_text(values[0])
                             if use_substring
                             else values
                         ),
-                        "operator": "like" if use_substring else "in",
+                        "operator": (
+                            _TEXT_MATCH_OPERATOR if use_substring else "in"
+                        ),
                     }
                 condition = self._or_empty_value_condition(
                     condition,
@@ -1252,11 +1274,13 @@ class BrowserWidgetController(QtCore.QObject):
                     condition = {
                         "key": server_key,
                         "value": (
-                            self._like_pattern(values[0])
+                            split_filter_text(values[0])
                             if use_substring
                             else values
                         ),
-                        "operator": "like" if use_substring else "in",
+                        "operator": (
+                            _TEXT_MATCH_OPERATOR if use_substring else "in"
+                        ),
                     }
                 condition = self._or_empty_value_condition(
                     condition, empty_value, server_key, is_list
@@ -1267,11 +1291,11 @@ class BrowserWidgetController(QtCore.QObject):
                     version_conditions.append(condition)
                 continue
 
-            operator = "like" if use_substring else "in"
+            operator = _TEXT_MATCH_OPERATOR if use_substring else "in"
             condition = {
                 "key": key,
                 "value": (
-                    self._like_pattern(values[0]) if use_substring else values
+                    split_filter_text(values[0]) if use_substring else values
                 ),
                 "operator": operator,
             }
@@ -1377,12 +1401,25 @@ class BrowserWidgetController(QtCore.QObject):
             else:
                 version_conditions.append(condition)
 
+        use_contains = self.supports_contains_operator
         return {
-            "version_conditions": version_conditions,
-            "product_conditions": product_conditions,
-            "task_conditions": task_conditions,
-            "folder_conditions": folder_conditions,
-            "representation_conditions": representation_conditions,
+            "version_conditions": self._expand_text_match_conditions(
+                version_conditions, use_contains
+            ),
+            "product_conditions": self._expand_text_match_conditions(
+                product_conditions, use_contains
+            ),
+            "task_conditions": self._expand_text_match_conditions(
+                task_conditions, use_contains
+            ),
+            "folder_conditions": self._expand_text_match_conditions(
+                folder_conditions, use_contains
+            ),
+            "representation_conditions": (
+                self._expand_text_match_conditions(
+                    representation_conditions, use_contains
+                )
+            ),
             "featured_only": featured_only,
             "featured_types": featured_types,
             "search": search,
@@ -1396,22 +1433,71 @@ class BrowserWidgetController(QtCore.QObject):
 
         The server runs 'like' as SQL ``ILIKE``, which compares the whole
         value, so the text is wrapped in ``%`` to match part of it, like
-        the table's local filter does. Underscores and backslashes in the
+        the table's local filter does. ``%``, ``_`` and backslashes in the
         text are escaped so they match literally.
 
-        Text that already contains ``%`` is a pattern written by the user
-        and is sent unchanged.
-
         Args:
-            text: Text typed into the filter.
+            text: Text to match.
 
         Returns:
             Case-insensitive pattern for the 'like' operator.
         """
-        if "%" in text:
-            return text
-        escaped = re.sub(r"([\\_])", r"\\\1", text)
+        escaped = re.sub(r"([\\%_])", r"\\\1", text)
         return f"%{escaped}%"
+
+    @classmethod
+    def _expand_text_match_conditions(
+        cls,
+        conditions: list[dict[str, Any]],
+        use_contains: bool,
+    ) -> list[dict[str, Any]]:
+        """Turn text match conditions into conditions the server takes.
+
+        A text match condition holds the parts of the typed text, see
+        :func:`split_filter_text`. Each part becomes a condition matching
+        it literally anywhere in the value, using 'contains' or, on older
+        servers, an escaped 'like' pattern. Several parts are combined
+        into an 'or' group. A condition without any part is dropped.
+
+        Args:
+            conditions: Conditions, possibly nested in groups.
+            use_contains: Whether the server takes the 'contains'
+                operator.
+
+        Returns:
+            Conditions the server accepts.
+        """
+        output = []
+        for condition in conditions:
+            if "conditions" in condition:
+                children = cls._expand_text_match_conditions(
+                    condition["conditions"], use_contains
+                )
+                if not children:
+                    continue
+                if len(children) == 1:
+                    output.append(children[0])
+                    continue
+                condition = {**condition, "conditions": children}
+            elif condition.get("operator") == _TEXT_MATCH_OPERATOR:
+                expanded = [
+                    {
+                        **condition,
+                        "value": (
+                            part if use_contains else cls._like_pattern(part)
+                        ),
+                        "operator": "contains" if use_contains else "like",
+                    }
+                    for part in condition["value"]
+                ]
+                if not expanded:
+                    continue
+                if len(expanded) == 1:
+                    condition = expanded[0]
+                else:
+                    condition = {"operator": "or", "conditions": expanded}
+            output.append(condition)
+        return output
 
     @staticmethod
     def _build_extension_condition(
