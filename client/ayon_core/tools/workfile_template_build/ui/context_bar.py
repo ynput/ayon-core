@@ -116,7 +116,7 @@ class ContextBarWidget(AYContainer):
     Signals:
         context_change_requested: User wants to choose a different context.
         context_reset_requested: User wants to use the context of the scene.
-        test_build_requested: User wants to populate all placeholders.
+        test_build_requested: User wants to test build all placeholders.
         open_template_requested: User wants to open the template file.
         build_from_template_requested: User wants to import the template
             into the current scene and populate it.
@@ -169,14 +169,15 @@ class ContextBarWidget(AYContainer):
         )
         reset_btn.setVisible(False)
         test_build_btn = AYButton(
-            "Populate all",
+            "Test build",
             parent=self,
             variant=AYButton.Variants.Surface,
             icon=RUN_ICON,
             tooltip=(
-                "Populate every placeholder in the open scene for the"
-                " test context.\n"
-                "This changes the scene: reopen the template to undo it."
+                "Populate every placeholder already in the open scene for"
+                " the test context.\n"
+                "This only tests the current scene: no template is imported"
+                " or opened, and it can be repeated after changes."
             ),
         )
         test_build_btn.setEnabled(False)
@@ -186,8 +187,10 @@ class ContextBarWidget(AYContainer):
             variant=AYButton.Variants.Surface,
             icon="description",
             tooltip=(
-                "Open or build the template set in settings for the"
-                " \"Test context\" context"
+                "Open or build a template from settings for the"
+                " \"Test context\" context.\n"
+                "This is not needed for Test build, which uses the"
+                " placeholders already in the scene."
             ),
         )
 
@@ -285,7 +288,7 @@ class ContextBarWidget(AYContainer):
     def set_test_build_enabled(
         self, enabled: bool, reason: Optional[str] = None
     ) -> None:
-        """Allow populating all placeholders.
+        """Allow test building all placeholders.
 
         Args:
             enabled (bool): All placeholders can be run.

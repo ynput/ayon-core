@@ -471,11 +471,14 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         )
         enabled = has_placeholders and builder_available and supports_run
         reason = None
-        if (
-            has_placeholders
-            and builder_available
-            and not supports_run
-        ):
+        if not builder_available:
+            reason = "Template build is not available in this host."
+        elif not has_placeholders:
+            reason = (
+                "No placeholders in the current scene. Add a placeholder"
+                " first."
+            )
+        elif not supports_run:
             reason = (
                 "No placeholder type in this host supports re-running"
                 " placeholders."
@@ -685,7 +688,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
     def _on_build_progress(self, count: int, event_data: dict) -> None:
         """Show progress between populated placeholders."""
         self._build_status_btn.setText(
-            "Populating... {} placeholder(s)".format(count)
+            "Test building... {} placeholder(s)".format(count)
         )
         # Let the status paint while the host operation keeps running.
         QtWidgets.QApplication.processEvents(

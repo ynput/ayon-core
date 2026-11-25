@@ -47,38 +47,28 @@ class WindowActionsMixin:
             self._pages_widget.currentIndex() == EDITOR_PAGE
             and self._editor_widget.has_unsaved_changes()
         ):
-            QtWidgets.QMessageBox.information(
-                self,
-                "Unsaved changes",
-                (
-                    "Save or discard the placeholder changes before building"
-                    " the template."
-                ),
-            )
-            return
+            # A test build should be quick: apply the current editor values
+            #   first instead of forcing a separate Save + Test build round
+            #   trip.
+            if not self._editor_widget.save_changes():
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Could not apply changes",
+                    (
+                        "The placeholder options could not be saved. Fix the"
+                        " highlighted options and try again."
+                    ),
+                )
+                return
 
-        context_label = self._controller.get_build_context().label
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "Populate all placeholders?",
-            (
-                "This will populate all placeholders in the current scene"
-                " for {}.\nDo you want to continue?".format(context_label)
-            ),
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No,
-        )
-        if answer != QtWidgets.QMessageBox.Yes:
-            return
-
-        self._set_busy(True, "Populating all placeholders...")
+        self._set_busy(True, "Test building placeholders...")
         try:
             result = self._controller.run_template_build(
                 progress_callback=self._on_build_progress
             )
         except Exception:
             result = None
-            self._show_unexpected_error("Failed to run the template build")
+            self._show_unexpected_error("Failed to test build the scene")
         finally:
             self._set_busy(False)
 
@@ -89,14 +79,11 @@ class WindowActionsMixin:
         self._update_placeholders()
         self._update_build_status(result)
 
-        # Show a dialog only when the build itself could not run, per
-        #   placeholder failures are shown next to the build button.
+        # A test build keeps the report available from the status button
+        #   instead of opening a modal dialog on every iteration.
         has_results = bool(self._controller.get_last_build_results())
         if not result.success and not has_results:
             self._show_action_error(result)
-        elif self._controller.get_build_steps():
-            # Always finish a build with its report.
-            self._on_show_build_report()
 
     def _on_open_template_request(self):
         if not self._confirm_discard_changes():

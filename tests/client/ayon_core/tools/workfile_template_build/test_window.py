@@ -550,41 +550,56 @@ class TestBuild:
 
         assert window._context_bar._test_build_btn.isEnabled()
 
-    def test_build_asks_for_confirmation(self, window, builder, answers):
+    def test_test_build_runs_without_confirmation(self, window, builder):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
         builder.runs.clear()
 
-        answers.queue.append(QtWidgets.QMessageBox.No)
         window._on_run_template_build_request()
-        assert builder.runs == []
 
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
+        assert builder.runs == ["node_1"]
+        assert getattr(window, "_build_report_dialog", None) is None
+
+    def test_test_build_applies_unsaved_editor_changes(
+        self, window, builder
+    ):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._select_silently("node_1")
+        window._show_editor_page("node_1")
+        _name_input(window).setText("changed")
+        assert window._editor_widget.has_unsaved_changes()
+
         window._on_run_template_build_request()
+
+        assert builder.nodes["node_1"]["name"] == "changed"
         assert builder.runs == ["node_1"]
 
-    def test_build_reports_processed_placeholders(self, window, answers):
+    def test_build_reports_processed_placeholders(self, window):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
 
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
         window._on_run_template_build_request()
 
         status_btn = window._build_status_btn
         assert status_btn.isVisible()
         assert status_btn.text() == "1 populated"
         assert "[OK]" in status_btn.toolTip()
-        dialog = window._build_report_dialog
+        # A test build does not open the report automatically; it stays
+        #   available from the status button.
+        assert getattr(window, "_build_report_dialog", None) is None
+
+        window._on_show_build_report()
+        dialog = getattr(window, "_build_report_dialog", None)
         assert dialog is not None
         dialog.close()
 
-    def test_build_reports_failed_placeholder(self, window, answers):
+    def test_build_reports_failed_placeholder(self, window):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
 
         _Plugin.fail_on = "run"
         try:
-            answers.queue.append(QtWidgets.QMessageBox.Yes)
             window._on_run_template_build_request()
         finally:
             _Plugin.fail_on = None
@@ -1211,7 +1226,7 @@ class TestKeyboardShortcuts:
 
 
 class TestBusyState:
-    def test_run_all_marks_the_window_busy(self, window, answers, monkeypatch):
+    def test_run_all_marks_the_window_busy(self, window, monkeypatch):
         seen = []
 
         def fake_run(progress_callback=None):
@@ -1226,7 +1241,6 @@ class TestBusyState:
         monkeypatch.setattr(
             window._controller, "run_template_build", fake_run
         )
-        answers.queue.append(QtWidgets.QMessageBox.Yes)
 
         window._on_run_template_build_request()
 

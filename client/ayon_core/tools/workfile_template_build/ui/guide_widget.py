@@ -37,8 +37,9 @@ GUIDE_STEPS = (
     (
         "Test the template",
         (
-            "Populate all fills every placeholder in the open scene for the"
-            " test context. Reopen the template to undo it."
+            "Test build populates every placeholder already in the open"
+            " scene for the test context. It does not import a template, so"
+            " you can repeat it while iterating."
         ),
     ),
 )

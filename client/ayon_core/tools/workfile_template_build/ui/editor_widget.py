@@ -372,6 +372,17 @@ class PlaceholderEditorWidget(AYContainer):
         if self._confirm_btn.isEnabled():
             self._on_confirm_click()
 
+    def save_changes(self) -> bool:
+        """Apply pending editor changes before an action such as a test build.
+
+        Returns:
+            bool: True when there are no unsaved changes left.
+        """
+        if not self.has_unsaved_changes():
+            return True
+        self.save()
+        return not self.has_unsaved_changes()
+
     def focus_first_option(self) -> None:
         """Focus the first editable option input."""
         if self._attrs_widget is None:
@@ -440,7 +451,7 @@ class PlaceholderEditorWidget(AYContainer):
         self._run_btn.setToolTip(
             (
                 "Populate only this placeholder in the open scene for the"
-                " test context. Use \"Populate all\" to populate"
+                " test context. Use \"Test build\" to populate"
                 " all of them."
             )
             if placeholder_item.run_supported
