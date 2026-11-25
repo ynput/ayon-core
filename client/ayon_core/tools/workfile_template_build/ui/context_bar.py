@@ -157,8 +157,8 @@ class ContextBarWidget(AYContainer):
             variant=AYButton.Variants.Surface,
             icon="folder",
             tooltip=(
-                "Placeholders are previewed and test built as if the scene"
-                " was opened in this folder and task.\n"
+                "Test context: previews and test builds use this folder and"
+                " task.\n"
                 "Click to choose a different context."
             ),
         )
@@ -178,10 +178,10 @@ class ContextBarWidget(AYContainer):
             variant=AYButton.Variants.Surface,
             icon=RUN_ICON,
             tooltip=(
-                "Populate every placeholder already in the open scene for"
-                " the test context.\n"
-                "This only tests the current scene: no template is imported"
-                " or opened, and it can be repeated after changes."
+                "Test build: populate every placeholder already in the open"
+                " scene for the test context.\n"
+                "No template is imported or opened, and it can be repeated"
+                " after changes."
             ),
         )
         test_build_btn.setEnabled(False)
@@ -191,8 +191,8 @@ class ContextBarWidget(AYContainer):
             variant=AYButton.Variants.Surface,
             icon="description",
             tooltip=(
-                "Open or build a template from settings for the"
-                " \"Test context\" context.\n"
+                "Template: open a template or build the scene from the"
+                " template set in settings.\n"
                 "This is not needed for Test build, which uses the"
                 " placeholders already in the scene."
             ),
@@ -218,16 +218,26 @@ class ContextBarWidget(AYContainer):
         )
         template_menu.setToolTipsVisible(True)
 
+        # Actions are grouped and ordered as the workflow: choose or build a
+        #   template, pick the context to preview it in, then test build.
+        controls_widget = AYContainer(
+            self,
+            layout=AYContainer.Layout.HBox,
+            layout_spacing=6,
+        )
+        controls_widget.add_widget(template_btn)
+        controls_widget.layout().addSpacing(6)
+        controls_widget.add_widget(context_label)
+        controls_widget.add_widget(context_btn)
+        controls_widget.add_widget(reset_btn)
+        controls_widget.layout().addSpacing(6)
+        controls_widget.add_widget(test_build_btn)
+
         self.add_widget(icon_label)
         self.add_widget(workfile_label)
         self.add_widget(host_label)
         self.addStretch(1)
-        self.add_widget(context_label)
-        self.add_widget(context_btn)
-        self.add_widget(reset_btn)
-        self.layout().addSpacing(6)
-        self.add_widget(template_btn)
-        self.add_widget(test_build_btn)
+        self.add_widget(controls_widget)
 
         context_btn.clicked.connect(self.context_change_requested)
         reset_btn.clicked.connect(self.context_reset_requested)
@@ -241,6 +251,7 @@ class ContextBarWidget(AYContainer):
         self._context_label = context_label
         self._context_btn = context_btn
         self._reset_btn = reset_btn
+        self._controls_widget = controls_widget
         self._test_build_btn = test_build_btn
         self._test_build_tooltip = test_build_btn.toolTip()
         self._template_btn = template_btn

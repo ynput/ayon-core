@@ -817,6 +817,15 @@ class TestGuide:
 
 
 class TestContextBar:
+    def test_actions_are_grouped_in_workflow_order(self, window):
+        context_bar = window._context_bar
+        layout = context_bar._controls_widget.layout()
+        assert (
+            layout.indexOf(context_bar._template_btn)
+            < layout.indexOf(context_bar._context_btn)
+            < layout.indexOf(context_bar._test_build_btn)
+        )
+
     def test_unsaved_scene_is_shown(self, window):
         label = window._context_bar._workfile_label
         assert label.text() == "Unsaved scene"
