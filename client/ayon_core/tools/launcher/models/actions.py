@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+import inspect
 import os
 import threading
 from typing import Any
@@ -34,6 +35,13 @@ from ayon_core.pipeline.actions import (
     register_launcher_action_path,
 )
 from ayon_core.tools.launcher.abstract import ActionItem, WebactionContext
+
+# Prefixes of applications addon webaction identifiers followed
+#   by full application name e.g. 'application.launch.maya/2025'
+APPLICATION_ACTION_PREFIXES = (
+    "application.launch.",
+    "application.launch-workfile.",
+)
 
 
 @dataclass
@@ -114,6 +122,10 @@ class ActionsModel:
         self._webaction_items = NestedCacheItem(
             levels=2, default_factory=list, lifetime=20,
         )
+        # Application executables validity by project name
+        self._app_executables_validity = NestedCacheItem(
+            levels=1, lifetime=300
+        )
 
         self._variant = get_settings_variant()
 
@@ -137,6 +149,7 @@ class ActionsModel:
             self._actions = None
             self._action_items = {}
             self._webaction_items.reset()
+            self._app_executables_validity.reset()
             self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
@@ -499,8 +512,100 @@ class ActionsModel:
                 # category=action["category"],
             ))
 
+        self._validate_app_executables(project_name, action_items)
+
         cache.update_data(action_items)
         return cache.get_data()
+
+    def _get_app_executables_validity(
+        self, project_name: str | None
+    ) -> dict[str, bool | None] | None:
+        cache = self._app_executables_validity[project_name]
+        if not cache.is_valid:
+            cache.update_data(
+                self._collect_app_executables_validity(project_name)
+            )
+        return cache.get_data()
+
+    def _collect_app_executables_validity(
+        self, project_name: str | None
+    ) -> dict[str, bool | None] | None:
+        """Validate executables of all applications for a project.
+
+        Server does not know if application executable is available on this
+            machine, so it is validated using applications addon.
+
+        Returns:
+            dict[str, bool | None] | None: Validity by full application
+                name, 'None' value means unknown validity. Returns 'None'
+                if validation is not available.
+
+        """
+        try:
+            addons_manager = self._controller.get_addons_manager()
+            addon = addons_manager.get("applications")
+            if addon is None:
+                return None
+            # Older versions of applications addon don't support validation
+            params = inspect.signature(addon.get_application_items).parameters
+            if "validate_executables" not in params:
+                return None
+
+            app_items = addon.get_application_items(
+                project_name,
+                variant=self._variant,
+                validate_executables=True,
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to validate application executables.", exc_info=True
+            )
+            return None
+
+        return {
+            app_item["full_name"]: app_item.get("has_valid_executable")
+            for app_item in app_items
+        }
+
+    @staticmethod
+    def _get_app_name_from_action(action_item: ActionItem) -> str | None:
+        if action_item.addon_name != "applications":
+            return None
+        for prefix in APPLICATION_ACTION_PREFIXES:
+            if action_item.identifier.startswith(prefix):
+                return action_item.identifier[len(prefix):]
+        return None
+
+    def _validate_app_executables(
+        self,
+        project_name: str | None,
+        action_items: list[ActionItem],
+    ) -> None:
+        """Disable application actions without existing executable.
+
+        Args:
+            project_name (str | None): Project name.
+            action_items (list[ActionItem]): Webaction items.
+
+        """
+        validity_by_app_name = None
+        for action_item in action_items:
+            app_name = self._get_app_name_from_action(action_item)
+            if app_name is None:
+                continue
+
+            if validity_by_app_name is None:
+                validity_by_app_name = self._get_app_executables_validity(
+                    project_name
+                )
+                if validity_by_app_name is None:
+                    return
+
+            # Keep action enabled if validity is unknown
+            if validity_by_app_name.get(app_name) is False:
+                action_item.disabled_reason = (
+                    "Executable was not found on this machine."
+                )
 
     def _is_service_user(self) -> bool:
         """Check if the connection uses a service user API key.

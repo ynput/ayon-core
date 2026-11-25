@@ -97,16 +97,20 @@ def find_executable(executable):
     #   - this can happen primarily on windows where
     #       e.g. "ffmpeg" should be "ffmpeg.exe"
     exe_dir, exe_filename = os.path.split(executable)
-    if exe_dir and os.path.isdir(exe_dir):
-        for filename in os.listdir(exe_dir):
-            filepath = os.path.join(exe_dir, filename)
-            basename, ext = os.path.splitext(filename)
-            if (
-                basename == exe_filename
-                and ext.lower() in exts
-                and is_file_executable(filepath)
-            ):
-                return filepath
+    if exe_dir:
+        if os.path.isdir(exe_dir):
+            for filename in os.listdir(exe_dir):
+                filepath = os.path.join(exe_dir, filename)
+                basename, ext = os.path.splitext(filename)
+                if (
+                    basename == exe_filename
+                    and ext.lower() in exts
+                    and is_file_executable(filepath)
+                ):
+                    return filepath
+        # Executable with directory can't be found in PATH, skip expensive
+        #   listing of all directories in PATH
+        return None
 
     # Get paths where to look for executable
     path_str = os.environ.get("PATH", None)

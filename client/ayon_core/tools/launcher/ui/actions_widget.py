@@ -21,6 +21,7 @@ from ayon_core.ui.components.scroll_area import AYScrollBar
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 
 ANIMATION_LEN = 7
+DISABLED_OPACITY = 0.35
 SHADOW_FRAME_MARGINS = (1, 1, 1, 1)
 IS_MACOS = platform.system().lower() == "darwin"
 
@@ -35,6 +36,7 @@ ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 8
 PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 9
 ANIMATION_START_ROLE = QtCore.Qt.UserRole + 10
 ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 11
+ACTION_DISABLED_REASON_ROLE = QtCore.Qt.UserRole + 12
 
 
 def _variant_label_sort_getter(action_item):
@@ -50,6 +52,12 @@ def _variant_label_sort_getter(action_item):
     """
 
     return action_item.variant_label or ""
+
+
+def _get_tooltip(label: str, disabled_reason: str | None) -> str:
+    if disabled_reason:
+        return f"{label}\n{disabled_reason}"
+    return label
 
 
 # --- Replacement for QAction for action variants ---
@@ -305,9 +313,14 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             if is_group:
                 has_configs = False
                 label = action_item.label
+                disabled_reason = None
+                group_items = groups_by_id[action_item.identifier]
+                if all(item.disabled_reason for item in group_items):
+                    disabled_reason = "None of the variants can be launched."
             else:
                 label = action_item.full_label
                 has_configs = bool(action_item.config_fields)
+                disabled_reason = action_item.disabled_reason
 
             item = self._items_by_id.get(action_item.identifier)
             if item is None:
@@ -317,7 +330,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setData(label, QtCore.Qt.DisplayRole)
-            item.setData(label, QtCore.Qt.ToolTipRole)
+            item.setData(
+                _get_tooltip(label, disabled_reason), QtCore.Qt.ToolTipRole
+            )
+            item.setData(disabled_reason, ACTION_DISABLED_REASON_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(is_group, ACTION_IS_GROUP_ROLE)
             item.setData(has_configs, ACTION_HAS_CONFIGS_ROLE)
@@ -402,7 +418,15 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
             item = QtGui.QStandardItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setData(action_item.variant_label, QtCore.Qt.DisplayRole)
-            item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
+            item.setData(
+                _get_tooltip(
+                    action_item.full_label, action_item.disabled_reason
+                ),
+                QtCore.Qt.ToolTipRole,
+            )
+            item.setData(
+                action_item.disabled_reason, ACTION_DISABLED_REASON_ROLE
+            )
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(action_item.identifier, ACTION_ID_ROLE)
             item.setData(
@@ -796,6 +820,29 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
     def sizeHint(self, option, index):
         return option.widget.gridSize()
 
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        if (
+            index.data(ACTION_DISABLED_REASON_ROLE)
+            and not option.icon.isNull()
+        ):
+            option.icon = self._get_dimmed_icon(
+                option.icon, option.decorationSize
+            )
+
+    @staticmethod
+    def _get_dimmed_icon(icon, size):
+        # Style ignores painter opacity when drawing icons
+        pix = icon.pixmap(size)
+        dimmed_pix = QtGui.QPixmap(pix.size())
+        dimmed_pix.setDevicePixelRatio(pix.devicePixelRatio())
+        dimmed_pix.fill(QtCore.Qt.transparent)
+        pix_painter = QtGui.QPainter(dimmed_pix)
+        pix_painter.setOpacity(DISABLED_OPACITY)
+        pix_painter.drawPixmap(0, 0, pix)
+        pix_painter.end()
+        return QtGui.QIcon(dimmed_pix)
+
     def updateEditorGeometry(self, editor, option, index):
         editor.setGeometry(option.rect)
 
@@ -863,6 +910,19 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
         if index.data(ANIMATION_STATE_ROLE):
             self._draw_animation(painter, option, index)
         option.displayAlignment = QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop
+        # Dim action that can't be triggered, item stays interactive
+        #   to show tooltip with reason
+        is_disabled = bool(index.data(ACTION_DISABLED_REASON_ROLE))
+        if is_disabled:
+            painter.save()
+            painter.setOpacity(DISABLED_OPACITY)
+
+        self._paint_item(painter, option, index)
+
+        if is_disabled:
+            painter.restore()
+
+    def _paint_item(self, painter, option, index):
         super().paint(painter, option, index)
 
         if not index.data(ACTION_IS_GROUP_ROLE):
@@ -1140,6 +1200,15 @@ class ActionsWidget(AYContainer):
         task_id = self._model.get_selected_task_id()
         workfile_id = self._model.get_selected_workfile_id()
         action_item = self._model.get_action_item_by_id(action_id)
+        if action_item.disabled_reason:
+            QtWidgets.QToolTip.showText(
+                QtGui.QCursor.pos(),
+                _get_tooltip(
+                    action_item.full_label, action_item.disabled_reason
+                ),
+                self,
+            )
+            return
 
         if action_item.action_type == "webaction":
             action_item = self._model.get_action_item_by_id(action_id)
