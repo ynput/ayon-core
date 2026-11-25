@@ -24,7 +24,7 @@ class GlobalHostDataHook(PreLaunchHook):
             return
 
         app = self.launch_context.application
-        temp_data = EnvironmentPrepData({
+        prep_data = {
             "project_name": self.data["project_name"],
             "folder_path": self.data["folder_path"],
             "task_name": self.data["task_name"],
@@ -42,8 +42,18 @@ class GlobalHostDataHook(PreLaunchHook):
             "start_last_workfile": self.data.get("start_last_workfile"),
             "last_workfile_path": self.data.get("last_workfile_path"),
 
+            # Reuse addons manager of launch context, otherwise another one
+            #   is created and initializes all addons again
+            "addons_manager": self.launch_context.addons_manager,
+
             "log": self.log
-        })
+        }
+        # Otherwise requested again when settings cache did expire
+        project_settings = self.data.get("project_settings")
+        if project_settings is not None:
+            prep_data["project_settings"] = project_settings
+
+        temp_data = EnvironmentPrepData(prep_data)
 
         prepare_app_environments(temp_data, self.launch_context.env_group)
         prepare_context_environments(temp_data)

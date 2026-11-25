@@ -129,15 +129,17 @@ class AYSkeletonLoader(QWidget):
         if loading == self._loading:
             return
         self._loading = loading
+        # Use own visibility, 'isVisible' is False while a parent is hidden
+        #   (e.g. inactive tab) even when the skeleton is shown.
         if loading:
-            if not self.isVisible():
+            if self.isHidden():
                 self._show_timer.start()
             else:
                 self._fade_to(1.0)
             return
 
         self._show_timer.stop()
-        if self.isVisible():
+        if not self.isHidden():
             self._fade_to(0.0)
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:

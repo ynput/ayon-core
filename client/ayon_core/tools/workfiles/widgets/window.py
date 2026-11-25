@@ -327,10 +327,14 @@ class WorkfilesToolWindow(AYContainer):
         if is_visible:
             self.refresh()
 
-    def refresh(self):
-        """Trigger refresh of workfiles tool controller."""
+    def refresh(self, force: bool = False):
+        """Trigger refresh of workfiles tool controller.
 
-        self._controller.reset()
+        Args:
+            force (bool): Reset also data shared with other tools.
+
+        """
+        self._controller.reset(force)
 
     def showEvent(self, event):
         super(WorkfilesToolWindow, self).showEvent(event)
@@ -382,7 +386,7 @@ class WorkfilesToolWindow(AYContainer):
         self._controller.go_to_current_context()
 
     def _on_refresh_clicked(self):
-        self.refresh()
+        self.refresh(force=True)
 
     def _on_controller_refresh_started(self):
         self._controller_refreshed = True

@@ -10,11 +10,12 @@ servers lack, and the Browser does without on them:
 
 - Up to 1.15.4: version statistics, so group headers show the counts of
   the grouping metadata instead of the counts matching the filters.
+- Up to 1.15.4: sorting versions by ``productBaseType`` and products by
+  ``version``.
 - Up to 1.16.0: the ``folderFilter`` and ``latestPerFolder`` arguments,
   so there are no Folder filters and no "Latest per folder" option.
 - Up to 1.16.6: the ``representationFilter`` argument, so there are no
   Representation filters.
-- Any: ``sortBy`` values the server does not list.
 
 Server 1.14 and older can't be supported the same way: they lack more
 than optional arguments, e.g. filtering by product base type (1.15.0),
@@ -25,17 +26,58 @@ is shown on those servers instead, see `server_supports_browser`.
 from __future__ import annotations
 
 import functools
-import re
 
 import ayon_api
 
-#: Prefix of the ``sortBy`` argument description of the server's
-#: connection resolvers, followed by a comma-separated list of the
-#: accepted values.
-_SORT_BY_DESCRIPTION_PREFIX = "Sort by one of "
-
 #: Oldest AYON server version the Browser works with.
 BROWSER_MINIMUM_SERVER_VERSION = (1, 15, 0)
+
+#: ``sortBy`` values the versions resolver accepts, by the server version
+#: that added them. ``status`` and ``attrib.*`` are handled separately by
+#: the resolver and accepted by every supported server.
+_VERSIONS_SORT_OPTIONS: dict[tuple[int, int, int], frozenset[str]] = {
+    BROWSER_MINIMUM_SERVER_VERSION: frozenset({
+        "author",
+        "version",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy",
+        "tags",
+        "productType",
+        "productName",
+        "folderName",
+        "folderType",
+        "taskName",
+        "taskType",
+        "path",
+    }),
+    # TODO: Backwards compatibility for AYON server < 1.15.5.
+    #   Merge into the above once 1.15.5 is the minimum supported server.
+    (1, 15, 5): frozenset({"productBaseType"}),
+}
+
+#: ``sortBy`` values the products resolver accepts, by the server version
+#: that added them. ``attrib.*`` is handled separately by the resolver.
+_PRODUCTS_SORT_OPTIONS: dict[tuple[int, int, int], frozenset[str]] = {
+    BROWSER_MINIMUM_SERVER_VERSION: frozenset({
+        "name",
+        "productType",
+        "productBaseType",
+        "folderName",
+        "folderType",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "createdBy",
+        "updatedBy",
+        "tags",
+        "path",
+    }),
+    # TODO: Backwards compatibility for AYON server < 1.15.5.
+    #   Merge into the above once 1.15.5 is the minimum supported server.
+    (1, 15, 5): frozenset({"version"}),
+}
 
 
 # TODO: Backwards compatibility for AYON server < 1.15.0.
@@ -199,57 +241,50 @@ def server_supports_representation_filter() -> bool:
     return "representationFilter" in _get_versions_field_args()
 
 
-def parse_sort_by_options(description: str) -> frozenset[str]:
-    """Parse the values listed in a ``sortBy`` argument description.
+def _get_sort_options(
+    sort_options: dict[tuple[int, int, int], frozenset[str]],
+) -> frozenset[str]:
+    """Return the ``sortBy`` values the server version accepts.
 
     Args:
-        description: Description such as ``"Sort by one of a, b, c"``.
+        sort_options: ``sortBy`` values by the server version that added
+            them.
 
     Returns:
-        The listed values, empty when the description does not list any.
+        The ``sortBy`` values added up to the server version.
     """
-    if not description.startswith(_SORT_BY_DESCRIPTION_PREFIX):
-        return frozenset()
-    values = description[len(_SORT_BY_DESCRIPTION_PREFIX):]
-    return frozenset(
-        value
-        for value in re.split(r"\s*,\s*", values.strip())
-        if value
-    )
+    server_version = tuple(ayon_api.get_server_version_tuple()[:3])
+    return frozenset().union(*(
+        values
+        for version, values in sort_options.items()
+        if server_version >= version
+    ))
 
 
+@functools.cache
 def get_server_versions_sort_options() -> frozenset[str]:
-    """Return the ``sortBy`` values the versions resolver lists.
+    """Return the ``sortBy`` values the versions resolver accepts.
 
     The server raises an error for a ``sortBy`` value it does not know,
     and older servers know fewer of them, so optional sort values are
-    only sent when the server lists them. Values the resolver handles
-    specially (``status`` and ``attrib.*``) are not part of the list.
+    only sent when the server version accepts them. Values the resolver
+    handles specially (``status`` and ``attrib.*``) are not listed.
+
+    The result is cached for the lifetime of the process.
 
     Returns:
-        The listed ``sortBy`` values. Empty when the server refuses the
-        introspection query.
-
-    Raises:
-        RuntimeError: If there is no server connection.
+        The accepted ``sortBy`` values.
     """
-    return parse_sort_by_options(
-        _get_versions_field_args().get("sortBy", "")
-    )
+    return _get_sort_options(_VERSIONS_SORT_OPTIONS)
 
 
+@functools.cache
 def get_server_products_sort_options() -> frozenset[str]:
-    """Return the ``sortBy`` values the products resolver lists.
+    """Return the ``sortBy`` values the products resolver accepts.
 
     Same as :func:`get_server_versions_sort_options`, for products.
 
     Returns:
-        The listed ``sortBy`` values. Empty when the server refuses the
-        introspection query.
-
-    Raises:
-        RuntimeError: If there is no server connection.
+        The accepted ``sortBy`` values.
     """
-    return parse_sort_by_options(
-        _get_project_fields_args().get("products", {}).get("sortBy", "")
-    )
+    return _get_sort_options(_PRODUCTS_SORT_OPTIONS)

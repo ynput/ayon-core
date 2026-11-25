@@ -98,8 +98,6 @@ class ConsoleInterpreterWindow(QtWidgets.QWidget):
         self._tab_widget = tab_widget
         self._line_check_timer = line_check_timer
 
-        self._append_lines([AYON_ART])
-
         self._first_show = True
         self._controller = controller
 
@@ -147,6 +145,7 @@ class ConsoleInterpreterWindow(QtWidgets.QWidget):
         return widget
 
     def _on_first_show(self):
+        self._append_lines([AYON_ART])
         config = self._controller.get_config()
         width = config.width
         height = config.height

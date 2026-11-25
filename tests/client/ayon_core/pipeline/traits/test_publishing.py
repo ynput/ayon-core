@@ -258,6 +258,83 @@ def test_get_transfers_from_representations_recurses_into_bundles(
     }
 
 
+def test_get_transfers_from_representations_bundle_items_use_own_variant(
+    instance: pyblish.api.Instance,
+    tmp_path: Path,
+) -> None:
+    """Bundle items with the same extension must not share destination."""
+    basecolor = _create_file(tmp_path / "source" / "bricks_basecolor.exr")
+    normal = _create_file(tmp_path / "source" / "bricks_normal.exr")
+    roughness = _create_file(tmp_path / "source" / "bricks_roughness.exr")
+    representation = Representation(name="texturePack", traits=[
+        Variant(variant="pack"),
+        Bundle(items=[
+            [FileLocation(file_path=basecolor),
+             Variant(variant="basecolor")],
+            [FileLocation(file_path=normal), Variant(variant="normal")],
+            # item without Variant inherits `output` of the parent
+            [FileLocation(file_path=roughness)],
+        ]),
+    ])
+
+    transfers = get_transfers_from_representations(
+        instance,
+        _make_template(instance, "{representation}/tex_{output}.{ext}"),
+        [representation],
+    )
+
+    publish_root = instance.data["publish_root"] / "texturePack"
+    assert {
+        transfer.source: transfer.destination for transfer in transfers
+    } == {
+        basecolor: publish_root / "tex_basecolor.exr",
+        normal: publish_root / "tex_normal.exr",
+        roughness: publish_root / "tex_pack.exr",
+    }
+    assert [
+        transfer.template_data["output"] for transfer in transfers
+    ] == ["basecolor", "normal", "pack"]
+
+
+def test_get_transfers_from_representations_bundle_items_do_not_leak_udim(
+    instance: pyblish.api.Instance,
+    tmp_path: Path,
+) -> None:
+    """UDIM of one bundle item must not be used for the following item."""
+    udim_files = [
+        _create_file(tmp_path / "source" / f"bricks_normal.{udim}.exr")
+        for udim in (1001, 1002)
+    ]
+    single = _create_file(tmp_path / "source" / "bricks_basecolor.exr")
+    representation = Representation(name="texturePack", traits=[
+        Bundle(items=[
+            [
+                FileLocations(file_paths=[
+                    FileLocation(file_path=path) for path in udim_files
+                ]),
+                UDIM(udim=[1001, 1002]),
+                Variant(variant="normal"),
+            ],
+            [FileLocation(file_path=single), Variant(variant="basecolor")],
+        ]),
+    ])
+
+    transfers = get_transfers_from_representations(
+        instance,
+        _make_template(instance, "{representation}/{output}.{ext}"),
+        [representation],
+    )
+
+    transfers_by_source = {
+        transfer.source: transfer for transfer in transfers
+    }
+    assert "udim" in transfers_by_source[udim_files[0]].template_data
+    assert "udim" not in transfers_by_source[single].template_data
+    assert transfers_by_source[single].destination == (
+        instance.data["publish_root"] / "texturePack" / "basecolor.exr"
+    )
+
+
 def test_get_transfers_from_representations_raises_publish_error_on_invalid_representation(  # noqa: E501
     instance: pyblish.api.Instance,
 ) -> None:

@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import copy
+from typing import TYPE_CHECKING
+
 import pyblish.api
 import ayon_api
 
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import publish
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.create import CreateContext
 
 SHOT_ATTRS = (
     "handleStart",
@@ -81,23 +87,42 @@ class CollectHierarchy(
 
         return shot_instances
 
-    def get_existing_folder_entities(self, project_name, shot_instances):
+    def get_existing_folder_entities(
+        self,
+        project_name: str,
+        shot_instances: list[pyblish.api.Instance],
+        create_context: CreateContext | None = None,
+    ) -> dict[str, dict | None]:
         """Get existing folder entities for given shot instances.
 
         Args:
             project_name (str): The name of the project.
             shot_instances (list[pyblish.api.Instance]): A list of shot
                 instances.
+            create_context (CreateContext | None): CreateContext with
+                cached folder entities.
 
         Returns:
-            dict[str, dict]: A dictionary mapping folder paths to existing
-                folder entities.
+            dict[str, dict | None]: A dictionary mapping folder paths to
+                existing folder entities, or None if folder does not exist.
         """
         # first we need to get all folder paths from shot instances
         folder_paths = {
             instance.data["folderPath"]
             for instance in shot_instances
         }
+        if create_context is not None:
+            folder_entities_by_path = create_context.get_folder_entities(
+                folder_paths
+            )
+            # Copy so publish plugins can't change CreateContext cache
+            return {
+                folder_path: copy.deepcopy(
+                    folder_entities_by_path.get(folder_path)
+                )
+                for folder_path in folder_paths
+            }
+
         # then we get all existing folder entities with one request
         existing_entities = {
             folder_entity["path"]: folder_entity
@@ -131,7 +156,10 @@ class CollectHierarchy(
         }
         temp_context = {}
         existing_entities = self.get_existing_folder_entities(
-            project_name, shot_instances)
+            project_name,
+            shot_instances,
+            context.data.get("create_context"),
+        )
 
         skip_shot_attributes_on_update: set[str] = set(
             self.skip_shot_attributes_on_update

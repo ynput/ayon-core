@@ -1,21 +1,191 @@
 """Functions useful for delivery of published representations."""
+from __future__ import annotations
+
 import os
 import copy
 import shutil
 import glob
 import collections
+import logging
+from dataclasses import dataclass, field
 from typing import Dict, Any, Iterable
 
 import clique
 import ayon_api
 
-from ayon_core.lib import create_hard_link
+from ayon_core.lib import create_hard_link, filter_profiles
 
 from .template_data import (
     get_general_template_data,
     get_folder_template_data,
     get_task_template_data,
 )
+
+
+@dataclass
+class DeliveryRecipe:
+    """Delivery recipe from project settings.
+
+    Attributes:
+        name: Recipe name offered in the Delivery tool.
+        template_name: Anatomy delivery template used by default.
+        overrides: Profiles delivering matching representations with
+            another anatomy delivery template.
+    """
+    name: str
+    template_name: str
+    overrides: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class DeliveryOverrideInfo:
+    """Recipe override that matched a representation.
+
+    Used to explain in UI why a representation is delivered with another
+    template.
+
+    Attributes:
+        index: Index of the override in the recipe overrides.
+        representation_names: Representation names filter.
+        extensions: Extensions filter.
+        product_base_types: Product base types filter.
+    """
+    index: int
+    representation_names: list[str]
+    extensions: list[str]
+    product_base_types: list[str]
+
+
+@dataclass
+class DeliveryTemplateMatch:
+    """Delivery template resolved for a single representation.
+
+    Attributes:
+        template_name: Name of the anatomy delivery template to use.
+        override_info: Info about the matching override to explain it
+            in UI, or None when no override matched.
+    """
+    template_name: str
+    override_info: DeliveryOverrideInfo | None = None
+
+
+def get_delivery_tool_settings(
+    project_settings: dict[str, Any],
+) -> dict[str, Any]:
+    """Return Delivery tool settings from project settings.
+
+    Args:
+        project_settings: Project settings.
+
+    Returns:
+        dict[str, Any]: Delivery tool settings.
+    """
+    return project_settings["core"]["tools"]["delivery"]
+
+
+def get_delivery_recipes(
+    project_settings: dict[str, Any],
+) -> list[DeliveryRecipe]:
+    """Return delivery recipes from project settings.
+
+    Args:
+        project_settings: Project settings.
+
+    Returns:
+        list[DeliveryRecipe]: Delivery recipes.
+    """
+    delivery_settings = get_delivery_tool_settings(project_settings)
+    return [
+        DeliveryRecipe(
+            name=recipe["name"],
+            template_name=recipe["template_name"],
+            overrides=recipe["overrides"],
+        )
+        for recipe in delivery_settings["recipes"]
+    ]
+
+
+def filter_delivery_template_names(
+    template_names: Iterable[str],
+    delivery_settings: dict[str, Any],
+) -> list[str]:
+    """Filter delivery templates the user can pick in the Delivery tool.
+
+    Delivery recipes may still use filtered out templates, this only
+    limits which templates are offered to pick.
+
+    Args:
+        template_names: Anatomy delivery template names.
+        delivery_settings: Delivery tool settings.
+
+    Returns:
+        list[str]: Template names to offer, in the input order.
+    """
+    filter_templates = set(delivery_settings["filter_templates"])
+    is_allow_list = delivery_settings["filter_type"] == "is_allow_list"
+    return [
+        template_name
+        for template_name in template_names
+        if (template_name in filter_templates) == is_allow_list
+    ]
+
+
+def resolve_delivery_template(
+    overrides: list[dict[str, Any]],
+    default_template_name: str,
+    representation_name: str,
+    product_base_type: str,
+    extension: str | None = None,
+    *,
+    logger: logging.Logger | None = None,
+) -> DeliveryTemplateMatch:
+    """Resolve which delivery template to use for a representation.
+
+    Overrides of a delivery recipe deliver some representations with
+    another anatomy delivery template, e.g. EXRs into a plates folder.
+    'filter_profiles' picks the override matching the most filters. On a
+    tie representation names go before extensions before product base
+    types, then the first override in order.
+
+    Args:
+        overrides: Overrides of a delivery recipe.
+        default_template_name: Template used when no override matches.
+        representation_name: Representation name.
+        product_base_type: Product base type of the representation.
+        extension: Representation extension, with or without leading dot.
+            Matched in lowercase.
+        logger: Logger used for profile filtering debug output.
+
+    Returns:
+        DeliveryTemplateMatch: Resolved delivery template.
+    """
+    if extension:
+        extension = extension.lstrip(".").lower()
+
+    override = filter_profiles(
+        overrides,
+        {
+            "representation_names": representation_name,
+            "extensions": extension,
+            "product_base_types": product_base_type,
+        },
+        logger=logger,
+    )
+    if override is None:
+        return DeliveryTemplateMatch(template_name=default_template_name)
+
+    override_index = next(
+        idx for idx, item in enumerate(overrides) if item is override
+    )
+    return DeliveryTemplateMatch(
+        template_name=override["template_name"],
+        override_info=DeliveryOverrideInfo(
+            index=override_index,
+            representation_names=override["representation_names"],
+            extensions=override["extensions"],
+            product_base_types=override["product_base_types"],
+        ),
+    )
 
 
 def _copy_file(src_path, dst_path):
@@ -373,7 +543,7 @@ def get_representations_delivery_template_data(
         project_fields=set(),
         folder_fields={"path", "folderType"},
         task_fields={"name", "taskType"},
-        product_fields={"name", "productType"},
+        product_fields={"name", "productType", "productBaseType"},
         version_fields={"version", "productId"},
         representation_fields=None,
     )
@@ -405,6 +575,7 @@ def get_representations_delivery_template_data(
             "product": {
                 "name": product_entity["name"],
                 "type": product_entity["productType"],
+                "basetype": product_entity["productBaseType"],
             },
             "version": version_entity["version"],
         })
