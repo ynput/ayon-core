@@ -196,20 +196,6 @@ class FilterCriterion:
         )
 
 
-def split_typed_text(text: str) -> list[str]:
-    """Split text typed into a filter into the values it lists.
-
-    Values are separated by commas, so several can be matched at once.
-
-    Args:
-        text: Text typed into the filter.
-
-    Returns:
-        The non-empty values, stripped of surrounding whitespace.
-    """
-    return [part.strip() for part in text.split(",") if part.strip()]
-
-
 def criterion_text(criterion: "FilterCriterion") -> str:
     """Return the one-line description shown for a criterion.
 
@@ -986,7 +972,7 @@ class _FilterDropdown(AYDropdownPopup):
         if self._is_free_text:
             return
 
-        typed = split_typed_text(text)
+        typed = split_filter_text(text)
         parts = [part.lower() for part in typed]
         for value, button in self._value_buttons.items():
             label = button.text().lower()
@@ -1506,7 +1492,7 @@ class _FilterDropdown(AYDropdownPopup):
             self._custom_value_btn is not None
             and self._custom_value_btn.isChecked()
         ):
-            typed = split_typed_text(self._attr_search.text())
+            typed = split_filter_text(self._attr_search.text())
         return values + typed, bool(typed)
 
     def closeEvent(self, event: QCloseEvent) -> None:

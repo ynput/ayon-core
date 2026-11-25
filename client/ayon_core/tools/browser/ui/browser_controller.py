@@ -111,6 +111,19 @@ _GRID_COLUMN_KEYS: frozenset[str] = frozenset({
 # 'contains' or 'like' condition before the filter is sent to the server.
 _TEXT_MATCH_OPERATOR = "textMatch"
 
+
+def _text_match_parts(values: list[str]) -> list[str]:
+    """Return the parts of typed text values, any of which may match.
+
+    Args:
+        values: Typed text values, see :func:`split_filter_text`.
+
+    Returns:
+        The parts of all values.
+    """
+    return [part for value in values for part in split_filter_text(value)]
+
+
 # Server filter operators and their negation, used to exclude values.
 # 'like', 'contains' and 're' have no negated counterpart on the server.
 _NEGATED_OPERATORS: dict[str, str] = {
@@ -1165,7 +1178,7 @@ class BrowserWidgetController(QtCore.QObject):
                     condition = {
                         "key": attribute_key,
                         "value": (
-                            split_filter_text(values[0])
+                            _text_match_parts(values)
                             if use_substring
                             else values
                         ),
@@ -1274,7 +1287,7 @@ class BrowserWidgetController(QtCore.QObject):
                     condition = {
                         "key": server_key,
                         "value": (
-                            split_filter_text(values[0])
+                            _text_match_parts(values)
                             if use_substring
                             else values
                         ),
@@ -1295,7 +1308,7 @@ class BrowserWidgetController(QtCore.QObject):
             condition = {
                 "key": key,
                 "value": (
-                    split_filter_text(values[0]) if use_substring else values
+                    _text_match_parts(values) if use_substring else values
                 ),
                 "operator": operator,
             }
@@ -1314,13 +1327,7 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": condition["operator"],
                 })
             elif key == "task":
-                condition = None
-                if values:
-                    condition = {
-                        "key": "name",
-                        "value": values,
-                        "operator": operator,
-                    }
+                condition = {**condition, "key": "name"} if values else None
                 if empty_value is not None:
                     # Can't use `_or_empty_value_condition` because "id" is a
                     # UUID field server-side, which rejects "" as an entity id.
