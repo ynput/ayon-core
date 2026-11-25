@@ -156,7 +156,12 @@ class WindowActionsMixin:
         if result.success:
             self._update_build_status(result)
             if self._controller.get_build_steps():
-                self._on_show_build_report()
+                # The build is done; close the tool once the report is
+                #   dismissed so the built scene is not left under a stale
+                #   template tool.
+                self._on_show_build_report(close_builder=True)
+            else:
+                self.close()
         else:
             self._show_action_error(result)
 
@@ -266,21 +271,29 @@ class WindowActionsMixin:
             else None
         )
 
-    def _on_show_build_report(self):
+    def _on_show_build_report(self, close_builder: bool = False):
         dialog = getattr(self, "_build_report_dialog", None)
         if dialog is not None:
             dialog.show()
             dialog.raise_()
             dialog.activateWindow()
+            if close_builder:
+                self._close_builder_with_report(dialog)
             return
 
         dialog = BuildReportDialog(self._controller, parent=self)
         dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
         dialog.destroyed.connect(self._on_build_report_destroyed)
         self._build_report_dialog = dialog
+        if close_builder:
+            self._close_builder_with_report(dialog)
         dialog.show()
         dialog.raise_()
         dialog.activateWindow()
+
+    def _close_builder_with_report(self, dialog):
+        """Close the tool when the given build report is dismissed."""
+        dialog.finished.connect(lambda _result: self.close())
 
     def _on_build_report_destroyed(self):
         self._build_report_dialog = None

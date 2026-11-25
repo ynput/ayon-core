@@ -24,6 +24,7 @@ from ayon_core.tools.workfile_template_build import (
 )
 from ayon_core.tools.workfile_template_build.abstract import (
     BuildContextItem,
+    BuildStep,
     PlaceholderDynamicData,
 )
 from ayon_core.tools.workfile_template_build.ui.build_report import (
@@ -646,6 +647,34 @@ class TestBuildReport:
             assert "run boom" in dialog.get_report_text()
         finally:
             dialog.close()
+
+    def test_build_from_template_closes_after_report(
+        self, window, qtbot, monkeypatch, answers
+    ):
+        controller = window._controller
+        monkeypatch.setattr(
+            controller, "get_template_path", lambda: "/templates/shot.ma"
+        )
+        monkeypatch.setattr(
+            controller,
+            "build_template",
+            lambda **kwargs: ActionResult(success=True),
+        )
+        monkeypatch.setattr(
+            controller,
+            "get_build_steps",
+            lambda: [BuildStep("node_1", "one", 0, "succeeded")],
+        )
+        answers.queue.append(QtWidgets.QMessageBox.Yes)
+
+        window._on_build_from_template_request()
+
+        dialog = getattr(window, "_build_report_dialog", None)
+        assert dialog is not None
+        dialog.close()
+        qtbot.wait(50)
+
+        assert not window.isVisible()
 
 
 class TestGuide:
