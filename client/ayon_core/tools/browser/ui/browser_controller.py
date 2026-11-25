@@ -27,6 +27,7 @@ from ayon_core.ui.components.table_model import (
 from ayon_core.ui.components.table_filter import (
     EMPTY_VALUE_OPTIONS,
     HAS_VALUE,
+    split_filter_text,
 )
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.tree_model import TreeNode
@@ -65,6 +66,7 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     parse_attribute_group_key,
 )
 from ayon_core.tools.browser.server_capabilities import (
+    server_supports_contains_operator,
     server_supports_folder_filter,
     server_supports_latest_per_folder,
     server_supports_representation_filter,
@@ -104,8 +106,13 @@ _GRID_COLUMN_KEYS: frozenset[str] = frozenset({
     "productBaseType",
 })
 
+# Operator of a condition matching text typed into a filter, holding the
+# typed parts as its value. Internal only: each part is turned into a
+# 'contains' or 'like' condition before the filter is sent to the server.
+_TEXT_MATCH_OPERATOR = "textMatch"
+
 # Server filter operators and their negation, used to exclude values.
-# 'like' and 're' have no negated counterpart on the server.
+# 'like', 'contains' and 're' have no negated counterpart on the server.
 _NEGATED_OPERATORS: dict[str, str] = {
     "eq": "ne",
     "ne": "eq",
@@ -647,6 +654,19 @@ class BrowserWidgetController(QtCore.QObject):
             server_supports_latest_per_folder, "latest per folder"
         )
 
+    # TODO: Backwards compatibility for AYON server < 1.17.5.
+    #   Remove this once 1.17.5 is the minimum supported server.
+    @property
+    def supports_contains_operator(self) -> bool:
+        """Whether the server's filters take the 'contains' operator.
+
+        Servers up to 1.17.4 match typed text with an escaped 'like'
+        pattern instead.
+        """
+        return self._server_supports(
+            server_supports_contains_operator, "contains operator"
+        )
+
     @property
     def has_selection(self) -> bool:
         """Return whether the slicer has at least one selected entity."""
@@ -1142,9 +1162,17 @@ class BrowserWidgetController(QtCore.QObject):
                         attribute_key, values
                     )
                 elif values:
-                    condition = self._match_condition(
-                        attribute_key, values, use_substring
-                    )
+                    condition = {
+                        "key": attribute_key,
+                        "value": (
+                            split_filter_text(values[0])
+                            if use_substring
+                            else values
+                        ),
+                        "operator": (
+                            _TEXT_MATCH_OPERATOR if use_substring else "in"
+                        ),
+                    }
                 condition = self._or_empty_value_condition(
                     condition,
                     empty_value,
@@ -1243,9 +1271,17 @@ class BrowserWidgetController(QtCore.QObject):
                         "operator": "includesany",
                     }
                 elif values:
-                    condition = self._match_condition(
-                        server_key, values, use_substring
-                    )
+                    condition = {
+                        "key": server_key,
+                        "value": (
+                            split_filter_text(values[0])
+                            if use_substring
+                            else values
+                        ),
+                        "operator": (
+                            _TEXT_MATCH_OPERATOR if use_substring else "in"
+                        ),
+                    }
                 condition = self._or_empty_value_condition(
                     condition, empty_value, server_key, is_list
                 )
@@ -1255,26 +1291,36 @@ class BrowserWidgetController(QtCore.QObject):
                     version_conditions.append(condition)
                 continue
 
+            operator = _TEXT_MATCH_OPERATOR if use_substring else "in"
+            condition = {
+                "key": key,
+                "value": (
+                    split_filter_text(values[0]) if use_substring else values
+                ),
+                "operator": operator,
+            }
             if key in {
                 "productBaseType",
                 "productType",
                 "productName",
             }:
-                product_conditions.append(self._match_condition(
-                    "name" if key == "productName" else key,
-                    values,
-                    use_substring,
-                ))
+                if key == "productName":
+                    condition["key"] = "name"
+                product_conditions.append(condition)
             elif key == "folderName":
-                folder_conditions.append(
-                    self._match_condition("name", values, use_substring)
-                )
+                folder_conditions.append({
+                    "key": "name",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
             elif key == "task":
                 condition = None
                 if values:
-                    condition = self._match_condition(
-                        "name", values, use_substring
-                    )
+                    condition = {
+                        "key": "name",
+                        "value": values,
+                        "operator": operator,
+                    }
                 if empty_value is not None:
                     # Can't use `_or_empty_value_condition` because "id" is a
                     # UUID field server-side, which rejects "" as an entity id.
@@ -1295,13 +1341,17 @@ class BrowserWidgetController(QtCore.QObject):
                 if condition is not None:
                     task_conditions.append(condition)
             elif key == "taskType":
-                task_conditions.append(
-                    self._match_condition("taskType", values, use_substring)
-                )
+                task_conditions.append({
+                    "key": "taskType",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
             elif key == "taskStatus":
-                task_conditions.append(
-                    self._match_condition("status", values, use_substring)
-                )
+                task_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
             elif key == "taskTags":
                 task_conditions.append({
                     "key": "tags",
@@ -1315,25 +1365,33 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": "includesany",
                 })
             elif key == "productStatus":
-                product_conditions.append(
-                    self._match_condition("status", values, use_substring)
-                )
+                product_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
             elif key == "folderStatus":
-                folder_conditions.append(
-                    self._match_condition("status", values, use_substring)
-                )
+                folder_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
             elif key == "representationName":
-                representation_conditions.append(
-                    self._match_condition("name", values, use_substring)
-                )
+                representation_conditions.append({
+                    "key": "name",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
             elif key == "representationExtension":
                 extension_condition = self._build_extension_condition(values)
                 if extension_condition is not None:
                     representation_conditions.append(extension_condition)
             elif key == "representationStatus":
-                representation_conditions.append(
-                    self._match_condition("status", values, use_substring)
-                )
+                representation_conditions.append({
+                    "key": "status",
+                    "value": condition["value"],
+                    "operator": condition["operator"],
+                })
             elif key == "representationTags":
                 representation_conditions.append({
                     "key": "tags",
@@ -1341,16 +1399,27 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": "includesany",
                 })
             else:
-                version_conditions.append(
-                    self._match_condition(key, values, use_substring)
-                )
+                version_conditions.append(condition)
 
+        use_contains = self.supports_contains_operator
         return {
-            "version_conditions": version_conditions,
-            "product_conditions": product_conditions,
-            "task_conditions": task_conditions,
-            "folder_conditions": folder_conditions,
-            "representation_conditions": representation_conditions,
+            "version_conditions": self._expand_text_match_conditions(
+                version_conditions, use_contains
+            ),
+            "product_conditions": self._expand_text_match_conditions(
+                product_conditions, use_contains
+            ),
+            "task_conditions": self._expand_text_match_conditions(
+                task_conditions, use_contains
+            ),
+            "folder_conditions": self._expand_text_match_conditions(
+                folder_conditions, use_contains
+            ),
+            "representation_conditions": (
+                self._expand_text_match_conditions(
+                    representation_conditions, use_contains
+                )
+            ),
             "featured_only": featured_only,
             "featured_types": featured_types,
             "search": search,
@@ -1368,7 +1437,7 @@ class BrowserWidgetController(QtCore.QObject):
         text are escaped so they match literally.
 
         Args:
-            text: Text typed into the filter.
+            text: Text to match.
 
         Returns:
             Case-insensitive pattern for the 'like' operator.
@@ -1377,37 +1446,58 @@ class BrowserWidgetController(QtCore.QObject):
         return f"%{escaped}%"
 
     @classmethod
-    def _match_condition(
+    def _expand_text_match_conditions(
         cls,
-        key: str,
-        values: list[str],
-        use_substring: bool,
-    ) -> dict[str, Any]:
-        """Return a condition matching any of *values* on *key*.
+        conditions: list[dict[str, Any]],
+        use_contains: bool,
+    ) -> list[dict[str, Any]]:
+        """Turn text match conditions into conditions the server takes.
+
+        A text match condition holds the parts of the typed text, see
+        :func:`split_filter_text`. Each part becomes a condition matching
+        it literally anywhere in the value, using 'contains' or, on older
+        servers, an escaped 'like' pattern. Several parts are combined
+        into an 'or' group. A condition without any part is dropped.
 
         Args:
-            key: Server filter key of the field.
-            values: Values to match, combined with OR.
-            use_substring: Match values containing any of *values*
-                instead of equal to one of them.
+            conditions: Conditions, possibly nested in groups.
+            use_contains: Whether the server takes the 'contains'
+                operator.
 
         Returns:
-            A condition, or a group of 'like' conditions for several
-            substrings.
+            Conditions the server accepts.
         """
-        if not use_substring:
-            return {"key": key, "value": values, "operator": "in"}
-        conditions = [
-            {
-                "key": key,
-                "value": cls._like_pattern(value),
-                "operator": "like",
-            }
-            for value in values
-        ]
-        if len(conditions) == 1:
-            return conditions[0]
-        return {"operator": "or", "conditions": conditions}
+        output = []
+        for condition in conditions:
+            if "conditions" in condition:
+                children = cls._expand_text_match_conditions(
+                    condition["conditions"], use_contains
+                )
+                if not children:
+                    continue
+                if len(children) == 1:
+                    output.append(children[0])
+                    continue
+                condition = {**condition, "conditions": children}
+            elif condition.get("operator") == _TEXT_MATCH_OPERATOR:
+                expanded = [
+                    {
+                        **condition,
+                        "value": (
+                            part if use_contains else cls._like_pattern(part)
+                        ),
+                        "operator": "contains" if use_contains else "like",
+                    }
+                    for part in condition["value"]
+                ]
+                if not expanded:
+                    continue
+                if len(expanded) == 1:
+                    condition = expanded[0]
+                else:
+                    condition = {"operator": "or", "conditions": expanded}
+            output.append(condition)
+        return output
 
     @staticmethod
     def _build_extension_condition(

@@ -74,6 +74,22 @@ def is_empty_filter_value(value: Any) -> bool:
     )
 
 
+def split_filter_text(text: str) -> list[str]:
+    """Split text typed into a filter into the parts it searches for.
+
+    Parts are separated by commas, so ``main, lighting`` searches for
+    ``main`` or ``lighting``. Whitespace around each part is dropped, as
+    are empty parts.
+
+    Args:
+        text: Text typed into the filter.
+
+    Returns:
+        Parts to search for; any of them may match.
+    """
+    return [part.strip() for part in text.split(",") if part.strip()]
+
+
 def filter_values_match(
     cell_value: Any,
     values: Iterable[str],
@@ -88,7 +104,9 @@ def filter_values_match(
         cell_value: Row value compared to the values.
         values: Values of the criterion, combined with OR logic.
         use_substring: Match the values as case-insensitive substrings
-            instead of whole values.
+            instead of whole values. Each value is typed text and may
+            hold several comma-separated parts, see
+            :func:`split_filter_text`.
         is_empty: Returns whether the row value counts as empty, for the
             "No value" and "Has value" options. Checks *cell_value* by
             default.
@@ -108,7 +126,9 @@ def filter_values_match(
             continue
         value_lower = value.lower()
         if use_substring:
-            if value_lower in cell_str:
+            parts = split_filter_text(value_lower)
+            # Text holding no part (e.g. only commas) does not filter.
+            if not parts or any(part in cell_str for part in parts):
                 return True
         elif cell_str == value_lower:
             return True
