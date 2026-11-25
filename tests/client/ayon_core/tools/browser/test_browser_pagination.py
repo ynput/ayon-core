@@ -372,7 +372,38 @@ class ProductGroupsStub:
         return "view_in_ar", "#fff"
 
     def _build_group_header_row(self, option: Any, **kwargs: Any):
-        return {"id": kwargs["value"]}
+        return {
+            "id": kwargs["value"],
+            "num_versions": kwargs["num_versions"],
+            "product_ids": kwargs["product_ids"],
+            "featured_version": kwargs["featured_version"],
+        }
+
+
+class SameNameProductsStub(ProductGroupsStub):
+    """Serve products of the same names in two folders, in one page."""
+
+    def _get_products_page(self, *args: Any, **kwargs: Any):
+        self.calls.append(kwargs)
+        edges = [
+            {"node": {
+                "id": product_id,
+                "name": name,
+                "productType": "render",
+                "featuredVersion": {"id": f"{product_id}_v"},
+            }}
+            for product_id, name in (
+                ("a_render", "renderMain"),
+                ("a_model", "modelMain"),
+                ("b_render", "renderMain"),
+            )
+        ]
+        return edges, {
+            "startCursor": None,
+            "endCursor": None,
+            "hasNextPage": False,
+            "hasPreviousPage": False,
+        }
 
 
 @pytest.mark.unit
@@ -417,3 +448,53 @@ def test_product_group_headers_fall_back_to_path(monkeypatch) -> None:
     assert (
         controller.calls[0]["sort_by"], controller.calls[0]["descending"]
     ) == ("path", False)
+
+
+@pytest.mark.unit
+def test_product_group_headers_merge_same_names(monkeypatch) -> None:
+    """Products of the same name in multiple folders share one header."""
+    monkeypatch.setattr(
+        browser_queries,
+        "get_server_products_sort_options",
+        lambda: frozenset({"path"}),
+    )
+    controller = SameNameProductsStub()
+    controller._selected_folder_ids = ["folder_a", "folder_b"]
+
+    rows = controller._fetch_product_group_headers(
+        {"a_render": 2, "b_render": 3, "a_model": 1}, "path", False
+    )
+
+    assert [
+        (row["id"], row["product_ids"], row["num_versions"])
+        for row in rows
+    ] == [
+        ("renderMain", ["a_render", "b_render"], 5),
+        ("modelMain", ["a_model"], 1),
+    ]
+    # The first product in the sort order represents the group.
+    assert rows[0]["featured_version"] == {"id": "a_render_v"}
+    assert controller._product_ids_by_group_name == {
+        "renderMain": ["a_render", "b_render"],
+        "modelMain": ["a_model"],
+    }
+
+
+@pytest.mark.unit
+def test_product_group_headers_hide_empty_products(monkeypatch) -> None:
+    """Empty products are hidden before same-named ones are merged."""
+    monkeypatch.setattr(
+        browser_queries,
+        "get_server_products_sort_options",
+        lambda: frozenset({"path"}),
+    )
+    controller = SameNameProductsStub()
+    controller._hide_empty_groups = True
+
+    rows = controller._fetch_product_group_headers(
+        {"b_render": 3}, "path", False
+    )
+
+    assert [(row["id"], row["product_ids"]) for row in rows] == [
+        ("renderMain", ["b_render"]),
+    ]
