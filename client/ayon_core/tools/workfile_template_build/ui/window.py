@@ -13,11 +13,11 @@ from ayon_core.ui.components import AYButton, AYContainer
 from ..abstract import (
     BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDERS_REFRESHED_TOPIC,
-    AbstractTemplateBuilderController,
     ActionResult,
     PlaceholderItemInfo,
     PlaceholderPluginItem,
 )
+from ..control import WorkfileTemplateBuilderController
 from .window_actions import WindowActionsMixin
 from .constants import EDITOR_PAGE, HINT_PAGE
 from .context_bar import ContextBarWidget
@@ -117,14 +117,14 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
     """Manage placeholders of a workfile template.
 
     Args:
-        controller (AbstractTemplateBuilderController): Backend of the tool.
+        controller (WorkfileTemplateBuilderController): Backend of the tool.
         parent (Optional[QtWidgets.QWidget]): Parent widget.
 
     """
 
     def __init__(
         self,
-        controller: AbstractTemplateBuilderController,
+        controller: WorkfileTemplateBuilderController,
         parent: Optional[QtWidgets.QWidget] = None,
     ):
         super().__init__(

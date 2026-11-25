@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 from contextlib import contextmanager
 
@@ -65,9 +66,7 @@ class BuildResultsMixin:
                 error.
 
         """
-        return [
-            BuildStep.from_data(step.to_data()) for step in self._build_steps
-        ]
+        return copy.deepcopy(self._build_steps)
 
     def get_build_log(self) -> list[str]:
         """Log lines captured during the last template build."""
@@ -107,13 +106,7 @@ class BuildResultsMixin:
 
     def get_build_history(self) -> list[list[BuildStep]]:
         """Last build results, oldest first, limited to 5 builds."""
-        return [
-            [
-                BuildStep.from_data(step.to_data())
-                for step in build_steps
-            ]
-            for build_steps in self._build_history
-        ]
+        return copy.deepcopy(self._build_history)
 
     def get_last_build_results(self) -> list[tuple[str, str, str]]:
         """Results of the last template build.
@@ -202,9 +195,7 @@ class BuildResultsMixin:
 
     def _store_build_history(self) -> None:
         """Keep results of the last few builds."""
-        self._build_history.append(
-            [BuildStep.from_data(step.to_data()) for step in self._build_steps]
-        )
+        self._build_history.append(copy.deepcopy(self._build_steps))
         del self._build_history[:-MAX_BUILD_HISTORY]
 
     # --- Implementation -----------------------------------------------

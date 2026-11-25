@@ -10,10 +10,8 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderPreview,
 )
 
-from ..abstract import (
-    AbstractTemplateBuilderController,
-    PlaceholderDynamicData,
-)
+from ..abstract import PlaceholderDynamicData
+from ..control import WorkfileTemplateBuilderController
 
 
 class PreviewWorkerSignals(QtCore.QObject):
@@ -27,7 +25,7 @@ class PreviewWorker(QtCore.QRunnable):
 
     def __init__(
         self,
-        controller: AbstractTemplateBuilderController,
+        controller: WorkfileTemplateBuilderController,
         plugin_identifier: str,
         values: dict[str, Any],
         generation: int,
@@ -61,7 +59,7 @@ class PreviewWorker(QtCore.QRunnable):
 
 
 def create_preview_worker(
-    controller: AbstractTemplateBuilderController,
+    controller: WorkfileTemplateBuilderController,
     plugin_identifier: str,
     values: dict[str, Any],
     generation: int,

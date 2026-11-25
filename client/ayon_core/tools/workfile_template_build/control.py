@@ -31,7 +31,6 @@ from .abstract import (
     PLACEHOLDER_CREATED_TOPIC,
     PLACEHOLDER_UPDATED_TOPIC,
     PLACEHOLDER_DELETED_TOPIC,
-    AbstractTemplateBuilderController,
     ActionResult,
     BuildContextItem,
     BuildStep,
@@ -44,9 +43,7 @@ from .abstract import (
 from .build_results import BuildResultsMixin, _can_run_placeholder
 
 
-class WorkfileTemplateBuilderController(
-    BuildResultsMixin, AbstractTemplateBuilderController
-):
+class WorkfileTemplateBuilderController(BuildResultsMixin):
     """In-process controller of workfile template builder tool.
 
     Args:
@@ -604,7 +601,6 @@ class WorkfileTemplateBuilderController(
                                           step.error)
                     for step in failed
                 ),
-                steps=self.get_build_steps(),
             )
 
         if self._build_steps and not succeeded:
@@ -618,11 +614,8 @@ class WorkfileTemplateBuilderController(
                     "{} ({})".format(step.label, step.scene_identifier)
                     for step in skipped
                 ),
-                steps=self.get_build_steps(),
             )
-        return ActionResult(
-            success=True, steps=self.get_build_steps()
-        )
+        return ActionResult(success=True)
 
     def get_template_path(self) -> Optional[str]:
         preset = self._get_template_preset()
@@ -688,7 +681,7 @@ class WorkfileTemplateBuilderController(
         self.emit_event(PLACEHOLDERS_REFRESHED_TOPIC)
         if error is not None:
             return error
-        return ActionResult(success=True, steps=self.get_build_steps())
+        return ActionResult(success=True)
 
     def _get_plugins(self) -> dict[str, PlaceholderPlugin]:
         if self._builder is None:

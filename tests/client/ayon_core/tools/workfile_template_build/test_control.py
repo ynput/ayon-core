@@ -15,9 +15,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     TemplatePreset,
 )
 from ayon_core.tools.workfile_template_build.abstract import (
-    ActionResult,
     BuildContextItem,
-    BuildStep,
     BUILD_CONTEXT_CHANGED_TOPIC,
     PLACEHOLDER_CREATED_TOPIC,
     PLACEHOLDERS_REFRESHED_TOPIC,
@@ -480,32 +478,6 @@ class TestTemplateBuild:
         assert progress == [1, 2]
 
 
-class TestBuildResultsSerialization:
-    def test_build_step_ignores_unknown_keys(self):
-        step = BuildStep.from_data({
-            "scene_identifier": "node_1",
-            "label": "one",
-            "order": 1,
-            "status": "succeeded",
-            "unknown": "ignored",
-        })
-
-        assert step.scene_identifier == "node_1"
-        assert step.status == "succeeded"
-
-    def test_action_result_serializes_steps(self):
-        result = ActionResult(
-            success=True,
-            steps=[BuildStep("node_1", "one", 1, "succeeded")],
-        )
-
-        restored = ActionResult.from_data(result.to_data())
-
-        assert restored.success
-        assert len(restored.steps) == 1
-        assert restored.steps[0].scene_identifier == "node_1"
-
-
 class TestTemplateFile:
     @pytest.fixture
     def template_path(self, tmp_path_factory):
@@ -708,12 +680,6 @@ class TestPlaceholderData:
         assert item.delete_supported
         assert item.run_supported
 
-    def test_item_info_is_serializable(self, controller):
-        controller.create_placeholder("fake", {"name": "one"})
-        item = controller.get_placeholder_items()[0]
-
-        assert type(item).from_data(item.to_data()) == item
-
     def test_options_use_stored_values_as_defaults(self, controller):
         attr_defs = controller.get_placeholder_options(
             "fake", {"name": "stored"}
@@ -852,12 +818,9 @@ class TestBuildContext:
             "animation",
         )
 
-    def test_context_item_serialization(self):
+    def test_context_item_label(self):
         context_item = BuildContextItem("/shots/sh010", None, True)
 
-        assert BuildContextItem.from_data(
-            context_item.to_data()
-        ) == context_item
         assert context_item.label == "/shots/sh010"
 
 

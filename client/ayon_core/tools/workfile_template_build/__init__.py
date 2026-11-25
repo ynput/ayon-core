@@ -8,7 +8,6 @@ same reason.
 import typing
 
 from .abstract import (
-    AbstractTemplateBuilderController,
     ActionResult,
     BuildContextItem,
     PlaceholderItemInfo,
@@ -52,7 +51,6 @@ def __getattr__(name):
 
 
 __all__ = (
-    "AbstractTemplateBuilderController",
     "ActionResult",
     "BuildContextItem",
     "PlaceholderItemInfo",

@@ -15,17 +15,14 @@ from ayon_core.ui.components import AYButton, AYContainer, AYLabel
 from ayon_core.ui.components.scroll_area import AYScrollArea
 
 from ..abstract import (
-    AbstractTemplateBuilderController,
     PlaceholderDynamicData,
     PlaceholderItemInfo,
     PlaceholderOptionsError,
     PlaceholderPluginItem,
 )
+from ..control import WorkfileTemplateBuilderController
 from .options_polish import _polish_options
-from .placeholder_header import (
-    HEADER_SPACING,  # noqa: F401
-    PlaceholderHeaderWidget,
-)
+from .placeholder_header import PlaceholderHeaderWidget
 from .placeholder_icons import (
     CREATE_ICON,
     DELETE_ICON,
@@ -33,11 +30,7 @@ from .placeholder_icons import (
     SELECT_ICON,
     get_placeholder_icon,
 )
-from .preview_widget import (
-    MAX_PREVIEW_HEIGHT,  # noqa: F401
-    PreviewWidget,
-    _HintingFilter,  # noqa: F401
-)
+from .preview_widget import PreviewWidget
 from .preview_worker import PreviewWorker, create_preview_worker
 from .utils import get_warning_color
 
@@ -83,7 +76,7 @@ class PlaceholderEditorWidget(AYContainer):
 
     def __init__(
         self,
-        controller: AbstractTemplateBuilderController,
+        controller: WorkfileTemplateBuilderController,
         parent: Optional[QtWidgets.QWidget] = None,
     ):
         super().__init__(
