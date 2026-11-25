@@ -216,6 +216,44 @@ def test_like_pattern_matches_substring(text, expected):
     assert BrowserWidgetController._like_pattern(text) == expected
 
 
+def test_typed_values_each_match_as_substring():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion(
+            "taskType", "Type", ["anim", "comp"], use_substring=True,
+        ),
+    ])
+
+    assert _conditions(controller._get_query_filters()["task_filter"]) == [
+        {
+            "operator": "or",
+            "conditions": [
+                {"key": "taskType", "value": "%anim%", "operator": "like"},
+                {"key": "taskType", "value": "%comp%", "operator": "like"},
+            ],
+        }
+    ]
+
+
+def test_task_name_substring_with_no_value():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion(
+            "task", "Task", [NO_VALUE, "anim"], use_substring=True,
+        ),
+    ])
+
+    assert _conditions(controller._get_query_filters()["task_filter"]) == [
+        {
+            "operator": "or",
+            "conditions": [
+                {"key": "id", "operator": "isnull"},
+                {"key": "name", "value": "%anim%", "operator": "like"},
+            ],
+        }
+    ]
+
+
 def test_product_name_substring_is_partial_match():
     controller = _controller()
     controller.set_filter_criteria([

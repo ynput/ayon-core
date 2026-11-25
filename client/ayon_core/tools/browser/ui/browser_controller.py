@@ -1142,15 +1142,9 @@ class BrowserWidgetController(QtCore.QObject):
                         attribute_key, values
                     )
                 elif values:
-                    condition = {
-                        "key": attribute_key,
-                        "value": (
-                            self._like_pattern(values[0])
-                            if use_substring
-                            else values
-                        ),
-                        "operator": "like" if use_substring else "in",
-                    }
+                    condition = self._match_condition(
+                        attribute_key, values, use_substring
+                    )
                 condition = self._or_empty_value_condition(
                     condition,
                     empty_value,
@@ -1249,15 +1243,9 @@ class BrowserWidgetController(QtCore.QObject):
                         "operator": "includesany",
                     }
                 elif values:
-                    condition = {
-                        "key": server_key,
-                        "value": (
-                            self._like_pattern(values[0])
-                            if use_substring
-                            else values
-                        ),
-                        "operator": "like" if use_substring else "in",
-                    }
+                    condition = self._match_condition(
+                        server_key, values, use_substring
+                    )
                 condition = self._or_empty_value_condition(
                     condition, empty_value, server_key, is_list
                 )
@@ -1267,36 +1255,26 @@ class BrowserWidgetController(QtCore.QObject):
                     version_conditions.append(condition)
                 continue
 
-            operator = "like" if use_substring else "in"
-            condition = {
-                "key": key,
-                "value": (
-                    self._like_pattern(values[0]) if use_substring else values
-                ),
-                "operator": operator,
-            }
             if key in {
                 "productBaseType",
                 "productType",
                 "productName",
             }:
-                if key == "productName":
-                    condition["key"] = "name"
-                product_conditions.append(condition)
+                product_conditions.append(self._match_condition(
+                    "name" if key == "productName" else key,
+                    values,
+                    use_substring,
+                ))
             elif key == "folderName":
-                folder_conditions.append({
-                    "key": "name",
-                    "value": condition["value"],
-                    "operator": condition["operator"],
-                })
+                folder_conditions.append(
+                    self._match_condition("name", values, use_substring)
+                )
             elif key == "task":
                 condition = None
                 if values:
-                    condition = {
-                        "key": "name",
-                        "value": values,
-                        "operator": operator,
-                    }
+                    condition = self._match_condition(
+                        "name", values, use_substring
+                    )
                 if empty_value is not None:
                     # Can't use `_or_empty_value_condition` because "id" is a
                     # UUID field server-side, which rejects "" as an entity id.
@@ -1317,17 +1295,13 @@ class BrowserWidgetController(QtCore.QObject):
                 if condition is not None:
                     task_conditions.append(condition)
             elif key == "taskType":
-                task_conditions.append({
-                    "key": "taskType",
-                    "value": condition["value"],
-                    "operator": condition["operator"],
-                })
+                task_conditions.append(
+                    self._match_condition("taskType", values, use_substring)
+                )
             elif key == "taskStatus":
-                task_conditions.append({
-                    "key": "status",
-                    "value": condition["value"],
-                    "operator": condition["operator"],
-                })
+                task_conditions.append(
+                    self._match_condition("status", values, use_substring)
+                )
             elif key == "taskTags":
                 task_conditions.append({
                     "key": "tags",
@@ -1341,33 +1315,25 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": "includesany",
                 })
             elif key == "productStatus":
-                product_conditions.append({
-                    "key": "status",
-                    "value": condition["value"],
-                    "operator": condition["operator"],
-                })
+                product_conditions.append(
+                    self._match_condition("status", values, use_substring)
+                )
             elif key == "folderStatus":
-                folder_conditions.append({
-                    "key": "status",
-                    "value": condition["value"],
-                    "operator": condition["operator"],
-                })
+                folder_conditions.append(
+                    self._match_condition("status", values, use_substring)
+                )
             elif key == "representationName":
-                representation_conditions.append({
-                    "key": "name",
-                    "value": condition["value"],
-                    "operator": condition["operator"],
-                })
+                representation_conditions.append(
+                    self._match_condition("name", values, use_substring)
+                )
             elif key == "representationExtension":
                 extension_condition = self._build_extension_condition(values)
                 if extension_condition is not None:
                     representation_conditions.append(extension_condition)
             elif key == "representationStatus":
-                representation_conditions.append({
-                    "key": "status",
-                    "value": condition["value"],
-                    "operator": condition["operator"],
-                })
+                representation_conditions.append(
+                    self._match_condition("status", values, use_substring)
+                )
             elif key == "representationTags":
                 representation_conditions.append({
                     "key": "tags",
@@ -1375,7 +1341,9 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": "includesany",
                 })
             else:
-                version_conditions.append(condition)
+                version_conditions.append(
+                    self._match_condition(key, values, use_substring)
+                )
 
         return {
             "version_conditions": version_conditions,
@@ -1407,6 +1375,39 @@ class BrowserWidgetController(QtCore.QObject):
         """
         escaped = re.sub(r"([\\%_])", r"\\\1", text)
         return f"%{escaped}%"
+
+    @classmethod
+    def _match_condition(
+        cls,
+        key: str,
+        values: list[str],
+        use_substring: bool,
+    ) -> dict[str, Any]:
+        """Return a condition matching any of *values* on *key*.
+
+        Args:
+            key: Server filter key of the field.
+            values: Values to match, combined with OR.
+            use_substring: Match values containing any of *values*
+                instead of equal to one of them.
+
+        Returns:
+            A condition, or a group of 'like' conditions for several
+            substrings.
+        """
+        if not use_substring:
+            return {"key": key, "value": values, "operator": "in"}
+        conditions = [
+            {
+                "key": key,
+                "value": cls._like_pattern(value),
+                "operator": "like",
+            }
+            for value in values
+        ]
+        if len(conditions) == 1:
+            return conditions[0]
+        return {"operator": "or", "conditions": conditions}
 
     @staticmethod
     def _build_extension_condition(
