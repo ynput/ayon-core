@@ -936,7 +936,7 @@ class LocalPreferences(ASettingRegistry):
     def log(self) -> logging.Logger:
         return _get_logger("LocalPreferences")
 
-    def _import_registry(self, filepath: str) -> bool | None:
+    def _import_registry(self, filepath: str) -> bool:
         """Import items of a 'JSONSettingRegistry' file.
 
         Each file is imported once, it is not imported again when the
@@ -947,12 +947,14 @@ class LocalPreferences(ASettingRegistry):
             filepath: Path to the JSON file of the registry.
 
         Returns:
-            bool | None: Whether items were imported now. 'None' if the
-                import can be tried again, e.g. the database was locked.
+            bool: Whether the file is done and should not be tried again,
+                also when it was imported before or there is nothing to
+                import. 'False' if the import can be tried again, e.g.
+                the database was locked.
 
         """
         if not os.path.isfile(filepath):
-            return False
+            return True
         try:
             with open(filepath, "r", encoding="utf-8") as stream:
                 registry = json.load(stream).get("registry")
@@ -967,44 +969,36 @@ class LocalPreferences(ASettingRegistry):
                 "Failed to read registry file '%s'.", filepath, exc_info=True
             )
             # The file may be used by another process, broken stays broken
-            return None if isinstance(exc, OSError) else False
+            return not isinstance(exc, OSError)
 
         source = os.path.normcase(os.path.abspath(filepath))
 
-        def _import(connection: sqlite3.Connection) -> bool:
+        def _import(connection: sqlite3.Connection) -> None:
             # Locks the database, so the file is imported once also when
             #   processes import it at the same time.
             connection.execute("BEGIN IMMEDIATE")
-            try:
-                imported = connection.execute(
-                    "SELECT 1 FROM imported_registries"
-                    " WHERE name = ? AND filepath = ?",
+            imported = connection.execute(
+                "SELECT 1 FROM imported_registries"
+                " WHERE name = ? AND filepath = ?",
+                (self.name, source),
+            ).fetchone()
+            if not imported:
+                connection.executemany(
+                    "INSERT OR IGNORE INTO preferences"
+                    " (name, item, value) VALUES (?, ?, ?)",
+                    rows,
+                )
+                connection.execute(
+                    "INSERT INTO imported_registries"
+                    " (name, filepath) VALUES (?, ?)",
                     (self.name, source),
-                ).fetchone()
-                if not imported:
-                    connection.executemany(
-                        "INSERT OR IGNORE INTO preferences"
-                        " (name, item, value) VALUES (?, ?, ?)",
-                        rows,
-                    )
-                    connection.execute(
-                        "INSERT INTO imported_registries"
-                        " (name, filepath) VALUES (?, ?)",
-                        (self.name, source),
-                    )
-                connection.execute("COMMIT")
-            except BaseException:
-                with contextlib.suppress(sqlite3.Error):
-                    connection.execute("ROLLBACK")
-                raise
-            return not imported
+                )
+            connection.execute("COMMIT")
 
-        success, imported = self._run(
+        success, _ = self._run(
             _import, f"import registry file '{filepath}' to"
         )
-        if not success:
-            return None
-        return imported
+        return success
 
     def _get_item(self, name: str, default: Any = _PLACEHOLDER) -> Any:
         rows = self._query(
@@ -1081,8 +1075,9 @@ class LocalPreferences(ASettingRegistry):
             return
         # Tried again on the next access if it failed for now. Otherwise
         #   items stored meanwhile would be kept over the imported ones.
-        imported = self._import_registry(self._legacy_registry_filepath)
-        self._legacy_registry_imported = imported is not None
+        self._legacy_registry_imported = self._import_registry(
+            self._legacy_registry_filepath
+        )
 
     def _run(
         self,
@@ -1149,7 +1144,7 @@ class LocalPreferences(ASettingRegistry):
             now = datetime.now().strftime("%Y%m%d-%H%M%S")
             broken_path = f"{self._filepath}.broken-{now}"
             # Journal first, it would be applied to the new database
-            for suffix in ("-journal", "-wal", "-shm", ""):
+            for suffix in ("-journal", ""):
                 try:
                     os.replace(
                         f"{self._filepath}{suffix}",
@@ -1216,7 +1211,6 @@ class UserPreferencesNotSupported(RuntimeError):
 
 class _ServerSupport:
     """Whether servers have the preferences API, by url of the server."""
-    lock = threading.Lock()
     # Held while a server is asked, so threads asking at the same time
     #   share one request.
     check_lock = threading.Lock()
@@ -1225,15 +1219,11 @@ class _ServerSupport:
 
 def _get_server_support() -> bool | None:
     """Cached support of the current server, 'None' when not known."""
-    server_url = ayon_api.get_base_url()
-    with _ServerSupport.lock:
-        return _ServerSupport.by_url.get(server_url)
+    return _ServerSupport.by_url.get(ayon_api.get_base_url())
 
 
 def _set_server_support(supported: bool) -> None:
-    server_url = ayon_api.get_base_url()
-    with _ServerSupport.lock:
-        _ServerSupport.by_url[server_url] = supported
+    _ServerSupport.by_url[ayon_api.get_base_url()] = supported
 
 
 def _list_preferences(query: dict[str, str]) -> Any | None:
@@ -1390,7 +1380,7 @@ class UserPreferences(ASettingRegistry):
             if self._can_change("stored"):
                 # The server merges the item into the stored preference,
                 #   so items changed meanwhile by other processes are kept.
-                self._request("patch", payload={name: value})
+                self._request(ayon_api.raw_patch, payload={name: value})
 
     def _delete_item(self, name: str, ignore_missing: bool = True) -> None:
         with self._lock:
@@ -1412,7 +1402,7 @@ class UserPreferences(ASettingRegistry):
                 return
             data.pop(name)
             self._data = data
-            self._request("put", payload=data)
+            self._request(ayon_api.raw_put, payload=data)
 
     def _ensure_loaded(self) -> None:
         """Receive the preference on first use. Expects '_lock' held."""
@@ -1483,14 +1473,15 @@ class UserPreferences(ASettingRegistry):
                     return data
         return {}
 
-    def _request(self, method: str, payload: dict[str, Any]) -> None:
+    def _request(
+        self, function: Callable[..., Any], payload: dict[str, Any]
+    ) -> None:
         """Change the preference on the server, failures are logged."""
         endpoint = f"preferences/{self.name}"
         if self._project_name:
             query = urlencode({"project_name": self._project_name})
             endpoint = f"{endpoint}?{query}"
 
-        function = getattr(ayon_api, f"raw_{method}")
         try:
             response = function(endpoint, json=payload)
         except Exception:
