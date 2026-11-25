@@ -1685,10 +1685,6 @@ class IWorkfileHost(AbstractHost):
 
         Can be overridden to implement host specific logic.
 
-        A host can change 'dst_path' to save elsewhere, e.g. when the DCC
-            forces another extension. Make sure to also change
-            'rootless_path', which is used for the workfile entity.
-
         Args:
             open_workfile_context (OpenWorkfileContext): Context and path of
                 workfile to open.
@@ -1720,6 +1716,10 @@ class IWorkfileHost(AbstractHost):
         This method is called before the workfile is saved in the host.
 
         Can be overridden to implement host specific logic.
+
+        A host can change 'dst_path' to save elsewhere, e.g. when the DCC
+            forces another extension. Make sure to also change
+            'rootless_path', which is used for the workfile entity.
 
         Args:
             save_workfile_context (SaveWorkfileContext): Workfile path with
