@@ -97,7 +97,7 @@ def test_has_reviewables_filter_is_forwarded_to_versions_query(
         ),
         (
             "comment", ["final"], True,
-            {"key": "attrib.comment", "value": "final", "operator": "like"},
+            {"key": "attrib.comment", "value": "%final%", "operator": "like"},
         ),
         (
             "intent", ["wip"], False,

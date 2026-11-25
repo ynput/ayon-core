@@ -200,3 +200,42 @@ def test_hero_with_other_featured_types_uses_featured_only():
     assert query_filters["featured_only"] == ["hero", "latest"]
     assert query_filters["featured_types"] == ["hero", "latest"]
     assert query_filters["version_filter"] == ""
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("main", "%main%"),
+        ("render main", "%render main%"),
+        (r"render_a\b", r"%render\_a\\b%"),
+        ("ren%main", "ren%main"),
+    ],
+)
+def test_like_pattern_matches_substring(text, expected):
+    assert BrowserWidgetController._like_pattern(text) == expected
+
+
+def test_product_name_substring_is_partial_match():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion(
+            "productName", "Product name", ["Main"], use_substring=True,
+        ),
+    ])
+
+    assert _conditions(controller._get_query_filters()["product_filter"]) == [
+        {"key": "name", "value": "%Main%", "operator": "like"}
+    ]
+
+
+def test_text_attribute_substring_is_partial_match():
+    controller = _controller({"version": {"comment": {"type": "string"}}})
+    controller.set_filter_criteria([
+        FilterCriterion(
+            "attr:version:comment", "Comment", ["fix"], use_substring=True,
+        ),
+    ])
+
+    assert _conditions(controller._get_query_filters()["version_filter"]) == [
+        {"key": "attrib.comment", "value": "%fix%", "operator": "like"}
+    ]

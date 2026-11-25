@@ -1144,7 +1144,11 @@ class BrowserWidgetController(QtCore.QObject):
                 elif values:
                     condition = {
                         "key": attribute_key,
-                        "value": values[0] if use_substring else values,
+                        "value": (
+                            self._like_pattern(values[0])
+                            if use_substring
+                            else values
+                        ),
                         "operator": "like" if use_substring else "in",
                     }
                 condition = self._or_empty_value_condition(
@@ -1247,7 +1251,11 @@ class BrowserWidgetController(QtCore.QObject):
                 elif values:
                     condition = {
                         "key": server_key,
-                        "value": values[0] if use_substring else values,
+                        "value": (
+                            self._like_pattern(values[0])
+                            if use_substring
+                            else values
+                        ),
                         "operator": "like" if use_substring else "in",
                     }
                 condition = self._or_empty_value_condition(
@@ -1262,7 +1270,9 @@ class BrowserWidgetController(QtCore.QObject):
             operator = "like" if use_substring else "in"
             condition = {
                 "key": key,
-                "value": values[0] if use_substring else values,
+                "value": (
+                    self._like_pattern(values[0]) if use_substring else values
+                ),
                 "operator": operator,
             }
             if key in {
@@ -1379,6 +1389,29 @@ class BrowserWidgetController(QtCore.QObject):
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
         }
+
+    @staticmethod
+    def _like_pattern(text: str) -> str:
+        """Return a 'like' pattern matching *text* anywhere in a value.
+
+        The server runs 'like' as SQL ``ILIKE``, which compares the whole
+        value, so the text is wrapped in ``%`` to match part of it, like
+        the table's local filter does. Underscores and backslashes in the
+        text are escaped so they match literally.
+
+        Text that already contains ``%`` is a pattern written by the user
+        and is sent unchanged.
+
+        Args:
+            text: Text typed into the filter.
+
+        Returns:
+            Case-insensitive pattern for the 'like' operator.
+        """
+        if "%" in text:
+            return text
+        escaped = re.sub(r"([\\_])", r"\\\1", text)
+        return f"%{escaped}%"
 
     @staticmethod
     def _build_extension_condition(
