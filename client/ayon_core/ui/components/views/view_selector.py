@@ -322,9 +322,8 @@ class AYViewSelector(AYButtonMenu):
         )
         scroll_content.add_widget(self._make_separator())
 
-        sections = self._get_view_sections()
         current_id = self._current_view.id if self._current_view else None
-        for section_key, title, views in sections:
+        for section_key, title, views in self._get_view_sections():
             scroll_content.add_widget(
                 self._make_section_header(title, section_key)
             )
@@ -333,14 +332,6 @@ class AYViewSelector(AYButtonMenu):
                 views = [v for v in views if v.id == current_id]
             for view in views:
                 scroll_content.add_widget(self._make_row(view))
-
-        if not sections:
-            no_views_label = AYLabel("No saved views.", dim=True)
-            # Match the left indent every row's own label gets from its
-            # row's contents margins + the label's own inner margin
-            # (2 + 6 = 8), since this one isn't wrapped in a row.
-            no_views_label.setContentsMargins(8, 4, 8, 4)
-            scroll_content.add_widget(no_views_label)
 
         scroll_area = AYScrollArea()
         scroll_area.setWidget(scroll_content)
