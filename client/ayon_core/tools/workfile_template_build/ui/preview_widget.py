@@ -164,11 +164,17 @@ class PreviewWidget(AYContainer):
         """
         if preview is None:
             self._preview = None
-            self.setVisible(False)
+            self._title_label.setText("Preview")
+            self._set_hint(
+                "Select a placeholder to see what it would load.",
+                False,
+            )
+            root_item = self._items_model.invisibleRootItem()
+            root_item.removeRows(0, root_item.rowCount())
+            self._items_view.setVisible(False)
             return
 
         self._preview = preview
-        self.setVisible(True)
         self._title_label.setText(preview.title or "Preview")
         self._set_hint(preview.hint, preview.is_error)
 

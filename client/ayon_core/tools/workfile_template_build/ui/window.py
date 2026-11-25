@@ -193,15 +193,25 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         pages_widget.addWidget(editor_widget)
         editor_panel.add_widget(pages_widget, stretch=1)
 
+        # Preview is its own third pane so options and result can be read
+        #   side by side instead of scrolling past the preview.
+        preview_widget = editor_widget.preview_widget
+        preview_widget.setContentsMargins(
+            PANEL_MARGIN, PANEL_MARGIN, PANEL_MARGIN, PANEL_MARGIN
+        )
+        preview_widget.setVisible(False)
+
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
         splitter.setObjectName(SPLITTER_OBJECT_NAME)
         splitter.setHandleWidth(SPLITTER_HANDLE_WIDTH)
         splitter.setChildrenCollapsible(False)
         splitter.addWidget(placeholders_panel)
         splitter.addWidget(editor_panel)
+        splitter.addWidget(preview_widget)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([400, 600])
+        splitter.setStretchFactor(2, 0)
+        splitter.setSizes([400, 600, 300])
 
         self.add_widget(context_bar)
         self.add_widget(divider_widget)
@@ -233,6 +243,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         placeholders_widget.delete_requested.connect(self._on_remove_request)
         placeholders_widget.refresh_requested.connect(self._on_refresh_request)
         pages_widget.currentChanged.connect(self._update_add_highlight)
+        pages_widget.currentChanged.connect(self._update_preview_pane)
         editor_widget.create_requested.connect(self._on_create_confirmed)
         editor_widget.save_requested.connect(self._on_save_confirmed)
         editor_widget.cancel_requested.connect(self._on_create_cancelled)
@@ -263,6 +274,8 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         self._pages_widget = pages_widget
         self._hint_widget = hint_widget
         self._editor_widget = editor_widget
+        self._preview_widget = preview_widget
+        self._splitter = splitter
         self._build_status_btn = build_status_btn
         self._build_progress_bar = build_progress_bar
 
@@ -281,7 +294,8 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         self._editor_widget._confirm_btn.setDefault(True)
         self._update_build_state()
         self._update_build_context()
-        self.resize(1000, 680)
+        self._update_preview_pane()
+        self.resize(1250, 720)
 
     def _setup_shortcuts(self):
         save_shortcut = QtWidgets.QShortcut(
@@ -530,6 +544,17 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
             self._pages_widget.currentIndex() == HINT_PAGE
             and not self._placeholder_items_by_id
         )
+
+    def _update_preview_pane(self, _index=None):
+        """Show the preview pane only while editing a placeholder."""
+        is_editor = self._pages_widget.currentIndex() == EDITOR_PAGE
+        self._preview_widget.setVisible(is_editor)
+        if not is_editor:
+            return
+
+        sizes = self._splitter.sizes()
+        if len(sizes) != 3 or sizes[2] < 100:
+            self._splitter.setSizes([400, 500, 300])
 
     def _show_hint_page(self):
         self._current_identifier = None

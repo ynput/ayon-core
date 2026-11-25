@@ -507,7 +507,9 @@ class TestEditorActions:
         assert editor._remove_btn.isEnabled()
 
     def test_actions_are_next_to_the_name(self, window):
-        window.resize(1200, 600)
+        # The preview pane makes the editor narrower; use a normal wide
+        # window for the side-by-side header layout.
+        window.resize(1300, 600)
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})
 
@@ -615,6 +617,17 @@ class TestBuild:
 
 
 class TestResponsiveLayout:
+    def test_preview_is_a_third_pane(self, window):
+        splitter = window._splitter
+        assert splitter.count() == 3
+        assert splitter.widget(2) is window._editor_widget.preview_widget
+        assert splitter.widget(2).isHidden()
+
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+
+        assert not splitter.widget(2).isHidden()
+
     def test_context_labels_hide_on_narrow_bar(self, window):
         context_bar = window._context_bar
         context_bar.resize(300, context_bar.height())

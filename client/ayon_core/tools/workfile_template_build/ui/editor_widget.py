@@ -201,7 +201,6 @@ class PlaceholderEditorWidget(AYContainer):
 
         self.add_widget(header_widget)
         self.add_widget(attrs_scroll, stretch=1)
-        self.add_widget(preview_widget)
         self.add_widget(btns_widget)
 
         dynamic_timer = QtCore.QTimer(self)
@@ -339,6 +338,11 @@ class PlaceholderEditorWidget(AYContainer):
     def is_create_mode(self) -> bool:
         """The editor shows a placeholder that is not created yet."""
         return self._mode == CREATE_MODE
+
+    @property
+    def preview_widget(self) -> PreviewWidget:
+        """Preview panel shown next to the editor."""
+        return self._preview_widget
 
     def revert_to_original(self) -> None:
         """Restore the values the editor was opened with."""
