@@ -3,9 +3,6 @@ import pytest
 
 from ayon_core.lib import attribute_definitions
 from ayon_core.pipeline.workfile import workfile_template_builder as wtb
-from ayon_core.pipeline.workfile import (
-    workfile_template_builder_load as wtb_load,
-)
 
 
 FOLDER_ENTITIES = [
@@ -156,10 +153,10 @@ def load_plugin(monkeypatch):
         ]
 
     monkeypatch.setattr(wtb.ayon_api, "get_hero_versions", get_hero_versions)
-    monkeypatch.setattr(wtb_load, "get_folders", get_folders)
-    monkeypatch.setattr(wtb_load, "get_products", get_products)
-    monkeypatch.setattr(wtb_load, "get_last_versions", get_last_versions)
-    monkeypatch.setattr(wtb_load, "get_representations", get_representations)
+    monkeypatch.setattr(wtb, "get_folders", get_folders)
+    monkeypatch.setattr(wtb, "get_products", get_products)
+    monkeypatch.setattr(wtb, "get_last_versions", get_last_versions)
+    monkeypatch.setattr(wtb, "get_representations", get_representations)
     monkeypatch.setattr(
         wtb.ayon_api, "get_server_version_tuple", lambda: (1, 14, 0)
     )
