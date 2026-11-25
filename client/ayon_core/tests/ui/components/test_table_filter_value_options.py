@@ -7,6 +7,7 @@ default, and the "No/Has {label}" options for fields that can be empty.
 from unittest.mock import Mock
 
 import pytest
+from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QWidget
 
 from ayon_core.ui.components.table_filter import (
@@ -151,6 +152,147 @@ def test_entries_without_flags_are_unchanged(qtbot):
     dropdown._value_buttons["render"].click()
     dropdown._value_buttons["model"].click()
     assert _checked(dropdown) == ["render", "model"]
+
+
+@pytest.fixture
+def task_type_entry() -> FilterEntry:
+    return FilterEntry(
+        "taskType", "Type",
+        options=["animation", "anim_fx", "compositing", "layout"],
+        allows_custom_values=True,
+    )
+
+
+def test_typed_text_is_offered_as_custom_value(qtbot, task_type_entry):
+    dropdown = _dropdown(qtbot, [task_type_entry])
+    dropdown._on_attr_selected("taskType", "Type")
+    dropdown._stack.setCurrentIndex(1)
+    custom_btn = dropdown._custom_value_btn
+    assert custom_btn is not None and custom_btn.isHidden()
+
+    dropdown._attr_search.setText("anim, comp")
+
+    assert not custom_btn.isHidden()
+    assert custom_btn.text().strip() == 'Contains "anim" or "comp"'
+    listed = [
+        value
+        for value, button in dropdown._value_buttons.items()
+        if not button.isHidden()
+    ]
+    assert listed == ["animation", "anim_fx", "compositing"]
+    # Typing alone only searches the list.
+    assert dropdown._current_values() == ([], False)
+
+
+def test_enter_applies_typed_text_as_substrings(qtbot, task_type_entry):
+    dropdown = _dropdown(qtbot, [task_type_entry])
+    ready = []
+    dropdown.criterion_ready.connect(lambda *args: ready.append(args))
+    dropdown._on_attr_selected("taskType", "Type")
+    dropdown._stack.setCurrentIndex(1)
+    dropdown._attr_search.setText("anim, comp")
+
+    qtbot.keyClick(dropdown._attr_search, Qt.Key.Key_Return)
+
+    assert ready == [("taskType", ["anim", "comp"], True, False)]
+
+
+def test_picked_values_stay_exact_without_custom_value(
+    qtbot, task_type_entry,
+):
+    dropdown = _dropdown(qtbot, [task_type_entry])
+    dropdown._on_attr_selected("taskType", "Type")
+    dropdown._stack.setCurrentIndex(1)
+    dropdown._attr_search.setText("anim")
+    dropdown._value_buttons["animation"].click()
+
+    assert dropdown._current_values() == (["animation"], False)
+
+    dropdown._custom_value_btn.click()
+    assert dropdown._current_values() == (["animation", "anim"], True)
+
+
+def test_editing_custom_value_criterion_restores_text(
+    qtbot, task_type_entry,
+):
+    dropdown = _dropdown(qtbot, [task_type_entry])
+    anchor = QWidget()
+    qtbot.addWidget(anchor)
+    dropdown.open_for_edit(
+        FilterCriterion(
+            "taskType", "Type", ["anim", "comp"], use_substring=True,
+        ),
+        anchor,
+    )
+
+    assert dropdown._attr_search.text() == "anim, comp"
+    assert dropdown._custom_value_btn.isChecked()
+    # Typed text is not listed as a value of its own.
+    assert "anim" not in dropdown._value_buttons
+    assert _checked(dropdown) == []
+    assert dropdown._current_values() == (["anim", "comp"], True)
+
+
+def test_editing_keeps_listed_values_next_to_typed_text(
+    qtbot, task_type_entry,
+):
+    dropdown = _dropdown(qtbot, [task_type_entry])
+    dropdown._populate_value_page(
+        "taskType", "Type", ["layout", "anim"], use_substring=True,
+    )
+
+    assert dropdown._attr_search.text() == "anim"
+    assert _checked(dropdown) == ["layout"]
+    assert dropdown._current_values() == (["layout", "anim"], True)
+
+
+def test_substring_values_stay_listed_without_custom_values(qtbot):
+    entry = FilterEntry("tags", "Tags", options=["a"])
+    dropdown = _dropdown(qtbot, [entry])
+    dropdown._populate_value_page(
+        "tags", "Tags", ["foo"], use_substring=True,
+    )
+
+    assert dropdown._custom_value_btn is None
+    assert _checked(dropdown) == ["foo"]
+    assert dropdown._current_values() == (["foo"], False)
+
+
+def test_clearing_typed_text_unchecks_custom_value(qtbot, task_type_entry):
+    dropdown = _dropdown(qtbot, [task_type_entry])
+    dropdown._on_attr_selected("taskType", "Type")
+    dropdown._stack.setCurrentIndex(1)
+    dropdown._attr_search.setText("anim")
+    dropdown._custom_value_btn.click()
+
+    dropdown._attr_search.setText("")
+    dropdown._attr_search.setText("lay")
+
+    assert not dropdown._custom_value_btn.isChecked()
+    assert dropdown._current_values() == ([], False)
+
+
+def test_enter_picks_first_match_without_custom_values(qtbot):
+    entry = FilterEntry("tags", "Tags", options=["apple", "kiwi"])
+    dropdown = _dropdown(qtbot, [entry])
+    dropdown._on_attr_selected("tags", "Tags")
+    dropdown._stack.setCurrentIndex(1)
+    dropdown._attr_search.setText("kiw")
+
+    qtbot.keyClick(dropdown._attr_search, Qt.Key.Key_Return)
+
+    assert _checked(dropdown) == ["kiwi"]
+
+
+def test_text_filter_splits_typed_text_at_commas(qtbot):
+    entry = FilterEntry("productName", "Name", text_search=True)
+    dropdown = _dropdown(qtbot, [entry])
+    dropdown._on_attr_selected("productName", "Name")
+    dropdown._stack.setCurrentIndex(1)
+
+    dropdown._attr_search.setText("main, render ,")
+
+    assert dropdown._current_values() == (["main", "render"], True)
 
 
 def test_value_options_accept_mixed_str_and_valueoption(qtbot):

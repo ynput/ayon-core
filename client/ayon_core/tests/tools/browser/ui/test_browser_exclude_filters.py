@@ -371,3 +371,47 @@ def test_text_attribute_substring_is_partial_match():
     assert _conditions(controller._get_query_filters()["version_filter"]) == [
         {"key": "attrib.comment", "value": "%fix%", "operator": "like"}
     ]
+
+
+def test_each_typed_value_matches_as_substring():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion(
+            "taskType", "Type", ["anim", "comp"], use_substring=True,
+        ),
+    ])
+
+    assert _conditions(controller._get_query_filters()["task_filter"]) == [
+        {
+            "operator": "or",
+            "conditions": [
+                {"key": "taskType", "value": "%anim%", "operator": "like"},
+                {"key": "taskType", "value": "%comp%", "operator": "like"},
+            ],
+        }
+    ]
+
+
+def test_task_name_substring_with_no_value():
+    controller = _controller()
+    controller.set_filter_criteria([
+        FilterCriterion(
+            "task", "Task", [NO_VALUE, "an, li"], use_substring=True,
+        ),
+    ])
+
+    assert _conditions(controller._get_query_filters()["task_filter"]) == [
+        {
+            "operator": "or",
+            "conditions": [
+                {"key": "id", "operator": "isnull"},
+                {
+                    "operator": "or",
+                    "conditions": [
+                        {"key": "name", "value": "%an%", "operator": "like"},
+                        {"key": "name", "value": "%li%", "operator": "like"},
+                    ],
+                },
+            ],
+        }
+    ]

@@ -168,6 +168,9 @@ class FilterEntry:
         show_has_value_filters: When true, also show "No {label}" and
             "Has {label}" filter options. Usually, enabled for fields where
             values may be optional or can be empty, e.g. None or empty string.
+        allows_custom_values: Whether text typed into the search of the
+            value list can be picked too, matching every value that
+            contains it, next to the listed values.
     """
     key: str
     label: str
@@ -177,6 +180,7 @@ class FilterEntry:
     text_search: bool = False
     single_select: bool = False
     show_has_value_filters: bool = False
+    allows_custom_values: bool = False
 
 
 @dataclass
