@@ -134,15 +134,15 @@ class ExtractOIIOTranscode(publish.Extractor):
             source_colorspace = colorspace_data.get("colorspace")
             if source_display and source_view:
                 source_colorspace = None
-            else:
+            elif source_colorspace:
                 source_display = source_view = None
-                if not source_colorspace:
-                    self.log.warning(
-                        "Skipping OIIO Color Transcode because the"
-                        " representation has neither colorspace nor"
-                        " display and view in its colorspace data."
-                    )
-                    continue
+            else:
+                self.log.warning(
+                    "Skipping OIIO Color Transcode because the"
+                    " representation has neither colorspace nor"
+                    " display and view in its colorspace data."
+                )
+                continue
 
             # Get representation files to convert
             if isinstance(repre["files"], list):
