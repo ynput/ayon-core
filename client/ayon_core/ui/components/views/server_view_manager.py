@@ -305,6 +305,7 @@ class ServerViewManager(ViewManager):
         except Exception:  # noqa: BLE001
             log.exception("Malformed view payload for %s", view.id)
             return view
+        loaded.shared_with_me = view.shared_with_me
 
         cached = self._cache.get(view_type)
         if cached is not None:
@@ -394,6 +395,7 @@ class ServerViewManager(ViewManager):
                 saved = view
         else:
             saved = view
+        saved.shared_with_me = view.shared_with_me
 
         # Update the id-map and per-type cache in-place.
         if saved.id:
