@@ -857,6 +857,14 @@ class TestMainPages:
 
 
 class TestContextBar:
+    def test_menu_labels_fit_when_wide(self, window):
+        context_bar = window._context_bar
+        assert context_bar._template_btn.text() == "Template"
+        assert (
+            context_bar._context_btn.text()
+            == context_bar._context_btn._full_text
+        )
+
     def test_actions_are_grouped_in_workflow_order(self, window):
         context_bar = window._context_bar
         layout = context_bar._controls_widget.layout()
@@ -1301,6 +1309,44 @@ class TestListReadability:
 
 
 class TestPreviewCopy:
+    def test_preview_header_stays_inside_the_pane(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window.layout().activate()
+
+        preview = window._editor_widget._preview_widget
+        assert preview._title_label.width() <= preview.width()
+        assert preview._context_label.width() <= preview.width()
+        assert (
+            preview._context_label.geometry().top()
+            >= preview._title_label.geometry().bottom()
+        )
+
+    def test_preview_items_are_top_aligned_and_fit_details(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        preview = window._editor_widget._preview_widget
+        preview.set_preview(PlaceholderPreview(
+            title="Would load 7 representations",
+            items=[
+                PlaceholderPreviewItem(
+                    "/lib/animationlib_rigAnim_01_rig", "v001 - ma"
+                )
+                for _ in range(7)
+            ],
+        ))
+        window.layout().activate()
+
+        items_view = preview._items_view
+        assert (
+            items_view.geometry().top()
+            >= preview._context_label.geometry().bottom()
+        )
+        detail_width = items_view.fontMetrics().horizontalAdvance(
+            "v001 - ma"
+        )
+        assert items_view.header().sectionSize(1) >= detail_width
+
     def test_preview_rows_are_selectable_and_copyable(self, window, qtbot):
         window._on_create_request()
         window._on_create_confirmed("fake", {"name": "one"})

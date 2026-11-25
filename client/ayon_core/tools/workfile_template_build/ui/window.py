@@ -223,7 +223,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setStretchFactor(2, 0)
-        splitter.setSizes([400, 600, 300])
+        splitter.setSizes([400, 500, 350])
 
         create_page = CreatePage(self)
         overview_page = OverviewPage(self)
@@ -628,7 +628,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
 
         sizes = self._splitter.sizes()
         if len(sizes) != 3 or sizes[2] < 100:
-            self._splitter.setSizes([400, 500, 300])
+            self._splitter.setSizes([400, 500, 350])
 
     def _sync_host_selection(self):
         """Follow placeholder selection made in the host scene."""

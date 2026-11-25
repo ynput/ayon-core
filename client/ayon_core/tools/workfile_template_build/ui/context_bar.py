@@ -41,7 +41,15 @@ class _MenuButton(AYButton):
             font_metrics.horizontalAdvance(self._full_text)
             - font_metrics.horizontalAdvance(self.text()),
         )
-        return QtCore.QSize(size.width() + extra_width, size.height())
+        # The arrow is painted inside the button but is not part of the
+        #   base button size hint; reserve its space as well.
+        arrow_width = (
+            self._arrow_size + self._arrow_gap + self._arrow_margin
+        )
+        return QtCore.QSize(
+            size.width() + extra_width + arrow_width,
+            size.height(),
+        )
 
     def minimumSizeHint(self) -> QtCore.QSize:
         size = super().minimumSizeHint()

@@ -70,16 +70,25 @@ class PreviewWidget(AYContainer):
 
         title_widget = AYContainer(
             self,
-            layout=AYContainer.Layout.HBox,
+            layout=AYContainer.Layout.VBox,
             variant=AYContainer.Variants.Low,
-            layout_spacing=8,
+            layout_spacing=2,
         )
-        title_label = AYLabel("Preview", parent=title_widget, bold=True)
+        title_label = AYLabel(
+            "Preview",
+            parent=title_widget,
+            bold=True,
+            elide_mode=QtCore.Qt.ElideRight,
+        )
         context_label = AYLabel(
-            parent=title_widget, dim=True, elide_mode=QtCore.Qt.ElideLeft
+            parent=title_widget, dim=True, elide_mode=QtCore.Qt.ElideMiddle
         )
         title_widget.add_widget(title_label)
-        title_widget.add_widget(context_label, stretch=1)
+        title_widget.add_widget(context_label)
+        title_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Maximum,
+        )
 
         warning_label = AYLabel(
             parent=self,
@@ -89,6 +98,9 @@ class PreviewWidget(AYContainer):
         )
         hint_label = AYLabel(parent=self, dim=True, flexible=True)
         hint_label.setWordWrap(True)
+        hint_label.setAlignment(
+            QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
+        )
 
         hint_widget = AYContainer(
             self,
@@ -98,6 +110,10 @@ class PreviewWidget(AYContainer):
         )
         hint_widget.add_widget(warning_label)
         hint_widget.add_widget(hint_label, stretch=1)
+        hint_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Maximum,
+        )
 
         items_model = QtGui.QStandardItemModel()
         items_model.setColumnCount(2)
@@ -112,8 +128,18 @@ class PreviewWidget(AYContainer):
         )
         items_view.setFocusPolicy(QtCore.Qt.StrongFocus)
         items_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        items_view.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding,
+        )
         header = items_view.header()
-        header.setStretchLastSection(True)
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.Stretch
+        )
+        header.setSectionResizeMode(
+            1, QtWidgets.QHeaderView.Fixed
+        )
 
         copy_shortcut = QtWidgets.QShortcut(
             QtGui.QKeySequence.Copy, items_view
@@ -125,8 +151,9 @@ class PreviewWidget(AYContainer):
         )
 
         self.add_widget(title_widget)
-        self.add_widget(hint_widget)
+        self.layout().addWidget(hint_widget, 0, QtCore.Qt.AlignTop)
         self.add_widget(items_view, stretch=1)
+        self.layout().setAlignment(QtCore.Qt.AlignTop)
 
         self._title_label = title_label
         self._context_label = context_label
@@ -200,16 +227,17 @@ class PreviewWidget(AYContainer):
         self._items_view.setToolTip(
             "Select rows and use Ctrl+C or the context menu to copy."
         )
-        # Keep the detail right next to the label so each row reads as one
-        #   entry. Column size hints are not reliable while the view is not
-        #   shown and don't count with padding of the item delegate.
         font_metrics = self._items_view.fontMetrics()
-        label_width = max(
-            (font_metrics.horizontalAdvance(label) for label, _ in rows),
+        detail_width = max(
+            (
+                font_metrics.horizontalAdvance(detail)
+                for _, detail in rows
+                if detail
+            ),
             default=0,
         )
         self._items_view.header().resizeSection(
-            0, label_width + (2 * COLUMN_PADDING)
+            1, max(60, detail_width + COLUMN_PADDING)
         )
         self._update_items_view_height()
 
@@ -268,16 +296,17 @@ class PreviewWidget(AYContainer):
         QtWidgets.QApplication.clipboard().setText(text)
 
     def _update_items_view_height(self) -> None:
-        """Keep the preview only as tall as the entries it shows."""
+        """Keep the preview at least as tall as the entries it shows."""
         rows = self._items_model.rowCount()
         if not rows:
+            self._items_view.setMinimumHeight(0)
             return
 
         row_height = self._items_view.sizeHintForRow(0)
         if row_height <= 0:
             row_height = 24
         frame = 2 * self._items_view.frameWidth()
-        self._items_view.setFixedHeight(
+        self._items_view.setMinimumHeight(
             min(rows * row_height + frame + 4, MAX_PREVIEW_HEIGHT)
         )
 
