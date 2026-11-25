@@ -138,7 +138,13 @@ def test_thumbnail_source(colorspace_data, expected):
         mock.patch.object(plugin, "_get_resolution_args", return_value=[]),
     ):
         result = plugin._create_colorspace_thumbnail(
-            "src.exr", "dst.jpg", repre, ThumbnailDef(), mock.MagicMock(), []
+            "src.exr",
+            "dst.jpg",
+            repre,
+            ThumbnailDef(),
+            mock.MagicMock(),
+            [],
+            mock.MagicMock(),
         )
 
     if expected is None:
