@@ -175,7 +175,7 @@ def _conditions(encoded: str) -> list:
             ]},
         ),
         (
-            "attr:version:comment", ["noValue", "%fin%"], "version_filter",
+            "attr:version:comment", ["noValue", "fin"], "version_filter",
             {"operator": "or", "conditions": [
                 {"operator": "or", "conditions": [
                     {"key": "attrib.comment", "operator": "isnull"},

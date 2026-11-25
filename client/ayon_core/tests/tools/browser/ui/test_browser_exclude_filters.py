@@ -208,7 +208,8 @@ def test_hero_with_other_featured_types_uses_featured_only():
         ("main", "%main%"),
         ("render main", "%render main%"),
         (r"render_a\b", r"%render\_a\\b%"),
-        ("ren%main", "ren%main"),
+        ("100%", r"%100\%%"),
+        ("ren%_main", r"%ren\%\_main%"),
     ],
 )
 def test_like_pattern_matches_substring(text, expected):

@@ -1396,11 +1396,8 @@ class BrowserWidgetController(QtCore.QObject):
 
         The server runs 'like' as SQL ``ILIKE``, which compares the whole
         value, so the text is wrapped in ``%`` to match part of it, like
-        the table's local filter does. Underscores and backslashes in the
+        the table's local filter does. ``%``, ``_`` and backslashes in the
         text are escaped so they match literally.
-
-        Text that already contains ``%`` is a pattern written by the user
-        and is sent unchanged.
 
         Args:
             text: Text typed into the filter.
@@ -1408,9 +1405,7 @@ class BrowserWidgetController(QtCore.QObject):
         Returns:
             Case-insensitive pattern for the 'like' operator.
         """
-        if "%" in text:
-            return text
-        escaped = re.sub(r"([\\_])", r"\\\1", text)
+        escaped = re.sub(r"([\\%_])", r"\\\1", text)
         return f"%{escaped}%"
 
     @staticmethod
