@@ -2627,7 +2627,6 @@ class BrowserWidgetController(QtCore.QObject):
                 "id": f"grp:{group_option.key}:{value}",
                 "has_children": num_versions is None or num_versions > 0,
                 "child_count": num_versions,
-                "group_metrics": group_option.key != GROUP_BY_PRODUCT_KEY,
                 "thumb": display_label,
                 "product/version": display_label,
                 "product/version__icon": icon or "label",
