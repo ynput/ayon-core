@@ -576,7 +576,7 @@ class BaseWorkfileController(
             folder_id, representation_id
         )
 
-    def reset(self) -> None:
+    def reset(self, force: bool = False) -> None:
         if not self._host_is_valid:
             self._emit_event("controller.reset.started")
             self._emit_event("controller.reset.finished")
@@ -613,7 +613,7 @@ class BaseWorkfileController(
         self._settings_model.reset()
         self._users_model.reset()
         self._projects_model.reset()
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
         self._thumbnails_model.reset()
         self._workfiles_model.reset()
         self._actions_model.reset()

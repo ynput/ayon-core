@@ -553,8 +553,14 @@ def is_ffmpeg_encoder_available(encoder: str) -> bool:
     return encoder in get_ffmpeg_available_encoders()
 
 
-def is_oiio_supported():
+@functools.lru_cache(maxsize=None)
+def is_oiio_supported() -> bool:
     """Checks if oiiotool is configured for this platform.
+
+    The result is cached per process because the validation launches
+    oiiotool in a subprocess, which can be slow, e.g. when the executable
+    lives on a network share. Use 'is_oiio_supported.cache_clear()' to force
+    a new check.
 
     Returns:
         bool: OIIO tool executable is available.

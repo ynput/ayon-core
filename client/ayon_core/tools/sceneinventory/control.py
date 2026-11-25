@@ -68,7 +68,7 @@ class SceneInventoryController:
     def register_event_callback(self, topic, callback):
         self._event_system.add_callback(topic, callback)
 
-    def reset(self):
+    def reset(self, force=False):
         self._current_context = None
         self._current_project = None
         self._current_folder_id = None
@@ -76,7 +76,7 @@ class SceneInventoryController:
 
         self._containers_model.reset()
         self._sitesync_model.reset()
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
 
     def get_current_context(self):
         if self._current_context is None:
