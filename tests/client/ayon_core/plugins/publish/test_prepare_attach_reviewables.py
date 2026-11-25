@@ -192,7 +192,7 @@ def test_prepare_rejects_paths_outside_target_staging(tmp_path, monkeypatch):
     source_file = tmp_path / "review.mov"
     source_file.write_text("review")
     source_staging_dir = tmp_path / "source"
-    source_staging_dir.mkdir()
+    source_staging_dir.mkdir(exist_ok=True)
     context[0].data["representations"][0].update({
         "stagingDir": str(source_staging_dir),
         "files": "../review.mov",
