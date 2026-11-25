@@ -39,6 +39,9 @@ from ayon_core.tools.workfile_template_build.ui.placeholders_widget import (
 
 HINT_PAGE = 0
 EDITOR_PAGE = 1
+CREATE_PAGE = 0
+OVERVIEW_PAGE = 1
+BUILD_PAGE = 2
 
 
 @pytest.fixture(autouse=True)
@@ -814,6 +817,43 @@ class TestGuide:
 
         add_btn = window._placeholders_widget._create_btn
         assert not add_btn.is_highlighted()
+
+
+class TestMainPages:
+    def test_build_page_is_the_default(self, window):
+        assert window._main_pages.currentIndex() == BUILD_PAGE
+
+    def test_navigation_switches_pages(self, window):
+        window._navigation._buttons[OVERVIEW_PAGE].click()
+        assert window._main_pages.currentIndex() == OVERVIEW_PAGE
+
+        window._navigation._buttons[CREATE_PAGE].click()
+        assert window._main_pages.currentIndex() == CREATE_PAGE
+
+        window._navigation._buttons[BUILD_PAGE].click()
+        assert window._main_pages.currentIndex() == BUILD_PAGE
+
+    def test_overview_summarizes_the_scene(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._set_main_page(OVERVIEW_PAGE)
+
+        values = window._overview_page._values
+        assert values["placeholders"].text() == "1 placeholder"
+        assert values["host"].text()
+        assert values["template"].text()
+
+    def test_create_page_lists_placeholder_types(self, window):
+        window._set_main_page(CREATE_PAGE)
+
+        create_page = window._create_page
+        assert "fake" in create_page._buttons
+
+        create_page._buttons["fake"].click()
+
+        assert window._main_pages.currentIndex() == BUILD_PAGE
+        assert window._pages_widget.currentIndex() == EDITOR_PAGE
+        assert window._editor_widget.is_create_mode()
 
 
 class TestContextBar:

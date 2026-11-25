@@ -19,14 +19,23 @@ from ..abstract import (
 )
 from ..control import WorkfileTemplateBuilderController
 from .window_actions import WindowActionsMixin
-from .constants import EDITOR_PAGE, HINT_PAGE
+from .constants import (
+    BUILD_PAGE,
+    CREATE_PAGE,
+    EDITOR_PAGE,
+    HINT_PAGE,
+    OVERVIEW_PAGE,
+)
 from .context_bar import ContextBarWidget
+from .create_page import CreatePage
 from .editor_widget import (
     OPTIONS_CONTENT_OBJECT_NAME,
     OPTIONS_SCROLL_OBJECT_NAME,
     PlaceholderEditorWidget,
 )
 from .guide_widget import PlaceholderGuideWidget
+from .overview_page import OverviewPage
+from .page_navigation import PageNavigationWidget
 from .placeholders_widget import PlaceholdersWidget
 from .utils import (
     DIVIDER_COLOR,
@@ -216,9 +225,22 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         splitter.setStretchFactor(2, 0)
         splitter.setSizes([400, 600, 300])
 
+        create_page = CreatePage(self)
+        overview_page = OverviewPage(self)
+        main_pages = QtWidgets.QStackedWidget(self)
+        main_pages.addWidget(create_page)
+        main_pages.addWidget(overview_page)
+        main_pages.addWidget(splitter)
+
+        navigation = PageNavigationWidget(self)
+        navigation.setContentsMargins(
+            PANEL_MARGIN, 4, PANEL_MARGIN, 0
+        )
+
         self.add_widget(context_bar)
         self.add_widget(divider_widget)
-        self.add_widget(splitter, stretch=1)
+        self.add_widget(navigation)
+        self.add_widget(main_pages, stretch=1)
 
         context_bar.context_change_requested.connect(
             self._on_context_change_request
@@ -234,6 +256,14 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         )
         context_bar.build_from_template_requested.connect(
             self._on_build_from_template_request
+        )
+        navigation.page_requested.connect(self._set_main_page)
+        create_page.plugin_selected.connect(self._on_create_from_page)
+        overview_page.create_requested.connect(
+            lambda: self._set_main_page(CREATE_PAGE)
+        )
+        overview_page.build_requested.connect(
+            lambda: self._set_main_page(BUILD_PAGE)
         )
         placeholders_widget.selection_changed.connect(
             self._on_selection_change
@@ -273,6 +303,10 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
 
         self._controller = controller
         self._context_bar = context_bar
+        self._navigation = navigation
+        self._main_pages = main_pages
+        self._create_page = create_page
+        self._overview_page = overview_page
         self._placeholders_widget = placeholders_widget
         self._pages_widget = pages_widget
         self._hint_widget = hint_widget
@@ -302,6 +336,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         self._update_build_state()
         self._update_build_context()
         self._update_preview_pane()
+        self._set_main_page(BUILD_PAGE)
         self.resize(1250, 720)
 
     def _setup_shortcuts(self):
@@ -424,11 +459,35 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         )
         self._editor_widget.set_build_context_label(context_item.label)
         self._update_template_path()
+        self._update_overview_summary()
 
     def _update_template_path(self):
         self._context_bar.set_template_path(
             self._controller.get_template_path()
         )
+
+    def _set_main_page(self, page: int) -> None:
+        """Switch between the Create, Overview and Build pages."""
+        if page < 0 or page >= self._main_pages.count():
+            return
+        self._main_pages.setCurrentIndex(page)
+        self._navigation.set_current_page(page)
+        if page == OVERVIEW_PAGE:
+            self._update_overview_summary()
+
+    def _update_overview_summary(self) -> None:
+        context_item = self._controller.get_build_context()
+        self._overview_page.set_summary(
+            workfile=self._controller.get_workfile_name(),
+            host=self._controller.get_host_name(),
+            context=context_item.label,
+            template_path=self._controller.get_template_path(),
+            placeholder_count=len(self._placeholder_items_by_id),
+        )
+
+    def _on_create_from_page(self, plugin_identifier: str) -> None:
+        self._set_main_page(BUILD_PAGE)
+        self._on_create_request(plugin_identifier)
 
     def _update_placeholders(self):
         try:
@@ -442,6 +501,11 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         self._placeholder_items_by_id = {
             item.scene_identifier: item for item in placeholder_items
         }
+        self._create_page.set_plugin_items(self._plugin_items)
+        has_plugins = bool(self._plugin_items)
+        self._navigation.set_create_enabled(has_plugins)
+        self._overview_page.set_create_enabled(has_plugins)
+        self._update_overview_summary()
         self._update_build_state()
 
         self._ignore_selection_change = True
