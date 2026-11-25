@@ -485,9 +485,23 @@ class PlaceholdersWidget(AYContainer):
             item.setText(UNSAVED_MARK + label if is_unsaved else label)
 
     def _resize_columns(self) -> None:
-        """Keep the type column compact; the label column stretches."""
+        """Size the type column from its content and the current font."""
         header = self._view.header()
-        header.resizeSection(TYPE_COLUMN, 150)
+        font_metrics = self._view.fontMetrics()
+        labels = [
+            item.plugin_label
+            for item in self._placeholder_items
+            if item.plugin_label
+        ]
+        if self._pending_plugin_item is not None:
+            labels.append(self._pending_plugin_item.label)
+        labels.append("Type")
+
+        width = max(
+            font_metrics.horizontalAdvance(label) for label in labels
+        )
+        width += COLUMN_PADDING
+        header.resizeSection(TYPE_COLUMN, max(150, width))
 
     def set_add_highlighted(self, highlighted: bool) -> None:
         """Show the "Add" button as the main action.

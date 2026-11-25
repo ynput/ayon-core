@@ -614,6 +614,39 @@ class TestBuild:
         assert window._build_status_btn.isHidden()
 
 
+class TestResponsiveLayout:
+    def test_context_labels_hide_on_narrow_bar(self, window):
+        context_bar = window._context_bar
+        context_bar.resize(300, context_bar.height())
+        context_bar._update_responsive_state()
+
+        assert context_bar._host_label.isHidden()
+        assert context_bar._context_label.isHidden()
+
+        context_bar.resize(1200, context_bar.height())
+        context_bar._update_responsive_state()
+
+        assert not context_bar._host_label.isHidden()
+        assert not context_bar._context_label.isHidden()
+
+    def test_type_column_grows_with_font(self, window):
+        view = window._placeholders_widget._view
+        old_label = _Plugin.label
+        try:
+            _Plugin.label = "A deliberately long placeholder type label"
+            window._on_create_request()
+            window._on_create_confirmed("fake", {"name": "one"})
+            font = view.font()
+            font.setPointSize(24)
+            view.setFont(font)
+
+            window._placeholders_widget._resize_columns()
+
+            assert view.header().sectionSize(TYPE_COLUMN) > 150
+        finally:
+            _Plugin.label = old_label
+
+
 class TestBuildReport:
     """Report dialog of the last build."""
 

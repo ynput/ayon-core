@@ -25,6 +25,10 @@ class _MenuButton(AYButton):
     def __init__(self, *args, **kwargs):
         base_tooltip = kwargs.get("tooltip", "")
         super().__init__(*args, **kwargs)
+        scale = max(1.0, self.fontMetrics().height() / 14.0)
+        self._arrow_size = int(MENU_ARROW_SIZE * scale)
+        self._arrow_gap = int(MENU_ARROW_GAP * scale)
+        self._arrow_margin = int(MENU_ARROW_MARGIN * scale)
         self._full_text = super().text()
         self._base_tooltip = base_tooltip or self.toolTip()
         self._apply_elide()
@@ -42,7 +46,7 @@ class _MenuButton(AYButton):
     def minimumSizeHint(self) -> QtCore.QSize:
         size = super().minimumSizeHint()
         return QtCore.QSize(
-            MENU_ARROW_SIZE + MENU_ARROW_GAP + MENU_ARROW_MARGIN + 24,
+            self._arrow_size + self._arrow_gap + self._arrow_margin + 24,
             size.height(),
         )
 
@@ -62,9 +66,9 @@ class _MenuButton(AYButton):
         available_width = (
             self.width()
             - icon_width
-            - MENU_ARROW_SIZE
-            - MENU_ARROW_GAP
-            - MENU_ARROW_MARGIN
+            - self._arrow_size
+            - self._arrow_gap
+            - self._arrow_margin
         )
         if available_width > 24:
             text = self.fontMetrics().elidedText(
@@ -94,10 +98,10 @@ class _MenuButton(AYButton):
         #   added in 'sizeHint' at the right.
         rect = self.rect()
         arrow_rect = QtCore.QRect(
-            rect.right() - MENU_ARROW_MARGIN - MENU_ARROW_SIZE,
-            rect.center().y() - (MENU_ARROW_SIZE // 2) + 1,
-            MENU_ARROW_SIZE,
-            MENU_ARROW_SIZE,
+            rect.right() - self._arrow_margin - self._arrow_size,
+            rect.center().y() - (self._arrow_size // 2) + 1,
+            self._arrow_size,
+            self._arrow_size,
         )
         painter = QtGui.QPainter(self)
         mode = (
@@ -234,6 +238,7 @@ class ContextBarWidget(AYContainer):
 
         self._workfile_label = workfile_label
         self._host_label = host_label
+        self._context_label = context_label
         self._context_btn = context_btn
         self._reset_btn = reset_btn
         self._test_build_btn = test_build_btn
@@ -242,6 +247,17 @@ class ContextBarWidget(AYContainer):
         self._template_menu = template_menu
         self._template_missing_action = missing_action
         self._template_actions = (open_action, build_action)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._update_responsive_state()
+
+    def _update_responsive_state(self) -> None:
+        """Drop secondary labels when the bar is narrow at this font scale."""
+        scale = max(1.0, self.fontMetrics().height() / 14.0)
+        width = self.width()
+        self._host_label.setVisible(width >= int(520 * scale))
+        self._context_label.setVisible(width >= int(640 * scale))
 
     def set_workfile(
         self, workfile_name: Optional[str], host_name: str
