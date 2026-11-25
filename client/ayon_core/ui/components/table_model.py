@@ -117,6 +117,10 @@ class BatchFetchRequest:
     parent_id: str | None
 
 
+#: Value of the criterion of a filter that is a flag, see 'FilterEntry'.
+FLAG_VALUE = "isSet"
+
+
 @dataclass
 class ValueOption:
     """One resolved row of the value-selection list.
@@ -168,6 +172,10 @@ class FilterEntry:
         show_has_value_filters: When true, also show "No {label}" and
             "Has {label}" filter options. Usually, enabled for fields where
             values may be optional or can be empty, e.g. None or empty string.
+        flag: The filter has no values to pick, e.g. "Comments" to show
+            only comments. Picking it from the menu applies it right away
+            with :data:`FLAG_VALUE` as its only value, which is also the
+            only option offered when it is edited.
     """
     key: str
     label: str
@@ -177,6 +185,11 @@ class FilterEntry:
     text_search: bool = False
     single_select: bool = False
     show_has_value_filters: bool = False
+    flag: bool = False
+
+    def __post_init__(self) -> None:
+        if self.flag and not self.options:
+            self.options = [ValueOption(FLAG_VALUE, self.label, self.icon)]
 
 
 @dataclass

@@ -9,6 +9,7 @@ reported by :meth:`AYActivityStream.get_visible_activities`.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Union
 
 from qtpy import QtCore, QtWidgets
@@ -30,17 +31,120 @@ from .comment_completion import MentionSource
 from .container import AYContainer
 from .label import AYLabel
 from .scroll_area import AYScrollArea
+from .tab_bar import AYTabBar
+from .table_filter import AYFilterBar, FilterCriterion, filter_values_match
+from .table_model import FilterEntry, ValueOption
 from .user_avatars import UserAvatarCache
 
 ActivityModel = Union[CommentModel, VersionPublishModel, StatusChangeModel]
 
-_FILTERS: tuple[tuple[str, str, ActivityCategory], ...] = (
-    ("All", "", ActivityCategory.ALL),
-    ("Comments", "chat", ActivityCategory.COMMENT),
-    ("Publishes", "layers", ActivityCategory.VERSION_PUBLISH),
-    ("Checklists", "checklist", ActivityCategory.CHECKLIST),
-    ("Status", "arrow_circle_right", ActivityCategory.STATUS_CHANGE),
-)
+# Filters of the feed, as in the feed of the web frontend
+_SEARCH_KEY = "text"
+# Types of activities, an activity of any of the picked types is shown
+_TYPE_FILTERS: dict[str, ActivityCategory] = {
+    "comments": ActivityCategory.COMMENT,
+    "versions": ActivityCategory.VERSION_PUBLISH,
+    "updates": ActivityCategory.STATUS_CHANGE,
+    "checklists": ActivityCategory.CHECKLIST,
+}
+# Checkboxes of checklists in comments, the group is the check mark
+_CHECKBOX_RE = re.compile(r"^\s*[-*+]\s+\[([xX ])\]", re.MULTILINE)
+
+
+def _create_filters(with_categories: bool) -> list[FilterEntry]:
+    filters = [
+        FilterEntry("comments", "Comments", icon="chat", flag=True),
+        FilterEntry("versions", "Versions", icon="layers", flag=True),
+        FilterEntry(
+            "updates", "Updates", icon="arrow_circle_right", flag=True
+        ),
+        FilterEntry(
+            "checklists", "Checklists", icon="check_circle", flag=True
+        ),
+        FilterEntry(
+            "attachments", "Attachments", icon="attach_file", flag=True
+        ),
+    ]
+    if with_categories:
+        filters.append(
+            FilterEntry(
+                "category",
+                "Category",
+                icon="label",
+                show_has_value_filters=True,
+            )
+        )
+    filters.extend((
+        FilterEntry("author", "User", icon="person"),
+        FilterEntry(_SEARCH_KEY, "Text", icon="search", text_search=True),
+    ))
+    return filters
+
+
+def _get_search_text(activity: ActivityModel) -> str:
+    """Text of an activity that the text filter searches in."""
+    if isinstance(activity, CommentModel):
+        parts = (activity.user_full_name, activity.comment)
+    elif isinstance(activity, VersionPublishModel):
+        parts = (activity.user_full_name, activity.product, activity.version)
+    else:
+        parts = (
+            activity.user_full_name,
+            activity.product,
+            activity.version,
+            activity.old_status,
+            activity.new_status,
+        )
+    return " ".join(part for part in parts if part)
+
+
+def _get_filter_value(activity: ActivityModel, key: str) -> Any:
+    """Value of an activity that the filter of a key compares."""
+    if key == "attachments":
+        return bool(getattr(activity, "files", None))
+    if key == "category":
+        return getattr(activity, "category", "")
+    if key == "author":
+        return activity.user_name
+    if key == _SEARCH_KEY:
+        return _get_search_text(activity)
+    return None
+
+
+def _matches_criteria(
+    activity: ActivityModel, criteria: list[FilterCriterion]
+) -> bool:
+    """Whether an activity is shown with the criteria of the filter bar.
+
+    Picked types of activities are alternatives, other criteria all have
+    to match.
+    """
+    picked_types = [
+        _TYPE_FILTERS[criterion.key]
+        for criterion in criteria
+        if criterion.key in _TYPE_FILTERS and not criterion.exclude
+    ]
+    if picked_types and not any(
+        activity.type & category for category in picked_types
+    ):
+        return False
+    for criterion in criteria:
+        if criterion.key in _TYPE_FILTERS:
+            matched = bool(activity.type & _TYPE_FILTERS[criterion.key])
+            if criterion.exclude and matched:
+                return False
+            continue
+        value = _get_filter_value(activity, criterion.key)
+        if isinstance(value, bool):
+            # Flag, e.g. activity has attachments
+            matched = value
+        else:
+            matched = filter_values_match(
+                value, criterion.values, criterion.use_substring
+            )
+        if matched == criterion.exclude:
+            return False
+    return True
 
 
 class _ItemsContainer(AYContainer):
@@ -55,7 +159,12 @@ class _ItemsContainer(AYContainer):
 
 
 class AYActivityStream(AYContainer):
-    """Scrollable activity feed with category filter chips.
+    """Scrollable activity feed with a search and filter bar.
+
+    The bar offers the filters of the feed of the web frontend: types of
+    activities, attachments, comment categories, users and text. Comments
+    and checklists can also be toggled by the buttons next to it. Filters
+    are kept when other activities are set, e.g. of another entity.
 
     Args:
         *args: Forwarded to ``AYContainer``.
@@ -101,6 +210,11 @@ class AYActivityStream(AYContainer):
     viewport_changed = QtCore.Signal()
 
     avatar_size = 20
+    # Spacing of rows as in the feed of the frontend: comments and publishes
+    #   have more padding around them than the smaller status changes
+    row_spacing = 8
+    row_padding = 8
+    small_row_padding = 4
     # Delay of 'viewport_changed' in milliseconds
     viewport_changed_delay = 150
 
@@ -141,49 +255,45 @@ class AYActivityStream(AYContainer):
         self._widgets: list[tuple[ActivityModel, QtWidgets.QWidget]] = []
         # Indexes of rows in '_widgets' by id of their attached files
         self._rows_by_file_id: dict[str, list[int]] = {}
-        self._pages: list[tuple[AYButton, QtWidgets.QWidget]] = []
+        # Pages shown instead of the feed, see 'add_page'
+        self._tab_bar: AYTabBar | None = None
+        self._pages: list[QtWidgets.QWidget] = []
         self._page: QtWidgets.QWidget | None = None
-        self._category = ActivityCategory.ALL
+        self._criteria: list[FilterCriterion] = []
+        self._has_categories = False
         self._empty_text = "No activity yet"
         self._build()
 
     def _build(self) -> None:
-        filter_bar = AYContainer(
+        self._filter_bar = AYFilterBar(
+            _create_filters(self._has_categories),
+            parent=self,
+            values_getter=self._get_filter_values,
+            placeholder="Search and filter",
+            search_key=_SEARCH_KEY,
+            compact=True,
+        )
+        self._filter_bar.filters_changed.connect(self._on_filters_changed)
+        # Comments and checklists are buttons next to the bar, as on the
+        #   frontend
+        header = AYContainer(
             layout=AYContainer.Layout.HBox,
             variant=self.Variants.Low,
             layout_spacing=4,
             parent=self,
         )
-        self._filter_group = QtWidgets.QButtonGroup(self)
-        self._filter_group.setExclusive(True)
-        self._filter_buttons: list[AYButton] = []
-        for idx, (label, icon, _category) in enumerate(_FILTERS):
-            # Only the first chip has text, the others are icon only to
-            #   fit in narrow side panels.
-            btn = AYButton(
-                label if not icon else "",
-                variant=AYButton.Variants.Nav_Small,
-                icon=icon or None,
-                icon_size=14,
-                checkable=True,
-                tooltip=label,
-                parent=filter_bar,
+        header.add_widget(self._filter_bar, stretch=1)
+        header.add_widget(
+            self._filter_bar.create_quick_action(
+                "comments", "chat", "Comments", parent=header
             )
-            btn.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-            self._filter_group.addButton(btn, idx)
-            self._filter_buttons.append(btn)
-            filter_bar.add_widget(btn)
-        self._filter_buttons[0].setChecked(True)
-        self._filter_group.idClicked.connect(self._on_filter_clicked)
-        filter_bar.addStretch(1)
-        self._count_label = AYLabel("", dim=True, rel_text_size=-2)
-        filter_bar.add_widget(self._count_label)
-        filter_bar.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Preferred,
-            QtWidgets.QSizePolicy.Policy.Fixed,
         )
-        self._filter_bar = filter_bar
-        self.add_widget(filter_bar)
+        self._checklists_button = self._filter_bar.create_quick_action(
+            "checklists", "check_circle", "Checklists", parent=header
+        )
+        header.add_widget(self._checklists_button)
+        self._header = header
+        self.add_widget(header)
 
         self._message_label = AYLabel("", dim=True)
         self._message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -196,7 +306,7 @@ class AYActivityStream(AYContainer):
         self._items = _ItemsContainer(
             layout=AYContainer.Layout.VBox,
             variant=self.Variants.Low,
-            layout_spacing=10,
+            layout_spacing=self.row_spacing,
         )
         self._items._layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         self._scroll = AYScrollArea(self)
@@ -224,36 +334,29 @@ class AYActivityStream(AYContainer):
     ) -> AYButton:
         """Add a page that is shown instead of the feed.
 
-        The page gets a button next to the filter chips, e.g. to show
-        details of the entity. Selecting a filter chip shows the feed
-        again.
+        Pages are tabs, laid out like the tabs of the web details panel:
+        the feed is an icon on the left, pages are on the right, e.g. to
+        show details of the entity.
 
         Args:
-            label: Label of the button of the page.
+            label: Label of the tab of the page.
             widget: Content of the page.
-            icon: Icon of the button, shown instead of the label.
+            icon: Icon of the tab, shown instead of the label.
 
         Returns:
-            The button that shows the page.
+            The button of the tab that shows the page.
         """
-        button = AYButton(
-            label if not icon else "",
-            variant=AYButton.Variants.Nav_Small,
-            icon=icon,
-            icon_size=14,
-            checkable=True,
-            tooltip=label,
-            parent=self._filter_bar,
-        )
-        button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        self._filter_group.addButton(
-            button, len(_FILTERS) + len(self._pages)
-        )
-        self._filter_bar.add_widget(button)
+        if self._tab_bar is None:
+            self._tab_bar = AYTabBar(variant=self.Variants.Low)
+            self._tab_bar.add_tab("Activity", icon="forum", icon_only=True)
+            self._tab_bar.add_stretch()
+            self._tab_bar.current_changed.connect(self._on_tab_changed)
+            self.insert_widget(0, self._tab_bar)
+        index = self._tab_bar.add_tab(label, icon=icon, icon_only=True)
         widget.setVisible(False)
         self.add_widget(widget, stretch=1)
-        self._pages.append((button, widget))
-        return button
+        self._pages.append(widget)
+        return self._tab_bar.button(index)
 
     def set_status_definitions(
         self, status_definitions: list[dict[str, Any]]
@@ -289,6 +392,8 @@ class AYActivityStream(AYContainer):
         empty_text: str = "No activity yet",
     ) -> None:
         """Replace the displayed activities.
+
+        Active filters are kept, and apply to the new activities.
 
         Rows of activities that are displayed already and did not change
         are reused, matched by ``activity_id``, so a refresh of the same
@@ -345,6 +450,7 @@ class AYActivityStream(AYContainer):
             for file in getattr(activity, "files", ()):
                 self._rows_by_file_id.setdefault(file.id, []).append(idx)
 
+        self._update_filters()
         self._refresh_visibility()
         if self._stick_to_bottom and (
             self._pinned_to_bottom or not reused_widgets
@@ -502,21 +608,26 @@ class AYActivityStream(AYContainer):
     def _create_widget(
         self, activity: ActivityModel
     ) -> QtWidgets.QWidget | None:
+        padding = self.row_padding
         if isinstance(activity, CommentModel):
-            return self._create_comment(activity)
-        if isinstance(activity, VersionPublishModel):
-            return AYPublish(
+            widget = self._create_comment(activity)
+        elif isinstance(activity, VersionPublishModel):
+            widget = AYPublish(
                 data=activity,
                 status_definitions=self._status_definitions,
                 thumbnail_loader=self._thumbnail_loader,
             )
-        if isinstance(activity, StatusChangeModel):
-            return AYStatusChange(
+        elif isinstance(activity, StatusChangeModel):
+            widget = AYStatusChange(
                 data=activity,
                 status_definitions=self._status_definitions,
                 compact=self._compact,
             )
-        return None
+            padding = self.small_row_padding
+        else:
+            return None
+        widget.setContentsMargins(0, padding, 0, padding)
+        return widget
 
     def _create_comment(self, activity: CommentModel) -> AYComment:
         widget = AYComment(data=activity, mention_source=self._mention_source)
@@ -567,12 +678,60 @@ class AYActivityStream(AYContainer):
             if pixmap is not None:
                 widget.user_icon.setPixmap(pixmap)
 
-    def _on_filter_clicked(self, index: int) -> None:
-        if index < len(_FILTERS):
-            self._page = None
-            self._category = _FILTERS[index][2]
-        else:
-            self._page = self._pages[index - len(_FILTERS)][1]
+    def _get_filter_values(self, key: str) -> list[ValueOption]:
+        """Values of a filter in the displayed activities."""
+        options: dict[str, ValueOption] = {}
+        for activity, _widget in self._widgets:
+            if key == "author" and activity.user_name:
+                options.setdefault(
+                    activity.user_name,
+                    ValueOption(
+                        activity.user_name,
+                        activity.user_full_name or activity.user_name,
+                        icon="person",
+                    ),
+                )
+            elif key == "category" and getattr(activity, "category", ""):
+                options.setdefault(
+                    activity.category,
+                    ValueOption(
+                        activity.category,
+                        activity.category,
+                        icon="crop_square",
+                        color=activity.category_color or None,
+                    ),
+                )
+        return sorted(options.values(), key=lambda item: item.label.lower())
+
+    def _update_filters(self) -> None:
+        """Update filters and quick actions to the displayed activities."""
+        has_categories = any(
+            getattr(activity, "category", "")
+            for activity, _widget in self._widgets
+        )
+        if has_categories != self._has_categories:
+            self._has_categories = has_categories
+            self._filter_bar.set_filters(_create_filters(has_categories))
+
+        # Checked and total checkboxes of all checklists
+        marks = [
+            mark
+            for activity, _widget in self._widgets
+            if activity.type & ActivityCategory.CHECKLIST
+            for mark in _CHECKBOX_RE.findall(activity.comment)
+        ]
+        checked = sum(1 for mark in marks if mark != " ")
+        self._checklists_button.setText(
+            f"{checked}/{len(marks)}" if marks else ""
+        )
+
+    def _on_filters_changed(self, criteria: list[FilterCriterion]) -> None:
+        self._criteria = list(criteria)
+        self._refresh_visibility()
+
+    def _on_tab_changed(self, index: int) -> None:
+        # The feed is the first tab
+        self._page = self._pages[index - 1] if index else None
         self._refresh_visibility()
 
     def _on_scroll_value_changed(self, value: int) -> None:
@@ -596,23 +755,17 @@ class AYActivityStream(AYContainer):
     def _refresh_visibility(self) -> None:
         visible = 0
         for activity, widget in self._widgets:
-            show = bool(activity.type & self._category)
+            show = _matches_criteria(activity, self._criteria)
             widget.setVisible(show)
             visible += show
         total = len(self._widgets)
-        self._count_label.setText(
-            str(total) if visible == total else f"{visible} of {total}"
-        )
         on_page = self._page is not None
-        self._count_label.setVisible(bool(total) and not on_page)
-        for button in self._filter_buttons:
-            # A filter chip is the way back from a page
-            button.setEnabled(bool(total) or on_page)
+        self._header.setVisible(not on_page)
         self._message_label.setText(
             self._empty_text if not total else "Nothing matches the filter"
         )
         self._message_label.setVisible(not visible and not on_page)
         self._scroll.setVisible(bool(visible) and not on_page)
-        for _button, page in self._pages:
+        for page in self._pages:
             page.setVisible(page is self._page)
         self._viewport_timer.start()
