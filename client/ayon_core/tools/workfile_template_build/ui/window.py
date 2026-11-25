@@ -45,6 +45,9 @@ PANEL_MARGIN = 10
 # Width of the splitter handle between the panels
 SPLITTER_HANDLE_WIDTH = 6
 
+# How often the tool follows the scene selection while it is open
+SELECTION_SYNC_INTERVAL_MS = 250
+
 # Input widgets of the placeholder options
 OPTION_INPUT_TYPES = (
     "QAbstractSpinBox",
@@ -290,6 +293,10 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
 
         self._setup_shortcuts()
         self._setup_tab_order()
+        selection_timer = QtCore.QTimer(self)
+        selection_timer.setInterval(SELECTION_SYNC_INTERVAL_MS)
+        selection_timer.timeout.connect(self._sync_host_selection)
+        self._selection_sync_timer = selection_timer
         self._editor_widget._confirm_btn.setAutoDefault(True)
         self._editor_widget._confirm_btn.setDefault(True)
         self._update_build_state()
@@ -330,6 +337,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
     # --- Qt overrides -------------------------------------------------
     def showEvent(self, event):
         super().showEvent(event)
+        self._selection_sync_timer.start()
         if self._first_show:
             self._first_show = False
             self.setStyleSheet(
@@ -349,6 +357,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
             return
 
         self._editor_widget.stop_dynamic_timer()
+        self._selection_sync_timer.stop()
         for callback in self._event_callbacks:
             deregister = getattr(callback, "deregister", None)
             if deregister is not None:
@@ -358,6 +367,7 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
 
     def hideEvent(self, event):
         # Do not keep a preview/completion timer running while hidden.
+        self._selection_sync_timer.stop()
         self._editor_widget.stop_dynamic_timer()
         super().hideEvent(event)
 
@@ -555,6 +565,38 @@ class WorkfileTemplateBuilderWindow(WindowActionsMixin, AYContainer):
         sizes = self._splitter.sizes()
         if len(sizes) != 3 or sizes[2] < 100:
             self._splitter.setSizes([400, 500, 300])
+
+    def _sync_host_selection(self):
+        """Follow placeholder selection made in the host scene."""
+        if (
+            self._busy
+            or not self.isVisible()
+            or self.isActiveWindow()
+            or self._editor_widget.is_create_mode()
+            or self._editor_widget.has_unsaved_changes()
+        ):
+            return
+
+        identifiers = (
+            self._controller.get_selected_placeholder_identifiers()
+        )
+        if identifiers is None or not identifiers:
+            return
+
+        matches = [
+            identifier
+            for identifier in identifiers
+            if identifier in self._placeholder_items_by_id
+        ]
+        if not matches or self._current_identifier in matches:
+            return
+
+        identifier = min(
+            matches,
+            key=lambda item_id: self._placeholder_items_by_id[item_id].order,
+        )
+        self._select_silently(identifier)
+        self._show_editor_page(identifier)
 
     def _show_hint_page(self):
         self._current_identifier = None

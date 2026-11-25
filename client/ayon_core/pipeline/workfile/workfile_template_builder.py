@@ -301,6 +301,22 @@ class AbstractTemplateBuilder(ABC):
     def current_task_name(self):
         return self.get_current_context()["task_name"]
 
+    def get_selected_placeholder_identifiers(
+        self,
+    ) -> Optional[list[str]]:
+        """Scene identifiers of placeholders selected in the host.
+
+        Hosts can override this to let the tool follow the scene selection.
+        Return ``None`` when the host does not expose a scene selection;
+        return an empty list when nothing is selected.
+
+        Returns:
+            Optional[List[str]]: Selected scene identifiers, or None when
+                selection syncing is not supported.
+
+        """
+        return None
+
     def get_current_context(self):
         if isinstance(self._host, AbstractHost):
             context = self._host.get_current_context()

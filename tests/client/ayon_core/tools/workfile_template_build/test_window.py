@@ -460,7 +460,12 @@ class TestEdit:
             proxy_model.index(row, 1).data()
             for row in range(proxy_model.rowCount())
         ]
+        steps = [
+            proxy_model.index(row, 0).data()
+            for row in range(proxy_model.rowCount())
+        ]
         assert labels == ["two", "one"]
+        assert steps == ["1", "2"]
 
     def test_filter_matches_label_and_type(self, window):
         widget = window._placeholders_widget
@@ -486,6 +491,53 @@ class TestEdit:
         assert widget._no_match_widget.isHidden()
         assert not widget._view.isHidden()
         assert widget._count_label.text() == "2"
+
+
+class TestHostSelectionSync:
+    def test_follows_placeholder_selected_in_host(
+        self, window, monkeypatch
+    ):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "two"})
+        window._select_silently("node_1")
+        window._show_editor_page("node_1")
+
+        monkeypatch.setattr(
+            window._controller,
+            "get_selected_placeholder_identifiers",
+            lambda: ["node_2"],
+        )
+        monkeypatch.setattr(window, "isActiveWindow", lambda: False)
+
+        window._sync_host_selection()
+
+        assert window._current_identifier == "node_2"
+        assert (
+            window._placeholders_widget.get_selected_identifier() == "node_2"
+        )
+
+    def test_does_not_override_tool_selection_while_active(
+        self, window, monkeypatch
+    ):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "two"})
+        window._select_silently("node_1")
+        window._show_editor_page("node_1")
+
+        monkeypatch.setattr(
+            window._controller,
+            "get_selected_placeholder_identifiers",
+            lambda: ["node_2"],
+        )
+        monkeypatch.setattr(window, "isActiveWindow", lambda: True)
+
+        window._sync_host_selection()
+
+        assert window._current_identifier == "node_1"
 
 
 class TestEditorActions:
@@ -1174,10 +1226,20 @@ class TestRenamedPlaceholder:
 
 
 class TestListReadability:
-    def test_order_column_is_hidden(self, window):
-        view = window._placeholders_widget._view
-        assert view.isColumnHidden(ORDER_COLUMN)
-        assert view.header().sectionSize(TYPE_COLUMN) == 150
+    def test_step_column_is_visible(self, window):
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "one"})
+        window._on_create_request()
+        window._on_create_confirmed("fake", {"name": "two"})
+
+        widget = window._placeholders_widget
+        view = widget._view
+        assert not view.isColumnHidden(ORDER_COLUMN)
+        assert view.header().sectionSize(TYPE_COLUMN) >= 150
+        assert [
+            widget._proxy_model.index(row, 0).data()
+            for row in range(widget._proxy_model.rowCount())
+        ] == ["1", "2"]
 
     def test_splitter_starts_with_a_wide_list(self, window):
         splitter = window.findChild(QtWidgets.QSplitter)

@@ -279,6 +279,17 @@ class WorkfileTemplateBuilderController(BuildResultsMixin):
             for placeholder in self._get_placeholders().values()
         ]
 
+    def get_selected_placeholder_identifiers(
+        self,
+    ) -> Optional[list[str]]:
+        """Scene identifiers of placeholders selected in the host."""
+        if self._builder is None:
+            return None
+        identifiers = self._builder.get_selected_placeholder_identifiers()
+        if identifiers is None:
+            return None
+        return list(identifiers)
+
     def get_placeholders_error(self) -> Optional[str]:
         """Error from the last placeholder collection.
 

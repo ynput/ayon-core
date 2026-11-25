@@ -227,6 +227,30 @@ class TestControllerWithoutBuilder:
         assert result.error_title
 
 
+class TestHostSelection:
+    def test_no_builder_has_no_selection(self):
+        controller = WorkfileTemplateBuilderController(None)
+        assert controller.get_selected_placeholder_identifiers() is None
+
+    def test_selection_is_passed_through(self, controller, monkeypatch):
+        monkeypatch.setattr(
+            controller._builder,
+            "get_selected_placeholder_identifiers",
+            lambda: ["node_1", "node_2"],
+        )
+        assert controller.get_selected_placeholder_identifiers() == [
+            "node_1", "node_2"
+        ]
+
+    def test_unsupported_host_returns_none(self, controller, monkeypatch):
+        monkeypatch.setattr(
+            controller._builder,
+            "get_selected_placeholder_identifiers",
+            lambda: None,
+        )
+        assert controller.get_selected_placeholder_identifiers() is None
+
+
 class TestPluginItems:
     def test_capabilities_are_exposed(self, controller):
         items_by_id = {

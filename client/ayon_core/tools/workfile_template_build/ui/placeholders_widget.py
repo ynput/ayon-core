@@ -170,7 +170,7 @@ class PlaceholdersWidget(AYContainer):
         # --- Placeholders ---
         model = QtGui.QStandardItemModel()
         model.setHorizontalHeaderLabels(
-            ["Build order", "Placeholder", "Type"]
+            ["Step", "Placeholder", "Type"]
         )
 
         proxy_model = QtCore.QSortFilterProxyModel()
@@ -205,8 +205,9 @@ class PlaceholdersWidget(AYContainer):
         header.setSectionResizeMode(
             LABEL_COLUMN, QtWidgets.QHeaderView.Stretch
         )
-        # Order is only used for sorting; the label is the primary column.
-        view.setColumnHidden(ORDER_COLUMN, True)
+        header.setSectionResizeMode(
+            ORDER_COLUMN, QtWidgets.QHeaderView.ResizeToContents
+        )
         header.setSectionResizeMode(
             TYPE_COLUMN, QtWidgets.QHeaderView.Fixed
         )
@@ -311,13 +312,15 @@ class PlaceholdersWidget(AYContainer):
         """
         selected_identifier = self.get_selected_identifier()
 
+        placeholder_items = sorted(
+            placeholder_items, key=lambda item: item.order
+        )
         self._placeholder_items = list(placeholder_items)
         root_item = self._model.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-        for placeholder_item in placeholder_items:
-            order_item = QtGui.QStandardItem()
-            order_item.setData(placeholder_item.order, QtCore.Qt.DisplayRole)
+        for step, placeholder_item in enumerate(placeholder_items, 1):
+            order_item = QtGui.QStandardItem(str(step))
             label_item = QtGui.QStandardItem(placeholder_item.label)
             label_item.setData(placeholder_item.label, LABEL_ROLE)
             icon = get_placeholder_icon(placeholder_item.icon)
@@ -325,7 +328,8 @@ class PlaceholdersWidget(AYContainer):
                 label_item.setIcon(icon)
             type_item = QtGui.QStandardItem(placeholder_item.plugin_label)
 
-            tooltip = "{}\nType: {}\nScene identifier: {}".format(
+            tooltip = "Step {}\n{}\nType: {}\nScene identifier: {}".format(
+                step,
                 placeholder_item.label,
                 placeholder_item.plugin_label,
                 placeholder_item.scene_identifier,
