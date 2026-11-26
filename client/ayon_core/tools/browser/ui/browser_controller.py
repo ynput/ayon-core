@@ -372,6 +372,9 @@ class BrowserWidgetController(QtCore.QObject):
         # group-by key. Sorting does not change them, anything that does
         # (filters, selection, refresh) starts a new generation.
         self._group_counts_cache: dict[tuple[int, str], _GroupCounts] = {}
+        # Product ids of each Product group header, keyed by the product
+        # name the header is grouped by. Filled with the headers.
+        self._product_ids_by_group_name: dict[str, list[str]] = {}
         self._pagination_generation: int = 0
         self._tree_mode = (
             BROWSER_VIEW_DEFAULTS.group_by_key != GROUP_BY_NONE_KEY
@@ -2586,13 +2589,14 @@ class BrowserWidgetController(QtCore.QObject):
         product_base_type: str = "",
         featured_version: dict[str, Any] | None = None,
         num_versions: int | None = None,
+        product_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         """Build an expandable group-header row.
 
         Args:
             group_option: Group-by axis.
             value: The specific group value (e.g. ``"In Progress"``, or
-                the product id for the product axis). Stored in the row
+                the product name for the product axis). Stored in the row
                 ``id`` and used as the display label when *label* is not
                 provided.
             icon: Material icon name for the tree cell.
@@ -2607,6 +2611,8 @@ class BrowserWidgetController(QtCore.QObject):
                 version.
             num_versions: Number of versions in the group, or ``None``
                 when the count source is unavailable.
+            product_ids: Ids of the products in a product-axis group.
+                A group of a single product stands for that product.
 
         Returns:
             Row dict containing the authoritative child count and an id
@@ -2621,7 +2627,6 @@ class BrowserWidgetController(QtCore.QObject):
                 "id": f"grp:{group_option.key}:{value}",
                 "has_children": num_versions is None or num_versions > 0,
                 "child_count": num_versions,
-                "group_metrics": group_option.key != GROUP_BY_PRODUCT_KEY,
                 "thumb": display_label,
                 "product/version": display_label,
                 "product/version__icon": icon or "label",
@@ -2630,11 +2635,14 @@ class BrowserWidgetController(QtCore.QObject):
                 "project_name": self._current_project,
             }
         )
-        if group_option.key == GROUP_BY_PRODUCT_KEY:
+        if product_ids:
             # Lets providers that only know representation-level state
-            # (e.g. In Scene) resolve "any version of this product" -
-            # `value` is the product id only for this axis.
-            row["_product_id"] = value
+            # (e.g. In Scene) resolve "any version of these products".
+            row["_product_ids"] = list(product_ids)
+            if len(product_ids) == 1:
+                # The header stands for this one product (and its
+                # featured version), see '_is_versions_group_row'.
+                row["_product_id"] = product_ids[0]
         if color:
             row["product/version__icon_color"] = color
         if featured_version:
@@ -2668,7 +2676,12 @@ class BrowserWidgetController(QtCore.QObject):
             row["productBaseType"] = product_base_type or product_type
             row["productBaseType__icon"] = icon
             row["productBaseType__icon_color"] = icon_color
-            row["folderName"] = featured_version.get("parents", ["", ""])[-2]
+            if product_ids and len(product_ids) > 1:
+                row["folderName"] = f"{len(product_ids)} folders"
+            else:
+                row["folderName"] = (
+                    featured_version.get("parents", ["", ""])[-2]
+                )
             row["author"] = featured_version.get("author", "")
             row["author__label"] = self._user_full_names.get(
                 row["author"], row["author"]
@@ -3238,12 +3251,14 @@ class BrowserWidgetController(QtCore.QObject):
         sort_by: str | None = None,
         descending: bool = False,
     ) -> list[dict[str, Any]]:
-        """Return one expandable row per product in the current scope.
+        """Return one expandable row per product name in the current scope.
 
         Fetches products via :meth:`_get_products_page`, extracts
         structured tuples via :meth:`_extract_product_group_data`, then
-        builds group-header rows using product ID as the group value and
-        product name as the display label.
+        builds group-header rows using the product name as the group
+        value. Products of the same name in different folders (e.g. with
+        multiple folders selected) share one row, the ids of its products
+        are stored for :meth:`_get_group_versions_filter`.
 
         The products are sorted by the table's sort column, like the
         frontend's Products page. Columns products cannot be sorted by
@@ -3255,7 +3270,7 @@ class BrowserWidgetController(QtCore.QObject):
             descending: Whether the table is sorted descending.
 
         Returns:
-            List of expandable group-header rows keyed by product ID.
+            List of expandable group-header rows keyed by product name.
         """
         folder_ids = self._selected_folder_ids or None
         query_filters = self._get_query_filters()
@@ -3328,27 +3343,40 @@ class BrowserWidgetController(QtCore.QObject):
                 if group_counts.get(item[0], 0) > 0
             ]
 
+        # Products of the same name in different folders share one group,
+        #   represented by the first of them in the sort order.
+        product_data_by_name: dict[
+            str, list[tuple[str, str, str, str, dict[str, Any]]]
+        ] = {}
+        for item in unique_product_data:
+            product_data_by_name.setdefault(item[1], []).append(item)
+        self._product_ids_by_group_name = {
+            p_name: [item[0] for item in items]
+            for p_name, items in product_data_by_name.items()
+        }
+
         rows = []
-        for p_id, p_name, p_type, p_base_type, featured_v in (
-            unique_product_data
-        ):
+        for p_name, items in product_data_by_name.items():
+            _, _, p_type, p_base_type, featured_v = items[0]
+            product_ids = [item[0] for item in items]
             icon, color = self._product_appearance(
                 p_type, p_base_type, "view_in_ar"
             )
+            num_versions = None
+            if group_counts is not None:
+                num_versions = sum(
+                    group_counts.get(p_id, 0) for p_id in product_ids
+                )
             rows.append(self._build_group_header_row(
                 self._group_by_options[GROUP_BY_PRODUCT_KEY],
-                value=p_id,
-                label=p_name,
+                value=p_name,
                 icon=icon,
                 color=color,
                 product_type=p_type,
                 product_base_type=p_base_type,
                 featured_version=featured_v,
-                num_versions=(
-                    group_counts.get(p_id, 0)
-                    if group_counts is not None
-                    else None
-                ),
+                num_versions=num_versions,
+                product_ids=product_ids,
             ))
         return rows
 
@@ -3401,7 +3429,10 @@ class BrowserWidgetController(QtCore.QObject):
             version_filter, product_filter = empty_filters
             return _GroupVersionsFilter(version_filter, product_filter)
         if group_key == GROUP_BY_PRODUCT_KEY:
-            return _GroupVersionsFilter(product_ids=[group_value])
+            product_ids = self._product_ids_by_group_name.get(group_value)
+            if not product_ids:
+                return None
+            return _GroupVersionsFilter(product_ids=list(product_ids))
         version_filter, product_filter = self._build_version_filter(
             group_key, group_value
         )
