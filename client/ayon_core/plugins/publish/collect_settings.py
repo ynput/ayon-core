@@ -1,3 +1,5 @@
+import copy
+
 from pyblish import api
 from ayon_core.settings import get_project_settings
 
@@ -13,5 +15,12 @@ class CollectSettings(api.ContextPlugin):
         self.log.debug(
             "Collecting settings for project: {}".format(project_name)
         )
-        project_settings = get_project_settings(project_name)
+        create_context = context.data.get("create_context")
+        if create_context is not None:
+            # Copy so publish plugins can't change CreateContext cache
+            project_settings = copy.deepcopy(
+                create_context.get_current_project_settings()
+            )
+        else:
+            project_settings = get_project_settings(project_name)
         context.data["project_settings"] = project_settings

@@ -909,7 +909,7 @@ class IWorkfileHost(AbstractHost):
         comment: Optional[str] = None,
         description: Optional[str] = None,
         prepared_data: Optional[SaveWorkfileOptionalData] = None,
-    ) -> None:
+    ) -> SaveWorkfileContext:
         """Save the current workfile with context.
 
         Arguments 'rootless_path', 'workfile_entities', 'project_entity'
@@ -950,11 +950,11 @@ class IWorkfileHost(AbstractHost):
             project_name,
             folder_entity,
             task_entity,
-            filepath,
+            save_workfile_context.dst_path,
         )
         self._emit_workfile_save_event(event_data, after_save=False)
 
-        workdir = os.path.dirname(filepath)
+        workdir = os.path.dirname(save_workfile_context.dst_path)
         if not os.path.exists(workdir):
             os.makedirs(workdir, exist_ok=True)
 
@@ -969,7 +969,7 @@ class IWorkfileHost(AbstractHost):
             anatomy=save_workfile_context.anatomy,
         )
 
-        self.save_workfile(filepath)
+        self.save_workfile(save_workfile_context.dst_path)
 
         self._save_workfile_entity(
             save_workfile_context,
@@ -979,6 +979,7 @@ class IWorkfileHost(AbstractHost):
         )
         self._after_workfile_save(save_workfile_context)
         self._emit_workfile_save_event(event_data)
+        return save_workfile_context
 
     def open_workfile_with_context(
         self,
@@ -1715,6 +1716,10 @@ class IWorkfileHost(AbstractHost):
         This method is called before the workfile is saved in the host.
 
         Can be overridden to implement host specific logic.
+
+        A host can change 'dst_path' to save elsewhere, e.g. when the DCC
+            forces another extension. Make sure to also change
+            'rootless_path', which is used for the workfile entity.
 
         Args:
             save_workfile_context (SaveWorkfileContext): Workfile path with

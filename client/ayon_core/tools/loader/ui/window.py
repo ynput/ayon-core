@@ -544,7 +544,7 @@ class LoaderWindow(QtWidgets.QWidget):
         )
 
     def _on_refresh_click(self):
-        self._controller.reset()
+        self._controller.reset(force=True)
 
     def _on_controller_reset_start(self):
         self._refresh_handler.reset()

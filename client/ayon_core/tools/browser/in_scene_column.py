@@ -157,16 +157,16 @@ class InSceneColumnProvider(BrowserColumnProvider):
             if row.get("entityType") not in supported_entity_types:
                 continue
             if "has_children" in row:
-                # A group-header row. Only the product axis carries a
-                # stable product id to check "any version loaded"
+                # A group-header row. Only the product axis carries
+                # stable product ids to check "any version loaded"
                 # against - other axes (status, tags, task type, ...)
                 # group rows across many products, so there is no
                 # single true answer. Leave the cell blank rather than
                 # claim "No".
-                product_id = row.get("_product_id")
-                if product_id is None:
+                product_ids = row.get("_product_ids")
+                if not product_ids:
                     continue
-                in_scene = product_id in loaded.product_ids
+                in_scene = not loaded.product_ids.isdisjoint(product_ids)
             else:
                 in_scene = row.get("id") in loaded.version_ids
 
