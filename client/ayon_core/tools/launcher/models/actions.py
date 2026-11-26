@@ -512,7 +512,9 @@ class ActionsModel:
                 # category=action["category"],
             ))
 
-        self._validate_app_executables(project_name, action_items)
+        action_items = self._filter_app_executables(
+            project_name, action_items
+        )
 
         cache.update_data(action_items)
         return cache.get_data()
@@ -576,36 +578,41 @@ class ActionsModel:
                 return action_item.identifier[len(prefix):]
         return None
 
-    def _validate_app_executables(
+    def _filter_app_executables(
         self,
         project_name: str | None,
         action_items: list[ActionItem],
-    ) -> None:
-        """Disable application actions without existing executable.
+    ) -> list[ActionItem]:
+        """Filter out application actions without existing executable.
 
         Args:
             project_name (str | None): Project name.
             action_items (list[ActionItem]): Webaction items.
 
+        Returns:
+            list[ActionItem]: Action items that can be triggered.
+
         """
         validity_by_app_name = None
+        output = []
         for action_item in action_items:
             app_name = self._get_app_name_from_action(action_item)
-            if app_name is None:
-                continue
-
-            if validity_by_app_name is None:
+            if app_name is not None and validity_by_app_name is None:
                 validity_by_app_name = self._get_app_executables_validity(
                     project_name
                 )
                 if validity_by_app_name is None:
-                    return
+                    # Validation is not available
+                    return action_items
 
-            # Keep action enabled if validity is unknown
-            if validity_by_app_name.get(app_name) is False:
-                action_item.disabled_reason = (
-                    "Executable was not found on this machine."
-                )
+            # Keep action if validity is unknown
+            if (
+                app_name is not None
+                and validity_by_app_name.get(app_name) is False
+            ):
+                continue
+            output.append(action_item)
+        return output
 
     def _is_service_user(self) -> bool:
         """Check if the connection uses a service user API key.

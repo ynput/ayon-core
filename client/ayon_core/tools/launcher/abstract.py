@@ -50,9 +50,6 @@ class ActionItem:
         addon_name (Optional[str]): Addon name.
         addon_version (Optional[str]): Addon version.
         config_fields (list[dict]): Config fields for webaction.
-        disabled_reason (Optional[str]): Reason why action can't be
-            triggered, e.g. application executable was not found. Action
-            is enabled if not set.
 
     """
     action_type: str
@@ -66,7 +63,6 @@ class ActionItem:
     config_fields: list[dict]
     addon_name: Optional[str] = None
     addon_version: Optional[str] = None
-    disabled_reason: Optional[str] = None
 
 
 @dataclass
