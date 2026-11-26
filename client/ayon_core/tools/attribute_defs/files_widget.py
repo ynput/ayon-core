@@ -122,6 +122,7 @@ class DropEmpty(QtWidgets.QWidget):
         items_label_widget.setWordWrap(True)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addSpacing(20)
         layout.addWidget(
@@ -687,6 +688,7 @@ class ItemWidget(QtWidgets.QWidget):
             split_btn.setVisible(is_sequence)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(icon_widget, 0)
         layout.addWidget(label_widget, 1)
@@ -977,6 +979,7 @@ class FilesWidget(QtWidgets.QFrame):
             (remove_overlay, remove_btn),
         ):
             overlay_layout = QtWidgets.QHBoxLayout(overlay)
+            overlay_layout.setSpacing(6)
             overlay_layout.setContentsMargins(2, 2, 2, 2)
             overlay_layout.addWidget(btn, 0)
 

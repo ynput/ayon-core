@@ -82,6 +82,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         # Layout of buttons at the bottom of product view
         product_view_btns_layout = QtWidgets.QHBoxLayout()
+        product_view_btns_layout.setSpacing(6)
         product_view_btns_layout.setContentsMargins(0, 5, 0, 0)
         product_view_btns_layout.addWidget(create_btn)
         product_view_btns_layout.addSpacing(5)
@@ -95,6 +96,7 @@ class OverviewWidget(QtWidgets.QFrame):
         #   on child resize request!
         product_view_widget = QtWidgets.QWidget(product_views_widget)
         product_view_layout = QtWidgets.QVBoxLayout(product_view_widget)
+        product_view_layout.setSpacing(6)
         product_view_layout.setContentsMargins(0, 0, 0, 0)
         product_view_layout.addLayout(product_views_layout, 1)
         product_view_layout.addLayout(product_view_btns_layout, 0)
@@ -103,6 +105,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         # Whole product layout with attributes and details
         product_content_layout = QtWidgets.QHBoxLayout(product_content_widget)
+        product_content_layout.setSpacing(6)
         product_content_layout.setContentsMargins(0, 0, 0, 0)
         product_content_layout.addWidget(create_widget, 7)
         product_content_layout.addWidget(product_views_widget, 3)
@@ -110,6 +113,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         # Product frame layout
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(product_content_widget, 1)
 

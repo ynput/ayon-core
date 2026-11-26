@@ -156,6 +156,7 @@ class ActionButton(BaseClickableFrame):
             icon_label = IconValuePixmapLabel(action_icon, self)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(5, 0, 5, 0)
         layout.addWidget(label_widget, 1)
         if icon_label:
@@ -191,6 +192,7 @@ class PublishActionsWidget(QtWidgets.QFrame):
         content_layout.setContentsMargins(0, 0, 0, 0)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(content_widget)
 
@@ -540,11 +542,13 @@ class PublishErrorsView(QtWidgets.QWidget):
         errors_scroll.setWidget(errors_widget)
 
         errors_layout = QtWidgets.QVBoxLayout(errors_widget)
+        errors_layout.setSpacing(6)
         # Add 5 margin to left so the is not directly on the edge of the
         #   scroll widget
         errors_layout.setContentsMargins(5, 0, 0, 0)
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.addWidget(errors_scroll, 1)
 
@@ -743,6 +747,7 @@ class PublishInstanceCardWidget(BaseClickableFrame):
         state_label = IconValuePixmapLabel(state_pix, self)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(10, 7, 10, 7)
         layout.addWidget(icon_widget, 0)
         layout.addWidget(label_widget, 1)
@@ -872,10 +877,12 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         scroll_area.setWidget(instance_view)
 
         instance_layout = QtWidgets.QVBoxLayout(instance_view)
+        instance_layout.setSpacing(6)
         instance_layout.setContentsMargins(0, 0, 0, 0)
         instance_layout.addStretch(1)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scroll_area, 1)
 
@@ -1344,6 +1351,7 @@ class InstanceLogsWidget(QtWidgets.QWidget):
         logs_grid = LogsWithIconsView(logs, self)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(label_widget, 0)
         layout.addWidget(logs_grid, 0)
@@ -1398,11 +1406,13 @@ class InstancesLogsView(QtWidgets.QFrame):
         scroll_area.setWidget(content_wrap_widget)
 
         content_wrap_layout = QtWidgets.QVBoxLayout(content_wrap_widget)
+        content_wrap_layout.setSpacing(6)
         content_wrap_layout.setContentsMargins(0, 0, 0, 0)
         content_wrap_layout.addWidget(content_widget, 0)
         content_wrap_layout.addStretch(1)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scroll_area, 1)
 
@@ -1560,6 +1570,7 @@ class ErrorDetailWidget(QtWidgets.QWidget):
         line_r_widget = SeparatorWidget(1, parent=error_detail_top)
 
         error_detail_top_l = QtWidgets.QHBoxLayout(error_detail_top)
+        error_detail_top_l.setSpacing(6)
         error_detail_top_l.setContentsMargins(0, 0, 10, 0)
         error_detail_top_l.addWidget(line_l_widget, 1)
         error_detail_top_l.addWidget(error_detail_expand_btn, 0)
@@ -1573,6 +1584,7 @@ class ErrorDetailWidget(QtWidgets.QWidget):
         )
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(error_detail_top, 0)
         main_layout.addWidget(error_detail_input, 0)
@@ -1708,6 +1720,7 @@ class PublishFailWidget(QtWidgets.QWidget):
         inputs_layout.addWidget(error_details_widget, 1)
 
         main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(inputs_widget, 1)
 
@@ -1810,6 +1823,7 @@ class ReportsWidget(QtWidgets.QWidget):
 
         # Layout pages
         pages_layout = QtWidgets.QHBoxLayout(pages_widget)
+        pages_layout.setSpacing(6)
         pages_layout.setContentsMargins(0, 0, 0, 0)
         pages_layout.addWidget(crash_widget, 1)
         pages_layout.addWidget(logs_view, 1)
@@ -1823,6 +1837,7 @@ class ReportsWidget(QtWidgets.QWidget):
         details_layout.addWidget(pages_widget, 1)
 
         content_layout = QtWidgets.QHBoxLayout(self)
+        content_layout.setSpacing(6)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.addWidget(views_widget, 0)
         content_layout.addWidget(details_widget, 1)
@@ -1948,6 +1963,7 @@ class ReportPageWidget(QtWidgets.QFrame):
         publish_instances_widget = ReportsWidget(controller, self)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(header_label, 0)
         layout.addWidget(publish_instances_widget, 0)

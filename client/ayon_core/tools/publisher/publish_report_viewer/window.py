@@ -688,6 +688,7 @@ class LoadedFilesWidget(QtWidgets.QWidget):
         view = LoadedFilesView(self)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(view, 1)
 
@@ -755,6 +756,8 @@ class PublishReportViewerWindow(QtWidgets.QWidget):
         body.setStretchFactor(1, 65)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(9, 9, 9, 9)
+        layout.setSpacing(6)
         layout.addWidget(body, 1)
 
         loaded_files_widget.report_changed.connect(self._on_report_change)

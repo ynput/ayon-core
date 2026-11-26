@@ -155,6 +155,7 @@ class PublisherWindow(QtWidgets.QDialog):
         publish_btn.setEnabled(False)
 
         footer_bottom_layout = QtWidgets.QHBoxLayout(footer_bottom_widget)
+        footer_bottom_layout.setSpacing(6)
         footer_bottom_layout.setContentsMargins(0, 0, 0, 0)
         footer_bottom_layout.addStretch(1)
         footer_bottom_layout.addWidget(save_btn, 0)
@@ -171,6 +172,7 @@ class PublisherWindow(QtWidgets.QDialog):
         footer_spacer.setVisible(False)
 
         footer_layout = QtWidgets.QVBoxLayout(footer_widget)
+        footer_layout.setSpacing(6)
         footer_margins = footer_layout.contentsMargins()
 
         footer_layout.setContentsMargins(
@@ -192,6 +194,7 @@ class PublisherWindow(QtWidgets.QDialog):
         content_stacked_widget = QtWidgets.QWidget(content_widget)
 
         content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.setSpacing(6)
         marings = content_layout.contentsMargins()
         marings.setLeft(marings.left() * 2)
         marings.setRight(marings.right() * 2)
@@ -1274,6 +1277,8 @@ class ErrorsMessageBox(ErrorMessageBox):
 
             msg_widget = QtWidgets.QWidget(stack_widget)
             msg_layout = QtWidgets.QVBoxLayout(msg_widget)
+            msg_layout.setContentsMargins(9, 9, 9, 9)
+            msg_layout.setSpacing(6)
 
             exc_msg_template = "<span style='font-weight:bold'>{}</span>"
             message_label_widget = QtWidgets.QLabel(msg_widget)

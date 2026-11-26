@@ -142,6 +142,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         content_widget = QtWidgets.QWidget(self._scroll_area)
         content_layout = QtWidgets.QGridLayout(content_widget)
+        content_layout.setContentsMargins(9, 9, 9, 9)
         content_layout.setColumnStretch(0, 0)
         content_layout.setColumnStretch(1, 1)
         content_layout.setAlignment(QtCore.Qt.AlignTop)
@@ -375,12 +376,15 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         content_widget = QtWidgets.QWidget(self._scroll_area)
         attr_def_widget = QtWidgets.QWidget(content_widget)
         attr_def_layout = QtWidgets.QGridLayout(attr_def_widget)
+        attr_def_layout.setContentsMargins(9, 9, 9, 9)
         attr_def_layout.setColumnStretch(0, 0)
         attr_def_layout.setColumnStretch(1, 1)
         attr_def_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         attr_def_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
 
         content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(9, 9, 9, 9)
+        content_layout.setSpacing(6)
         content_layout.addWidget(attr_def_widget, 0)
         content_layout.addStretch(1)
 

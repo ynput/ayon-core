@@ -50,12 +50,14 @@ class AttributeDefinitionsDialog(QtWidgets.QDialog):
             cancel_btn.setIcon(cancel_icon)
 
         btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setSpacing(6)
         btns_layout.setContentsMargins(0, 0, 0, 0)
         btns_layout.addStretch(1)
         btns_layout.addWidget(submit_btn, 0)
         btns_layout.addWidget(cancel_btn, 0)
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.addWidget(attrs_widget, 0)
         main_layout.addStretch(1)

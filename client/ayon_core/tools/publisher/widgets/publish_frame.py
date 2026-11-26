@@ -84,6 +84,7 @@ class PublishFrame(QtWidgets.QWidget):
             QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
         )
         instance_plugin_layout = QtWidgets.QHBoxLayout(instance_plugin_widget)
+        instance_plugin_layout.setSpacing(6)
         instance_plugin_layout.setContentsMargins(0, 0, 0, 0)
         instance_plugin_layout.addWidget(instance_label, 1)
         instance_plugin_layout.addWidget(plugin_label, 1)
@@ -134,6 +135,7 @@ class PublishFrame(QtWidgets.QWidget):
 
         # Footer on info frame layout
         footer_layout = QtWidgets.QHBoxLayout(footer_widget)
+        footer_layout.setSpacing(6)
         footer_layout.setContentsMargins(0, 0, 0, 0)
         footer_layout.addWidget(report_btn, 0)
         footer_layout.addWidget(shrunk_main_label, 1)
@@ -144,12 +146,14 @@ class PublishFrame(QtWidgets.QWidget):
 
         # Info frame content
         content_layout = QtWidgets.QVBoxLayout(content_frame)
+        content_layout.setContentsMargins(9, 9, 9, 9)
         content_layout.setSpacing(5)
 
         content_layout.addWidget(top_content_widget)
         content_layout.addWidget(footer_widget)
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(borders, 0, borders, borders)
         main_layout.addWidget(content_frame)
 

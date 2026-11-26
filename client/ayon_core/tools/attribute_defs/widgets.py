@@ -187,6 +187,8 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             layout.deleteLater()
 
         new_layout = QtWidgets.QGridLayout()
+        new_layout.setHorizontalSpacing(6)
+        new_layout.setVerticalSpacing(6)
         new_layout.setContentsMargins(0, 0, 0, 0)
         new_layout.setColumnStretch(0, 0)
         new_layout.setColumnStretch(1, 1)
@@ -310,6 +312,7 @@ class BaseAttrDefWidget(QtWidgets.QWidget):
         self._handle_revert_to_default: bool = handle_revert_to_default
 
         main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.main_layout = main_layout

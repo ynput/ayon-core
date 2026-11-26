@@ -339,6 +339,7 @@ class ThumbnailWidget(QtWidgets.QWidget):
         browse_btn.setToolTip("Browse...")
 
         buttons_layout = QtWidgets.QHBoxLayout(buttons_widget)
+        buttons_layout.setSpacing(6)
         buttons_layout.setContentsMargins(0, 0, 0, 0)
         buttons_layout.addWidget(take_screenshot_btn, 0)
         buttons_layout.addWidget(paste_btn, 0)
@@ -346,6 +347,7 @@ class ThumbnailWidget(QtWidgets.QWidget):
         buttons_layout.addWidget(clear_button, 0)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(thumbnail_painter)
 

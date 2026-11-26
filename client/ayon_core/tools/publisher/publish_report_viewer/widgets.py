@@ -189,6 +189,7 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         view.setModel(model)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(view, 1)
 
@@ -895,8 +896,10 @@ class DetailsWidget(QtWidgets.QWidget):
         timestamp_label = QtWidgets.QLabel("Show timestamps", header_widget)
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setSpacing(6)
         header_layout.setContentsMargins(5, 5, 5, 5)
         search_layout = QtWidgets.QHBoxLayout()
+        search_layout.setContentsMargins(0, 0, 0, 0)
         search_layout.setSpacing(2)
         search_layout.addWidget(search_mode_btn, 0)
         search_layout.addWidget(search_field, 1)
@@ -1499,6 +1502,8 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         plugin_time_widget.setText(time_label)
 
         content_layout = QtWidgets.QGridLayout(content_widget)
+        content_layout.setHorizontalSpacing(6)
+        content_layout.setVerticalSpacing(6)
         content_layout.setContentsMargins(8, 8, 8, 8)
         content_layout.setColumnStretch(0, 0)
         content_layout.setColumnStretch(1, 1)
@@ -1529,6 +1534,7 @@ class PluginDetailsWidget(QtWidgets.QWidget):
             row += 1
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(content_widget, 0)
 
@@ -1557,12 +1563,14 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         content_layout.setSpacing(10)
 
         scroll_content_layout = QtWidgets.QVBoxLayout(scroll_content_widget)
+        scroll_content_layout.setSpacing(6)
         scroll_content_layout.setContentsMargins(0, 0, 0, 0)
         scroll_content_layout.addWidget(empty_label, 0)
         scroll_content_layout.addWidget(content_widget, 0)
         scroll_content_layout.addStretch(1)
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(scroll_area, 1)
 
@@ -1688,6 +1696,8 @@ class DetailsPopup(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Report Details")
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(9, 9, 9, 9)
+        layout.setSpacing(6)
 
         self._center_widget = center_widget
         self._first_show = True
@@ -1729,6 +1739,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         )
 
         removed_instances_layout = QtWidgets.QHBoxLayout()
+        removed_instances_layout.setSpacing(6)
         removed_instances_layout.setContentsMargins(0, 0, 0, 0)
         removed_instances_layout.addWidget(removed_instances_check, 0)
         removed_instances_layout.addWidget(removed_instances_label, 1)
@@ -1752,6 +1763,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         skipped_plugins_label = QtWidgets.QLabel("Hide skipped plugins", self)
 
         skipped_plugins_layout = QtWidgets.QHBoxLayout()
+        skipped_plugins_layout.setSpacing(6)
         skipped_plugins_layout.setContentsMargins(0, 0, 0, 0)
         skipped_plugins_layout.addWidget(skipped_plugins_check, 0)
         skipped_plugins_layout.addWidget(skipped_plugins_label, 1)
@@ -1785,11 +1797,13 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         details_popup_btn.setToolTip("Pop Out")
 
         btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setSpacing(6)
         btns_layout.setContentsMargins(0, 0, 0, 0)
         btns_layout.addStretch(1)
         btns_layout.addWidget(details_popup_btn, 0)
 
         details_layout = QtWidgets.QVBoxLayout(details_widget)
+        details_layout.setSpacing(6)
         details_layout.setContentsMargins(0, 0, 0, 0)
         details_layout.addWidget(details_tab_widget, 1)
         details_layout.addWidget(btns_widget, 0)
@@ -1811,6 +1825,8 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
 
         middle_widget = QtWidgets.QWidget(self)
         middle_layout = QtWidgets.QGridLayout(middle_widget)
+        middle_layout.setHorizontalSpacing(6)
+        middle_layout.setVerticalSpacing(6)
         middle_layout.setContentsMargins(0, 0, 0, 0)
         # Row 1
         middle_layout.addLayout(removed_instances_layout, 0, 0)
@@ -1820,6 +1836,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         middle_layout.addWidget(plugins_view, 1, 1)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(middle_widget, 0)
         layout.addWidget(details_widget, 1)
