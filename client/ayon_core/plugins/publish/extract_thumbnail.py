@@ -686,8 +686,12 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
             return False
 
         resolution_arg = self._get_resolution_args(
-            "oiiotool", src_path, thumbnail_def, review_layers, log,
+            "oiiotool",
+            src_path,
+            thumbnail_def,
+            review_layers,
             input_info=input_info,
+            log=log,
         )
 
         repre_display = colorspace_data.get("display")
@@ -770,8 +774,12 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
                 src_path, verbose=False, logger=log
             )
             resolution_arg = self._get_resolution_args(
-                "oiiotool", src_path, thumbnail_def, review_layers, log,
+                "oiiotool",
+                src_path,
+                thumbnail_def,
+                review_layers,
                 input_info=input_info,
+                log=log,
             )
         except RuntimeError:
             log.warning(
@@ -834,7 +842,7 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
         """
         try:
             resolution_arg = self._get_resolution_args(
-                "ffmpeg", src_path, thumbnail_def, review_layers, log
+                "ffmpeg", src_path, thumbnail_def, review_layers, log=log
             )
         except RuntimeError:
             log.warning(
@@ -994,8 +1002,9 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
         input_path: str,
         thumbnail_def: ThumbnailDef,
         review_layers: list[str],
-        log: logging.Logger | logging.LoggerAdapter,
+        *,
         input_info: dict | None = None,
+        log: logging.Logger | logging.LoggerAdapter,
     ) -> list:
         """Create command arguments for rescaling.
 
@@ -1004,10 +1013,10 @@ class ExtractThumbnail(pyblish.api.ContextPlugin):
             input_path (str): Input file path.
             thumbnail_def (ThumbnailDef): Thumbnail definition.
             review_layers (list[str]): List of reviewable layers.
-            log (logging.Logger | logging.LoggerAdapter): Logger to use.
             input_info (dict | None): Input info from
                 'get_oiio_info_for_input' to avoid reading the input with
                 'oiiotool' again.
+            log (logging.Logger | logging.LoggerAdapter): Logger to use.
 
         Returns:
             list: List of command arguments for rescaling.
