@@ -8,7 +8,7 @@ import ayon_api
 
 from ayon_core.host import IWorkfileHost
 from ayon_core.lib import Logger, get_ayon_username
-from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.lib.events import QueuedEventSystem, register_event_callback
 from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.context_tools import get_global_context
 from ayon_core.tools.common_models import (
@@ -176,6 +176,7 @@ class BaseWorkfileController(
         self._current_folder_path: str | None = None
         self._current_folder_id: str | None = None
         self._current_task_name: str | None = None
+        self._current_context_changed: bool = False
         self._save_is_enabled: bool = True
 
         # Expected selected folder and task
@@ -189,6 +190,8 @@ class BaseWorkfileController(
         self._workfiles_model = self._create_workfiles_model()
         self._actions_model = self._create_actions_model()
         self._ws_events_model = WSEventsModel(self)
+
+        register_event_callback("taskChanged", self._on_host_context_change)
 
     @property
     def log(self) -> logging.Logger:
@@ -456,7 +459,7 @@ class BaseWorkfileController(
 
     def go_to_current_context(self) -> None:
         self.set_expected_selection(
-            self.get_current_folder_id(), self._current_task_name
+            self.get_current_folder_id(), self.get_current_task_name()
         )
 
     # Model functions
@@ -593,6 +596,7 @@ class BaseWorkfileController(
 
         self._emit_event("controller.reset.started")
 
+        self._current_context_changed = False
         context = self._get_host_current_context()
 
         project_name = context["project_name"]
@@ -778,9 +782,13 @@ class BaseWorkfileController(
             return self._host.get_current_context()
         return get_global_context()
 
+    def _on_host_context_change(self) -> None:
+        self._current_context_changed = True
+
     def _update_current_context(self) -> None:
-        if not self._host_is_valid:
+        if not self._current_context_changed:
             return
+        self._current_context_changed = False
         context = self._get_host_current_context()
         folder_path = context["folder_path"]
         self._current_task_name = context["task_name"]
