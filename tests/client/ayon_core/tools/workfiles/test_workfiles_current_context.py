@@ -6,7 +6,6 @@ from unittest import mock
 import pytest
 
 from ayon_core.host import IWorkfileHost
-from ayon_core.lib.events import emit_event
 from ayon_core.tools.common_models import hierarchy
 from ayon_core.tools.workfiles.control import BaseWorkfileController
 
@@ -49,6 +48,11 @@ def controller(monkeypatch):
     )
     host = mock.MagicMock(spec=IWorkfileHost)
     host.name = "testhost"
+    host.get_current_context.return_value = {
+        "project_name": PROJECT_NAME,
+        "folder_path": "/shots/sh010",
+        "task_name": "comp",
+    }
     controller = BaseWorkfileController(host=host)
     controller._current_project_name = PROJECT_NAME
     controller._current_folder_path = "/shots/sh010"
@@ -59,9 +63,7 @@ def controller(monkeypatch):
     return controller
 
 
-def test_current_context_follows_host_context_change(
-    controller, monkeypatch
-):
+def test_current_context_follows_host_context(controller, monkeypatch):
     # Folder id is resolved from cached folders, without server requests
     for attr in ("get_rest_folders", "get_folders"):
         monkeypatch.setattr(
@@ -70,12 +72,12 @@ def test_current_context_follows_host_context_change(
             mock.Mock(side_effect=AssertionError("Server was queried")),
         )
 
-    # Emitted by host when Save As switches context
-    emit_event("taskChanged", {
+    # Save As switched context of the host while the tool stayed open
+    controller._host.get_current_context.return_value = {
         "project_name": PROJECT_NAME,
         "folder_path": "/shots/sh020",
         "task_name": "lighting",
-    })
+    }
 
     assert controller.get_current_folder_id() == "folder-2"
     assert controller.get_current_task_name() == "lighting"
