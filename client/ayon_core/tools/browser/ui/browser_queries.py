@@ -77,6 +77,53 @@ query GetVersions(
 }
 """
 
+# Only the ids, so the server adds none of the joins the output fields of
+# the table need (product, folder, task, latest/hero versions).
+GET_VERSION_IDS_QUERY = """
+query GetVersionIds(
+  $projectName: String!,
+  $productIds: [String!],
+  $versionFilter: String,
+  $productFilter: String,
+  $taskFilter: String,
+  __OPTIONAL_VARIABLES__
+  $featuredOnly: [String!],
+  $hasReviewables: Boolean,
+  $folderIds: [String!],
+  $includeFolderChildren: Boolean,
+  $search: String,
+  $after: String,
+  $first: Int
+) {
+  project(name: $projectName) {
+    versions(
+      productIds: $productIds
+      filter: $versionFilter
+      productFilter: $productFilter
+      taskFilter: $taskFilter
+      __OPTIONAL_ARGUMENTS__
+      featuredOnly: $featuredOnly
+      hasReviewables: $hasReviewables
+      folderIds: $folderIds
+      includeFolderChildren: $includeFolderChildren
+      search: $search
+      after: $after
+      first: $first
+    ) {
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+      edges {
+        node {
+          id
+        }
+      }
+    }
+  }
+}
+"""
+
 GET_VERSION_GROUP_COUNTS_QUERY = """
 query GetVersionGroupCounts(
   $projectName: String!,
@@ -191,6 +238,11 @@ def _resolve_optional_versions_arguments(query: str) -> str:
         _OPTIONAL_VERSIONS_ARGUMENTS,
         get_server_query_arguments("versions"),
     )
+
+
+def get_version_ids_query() -> str:
+    """Build the version ids query for the arguments the server accepts."""
+    return _resolve_optional_versions_arguments(GET_VERSION_IDS_QUERY)
 
 
 def get_version_group_counts_query(include_product: bool = False) -> str:
@@ -410,7 +462,7 @@ COLUMN_TO_SORT_BY: dict[str, str] = {
 #   'productBaseType' is the only one of these it does not have.
 #: Maps table column keys to ``sortBy`` values that only newer servers
 #: accept (the server rejects unknown values), matching the frontend's
-#: mapping. They are used only when the server lists them, see
+#: mapping. They are used only when the server accepts them, see
 #: :func:`get_sort_by`.
 OPTIONAL_COLUMN_TO_SORT_BY: dict[str, str] = {
     "author": "author",
@@ -443,8 +495,8 @@ def get_sort_by(
 
     Args:
         sort_key: Key of the sorted table column, or ``None``.
-        server_sort_options: ``sortBy`` values the server lists. Queried
-            from the server when not passed.
+        server_sort_options: ``sortBy`` values the server accepts. Based
+            on the server version when not passed.
 
     Returns:
         The ``sortBy`` value, or ``None`` when the column cannot be
@@ -492,13 +544,13 @@ def get_product_sort_by(
 
     Product rows (e.g. the Group By Product headers) are sorted by the
     same column as the versions, like the frontend's Products page does.
-    Only values the server lists are returned - it rejects unknown ones
+    Only values the server accepts are returned - it rejects unknown ones
     and some version sorts (e.g. ``author``) have no product equivalent.
 
     Args:
         version_sort_by: ``sortBy`` value used for the versions.
         server_sort_options: ``sortBy`` values the products resolver
-            lists. Queried from the server when not passed.
+            accepts. Based on the server version when not passed.
 
     Returns:
         The products ``sortBy`` value, or ``None`` when products cannot

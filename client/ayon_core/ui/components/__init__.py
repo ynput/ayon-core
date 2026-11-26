@@ -13,6 +13,10 @@ from .label import AYLabel
 from .layouts import AYGridLayout, AYHBoxLayout, AYVBoxLayout
 from .line_edit import AYLineEdit
 from .spinbox import AYSpinBox
+from .progress_bar import (
+    AYProgressBar,
+    ProgressBarState,
+)
 from .option_action import (
     AYMenu,
     AYOptionalMenu,
@@ -49,6 +53,8 @@ __all__ = (
     "AYHBoxLayout",
     "AYVBoxLayout",
     "AYGridLayout",
+    "AYProgressBar",
+    "ProgressBarState",
     "AYLineEdit",
     "AYSpinBox",
     "AYTextEdit",

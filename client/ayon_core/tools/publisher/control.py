@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import logging
 import tempfile
 import shutil
 import typing
@@ -23,6 +22,7 @@ from ayon_core.tools.common_models import (
     WSEventsModel,
     ThumbnailsModel,
 )
+from ayon_core.lib import Logger
 
 from .models import (
     PublishModel,
@@ -121,7 +121,7 @@ class PublisherController(
         """
 
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
     def get_window_subtitle(self) -> Optional[str]:
@@ -396,13 +396,18 @@ class PublisherController(
             for product_entity in product_entities
         }
 
-    def reset(self):
-        """Reset everything related to creation and publishing."""
+    def reset(self, force: bool = False):
+        """Reset everything related to creation and publishing.
+
+        Args:
+            force (bool): Reset also data shared with other tools.
+
+        """
         self.stop_publish()
 
         self._emit_event("controller.reset.started")
 
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
         self._thumbnails_model.reset()
         self._users_model.reset()
 

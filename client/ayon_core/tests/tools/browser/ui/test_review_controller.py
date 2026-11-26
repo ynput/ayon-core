@@ -33,6 +33,16 @@ def _mock_sitesync_addon(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _mock_contains_operator(monkeypatch):
+    # Match typed text with 'like', as servers older than 1.17.5 do.
+    monkeypatch.setattr(
+        "ayon_core.tools.browser.ui.browser_controller"
+        ".server_supports_contains_operator",
+        lambda: False,
+    )
+
+
 def _make_request(
     parent_id: str | None,
     page: int,
@@ -97,7 +107,7 @@ def test_has_reviewables_filter_is_forwarded_to_versions_query(
         ),
         (
             "comment", ["final"], True,
-            {"key": "attrib.comment", "value": "final", "operator": "like"},
+            {"key": "attrib.comment", "value": "%final%", "operator": "like"},
         ),
         (
             "intent", ["wip"], False,
@@ -175,7 +185,7 @@ def _conditions(encoded: str) -> list:
             ]},
         ),
         (
-            "attr:version:comment", ["noValue", "%fin%"], "version_filter",
+            "attr:version:comment", ["noValue", "fin"], "version_filter",
             {"operator": "or", "conditions": [
                 {"operator": "or", "conditions": [
                     {"key": "attrib.comment", "operator": "isnull"},

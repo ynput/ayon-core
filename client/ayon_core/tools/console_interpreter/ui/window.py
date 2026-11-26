@@ -83,6 +83,11 @@ class ConsoleInterpreterWindow(QtWidgets.QWidget):
         tab_bar.double_clicked.connect(self._on_tab_double_click)
         tab_bar.mid_clicked.connect(self._on_tab_mid_click)
         tab_widget.tabCloseRequested.connect(self._on_tab_close_req)
+        # Window does not get 'closeEvent' when application quits while
+        #   it is still open, so tabs are stored on quit too.
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self._on_app_about_to_quit)
 
         self._tabs = []
 
@@ -92,8 +97,6 @@ class ConsoleInterpreterWindow(QtWidgets.QWidget):
         self._output_widget = output_widget
         self._tab_widget = tab_widget
         self._line_check_timer = line_check_timer
-
-        self._append_lines([AYON_ART])
 
         self._first_show = True
         self._controller = controller
@@ -116,6 +119,12 @@ class ConsoleInterpreterWindow(QtWidgets.QWidget):
         super().closeEvent(event)
         self._line_check_timer.stop()
 
+    def _on_app_about_to_quit(self):
+        # Config was not loaded yet, saving would override stored tabs
+        if self._first_show:
+            return
+        self._save_registry()
+
     def add_tab(self, tab_name, index=None):
         widget = PythonTabWidget(self)
         widget.before_execute.connect(self._on_before_execute)
@@ -136,6 +145,7 @@ class ConsoleInterpreterWindow(QtWidgets.QWidget):
         return widget
 
     def _on_first_show(self):
+        self._append_lines([AYON_ART])
         config = self._controller.get_config()
         width = config.width
         height = config.height

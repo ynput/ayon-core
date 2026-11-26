@@ -76,6 +76,7 @@ class WorkfileItem:
     updated_at_time: float | None
     file_size: int | None = None
     updated_by: str | None = None
+    description: str = ""
 
 
 class AbstractLauncherCommon(ABC):
@@ -562,11 +563,16 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def refresh(self):
+    def refresh(self, force=False):
         """Refresh everything, models, ui etc.
 
         Triggers 'controller.refresh.started' event at the beginning and
         'controller.refresh.finished' at the end.
+
+        Args:
+            force (bool): Reset also data shared with other tools, e.g.
+                folders hierarchy. Should be used when user explicitly
+                asks for a refresh.
         """
 
         pass

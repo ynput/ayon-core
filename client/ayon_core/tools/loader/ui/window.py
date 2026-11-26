@@ -170,7 +170,6 @@ class LoaderWindow(QtWidgets.QWidget):
             handle_expected_selection=True
         )
         projects_combobox.set_select_item_visible(True)
-        projects_combobox.set_libraries_separator_visible(True)
         projects_combobox.set_standard_filter_enabled(
             controller.is_standard_projects_filter_enabled()
         )
@@ -545,7 +544,7 @@ class LoaderWindow(QtWidgets.QWidget):
         )
 
     def _on_refresh_click(self):
-        self._controller.reset()
+        self._controller.reset(force=True)
 
     def _on_controller_reset_start(self):
         self._refresh_handler.reset()

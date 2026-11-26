@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 from qtpy import QtWidgets, QtCore
@@ -9,6 +11,43 @@ from ayon_core.ui.components.user_avatars import (
     set_avatar_decoration,
 )
 from ayon_core.tools.utils.delegates import pretty_timestamp
+
+
+def save_changes_prompt(parent: QtWidgets.QWidget) -> bool | None:
+    """Ask user if wants to save changes to current file.
+
+    Args:
+        parent (QtWidgets.QWidget): Parent widget of the prompt.
+
+    Returns:
+        bool | None: True if user wants to save changes, False if
+            user does not want to save changes, None if user cancels
+            operation.
+
+    """
+    messagebox = QtWidgets.QMessageBox(parent=parent)
+    messagebox.setWindowFlags(
+        messagebox.windowFlags() | QtCore.Qt.FramelessWindowHint
+    )
+    messagebox.setIcon(QtWidgets.QMessageBox.Warning)
+    messagebox.setWindowTitle("Unsaved Changes!")
+    messagebox.setText(
+        "There are unsaved changes to the current file."
+        "\nDo you want to save the changes?"
+    )
+    messagebox.setStandardButtons(
+        QtWidgets.QMessageBox.Yes
+        | QtWidgets.QMessageBox.No
+        | QtWidgets.QMessageBox.Cancel
+    )
+
+    result = messagebox.exec_()
+    if result == QtWidgets.QMessageBox.Yes:
+        return True
+    if result == QtWidgets.QMessageBox.No:
+        return False
+    return None
+
 
 # Login name of the user shown in the 'Author' column
 USERNAME_ROLE = QtCore.Qt.UserRole + 50

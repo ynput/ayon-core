@@ -14,7 +14,7 @@ from .widgets import (
     AbstractInstanceView,
     CreateInstanceBtn,
     RemoveInstanceBtn,
-    ChangeViewBtn,
+    ViewTypeSwitch,
 )
 from .create_widget import CreateWidget
 from .product_info import ProductInfoWidget
@@ -67,7 +67,7 @@ class OverviewWidget(QtWidgets.QFrame):
         # Buttons at the bottom of product view
         create_btn = CreateInstanceBtn(product_views_widget)
         delete_btn = RemoveInstanceBtn(product_views_widget)
-        change_view_btn = ChangeViewBtn(product_views_widget)
+        view_type_switch = ViewTypeSwitch(product_views_widget)
 
         # --- Overview ---
         # Product details widget
@@ -87,7 +87,7 @@ class OverviewWidget(QtWidgets.QFrame):
         product_view_btns_layout.addSpacing(5)
         product_view_btns_layout.addWidget(delete_btn)
         product_view_btns_layout.addStretch(1)
-        product_view_btns_layout.addWidget(change_view_btn)
+        product_view_btns_layout.addWidget(view_type_switch)
 
         # Layout of view and buttons
         # - widget 'product_view_widget' is necessary
@@ -122,7 +122,9 @@ class OverviewWidget(QtWidgets.QFrame):
         # --- Calbacks for instances/products view ---
         create_btn.clicked.connect(self._on_create_clicked)
         delete_btn.clicked.connect(self._on_delete_clicked)
-        change_view_btn.clicked.connect(self._on_change_view_clicked)
+        view_type_switch.view_type_changed.connect(
+            self._on_view_type_changed
+        )
 
         change_anim.valueChanged.connect(self._on_change_anim)
         change_anim.finished.connect(self._on_change_anim_finished)
@@ -196,7 +198,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._create_btn = create_btn
         self._delete_btn = delete_btn
-        self._change_view_btn = change_view_btn
+        self._view_type_switch = view_type_switch
 
         self._product_attributes_widget = product_attributes_widget
         self._create_widget = create_widget
@@ -313,8 +315,8 @@ class OverviewWidget(QtWidgets.QFrame):
             instance_ids = set(instance_ids)
             self._controller.remove_instances(instance_ids)
 
-    def _on_change_view_clicked(self):
-        self._change_view_type()
+    def _on_view_type_changed(self, view_type: str) -> None:
+        self._change_view_type(view_type)
 
     def _on_product_change(self, *_args):
         # Ignore changes if in middle of refreshing
@@ -432,13 +434,19 @@ class OverviewWidget(QtWidgets.QFrame):
         selection = self.get_selected_items()
         return selection.convertor_identifiers
 
-    def _change_view_type(self) -> None:
+    def _change_view_type(self, view_type: str) -> None:
         old_view = self._get_current_view()
+        if view_type == "list":
+            new_view = self._product_list_view
+        elif view_type == "list-parent-grouping":
+            new_view = self._product_list_view_grouped
+        else:
+            new_view = self._product_view_cards
 
-        idx = self._product_views_layout.currentIndex()
-        new_idx = (idx + 1) % self._product_views_layout.count()
+        self._view_type_switch.set_view_type(view_type)
+        if new_view is old_view:
+            return
 
-        new_view = self._get_view_by_idx(new_idx)
         if not new_view.refreshed:
             new_view.refresh()
             new_view.set_refreshed(True)
@@ -447,14 +455,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         new_view.set_selected_items(old_view.get_selected_items())
 
-        view_type = "list"
-        if new_view is self._product_list_view_grouped:
-            view_type = "card"
-        elif new_view is self._product_list_view:
-            view_type = "list-parent-grouping"
-
-        self._change_view_btn.set_view_type(view_type)
-        self._product_views_layout.setCurrentIndex(new_idx)
+        self._product_views_layout.setCurrentWidget(new_view)
 
         self._on_product_change()
 
@@ -469,14 +470,6 @@ class OverviewWidget(QtWidgets.QFrame):
 
     def _get_current_view(self) -> AbstractInstanceView:
         widget = self._product_views_layout.currentWidget()
-        if isinstance(widget, AbstractInstanceView):
-            return widget
-        raise TypeError(
-            "Current widget is not instance of 'AbstractInstanceView'"
-        )
-
-    def _get_view_by_idx(self, idx: int) -> AbstractInstanceView:
-        widget = self._product_views_layout.widget(idx)
         if isinstance(widget, AbstractInstanceView):
             return widget
         raise TypeError(
@@ -545,7 +538,7 @@ class OverviewWidget(QtWidgets.QFrame):
         if is_card_view and count < 10:
             new_count = view.get_current_instance_count()
             if new_count > count and new_count >= 10:
-                self._change_view_type()
+                self._change_view_type("list")
 
     def _on_instances_removed(self) -> None:
         self._refresh_instances()

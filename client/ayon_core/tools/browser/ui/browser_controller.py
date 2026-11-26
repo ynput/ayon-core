@@ -27,6 +27,7 @@ from ayon_core.ui.components.table_model import (
 from ayon_core.ui.components.table_filter import (
     EMPTY_VALUE_OPTIONS,
     HAS_VALUE,
+    split_filter_text,
 )
 from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from ayon_core.ui.components.tree_model import TreeNode
@@ -65,6 +66,7 @@ from ayon_core.tools.browser.ui.browser_group_by import (
     parse_attribute_group_key,
 )
 from ayon_core.tools.browser.server_capabilities import (
+    server_supports_contains_operator,
     server_supports_folder_filter,
     server_supports_latest_per_folder,
     server_supports_representation_filter,
@@ -76,6 +78,7 @@ from ayon_core.tools.browser.ui.browser_queries import (
     get_products_query,
     get_sort_by,
     get_version_group_counts_query,
+    get_version_ids_query,
     get_versions_query,
 )
 from ayon_core.tools.browser.ui.browser_types import (
@@ -90,6 +93,9 @@ log = Logger.get_logger(__name__)
 # 50 000 products before a warning is logged.
 _MAX_GROUP_PAGES: int = 50
 
+# Page size of the ids-only query collecting the versions of a group.
+_VERSION_IDS_PAGE_SIZE: int = 1000
+
 # Columns queried for the grid, whose cards show the thumbnail, status and
 # product type (along with names that are always queried). The product
 # type's icon and color resolve through its base type.
@@ -100,8 +106,26 @@ _GRID_COLUMN_KEYS: frozenset[str] = frozenset({
     "productBaseType",
 })
 
+# Operator of a condition matching text typed into a filter, holding the
+# typed parts as its value. Internal only: each part is turned into a
+# 'contains' or 'like' condition before the filter is sent to the server.
+_TEXT_MATCH_OPERATOR = "textMatch"
+
+
+def _text_match_parts(values: list[str]) -> list[str]:
+    """Return the parts of typed text values, any of which may match.
+
+    Args:
+        values: Typed text values, see :func:`split_filter_text`.
+
+    Returns:
+        The parts of all values.
+    """
+    return [part for value in values for part in split_filter_text(value)]
+
+
 # Server filter operators and their negation, used to exclude values.
-# 'like' and 're' have no negated counterpart on the server.
+# 'like', 'contains' and 're' have no negated counterpart on the server.
 _NEGATED_OPERATORS: dict[str, str] = {
     "eq": "ne",
     "ne": "eq",
@@ -185,6 +209,21 @@ class _GroupCounts:
     counts: dict[str, int]
     total: int | None = None
     ungrouped: int | None = None
+
+
+@dataclass
+class _GroupVersionsFilter:
+    """Query arguments narrowing the versions to one group header.
+
+    Attributes:
+        version_filter: Version filter merged into the active one.
+        product_filter: Product filter merged into the active one.
+        product_ids: Limit the versions to these products.
+    """
+
+    version_filter: str = ""
+    product_filter: str = ""
+    product_ids: list[str] | None = None
 
 
 def _collect_product_base_types(
@@ -333,6 +372,9 @@ class BrowserWidgetController(QtCore.QObject):
         # group-by key. Sorting does not change them, anything that does
         # (filters, selection, refresh) starts a new generation.
         self._group_counts_cache: dict[tuple[int, str], _GroupCounts] = {}
+        # Product ids of each Product group header, keyed by the product
+        # name the header is grouped by. Filled with the headers.
+        self._product_ids_by_group_name: dict[str, list[str]] = {}
         self._pagination_generation: int = 0
         self._tree_mode = (
             BROWSER_VIEW_DEFAULTS.group_by_key != GROUP_BY_NONE_KEY
@@ -626,6 +668,19 @@ class BrowserWidgetController(QtCore.QObject):
         """
         return self._server_supports(
             server_supports_latest_per_folder, "latest per folder"
+        )
+
+    # TODO: Backwards compatibility for AYON server < 1.17.5.
+    #   Remove this once 1.17.5 is the minimum supported server.
+    @property
+    def supports_contains_operator(self) -> bool:
+        """Whether the server's filters take the 'contains' operator.
+
+        Servers up to 1.17.4 match typed text with an escaped 'like'
+        pattern instead.
+        """
+        return self._server_supports(
+            server_supports_contains_operator, "contains operator"
         )
 
     @property
@@ -1125,8 +1180,14 @@ class BrowserWidgetController(QtCore.QObject):
                 elif values:
                     condition = {
                         "key": attribute_key,
-                        "value": values[0] if use_substring else values,
-                        "operator": "like" if use_substring else "in",
+                        "value": (
+                            _text_match_parts(values)
+                            if use_substring
+                            else values
+                        ),
+                        "operator": (
+                            _TEXT_MATCH_OPERATOR if use_substring else "in"
+                        ),
                     }
                 condition = self._or_empty_value_condition(
                     condition,
@@ -1228,8 +1289,14 @@ class BrowserWidgetController(QtCore.QObject):
                 elif values:
                     condition = {
                         "key": server_key,
-                        "value": values[0] if use_substring else values,
-                        "operator": "like" if use_substring else "in",
+                        "value": (
+                            _text_match_parts(values)
+                            if use_substring
+                            else values
+                        ),
+                        "operator": (
+                            _TEXT_MATCH_OPERATOR if use_substring else "in"
+                        ),
                     }
                 condition = self._or_empty_value_condition(
                     condition, empty_value, server_key, is_list
@@ -1240,10 +1307,12 @@ class BrowserWidgetController(QtCore.QObject):
                     version_conditions.append(condition)
                 continue
 
-            operator = "like" if use_substring else "in"
+            operator = _TEXT_MATCH_OPERATOR if use_substring else "in"
             condition = {
                 "key": key,
-                "value": values[0] if use_substring else values,
+                "value": (
+                    _text_match_parts(values) if use_substring else values
+                ),
                 "operator": operator,
             }
             if key in {
@@ -1261,13 +1330,7 @@ class BrowserWidgetController(QtCore.QObject):
                     "operator": condition["operator"],
                 })
             elif key == "task":
-                condition = None
-                if values:
-                    condition = {
-                        "key": "name",
-                        "value": values,
-                        "operator": operator,
-                    }
+                condition = {**condition, "key": "name"} if values else None
                 if empty_value is not None:
                     # Can't use `_or_empty_value_condition` because "id" is a
                     # UUID field server-side, which rejects "" as an entity id.
@@ -1348,18 +1411,103 @@ class BrowserWidgetController(QtCore.QObject):
             else:
                 version_conditions.append(condition)
 
+        use_contains = self.supports_contains_operator
         return {
-            "version_conditions": version_conditions,
-            "product_conditions": product_conditions,
-            "task_conditions": task_conditions,
-            "folder_conditions": folder_conditions,
-            "representation_conditions": representation_conditions,
+            "version_conditions": self._expand_text_match_conditions(
+                version_conditions, use_contains
+            ),
+            "product_conditions": self._expand_text_match_conditions(
+                product_conditions, use_contains
+            ),
+            "task_conditions": self._expand_text_match_conditions(
+                task_conditions, use_contains
+            ),
+            "folder_conditions": self._expand_text_match_conditions(
+                folder_conditions, use_contains
+            ),
+            "representation_conditions": (
+                self._expand_text_match_conditions(
+                    representation_conditions, use_contains
+                )
+            ),
             "featured_only": featured_only,
             "featured_types": featured_types,
             "search": search,
             "version_ids": version_ids,
             "has_reviewables": has_reviewables,
         }
+
+    @staticmethod
+    def _like_pattern(text: str) -> str:
+        """Return a 'like' pattern matching *text* anywhere in a value.
+
+        The server runs 'like' as SQL ``ILIKE``, which compares the whole
+        value, so the text is wrapped in ``%`` to match part of it, like
+        the table's local filter does. ``%``, ``_`` and backslashes in the
+        text are escaped so they match literally.
+
+        Args:
+            text: Text to match.
+
+        Returns:
+            Case-insensitive pattern for the 'like' operator.
+        """
+        escaped = re.sub(r"([\\%_])", r"\\\1", text)
+        return f"%{escaped}%"
+
+    @classmethod
+    def _expand_text_match_conditions(
+        cls,
+        conditions: list[dict[str, Any]],
+        use_contains: bool,
+    ) -> list[dict[str, Any]]:
+        """Turn text match conditions into conditions the server takes.
+
+        A text match condition holds the parts of the typed text, see
+        :func:`split_filter_text`. Each part becomes a condition matching
+        it literally anywhere in the value, using 'contains' or, on older
+        servers, an escaped 'like' pattern. Several parts are combined
+        into an 'or' group. A condition without any part is dropped.
+
+        Args:
+            conditions: Conditions, possibly nested in groups.
+            use_contains: Whether the server takes the 'contains'
+                operator.
+
+        Returns:
+            Conditions the server accepts.
+        """
+        output = []
+        for condition in conditions:
+            if "conditions" in condition:
+                children = cls._expand_text_match_conditions(
+                    condition["conditions"], use_contains
+                )
+                if not children:
+                    continue
+                if len(children) == 1:
+                    output.append(children[0])
+                    continue
+                condition = {**condition, "conditions": children}
+            elif condition.get("operator") == _TEXT_MATCH_OPERATOR:
+                expanded = [
+                    {
+                        **condition,
+                        "value": (
+                            part if use_contains else cls._like_pattern(part)
+                        ),
+                        "operator": "contains" if use_contains else "like",
+                    }
+                    for part in condition["value"]
+                ]
+                if not expanded:
+                    continue
+                if len(expanded) == 1:
+                    condition = expanded[0]
+                else:
+                    condition = {"operator": "or", "conditions": expanded}
+            output.append(condition)
+        return output
 
     @staticmethod
     def _build_extension_condition(
@@ -1861,31 +2009,8 @@ class BrowserWidgetController(QtCore.QObject):
 
             # Expanding a group header: fetch filtered versions.
             if parent_id.startswith("grp:"):
-                group_key, group_value = self._parse_group_id(parent_id)
-
-                product_ids: list[str] | None = None
-                version_filter = ""
-                product_filter = ""
-
-                if group_value is None:
-                    # The group of versions without a value.
-                    group_option = self._group_by_options.get(group_key)
-                    empty_filters = (
-                        self._build_ungrouped_filter(group_option)
-                        if group_option is not None
-                        else None
-                    )
-                    if empty_filters is None:
-                        return []
-                    version_filter, product_filter = empty_filters
-                elif group_key == GROUP_BY_PRODUCT_KEY:
-                    product_ids = [group_value]
-                else:
-                    version_filter, product_filter = (
-                        self._build_version_filter(group_key, group_value)
-                    )
-
-                if cursor is None:
+                group_filter = self._get_group_versions_filter(parent_id)
+                if group_filter is None or cursor is None:
                     return []
                 return self._fetch_filtered_versions_page(
                     query_filters,
@@ -1895,9 +2020,9 @@ class BrowserWidgetController(QtCore.QObject):
                     cursor,
                     sort_by,
                     descending,
-                    version_filter,
-                    product_filter,
-                    product_ids=product_ids,
+                    group_filter.version_filter,
+                    group_filter.product_filter,
+                    product_ids=group_filter.product_ids,
                 )
 
         # -- Default hierarchy / flat mode --------------------------------
@@ -2464,13 +2589,14 @@ class BrowserWidgetController(QtCore.QObject):
         product_base_type: str = "",
         featured_version: dict[str, Any] | None = None,
         num_versions: int | None = None,
+        product_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         """Build an expandable group-header row.
 
         Args:
             group_option: Group-by axis.
             value: The specific group value (e.g. ``"In Progress"``, or
-                the product id for the product axis). Stored in the row
+                the product name for the product axis). Stored in the row
                 ``id`` and used as the display label when *label* is not
                 provided.
             icon: Material icon name for the tree cell.
@@ -2485,6 +2611,8 @@ class BrowserWidgetController(QtCore.QObject):
                 version.
             num_versions: Number of versions in the group, or ``None``
                 when the count source is unavailable.
+            product_ids: Ids of the products in a product-axis group.
+                A group of a single product stands for that product.
 
         Returns:
             Row dict containing the authoritative child count and an id
@@ -2499,7 +2627,6 @@ class BrowserWidgetController(QtCore.QObject):
                 "id": f"grp:{group_option.key}:{value}",
                 "has_children": num_versions is None or num_versions > 0,
                 "child_count": num_versions,
-                "group_metrics": group_option.key != GROUP_BY_PRODUCT_KEY,
                 "thumb": display_label,
                 "product/version": display_label,
                 "product/version__icon": icon or "label",
@@ -2508,11 +2635,14 @@ class BrowserWidgetController(QtCore.QObject):
                 "project_name": self._current_project,
             }
         )
-        if group_option.key == GROUP_BY_PRODUCT_KEY:
+        if product_ids:
             # Lets providers that only know representation-level state
-            # (e.g. In Scene) resolve "any version of this product" -
-            # `value` is the product id only for this axis.
-            row["_product_id"] = value
+            # (e.g. In Scene) resolve "any version of these products".
+            row["_product_ids"] = list(product_ids)
+            if len(product_ids) == 1:
+                # The header stands for this one product (and its
+                # featured version), see '_is_versions_group_row'.
+                row["_product_id"] = product_ids[0]
         if color:
             row["product/version__icon_color"] = color
         if featured_version:
@@ -2546,7 +2676,12 @@ class BrowserWidgetController(QtCore.QObject):
             row["productBaseType"] = product_base_type or product_type
             row["productBaseType__icon"] = icon
             row["productBaseType__icon_color"] = icon_color
-            row["folderName"] = featured_version.get("parents", ["", ""])[-2]
+            if product_ids and len(product_ids) > 1:
+                row["folderName"] = f"{len(product_ids)} folders"
+            else:
+                row["folderName"] = (
+                    featured_version.get("parents", ["", ""])[-2]
+                )
             row["author"] = featured_version.get("author", "")
             row["author__label"] = self._user_full_names.get(
                 row["author"], row["author"]
@@ -3116,12 +3251,14 @@ class BrowserWidgetController(QtCore.QObject):
         sort_by: str | None = None,
         descending: bool = False,
     ) -> list[dict[str, Any]]:
-        """Return one expandable row per product in the current scope.
+        """Return one expandable row per product name in the current scope.
 
         Fetches products via :meth:`_get_products_page`, extracts
         structured tuples via :meth:`_extract_product_group_data`, then
-        builds group-header rows using product ID as the group value and
-        product name as the display label.
+        builds group-header rows using the product name as the group
+        value. Products of the same name in different folders (e.g. with
+        multiple folders selected) share one row, the ids of its products
+        are stored for :meth:`_get_group_versions_filter`.
 
         The products are sorted by the table's sort column, like the
         frontend's Products page. Columns products cannot be sorted by
@@ -3133,7 +3270,7 @@ class BrowserWidgetController(QtCore.QObject):
             descending: Whether the table is sorted descending.
 
         Returns:
-            List of expandable group-header rows keyed by product ID.
+            List of expandable group-header rows keyed by product name.
         """
         folder_ids = self._selected_folder_ids or None
         query_filters = self._get_query_filters()
@@ -3206,27 +3343,40 @@ class BrowserWidgetController(QtCore.QObject):
                 if group_counts.get(item[0], 0) > 0
             ]
 
+        # Products of the same name in different folders share one group,
+        #   represented by the first of them in the sort order.
+        product_data_by_name: dict[
+            str, list[tuple[str, str, str, str, dict[str, Any]]]
+        ] = {}
+        for item in unique_product_data:
+            product_data_by_name.setdefault(item[1], []).append(item)
+        self._product_ids_by_group_name = {
+            p_name: [item[0] for item in items]
+            for p_name, items in product_data_by_name.items()
+        }
+
         rows = []
-        for p_id, p_name, p_type, p_base_type, featured_v in (
-            unique_product_data
-        ):
+        for p_name, items in product_data_by_name.items():
+            _, _, p_type, p_base_type, featured_v = items[0]
+            product_ids = [item[0] for item in items]
             icon, color = self._product_appearance(
                 p_type, p_base_type, "view_in_ar"
             )
+            num_versions = None
+            if group_counts is not None:
+                num_versions = sum(
+                    group_counts.get(p_id, 0) for p_id in product_ids
+                )
             rows.append(self._build_group_header_row(
                 self._group_by_options[GROUP_BY_PRODUCT_KEY],
-                value=p_id,
-                label=p_name,
+                value=p_name,
                 icon=icon,
                 color=color,
                 product_type=p_type,
                 product_base_type=p_base_type,
                 featured_version=featured_v,
-                num_versions=(
-                    group_counts.get(p_id, 0)
-                    if group_counts is not None
-                    else None
-                ),
+                num_versions=num_versions,
+                product_ids=product_ids,
             ))
         return rows
 
@@ -3254,6 +3404,140 @@ class BrowserWidgetController(QtCore.QObject):
             if not sep:
                 return group_type, None
         return group_type, group_value
+
+    def _get_group_versions_filter(
+        self, group_id: str
+    ) -> _GroupVersionsFilter | None:
+        """Return the query arguments listing the versions of a group.
+
+        Args:
+            group_id: Group header id, see :meth:`_parse_group_id`.
+
+        Returns:
+            Arguments narrowing the versions to the group, or ``None``
+            when the group can not hold any versions.
+        """
+        group_key, group_value = self._parse_group_id(group_id)
+        if group_value is None:
+            # The group of versions without a value.
+            group_option = self._group_by_options.get(group_key)
+            if group_option is None:
+                return None
+            empty_filters = self._build_ungrouped_filter(group_option)
+            if empty_filters is None:
+                return None
+            version_filter, product_filter = empty_filters
+            return _GroupVersionsFilter(version_filter, product_filter)
+        if group_key == GROUP_BY_PRODUCT_KEY:
+            product_ids = self._product_ids_by_group_name.get(group_value)
+            if not product_ids:
+                return None
+            return _GroupVersionsFilter(product_ids=list(product_ids))
+        version_filter, product_filter = self._build_version_filter(
+            group_key, group_value
+        )
+        return _GroupVersionsFilter(version_filter, product_filter)
+
+    def get_group_version_ids(self, group_id: str) -> set[str]:
+        """Return the ids of all versions listed under a group header.
+
+        Queries only the ids, with the filters used when expanding the
+        group, so these are the versions the group shows expanded. When
+        a column provider's filter is active, the provider is asked for
+        its values to apply that filter too. If such a provider needs
+        more fields than the id, full version rows are queried instead.
+
+        Args:
+            group_id: Group header id, see :meth:`_parse_group_id`.
+
+        Returns:
+            Version ids of the group.
+
+        Raises:
+            RuntimeError: If there is no server connection or the
+                query returns errors.
+        """
+        project_name = self._current_project
+        if not project_name or not self._selected_folder_ids:
+            return set()
+        group_filter = self._get_group_versions_filter(group_id)
+        if group_filter is None:
+            return set()
+
+        con = ayon_api.get_server_api_connection()
+        if not con:
+            raise RuntimeError("No server connection")
+
+        query_filters = self._get_query_filters()
+        query_kwargs = self._version_query_kwargs(
+            query_filters,
+            self._merge_query_filters(
+                query_filters["version_filter"],
+                group_filter.version_filter,
+            ),
+            self._merge_query_filters(
+                query_filters["product_filter"],
+                group_filter.product_filter,
+            ),
+        )
+        variables: dict[str, Any] = {
+            "projectName": project_name,
+            "folderIds": self._selected_folder_ids,
+            "includeFolderChildren": self._include_folder_children,
+            "productIds": group_filter.product_ids,
+            "first": _VERSION_IDS_PAGE_SIZE,
+            "after": None,
+            **self._version_filter_variables(**query_kwargs),
+        }
+        # Filters of column providers are applied client-side, so they
+        #   are not part of the query. Providers are called only when one
+        #   of their filters is active.
+        column_context = self._get_column_context()
+        filter_by_providers = bool(
+            self._column_manager.get_filtering_providers(column_context)
+        )
+        # Providers reading row fields other than the id get full rows,
+        #   like the ones of the table.
+        provider_query_keys = (
+            self._column_manager.get_filter_query_keys(column_context)
+            if filter_by_providers
+            else set()
+        )
+        if provider_query_keys:
+            query = get_versions_query(provider_query_keys)
+        else:
+            query = get_version_ids_query()
+        version_ids: set[str] = set()
+        while True:
+            resp = con.query_graphql(query, variables)
+            if resp.errors:
+                raise RuntimeError(resp.errors)
+            versions_block = resp.data["data"]["project"]["versions"]
+            edges = versions_block["edges"]
+            if filter_by_providers and edges:
+                if provider_query_keys:
+                    rows = [
+                        self._transform_version_edge(edge) for edge in edges
+                    ]
+                else:
+                    rows = [
+                        {"id": edge["node"]["id"], "entityType": "Version"}
+                        for edge in edges
+                    ]
+                rows = self._column_manager.filter_rows(column_context, rows)
+                version_ids.update(row["id"] for row in rows)
+            else:
+                version_ids.update(edge["node"]["id"] for edge in edges)
+            page_info = versions_block["pageInfo"]
+            next_cursor = page_info["endCursor"]
+            if (
+                not page_info["hasNextPage"]
+                or not next_cursor
+                or next_cursor == variables["after"]
+            ):
+                break
+            variables["after"] = next_cursor
+        return version_ids
 
     def _build_version_filter(
         self,
@@ -3940,7 +4224,7 @@ class BrowserWidgetController(QtCore.QObject):
                 continue
             name = str(user.get("name") or "").strip()
             full_name = str(
-                (user.get("ownAttrib") or {}).get("fullName") or ""
+                user["attrib"].get("fullName") or ""
             ).strip()
             if name and full_name:
                 output[name] = full_name
@@ -3965,6 +4249,34 @@ class BrowserWidgetController(QtCore.QObject):
             (tag, self._pinfo("tags", tag, "color", "") or "")
             for tag in (tags or [])
         ]
+
+    @staticmethod
+    def _version_filter_variables(
+        version_filter: str = "",
+        product_filter: str = "",
+        task_filter: str = "",
+        folder_filter: str = "",
+        representation_filter: str = "",
+        featured_only: list[str] | None = None,
+        latest_per_folder: bool = False,
+        search: str | None = None,
+        has_reviewables: bool | None = None,
+    ) -> dict[str, Any]:
+        """Return the GraphQL variables of the version filters.
+
+        Takes the keyword arguments of :meth:`_version_query_kwargs`.
+        """
+        return {
+            "versionFilter": version_filter or "",
+            "productFilter": product_filter or "",
+            "taskFilter": task_filter or "",
+            "folderFilter": folder_filter or "",
+            "representationFilter": representation_filter or "",
+            "featuredOnly": featured_only,
+            "latestPerFolder": latest_per_folder,
+            "search": search,
+            "hasReviewables": has_reviewables,
+        }
 
     def _get_versions_page(
         self,
@@ -4046,20 +4358,22 @@ class BrowserWidgetController(QtCore.QObject):
 
         variables: dict[str, Any] = {
             "projectName": project_name,
-            "versionFilter": version_filter or "",
-            "productFilter": product_filter or "",
-            "taskFilter": task_filter or "",
-            "folderFilter": folder_filter or "",
-            "featuredOnly": featured_only,
-            "latestPerFolder": latest_per_folder,
-            "search": search,
             "sortBy": sort_by,
             "folderIds": resolved_folder_ids,
             "includeFolderChildren": include_folder_children,
             "versionIds": version_ids if version_ids is not None else None,
             "productIds": product_ids if product_ids else None,
-            "hasReviewables": has_reviewables,
-            "representationFilter": representation_filter or "",
+            **self._version_filter_variables(
+                version_filter=version_filter,
+                product_filter=product_filter,
+                task_filter=task_filter,
+                folder_filter=folder_filter,
+                representation_filter=representation_filter,
+                featured_only=featured_only,
+                latest_per_folder=latest_per_folder,
+                search=search,
+                has_reviewables=has_reviewables,
+            ),
         }
         if descending:
             variables["last"] = page_size

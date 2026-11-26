@@ -25,7 +25,7 @@ from ayon_core.lib.file_transaction import (
     DuplicateDestinationError,
 )
 from ayon_core.pipeline.publish import (
-    get_publish_template_name,
+    get_publish_template_name_for_instance,
     get_trait_representations,
     has_trait_representations,
     OptionalPyblishPluginMixin,
@@ -181,7 +181,9 @@ class IntegrateHeroVersion(
         anatomy = instance.context.data["anatomy"]
         project_name = anatomy.project_name
 
-        template_key = self._get_template_key(project_name, instance)
+        template_key = get_publish_template_name_for_instance(
+            instance, hero=True, logger=self.log
+        )
         hero_template = anatomy.get_template_item(
             "hero", template_key, "path", default=None
         )
@@ -940,40 +942,6 @@ class IntegrateHeroVersion(
         self.log.debug(f'hero publish dir: "{publish_folder}"')
 
         return publish_folder
-
-    def _get_template_key(
-        self,
-        project_name: str,
-        instance: pyblish.api.Instance,
-    ) -> str:
-        """Get template key for hero template.
-
-        Args:
-            project_name (str): The name of the project.
-            instance (pyblish.api.Instance): The instance to get data from.
-
-        Returns:
-            str: The template key to use for hero template.
-
-        """
-        anatomy_data = instance.data["anatomyData"]
-        task_info = anatomy_data.get("task") or {}
-        host_name = instance.context.data["hostName"]
-        product_base_type = (
-            instance.data.get("productBaseType")
-            or instance.data["productType"]
-        )
-
-        return get_publish_template_name(
-            project_name,
-            host_name,
-            product_base_type=product_base_type,
-            task_name=task_info.get("name"),
-            task_type=task_info.get("type"),
-            project_settings=instance.context.data["project_settings"],
-            hero=True,
-            logger=self.log
-        )
 
     def get_rootless_path(self, anatomy: Anatomy, path: str) -> str:
         """Returns, if possible, path without absolute portion from root

@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import signal
 import socket
 import ssl
 import threading
@@ -25,7 +26,7 @@ except ImportError:
         pass
 
 import requests
-from websocket import ABNF, create_connection
+from websocket import ABNF, WebSocketTimeoutException, create_connection
 
 if typing.TYPE_CHECKING:
     from websocket import WebSocket
@@ -495,9 +496,17 @@ class EventCallback:
             self._partial_func = None
 
 
-# Server sends 'heartbeat' message to authorized clients when there was no
-#   other message for ~5 seconds. If nothing arrives for this amount of time
-#   the connection is considered dead.
+# Server sends 'heartbeat' message only when it did not publish any other
+#   message for 2 seconds, and sends messages only to clients subscribed to
+#   their topic. So a client might not receive anything for a long time
+#   while server is busy (e.g. many events during a sync). Ping the server
+#   when nothing was received for this amount of time.
+_PING_INTERVAL: float = 5.0
+# Connection is considered dead if nothing (not even pong) was received
+#   while waiting on the socket for this amount of time. Wall-clock time
+#   is not used, the thread might not run for a long time (e.g. DCC main
+#   thread holds the GIL while rendering) while server messages are
+#   waiting in the socket.
 _RECV_TIMEOUT: float = 15.0
 # Timeout for opening websocket connection and for the auth check request.
 _CONNECT_TIMEOUT: float = 5.0
@@ -593,6 +602,8 @@ class _LoopState:
     auth_required: bool = False
     # Some message was received with current websocket connection
     received_message: bool = False
+    # Receive timeouts in a row with current websocket connection
+    recv_timeouts: int = 0
     # Connection state reported via events
     #   - 'None' means unknown (nothing was reported yet)
     connected: bool | None = None
@@ -616,6 +627,9 @@ class EventHub:
     Internal topics:
         - 'connection.opened' first message received after (re)connection.
         - 'connection.closed' connection was lost or could not be created.
+        - 'connection.interrupted' connection was lost and is reconnected
+            without reporting it as closed. Events might have been missed,
+            'connection.opened' is emitted once reconnected.
         - 'auth.failed' server rejected the token.
 
     Args:
@@ -940,9 +954,9 @@ class EventHub:
             ws_con = self._connection.create_websocket("ws")
         else:
             ws_con = self._create_websocket("ws", timeout=_CONNECT_TIMEOUT)
-        # Server sends heartbeat periodically, so timeout on receive means
-        #   that the connection is dead.
-        ws_con.settimeout(_RECV_TIMEOUT)
+        # Timeout on receive does not mean that the connection is dead,
+        #   the server is pinged on timeout (see '_loop').
+        ws_con.settimeout(_PING_INTERVAL)
         return ws_con
 
     def _close_ws_connection(self) -> None:
@@ -1025,11 +1039,28 @@ class EventHub:
         if stop_event.is_set():
             return
 
+        reason = exc if exc is not None else "Closed by server"
+        # Working connection can be closed by the server when the client
+        #   did not answer its pings (host held the GIL for a long time),
+        #   by a proxy or a network hiccup. Report it as lost only if
+        #   reconnecting fails. Server restart is reported right away, the
+        #   restart overlay is hidden only by 'connection.opened'.
+        if received_message and not state.server_is_restarting:
+            self._log.info(
+                "Websocket connection closed, reconnecting: %s", reason
+            )
+            # State is unknown until reconnected, tools don't show it as
+            #   lost and 'connection.opened' is emitted on first message
+            with self._state_lock:
+                state.connected = None
+            self.emit_event(Event("connection.interrupted"))
+            stop_event.wait(_RECONNECT_DELAYS[0])
+            return
+
         # Log only first failure, reconnection attempts would spam the log
         if state.connected is not False:
             self._log.warning(
-                "Lost connection to AYON server websocket: %s",
-                exc if exc is not None else "Closed by server",
+                "Lost connection to AYON server websocket: %s", reason
             )
         self._set_connected(False)
 
@@ -1049,6 +1080,11 @@ class EventHub:
         stop_event.wait(delay)
 
     def _thread_loop(self, stop_event: threading.Event) -> None:
+        # Writing to a connection closed by the server raises SIGPIPE.
+        #   Python ignores it, but some hosts reset it to the default
+        #   action which terminates the process (e.g. Silhouette on Linux).
+        if hasattr(signal, "pthread_sigmask"):
+            signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGPIPE})
         try:
             self._loop(stop_event)
         except Exception:
@@ -1080,6 +1116,7 @@ class EventHub:
                         break
                     self._ws_connection = ws_con
                 state.received_message = False
+                state.recv_timeouts = 0
                 state.auth_required = True
 
             if state.auth_required:
@@ -1096,14 +1133,33 @@ class EventHub:
                 continue
 
             try:
-                op_code, message = ws_con.recv_data()
+                op_code, message = ws_con.recv_data(control_frame=True)
+            except WebSocketTimeoutException as exc:
+                state.recv_timeouts += 1
+                if state.recv_timeouts * _PING_INTERVAL >= _RECV_TIMEOUT:
+                    # Server did not respond to ping
+                    self._on_connection_lost(stop_event, exc)
+                    continue
+                # Nothing received for a while, server might be busy and
+                #   not sending heartbeat. Pong will confirm it is alive.
+                try:
+                    ws_con.ping()
+                except Exception as ping_exc:
+                    self._on_connection_lost(stop_event, ping_exc)
+                continue
             except Exception as exc:
-                # Timeout (no heartbeat), closed connection, socket error...
+                # Closed connection, socket error...
                 self._on_connection_lost(stop_event, exc)
                 continue
 
+            state.recv_timeouts = 0
             if op_code == ABNF.OPCODE_CLOSE:
                 self._on_connection_lost(stop_event)
+                continue
+
+            # Ping and pong only confirm that the connection is alive, they
+            #   don't tell if the client is authorized.
+            if op_code in (ABNF.OPCODE_PING, ABNF.OPCODE_PONG):
                 continue
 
             if not state.received_message:
@@ -1179,6 +1235,20 @@ class _GlobalContext:
             return
         event_hub, cls.event_hub = cls.event_hub, None
         event_hub.stop()
+
+
+def get_event_hub() -> EventHub:
+    """Global event hub, created if it does not exist yet.
+
+    Creating the hub does not connect to server. Callbacks added with
+        'connect=False' receive events once a tool starts the connection
+        (see 'WSEventsModel'), so headless usage stays without websocket.
+
+    Returns:
+        EventHub: Global event hub.
+
+    """
+    return _GlobalContext.get_event_hub()
 
 
 class WSEventsModel:

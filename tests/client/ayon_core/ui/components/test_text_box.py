@@ -175,7 +175,6 @@ class TextEditorTest(WidgetTest):
         row1.add_widget(AYLabel("Default editor:"))
         self._editor_default = AYTextEditor(
             num_lines=4,
-            user_list=[],
             variant=AYTextEditor.Variants.Default,
         )
         row1.add_widget(self._editor_default, stretch=1)
@@ -191,7 +190,6 @@ class TextEditorTest(WidgetTest):
         self._editor_readonly = AYTextEditor(
             num_lines=4,
             read_only=True,
-            user_list=[],
             variant=AYTextEditor.Variants.Default,
         )
         self._editor_readonly.set_markdown(

@@ -3,7 +3,7 @@
 """AYON lib functions."""
 
 from .terminal import Terminal
-from .log import Logger, log_timing
+from .log import Logger, log_span
 from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,
@@ -16,6 +16,9 @@ from .local_settings import (
     get_local_site_id,
     get_ayon_user_entity,
     get_ayon_username,
+    LocalPreferences,
+    UserPreferences,
+    UserPreferencesNotSupported,
 )
 from .ayon_connection import initialize_ayon_connection
 from .cache import (
@@ -33,9 +36,11 @@ from .vendor_bin_utils import (
     get_oiio_tools_path,
     get_oiio_tool_args,
     get_ffmpeg_supported_options,
+    get_ffmpeg_available_encoders,
     get_ffmpeg_tool_path,
     get_ffmpeg_tool_args,
     is_ffmpeg_option_supported,
+    is_ffmpeg_encoder_available,
     is_oiio_supported,
 )
 
@@ -134,6 +139,7 @@ from .plugin_tools import (
 
 from .path_tools import (
     format_file_size,
+    open_in_file_browser,
     collect_frames,
     create_hard_link,
     version_up,
@@ -156,7 +162,7 @@ terminal = Terminal
 
 __all__ = [
     "Logger",
-    "log_timing",
+    "log_span",
     "StrEnum",
 
     "IniSettingRegistry",
@@ -169,6 +175,10 @@ __all__ = [
     "get_local_site_id",
     "get_ayon_user_entity",
     "get_ayon_username",
+
+    "LocalPreferences",
+    "UserPreferences",
+    "UserPreferencesNotSupported",
 
     "initialize_ayon_connection",
 
@@ -198,9 +208,11 @@ __all__ = [
     "get_oiio_tools_path",
     "get_oiio_tool_args",
     "get_ffmpeg_supported_options",
+    "get_ffmpeg_available_encoders",
     "get_ffmpeg_tool_path",
     "get_ffmpeg_tool_args",
     "is_ffmpeg_option_supported",
+    "is_ffmpeg_encoder_available",
     "is_oiio_supported",
 
     "IconBase",
@@ -254,6 +266,7 @@ __all__ = [
     "source_hash",
 
     "format_file_size",
+    "open_in_file_browser",
     "collect_frames",
     "create_hard_link",
     "version_up",
