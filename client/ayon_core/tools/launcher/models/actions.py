@@ -537,10 +537,13 @@ class ActionsModel:
         Server does not know if application executable is available on this
             machine, so it is validated using applications addon.
 
+        Validity is ignored if 'only_available' setting of applications
+            addon is disabled.
+
         Returns:
             dict[str, bool | None] | None: Validity by full application
-                name, 'None' value means unknown validity. Returns 'None'
-                if validation is not available.
+                name, 'None' value means unknown or ignored validity.
+                Returns 'None' if validation is not available.
 
         """
         try:
@@ -564,10 +567,14 @@ class ActionsModel:
             )
             return None
 
-        return {
-            app_item["full_name"]: app_item.get("has_valid_executable")
-            for app_item in app_items
-        }
+        output = {}
+        for app_item in app_items:
+            is_valid = app_item.get("has_valid_executable")
+            # Settings allow to show applications without valid executable
+            if not app_item.get("show_only_available", True):
+                is_valid = None
+            output[app_item["full_name"]] = is_valid
+        return output
 
     @staticmethod
     def _get_app_name_from_action(action_item: ActionItem) -> str | None:
