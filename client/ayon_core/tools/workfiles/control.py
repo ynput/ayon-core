@@ -8,7 +8,7 @@ import ayon_api
 
 from ayon_core.host import IWorkfileHost
 from ayon_core.lib import Logger, get_ayon_username
-from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.lib.events import QueuedEventSystem, register_event_callback
 from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.context_tools import get_global_context
 from ayon_core.tools.common_models import (
@@ -33,6 +33,7 @@ if typing.TYPE_CHECKING:
     import logging
 
     from ayon_core.host import WorkfileInfo
+    from ayon_core.lib.events import Event
 
     from ayon_core.tools.common_models.settings import TaskSortMode
     from ayon_core.tools.common_models import (
@@ -189,6 +190,8 @@ class BaseWorkfileController(
         self._workfiles_model = self._create_workfiles_model()
         self._actions_model = self._create_actions_model()
         self._ws_events_model = WSEventsModel(self)
+
+        register_event_callback("taskChanged", self._on_host_context_change)
 
     @property
     def log(self) -> logging.Logger:
@@ -775,6 +778,20 @@ class BaseWorkfileController(
         if hasattr(self._host, "get_current_context"):
             return self._host.get_current_context()
         return get_global_context()
+
+    def _on_host_context_change(self, event: Event) -> None:
+        folder_path = event["folder_path"]
+        folder_id = None
+        if folder_path:
+            folder_item = self._hierarchy_model.get_folder_item_by_path(
+                event["project_name"], folder_path
+            )
+            if folder_item is not None:
+                folder_id = folder_item.entity_id
+
+        self._current_folder_path = folder_path
+        self._current_folder_id = folder_id
+        self._current_task_name = event["task_name"]
 
     # Expected selection
     # - expected selection is used to restore selection after refresh
