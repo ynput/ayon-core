@@ -37,9 +37,6 @@ class CleanupFolderThumbnailsResponseModel(OPModel):
 class CoreAddon(BaseServerAddon):
     settings_model = CoreSettings
 
-    def initialize(self) -> None:
-        register_task_usage_endpoints(self)
-
     async def get_default_settings(self):
         settings_model_cls = self.get_settings_model()
         return settings_model_cls(**DEFAULT_VALUES)
@@ -61,6 +58,7 @@ class CoreAddon(BaseServerAddon):
             self._cleanup_folder_thumbnails,
             method="POST",
         )
+        register_task_usage_endpoints(self)
 
     async def get_simple_actions(
         self,
