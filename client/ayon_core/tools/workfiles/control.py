@@ -355,13 +355,18 @@ class BaseWorkfileController(
     def get_current_project_name(self) -> str | None:
         return self._current_project_name
 
-    def get_current_folder_id(self) -> str | None:
+    def get_current_context(self) -> dict[str, str | None]:
         self._update_current_context()
-        return self._current_folder_id
+        return {
+            "folder_id": self._current_folder_id,
+            "task_name": self._current_task_name,
+        }
+
+    def get_current_folder_id(self) -> str | None:
+        return self.get_current_context()["folder_id"]
 
     def get_current_task_name(self) -> str | None:
-        self._update_current_context()
-        return self._current_task_name
+        return self.get_current_context()["task_name"]
 
     def get_current_workfile(self) -> str | None:
         return self._workfiles_model.get_current_workfile()
@@ -455,8 +460,9 @@ class BaseWorkfileController(
         return self._expected_selection.get_expected_selection_data()
 
     def go_to_current_context(self) -> None:
+        context = self.get_current_context()
         self.set_expected_selection(
-            self.get_current_folder_id(), self._current_task_name
+            context["folder_id"], context["task_name"]
         )
 
     # Model functions

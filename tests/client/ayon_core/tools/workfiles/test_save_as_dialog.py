@@ -62,11 +62,11 @@ class _FakeController:
     def get_selected_context(self):
         return {"folder_id": "folder-1", "task_id": "task-1"}
 
-    def get_current_folder_id(self):
-        return self._current_folder_id
-
-    def get_current_task_name(self):
-        return self._current_task_name
+    def get_current_context(self):
+        return {
+            "folder_id": self._current_folder_id,
+            "task_name": self._current_task_name,
+        }
 
     def get_workarea_save_as_data(self, folder_id, task_id):
         self.save_as_data_contexts.append((folder_id, task_id))

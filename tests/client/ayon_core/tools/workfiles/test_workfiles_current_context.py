@@ -73,11 +73,18 @@ def test_current_context_follows_host_context(controller, monkeypatch):
         )
 
     # Save As switched context of the host while the tool stayed open
-    controller._host.get_current_context.return_value = {
+    host = controller._host
+    host.get_current_context.return_value = {
         "project_name": PROJECT_NAME,
         "folder_path": "/shots/sh020",
         "task_name": "lighting",
     }
 
+    assert controller.get_current_context() == {
+        "folder_id": "folder-2",
+        "task_name": "lighting",
+    }
+    # Host context is read once for both values
+    host.get_current_context.assert_called_once()
     assert controller.get_current_folder_id() == "folder-2"
     assert controller.get_current_task_name() == "lighting"
