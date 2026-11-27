@@ -13,6 +13,7 @@ from typing import Callable
 import pytest
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.lib import ToolNotFoundError
 from ayon_core.tools.browser.ui import _browser_filmstrip as filmstrip
 
 KEYS = [("project", "version", f"{idx:032x}") for idx in range(10)]
@@ -31,7 +32,8 @@ def loads(monkeypatch, qapp):
     """Record the filmstrips requested from the server.
 
     Uses a new loader and memory cache, filmstrips are enabled and loaded
-    without the hover delay. Loads block until ``release`` is set.
+    without the hover delay, ffmpeg is found. Requests block until
+    ``release`` is set.
     """
     calls: list[filmstrip._SourceKey] = []
     release = threading.Event()
@@ -44,7 +46,8 @@ def loads(monkeypatch, qapp):
     monkeypatch.delenv("AYON_BROWSER_DISABLE_FILMSTRIPS", raising=False)
     monkeypatch.setattr(filmstrip, "server_supports_filmstrips", lambda: True)
     monkeypatch.setattr(filmstrip, "HOVER_INTENT_DELAY_MS", 0)
-    monkeypatch.setattr(filmstrip, "_load_filmstrip", _load)
+    monkeypatch.setattr(filmstrip, "_fetch_filmstrip", _load)
+    monkeypatch.setattr(filmstrip, "_ffmpeg_found", True)
     monkeypatch.setattr(filmstrip, "_memory_cache", OrderedDict())
     monkeypatch.setattr(filmstrip, "_loader", None)
     yield SimpleNamespace(calls=calls, release=release)
@@ -103,6 +106,37 @@ def test_nothing_requested_when_disabled(
     assert not overlay.isVisible()
     # The loader and its worker threads are not even started
     assert filmstrip._loader is None
+
+
+@pytest.mark.unit
+def test_nothing_requested_without_ffmpeg(
+    qapp, loads, overlay, monkeypatch
+) -> None:
+    lookups = []
+
+    def _get_ffmpeg_tool_args(tool_name, *args):
+        lookups.append(tool_name)
+        raise ToolNotFoundError(f"FFmpeg '{tool_name}' tool not found.")
+
+    monkeypatch.setattr(
+        filmstrip, "get_ffmpeg_tool_args", _get_ffmpeg_tool_args
+    )
+    monkeypatch.setattr(filmstrip, "_ffmpeg_found", None)
+    overlay.set_source(*KEYS[0])
+    overlay.scrub(0.5)
+
+    # Looked up by the first request, before the server is asked
+    assert _spin(qapp, lambda: filmstrip._peek_filmstrip(KEYS[0]))
+    assert not filmstrip.filmstrips_enabled()
+
+    overlay.set_source(*KEYS[1])
+    overlay.scrub(0.5)
+    _spin(qapp, lambda: False, 0.1)
+
+    assert loads.calls == []
+    assert lookups == ["ffmpeg"]
+    assert not overlay.isVisible()
+    assert not filmstrip._get_loader()._requests
 
 
 @pytest.mark.unit

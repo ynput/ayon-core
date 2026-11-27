@@ -6,8 +6,9 @@ top to bottom. While the cursor is over a thumbnail the frame matching the
 horizontal cursor position is shown, so moving the cursor "plays" the video.
 
 Requires AYON server 1.17.3 or newer, older servers don't have the
-filmstrip endpoints and nothing is requested from them. Set
-``AYON_BROWSER_DISABLE_FILMSTRIPS=1`` to turn filmstrips off.
+filmstrip endpoints and nothing is requested from them. Filmstrips are
+converted with ffmpeg, nothing is requested either when it is not found.
+Set ``AYON_BROWSER_DISABLE_FILMSTRIPS=1`` to turn filmstrips off.
 
 The server creates a missing filmstrip on the first request, which can take
 a while. Filmstrips are loaded by their own small worker pool so this does
@@ -23,6 +24,7 @@ import math
 import platform
 import subprocess
 import tempfile
+import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -38,6 +40,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from ayon_core.lib import (
     CREATE_NO_WINDOW,
     Logger,
+    ToolNotFoundError,
     env_value_to_bool,
     get_ffmpeg_tool_args,
 )
@@ -240,19 +243,50 @@ def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     return data, DEFAULT_MAX_AGE
 
 
+# Whether ffmpeg was found, 'None' until looked up
+_ffmpeg_found: bool | None = None
+_ffmpeg_lock = threading.Lock()
+
+
+def _find_ffmpeg() -> bool:
+    """Return whether ffmpeg is available to convert filmstrips.
+
+    Looked up once, by the first filmstrip request. Runs in a worker
+    thread: the lookup runs ffmpeg, and the ayon-third-party addon may
+    even download it.
+    """
+    global _ffmpeg_found
+    with _ffmpeg_lock:
+        if _ffmpeg_found is None:
+            try:
+                get_ffmpeg_tool_args("ffmpeg")
+                _ffmpeg_found = True
+            except ToolNotFoundError:
+                log.warning(
+                    "Video thumbnails are not scrubbed on hover,"
+                    " ffmpeg was not found."
+                )
+                _ffmpeg_found = False
+    return _ffmpeg_found
+
+
 def filmstrips_enabled() -> bool:
     """Return whether filmstrips are loaded from the server.
 
     Not on servers without the filmstrip endpoints, nor when turned off with
-    ``AYON_BROWSER_DISABLE_FILMSTRIPS=1``.
+    ``AYON_BROWSER_DISABLE_FILMSTRIPS=1``, nor once ffmpeg was not found.
     """
     if env_value_to_bool("AYON_BROWSER_DISABLE_FILMSTRIPS"):
+        return False
+    if _ffmpeg_found is False:
         return False
     return server_supports_filmstrips()
 
 
 def _load_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     try:
+        if not _find_ffmpeg():
+            return None, DEFAULT_MAX_AGE
         return _fetch_filmstrip(key)
     except _FilmstripChangedError:
         log.debug("Filmstrip of %r changed while loading", key)
