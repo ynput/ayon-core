@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import tempfile
 import threading
 import time
 from collections import OrderedDict
@@ -179,3 +181,46 @@ def test_sweep_requests_only_the_hovered_filmstrip(
     overlay.scrub(0.5)
     _spin(qapp, lambda: False, 0.1)
     assert len(loads.calls) == 3
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("ffmpeg_fails", [False, True])
+def test_conversion_leaves_no_temp_files(
+    monkeypatch, tmp_path, ffmpeg_fails
+) -> None:
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    response = SimpleNamespace(
+        status_code=200, content=b"avif", raise_for_status=lambda: None
+    )
+    connection = SimpleNamespace(
+        get_base_url=lambda: "http://server",
+        raw_get=lambda url, **kwargs: response,
+    )
+    monkeypatch.setattr(
+        filmstrip.ayon_api, "get_server_api_connection", lambda: connection
+    )
+    monkeypatch.setattr(
+        filmstrip, "get_ffmpeg_tool_args", lambda tool, *args: [tool, *args]
+    )
+    ffmpeg_inputs = []
+
+    def _run(args, **kwargs):
+        with open(args[args.index("-i") + 1], "rb") as stream:
+            ffmpeg_inputs.append(stream.read())
+        if ffmpeg_fails:
+            raise subprocess.CalledProcessError(1, args)
+        return SimpleNamespace(stdout=b"jpeg")
+
+    monkeypatch.setattr(filmstrip.subprocess, "run", _run)
+
+    if ffmpeg_fails:
+        with pytest.raises(subprocess.CalledProcessError):
+            filmstrip._download_filmstrip_image("/api/filmstrip")
+    else:
+        image = filmstrip._download_filmstrip_image("/api/filmstrip")
+        # Stored by ImageCache with the extension of the name
+        assert image.name.endswith(".jpg")
+        assert image.read() == b"jpeg"
+
+    assert ffmpeg_inputs == [b"avif"]
+    assert list(tmp_path.iterdir()) == []
