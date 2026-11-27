@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 from dataclasses import dataclass, asdict
 import os
 import threading
@@ -34,6 +35,13 @@ from ayon_core.pipeline.actions import (
     register_launcher_action_path,
 )
 from ayon_core.tools.launcher.abstract import ActionItem, WebactionContext
+
+# Prefixes of applications addon webaction identifiers followed
+#   by full application name e.g. 'application.launch.maya/2025'
+APPLICATION_ACTION_PREFIXES = (
+    "application.launch.",
+    "application.launch-workfile.",
+)
 
 
 @dataclass
@@ -114,6 +122,11 @@ class ActionsModel:
         self._webaction_items = NestedCacheItem(
             levels=2, default_factory=list, lifetime=20,
         )
+        # Application executables validity by project name
+        self._app_items = NestedCacheItem(
+            levels=1, lifetime=300
+        )
+        self._app_executables_validity = {}
 
         self._variant = get_settings_variant()
 
@@ -137,6 +150,8 @@ class ActionsModel:
             self._actions = None
             self._action_items = {}
             self._webaction_items.reset()
+            self._app_items.reset()
+            self._app_executables_validity = {}
             self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
@@ -499,8 +514,183 @@ class ActionsModel:
                 # category=action["category"],
             ))
 
+        action_items = self._filter_app_executables(
+            project_name, selection.task_id, action_items
+        )
+
         cache.update_data(action_items)
         return cache.get_data()
+
+    def _get_app_items(
+        self, project_name: str | None
+    ) -> list[dict[str, Any]]:
+        """Get application items of a project from applications addon.
+
+        Items are cached per project. Cached validity of executables for
+            the project is reset when items are fetched again.
+
+        Args:
+            project_name (str | None): Project name.
+
+        Returns:
+            list[dict[str, Any]]: Application items. Empty if executables
+                can't be validated (applications addon is missing or too
+                old, or the request failed).
+
+        """
+        cache = self._app_items[project_name]
+        if cache.is_valid:
+            return cache.get_data()
+        self._app_executables_validity[project_name] = {}
+        app_items = []
+        cache.update_data(app_items)
+        try:
+            addons_manager = self._controller.get_addons_manager()
+            addon = addons_manager.get("applications")
+            if addon is None:
+                return app_items
+            # Older versions of applications addon don't support validation
+            if not hasattr(addon, "validate_app_items_executable_paths"):
+                return app_items
+
+            app_items = addon.get_application_items(
+                project_name,
+                variant=self._variant,
+            )
+            cache.update_data(app_items)
+            return app_items
+
+        except Exception:
+            self.log.warning(
+                "Failed to get application items.", exc_info=True
+            )
+            return app_items
+
+    @staticmethod
+    def _get_app_name_from_action(action_item: ActionItem) -> str | None:
+        """Get application full name from application webaction.
+
+        Args:
+            action_item (ActionItem): Action item.
+
+        Returns:
+            str | None: Application full name, or 'None' if action is not
+                an application launch action of applications addon.
+
+        """
+        if action_item.addon_name != "applications":
+            return None
+        for prefix in APPLICATION_ACTION_PREFIXES:
+            if action_item.identifier.startswith(prefix):
+                return action_item.identifier[len(prefix):]
+        return None
+
+    def _get_app_action_ids_to_skip(
+        self, project_name: str, app_action_ids: dict[str, list[str]]
+    ) -> set[str]:
+        """Get identifiers of application actions without valid executable.
+
+        Only applications of passed actions are validated, results are
+            cached per project and reused for other selections.
+
+        Nothing is skipped if 'show_only_available' (the 'only_available'
+            setting of applications addon) is disabled, or if executables
+            can't be validated.
+
+        Args:
+            project_name (str): Project name.
+            app_action_ids (dict[str, list[str]]): Action identifiers by
+                application full name.
+
+        Returns:
+            set[str]: Identifiers of actions that should not be shown.
+
+        """
+        ids_to_skip = set()
+        if not app_action_ids:
+            return ids_to_skip
+
+        app_items = self._get_app_items(project_name)
+        if not app_items:
+            return ids_to_skip
+
+        # Value is the same for all items
+        if app_items[0].get("show_only_available", True) is False:
+            return ids_to_skip
+
+        validity = self._app_executables_validity[project_name]
+        app_items_to_validate = []
+        for app_item in app_items:
+            app_name = app_item["full_name"]
+            if app_name not in app_action_ids:
+                continue
+
+            if app_name not in validity:
+                app_items_to_validate.append(app_item)
+            elif validity[app_name] is False:
+                ids_to_skip.update(app_action_ids[app_name])
+
+        if not app_items_to_validate:
+            return ids_to_skip
+
+        addons_manager = self._controller.get_addons_manager()
+        addon = addons_manager.get("applications")
+        try:
+            new_validity = addon.validate_app_items_executable_paths(
+                app_items_to_validate
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to validate application executables.", exc_info=True
+            )
+            return ids_to_skip
+
+        for app_name, valid in new_validity.items():
+            validity[app_name] = valid
+            if valid is False:
+                ids_to_skip.update(app_action_ids.get(app_name, []))
+
+        return ids_to_skip
+
+    def _filter_app_executables(
+        self,
+        project_name: str | None,
+        task_id: str | None,
+        action_items: list[ActionItem],
+    ) -> list[ActionItem]:
+        """Filter out application actions without existing executable.
+
+        Order of action items is kept.
+
+        Args:
+            project_name (str | None): Project name.
+            task_id (str | None): Selected task id.
+            action_items (list[ActionItem]): Webaction items.
+
+        Returns:
+            list[ActionItem]: Action items that can be triggered.
+
+        """
+        if not project_name or not task_id:
+            return action_items
+
+        app_action_ids = collections.defaultdict(list)
+        for action_item in action_items:
+            app_name = self._get_app_name_from_action(action_item)
+            if app_name is not None:
+                app_action_ids[app_name].append(action_item.identifier)
+
+        ids_to_skip = self._get_app_action_ids_to_skip(
+            project_name, app_action_ids
+        )
+        if not ids_to_skip:
+            return action_items
+
+        return [
+            action_item
+            for action_item in action_items
+            if action_item.identifier not in ids_to_skip
+        ]
 
     def _is_service_user(self) -> bool:
         """Check if the connection uses a service user API key.
