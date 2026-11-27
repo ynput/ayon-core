@@ -108,6 +108,10 @@ def find_executable(executable):
             ):
                 return filepath
 
+    # A path with directory never matches a file name in PATH
+    if exe_dir:
+        return None
+
     # Get paths where to look for executable
     path_str = os.environ.get("PATH", None)
     if path_str is None:
