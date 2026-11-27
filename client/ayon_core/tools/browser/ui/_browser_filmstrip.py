@@ -64,7 +64,7 @@ REQUEST_TIMEOUT = 20
 # filmstrips at a time anyway (``AYON_FILMSTRIP_CONCURRENCY``).
 FILMSTRIP_WORKERS = 2
 # Every decoded filmstrip is ~10 MB in memory.
-MAX_MEMORY_ENTRIES = 8
+MAX_MEMORY_FILMSTRIPS = 8
 PROGRESS_COLOR = "#8fceff"
 PROGRESS_HEIGHT = 2
 # Size of the click popup relative to the size of the filmstrip frames
@@ -128,10 +128,22 @@ def _peek_filmstrip(key: _SourceKey) -> _CacheEntry | None:
 def _store_filmstrip(
     key: _SourceKey, data: FilmstripData | None, max_age: float
 ) -> None:
-    _memory_cache[key] = _CacheEntry(data, time.time() + max_age)
+    """Cache the answer for *key*, also when there is no filmstrip.
+
+    Only the most recently used filmstrips are kept. Answers without a
+    filmstrip are kept until they expire.
+    """
+    now = time.time()
+    _memory_cache[key] = _CacheEntry(data, now + max_age)
     _memory_cache.move_to_end(key)
-    while len(_memory_cache) > MAX_MEMORY_ENTRIES:
-        _memory_cache.popitem(last=False)
+    filmstrips = 0
+    for cache_key, entry in reversed(list(_memory_cache.items())):
+        if entry.expires_at < now:
+            del _memory_cache[cache_key]
+        elif entry.data is not None:
+            filmstrips += 1
+            if filmstrips > MAX_MEMORY_FILMSTRIPS:
+                del _memory_cache[cache_key]
 
 
 class _FilmstripChangedError(Exception):
