@@ -18,9 +18,11 @@ before they are sent.
 
 from __future__ import annotations
 
-import functools
+import io
 import math
 import os
+import platform
+import subprocess
 import tempfile
 import threading
 import time
@@ -34,7 +36,7 @@ from ayon_core.ui.components.task_queue import AsyncTask, AsyncTaskQueue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core.lib import Logger, get_ffmpeg_tool_args, run_subprocess
+from ayon_core.lib import CREATE_NO_WINDOW, Logger, get_ffmpeg_tool_args
 
 log = Logger.get_logger(__name__)
 
@@ -125,25 +127,20 @@ def _store_filmstrip(
         _memory_cache.popitem(last=False)
 
 
-@functools.lru_cache(maxsize=None)
-def _qt_supports_avif() -> bool:
-    # Image format plugins do not change within a session
-    formats = QtGui.QImageReader.supportedImageFormats()
-    return any(fmt.data().lower() == b"avif" for fmt in formats)
-
-
 class _FilmstripChangedError(Exception):
     """The filmstrip image of the requested version is gone."""
 
 
-def _download_filmstrip_image(url: str) -> str:
-    """Download a filmstrip image to a temp file readable by Qt.
+def _download_filmstrip_image(url: str) -> io.BytesIO:
+    """Download a filmstrip image and convert it to JPEG.
 
-    The server stores filmstrips as AVIF, which Qt can read only with an
-    extra image format plugin, so it is converted with ffmpeg if needed.
+    The server stores filmstrips as AVIF, which Qt reads only with an
+    extra image format plugin, so it is converted with ffmpeg. ffmpeg
+    can't read AVIF from a pipe, the download is written to a temporary
+    directory that is removed once converted.
 
     Returns:
-        Path to the temp file.
+        The JPEG image.
     """
     con = ayon_api.get_server_api_connection()
     if url.startswith("/"):
@@ -153,27 +150,32 @@ def _download_filmstrip_image(url: str) -> str:
     if response.status_code == 404:
         raise _FilmstripChangedError(url)
     response.raise_for_status()
-    with tempfile.NamedTemporaryFile(suffix=".avif", delete=False) as fh:
-        fh.write(response.content)
-        avif_path = fh.name
-    if _qt_supports_avif():
-        return avif_path
 
-    jpg_path = os.path.splitext(avif_path)[0] + ".jpg"
-    try:
-        run_subprocess(
+    kwargs = {}
+    if platform.system().lower() == "windows":
+        kwargs["creationflags"] = CREATE_NO_WINDOW
+    with tempfile.TemporaryDirectory(prefix="ayon_filmstrip_") as tmp_dir:
+        avif_path = os.path.join(tmp_dir, "filmstrip.avif")
+        with open(avif_path, "wb") as stream:
+            stream.write(response.content)
+        process = subprocess.run(
             get_ffmpeg_tool_args(
                 "ffmpeg",
-                "-y",
+                "-nostdin",
                 "-loglevel", "error",
                 "-i", avif_path,
                 "-q:v", "2",
-                jpg_path,
-            )
+                "-f", "mjpeg",
+                "pipe:1",
+            ),
+            capture_output=True,
+            check=True,
+            **kwargs,
         )
-    finally:
-        os.remove(avif_path)
-    return jpg_path
+    image = io.BytesIO(process.stdout)
+    # ImageCache takes the file extension from the name
+    image.name = "filmstrip.jpg"
+    return image
 
 
 def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
@@ -200,22 +202,10 @@ def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     response.raise_for_status()
     info = response.data
     url = info["url"]
-
-    tmp_paths: list[str] = []
-
-    def _download() -> str:
-        tmp_paths.append(_download_filmstrip_image(url))
-        return tmp_paths[-1]
-
     # The url only changes when the filmstrip is re-created
-    try:
-        path = ImageCache.get_instance().get(f"filmstrip:{url}", _download)
-    finally:
-        # ImageCache made its own copy
-        for tmp_path in tmp_paths:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-
+    path = ImageCache.get_instance().get(
+        f"filmstrip:{url}", lambda: _download_filmstrip_image(url)
+    )
     image = QtGui.QImage(path)
     if image.isNull():
         raise ValueError(f"Failed to read filmstrip image: {path}")
