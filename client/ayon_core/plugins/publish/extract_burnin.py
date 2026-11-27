@@ -24,10 +24,6 @@ from ayon_core.pipeline.publish.lib import (
     get_default_reviewable_layers,
     get_file_collections,
 )
-from ayon_core.plugins.publish.prepare_attach_reviewables import (
-    ATTACH_TARGET_ID_KEY,
-    get_target_version,
-)
 
 
 class ExtractBurnin(publish.Extractor):
@@ -42,7 +38,6 @@ class ExtractBurnin(publish.Extractor):
     label = "Extract burnins"
     order = pyblish.api.ExtractorOrder + 0.03
 
-    families = ["review", "burnin"]
     settings_category = "core"
 
     optional = True
@@ -84,7 +79,9 @@ class ExtractBurnin(publish.Extractor):
                 self.log.debug("Removing representation: {}".format(repre))
                 instance.data["representations"].remove(repre)
 
-    def _get_burnins_per_representations(self, instance, src_burnin_defs):
+    def _get_burnins_per_representations(
+        self, instance, src_burnin_defs, representations=None
+    ):
         """
 
         Args:
@@ -101,7 +98,9 @@ class ExtractBurnin(publish.Extractor):
         )
 
         filtered_repres = []
-        repres = instance.data.get("representations") or []
+        if representations is None:
+            representations = instance.data.get("representations") or []
+        repres = representations
         for idx, repre in enumerate(repres):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self.repres_is_valid(repre):
@@ -145,67 +144,54 @@ class ExtractBurnin(publish.Extractor):
 
     def main_process(self, instance):
         host_name = instance.context.data["hostName"]
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = instance.data["productType"]
-        product_name = instance.data["productName"]
-        task_data = instance.data["anatomyData"].get("task", {})
-        task_name = task_data.get("name")
-        task_type = task_data.get("type")
-
-        filtering_criteria = {
-            "host_names": host_name,
-            "product_base_types": product_base_type,
-            "product_names": product_name,
-            "task_names": task_name,
-            "task_types": task_type,
-        }
-        profile = filter_profiles(
-            self.profiles,
-            filtering_criteria,
-            logger=self.log
-        )
-        if not profile:
-            self.log.debug(
-                "Skipped instance. None of profiles in presets are for"
-                f" Host name: \"{host_name}\""
-                f" | Product base type: \"{product_base_type}\""
-                f" | Product name \"{product_name}\""
-                f" | Task name \"{task_name}\""
-                f" | Task type \"{task_type}\""
+        burnins_per_repres = []
+        for repre in instance.data.get("representations") or []:
+            review_data = self._get_review_data(instance, repre)
+            product_base_type = review_data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data.get("productBaseType")
+            if not product_base_type:
+                product_base_type = instance.data.get("productType")
+            product_name = review_data.get("productName")
+            if product_name is None:
+                product_name = instance.data.get("productName")
+            anatomy_data = instance.data.get("anatomyData") or {}
+            task_data = review_data.get("task") or anatomy_data.get(
+                "task", {}
             )
-            return
-
-        # Pre-filter burnin definitions by instance families
-        burnin_defs = self.filter_burnins_defs(profile, instance)
-        if not burnin_defs:
-            self.log.debug(
-                "Skipped instance. Burnin definitions are not set for profile"
-                f" Host name: \"{host_name}\""
-                f" | Product base type: \"{product_base_type}\""
-                f" | Task name \"{task_name}\""
-                f" | Profile \"{profile}\""
+            filtering_criteria = {
+                "host_names": host_name,
+                "product_base_types": product_base_type,
+                "product_names": product_name,
+                "task_names": task_data.get("name"),
+                "task_types": task_data.get("type"),
+            }
+            profile = filter_profiles(
+                self.profiles,
+                filtering_criteria,
+                logger=self.log
             )
-            return
+            if not profile:
+                continue
 
-        burnins_per_repres = self._get_burnins_per_representations(
-            instance, burnin_defs
-        )
+            burnin_defs = self.filter_burnins_defs(
+                profile, instance, review_data.get("families")
+            )
+            if not burnin_defs:
+                continue
+            burnins_per_repres.extend(
+                self._get_burnins_per_representations(
+                    instance, burnin_defs, [repre]
+                )
+            )
         if not burnins_per_repres:
             self.log.debug(
                 "Skipped instance. No representations found matching a burnin"
-                " definition in: %s", burnin_defs
+                " definition."
             )
             return
 
         burnin_options = self._get_burnin_options()
-        target_instance = self._get_attached_target(instance)
-        target_version = None
-        if target_instance is not None:
-            target_version = get_target_version(target_instance)
-
-        # Prepare basic data for processing
-        _burnin_data, _temp_data = self.prepare_basic_data(instance)
 
         anatomy = instance.context.data["anatomy"]
         scriptpath = self.burnin_script_path()
@@ -215,9 +201,10 @@ class ExtractBurnin(publish.Extractor):
         # Args that will execute the script
         executable_args = ["run", scriptpath]
         for repre, repre_burnin_defs in burnins_per_repres:
-            # Create copy of `_burnin_data` and `_temp_data` for repre.
-            burnin_data = copy.deepcopy(_burnin_data)
-            temp_data = copy.deepcopy(_temp_data)
+            # Frame data may be specific to the extracted representation.
+            burnin_data, temp_data = self.prepare_basic_data(
+                instance, repre
+            )
 
             # Prepare representation based data.
             self.prepare_repre_data(instance, repre, burnin_data, temp_data)
@@ -270,21 +257,29 @@ class ExtractBurnin(publish.Extractor):
             filled_anatomy = anatomy.format_all(burnin_data)
             burnin_data["anatomy"] = filled_anatomy.get_solved()
 
+            review_data = self._get_review_data(instance, repre)
             custom_data = copy.deepcopy(
-                instance.data.get("customData") or {}
+                review_data.get("customData", instance.data.get("customData"))
+                or {}
             )
             # Backwards compatibility (since 2022/04/07)
             custom_data.update(
-                instance.data.get("custom_burnin_data") or {}
+                review_data.get(
+                    "customBurninData",
+                    instance.data.get("custom_burnin_data"),
+                ) or {}
             )
 
             # Add context data burnin_data.
             burnin_data["custom"] = custom_data
 
             # Add data members.
-            burnin_data.update(instance.data.get("burninDataMembers", {}))
-            if target_version is not None:
-                burnin_data["version"] = int(target_version)
+            burnin_data.update(
+                review_data.get(
+                    "burninDataMembers",
+                    instance.data.get("burninDataMembers", {}),
+                ) or {}
+            )
 
             # Add source camera name to burnin data
             camera_name = repre.get("camera_name")
@@ -469,11 +464,22 @@ class ExtractBurnin(publish.Extractor):
 
         return burnin_options
 
-    def prepare_basic_data(self, instance):
+    @staticmethod
+    def _get_review_data(instance, repre=None):
+        """Return representation review metadata with instance fallback."""
+        if repre is not None:
+            return repre.get("reviewData") or {}
+        for representation in instance.data.get("representations") or []:
+            if "review" in (representation.get("tags") or []):
+                return representation.get("reviewData") or {}
+        return {}
+
+    def prepare_basic_data(self, instance, repre=None):
         """Pick data from instance for processing and for burnin strings.
 
         Args:
             instance (Instance): Currently processed instance.
+            repre (dict): Representation currently being processed.
 
         Returns:
             tuple: `(burnin_data, temp_data)` - `burnin_data` contain data for
@@ -482,18 +488,17 @@ class ExtractBurnin(publish.Extractor):
         """
         self.log.debug("Preparing basic data for burnins")
         context = instance.context
+        review_data = self._get_review_data(instance, repre)
 
         version = instance.data.get("version")
         if version is None:
             version = context.data.get("version")
 
-        target_instance = self._get_attached_target(instance)
-        if target_instance is not None:
-            target_version = get_target_version(target_instance)
-            if target_version is not None:
-                version = target_version
-
-        frame_start = instance.data.get("frameStart")
+        frame_start = review_data.get("frameStart")
+        if frame_start is None:
+            frame_start = (repre or {}).get("frameStart")
+        if frame_start is None:
+            frame_start = instance.data.get("frameStart")
         if frame_start is None:
             self.log.warning(
                 "Key \"frameStart\" is not set. Setting to \"0\"."
@@ -501,7 +506,11 @@ class ExtractBurnin(publish.Extractor):
             frame_start = 0
         frame_start = int(frame_start)
 
-        frame_end = instance.data.get("frameEnd")
+        frame_end = review_data.get("frameEnd")
+        if frame_end is None:
+            frame_end = (repre or {}).get("frameEnd")
+        if frame_end is None:
+            frame_end = instance.data.get("frameEnd")
         if frame_end is None:
             self.log.warning(
                 "Key \"frameEnd\" is not set. Setting to \"1\"."
@@ -509,24 +518,38 @@ class ExtractBurnin(publish.Extractor):
             frame_end = 1
         frame_end = int(frame_end)
 
-        handle_start = instance.data.get("handleStart")
+        handle_start = review_data.get("handleStart")
+        if handle_start is None:
+            handle_start = (repre or {}).get("handleStart")
+        if handle_start is None:
+            handle_start = instance.data.get("handleStart")
         if handle_start is None:
             handle_start = context.data.get("handleStart") or 0
 
-        handle_end = instance.data.get("handleEnd")
+        handle_end = review_data.get("handleEnd")
+        if handle_end is None:
+            handle_end = (repre or {}).get("handleEnd")
+        if handle_end is None:
+            handle_end = instance.data.get("handleEnd")
         if handle_end is None:
             handle_end = context.data.get("handleEnd") or 0
 
         frame_start_handle = frame_start - handle_start
         frame_end_handle = frame_end + handle_end
 
-        burnin_data = copy.deepcopy(instance.data["anatomyData"])
+        anatomy_data = review_data.get("anatomyData")
+        if anatomy_data is None:
+            anatomy_data = instance.data["anatomyData"]
+        burnin_data = copy.deepcopy(anatomy_data)
 
-        if "slate.farm" in instance.data["families"]:
+        families = review_data.get("families")
+        if families is None:
+            families = instance.data.get("families") or []
+        if "slate.farm" in families:
             frame_start_handle += 1
 
         burnin_data["version"] = int(version)
-        comment = instance.data["comment"]
+        comment = review_data.get("comment", instance.data.get("comment"))
         if comment:
             burnin_data["comment"] = comment
 
@@ -552,20 +575,6 @@ class ExtractBurnin(publish.Extractor):
         )
 
         return burnin_data, temp_data
-
-    def _get_attached_target(self, instance):
-        target_id = instance.data.get(ATTACH_TARGET_ID_KEY)
-        if not target_id:
-            return None
-
-        return next(
-            (
-                candidate
-                for candidate in instance.context
-                if candidate.data.get("instance_id") == target_id
-            ),
-            None,
-        )
 
     def repres_is_valid(self, repre):
         """Validation if representation should be processed.
@@ -748,10 +757,7 @@ class ExtractBurnin(publish.Extractor):
         burnin_slate_frame_start = burnin_frame_start
 
         # Move frame start by 1 frame when slate is used.
-        if (
-            "slate" in instance.data["families"]
-            and "slate-frame" in repre["tags"]
-        ):
+        if "slate-frame" in repre["tags"]:
             burnin_slate_frame_start -= 1
 
         self.log.debug("burnin_slate_frame_start: {}".format(
@@ -775,7 +781,7 @@ class ExtractBurnin(publish.Extractor):
                 "source_resolution_height": repre_source_resolution_height
             })
 
-    def filter_burnins_defs(self, profile, instance):
+    def filter_burnins_defs(self, profile, instance, families=None):
         """Filter outputs by their values from settings.
 
         Output definitions with at least one value are marked as valid.
@@ -794,7 +800,8 @@ class ExtractBurnin(publish.Extractor):
         if not burnin_defs:
             return filtered_burnin_defs
 
-        families = self.families_from_instance(instance)
+        if families is None:
+            families = self.families_from_instance(instance)
 
         for orig_burnin_def in burnin_defs:
             burnin_def = copy.deepcopy(orig_burnin_def)

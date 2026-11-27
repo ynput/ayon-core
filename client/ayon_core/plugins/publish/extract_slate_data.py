@@ -9,7 +9,6 @@ class ExtractSlateData(publish.Extractor):
     label = "Slate Data"
     # Offset from ExtractReviewSlate and ExtractGenerateSlate.
     order = pyblish.api.ExtractorOrder + 0.49
-    families = ["slate", "review"]
     hosts = ["nuke", "shell"]
 
     def process(self, instance):
