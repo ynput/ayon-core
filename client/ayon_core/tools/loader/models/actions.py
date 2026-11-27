@@ -13,6 +13,7 @@ from ayon_core.lib import NestedCacheItem, Logger
 from ayon_core.pipeline.actions import (
     LoaderActionsContext,
     LoaderActionSelection,
+    LoaderActionTriggerInfo,
     SelectionEntitiesCache,
 )
 from ayon_core.pipeline.load import (
@@ -26,10 +27,15 @@ from ayon_core.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from ayon_core.tools.loader.abstract import ActionItem
+from ayon_core.tools.loader.abstract import (
+    ActionItem,
+    ActionAlternativeItem,
+)
 
 ACTIONS_MODEL_SENDER = "actions.model"
 LOADER_PLUGIN_ID = "__loader_plugin__"
+# Alternative launch of loader plugins showing options dialog
+LOADER_OPTIONS_LAUNCH_ID = "options"
 NOT_SET = object()
 
 
@@ -129,6 +135,7 @@ class LoaderActionsModel:
         data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
+        alternative_identifier: str | None,
     ):
         """Trigger action by identifier.
 
@@ -146,6 +153,8 @@ class LoaderActionsModel:
             data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Loader option values.
             form_values (dict[str, Any]): Form values.
+            alternative_identifier (str | None): Identifier of alternative
+                launch used to launch the action.
 
         """
         event_data = {
@@ -154,6 +163,7 @@ class LoaderActionsModel:
             "selected_ids": list(selected_ids),
             "selected_entity_type": selected_entity_type,
             "data": data,
+            "alternative_identifier": alternative_identifier,
             "id": uuid.uuid4().hex,
         }
         self._controller.emit_event(
@@ -174,6 +184,9 @@ class LoaderActionsModel:
                     ),
                     data=data,
                     form_values=form_values,
+                    trigger_info=LoaderActionTriggerInfo(
+                        alternative_identifier=alternative_identifier,
+                    ),
                 )
 
             except Exception:
@@ -336,6 +349,12 @@ class LoaderActionsModel:
         label = self._get_action_label(loader)
         if repre_name:
             label = f"{label} ({repre_name})"
+        options = loader.get_options(contexts)
+        alternative_launch_items = []
+        if options:
+            alternative_launch_items.append(
+                ActionAlternativeItem(LOADER_OPTIONS_LAUNCH_ID)
+            )
         return ActionItem(
             LOADER_PLUGIN_ID,
             data={
@@ -348,7 +367,8 @@ class LoaderActionsModel:
             icon=self._get_action_icon(loader),
             tooltip=self._get_action_tooltip(loader),
             order=loader.order,
-            options=loader.get_options(contexts),
+            options=options,
+            alternative_launch_items=alternative_launch_items,
         )
 
     def _get_loaders(self, project_name):
@@ -807,7 +827,15 @@ class LoaderActionsModel:
                 tooltip=None,  # action.tooltip,
                 order=action.order,
                 data=action.data,
-                options=None,  # action.options,
+                options=None,
+                alternative_launch_items=[
+                    ActionAlternativeItem(
+                        identifier=item.identifier,
+                        icon=item.icon,
+                        tooltip=item.tooltip,
+                    )
+                    for item in action.alternative_launch_items
+                ],
             ))
         return items
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+from functools import partial
 from typing import Optional, List, Set, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -1011,8 +1013,8 @@ class OptionalMenu(QtWidgets.QMenu):
         """Emit option clicked signal if mouse released on it"""
         active = self.actionAt(event.pos())
         if isinstance(active, OptionalAction) and active.use_option:
-            option = active.widget.option
-            if option.is_hovered(event.globalPos()):
+            option = active.get_option_at(event.globalPos())
+            if option is not None:
                 option.clicked.emit()
         super().mouseReleaseEvent(event)
 
@@ -1032,21 +1034,44 @@ class OptionalMenu(QtWidgets.QMenu):
         super().leaveEvent(event)
 
 
+@dataclass
+class OptionBoxItem:
+    """Definition of option box shown next to `OptionalAction`.
+
+    Args:
+        identifier (Optional[str]): Identifier stored to
+            'OptionalAction.option_identifier' when the box is clicked.
+        icon (Optional[QtGui.QIcon]): Icon of the box. Default option box
+            icon is used if not set.
+        tooltip (Optional[str]): Tooltip of the box. Option tip of
+            the action is used if not set.
+
+    """
+    identifier: Optional[str] = None
+    icon: Optional[QtGui.QIcon] = None
+    tooltip: Optional[str] = None
+
+
 class OptionalAction(QtWidgets.QWidgetAction):
-    """Menu action with option box
+    """Menu action with option boxes
 
     A menu action like Maya's menu item with option box, implemented by
-    subclassing `QtWidgets.QWidgetAction`.
+    subclassing `QtWidgets.QWidgetAction`. Multiple option boxes can be
+    defined using 'option_boxes', one default option box is shown
+    if 'use_option' is 'True' and 'option_boxes' are not passed.
 
     """
 
-    def __init__(self, label, icon, use_option, parent):
+    def __init__(self, label, icon, use_option, parent, option_boxes=None):
         super().__init__(parent)
+        if option_boxes is None:
+            option_boxes = [OptionBoxItem()] if use_option else []
         self.label = label
         self.icon = icon
-        self.use_option = use_option
+        self.option_boxes: List[OptionBoxItem] = list(option_boxes)
+        self.use_option = bool(self.option_boxes)
         self.option_tip = ""
-        self.optioned = False
+        self.option_identifier = None
         self.widget = None
 
     def createWidget(self, parent):
@@ -1056,11 +1081,12 @@ class OptionalAction(QtWidgets.QWidgetAction):
         if self.icon:
             widget.setIcon(self.icon)
 
-        if self.use_option:
-            widget.option.clicked.connect(self.on_option)
-            widget.option.setToolTip(self.option_tip)
-        else:
-            widget.option.setVisible(False)
+        for box_item in self.option_boxes:
+            option = widget.add_option(box_item.icon)
+            option.setToolTip(box_item.tooltip or self.option_tip)
+            option.clicked.connect(
+                partial(self.on_option, box_item.identifier)
+            )
 
         return widget
 
@@ -1088,14 +1114,26 @@ class OptionalAction(QtWidgets.QWidgetAction):
 
         self.option_tip = sep.join(option_items)
 
-    def on_option(self):
-        self.optioned = True
+    def on_option(self, identifier=None):
+        self.option_identifier = identifier
+
+    def get_option_at(self, global_pos):
+        """Option box under global position.
+
+        Returns:
+            Optional[OptionBox]: Option box widget or 'None'.
+
+        """
+        if self.widget is None:
+            return None
+        return self.widget.get_option_at(global_pos)
 
     def set_highlight(self, state, global_pos=None):
-        option_state = False
-        if self.use_option:
-            option_state = self.widget.option.is_hovered(global_pos)
-        self.widget.set_hover_properties(state, option_state)
+        if self.widget is None:
+            return
+        self.widget.set_hover_properties(
+            state, self.get_option_at(global_pos)
+        )
 
 
 class OptionalActionWidget(QtWidgets.QWidget):
@@ -1103,6 +1141,9 @@ class OptionalActionWidget(QtWidgets.QWidget):
 
     def __init__(self, label, parent=None):
         super().__init__(parent)
+        self.setObjectName("OptionalAction")
+        # Allow stylesheet to paint hover background of the whole row
+        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
 
         body_widget = QtWidgets.QWidget(self)
         body_widget.setObjectName("OptionalActionBody")
@@ -1121,11 +1162,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
             True
         )
 
-        option = OptionBox(body_widget)
-        option.setObjectName("OptionalActionOption")
-
         icon.setFixedSize(24, 16)
-        option.setFixedSize(30, 30)
 
         body_layout = QtWidgets.QHBoxLayout(body_widget)
         body_layout.setContentsMargins(4, 0, 4, 0)
@@ -1134,38 +1171,59 @@ class OptionalActionWidget(QtWidgets.QWidget):
         body_layout.addWidget(label)
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(2, 1, 2, 1)
-        layout.setSpacing(0)
-        layout.addWidget(body_widget)
-        layout.addWidget(option)
+        layout.setContentsMargins(2, 1, 6, 1)
+        layout.setSpacing(2)
+        layout.addWidget(body_widget, 1)
 
         body_widget.setMouseTracking(True)
         label.setMouseTracking(True)
-        option.setMouseTracking(True)
         self.setMouseTracking(True)
         self.setFixedHeight(32)
 
         self.icon = icon
         self.label = label
-        self.option = option
+        self.options: List[OptionBox] = []
         self.body = body_widget
+        self._layout = layout
 
-    def set_hover_properties(self, hovered, option_hovered):
-        body_state = ""
-        option_state = ""
+    def add_option(self, icon=None):
+        """Add option box to the right side of the action.
+
+        Args:
+            icon (Optional[QtGui.QIcon]): Icon of the option box.
+
+        Returns:
+            OptionBox: Created option box.
+
+        """
+        option = OptionBox(self, icon)
+        option.setObjectName("OptionalActionOption")
+        option.setFixedSize(24, 24)
+        option.setMouseTracking(True)
+        self._layout.addWidget(option)
+        self.options.append(option)
+        return option
+
+    def get_option_at(self, global_pos):
+        for option in self.options:
+            if option.is_hovered(global_pos):
+                return option
+        return None
+
+    def set_hover_properties(self, hovered, hovered_option=None):
+        row_state = ""
         if hovered:
-            body_state = "hover"
+            row_state = "hover"
 
-        if option_hovered:
-            option_state = "hover"
+        if self.property("state") != row_state:
+            self.setProperty("state", row_state)
+            self.style().polish(self)
 
-        if self.body.property("state") != body_state:
-            self.body.setProperty("state", body_state)
-            self.body.style().polish(self.body)
-
-        if self.option.property("state") != option_state:
-            self.option.setProperty("state", option_state)
-            self.option.style().polish(self.option)
+        for option in self.options:
+            option_state = "hover" if option is hovered_option else ""
+            if option.property("state") != option_state:
+                option.setProperty("state", option_state)
+                option.style().polish(option)
 
     def setIcon(self, icon):
         pixmap = icon.pixmap(16, 16)
@@ -1177,13 +1235,14 @@ class OptionBox(QtWidgets.QLabel):
 
     clicked = QtCore.Signal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, icon=None):
         super(OptionBox, self).__init__(parent)
 
         self.setAlignment(QtCore.Qt.AlignCenter)
 
-        icon = qtawesome.icon("fa.sticky-note-o", color="#c6c6c6")
-        pixmap = icon.pixmap(18, 18)
+        if icon is None:
+            icon = qtawesome.icon("fa.sticky-note-o", color="#c6c6c6")
+        pixmap = icon.pixmap(16, 16)
         self.setPixmap(pixmap)
 
     def is_hovered(self, global_pos):

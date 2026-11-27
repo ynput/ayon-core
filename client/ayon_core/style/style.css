@@ -939,11 +939,16 @@ SearchItemDisplayWidget #ValueWidget {
     border: 0px;
 }
 
-#OptionalActionBody, #OptionalActionOption {
+#OptionalAction, #OptionalActionBody, #OptionalActionOption {
     background: transparent;
 }
 
-#OptionalActionBody[state="hover"], #OptionalActionOption[state="hover"] {
+#OptionalActionOption {
+    border-radius: 4px;
+}
+
+/* Option box is painted over the row hover background -> is brighter */
+#OptionalAction[state="hover"], #OptionalActionOption[state="hover"] {
     background: {color:bg-view-hover};
 }
 
