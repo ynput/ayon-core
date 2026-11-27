@@ -13,6 +13,7 @@ if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
     from ayon_core.host import WorkfileInfo
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
     from ayon_core.tools.common_models import (
         UserItem,
         FolderTypeItem,
@@ -1073,6 +1074,34 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             force (bool): Reset also data shared with other tools, e.g.
                 folders hierarchy. Should be used when user explicitly
                 asks for a refresh.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_usage_items(self, task_id: str) -> list[TaskUsageItem]:
+        """Sessions of other users that are working on a task.
+
+        Returns empty list if task in-use notification is not enabled for
+        the task. Sessions the user did already confirm are not returned.
+
+        Args:
+            task_id (str): Task id.
+
+        Returns:
+            list[TaskUsageItem]: Sessions of other users working on the task.
+
+        """
+        pass
+
+    @abstractmethod
+    def confirm_task_usage_items(self, items: list[TaskUsageItem]) -> None:
+        """User wants to work on a task that is in use by other users.
+
+        The user is not notified about the sessions again.
+
+        Args:
+            items (list[TaskUsageItem]): Sessions the user did confirm.
 
         """
         pass

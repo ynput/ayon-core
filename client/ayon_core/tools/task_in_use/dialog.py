@@ -1,0 +1,289 @@
+"""Dialog that shows sessions of other users working on a task."""
+from __future__ import annotations
+
+import datetime
+import typing
+
+from qtpy import QtWidgets, QtGui, QtCore
+
+from ayon_core.style import load_stylesheet, get_app_icon_path
+from ayon_core.ui.components import (
+    AYButton,
+    AYLabel,
+    AYHBoxLayout,
+    AYVBoxLayout
+)
+from ayon_core.ui.components.user_avatars import UserAvatarCache
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.workfile.task_usage import TaskUsageItem
+
+AVATAR_SIZE = 36
+# Shorter difference of opened and last update time is not shown
+MIN_SEEN_DIFFERENCE = datetime.timedelta(minutes=1)
+
+_avatar_cache: UserAvatarCache | None = None
+
+
+def _get_avatar_cache() -> UserAvatarCache:
+    """Cache of user avatars shared by the dialogs."""
+    global _avatar_cache
+
+    if _avatar_cache is None:
+        _avatar_cache = UserAvatarCache()
+    return _avatar_cache
+
+
+def get_time_ago_label(
+    value: datetime.datetime, now: datetime.datetime
+) -> str:
+    """Short label of how long ago a time was.
+
+    Args:
+        value (datetime.datetime): Time in the past.
+        now (datetime.datetime): Current time.
+
+    Returns:
+        str: Label, e.g. '5 min ago', '2 h ago' or '3 days ago'.
+
+    """
+    seconds = int((now - value).total_seconds())
+    if seconds < 60:
+        return "just now"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes} min ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} h ago"
+    days = hours // 24
+    if days == 1:
+        return "1 day ago"
+    return f"{days} days ago"
+
+
+class _UserAvatarLabel(QtWidgets.QLabel):
+    """Avatar of a user.
+
+    Initials are shown until the avatar is downloaded, or if the avatar is
+    not available for current user.
+    """
+    def __init__(
+        self,
+        username: str,
+        full_name: str,
+        parent: QtWidgets.QWidget,
+    ):
+        super().__init__(parent)
+        self.setFixedSize(AVATAR_SIZE, AVATAR_SIZE)
+        self._username = username
+        self._full_name = full_name
+
+        _get_avatar_cache().avatar_updated.connect(self._on_avatar_update)
+        self._update_pixmap()
+
+    def _on_avatar_update(self, username: str) -> None:
+        if username == self._username:
+            self._update_pixmap()
+
+    def _update_pixmap(self) -> None:
+        pixmap = _get_avatar_cache().pixmap(
+            self._username, self._full_name, AVATAR_SIZE
+        )
+        if pixmap is not None:
+            self.setPixmap(pixmap)
+
+
+class _SessionWidget(QtWidgets.QWidget):
+    """Session of a user working on the task."""
+
+    def __init__(
+        self,
+        item: TaskUsageItem,
+        now: datetime.datetime,
+        parent: QtWidgets.QWidget,
+    ):
+        super().__init__(parent)
+
+        user_label = item.full_name or item.username
+        avatar_label = _UserAvatarLabel(item.username, user_label, self)
+
+        info_widget = QtWidgets.QWidget(self)
+        info_layout = AYVBoxLayout(info_widget, margin=0, spacing=2)
+        info_layout.addWidget(
+            AYLabel(user_label, bold=True, parent=info_widget), 0
+        )
+        if item.workfile:
+            info_layout.addWidget(
+                AYLabel(item.workfile, parent=info_widget), 0
+            )
+        source_label = self._get_source_label(item)
+        if source_label:
+            info_layout.addWidget(
+                AYLabel(source_label, dim=True, parent=info_widget), 0
+            )
+        info_layout.addStretch(1)
+
+        times_widget = QtWidgets.QWidget(self)
+        times_layout = AYVBoxLayout(times_widget, margin=0, spacing=2)
+        for label in self._get_time_labels(item, now):
+            times_layout.addWidget(
+                AYLabel(label, dim=True, parent=times_widget),
+                0,
+                QtCore.Qt.AlignRight,
+            )
+        times_layout.addStretch(1)
+
+        layout = AYHBoxLayout(self, margin=0, spacing=10)
+        layout.addWidget(avatar_label, 0, QtCore.Qt.AlignTop)
+        layout.addWidget(info_widget, 1)
+        layout.addSpacing(20)
+        layout.addWidget(times_widget, 0)
+
+    @staticmethod
+    def _get_source_label(item: TaskUsageItem) -> str:
+        parts = []
+        if item.host_name:
+            parts.append(item.host_name)
+        if item.machine:
+            parts.append(item.machine)
+        return " on ".join(parts)
+
+    @staticmethod
+    def _get_time_labels(
+        item: TaskUsageItem, now: datetime.datetime
+    ) -> list[str]:
+        labels = []
+        opened_at = item.get_opened_at()
+        if opened_at is not None:
+            labels.append(f"Opened {get_time_ago_label(opened_at, now)}")
+
+        # Time of last activity is changed when a workfile is opened
+        #   or saved, heartbeats of the session do not change it
+        updated_at = item.get_updated_at()
+        if updated_at is not None and (
+            opened_at is None
+            or updated_at - opened_at >= MIN_SEEN_DIFFERENCE
+        ):
+            labels.append(f"Last active {get_time_ago_label(updated_at, now)}")
+        return labels
+
+
+class TaskInUseDialog(QtWidgets.QDialog):
+    """Notify user that other users are working on a task.
+
+    Dialog is accepted if user wants to work on the task anyway.
+
+    Args:
+        items (list[TaskUsageItem]): Sessions of other users working on
+            the task.
+        parent (QtWidgets.QWidget | None): Parent widget.
+        notice_only (bool): Only inform the user, without the option to
+            cancel. Used when the task is already in use by the user.
+        increment_and_open (bool): Offer to open a new version of the
+            workfile, if the user is about to open the workfile other user
+            has opened. Use 'is_increment_and_open_requested' to find out
+            if the user did choose it.
+
+    """
+    def __init__(
+        self,
+        items: list[TaskUsageItem],
+        parent: QtWidgets.QWidget | None = None,
+        notice_only: bool = False,
+        increment_and_open: bool = False,
+    ):
+        super().__init__(parent)
+        self.setWindowTitle("Task is in use")
+        self.setWindowIcon(QtGui.QIcon(get_app_icon_path()))
+
+        header_label = AYLabel(
+            "Somebody else is already working on this task.", parent=self
+        )
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        items_widget = QtWidgets.QWidget(self)
+        items_layout = AYVBoxLayout(items_widget, margin=0, spacing=14)
+        for item in items:
+            items_layout.addWidget(
+                _SessionWidget(item, now, items_widget), 0
+            )
+
+        question_label = AYLabel(
+            "Do you want to work on the task anyway?", parent=self
+        )
+        question_label.setVisible(not notice_only and not increment_and_open)
+
+        increment_widget = QtWidgets.QWidget(self)
+        increment_layout = AYVBoxLayout(increment_widget, margin=0, spacing=2)
+        for text in (
+            "This file is currently open by another user.",
+            "Increment and open to work in a new version of the workfile.",
+        ):
+            increment_layout.addWidget(
+                AYLabel(text, parent=increment_widget), 0
+            )
+        increment_widget.setVisible(increment_and_open)
+
+        btns_widget = QtWidgets.QWidget(self)
+
+        # The button to continue is the only one with a warning color and
+        #   is always on the left side, the button that closes the dialog
+        #   without any action is always the last one on the right side
+        confirm_btn = AYButton(
+            "Continue anyway", variant=AYButton.Variants.Danger,
+            parent=btns_widget,
+        )
+        increment_btn = AYButton(
+            "Increment and open", variant=AYButton.Variants.Filled,
+            parent=btns_widget,
+        )
+        increment_btn.setVisible(increment_and_open)
+        cancel_btn = AYButton(
+            "Cancel", variant=AYButton.Variants.Surface,
+            parent=btns_widget,
+        )
+        if notice_only:
+            cancel_btn.setVisible(False)
+            confirm_btn.setVisible(False)
+        ok_btn = AYButton(
+            "OK", variant=AYButton.Variants.Surface, parent=btns_widget
+        )
+        ok_btn.setVisible(notice_only)
+
+        btns_layout = AYHBoxLayout(btns_widget, margin=0, spacing=10)
+        btns_layout.addWidget(confirm_btn, 0)
+        btns_layout.addStretch(1)
+        btns_layout.addWidget(increment_btn, 0)
+        btns_layout.addWidget(cancel_btn, 0)
+        btns_layout.addWidget(ok_btn, 0)
+
+        main_layout = AYVBoxLayout(self, margin=15, spacing=14)
+        main_layout.addWidget(header_label, 0)
+        main_layout.addWidget(items_widget, 0)
+        main_layout.addWidget(question_label, 0)
+        main_layout.addWidget(increment_widget, 0)
+        main_layout.addStretch(1)
+        main_layout.addWidget(btns_widget, 0)
+
+        cancel_btn.clicked.connect(self.reject)
+        confirm_btn.clicked.connect(self.accept)
+        ok_btn.clicked.connect(self.accept)
+        increment_btn.clicked.connect(self._on_increment_and_open)
+
+        self._increment_and_open_requested = False
+
+        self.setMinimumWidth(420)
+
+    def is_increment_and_open_requested(self) -> bool:
+        """User wants to open a new version of the workfile."""
+        return self._increment_and_open_requested
+
+    def _on_increment_and_open(self) -> None:
+        self._increment_and_open_requested = True
+        self.accept()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        self.setStyleSheet(load_stylesheet())

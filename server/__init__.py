@@ -23,6 +23,7 @@ from .settings import (
     DEFAULT_VALUES,
     convert_settings_overrides,
 )
+from .task_usage import register_task_usage_endpoints
 
 
 class CleanupFolderThumbnailsRequestModel(OPModel):
@@ -57,6 +58,7 @@ class CoreAddon(BaseServerAddon):
             self._cleanup_folder_thumbnails,
             method="POST",
         )
+        register_task_usage_endpoints(self)
 
     async def get_simple_actions(
         self,

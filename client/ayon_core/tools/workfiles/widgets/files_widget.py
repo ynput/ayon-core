@@ -13,7 +13,7 @@ from ayon_core.ui.components import (
 from .save_as_dialog import SaveAsDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
-from .utils import save_changes_prompt
+from .utils import save_changes_prompt, confirm_task_in_use
 
 
 class FilesWidget(AYContainer):
@@ -216,6 +216,11 @@ class FilesWidget(AYContainer):
     # Workarea workfiles
     # -------------------------------------------------------------
     def _open_workfile(self, folder_id, task_id, filepath):
+        if not confirm_task_in_use(
+            self._controller, task_id, self, workfile=filepath
+        ):
+            return
+
         if self._controller.has_unsaved_changes():
             result = save_changes_prompt(self)
             if result is None:
@@ -278,6 +283,10 @@ class FilesWidget(AYContainer):
         result = self._exec_save_as_dialog()
         if result is None:
             return
+        if not confirm_task_in_use(
+            self._controller, result["task_id"], self
+        ):
+            return
         self._controller.save_as_workfile(
             result["folder_id"],
             result["task_id"],
@@ -334,6 +343,10 @@ class FilesWidget(AYContainer):
             copied_from=repre_info["filepath"],
         )
         if result is None:
+            return
+        if not confirm_task_in_use(
+            self._controller, result["task_id"], self
+        ):
             return
 
         self._controller.copy_workfile_representation(
