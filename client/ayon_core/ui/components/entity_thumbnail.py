@@ -661,12 +661,9 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         rect = QRectF(0, 0, *self._size).adjusted(
             inset, inset, -inset, -inset
         )
+        radius = self._clip_radius - inset
         path = QPainterPath()
-        radius = max(0.0, self._clip_radius - inset)
-        if radius:
-            path.addRoundedRect(rect, radius, radius)
-        else:
-            path.addRect(rect)
+        path.addRoundedRect(rect, radius, radius)
         return path
 
     def paintEvent(self, arg__1: QPaintEvent) -> None:

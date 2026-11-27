@@ -593,7 +593,7 @@ class BrowserTable(AYContainer):
                 host = filmstrip.parentWidget()
                 local_pos = host.mapFrom(viewport, pos)
                 if host.rect().contains(local_pos):
-                    position = local_pos.x() / max(host.width(), 1)
+                    position = local_pos.x() / host.width()
                 else:
                     filmstrip = None
 

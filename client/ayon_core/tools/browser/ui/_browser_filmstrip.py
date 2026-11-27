@@ -1,4 +1,4 @@
-"""Hover-scrub filmstrip previews for thumbnails (prototype).
+"""Hover-scrub filmstrip previews for thumbnails.
 
 A filmstrip is a single image with a fixed number of frames sampled evenly
 from the video reviewable of an entity, laid out in a grid left to right,
@@ -21,14 +21,12 @@ from __future__ import annotations
 
 import io
 import math
-import platform
 import subprocess
 import tempfile
 import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Tuple
 
 import ayon_api
 from ayon_core.ui.components.entity_card import AYEntityCard
@@ -38,7 +36,6 @@ from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib import (
-    CREATE_NO_WINDOW,
     Logger,
     ToolNotFoundError,
     env_value_to_bool,
@@ -73,22 +70,20 @@ MAX_MEMORY_FILMSTRIPS = 8
 PROGRESS_COLOR = "#8fceff"
 PROGRESS_HEIGHT = 2
 
-# (project_name, entity_type, entity_id)
-_SourceKey = Tuple[str, str, str]
+# (project_name, version_id)
+_SourceKey = tuple[str, str]
 
 
 @dataclass
 class FilmstripData:
-    """Decoded filmstrip of an entity.
+    """Decoded filmstrip of a version.
 
     Attributes:
-        file_id: The video file (reviewable) the frames were taken from.
         image: Decoded filmstrip image with all frames.
         frames: Number of frames in the image.
         columns: Number of frames per row.
     """
 
-    file_id: str
     image: QtGui.QImage
     frames: int
     columns: int
@@ -166,17 +161,14 @@ def _download_filmstrip_image(url: str) -> io.BytesIO:
         The JPEG image.
     """
     con = ayon_api.get_server_api_connection()
-    if url.startswith("/"):
-        url = con.get_base_url().rstrip("/") + url
-    response = con.raw_get(url, timeout=REQUEST_TIMEOUT)
+    response = con.raw_get(
+        con.get_base_url().rstrip("/") + url, timeout=REQUEST_TIMEOUT
+    )
     # The filmstrip was re-created since its info was requested
     if response.status_code == 404:
         raise _FilmstripChangedError(url)
     response.raise_for_status()
 
-    kwargs = {}
-    if platform.system().lower() == "windows":
-        kwargs["creationflags"] = CREATE_NO_WINDOW
     process = subprocess.run(
         get_ffmpeg_tool_args(
             "ffmpeg",
@@ -193,7 +185,7 @@ def _download_filmstrip_image(url: str) -> io.BytesIO:
         # On Windows ffmpeg keeps the cache file in '\tmp' of the drive,
         #   or in the working directory when there is none
         cwd=tempfile.gettempdir(),
-        **kwargs,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     image = io.BytesIO(process.stdout)
     # ImageCache takes the file extension from the name
@@ -202,19 +194,19 @@ def _download_filmstrip_image(url: str) -> io.BytesIO:
 
 
 def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
-    """Fetch and decode the filmstrip of an entity. Runs in a worker thread.
+    """Fetch and decode the filmstrip of a version. Runs in a worker thread.
 
     Returns:
-        The filmstrip, or ``None`` when the entity has no video reviewable,
+        The filmstrip, or ``None`` when the version has no video reviewable,
         and how long (seconds) the answer may be cached.
     """
-    project_name, entity_type, entity_id = key
+    project_name, version_id = key
     con = ayon_api.get_server_api_connection()
     response = con.raw_get(
-        f"projects/{project_name}/{entity_type}s/{entity_id}/filmstrip",
+        f"projects/{project_name}/versions/{version_id}/filmstrip",
         timeout=REQUEST_TIMEOUT,
     )
-    # 204 = the entity has no video reviewable, or no filmstrip can be
+    # 204 = the version has no video reviewable, or no filmstrip can be
     #   created for it
     if response.status_code == 204:
         return None, DEFAULT_MAX_AGE
@@ -233,10 +225,9 @@ def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
     if image.isNull():
         raise ValueError(f"Failed to read filmstrip image: {path}")
     data = FilmstripData(
-        file_id=info.get("fileId", ""),
         image=image,
-        frames=int(info["frames"]),
-        columns=int(info["columns"]),
+        frames=info["frames"],
+        columns=info["columns"],
     )
     return data, DEFAULT_MAX_AGE
 
@@ -324,9 +315,9 @@ class _FilmstripLoader(QtCore.QObject):
         self._requests: dict[_SourceKey, _Request] = {}
         self._queue = AsyncTaskQueue(num_workers=FILMSTRIP_WORKERS)
         self._queue.start()
-        app = QtWidgets.QApplication.instance()
-        if app is not None:
-            app.aboutToQuit.connect(self._queue.stop)
+        QtWidgets.QApplication.instance().aboutToQuit.connect(
+            self._queue.stop
+        )
 
     def request(self, key: _SourceKey) -> None:
         """Load the filmstrip of *key*, unless it is being loaded already.
@@ -368,8 +359,7 @@ class _FilmstripLoader(QtCore.QObject):
                     del self._requests[key]
                 return
             del self._requests[key]
-            # 'None' when the task itself failed
-            data, max_age = result or (None, FAILED_MAX_AGE)
+            data, max_age = result
             _store_filmstrip(key, data, max_age)
             self.loaded.emit(key)
 
@@ -440,22 +430,16 @@ class FilmstripOverlay(QtWidgets.QWidget):
         host.setMouseTracking(True)
         host.installEventFilter(self)
 
-    def set_source(
-        self,
-        project_name: str = "",
-        entity_type: str = "version",
-        entity_id: str = "",
-    ) -> None:
-        """Set the entity to preview, nothing is previewed without one.
+    def set_source(self, project_name: str = "", version_id: str = "") -> None:
+        """Set the version to preview, nothing is previewed without one.
 
         Args:
             project_name: Project name.
-            entity_type: ``"version"``, ``"task"`` or ``"folder"``.
-            entity_id: Entity id.
+            version_id: Version id.
         """
         source = None
-        if project_name and entity_id:
-            source = (project_name, entity_type, entity_id)
+        if project_name and version_id:
+            source = (project_name, version_id)
         if source == self._source:
             return
         was_hovering = self._hovering
@@ -480,7 +464,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
             else:
                 self._intent_timer.start()
         if self._data is not None:
-            self.setGeometry(self.parentWidget().rect())
             self.show()
             self.raise_()
             self.update()
@@ -531,10 +514,7 @@ class FilmstripOverlay(QtWidgets.QWidget):
             QtCore.QEvent.Type.Hide,
         ):
             self.stop()
-        elif (
-            event_type == QtCore.QEvent.Type.Resize
-            and obj is self.parentWidget()
-        ):
+        elif event_type == QtCore.QEvent.Type.Resize:
             self.setGeometry(obj.rect())
         return False
 
@@ -607,5 +587,5 @@ def get_card_filmstrip(card: AYEntityCard) -> FilmstripOverlay | None:
     filmstrip = body.findChild(FilmstripOverlay)
     if filmstrip is None:
         filmstrip = FilmstripOverlay(body, fit="cover")
-    filmstrip.set_source(parts[0], "version", parts[1])
+    filmstrip.set_source(parts[0], parts[1])
     return filmstrip

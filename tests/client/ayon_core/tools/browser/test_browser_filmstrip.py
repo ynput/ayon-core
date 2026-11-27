@@ -16,7 +16,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from ayon_core.lib import ToolNotFoundError
 from ayon_core.tools.browser.ui import _browser_filmstrip as filmstrip
 
-KEYS = [("project", "version", f"{idx:032x}") for idx in range(10)]
+KEYS = [("project", f"{idx:032x}") for idx in range(10)]
 
 
 @pytest.fixture
@@ -143,15 +143,15 @@ def test_answers_without_filmstrip_stay_cached(qapp, monkeypatch) -> None:
     monkeypatch.setattr(filmstrip, "_memory_cache", OrderedDict())
     max_filmstrips = filmstrip.MAX_MEMORY_FILMSTRIPS
     image = QtGui.QImage(10, 10, QtGui.QImage.Format.Format_RGB32)
-    without = [("project", "version", f"a{idx}") for idx in range(20)]
+    without = [("project", f"a{idx}") for idx in range(20)]
     with_filmstrip = [
-        ("project", "version", f"b{idx}") for idx in range(max_filmstrips + 2)
+        ("project", f"b{idx}") for idx in range(max_filmstrips + 2)
     ]
 
     for key in without:
         filmstrip._store_filmstrip(key, None, filmstrip.DEFAULT_MAX_AGE)
     for key in with_filmstrip:
-        data = filmstrip.FilmstripData("file", image, 20, 5)
+        data = filmstrip.FilmstripData(image, 20, 5)
         filmstrip._store_filmstrip(key, data, filmstrip.DEFAULT_MAX_AGE)
 
     assert all(filmstrip._peek_filmstrip(key) for key in without)
@@ -161,7 +161,7 @@ def test_answers_without_filmstrip_stay_cached(qapp, monkeypatch) -> None:
 
 @pytest.mark.unit
 def test_card_filmstrip_follows_card(qapp, loads) -> None:
-    project_name, _, version_id = KEYS[0]
+    project_name, version_id = KEYS[0]
     # Just what is used of 'AYEntityCard'. A real card would create the
     #   AYON style, which changes the result of the visual tests run later.
     card = SimpleNamespace(
@@ -179,7 +179,7 @@ def test_card_filmstrip_follows_card(qapp, loads) -> None:
         assert filmstrip.get_card_filmstrip(card) is overlay
 
         # The card view updates cards to show another version
-        card.image_src = f"{project_name}/{KEYS[1][2]}/thumb"
+        card.image_src = f"{project_name}/{KEYS[1][1]}/thumb"
         assert filmstrip.get_card_filmstrip(card) is overlay
         assert overlay._source == KEYS[1]
 

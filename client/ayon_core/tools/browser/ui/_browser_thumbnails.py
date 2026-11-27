@@ -188,11 +188,9 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         receive mouse events.
         """
         if self._filmstrip is None:
-            project_name, version_id = (
-                self._thumb_key.split("/", 2) + ["", ""]
-            )[:2]
+            project_name, version_id, _ = self._thumb_key.split("/", 2)
             self._filmstrip = FilmstripOverlay(self)
-            self._filmstrip.set_source(project_name, "version", version_id)
+            self._filmstrip.set_source(project_name, version_id)
         return self._filmstrip
 
     def paintEvent(  # type: ignore[override]
@@ -278,7 +276,7 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         self._real: LazyThumbnailWidget | None = None
 
     def get_filmstrip(self) -> FilmstripOverlay | None:
-        """Return the filmstrip overlay of the thumbnail, once created."""
+        """Return the filmstrip overlay, once the thumbnail is created."""
         if self._real is None or not shiboken.isValid(self._real):
             return None
         return self._real.get_filmstrip()

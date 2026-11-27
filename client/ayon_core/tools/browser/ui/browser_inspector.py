@@ -358,7 +358,7 @@ class ReviewInspector(AYContainer):
             version_ids.append(d.get("_action_version_id") or vid)
 
         if single and version_ids:
-            self._filmstrip.set_source(project_name, "version", version_ids[0])
+            self._filmstrip.set_source(project_name, version_ids[0])
         else:
             self._filmstrip.set_source()
 
