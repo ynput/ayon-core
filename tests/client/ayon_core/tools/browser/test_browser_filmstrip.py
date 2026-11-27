@@ -212,9 +212,8 @@ def test_conversion_leaves_no_temp_files(
     )
     ffmpeg_inputs = []
 
-    def _run(args, **kwargs):
-        with open(args[args.index("-i") + 1], "rb") as stream:
-            ffmpeg_inputs.append(stream.read())
+    def _run(args, input=None, cwd=None, **kwargs):
+        ffmpeg_inputs.append((args[args.index("-i") + 1], input, cwd))
         if ffmpeg_fails:
             raise subprocess.CalledProcessError(1, args)
         return SimpleNamespace(stdout=b"jpeg")
@@ -230,5 +229,6 @@ def test_conversion_leaves_no_temp_files(
         assert image.name.endswith(".jpg")
         assert image.read() == b"jpeg"
 
-    assert ffmpeg_inputs == [b"avif"]
+    # Piped to ffmpeg, which keeps its cache file in the temp folder
+    assert ffmpeg_inputs == [("cache:pipe:0", b"avif", str(temp_dir))]
     assert list(temp_dir.iterdir()) == []

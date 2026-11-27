@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import io
 import math
-import os
 import platform
 import subprocess
 import tempfile
@@ -157,8 +156,9 @@ def _download_filmstrip_image(url: str) -> io.BytesIO:
 
     The server stores filmstrips as AVIF, which Qt reads only with an
     extra image format plugin, so it is converted with ffmpeg. ffmpeg
-    can't read AVIF from a pipe, the download is written to a temporary
-    directory that is removed once converted.
+    seeks back in AVIF input, which a pipe can't do, so it reads the pipe
+    through its 'cache' protocol. That keeps the data in a temp file of
+    its own, removed when ffmpeg exits.
 
     Returns:
         The JPEG image.
@@ -175,24 +175,24 @@ def _download_filmstrip_image(url: str) -> io.BytesIO:
     kwargs = {}
     if platform.system().lower() == "windows":
         kwargs["creationflags"] = CREATE_NO_WINDOW
-    with tempfile.TemporaryDirectory(prefix="ayon_filmstrip_") as tmp_dir:
-        avif_path = os.path.join(tmp_dir, "filmstrip.avif")
-        with open(avif_path, "wb") as stream:
-            stream.write(response.content)
-        process = subprocess.run(
-            get_ffmpeg_tool_args(
-                "ffmpeg",
-                "-nostdin",
-                "-loglevel", "error",
-                "-i", avif_path,
-                "-q:v", "2",
-                "-f", "mjpeg",
-                "pipe:1",
-            ),
-            capture_output=True,
-            check=True,
-            **kwargs,
-        )
+    process = subprocess.run(
+        get_ffmpeg_tool_args(
+            "ffmpeg",
+            "-nostdin",
+            "-loglevel", "error",
+            "-i", "cache:pipe:0",
+            "-q:v", "2",
+            "-f", "mjpeg",
+            "pipe:1",
+        ),
+        input=response.content,
+        capture_output=True,
+        check=True,
+        # On Windows ffmpeg keeps the cache file in '\tmp' of the drive,
+        #   or in the working directory when there is none
+        cwd=tempfile.gettempdir(),
+        **kwargs,
+    )
     image = io.BytesIO(process.stdout)
     # ImageCache takes the file extension from the name
     image.name = "filmstrip.jpg"
