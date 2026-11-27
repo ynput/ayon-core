@@ -147,9 +147,15 @@ class ActionsModel:
             self._actions = None
             self._action_items = {}
             self._webaction_items.reset()
-            self._app_items.reset()
             self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
+
+    def reset_app_items(self):
+        """Validate application executables again on next selection.
+
+        Not part of 'refresh', which also runs every few seconds.
+        """
+        self._app_items.reset()
 
     def get_action_items(
         self,

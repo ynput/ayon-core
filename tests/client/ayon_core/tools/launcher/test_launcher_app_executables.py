@@ -46,6 +46,9 @@ class Controller:
     def get_addons_manager(self):
         return {"applications": self._addon}
 
+    def emit_event(self, topic, data=None, source=None):
+        pass
+
 
 def _action(identifier, addon_name="applications"):
     return ActionItem(
@@ -91,6 +94,23 @@ def test_applications_without_executable_are_hidden():
     # Validity is reused for other selections in the project
     assert _filter(model) == expected
     assert sorted(addon.validated) == ["maya/2026", "nuke/17-1"]
+
+
+@pytest.mark.unit
+def test_actions_refresh_keeps_validated_applications(monkeypatch):
+    addon = ApplicationsAddon()
+    model = ActionsModel(Controller(addon))
+    monkeypatch.setattr(model, "_get_action_objects", lambda: {})
+    _filter(model)
+
+    # Launcher refreshes actions every few seconds
+    model.refresh()
+    _filter(model)
+    assert addon.requests == 1
+
+    model.reset_app_items()
+    _filter(model)
+    assert addon.requests == 2
 
 
 @pytest.mark.unit

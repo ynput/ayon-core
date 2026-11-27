@@ -273,6 +273,7 @@ class BaseLauncherController(
         self._users_model.reset()
 
         self._actions_model.refresh()
+        self._actions_model.reset_app_items()
         self._projects_model.refresh()
 
         self._emit_event("controller.refresh.finished")
