@@ -104,8 +104,6 @@ class ReviewInspector(AYContainer):
             self._thumbnail,
             background=self._thumbnail._bg_color,
         )
-        # Click for a full-size preview
-        self._thumbnail.clicked.connect(self._on_thumbnail_clicked)
         thumb_wrapper = AYHBoxLayout(margin=0, spacing=0)
         thumb_wrapper.setAlignment(QtCore.Qt.AlignCenter)
         thumb_wrapper.addWidget(self._thumbnail)
@@ -504,10 +502,6 @@ class ReviewInspector(AYContainer):
                     cancellable=True,
                 )
             )
-
-    def _on_thumbnail_clicked(self) -> None:
-        """Show the full-size filmstrip preview of the inspected version."""
-        self._filmstrip.show_popup()
 
     def _on_close(self) -> None:
         """Hide the inspector."""

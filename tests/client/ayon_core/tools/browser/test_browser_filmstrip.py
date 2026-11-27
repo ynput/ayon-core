@@ -99,7 +99,6 @@ def test_nothing_requested_when_disabled(
     overlay.set_source(*KEYS[0])
 
     overlay.scrub(0.5)
-    overlay.show_popup()
     _spin(qapp, lambda: False, 0.1)
 
     assert loads.calls == []

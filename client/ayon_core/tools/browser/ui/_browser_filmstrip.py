@@ -72,8 +72,6 @@ FILMSTRIP_WORKERS = 2
 MAX_MEMORY_FILMSTRIPS = 8
 PROGRESS_COLOR = "#8fceff"
 PROGRESS_HEIGHT = 2
-# Size of the click popup relative to the size of the filmstrip frames
-POPUP_SCALE = 1
 
 # (project_name, entity_type, entity_id)
 _SourceKey = Tuple[str, str, str]
@@ -395,61 +393,6 @@ def _get_loader() -> _FilmstripLoader:
     return _loader
 
 
-def _paint_frame(
-    painter: QtGui.QPainter,
-    clip: QtGui.QPainterPath,
-    data: FilmstripData,
-    position: float,
-    fit: str,
-    background: QtGui.QColor | None,
-) -> None:
-    """Paint the frame at *position* (0-1) and a progress bar into *clip*.
-
-    Args:
-        painter: Painter of the widget.
-        clip: Area to paint into.
-        data: Filmstrip with the frames.
-        position: Relative position (0-1) in the video.
-        fit: ``"contain"`` or ``"cover"``.
-        background: Fill behind the frame.
-    """
-    index = min(int(position * data.frames), data.frames - 1)
-    source = data.frame_rect(index)
-    area = clip.boundingRect()
-    if area.isEmpty() or source.isEmpty():
-        return
-
-    scales = (
-        area.width() / source.width(),
-        area.height() / source.height(),
-    )
-    scale = max(scales) if fit == "cover" else min(scales)
-    target = QtCore.QRectF(
-        0, 0, source.width() * scale, source.height() * scale
-    )
-    target.moveCenter(area.center())
-
-    painter.setRenderHint(
-        QtGui.QPainter.RenderHint.SmoothPixmapTransform, True
-    )
-    painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
-    painter.setClipPath(clip)
-    if background is not None:
-        painter.fillRect(area, background)
-    painter.drawImage(target, data.image, source)
-    # the shown frame is the middle of the index-th part of the video
-    progress = (index + 0.5) / data.frames
-    painter.fillRect(
-        QtCore.QRectF(
-            area.left(),
-            area.bottom() - PROGRESS_HEIGHT,
-            area.width() * progress,
-            PROGRESS_HEIGHT,
-        ),
-        QtGui.QColor(PROGRESS_COLOR),
-    )
-
-
 class FilmstripOverlay(QtWidgets.QWidget):
     """Hover-scrub preview shown on top of a thumbnail widget.
 
@@ -483,7 +426,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
         self._data: FilmstripData | None = None
         self._position: float = 0.0
         self._hovering: bool = False
-        self._popup_requested: bool = False
         # Source requested from the loader and not loaded yet
         self._pending: _SourceKey | None = None
         self._loader_connected: bool = False
@@ -546,7 +488,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
     def stop(self) -> None:
         """Hide the preview and restore the static thumbnail."""
         self._hovering = False
-        self._popup_requested = False
         self._intent_timer.stop()
         self._data = None
         self.hide()
@@ -554,33 +495,11 @@ class FilmstripOverlay(QtWidgets.QWidget):
             _get_loader().release(self._pending)
             self._pending = None
 
-    def show_popup(self) -> None:
-        """Show the filmstrip at full size in a popup over the host.
-
-        Does nothing when the entity has no filmstrip. A filmstrip that is
-        not loaded yet is shown once loaded, unless the cursor left.
-        """
-        if self._source is None or not filmstrips_enabled():
-            return
-        entry = _peek_filmstrip(self._source)
-        if entry is None:
-            self._popup_requested = True
-            self._intent_timer.stop()
-            self._request_load()
-        elif entry.data is not None:
-            self._open_popup(entry.data)
-
-    def _open_popup(self, data: FilmstripData) -> None:
-        self._popup_requested = False
-        host = self.parentWidget()
-        popup = FilmstripPopup(data, self._position, parent=host.window())
-        popup.show_over(host)
-
     def _request_load(self) -> None:
         source = self._source
         if source is None or self._pending == source:
             return
-        if not self._hovering and not self._popup_requested:
+        if not self._hovering:
             return
         self._pending = source
         loader = _get_loader()
@@ -593,15 +512,11 @@ class FilmstripOverlay(QtWidgets.QWidget):
         if key != self._pending:
             return
         self._pending = None
+        if not self._hovering:
+            return
         entry = _peek_filmstrip(key)
-        data = entry.data if entry is not None else None
-        if self._popup_requested:
-            self._popup_requested = False
-            if data is not None:
-                self._open_popup(data)
-        elif self._hovering:
-            self._data = data
-            self.scrub(self._position)
+        self._data = entry.data if entry is not None else None
+        self.scrub(self._position)
 
     def eventFilter(  # type: ignore[override]
         self, obj: QtCore.QObject, event: QtCore.QEvent
@@ -626,123 +541,45 @@ class FilmstripOverlay(QtWidgets.QWidget):
     def paintEvent(  # type: ignore[override]
         self, event: QtGui.QPaintEvent
     ) -> None:
-        if self._data is None:
+        data = self._data
+        if data is None:
             return
+        index = min(int(self._position * data.frames), data.frames - 1)
+        source = data.frame_rect(index)
+        clip = self.parentWidget().get_image_clip_path()
+        area = clip.boundingRect()
+        if area.isEmpty() or source.isEmpty():
+            return
+
+        scales = (
+            area.width() / source.width(),
+            area.height() / source.height(),
+        )
+        scale = max(scales) if self._fit == "cover" else min(scales)
+        target = QtCore.QRectF(
+            0, 0, source.width() * scale, source.height() * scale
+        )
+        target.moveCenter(area.center())
+
         painter = QtGui.QPainter(self)
-        _paint_frame(
-            painter,
-            self.parentWidget().get_image_clip_path(),
-            self._data,
-            self._position,
-            self._fit,
-            self._background,
+        painter.setRenderHint(
+            QtGui.QPainter.RenderHint.SmoothPixmapTransform, True
         )
-        painter.end()
-
-
-class FilmstripPopup(QtWidgets.QWidget):
-    """Borderless full-size filmstrip preview, scrubbed with the cursor.
-
-    Closes on a click outside of it or with the escape key.
-
-    Args:
-        data: Filmstrip to show.
-        position: Relative position (0-1) of the frame shown first.
-        parent: Parent widget.
-    """
-
-    def __init__(
-        self,
-        data: FilmstripData,
-        position: float = 0.0,
-        parent: QtWidgets.QWidget | None = None,
-    ) -> None:
-        super().__init__(
-            parent,
-            QtCore.Qt.WindowType.Popup
-            | QtCore.Qt.WindowType.FramelessWindowHint
-            | QtCore.Qt.WindowType.NoDropShadowWindowHint,
-        )
-        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
-        self.setMouseTracking(True)
-        self._data = data
-        self._position = position
-        self._pressed: bool = False
-
-    def show_over(self, widget: QtWidgets.QWidget) -> None:
-        """Show the popup centered over *widget*, kept within its screen."""
-        center = widget.mapToGlobal(widget.rect().center())
-        screen = (
-            QtWidgets.QApplication.screenAt(center)
-            or QtWidgets.QApplication.primaryScreen()
-        )
-        available = screen.availableGeometry()
-        frame_size = self._data.frame_rect(0).size().toSize()
-        size = frame_size * POPUP_SCALE
-        if (
-            size.width() > available.width()
-            or size.height() > available.height()
-        ):
-            size = frame_size.scaled(
-                available.size(),
-                QtCore.Qt.AspectRatioMode.KeepAspectRatio,
-            )
-        rect = QtCore.QRect(QtCore.QPoint(0, 0), size)
-        rect.moveCenter(center)
-        rect.moveLeft(
-            max(
-                available.left(),
-                min(rect.left(), available.right() - rect.width() + 1),
-            )
-        )
-        rect.moveTop(
-            max(
-                available.top(),
-                min(rect.top(), available.bottom() - rect.height() + 1),
-            )
-        )
-        self.setGeometry(rect)
-        self.show()
-
-    def mouseMoveEvent(  # type: ignore[override]
-        self, event: QtGui.QMouseEvent
-    ) -> None:
-        # The popup grabs the mouse, the cursor may be outside of it
-        position = event.pos().x() / max(self.width(), 1)
-        self._position = min(max(position, 0.0), 1.0)
-        self.update()
-
-    def mousePressEvent(  # type: ignore[override]
-        self, event: QtGui.QMouseEvent
-    ) -> None:
-        # A click on the popup closes it too, Qt handles clicks outside
-        if self.rect().contains(event.pos()):
-            self._pressed = True
-            return
-        super().mousePressEvent(event)
-
-    def mouseReleaseEvent(  # type: ignore[override]
-        self, event: QtGui.QMouseEvent
-    ) -> None:
-        if self._pressed and self.rect().contains(event.pos()):
-            self.close()
-            return
-        self._pressed = False
-        super().mouseReleaseEvent(event)
-
-    def paintEvent(  # type: ignore[override]
-        self, event: QtGui.QPaintEvent
-    ) -> None:
-        clip = QtGui.QPainterPath()
-        clip.addRect(QtCore.QRectF(self.rect()))
-        painter = QtGui.QPainter(self)
-        _paint_frame(
-            painter,
-            clip,
-            self._data,
-            self._position,
-            "contain",
-            QtGui.QColor("#000000"),
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+        painter.setClipPath(clip)
+        if self._background is not None:
+            painter.fillRect(area, self._background)
+        painter.drawImage(target, data.image, source)
+        # the shown frame is the middle of the index-th part of the video
+        progress = (index + 0.5) / data.frames
+        painter.fillRect(
+            QtCore.QRectF(
+                area.left(),
+                area.bottom() - PROGRESS_HEIGHT,
+                area.width() * progress,
+                PROGRESS_HEIGHT,
+            ),
+            QtGui.QColor(PROGRESS_COLOR),
         )
         painter.end()
 
