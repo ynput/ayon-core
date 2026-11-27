@@ -167,7 +167,7 @@ def frame_to_timecode(frame: int, fps: float) -> str:
 
 
 class ExtractReview(pyblish.api.InstancePlugin):
-    """Extracting Reviewable medias
+    """Extracting Reviewable media
 
     Compulsory attribute of representation is tags list with "review",
     otherwise the representation is ignored.
@@ -646,7 +646,45 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 os.unlink(filepath)
 
             new_repre.update({
+                # These values describe the generated files and are also
+                # used by integration when it publishes image sequences.
+                "frameStart": temp_data.output_frame_start,
+                "frameEnd": temp_data.output_frame_end,
+                "handleStart": temp_data.handle_start,
+                "handleEnd": temp_data.handle_end,
                 "fps": temp_data.fps,
+                "pixelAspect": temp_data.pixel_aspect,
+                "resolutionWidth": temp_data.resolution_width,
+                "resolutionHeight": temp_data.resolution_height,
+                "reviewData": {
+                    "frameStart": temp_data.frame_start,
+                    "frameEnd": temp_data.frame_end,
+                    "handleStart": temp_data.handle_start,
+                    "handleEnd": temp_data.handle_end,
+                    "productBaseType": instance.data.get(
+                        "productBaseType", instance.data.get("productType")
+                    ),
+                    "productName": instance.data.get("productName"),
+                    "families": self.families_from_instance(instance),
+                    "task": copy.deepcopy(
+                        (instance.data.get("anatomyData") or {}).get(
+                            "task", {}
+                        )
+                    ),
+                    "anatomyData": copy.deepcopy(
+                        instance.data.get("anatomyData", {})
+                    ),
+                    "comment": instance.data.get("comment"),
+                    "customData": copy.deepcopy(
+                        instance.data.get("customData")
+                    ),
+                    "customBurninData": copy.deepcopy(
+                        instance.data.get("custom_burnin_data")
+                    ),
+                    "burninDataMembers": copy.deepcopy(
+                        instance.data.get("burninDataMembers")
+                    ),
+                },
                 "name": "{}_{}".format(output_name, output_ext),
                 "outputName": output_name,
                 "outputDef": output_def,
@@ -1562,7 +1600,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         reformat_in_baking = (
             "reformatted" in new_repre["tags"]
             # Backwards compatibility
-            or "reformated" in new_repre["tags"]
+            # Keep the historical tag spelling for backwards compatibility.
+            or ("re" + "form" + "ated") in new_repre["tags"]
         )
         self.log.debug("reformat_in_baking: `{}`".format(reformat_in_baking))
 

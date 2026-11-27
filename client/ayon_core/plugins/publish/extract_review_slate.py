@@ -25,8 +25,6 @@ class ExtractReviewSlate(publish.Extractor):
 
     label = "Review with Slate frame"
     order = pyblish.api.ExtractorOrder + 0.031
-    families = ["slate", "review"]
-    match = pyblish.api.Subset
 
     SUFFIX = "_slate"
 
@@ -35,8 +33,12 @@ class ExtractReviewSlate(publish.Extractor):
 
     def process(self, instance):
         inst_data = instance.data
-        if "representations" not in inst_data:
-            raise RuntimeError("Burnin needs already created mov to work on.")
+        representations = inst_data.get("representations") or []
+        if not representations:
+            self.log.debug(
+                "Instance does not have representations. Skipping."
+            )
+            return
 
         # get slates frame from upstream
         slates_data = inst_data.get("slateFrames")
@@ -48,7 +50,11 @@ class ExtractReviewSlate(publish.Extractor):
                 "*": slate_frame
             }
         if not slates_data:
-            return
+            if not any(
+                repre.get("slateFrames") or repre.get("slateFrame")
+                for repre in representations
+            ):
+                return
 
         self.log.debug("_ slates_data: {}".format(pformat(slates_data)))
 
@@ -59,14 +65,37 @@ class ExtractReviewSlate(publish.Extractor):
 
         pixel_aspect = inst_data.get("pixelAspect", 1)
         fps = inst_data.get("fps")
+        processed_representations = set()
         self.log.debug("fps {} ".format(fps))
 
-        for idx, repre in enumerate(inst_data["representations"]):
+        for idx, repre in enumerate(representations):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre))
 
             p_tags = repre.get("tags", [])
             if "slate-frame" not in p_tags:
                 continue
+
+            repre_slates_data = repre.get("slateFrames")
+            repre_slate_frame = repre.get("slateFrame")
+            if not repre_slates_data and repre_slate_frame is not None:
+                repre_slates_data = {"*": repre_slate_frame}
+            if not repre_slates_data:
+                repre_slates_data = slates_data
+            if not repre_slates_data:
+                continue
+            processed_representations.add(id(repre))
+
+            use_legacy_code = (
+                "_profile" in repre
+                or (
+                    "reviewToWidth" in inst_data
+                    and "outputDef" not in repre
+                )
+            )
+            pixel_aspect = repre.get(
+                "pixelAspect", inst_data.get("pixelAspect", 1)
+            )
+            fps = repre.get("fps", inst_data.get("fps"))
 
             # get repre file
             stagingdir = repre["stagingDir"]
@@ -79,7 +108,9 @@ class ExtractReviewSlate(publish.Extractor):
                 input_path, self.log
             )
             # get slate data
-            slate_path = self._get_slate_path(input_file, slates_data)
+            slate_path = self._get_slate_path(
+                input_file, repre_slates_data
+            )
             self.log.debug("_ slate_path: {}".format(slate_path))
 
             slate_width, slate_height = self._get_slates_resolution(slate_path)
@@ -112,8 +143,12 @@ class ExtractReviewSlate(publish.Extractor):
 
             # values are set in ExtractReview
             if use_legacy_code:
-                to_width = inst_data["reviewToWidth"]
-                to_height = inst_data["reviewToHeight"]
+                to_width = repre.get("reviewToWidth")
+                if to_width is None:
+                    to_width = inst_data["reviewToWidth"]
+                to_height = repre.get("reviewToHeight")
+                if to_height is None:
+                    to_height = inst_data["reviewToHeight"]
             else:
                 to_width = input_width
                 to_height = input_height
@@ -173,7 +208,7 @@ class ExtractReviewSlate(publish.Extractor):
                 "-frames:v", "1",
             ])
 
-            # add timecode from source to the slate, substract one frame
+            # add timecode from source to the slate, subtract one frame
             offset_timecode = ""
             if input_timecode:
                 offset_timecode = self._tc_offset(
@@ -218,7 +253,7 @@ class ExtractReviewSlate(publish.Extractor):
                     height_scale = to_height
                     height_half_pad = 0
                 else:
-                    self.log.debug("heigher then delivery")
+                    self.log.debug("higher than delivery")
                     width_scale = to_width
                     width_half_pad = 0
                     height_scale = int(slate_height * scale_factor_by_width)
@@ -301,7 +336,7 @@ class ExtractReviewSlate(publish.Extractor):
                 slate_v_path = slate_silent_path
 
             # concat slate and videos together with concat filter
-            # this will reencode the output
+            # this will re-encode the output
             if input_audio:
                 fmap = [
                     "-filter_complex",
@@ -385,7 +420,11 @@ class ExtractReviewSlate(publish.Extractor):
             tags = repre.get("tags", [])
             if "delete" not in tags:
                 continue
-            if "need_thumbnail" in tags:
+            if (
+                id(repre) not in processed_representations
+                or "need_thumbnail" in tags
+                or "publish_on_farm" in tags
+            ):
                 continue
             self.log.debug("Removing representation: {}".format(repre))
             inst_data["representations"].remove(repre)
@@ -566,7 +605,7 @@ class ExtractReviewSlate(publish.Extractor):
 
     def add_video_filter_args(self, args, inserting_arg):
         """
-        Fixing video filter argumets to be one long string
+        Fixing video filter arguments to be one long string
 
         Args:
             args (list): list of string arguments
