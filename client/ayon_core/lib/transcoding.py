@@ -1552,6 +1552,7 @@ def oiio_color_convert(
     logger: Optional[logging.Logger] = None,
     *,
     review_layers: Optional[list[str]] = None,
+    input_info: dict | None = None,
 ) -> None:
     """Transcode source file to other with colormanagement.
 
@@ -1593,6 +1594,9 @@ def oiio_color_convert(
             the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
         review_layers (Optional[list[str]]): List of reviewable layers.
+        input_info (dict | None): Information about the input from
+            'get_oiio_info_for_input'. Pass it if already known to avoid
+            reading the input with 'oiiotool' again.
     Raises:
         ValueError: if misconfigured
 
@@ -1600,20 +1604,21 @@ def oiio_color_convert(
     if logger is None:
         logger = Logger.get_logger(__name__)
 
-    # Get oiioinfo only from first image, otherwise file can't be found
-    first_input_path = input_path
-    if frames:
-        match = re.search(r"\d+", frames)
-        first_frame = match.group() if match else "0"
-        first_frame = first_frame.zfill(frame_padding or 0)
-        for token in ["#", "%d"]:
-            first_input_path = first_input_path.replace(token, first_frame)
+    if input_info is None:
+        # Get oiioinfo only from first image, otherwise file can't be found
+        first_input_path = input_path
+        if frames:
+            match = re.search(r"\d+", frames)
+            first_frame = match.group() if match else "0"
+            first_frame = first_frame.zfill(frame_padding or 0)
+            for token in ["#", "%d"]:
+                first_input_path = first_input_path.replace(token, first_frame)
 
-    input_info = get_oiio_info_for_input(
-        first_input_path,
-        verbose=False,
-        logger=logger,
-    )
+        input_info = get_oiio_info_for_input(
+            first_input_path,
+            verbose=False,
+            logger=logger,
+        )
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(
@@ -1750,7 +1755,8 @@ def get_rescaled_command_arguments(
     target_par: float = None,
     bg_color: Optional[list[int]] = None,
     review_layers: Optional[list[str]] = None,
-    log: Optional[logging.Logger] = None,
+    input_info: dict | None = None,
+    log: logging.Logger | None = None,
 ) -> list[str]:
     """Get command arguments for rescaling input to target size.
 
@@ -1763,8 +1769,11 @@ def get_rescaled_command_arguments(
         target_par (Optional[float]): Pixel aspect ratio of target.
         bg_color (Optional[list[int]]): List of 8bit int values for
             background color. Should be in range 0 - 255.
-        log (Optional[logging.Logger]): Logger used for logging.
         review_layers (Optional[list[str]]): List of reviewable layers.
+        input_info (dict | None): Information about the input from
+            'get_oiio_info_for_input'. Pass it if already known to avoid
+            reading the input with 'oiiotool' again.
+        log (logging.Logger | None): Logger used for logging.
 
     Returns:
         list[str]: List of command arguments.
@@ -1825,11 +1834,12 @@ def get_rescaled_command_arguments(
         command_args.extend(["-vf", "{0},{1}".format(scale, pad)])
 
     elif application == "oiiotool":
-        input_info = get_oiio_info_for_input(
-            input_path,
-            verbose=False,
-            logger=log,
-        )
+        if input_info is None:
+            input_info = get_oiio_info_for_input(
+                input_path,
+                verbose=False,
+                logger=log,
+            )
         # Collect channels to export
         _, channels_arg = get_oiio_input_and_channel_args(
             input_info, alpha_default=1.0, review_layers=review_layers
