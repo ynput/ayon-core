@@ -549,12 +549,16 @@ class TextDef(AbstractAttrDef):
             the text in UI, e.g. 'python'. Accepts pygments lexer names
             and aliases. Only used when 'multiline' is enabled.
         default(str, None): Default value. Empty string used when not defined.
+        completions(list[str], None): Autocompletion suggestions for UI. Only
+            used by single line inputs. Suggestions don't limit which values
+            can be filled in.
 
     """
     type = "text"
     type_attributes = [
         "multiline",
         "placeholder",
+        "completions",
     ]
 
     def __init__(
@@ -565,6 +569,7 @@ class TextDef(AbstractAttrDef):
         placeholder: Optional[str] = None,
         syntax: Optional[str] = None,
         default: Optional[str] = None,
+        completions: Optional[List[str]] = None,
         **kwargs
     ):
         if default is None:
@@ -583,10 +588,14 @@ class TextDef(AbstractAttrDef):
         if isinstance(regex, str):
             regex = re.compile(regex)
 
+        if completions is not None:
+            completions = list(completions)
+
         self.multiline: bool = multiline
         self.placeholder: Optional[str] = placeholder
         self.regex: Optional["Pattern"] = regex
         self.syntax: Optional[str] = syntax
+        self.completions: Optional[List[str]] = completions
 
     def is_value_valid(self, value: Any) -> bool:
         if not isinstance(value, str):
@@ -609,6 +618,7 @@ class TextDef(AbstractAttrDef):
         data["multiline"] = self.multiline
         data["placeholder"] = self.placeholder
         data["syntax"] = self.syntax
+        data["completions"] = self.completions
         return data
 
     def _def_type_compare(self, other: "TextDef") -> bool:
