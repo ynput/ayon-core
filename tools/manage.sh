@@ -45,15 +45,15 @@ BIWhite='\033[1;97m'      # White
 ###############################################################################
 detect_python () {
   echo -e "${BIGreen}>>>${RST} Using python \c"
-  command -v python >/dev/null 2>&1 || { echo -e "${BIRed}- NOT FOUND${RST} ${BIYellow}You need Python 3.9 installed to continue.${RST}"; return 1; }
+  command -v python >/dev/null 2>&1 || { echo -e "${BIRed}- NOT FOUND${RST} ${BIYellow}You need Python 3.11 installed to continue.${RST}"; return 1; }
   local version_command="import sys;print('{0}.{1}'.format(sys.version_info[0], sys.version_info[1]))"
   local python_version="$(python <<< ${version_command})"
   oIFS="$IFS"
   IFS=.
   set -- $python_version
   IFS="$oIFS"
-  if [ "$1" -ge "3" ] && [ "$2" -ge "9" ] ; then
-    if [ "$2" -gt "9" ] ; then
+  if [ "$1" -ge "3" ] && [ "$2" -ge "11" ] ; then
+    if [ "$2" -gt "11" ] ; then
       echo -e "${BIWhite}[${RST} ${BIRed}$1.$2 ${BIWhite}]${RST} - ${BIRed}FAILED${RST} ${BIYellow}Version is new and unsupported, use${RST} ${BIPurple}3.9.x${RST}"; return 1;
     else
       echo -e "${BIWhite}[${RST} ${BIGreen}$1.$2${RST} ${BIWhite}]${RST}"
@@ -144,7 +144,8 @@ default_help() {
   echo -e "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
   echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
   echo -e "  ${BWhite}run${RST}             ${BCyan}Run a uv command in the repository environment${RST}"
-  echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests${RST}"
+  echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests (optional tests excluded)${RST}"
+  echo -e "  ${BWhite}run-tests --optional${RST} ${BCyan}Run ayon-core tests including optional tests${RST}"
   echo ""
 }
 
@@ -172,7 +173,12 @@ run_command () {
 run_tests () {
   echo -e "${BIGreen}>>>${RST} Running tests..."
   shift;  # will remove first arg ("run-tests") from the "$@"
-  uv run pytest ./tests -m "not server"
+  local test_marker="not server and not optional"
+  if [ "$1" = "--optional" ]; then
+    test_marker="not server"
+  fi
+  uv sync --extra test
+  uv run pytest ./tests -m "$test_marker"
 }
 
 main () {

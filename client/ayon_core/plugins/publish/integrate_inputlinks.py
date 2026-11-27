@@ -13,34 +13,31 @@ from ayon_core.pipeline.publish.input_versions import (
 LinksByType = dict[str, list[LinkPayload]]
 
 
-def create_link(
+def create_links_bulk(
     project_name: str,
-    link_type_name: str,
-    input_id: str,
-    input_type: str,
-    output_id: str,
-    output_type: str,
-    data: dict,
+    link_payloads: list[LinkPayload],
 ):
-    """Create link in AYON.
+    """Create multiple links in AYON in a single request."""
+    if not link_payloads:
+        return
 
-    TODO Replace with 'ayon_api.create_link' when AYON launcher >= 1.5.2
-        is required by ayon-core.
-
-    """
-    full_link_type_name = ayon_api.get_full_link_type_name(
-        link_type_name, input_type, output_type)
-
-    kwargs = {
-        "input": input_id,
-        "output": output_id,
-        "linkType": full_link_type_name,
-    }
-    if data:
-        kwargs["data"] = data
+    links = []
+    for link_payload in link_payloads:
+        full_link_type_name = ayon_api.get_full_link_type_name(
+            link_payload.link_type, "version", "version"
+        )
+        link = {
+            "input": link_payload.input_id,
+            "output": link_payload.output_id,
+            "linkType": full_link_type_name,
+        }
+        if link_payload.data:
+            link["data"] = link_payload.data
+        links.append(link)
 
     response = ayon_api.post(
-        f"projects/{project_name}/links", **kwargs
+        f"projects/{project_name}/links/bulk",
+        links=links
     )
     response.raise_for_status()
 
@@ -136,9 +133,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
         """Add dependency link data into temporary variable.
 
         Args:
-            new_links_by_type (
-                dict[str, list[tuple[str, str, Optional[dict[str, Any]]]]]
-            ): Object where output is stored.
+            new_links_by_type (LinksByType): Object where output is stored.
             link_type (str): Type of link, one of 'reference' or 'generative'
             input_id (str): Input version id.
             output_id (str): Output version id.
@@ -148,7 +143,8 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             LinkPayload(
                 input_id=input_id,
                 output_id=output_id,
-                data=data
+                data=data,
+                link_type=link_type,
             )
         )
 
@@ -263,7 +259,8 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 project_name, link_type, "version", "version"
             )
 
-        # Create link themselves
+        # Define new links to create
+        links_to_create = []
         for link_type, link_payloads in new_links.items():
             # Make sure there are no duplicates of src > dst ids and merge
             # metadata if multiple links are found.
@@ -286,12 +283,28 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 #     to have same links
                 if output_id in existing_links:
                     continue
-                create_link(
+
+                links_to_create.append(
+                    LinkPayload(
+                        input_id=input_id,
+                        output_id=output_id,
+                        data=data,
+                        link_type=link_type,
+                    )
+                )
+
+        # Create link themselves
+        self.log.debug(f"Generating {len(links_to_create)} links")
+        if ayon_api.get_server_version_tuple() >= (1, 15, 8):
+            create_links_bulk(project_name, links_to_create)
+        else:
+            for link_payload in links_to_create:
+                ayon_api.create_link(
                     project_name,
-                    link_type,
-                    input_id,
+                    link_payload.link_type,
+                    link_payload.input_id,
                     "version",
-                    output_id,
+                    link_payload.output_id,
                     "version",
-                    data=data,
+                    data=link_payload.data,
                 )

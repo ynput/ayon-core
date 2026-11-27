@@ -11,6 +11,7 @@ from ayon_api.graphql_queries import project_graphql_query
 from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
+from ayon_core.lib.icon_definitions import AwesomeFontIcon
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import ProductTypeIconMapping
 from ayon_core.tools.loader.abstract import (
@@ -32,13 +33,16 @@ PRODUCTS_MODEL_SENDER = "products.model"
 
 
 def version_item_from_entity(version):
-    version_attribs = version["attrib"]
+    version_attribs = version.get("attrib") or {}
+    version_data = version.get("data") or {}
     tags = version["tags"]
     frame_start = version_attribs.get("frameStart")
     frame_end = version_attribs.get("frameEnd")
     handle_start = version_attribs.get("handleStart")
     handle_end = version_attribs.get("handleEnd")
     step = version_attribs.get("step")
+    if step is None:
+        step = version_data.get("step")
     comment = version_attribs.get("comment")
     source = version_attribs.get("source")
 
@@ -131,14 +135,10 @@ def product_base_type_item_from_data(
         ProductBaseTypeDict: Product base type item.
 
     """
-    icon = {
-        "type": "awesome-font",
-        "name": "fa.folder",
-        "color": "#0091B2",
-    }
+    icon = AwesomeFontIcon("fa.folder", color="#0091B2")
     return ProductBaseTypeItem(
         name=product_base_type_data["name"],
-        icon=icon
+        icon=icon,
     )
 
 
@@ -782,11 +782,10 @@ class ProductsModel:
         product_items_by_id = self._get_product_items_by_id(
             project_name, product_ids
         )
-        repre_icon = {
-            "type": "awesome-font",
-            "name": "fa.file-o",
-            "color": get_default_entity_icon_color(),
-        }
+        repre_icon = AwesomeFontIcon(
+            "fa.file-o",
+            color=get_default_entity_icon_color(),
+        )
         repre_items_by_version_id = collections.defaultdict(dict)
         for representation in representations:
             version_id = representation["versionId"]

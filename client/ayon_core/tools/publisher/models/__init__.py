@@ -1,5 +1,5 @@
 from .create import CreateModel, CreatorItem, InstanceItem
-from .publish import PublishModel, PublishErrorInfo
+from .publish import PublishModel, UIFailInfo
 
 
 __all__ = (
@@ -8,5 +8,5 @@ __all__ = (
     "InstanceItem",
 
     "PublishModel",
-    "PublishErrorInfo",
+    "UIFailInfo",
 )

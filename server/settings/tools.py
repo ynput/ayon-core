@@ -99,8 +99,11 @@ class CreatorToolModel(BaseSettingsModel):
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
         title="Filter creator profiles",
-        description="Allowed list of creator labels that will be only shown"
-                    " if profile matches context."
+        description=(
+            "Limit which creators are shown per context.\n\n"
+            "Allowed list of creator labels that will be only shown if the"
+            " profile matches the context."
+        ),
     )
 
     @validator("product_types_smart_select")
@@ -203,6 +206,16 @@ class AYONMenuModel(BaseSettingsModel):
     )
 
 
+class GeneralToolsModel(BaseSettingsModel):
+    use_task_type_sorting: bool = SettingsField(
+        True,
+        title="Use task type sorting",
+        description=(
+            "Sort tasks in UIs based on task types order in Anatomy."
+        )
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -301,7 +314,57 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
     )
 
 
+class LoaderActionsModel(BaseSettingsModel):
+    copy_file_path: bool = SettingsField(
+        True,
+        title="Copy file path",
+        description=(
+            "Show the action for copying a published file path to the "
+            "clipboard in the loader."
+        ),
+    )
+    copy_file: bool = SettingsField(
+        True,
+        title="Copy file",
+        description="Show the action for copying a published file.",
+    )
+    open_file: bool = SettingsField(
+        True,
+        title="Open file action",
+        description="Show the action for opening a published file.",
+    )
+    delete_old_versions: bool = SettingsField(
+        True,
+        title="Delete old versions",
+        description="Show the action for deleting old versions.",
+    )
+    delete_selected_versions: bool = SettingsField(
+        True,
+        title="Delete selected versions",
+        description="Show the action for deleting selected versions.",
+    )
+    calculate_versions_size: bool = SettingsField(
+        True,
+        title="Calculate versions size",
+        description="Show the action for calculating versions size.",
+    )
+    create_hero_version: bool = SettingsField(
+        True,
+        title="Create hero version",
+        description="Show the action for creating a hero version.",
+    )
+
+
 class LoaderToolModel(BaseSettingsModel):
+    use_legacy_loader: bool = SettingsField(
+        False,
+        title="Use legacy loader",
+        description="Use legacy loader UI.",
+    )
+    actions: LoaderActionsModel = SettingsField(
+        default_factory=LoaderActionsModel,
+        title="Actions",
+    )
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
     )
@@ -441,10 +504,97 @@ class PublishToolModel(BaseSettingsModel):
     )
 
 
+class DeliveryRecipeOverrideModel(BaseSettingsModel):
+    _layout = "expanded"
+    representation_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names",
+        description="Regex supported. Empty matches any representation.",
+    )
+    extensions: list[str] = SettingsField(
+        default_factory=list,
+        title="Extensions",
+        description=(
+            "Lowercase extensions without dot, e.g. 'exr'. Regex supported."
+            " Empty matches any extension."
+        ),
+    )
+    product_base_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product base types",
+        description="Empty matches any product base type.",
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Template",
+        description="Anatomy delivery template for matching representations.",
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+
+
+class DeliveryRecipeModel(BaseSettingsModel):
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Name offered in the Delivery tool.",
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Default template",
+        description=(
+            "Anatomy delivery template for representations without"
+            " a matching override."
+        ),
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+    overrides: list[DeliveryRecipeOverrideModel] = SettingsField(
+        default_factory=list,
+        title="Overrides",
+        description="Other template for matching representations",
+    )
+
+
+class DeliveryToolModel(BaseSettingsModel):
+    filter_type: str = SettingsField(
+        "is_deny_list",
+        title="Filter type",
+        section="Templates shown in Delivery tool",
+        description=(
+            "Limit which anatomy delivery templates artists can pick."
+            " Recipes can still use hidden templates."
+        ),
+        enum_resolver=filter_type_enum,
+    )
+    filter_templates: list[str] = SettingsField(
+        default_factory=list,
+        title="Delivery templates",
+        description=(
+            "Deny list hides these templates, allow list shows only these."
+            " Empty deny list shows all templates."
+        ),
+        enum_resolver=anatomy_template_items_enum(category="delivery"),
+    )
+    recipes: list[DeliveryRecipeModel] = SettingsField(
+        default_factory=list,
+        title="Delivery recipes",
+        section="Delivery recipes",
+        description="Offered before the delivery templates",
+    )
+
+    @validator("recipes")
+    def validate_unique_name(cls, value):
+        ensure_unique_names(value)
+        return value
+
+
 class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
         title="AYON Menu"
+    )
+    general: GeneralToolsModel = SettingsField(
+        default_factory=GeneralToolsModel,
+        title="General"
     )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
@@ -461,6 +611,20 @@ class GlobalToolsModel(BaseSettingsModel):
     publish: PublishToolModel = SettingsField(
         default_factory=PublishToolModel,
         title="Publish"
+    )
+    delivery: DeliveryToolModel = SettingsField(
+        default_factory=DeliveryToolModel,
+        title="Delivery",
+        description=(
+            "Templates and recipes offered in the Delivery tool\n\n"
+            "A recipe delivers with its default template, and with another"
+            " template for representations matching one of its overrides,"
+            " e.g. EXRs into a plates folder. Recipes can use templates"
+            " hidden from the Delivery tool.\n\n"
+            "The override matching most filters wins. On a tie"
+            " representation names go before extensions before product base"
+            " types, then the first override in the list."
+        ),
     )
 
 
@@ -658,6 +822,16 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
+        "use_legacy_loader": False,
+        "actions": {
+            "copy_file_path": True,
+            "copy_file": True,
+            "open_file": True,
+            "delete_old_versions": True,
+            "delete_selected_versions": True,
+            "calculate_versions_size": True,
+            "create_hero_version": True
+        },
         "product_type_filter_profiles": []
     },
     "publish": {
@@ -758,5 +932,10 @@ DEFAULT_TOOLS_VALUES = {
             "ignore_paths": [],
         },
         "comment_minimum_required_chars": 0,
-    }
+    },
+    "delivery": {
+        "filter_type": "is_deny_list",
+        "filter_templates": [],
+        "recipes": [],
+    },
 }

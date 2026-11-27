@@ -1,82 +1,464 @@
 from __future__ import annotations
 
-import time
+from abc import ABC, abstractmethod
 import collections
 import contextlib
-import typing
-from abc import ABC, abstractmethod
+from dataclasses import dataclass
+import threading
+import time
+from typing import Any, Generator
 
 import ayon_api
 
 from ayon_core.lib import NestedCacheItem
 
-if typing.TYPE_CHECKING:
-    from typing import Union
+from .projects import TaskTypeItem
+from .websocket import Event, EventCallback, get_event_hub
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
+FOLDER_FIELDS = {
+    "id",
+    "name",
+    "label",
+    "parentId",
+    "path",
+    "folderType",
+    "status",
+}
+
+
+# Server events that change folder items or the folders hierarchy. Other
+#   folder events (attributes, data, tags, thumbnail) don't affect them.
+_FOLDER_ITEMS_TOPICS = (
+    "entity.folder.created",
+    "entity.folder.deleted",
+    "entity.folder.renamed",
+    "entity.folder.parent_changed",
+    "entity.folder.active_changed",
+    "entity.folder.label_changed",
+    "entity.folder.status_changed",
+    "entity.folder.type_changed",
+)
+# Project events that can change folder items without any folder event,
+#   e.g. renaming a folder type or a status in project anatomy renames it
+#   on all folders.
+_PROJECT_TOPICS = (
+    "entity.project.changed",
+    "entity.project.deleted",
+    "entity.project.renamed",
+)
+
+
+@dataclass
+class _FoldersCacheEntry:
+    """Cached folder items of one project.
+
+    Attributes:
+        items (dict[str, FolderItem]): Folder items by id.
+        queried_at (float): When the query started ('time.monotonic').
+        listening (bool): Server events about folders were received
+            for the whole time since the query started.
+        changed (bool): A server event changed folders of the project
+            since the query started.
+        listening_lost_at (float | None): When websocket connection was
+            lost while the entry was listening ('time.monotonic').
+
+    """
+    items: dict[str, FolderItem]
+    queried_at: float
+    listening: bool
+    changed: bool = False
+    listening_lost_at: float | None = None
+
+
+@dataclass
+class _FoldersQueryToken:
+    """State of the cache when a query of folders started."""
+    queried_at: float
+    reset_counter: int
+    project_reset_counter: int
+    change_counter: int
+    connection_counter: int
+    listening: bool
+
+
+class _SharedFoldersCache:
+    """Folder items cache shared by all 'HierarchyModel' instances.
+
+    Each tool (loader, publisher, workfiles, ...) has its own controller
+    with its own 'HierarchyModel', but the folder hierarchy of a project is
+    the same for all of them. Sharing the cache means the full folder list
+    of a project is queried once per process instead of once per tool.
+
+    Cached folders are valid for 'min_lifetime' seconds. When the
+    websocket of the process is connected, the cache listens to server
+    events about folders, and folders are kept until an event changes
+    them, or until the user explicitly asks for a refresh (forced reset).
+    A change does not trigger a new query, folders are queried again when
+    a tool asks for them, but not more often than once per
+    'min_lifetime', even if folders change all the time.
+
+    When websocket connection is lost, cached folders are not cleared.
+    Events might be missed while disconnected and server does not allow
+    regular users to query events of other users, so folders that were
+    kept by events are valid for 'min_lifetime' since the connection was
+    lost, then they are queried once again.
+
+    The websocket connection is not created by the cache. It is created
+    by tools that process server events (see 'WSEventsModel'), so headless
+    usage stays without websocket and uses only 'min_lifetime'.
+
+    """
+    min_lifetime = 5 * 60  # 5 minutes
+    # Seconds until new topics subscription is sent to server when
+    #   websocket is already connected. Server sends heartbeat every
+    #   5 seconds, the subscription is sent after a message is received.
+    subscribe_delay = 10
+
+    def __init__(self) -> None:
+        # Used as lock for all attributes below
+        self.cond = threading.Condition()
+        # Project name -> ident of thread refreshing its folders
+        self.refreshing: dict[str, int] = {}
+
+        self._entries: dict[str, _FoldersCacheEntry] = {}
+        self._reset_counter = 0
+        self._project_reset_counters: dict[str, int] = (
+            collections.defaultdict(int)
+        )
+        self._change_counters: dict[str, int] = collections.defaultdict(int)
+        self._connection_counter = 0
+        # Since when are folder events received ('time.monotonic')
+        self._listening_since: float | None = None
+
+        self._register_lock = threading.Lock()
+        self._subscribed_at: float | None = None
+        self._hub_callbacks: list[EventCallback] = []
+
+    def reset(self, project_name: str | None = None) -> None:
+        """Clear cached folders.
+
+        Results of queries running at the moment are discarded.
+
+        Args:
+            project_name (str | None): Clear only folders of the project.
+
+        """
+        with self.cond:
+            if project_name is None:
+                self._entries.clear()
+                self._reset_counter += 1
+            else:
+                self._entries.pop(project_name, None)
+                self._project_reset_counters[project_name] += 1
+
+    def get_valid_items(
+        self, project_name: str
+    ) -> dict[str, FolderItem] | None:
+        """Folder items of a project if cache is valid.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, FolderItem] | None: Folder items by id, 'None' if
+                folders have to be queried.
+
+        """
+        self._listen_to_events()
+        with self.cond:
+            return self.get_valid_items_locked(project_name)
+
+    def get_valid_items_locked(
+        self, project_name: str
+    ) -> dict[str, FolderItem] | None:
+        """Same as 'get_valid_items', but caller holds 'cond'."""
+        entry = self._entries.get(project_name)
+        if entry is None or not self._is_entry_valid(entry):
+            return None
+        return entry.items
+
+    def get_items(self, project_name: str) -> dict[str, FolderItem]:
+        """Last queried folder items of a project, even if not valid.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, FolderItem]: Folder items by id.
+
+        """
+        with self.cond:
+            entry = self._entries.get(project_name)
+            if entry is None:
+                return {}
+            return entry.items
+
+    def start_query_locked(self, project_name: str) -> _FoldersQueryToken:
+        """Remember cache state before folders are queried.
+
+        Caller holds 'cond'.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            _FoldersQueryToken: Token to pass to 'store'.
+
+        """
+        now = self._now()
+        listening_since = self._listening_since
+        return _FoldersQueryToken(
+            queried_at=now,
+            reset_counter=self._reset_counter,
+            project_reset_counter=self._project_reset_counters[project_name],
+            change_counter=self._change_counters[project_name],
+            connection_counter=self._connection_counter,
+            listening=(
+                listening_since is not None and now >= listening_since
+            ),
+        )
+
+    def store(
+        self,
+        project_name: str,
+        items: dict[str, FolderItem],
+        token: _FoldersQueryToken,
+    ) -> bool:
+        """Store queried folder items.
+
+        Args:
+            project_name (str): Project name.
+            items (dict[str, FolderItem]): Folder items by id.
+            token (_FoldersQueryToken): Token from 'start_query_locked'.
+
+        Returns:
+            bool: Items were stored. 'False' if cache was reset while
+                the query was running and folders have to be queried
+                again.
+
+        """
+        with self.cond:
+            if (
+                token.reset_counter != self._reset_counter
+                or token.project_reset_counter
+                != self._project_reset_counters[project_name]
+            ):
+                return False
+
+            self._entries[project_name] = _FoldersCacheEntry(
+                items=items,
+                queried_at=token.queried_at,
+                listening=(
+                    token.listening
+                    and token.connection_counter == self._connection_counter
+                ),
+                # Change during the query might not be in the result
+                changed=(
+                    token.change_counter
+                    != self._change_counters[project_name]
+                ),
+            )
+            return True
+
+    def _now(self) -> float:
+        return time.monotonic()
+
+    def _is_entry_valid(self, entry: _FoldersCacheEntry) -> bool:
+        if entry.listening and not entry.changed:
+            return True
+        valid_from = entry.queried_at
+        if entry.listening_lost_at is not None:
+            valid_from = max(valid_from, entry.listening_lost_at)
+        return self._now() - valid_from < self.min_lifetime
+
+    def _listen_to_events(self) -> None:
+        """Register callbacks to server events, once per process."""
+        if self._hub_callbacks:
+            return
+
+        with self._register_lock:
+            if self._hub_callbacks:
+                return
+            event_hub = get_event_hub()
+            subscribed_at = self._now()
+            with self.cond:
+                self._subscribed_at = subscribed_at
+                if event_hub.is_connected():
+                    # Subscription is sent with next message
+                    self._listening_since = (
+                        subscribed_at + self.subscribe_delay
+                    )
+
+            callbacks = [
+                EventCallback(
+                    "connection.opened", self._on_connection_opened
+                ),
+                EventCallback(
+                    "connection.closed", self._on_connection_closed
+                ),
+                EventCallback(
+                    "connection.interrupted", self._on_connection_closed
+                ),
+            ]
+            for topic in _FOLDER_ITEMS_TOPICS + _PROJECT_TOPICS:
+                callbacks.append(
+                    EventCallback(topic, self._on_folders_changed)
+                )
+            event_hub.add_callbacks(callbacks, connect=False)
+            self._hub_callbacks = callbacks
+
+    def _on_connection_opened(self) -> None:
+        with self.cond:
+            # Subscription might have been sent with the previous message
+            #   if callbacks were registered during connection.
+            self._listening_since = max(
+                self._now(),
+                self._subscribed_at + self.subscribe_delay,
+            )
+
+    def _on_connection_closed(self) -> None:
+        # Events might be missed until connection is opened again. Keep
+        #   folders that were up to date for 'min_lifetime', so a brief
+        #   interruption does not cause queries.
+        now = self._now()
+        with self.cond:
+            self._listening_since = None
+            self._connection_counter += 1
+            for entry in self._entries.values():
+                if entry.listening and not entry.changed:
+                    entry.listening_lost_at = now
+                entry.listening = False
+
+    def _on_folders_changed(self, event: Event) -> None:
+        project_names = {event.project_name}
+        # Project rename event does not have project name filled
+        if isinstance(event.summary, dict):
+            project_names.add(event.summary.get("entityName"))
+        project_names.discard(None)
+        if not project_names:
+            return
+
+        with self.cond:
+            for project_name in project_names:
+                self._change_counters[project_name] += 1
+                entry = self._entries.get(project_name)
+                if entry is not None:
+                    entry.changed = True
+
+
+_SHARED_FOLDERS_CACHE = _SharedFoldersCache()
 
 
 class AbstractHierarchyController(ABC):
     @abstractmethod
-    def emit_event(self, topic, data, source):
+    def emit_event(
+        self,
+        topic: str,
+        data: dict[str, Any] = None,
+        source: str | None = None,
+    ) -> None:
         pass
 
 
+@dataclass
 class FolderItem:
     """Item representing folder entity on a server.
 
     Folder can be a child of another folder or a project.
 
-    Args:
+    Attributes:
         entity_id (str): Folder id.
-        parent_id (Union[str, None]): Parent folder id. If 'None' then project
+        parent_id (str | None): Parent folder id. If 'None' then project
             is parent.
         name (str): Name of folder.
         path (str): Folder path.
         folder_type (str): Type of folder.
-        label (Union[str, None]): Folder label.
+        label (str): Folder label.
+        status (str): Folder status name.
     """
+    # TODO: Use `@dataclass(slots=True)` when we drop Python 3.9 support.
+    __slots__ = (
+        "entity_id",
+        "parent_id",
+        "name",
+        "path",
+        "folder_type",
+        "label",
+        "status",
+    )
+    entity_id: str
+    parent_id: str | None
+    name: str
+    path: str
+    folder_type: str
+    label: str
+    status: str
 
-    def __init__(
-        self, entity_id, parent_id, name, path, folder_type, label
-    ):
-        self.entity_id = entity_id
-        self.parent_id = parent_id
-        self.name = name
-        self.path = path
-        self.folder_type = folder_type
-        self.label = label or name
-
-    def to_data(self):
+    def to_data(self) -> dict[str, str | None]:
         """Converts folder item to data.
 
         Returns:
-            dict[str, Any]: Folder item data.
-        """
+            dict[str, str | None]: Folder item data.
 
-        return {
-            "entity_id": self.entity_id,
-            "parent_id": self.parent_id,
-            "name": self.name,
-            "path": self.path,
-            "folder_type": self.folder_type,
-            "label": self.label,
-        }
+        """
+        return dict(
+            entity_id=self.entity_id,
+            parent_id=self.parent_id,
+            name=self.name,
+            path=self.path,
+            folder_type=self.folder_type,
+            label=self.label,
+            status=self.status,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, str | None]) -> FolderItem:
         """Re-creates folder item from data.
 
         Args:
-            data (dict[str, Any]): Folder item data.
+            data (dict[str, str | None]): Folder item data.
 
         Returns:
             FolderItem: Folder item.
-        """
 
+        """
         return cls(**data)
 
+    @classmethod
+    def from_rest_data(cls, data: dict[str, Any]) -> FolderItem:
+        """Creates folder item from 'get_rest_folders' flat item.
 
+        Args:
+            data (dict[str, Any]): Flat folder item from REST endpoint.
+
+        """
+        name = data["name"]
+        return cls(
+            entity_id=data["id"],
+            parent_id=data["parentId"],
+            name=name,
+            path=f"/{data['path']}",
+            folder_type=data["folderType"],
+            label=data["label"] or name,
+            status=data["status"],
+        )
+
+    @classmethod
+    def from_entity(cls, entity: dict[str, Any]) -> FolderItem:
+        name = entity["name"]
+        return FolderItem(
+            entity_id=entity["id"],
+            parent_id=entity["parentId"],
+            name=name,
+            path=entity["path"],
+            folder_type=entity["folderType"],
+            label=entity["label"] or name,
+            status=entity["status"]
+        )
+
+
+@dataclass
 class TaskItem:
     """Task item representing task entity on a server.
 
@@ -88,28 +470,26 @@ class TaskItem:
     Args:
         task_id (str): Task id.
         name (str): Name of task.
-        name (Union[str, None]): Task label.
+        name (str | None): Task label.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
+        tags (list[str]): List of tags assigned to task.
+        full_label (str): Full label of task. Is filled automatically.
+        status (str): Task status name.
     """
+    task_id: str
+    name: str
+    label: str
+    task_type: str
+    task_type_order: int
+    parent_id: str
+    tags: list[str]
+    status: str
+    full_label: str = ""
 
-    def __init__(
-        self,
-        task_id: str,
-        name: str,
-        label: Union[str, None],
-        task_type: str,
-        parent_id: str,
-        tags: list[str],
-    ):
-        self.task_id = task_id
-        self.name = name
-        self.label = label
-        self.task_type = task_type
-        self.parent_id = parent_id
-        self.tags = tags
-
-        self._full_label = None
+    def __post_init__(self):
+        if not self.full_label:
+            self.full_label = f"{self.label} ({self.task_type})"
 
     @property
     def id(self):
@@ -117,41 +497,31 @@ class TaskItem:
 
         Returns:
             str: Task id.
-        """
 
+        """
         return self.task_id
 
-    @property
-    def full_label(self):
-        """Label of task item for UI.
-
-        Returns:
-            str: Label of task item.
-        """
-
-        if self._full_label is None:
-            label = self.label or self.name
-            self._full_label = f"{label} ({self.task_type})"
-        return self._full_label
-
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         """Converts task item to data.
 
         Returns:
             dict[str, Any]: Task item data.
-        """
 
-        return {
-            "task_id": self.task_id,
-            "name": self.name,
-            "label": self.label,
-            "parent_id": self.parent_id,
-            "task_type": self.task_type,
-            "tags": self.tags,
-        }
+        """
+        return dict(
+            task_id=self.task_id,
+            name=self.name,
+            label=self.label,
+            parent_id=self.parent_id,
+            task_type=self.task_type,
+            task_type_order=self.task_type_order,
+            tags=self.tags.copy(),
+            full_label=self.full_label,
+            status=self.status,
+        )
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> TaskItem:
         """Re-create task item from data.
 
         Args:
@@ -159,71 +529,49 @@ class TaskItem:
 
         Returns:
             TaskItem: Task item.
-        """
 
+        """
         return cls(**data)
 
+    @classmethod
+    def from_entity(
+        cls, entity: dict[str, Any], task_type_order: int
+    ) -> TaskItem:
+        """Re-create task item from data.
 
-def _get_task_items_from_tasks(tasks):
-    """
+        Args:
+            entity (dict[str, Any]): Task entity.
+            task_type_order (int): Task type order.
 
-    Returns:
-        TaskItem: Task item.
-    """
+        Returns:
+            TaskItem: Task item.
 
-    output = []
-    for task in tasks:
-        folder_id = task["folderId"]
-        output.append(TaskItem(
-            task["id"],
-            task["name"],
-            task["label"],
-            task["type"],
-            folder_id,
-            task["tags"],
-        ))
-    return output
-
-
-def _get_folder_item_from_hierarchy_item(item):
-    name = item["name"]
-    path_parts = list(item["parents"])
-    path_parts.append(name)
-    path = "/" + "/".join(path_parts)
-    return FolderItem(
-        item["id"],
-        item["parentId"],
-        name,
-        path,
-        item["folderType"],
-        item["label"]
-    )
+        """
+        return cls(
+            task_id=entity["id"],
+            name=entity["name"],
+            label=entity["label"] or entity["name"],
+            task_type=entity["type"],
+            task_type_order=task_type_order,
+            parent_id=entity["folderId"],
+            tags=entity["tags"],
+            status=entity["status"]
+        )
 
 
-def _get_folder_item_from_entity(entity):
-    name = entity["name"]
-    return FolderItem(
-        entity["id"],
-        entity["parentId"],
-        name,
-        entity["path"],
-        entity["folderType"],
-        entity["label"] or name
-    )
-
-
-class HierarchyModel(object):
+class HierarchyModel:
     """Model for project hierarchy items.
 
     Hierarchy items are folders and tasks. Folders can have as parent another
     folder or project. Tasks can have as parent only folder.
+
+    Folder items are stored in a cache shared by all instances of the model
+    (see '_SharedFoldersCache'), other caches are per instance.
     """
     lifetime = 60  # A minute
 
     def __init__(self, controller):
         self._tags_by_entity_type = NestedCacheItem(
-            levels=1, default_factory=dict, lifetime=self.lifetime)
-        self._folders_items = NestedCacheItem(
             levels=1, default_factory=dict, lifetime=self.lifetime)
         self._folders_by_id = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
@@ -236,13 +584,24 @@ class HierarchyModel(object):
         self._entity_ids_by_assignee = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
-        self._folders_refreshing = set()
         self._tasks_refreshing = set()
         self._controller = controller
 
-    def reset(self):
+    def reset(self, force: bool = False) -> None:
+        """Reset cached data.
+
+        Folder items are shared with other tools and are not reset by
+        default. They are queried again once they change on server or
+        their cache lifetime expires (see '_SharedFoldersCache').
+
+        Args:
+            force (bool): Reset also folder items shared with other tools.
+                Should be used when user explicitly asks for a refresh.
+
+        """
+        if force:
+            _SHARED_FOLDERS_CACHE.reset()
         self._tags_by_entity_type.reset()
-        self._folders_items.reset()
         self._folders_by_id.reset()
 
         self._task_items.reset()
@@ -250,16 +609,19 @@ class HierarchyModel(object):
 
         self._entity_ids_by_assignee.reset()
 
-    def refresh_project(self, project_name):
+    def refresh_project(self, project_name: str) -> None:
         """Force to refresh folder items for a project.
 
         Args:
             project_name (str): Name of project to refresh.
-        """
 
+        """
+        _SHARED_FOLDERS_CACHE.reset(project_name)
         self._refresh_folders_cache(project_name)
 
-    def get_folder_items(self, project_name, sender):
+    def get_folder_items(
+        self, project_name: str, sender: str | None
+    ) -> dict[str, FolderItem]:
         """Get folder items by project name.
 
         The folders are cached per project name. If the cache is not valid
@@ -267,17 +629,21 @@ class HierarchyModel(object):
 
         Args:
             project_name (str): Name of project where to look for folders.
-            sender (Union[str, None]): Who requested the folder ids.
+            sender (str | None): Who requested the folder ids.
 
         Returns:
             dict[str, FolderItem]: Folder items by id.
+
         """
-
-        if not self._folders_items[project_name].is_valid:
+        items = _SHARED_FOLDERS_CACHE.get_valid_items(project_name)
+        if items is None:
             self._refresh_folders_cache(project_name, sender)
-        return self._folders_items[project_name].get_data()
+            items = _SHARED_FOLDERS_CACHE.get_items(project_name)
+        return items
 
-    def get_folder_items_by_id(self, project_name, folder_ids):
+    def get_folder_items_by_id(
+        self, project_name: str, folder_ids: set[str] | list[str]
+    ) -> dict[str, FolderItem | None]:
         """Get folder items by ids.
 
         This function will query folders if they are not in cache. But the
@@ -285,33 +651,38 @@ class HierarchyModel(object):
 
         Args:
             project_name (str): Name of project where to look for folders.
-            folder_ids (Iterable[str]): Folder ids.
+            folder_ids (set[str] | list[str]): Folder ids.
 
         Returns:
-            dict[str, Union[FolderItem, None]]: Folder items by id.
-        """
+            dict[str, FolderItem | None]: Folder items by id.
 
-        folder_ids = set(folder_ids)
-        if self._folders_items[project_name].is_valid:
-            cache_data = self._folders_items[project_name].get_data()
+        """
+        if not isinstance(folder_ids, set):
+            folder_ids = set(folder_ids)
+
+        cache_data = _SHARED_FOLDERS_CACHE.get_valid_items(project_name)
+        if cache_data is not None:
             return {
                 folder_id: cache_data.get(folder_id)
                 for folder_id in folder_ids
             }
+
         folders = ayon_api.get_folders(
             project_name,
             folder_ids=folder_ids,
-            fields=["id", "name", "label", "parentId", "path", "folderType"]
+            fields=FOLDER_FIELDS,
         )
         # Make sure all folder ids are in output
         output = {folder_id: None for folder_id in folder_ids}
         output.update({
-            folder["id"]: _get_folder_item_from_entity(folder)
+            folder["id"]: FolderItem.from_entity(folder)
             for folder in folders
         })
         return output
 
-    def get_folder_items_by_paths(self, project_name, folder_paths):
+    def get_folder_items_by_paths(
+        self, project_name: str, folder_paths: set[str] | list[str]
+    ) -> dict[str, FolderItem | None]:
         """Get folder items by ids.
 
         This function will query folders if they are not in cache. But the
@@ -319,19 +690,22 @@ class HierarchyModel(object):
 
         Args:
             project_name (str): Name of project where to look for folders.
-            folder_paths (Iterable[str]): Folder paths.
+            folder_paths (set[str] | list[str]): Folder paths.
 
         Returns:
-            dict[str, Union[FolderItem, None]]: Folder items by id.
-        """
+            dict[str, FolderItem | None]: Folder items by path.
 
-        folder_paths = set(folder_paths)
-        output = {folder_path: None for folder_path in folder_paths}
+        """
+        if not isinstance(folder_paths, set):
+            folder_paths = set(folder_paths)
+        output: dict[str, FolderItem | None] = {
+            folder_path: None for folder_path in folder_paths
+        }
         if not folder_paths:
             return output
 
-        if self._folders_items[project_name].is_valid:
-            cache_data = self._folders_items[project_name].get_data()
+        cache_data = _SHARED_FOLDERS_CACHE.get_valid_items(project_name)
+        if cache_data is not None:
             for folder_item in cache_data.values():
                 if folder_item.path in folder_paths:
                     output[folder_item.path] = folder_item
@@ -339,15 +713,17 @@ class HierarchyModel(object):
         folders = ayon_api.get_folders(
             project_name,
             folder_paths=folder_paths,
-            fields=["id", "name", "label", "parentId", "path", "folderType"]
+            fields=FOLDER_FIELDS,
         )
         # Make sure all folder ids are in output
         for folder in folders:
-            item = _get_folder_item_from_entity(folder)
+            item = FolderItem.from_entity(folder)
             output[item.path] = item
         return output
 
-    def get_folder_item(self, project_name, folder_id):
+    def get_folder_item(
+        self, project_name: str, folder_id: str
+    ) -> FolderItem | None:
         """Get folder item by id.
 
         This function will query folder if they is not in cache. But the
@@ -358,14 +734,17 @@ class HierarchyModel(object):
             folder_id (str): Folder id.
 
         Returns:
-            Union[FolderItem, None]: Folder item.
+            FolderItem | None: Folder item.
+
         """
         items = self.get_folder_items_by_id(
-            project_name, [folder_id]
+            project_name, {folder_id}
         )
         return items.get(folder_id)
 
-    def get_folder_item_by_path(self, project_name, folder_path):
+    def get_folder_item_by_path(
+        self, project_name: str, folder_path: str
+    ) -> FolderItem | None:
         """Get folder item by path.
 
         This function will query folder if they is not in cache. But the
@@ -376,27 +755,31 @@ class HierarchyModel(object):
             folder_path (str): Folder path.
 
         Returns:
-            Union[FolderItem, None]: Folder item.
+            FolderItem | None: Folder item.
 
         """
         items = self.get_folder_items_by_paths(
-            project_name, [folder_path]
+            project_name, {folder_path}
         )
         return items.get(folder_path)
 
     def get_task_item_by_name(
-        self, project_name, folder_id, task_name, sender
-    ):
+        self,
+        project_name: str,
+        folder_id: str,
+        task_name: str,
+        sender: str | None,
+    ) -> TaskItem | None:
         """Get task item by name and folder id.
 
         Args:
             project_name (str): Project name.
             folder_id (str): Folder id.
             task_name (str): Task name.
-            sender (Union[str, None]): Who requested the task item.
+            sender (str | None): Who requested the task item.
 
         Returns:
-            Optional[TaskItem]: Task item found by name and folder id.
+            TaskItem | None: Task item found by name and folder id.
 
         """
         for task_item in self.get_task_items(project_name, folder_id, sender):
@@ -404,7 +787,12 @@ class HierarchyModel(object):
                 return task_item
         return None
 
-    def get_task_items(self, project_name, folder_id, sender):
+    def get_task_items(
+        self,
+        project_name: str | None,
+        folder_id: str | None,
+        sender: str | None,
+    ) -> list[TaskItem]:
         if not project_name or not folder_id:
             return []
 
@@ -413,19 +801,23 @@ class HierarchyModel(object):
             self._refresh_tasks_cache(project_name, folder_id, sender)
         return task_cache.get_data()
 
-    def get_folder_entities(self, project_name, folder_ids):
+    def get_folder_entities(
+        self, project_name: str | None, folder_ids: set[str] | list[str]
+    ) -> dict[str, dict[str, Any]]:
         """Get folder entities by ids.
 
         Args:
-            project_name (str): Project name.
-            folder_ids (Iterable[str]): Folder ids.
+            project_name (str | None): Project name.
+            folder_ids (set[str] | list[str]): Folder ids.
 
         Returns:
-            dict[str, Any]: Folder entities by id.
-        """
+            dict[str, dict[str, Any]]: Folder entities by id.
 
+        """
         output = {}
-        folder_ids = set(folder_ids)
+        if not isinstance(folder_ids, set):
+            folder_ids = set(folder_ids)
+
         if not project_name or not folder_ids:
             return output
 
@@ -438,19 +830,26 @@ class HierarchyModel(object):
                 folder_ids_to_query.add(folder_id)
             else:
                 output[folder_id] = None
+
         self._query_folder_entities(project_name, folder_ids_to_query)
         for folder_id in folder_ids_to_query:
             cache = self._folders_by_id[project_name][folder_id]
             output[folder_id] = cache.get_data()
         return output
 
-    def get_folder_entity(self, project_name, folder_id):
+    def get_folder_entity(
+        self, project_name: str, folder_id: str
+    ) -> dict[str, Any] | None:
         output = self.get_folder_entities(project_name, {folder_id})
         return output[folder_id]
 
-    def get_task_entities(self, project_name, task_ids):
+    def get_task_entities(
+        self, project_name: str | None, task_ids: set[str] | list[str]
+    ) -> dict[str, dict[str, Any]]:
         output = {}
-        task_ids = set(task_ids)
+        if not isinstance(task_ids, set):
+            task_ids = set(task_ids)
+
         if not project_name or not task_ids:
             return output
 
@@ -469,13 +868,15 @@ class HierarchyModel(object):
             output[task_id] = cache.get_data()
         return output
 
-    def get_task_entity(self, project_name, task_id):
+    def get_task_entity(
+        self, project_name: str, task_id: str
+    ) -> dict[str, Any] | None:
         output = self.get_task_entities(project_name, {task_id})
         return output[task_id]
 
     def get_entity_ids_for_assignees(
-        self, project_name: str, assignees: list[str]
-    ):
+        self, project_name: str, assignees: set[str] | list[str]
+    ) -> dict[str, set[str]]:
         folder_ids = set()
         task_ids = set()
         output = {
@@ -547,8 +948,9 @@ class HierarchyModel(object):
         return cache.get_data()
 
     @contextlib.contextmanager
-    def _folder_refresh_event_manager(self, project_name, sender):
-        self._folders_refreshing.add(project_name)
+    def _folder_refresh_event_manager(
+        self, project_name: str, sender: str | None
+    ) -> Generator[None, None, None]:
         self._controller.emit_event(
             "folders.refresh.started",
             {"project_name": project_name, "sender": sender},
@@ -563,12 +965,11 @@ class HierarchyModel(object):
                 {"project_name": project_name, "sender": sender},
                 HIERARCHY_MODEL_SENDER
             )
-            self._folders_refreshing.remove(project_name)
 
     @contextlib.contextmanager
     def _task_refresh_event_manager(
-        self, project_name, folder_id, sender
-    ):
+        self, project_name: str, folder_id: str, sender: str | None
+    ) -> Generator[None, None, None]:
         self._tasks_refreshing.add(folder_id)
         self._controller.emit_event(
             "tasks.refresh.started",
@@ -594,28 +995,72 @@ class HierarchyModel(object):
             )
             self._tasks_refreshing.discard(folder_id)
 
-    def _refresh_folders_cache(self, project_name, sender=None):
-        if project_name in self._folders_refreshing:
-            return
+    def _refresh_folders_cache(
+        self, project_name: str, sender: str | None = None
+    ) -> None:
+        cache = _SHARED_FOLDERS_CACHE
+        thread_id = threading.get_ident()
+        cond = cache.cond
+        while True:
+            with cond:
+                refreshing_thread = cache.refreshing.get(project_name)
+                # Re-entered from a refresh event callback in the same thread
+                if refreshing_thread == thread_id:
+                    return
+                # Other thread is already querying, wait for its result
+                #   instead of returning not yet filled cache.
+                if refreshing_thread is not None:
+                    cond.wait_for(
+                        lambda: project_name not in cache.refreshing
+                    )
+                    # Query again if the result was discarded or failed
+                    if cache.get_valid_items_locked(project_name) is None:
+                        continue
+                    return
 
-        with self._folder_refresh_event_manager(project_name, sender):
-            folder_items = self._query_folders(project_name)
-            self._folders_items[project_name].update_data(folder_items)
+                cache.refreshing[project_name] = thread_id
+                token = cache.start_query_locked(project_name)
 
-    def _query_folders(self, project_name):
-        hierarchy = ayon_api.get_folders_hierarchy(project_name)
+            stored = False
+            try:
+                with self._folder_refresh_event_manager(project_name, sender):
+                    folder_items = self._query_folders(project_name)
+                    stored = cache.store(project_name, folder_items, token)
+            finally:
+                with cond:
+                    cache.refreshing.pop(project_name, None)
+                    cond.notify_all()
 
-        folder_items = {}
-        hierachy_queue = collections.deque(hierarchy["hierarchy"])
-        while hierachy_queue:
-            item = hierachy_queue.popleft()
-            folder_item = _get_folder_item_from_hierarchy_item(item)
-            folder_items[folder_item.entity_id] = folder_item
-            hierachy_queue.extend(item["children"] or [])
-        return folder_items
+            if stored:
+                return
+            # Cache was reset during the query, the result might be
+            #   outdated so query again
 
-    def _query_folder_entities(self, project_name, folder_ids):
-        if not project_name or not folder_ids:
+    def _query_folders(self, project_name: str) -> dict[str, FolderItem]:
+        folders = ayon_api.get_rest_folders(project_name, include_attrib=False)
+        folders_by_parent_id = collections.defaultdict(list)
+        for folder in folders:
+            folders_by_parent_id[folder["parentId"]].append(folder)
+
+        # REST endpoint does not filter inactive folders, skip them
+        #   and their descendants
+        output = {}
+        hierarchy_queue = collections.deque()
+        hierarchy_queue.append(None)
+        while hierarchy_queue:
+            parent_id = hierarchy_queue.popleft()
+            for folder in folders_by_parent_id[parent_id]:
+                if not folder.get("active", True):
+                    continue
+                folder_id = folder["id"]
+                output[folder_id] = FolderItem.from_rest_data(folder)
+                hierarchy_queue.append(folder_id)
+        return output
+
+    def _query_folder_entities(
+        self, project_name: str, folder_ids: set[str]
+    ) -> None:
+        if not folder_ids:
             return
         project_cache = self._folders_by_id[project_name]
         folders = ayon_api.get_folders(project_name, folder_ids=folder_ids)
@@ -623,8 +1068,10 @@ class HierarchyModel(object):
             folder_id = folder["id"]
             project_cache[folder_id].update_data(folder)
 
-    def _query_task_entities(self, project_name, task_ids):
-        if not project_name or not task_ids:
+    def _query_task_entities(
+        self, project_name: str, task_ids: set[str]
+    ) -> None:
+        if not task_ids:
             return
 
         project_cache = self._tasks_by_id[project_name]
@@ -633,7 +1080,9 @@ class HierarchyModel(object):
             task_id = task["id"]
             project_cache[task_id].update_data(task)
 
-    def _refresh_tasks_cache(self, project_name, folder_id, sender=None):
+    def _refresh_tasks_cache(
+        self, project_name: str, folder_id: str, sender: str | None = None
+    ) -> None:
         if folder_id in self._tasks_refreshing:
             while folder_id in self._tasks_refreshing:
                 time.sleep(0.01)
@@ -645,10 +1094,31 @@ class HierarchyModel(object):
         ):
             cache.update_data(self._query_tasks(project_name, folder_id))
 
-    def _query_tasks(self, project_name, folder_id):
+    def _query_tasks(
+        self, project_name: str, folder_id: str
+    ) -> list[TaskItem]:
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type", "tags"}
+            fields={
+                "id",
+                "name",
+                "label",
+                "folderId",
+                "type",
+                "tags",
+                "status",
+            }
         ))
-        return _get_task_items_from_tasks(tasks)
+        task_type_items: list[TaskTypeItem] = (
+            self._controller.get_task_type_items(project_name)
+        )
+
+        order_by_task_type = {
+            task_type.name: index
+            for index, task_type in enumerate(task_type_items)
+        }
+        return [
+            TaskItem.from_entity(task, order_by_task_type[task["type"]])
+            for task in tasks
+        ]

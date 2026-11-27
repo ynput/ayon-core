@@ -13,7 +13,10 @@ import copy
 
 import pyblish.api
 
-from ayon_core.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.publish import (
+    PublishError,
+    get_publish_template_object,
+)
 
 
 class CollectResourcesPath(pyblish.api.InstancePlugin):
@@ -25,85 +28,32 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
 
     label = "Collect Resources Path"
     order = pyblish.api.CollectorOrder + 0.495
-    families = ["workfile",
-                "pointcache",
-                "proxyAbc",
-                "camera",
-                "animation",
-                "model",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "ass",
-                "vdbcache",
-                "scene",
-                "vrayproxy",
-                "render",
-                "prerender",
-                "imagesequence",
-                "rendersetup",
-                "rig",
-                "plate",
-                "look",
-                "mvLook",
-                "yetiRig",
-                "yeticache",
-                "nukenodes",
-                "gizmo",
-                "source",
-                "matchmove",
-                "image",
-                "source",
-                "assembly",
-                "fbx",
-                "gltf",
-                "textures",
-                "action",
-                "background",
-                "effect",
-                "staticMesh",
-                "skeletalMesh",
-                "xgen",
-                "yeticacheUE",
-                "tycache",
-                "usd",
-                "oxrig",
-                "sbsar",
-                "zfab",
-                ]
+    families = ["*"]
 
     def process(self, instance):
-        anatomy = instance.context.data["anatomy"]
-
         template_data = copy.deepcopy(instance.data["anatomyData"])
 
         # This is for cases of Deprecated anatomy without `folder`
         # TODO remove when all clients have solved this issue
         template_data.update({"frame": "FRAME_TEMP", "representation": "TEMP"})
 
-        task_name = task_type = None
-        task_entity = instance.data.get("taskEntity")
-        if task_entity:
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
+        publish_template = get_publish_template_object(
+            instance, logger=self.log
+        )["directory"]
 
-        product_base_type = instance.data.get("productBaseType")
-        if not product_base_type:
-            product_base_type = instance.data["productType"]
+        if "{originalDirname}" in publish_template:
+            original_directory = instance.data.get("originalDirname")
+            if not original_directory:
+                original_directory = instance.data.get("stagingDir")
 
-        template_name = get_publish_template_name(
-            project_name=instance.context.data["projectName"],
-            host_name=instance.context.data["hostName"],
-            product_base_type=product_base_type,
-            task_name=task_name,
-            task_type=task_type,
-            project_settings=instance.context.data["project_settings"],
-            logger=self.log,
-        )
+            if not original_directory:
+                raise PublishError(
+                    "Publish template requires 'originalDirname'"
+                    " but 'originalDirname' is not set on instance"
+                    " and 'stagingDir' is not yet filled."
+                )
 
-        publish_template = anatomy.get_template_item(
-            "publish", template_name, "directory")
+            template_data["originalDirname"] = original_directory
 
         publish_folder = os.path.normpath(
             publish_template.format_strict(template_data)

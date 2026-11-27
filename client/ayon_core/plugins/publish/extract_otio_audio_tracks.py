@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pyblish
 from ayon_core.lib import get_ffmpeg_tool_args, run_subprocess
+from ayon_core.lib.vendor_bin_utils import is_ffmpeg_option_supported
 
 
 def get_audio_instances(context):
@@ -398,11 +399,12 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
 
         args = get_ffmpeg_tool_args("ffmpeg")
         args.extend(input_args)
-        args.extend([
-            "-filter_complex_script", filters_tmp_filepath,
-            "-map", "[a]"
-        ])
-        args.append(audio_temp_fpath)
+
+        if is_ffmpeg_option_supported("filter_complex_script"):
+            args.extend(["-filter_complex_script", filters_tmp_filepath])
+        else:
+            args.extend(["-/filter_complex", filters_tmp_filepath])
+        args.extend(["-map", "[a]", audio_temp_fpath])
 
         # run subprocess
         self.log.debug("Executing: {}".format(args))

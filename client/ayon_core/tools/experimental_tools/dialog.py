@@ -29,6 +29,7 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
         self.setWindowTitle("AYON Experimental tools")
         icon = QtGui.QIcon(app_icon_path())
         self.setWindowIcon(icon)
+        self.setMinimumWidth(220)
         self.setStyleSheet(load_stylesheet())
 
         # Widgets for cases there are not available experimental tools
@@ -57,29 +58,12 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
         content_layout = QtWidgets.QVBoxLayout()
         content_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Separator line
-        separator_widget = QtWidgets.QWidget(self)
-        separator_widget.setObjectName("Separator")
-        separator_widget.setMinimumHeight(2)
-        separator_widget.setMaximumHeight(2)
-
-        # Label describing how to turn off tools
         tool_btns_widget = QtWidgets.QWidget(self)
-        tool_btns_label = QtWidgets.QLabel(
-            (
-                "You can enable these features in"
-                "<br><b>AYON tray -> Settings -> Experimental tools</b>"
-            ),
-            tool_btns_widget
-        )
-        tool_btns_label.setAlignment(QtCore.Qt.AlignCenter)
 
         tool_btns_layout = QtWidgets.QVBoxLayout(tool_btns_widget)
         tool_btns_layout.setContentsMargins(0, 0, 0, 0)
         tool_btns_layout.addLayout(content_layout)
         tool_btns_layout.addStretch(1)
-        tool_btns_layout.addWidget(separator_widget, 0)
-        tool_btns_layout.addWidget(tool_btns_label, 0)
 
         experimental_tools = ExperimentalTools(
             parent_widget=parent, refresh=False

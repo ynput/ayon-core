@@ -5,6 +5,7 @@ Temporary folder operations
 import os
 import tempfile
 from pathlib import Path
+import uuid
 import warnings
 
 from ayon_core.lib import StringTemplate
@@ -66,9 +67,20 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
         str: path to tempdir
     """
     # use pathlib for creating tempdir
-    return tempfile.mkdtemp(
-        prefix=prefix, suffix=suffix, dir=dirpath
-    )
+    if dirpath is None:
+        return tempfile.mkdtemp(prefix=prefix, suffix=suffix)
+
+    # Use 'pathlib.Path.mkdir' to inherit permissions
+    dirpath_p = Path(dirpath)
+    while True:
+        unique_id = uuid.uuid4().hex[:8]
+        folder_name = f"{prefix}{unique_id}{suffix}"
+        tmpdir = dirpath_p / folder_name
+        if not tmpdir.is_dir():
+            break
+    tmpdir.mkdir(parents=True, exist_ok=False)
+
+    return str(tmpdir)
 
 
 def create_custom_tempdir(project_name, anatomy=None):

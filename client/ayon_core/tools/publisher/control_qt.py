@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 
 from qtpy import QtCore
@@ -80,33 +82,32 @@ class QtPublisherController(PublisherController):
         #   '_main_thread_processor' loop
         self._item_process_in_loop = False
 
-    def reset(self):
+    def reset(self, force: bool = False):
         self._main_thread_processor.clear()
         self._item_process_in_loop = False
-        super().reset()
+        super().reset(force)
 
-    def _start_publish(self, up_validation):
-        self._publish_model.set_publish_up_validation(up_validation)
+    def _start_publish(self, stop_after_validation: bool) -> None:
+        self._publish_model.set_publish_stop_after_validation(
+            stop_after_validation
+        )
         self._publish_model.start_publish(wait=False)
         # Make sure '_next_publish_item_process' is only once in
         #   the '_main_thread_processor' loop
         if not self._item_process_in_loop:
+            self._item_process_in_loop = True
             self._process_main_thread_item(
                 MainThreadItem(self._next_publish_item_process)
             )
 
     def _next_publish_item_process(self):
-        if not self._publish_model.is_running():
+        if self._publish_model.process_next_iter():
+            self._process_main_thread_item(
+                MainThreadItem(self._next_publish_item_process)
+            )
+        else:
             # This removes '_next_publish_item_process' from loop
             self._item_process_in_loop = False
-            return
-
-        self._item_process_in_loop = True
-        func = self._publish_model.get_next_process_func()
-        self._process_main_thread_item(MainThreadItem(func))
-        self._process_main_thread_item(
-            MainThreadItem(self._next_publish_item_process)
-        )
 
     def _process_main_thread_item(self, item):
         self._main_thread_processor.add_item(item)

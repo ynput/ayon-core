@@ -199,6 +199,20 @@ class IPluginPaths(AYONInterface):
         """
         return []
 
+    def get_workfile_action_plugin_paths(self, host_name: str) -> list[str]:
+        """Receive workfile action plugin paths.
+
+        Give addons ability to add actions to workfiles tool.
+
+        Args:
+            host_name (str): Current host name.
+
+        Returns:
+            list[str]: Paths to workfile action plugins.
+
+        """
+        return []
+
 
 class ITrayAddon(AYONInterface):
     """Addon has special procedures when used in Tray tool.
@@ -262,7 +276,7 @@ class ITrayAddon(AYONInterface):
                     str(callback), exc_info=True)
 
             return
-        self._tray_manager.tray_manager.execute_in_main_thread(callback)
+        self._tray_manager.execute_in_main_thread(callback)
 
     def show_tray_message(
             self,

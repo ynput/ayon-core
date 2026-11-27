@@ -8,10 +8,10 @@ from ayon_core.pipeline import (
     publish,
     get_temp_dir
 )
+from ayon_core.pipeline.publish.lib import get_default_reviewable_layers
 from ayon_core.pipeline.colorspace import get_representation_ocio_config_path
-from ayon_core.lib import (
-    is_oiio_supported,
-)
+from ayon_core.lib import is_oiio_supported
+
 from ayon_core.lib.transcoding import (
     MissingRGBAChannelsError,
     oiio_color_convert,
@@ -63,13 +63,17 @@ class ExtractOIIOTranscode(publish.Extractor):
     optional = True
 
     # Supported extensions
-    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
+    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tif", "tiff"}
 
     # Configurable by Settings
     profiles = None
     options = None
 
     def process(self, instance):
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
+            return
+
         if not self.profiles:
             self.log.debug("No profiles present for color transcode")
             return
@@ -100,7 +104,8 @@ class ExtractOIIOTranscode(publish.Extractor):
             # Backward compatibility
             instance.data.get("colorspaceView")
         )
-
+        project_settings = instance.context.data["project_settings"]
+        review_layers = get_default_reviewable_layers(project_settings)
         for idx, repre in enumerate(list(repres)):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre, profile):
@@ -170,15 +175,20 @@ class ExtractOIIOTranscode(publish.Extractor):
                     target_view = display_view["view"] or scene_view
                     target_display = display_view["display"] or scene_display
 
-                # both could be already collected by DCC,
-                # but could be overwritten when transcoding
-                if target_view:
-                    new_repre["colorspaceData"]["view"] = target_view
-                if target_display:
-                    new_repre["colorspaceData"]["display"] = target_display
+                # Colorspace data of the new representation describe only
+                #   the target, keys copied from the source representation
+                #   must not be kept
+                new_colorspace_data = new_repre["colorspaceData"]
                 if target_colorspace:
-                    new_repre["colorspaceData"]["colorspace"] = \
-                        target_colorspace
+                    new_colorspace_data["colorspace"] = target_colorspace
+                    new_colorspace_data.pop("display", None)
+                    new_colorspace_data.pop("view", None)
+                else:
+                    new_colorspace_data["display"] = target_display
+                    new_colorspace_data["view"] = target_view
+                    # Display/view describe the pixels, the colorspace
+                    #   copied from the source does not
+                    new_colorspace_data.pop("colorspace", None)
 
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
@@ -228,7 +238,8 @@ class ExtractOIIOTranscode(publish.Extractor):
                             frames=frames,
                             frame_padding=frame_padding,
                             parallel_frames=parallel_frames,
-                            logger=self.log
+                            review_layers=review_layers,
+                            logger=self.log,
                         )
                     except MissingRGBAChannelsError as exc:
                         missing_rgba_review_channels = True
