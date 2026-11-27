@@ -25,6 +25,7 @@ from .path_resolving import (
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
+    from ayon_core.host.interfaces import SaveWorkfileContext
 
 
 class MissingWorkdirError(Exception):
@@ -123,9 +124,9 @@ def should_use_last_workfile_on_launch(
         return default_output
 
     filter_data = {
-        "tasks": task_name,
+        "task_names": task_name,
         "task_types": task_type,
-        "hosts": host_name
+        "host_names": host_name,
     }
     matching_item = filter_profiles(profiles, filter_data)
 
@@ -183,9 +184,9 @@ def should_open_workfiles_tool_on_launch(
         return default_output
 
     filter_data = {
-        "tasks": task_name,
+        "task_names": task_name,
         "task_types": task_type,
-        "hosts": host_name
+        "host_names": host_name,
     }
     matching_item = filter_profiles(profiles, filter_data)
 
@@ -336,7 +337,7 @@ def save_current_workfile_to(
     comment: Optional[str] = None,
     description: Optional[str] = None,
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
-) -> None:
+) -> SaveWorkfileContext | None:
     """Save current workfile to new location or context.
 
     Args:
@@ -348,6 +349,11 @@ def save_current_workfile_to(
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
+
+    Returns:
+        SaveWorkfileContext | None: Workfile context used during save logic.
+            Might return None if host did override the method and did not
+            return the output.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -361,7 +367,7 @@ def save_current_workfile_to(
     task_entity = ayon_api.get_task_by_name(
         project_name, folder_entity["id"], task_name
     )
-    host.save_workfile_with_context(
+    return host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,
@@ -379,7 +385,7 @@ def save_workfile_with_current_context(
     comment: Optional[str] = None,
     description: Optional[str] = None,
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
-) -> None:
+) -> SaveWorkfileContext | None:
     """Save current workfile to new location using current context.
 
     Helper function to save workfile using current context. Calls
@@ -392,6 +398,11 @@ def save_workfile_with_current_context(
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
+
+    Returns:
+        SaveWorkfileContext | None: Workfile context used during save logic.
+            Might return None if host did override the method and did not
+            return the output.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -409,7 +420,7 @@ def save_workfile_with_current_context(
                 project_name, folder_entity["id"], task_name
             )
 
-    host.save_workfile_with_context(
+    return host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,
@@ -426,7 +437,7 @@ def save_next_version(
     description: Optional[str] = None,
     *,
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
-) -> None:
+) -> SaveWorkfileContext | None:
     """Save workfile using current context, version and comment.
 
     Helper function to save a workfile using the current context. Last
@@ -440,6 +451,11 @@ def save_next_version(
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
+
+    Returns:
+        SaveWorkfileContext | None: Workfile context used during save logic.
+            Might return None if host did override the method and did not
+            return the output.
 
     """
     from ayon_core.pipeline import Anatomy
@@ -538,7 +554,7 @@ def save_next_version(
             host.name,
             task_name=task_entity["name"],
             task_type=task_entity["taskType"],
-            product_type="workfile"
+            product_base_type="workfile",
         )
 
     # Re-use comment from the current workfile if is not passed in
@@ -576,7 +592,7 @@ def save_next_version(
         rootless_path = rootless_path.replace("\\", "/")
     prepared_data.rootless_path = rootless_path
 
-    host.save_workfile_with_context(
+    return host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,
@@ -597,7 +613,7 @@ def copy_workfile_to_context(
     description: Optional[str] = None,
     open_workfile: bool = True,
     prepared_data: Optional[CopyWorkfileOptionalData] = None,
-) -> None:
+) -> str:
     """Copy workfile to a context.
 
     Copy workfile to a specified folder and task. Destination path is
@@ -611,9 +627,13 @@ def copy_workfile_to_context(
             passed.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
+        open_workfile (bool): Open the workfile when copied.
         prepared_data (Optional[CopyWorkfileOptionalData]): Prepared data
             for speed enhancements. Rootless path is calculated in this
             function.
+
+    Returns:
+        str: Path to the destination workfile.
 
     """
     from ayon_core.pipeline import Anatomy
@@ -654,18 +674,20 @@ def copy_workfile_to_context(
             task_entity,
             prepared_data=list_prepared_data
         )
-        if workfiles:
-            version = max(
-                workfile.version
-                for workfile in workfiles
-            ) + 1
+        versions = [
+            workfile.version
+            for workfile in workfiles
+            if workfile.version is not None
+        ]
+        if versions:
+            version = max(versions) + 1
         else:
             version = get_versioning_start(
                 project_name,
                 host.name,
                 task_name=task_entity["name"],
                 task_type=task_entity["taskType"],
-                product_type="workfile"
+                product_base_type="workfile",
             )
 
     task_type = task_entity["taskType"]
@@ -708,6 +730,7 @@ def copy_workfile_to_context(
         open_workfile=open_workfile,
         prepared_data=prepared_data,
     )
+    return str(workfile_path)
 
 
 def find_workfile_rootless_path(

@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 from typing import Optional, Any
 
+import arrow
 import ayon_api
 
 from ayon_core.lib import (
@@ -12,6 +15,25 @@ from ayon_core.tools.launcher.abstract import (
     WorkfileItem,
     AbstractLauncherBackend,
 )
+
+
+def _ignore_auto_generated_description(description: str) -> str:
+    """Clear auto-generated comments from the description.
+
+    TODO: This is a temporary hack.
+      Filter these with an explicit or customizable state instead
+      see https://github.com/ynput/ayon-core/pull/2282#discussion_r4424589237
+
+    Args:
+        description: The description to clear.
+
+    Returns:
+        The description with the auto-generated comments cleared.
+
+    """
+    if description.startswith("Incremented by publishing"):
+        return ""
+    return description
 
 
 class WorkfilesModel:
@@ -44,10 +66,15 @@ class WorkfilesModel:
         anatomy = Anatomy(project_name, project_entity=project_entity)
         items = []
         for workfile_entity in ayon_api.get_workfiles_info(
-            project_name, task_ids={task_id}, fields={"id", "path", "data"}
+            project_name,
+            task_ids={task_id},
+            fields={
+                "id", "path", "data", "updatedAt", "updatedBy", "attrib",
+            },
         ):
             rootless_path = workfile_entity["path"]
             exists = False
+            path = None
             try:
                 path = anatomy.fill_root(rootless_path)
                 exists = os.path.exists(path)
@@ -56,23 +83,44 @@ class WorkfilesModel:
                     "Failed to fill root for workfile path",
                     exc_info=True,
                 )
+
+            mod_time = None
+            file_size = None
+            if path and exists:
+                mod_time = os.path.getmtime(path)
+                file_size = os.path.getsize(path)
+            else:
+                updated_at = workfile_entity["updatedAt"]
+                if updated_at:
+                    mod_time = float(
+                        arrow.get(updated_at).to("local").timestamp
+                    )
+
             workfile_data = workfile_entity["data"]
             host_name = workfile_data.get("host_name")
             version = workfile_data.get("version")
+            attrib = workfile_entity.get("attrib") or {}
+            description = attrib.get("description") or ""
+            description = _ignore_auto_generated_description(description)
 
             items.append(WorkfileItem(
                 workfile_id=workfile_entity["id"],
                 filename=os.path.basename(rootless_path),
                 exists=exists,
+                host_name=host_name,
                 icon=self._get_host_icon(host_name),
                 version=version,
+                updated_at_time=mod_time,
+                file_size=file_size,
+                updated_by=workfile_entity.get("updatedBy"),
+                description=description,
             ))
         cache.update_data(items)
         return items
 
     def _get_host_icon(
         self, host_name: Optional[str]
-    ) -> Optional[dict[str, Any]]:
+    ) -> str | None:
         if self._host_icons is None:
             host_icons = {}
             try:

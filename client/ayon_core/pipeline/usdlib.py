@@ -1,6 +1,9 @@
+from __future__ import annotations
 import dataclasses
 import os
-import logging
+from typing import Literal, TYPE_CHECKING
+
+from ayon_core.lib import Logger
 
 try:
     from pxr import UsdGeom, Sdf, Kind
@@ -8,7 +11,10 @@ except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
     from mvpxr import UsdGeom, Sdf, Kind
 
-log = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    import pyblish.api
+
+log = Logger.get_logger(__name__)
 
 
 @dataclasses.dataclass
@@ -105,7 +111,7 @@ def setup_asset_layer(
         force_add_payload (bool): Generate payload layer even if no
             reference paths are set - thus generating an enmpty layer.
         set_payload_path (bool): Whether to directly set the payload asset
-            path to `./payload.usd` or not Defaults to True.
+            path to `./payload.usd` or not Defaults to False.
 
     """
     # Define root prim for the asset and make it the default for the stage.
@@ -299,7 +305,6 @@ def add_ordered_sublayer(layer, contribution_path, layer_id, order=None,
             sdf format args metadata if enabled)
 
     """
-
     # Add the order with the contribution path so that for future
     # contributions we can again use it to magically fit into the
     # ordering. We put this in the path because sublayer paths do
@@ -317,20 +322,25 @@ def add_ordered_sublayer(layer, contribution_path, layer_id, order=None,
     # If the layer was already in the layers, then replace it
     for index, existing_path in enumerate(layer.subLayerPaths):
         args = get_sdf_format_args(existing_path)
-        existing_layer = args.get("layer_id")
-        if existing_layer == layer_id:
+        existing_layer_id = args.get("layer_id")
+        if existing_layer_id == layer_id:
+            existing_layer = layer.subLayerPaths[index]
+            existing_order = args.get("order")
+            existing_order = int(existing_order) if existing_order else None
+            if order is not None and order != existing_order:
+                # We need to move the layer, so we will remove this index
+                # and then re-insert it below at the right order
+                log.debug(f"Removing existing layer: {existing_layer}")
+                del layer.subLayerPaths[index]
+                break
+
             # Put it in the same position where it was before when swapping
             # it with the original, also take over its order metadata
-            order = args.get("order")
-            if order is not None:
-                order = int(order)
-            else:
-                order = None
             contribution_path = _format_path(contribution_path,
-                                             order=order,
+                                             order=existing_order,
                                              layer_id=layer_id)
             log.debug(
-                f"Replacing existing layer: {layer.subLayerPaths[index]} "
+                f"Replacing existing layer: {existing_layer} "
                 f"-> {contribution_path}"
             )
             layer.subLayerPaths[index] = contribution_path
@@ -604,7 +614,7 @@ def add_ordered_reference(
         return prim_spec
 
     for index, existing_ref in enumerate(entries):
-        existing_order = existing_ref.customData.get("order")
+        existing_order = existing_ref.customData.get("ayon_order")
         if existing_order is not None and existing_order < order:
             log.debug(
                 f"Inserting new reference at {index}: {reference}"
@@ -684,3 +694,62 @@ def get_sdf_format_args(path):
     """Return SDF_FORMAT_ARGS parsed to `dict`"""
     _raw_path, data = Sdf.Layer.SplitIdentifier(path)
     return data
+
+
+def get_standard_default_prim_name(folder_path: str) -> str:
+    """Return the AYON-specified default prim name for a folder path.
+
+    This is used e.g. for the default prim in AYON USD Contribution workflows.
+    """
+    folder_name: str = folder_path.rsplit("/", 1)[-1]
+
+    # Prim names are not allowed to start with a digit in USD. Authoring them
+    # would mean generating essentially garbage data and may result in
+    # unexpected behavior in certain USD or DCC versions, like failure to
+    # refresh in usdview or crashes in Houdini 21.
+    if folder_name and folder_name[0].isdigit():
+        folder_name = f"_{folder_name}"
+
+    return folder_name
+
+
+@dataclasses.dataclass
+class BaseContribution:
+    # We contribute either the resulting usd representation of an instance
+    # or an explicit `source` string which represent an asset path or layer
+    # identifier like an AYON entity URI
+    source: pyblish.api.Instance | str
+
+    # usually the department or task name, something that uniquely identifies
+    # this contribution so that we can swap out an older contribution with a
+    # new one when the same layer_id is used again
+    layer_id: str
+
+    # When sublayering or referencing defines where this contribution should
+    # be ordered compared to other contributions.
+    order: int
+
+
+@dataclasses.dataclass
+class SublayerContribution(BaseContribution):
+    """Sublayer contribution"""
+
+
+@dataclasses.dataclass
+class ReferenceContribution(BaseContribution):
+    """Reference contribution"""
+    target_prim_path: str
+
+    # TODO: Add support to payload instead
+    # reference_mode: Literal["reference", "payload"]
+
+
+@dataclasses.dataclass
+class VariantContribution(ReferenceContribution):
+    """Reference contribution within a Variant Set"""
+
+    # Variant
+    variant_set_name: str
+    variant_name: str
+    # Whether to author the variant selection opinion
+    variant_default_policy: Literal["if_not_set", "always", "never"]

@@ -1,11 +1,16 @@
 import os
+from ayon_core.pipeline.publish import get_publish_template_object
 
 
 def get_published_workfile_instance(context):
     """Find workfile instance in context"""
     for i in context:
+        product_base_type = i.data.get("productBaseType")
+        if not product_base_type:
+            product_base_type = i.data["productType"]
+
         is_workfile = (
-            i.data["productType"] == "workfile"
+            product_base_type == "workfile"
             or "workfile" in i.data.get("families", [])
 
         )
@@ -53,13 +58,14 @@ def from_published_scene(instance, replace_in_path=True):
     template_data["ext"] = rep.get("ext")
     template_data["comment"] = None
 
-    anatomy = instance.context.data['anatomy']
-    template_obj = anatomy.get_template_item("publish", "default", "path")
+    template_obj = get_publish_template_object(workfile_instance)["path"]
     template_filled = template_obj.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
     if not os.path.exists(file_path):
-        raise
+        raise FileNotFoundError(
+            f"Published scene does not exist: {file_path}"
+        )
 
     if not replace_in_path:
         return file_path

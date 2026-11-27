@@ -1,14 +1,24 @@
+from __future__ import annotations
 import os
+import re
 import platform
 import numbers
+import warnings
 
 from ayon_core.lib import Logger, StringTemplate
 from ayon_core.lib.path_templates import FormatObject
 
 from .exceptions import RootMissingEnv
 
+# Shell-like environment variables ('$KEY', '${KEY}' and '%KEY%') which are
+#   not supported in roots. Matches only valid env key names so paths like
+#   Windows admin shares ('//server/c$/projects') are not affected.
+_SHELL_VAR_REGEX = re.compile(
+    r"\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*|%[A-Za-z_]\w*%"
+)
 
-class RootItem(FormatObject):
+
+class AnatomyRoot(FormatObject):
     """Represents one item or roots.
 
     Holds raw data of root item specification. Raw data contain value
@@ -37,21 +47,39 @@ class RootItem(FormatObject):
         self.available_platforms = set(lowered_platform_keys.keys())
 
         current_platform = platform.system().lower()
-        # WARNING: Using environment variables in roots is not considered
-        #   as production safe. Some features may not work as expected, for
-        #   example USD resolver or site sync.
-        try:
-            self.value = lowered_platform_keys[current_platform].format_map(
-                os.environ
+        self._current_platform = current_platform
+        raw_value = lowered_platform_keys.get(current_platform)
+        if raw_value is None:
+            raise RootMissingEnv(
+                f"Root \"{name}\" is missing definition"
+                f" for platform \"{current_platform}\"."
             )
-        except KeyError:
-            result = StringTemplate(self.value).format(os.environ.copy())
+
+        # WARNING: Using environment variables or '~' in roots is not
+        #   considered as production safe. Some features may not work as
+        #   expected, for example USD resolver or site sync.
+        # Only '~' and '{ENV_KEY}' are supported. Shell-like '$ENV_KEY' or
+        #   '%ENV_KEY%' are not expanded on purpose, unknown keys would be
+        #   left in the path silently.
+        unsupported_vars = _SHELL_VAR_REGEX.findall(raw_value)
+        if unsupported_vars:
+            joined_vars = ", ".join(f"\"{var}\"" for var in unsupported_vars)
+            raise RootMissingEnv(
+                f"Root \"{name}\" contains unsupported environment variable"
+                f" syntax {joined_vars}. Use '{{ENV_KEY}}' instead."
+            )
+        try:
+            value = os.path.expanduser(raw_value).format_map(os.environ)
+        except KeyError as e:
+            result = StringTemplate(raw_value).format(os.environ.copy())
             is_are = "is" if len(result.missing_keys) == 1 else "are"
             missing_keys = ", ".join(result.missing_keys)
             raise RootMissingEnv(
                 f"Root \"{name}\" requires environment variable/s"
                 f" {missing_keys} which {is_are} not available."
-            )
+            ) from e
+
+        self.value = value
 
         self.clean_value = self._clean_root(self.value)
 
@@ -130,6 +158,29 @@ class RootItem(FormatObject):
             for key, value in raw_data.items()
         }
 
+    def _get_platform_root(self, platform_name):
+        """Cleaned root value for a platform.
+
+        Value of current platform is resolved ('~' and '{ENV_KEY}' are
+        expanded), values of other platforms are returned as defined
+        because they can't be resolved on this machine.
+
+        Args:
+            platform_name (str): Platform name.
+
+        Returns:
+            Optional[str]: Cleaned root value or None if not defined.
+
+        """
+        if platform_name == self._current_platform:
+            return self.clean_value
+        return self.cleaned_data.get(platform_name)
+
+    @staticmethod
+    def _path_starts_with_root(path, root):
+        """Check if path is the root or is inside the root."""
+        return path == root or path.startswith(root + "/")
+
     def path_remapper(self, path, dst_platform=None, src_platform=None):
         """Remap path for specific platform.
 
@@ -149,7 +200,7 @@ class RootItem(FormatObject):
         """
         cleaned_path = self._clean_path(path)
         if dst_platform:
-            dst_root_clean = self.cleaned_data.get(dst_platform)
+            dst_root_clean = self._get_platform_root(dst_platform)
             if not dst_root_clean:
                 self.log.warning(
                     "Root \"{}\" miss platform \"{}\" definition.".format(
@@ -162,7 +213,7 @@ class RootItem(FormatObject):
                 return cleaned_path
 
         if src_platform:
-            src_root_clean = self.cleaned_data.get(src_platform)
+            src_root_clean = self._get_platform_root(src_platform)
             if src_root_clean is None:
                 self.log.warning(
                     "Root \"{}\" miss platform \"{}\" definition.".format(
@@ -189,12 +240,14 @@ class RootItem(FormatObject):
         else:
             fill_data = {self.name: self.value}
 
-        return template.format(**{"root": fill_data})
+        return template.format(root=fill_data)
 
     def find_root_template_from_path(self, path):
         """Replaces known root value with formattable key in path.
 
-        All platform values are checked for this replacement.
+        All platform values are checked for this replacement. Value of
+        current platform is used resolved ('~' and '{ENV_KEY}' expanded).
+        Input path is expected to be absolute and fully resolved.
 
         Args:
             path (str): Path where root value should be found.
@@ -224,23 +277,40 @@ class RootItem(FormatObject):
         output = str(path)
 
         mod_path = self._clean_path(path)
-        for root_os, root_path in self.cleaned_data.items():
+        replacement = "{" + self.full_key + "}"
+        for root_os in self.cleaned_data:
+            root_path = self._get_platform_root(root_os)
             # Skip empty paths
             if not root_path:
                 continue
 
-            _mod_path = mod_path  # reset to original cleaned value
+            _mod_path = mod_path
+            _root_path = root_path
             if root_os == "windows":
-                root_path = root_path.lower()
                 _mod_path = _mod_path.lower()
+                _root_path = _root_path.lower()
 
-            if _mod_path.startswith(root_path):
+            if self._path_starts_with_root(_mod_path, _root_path):
                 result = True
-                replacement = "{" + self.full_key + "}"
                 output = replacement + mod_path[len(root_path):]
                 break
 
         return (result, output)
+
+
+# TODO remove
+class RootItem(AnatomyRoot):
+    """DEPRECATED: Use 'AnatomyRoot' instead.
+
+    Backwards compatibility added 2026/05/21.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        warnings.warn(
+            "RootItem is deprecated. Use AnatomyRoot instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
 
 class AnatomyRoots:
@@ -296,7 +366,7 @@ class AnatomyRoots:
             src_platform (Optional[str]): Specify source platform. This is
                 recommended to not use and keep unset until you really want
                 to use specific platform.
-            roots (Optional[Union[dict, RootItem])): It is possible to remap
+            roots (Optional[Union[dict, AnatomyRoot])): It is possible to remap
                 path with different roots then instance where method was
                 called has.
 
@@ -313,12 +383,12 @@ class AnatomyRoots:
             raise ValueError("Roots are not set. Can't find path.")
 
         if "{root" in path:
-            path = path.format(**{"root": roots})
+            path = path.format(root=roots)
             # If `dst_platform` is not specified then return else continue.
             if not dst_platform:
                 return path
 
-        if isinstance(roots, RootItem):
+        if isinstance(roots, AnatomyRoot):
             return roots.path_remapper(path, dst_platform, src_platform)
 
         for _root in roots.values():
@@ -353,7 +423,7 @@ class AnatomyRoots:
         if roots is None:
             raise ValueError("Roots are not set. Can't find path.")
 
-        if isinstance(roots, RootItem):
+        if isinstance(roots, AnatomyRoot):
             return roots.find_root_template_from_path(path)
 
         for root_name, _root in roots.items():
@@ -411,7 +481,7 @@ class AnatomyRoots:
             roots = self.roots
 
         output = []
-        if isinstance(roots, RootItem):
+        if isinstance(roots, AnatomyRoot):
             for value in roots.raw_data.values():
                 output.append(value)
             return output
@@ -426,7 +496,7 @@ class AnatomyRoots:
         if roots is None:
             roots = self.roots
 
-        if isinstance(roots, RootItem):
+        if isinstance(roots, AnatomyRoot):
             key_items = [self.env_prefix]
             for _key in keys:
                 key_items.append(_key.upper())
@@ -462,7 +532,7 @@ class AnatomyRoots:
                 )
             }
 
-        if isinstance(roots, RootItem):
+        if isinstance(roots, AnatomyRoot):
             key_items = [AnatomyRoots.env_prefix]
             for _key in keys:
                 key_items.append(_key.upper())
@@ -513,7 +583,7 @@ class AnatomyRoots:
         Default roots are loaded if project override's does not contain roots.
 
         Returns:
-            `RootItem` or `dict` with multiple `RootItem`s when multiroot
+            `AnatomyRoot` or `dict` with multiple `AnatomyRoot`s when multiroot
             setting is used.
         """
 
@@ -521,24 +591,23 @@ class AnatomyRoots:
 
     @staticmethod
     def _parse_dict(data, parent):
-        """Parse roots raw data into RootItem or dictionary with RootItems.
+        """Parse roots raw data into dictionary with AnatomyRoots.
 
-        Converting raw roots data to `RootItem` helps to handle platform keys.
-        This method is recursive to be able handle multiroot setup and
-        is static to be able to load default roots without creating new object.
+        Converting raw roots data to `AnatomyRoot` helps to handle platform
+            keys.
 
         Args:
             data (dict): Should contain raw roots data to be parsed.
             parent (AnatomyRoots): Parent object set as parent
-                for ``RootItem``.
+                for ``AnatomyRoot``.
 
         Returns:
-            dict[str, RootItem]: Root items by name.
+            dict[str, AnatomyRoot]: Root items by name.
 
         """
         output = {}
         for root_name, root_values in data.items():
-            output[root_name] = RootItem(
+            output[root_name] = AnatomyRoot(
                 parent, root_values, root_name
             )
         return output

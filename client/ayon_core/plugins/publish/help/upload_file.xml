@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>{upload_type} upload timed out</title>
+<description>
+## {upload_type} upload failed after retries
+
+The connection to the AYON server timed out while uploading a file.
+
+### How to resolve?
+
+1. Try publishing again. Intermittent network hiccups often resolve on retry.
+2. Ensure your network/VPN is stable and large uploads are allowed.
+3. If it keeps failing, try again later or contact your admin.
+
+<pre>File: {file}
+Error: {error}</pre>
+
+</description>
+</error>
+</root>

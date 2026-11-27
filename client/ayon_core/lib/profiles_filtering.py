@@ -1,7 +1,8 @@
 import re
-import logging
 
-log = logging.getLogger(__name__)
+from .log import Logger
+
+log = Logger.get_logger(__name__)
 
 
 def compile_list_of_regexes(in_list):
@@ -11,7 +12,8 @@ def compile_list_of_regexes(in_list):
         return regexes
 
     for item in in_list:
-        if not item:
+        # Empty string is a valid regex that matches empty value
+        if item is None:
             continue
         try:
             regexes.append(re.compile(item))
@@ -101,8 +103,9 @@ def validate_value_by_regexes(value, in_list):
         return 0
 
     # If value is not set and in list has specific values then resolve value
-    #   as not matching.
-    if not value:
+    #   as not matching. Empty string is a valid value that can be matched
+    #   by regexes.
+    if value is None:
         return -1
 
     regexes = compile_list_of_regexes(in_list)

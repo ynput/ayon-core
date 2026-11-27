@@ -63,7 +63,7 @@ class AttachReviewables(
                 continue
 
             # Skip inactive instances
-            if not attach_instance.data.get("active", True):
+            if not attach_instance.data.get("publish", True):
                 continue
 
             # For now do not support attaching to 'farm' instances until we
@@ -117,7 +117,7 @@ class AttachReviewables(
                 continue
 
             # Do not allow attaching to other reviewable instances
-            if other_instance.data["productType"] in cls.families:
+            if other_instance.product_base_type in cls.families:
                 continue
 
             items.append(

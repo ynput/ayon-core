@@ -1,16 +1,22 @@
+from __future__ import annotations
+
 import copy
 import collections
 from uuid import uuid4
+from dataclasses import dataclass
 from enum import Enum
 import typing
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Iterator, Iterable
 
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
+    ButtonDef,
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
+
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
@@ -20,7 +26,10 @@ from .exceptions import ImmutableKeyError
 from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
+    from .context import CreateContext
     from .creator_plugins import BaseCreator
+
+log = Logger.get_logger(__name__)
 
 
 class IntEnum(int, Enum):
@@ -38,6 +47,56 @@ class ParentFlags(IntEnum):
     # NOTE It might be helpful to have a function that would return "real"
     #   active state for instances
     share_active = 1 << 1
+
+
+@dataclass
+class ButtonCallbackInfo:
+    """Button callback info passed to button definition callback."""
+    create_context: "CreateContext"
+    instance_ids: list[str | None]
+
+
+@dataclass
+class ProductTypeItem:
+    """Structure to define product types for a create plugin.
+
+    Product types can be used as studio definitions of a product base type.
+
+    It is expected that attributes will be added/removed in the future,
+        in that regards it is recommended to use pre-defined methods
+        'new' and 'from_data' that do safely handle those cases and
+        can contain backwards/forwards compatibility if needed.
+
+    Attributes:
+        product_type (str): Name of a product type.
+        label (str): Product type label shown in Create view.
+
+    """
+    product_type: str
+    label: Optional[str] = None
+
+    @classmethod
+    def new(
+        cls,
+        *,
+        product_type: str,
+        label: str,
+        **unknown,
+    ) -> "ProductTypeItem":
+        if unknown:
+            unknown_keys = ", ".join(f"'{k}'" for k in unknown.keys())
+            log.info(
+                f"Unknown keys in ProductTypeItem: {unknown_keys}"
+            )
+
+        return cls(
+            product_type=product_type,
+            label=label,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ProductTypeItem":
+        return cls.new(**data)
 
 
 class ConvertorItem:
@@ -93,6 +152,107 @@ class InstanceMember:
         })
 
 
+class InstanceFamilies:
+    """Helper class to handle families of an instance.
+
+    Works with families as with set of strings. Changes are tracked and
+        instance is notified about changes.
+
+    Args:
+        instance (CreatedInstance): Instance to which families belong.
+        families (list[str] | set[str] | None): Current families of
+            the instance.
+
+    """
+    def __init__(
+        self,
+        instance: CreatedInstance,
+        families: list[str] | set[str] | None,
+    ) -> None:
+        if families is None:
+            families = set()
+        elif isinstance(families, list):
+            families = set(families)
+        elif not isinstance(families, set):
+            families = set()
+
+        self.origin_data: list[str] = sorted(families)
+        self.families: set[str] = families
+        self._instance = instance
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.families)
+
+    def __contains__(self, family: str) -> bool:
+        return family in self.families
+
+    def __add__(self, other: Any) -> set[str]:
+        if isinstance(other, str):
+            return self.families.union({other})
+        if isinstance(other, InstanceFamilies):
+            return self.families.union(other.families)
+        return self.families.union(set(other))
+
+    def __iadd__(self, other: Any) -> InstanceFamilies:
+        if isinstance(other, str):
+            other = {other}
+        self.extend(other)
+        return self
+
+    def mark_as_stored(self) -> None:
+        self.origin_data = sorted(self.families)
+
+    def data_to_store(self) -> list[str]:
+        return sorted(self.families)
+
+    def set(self, value: Any) -> None:
+        old = self.families.copy()
+        if isinstance(value, InstanceFamilies):
+            self.families = value.families.copy()
+        elif isinstance(value, (list, set, tuple)):
+            self.families = set(value)
+        elif isinstance(value, str):
+            self.families = {value}
+        else:
+            raise TypeError(
+                f"Got invalid type for families '{type(value)}'."
+            )
+
+        if old != self.families:
+            self._instance.families_changed(self.families.copy())
+
+    def add(self, family: str) -> None:
+        if family in self.families:
+            return
+        self.families.add(family)
+        self._instance.families_changed(self.families.copy())
+
+    def remove(self, *families: str) -> None:
+        removed = set()
+        for family in families:
+            if family not in self.families:
+                continue
+            self.families.remove(family)
+            removed.add(family)
+
+        if removed:
+            self._instance.families_changed(self.families.copy())
+
+    def extend(self, families: Iterable[str]) -> None:
+        added = set()
+        for family in families:
+            if family not in self.families:
+                added.add(family)
+                self.families.add(family)
+
+        if added:
+            self._instance.families_changed(self.families.copy())
+
+    def append(self, family: str) -> None:
+        """Backwards compatibility."""
+        self.add(family)
+
+
 class AttributeValues:
     """Container which keep values of Attribute definitions.
 
@@ -117,11 +277,14 @@ class AttributeValues:
             origin_data = copy.deepcopy(values)
         self._origin_data = origin_data
 
-        attr_defs_by_key = {
-            attr_def.key: attr_def
-            for attr_def in attr_defs
-            if attr_def.is_value_def
-        }
+        attr_defs_by_key = {}
+        button_defs_by_key = {}
+        for attr_def in attr_defs:
+            if attr_def.is_value_def:
+                attr_defs_by_key[attr_def.key] = attr_def
+            elif isinstance(attr_def, ButtonDef):
+                button_defs_by_key[attr_def.key] = attr_def
+
         for key, value in values.items():
             if key not in attr_defs_by_key:
                 new_def = UnknownDef(key, label=key, default=value)
@@ -130,6 +293,7 @@ class AttributeValues:
 
         self._attr_defs = attr_defs
         self._attr_defs_by_key = attr_defs_by_key
+        self._button_defs_by_key = button_defs_by_key
 
         self._data = {}
         for attr_def in attr_defs:
@@ -176,6 +340,9 @@ class AttributeValues:
             yield key, self._data.get(key)
 
     def get_attr_def(self, key, default=None):
+        button_def = self._button_defs_by_key.get(key)
+        if button_def is not None:
+            return button_def
         return self._attr_defs_by_key.get(key, default)
 
     def update(self, value):
@@ -190,7 +357,7 @@ class AttributeValues:
         return value
 
     def set_value(self, value):
-        pop_keys = set(value.keys()) - set(self._data.keys())
+        pop_keys = set(self._data.keys()) - set(value.keys())
         changes = self._update(value)
         for key in pop_keys:
             _, key_changes = self._pop(key, None)
@@ -416,30 +583,43 @@ class PublishAttributes:
         )
 
     def serialize_attributes(self):
+        attr_defs = {}
+        plugin_values = {}
+        for plugin_name, attrs_value in self._data.items():
+            if isinstance(attrs_value, AttributeValues):
+                attr_defs[plugin_name] = (
+                    attrs_value.get_serialized_attr_defs()
+                )
+            else:
+                plugin_values[plugin_name] = copy.deepcopy(attrs_value)
+
         return {
-            "attr_defs": {
-                plugin_name: attrs_value.get_serialized_attr_defs()
-                for plugin_name, attrs_value in self._data.items()
-            },
+            "attr_defs": attr_defs,
+            "plugin_values": plugin_values,
         }
 
     def deserialize_attributes(self, data):
-        attr_defs = deserialize_attr_defs(data["attr_defs"])
-
         origin_data = self._origin_data
-        data = self._data
+        current_data = self._data
         self._data = {}
 
         added_keys = set()
-        for plugin_name, attr_defs_data in attr_defs.items():
+        for plugin_name, attr_defs_data in data["attr_defs"].items():
             attr_defs = deserialize_attr_defs(attr_defs_data)
-            value = data.get(plugin_name) or {}
+            value = current_data.get(plugin_name) or {}
+            if isinstance(value, AttributeValues):
+                value = value.data_to_store()
             orig_value = copy.deepcopy(origin_data.get(plugin_name) or {})
             self._data[plugin_name] = PublishAttributeValues(
                 self, plugin_name, attr_defs, value, orig_value
             )
+            added_keys.add(plugin_name)
 
-        for key, value in data.items():
+        for plugin_name, values in data["plugin_values"].items():
+            self._data[plugin_name] = copy.deepcopy(values)
+            added_keys.add(plugin_name)
+
+        for key, value in current_data.items():
             if key not in added_keys:
                 self._data[key] = value
 
@@ -461,6 +641,18 @@ class InstanceContextInfo:
     def is_valid(self) -> bool:
         return self.folder_is_valid and self.task_is_valid
 
+    def to_data(self) -> dict[str, Any]:
+        return dict(
+            folder_path=self.folder_path,
+            task_name=self.task_name,
+            folder_is_valid=self.folder_is_valid,
+            task_is_valid=self.task_is_valid,
+        )
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> InstanceContextInfo:
+        return cls(**data)
+
 
 class CreatedInstance:
     """Instance entity with data that will be stored to workfile.
@@ -480,6 +672,10 @@ class CreatedInstance:
         data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
         creator (BaseCreator): Creator responsible for instance.
+        product_base_type (Optional[str]): Product base type that will be
+            created. If not provided then product base type is taken from
+            creator plugin. If creator does not have product base type then
+            deprecation warning is raised.
     """
 
     # Keys that can't be changed or removed from data after loading using
@@ -490,6 +686,7 @@ class CreatedInstance:
         "id",
         "instance_id",
         "productType",
+        "productBaseType",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
@@ -509,7 +706,13 @@ class CreatedInstance:
         data: Dict[str, Any],
         creator: "BaseCreator",
         transient_data: Optional[Dict[str, Any]] = None,
+        product_base_type: Optional[str] = None
     ):
+        """Initialize CreatedInstance."""
+        # fallback to product type for backward compatibility
+        if not product_base_type:
+            product_base_type = creator.product_base_type or product_type
+
         self._creator = creator
         creator_identifier = creator.identifier
         group_label = creator.get_group_label()
@@ -535,6 +738,7 @@ class CreatedInstance:
 
         # Pop dictionary values that will be converted to objects to be able
         #   catch changes
+        orig_families = data.pop("families", None)
         orig_creator_attributes = data.pop("creator_attributes", None) or {}
         orig_publish_attributes = data.pop("publish_attributes", None) or {}
 
@@ -562,6 +766,9 @@ class CreatedInstance:
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
+
+        self._data["productBaseType"] = product_base_type
+
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier
 
@@ -574,6 +781,9 @@ class CreatedInstance:
                 data.pop(key)
 
         self._data["variant"] = self._data.get("variant") or ""
+
+        self._data["families"] = InstanceFamilies(self, orig_families)
+
         # Stored creator specific attribute values
         # {key: value}
         creator_values = copy.deepcopy(orig_creator_attributes)
@@ -585,6 +795,7 @@ class CreatedInstance:
         self._data["publish_attributes"] = PublishAttributes(
             self, orig_publish_attributes
         )
+
         if data:
             self._data.update(data)
 
@@ -623,6 +834,10 @@ class CreatedInstance:
                 return
             # Raise exception if key is immutable and value has changed
             raise ImmutableKeyError(key)
+
+        if key == "families":
+            self.families.set(value)
+            return
 
         if key in self._data and self._data[key] == value:
             return
@@ -667,22 +882,26 @@ class CreatedInstance:
     # ------
 
     @property
-    def product_type(self):
+    def product_base_type(self) -> str:
+        return self._data["productBaseType"]
+
+    @property
+    def product_type(self) -> str:
         return self._data["productType"]
 
     @property
-    def product_name(self):
+    def product_name(self) -> str:
         return self._data["productName"]
 
     @property
-    def label(self):
+    def label(self) -> str:
         label = self._data.get("label")
         if not label:
             label = self.product_name
         return label
 
     @property
-    def group_label(self):
+    def group_label(self) -> str:
         label = self._data.get("group")
         if label:
             return label
@@ -693,6 +912,7 @@ class CreatedInstance:
         output = copy.deepcopy(self._orig_data)
         output["creator_attributes"] = self.creator_attributes.origin_data
         output["publish_attributes"] = self.publish_attributes.origin_data
+        output["families"] = self.families.origin_data
         return output
 
     @property
@@ -820,32 +1040,41 @@ class CreatedInstance:
         orig_keys = set(self._orig_data.keys())
         for key, value in self._data.items():
             orig_keys.discard(key)
-            if key in ("creator_attributes", "publish_attributes"):
+            if key in (
+                "creator_attributes",
+                "publish_attributes",
+                "families",
+            ):
                 continue
             self._orig_data[key] = copy.deepcopy(value)
 
         for key in orig_keys:
             self._orig_data.pop(key)
 
+        self.families.mark_as_stored()
         self.creator_attributes.mark_as_stored()
         self.publish_attributes.mark_as_stored()
 
     @property
-    def creator_attributes(self):
+    def families(self) -> InstanceFamilies:
+        return self._data["families"]
+
+    @property
+    def creator_attributes(self) -> CreatorAttributeValues:
         return self._data["creator_attributes"]
 
     @property
-    def creator_attribute_defs(self):
+    def creator_attribute_defs(self) -> list[AbstractAttrDef]:
         """Attribute definitions defined by creator plugin.
 
         Returns:
-              List[AbstractAttrDef]: Attribute definitions.
-        """
+              list[AbstractAttrDef]: Attribute definitions.
 
+        """
         return self.creator_attributes.attr_defs
 
     @property
-    def publish_attributes(self):
+    def publish_attributes(self) -> PublishAttributes:
         return self._data["publish_attributes"]
 
     @property
@@ -874,7 +1103,11 @@ class CreatedInstance:
 
         output = collections.OrderedDict()
         for key, value in self._data.items():
-            if key in ("creator_attributes", "publish_attributes"):
+            if key in (
+                "creator_attributes",
+                "publish_attributes",
+                "families",
+            ):
                 continue
             output[key] = value
 
@@ -882,6 +1115,7 @@ class CreatedInstance:
             creator_attributes = self.creator_attributes.data_to_store()
         else:
             creator_attributes = copy.deepcopy(self.creator_attributes)
+        output["families"] = self.families.data_to_store()
         output["creator_attributes"] = creator_attributes
         output["publish_attributes"] = self.publish_attributes.data_to_store()
 
@@ -942,20 +1176,37 @@ class CreatedInstance:
         instance_data = copy.deepcopy(instance_data)
 
         product_type = instance_data.get("productType")
+        product_base_type = (
+            instance_data.get("productBaseType")
+            or product_type
+            or instance_data.get("family")
+            or creator.product_base_type
+        )
         if product_type is None:
-            product_type = instance_data.get("family")
-            if product_type is None:
-                product_type = creator.product_type
+            product_type = product_base_type
+
         product_name = instance_data.get("productName")
         if product_name is None:
             product_name = instance_data.get("subset")
 
         return cls(
-            product_type,
-            product_name,
-            instance_data,
-            creator,
+            product_base_type=product_base_type,
+            product_type=product_type,
+            product_name=product_name,
+            data=instance_data,
+            creator=creator,
             transient_data=transient_data,
+        )
+
+    def families_changed(self, families: set[str]) -> None:
+        """A value changed.
+
+        Args:
+            families (set[str]): New families.
+
+        """
+        self._create_context.instance_values_changed(
+            self.id, {"families": families}
         )
 
     def attribute_value_changed(self, key, changes):

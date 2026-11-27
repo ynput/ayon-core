@@ -1,7 +1,6 @@
 from qtpy import QtCore, QtGui
 
 # ID of context item in instance view
-CONTEXT_ID = "context"
 CONTEXT_LABEL = "Context"
 # Not showed anywhere - used as identifier
 CONTEXT_GROUP = "__ContextGroup__"
@@ -24,17 +23,17 @@ SORT_VALUE_ROLE = QtCore.Qt.UserRole + 2
 IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
 CREATOR_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 4
 CREATOR_THUMBNAIL_ENABLED_ROLE = QtCore.Qt.UserRole + 5
-PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 6
-GROUP_ROLE = QtCore.Qt.UserRole + 7
-CONVERTER_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 8
-CREATOR_SORT_ROLE = QtCore.Qt.UserRole + 9
+PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 6
+PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 7
+GROUP_ROLE = QtCore.Qt.UserRole + 8
+CONVERTER_IDENTIFIER_ROLE = QtCore.Qt.UserRole + 9
+CREATOR_SORT_ROLE = QtCore.Qt.UserRole + 10
 
 ResetKeySequence = QtGui.QKeySequence(
     QtCore.Qt.ControlModifier | QtCore.Qt.Key_R
 )
 
 __all__ = (
-    "CONTEXT_ID",
     "CONTEXT_LABEL",
 
     "CONTEXT_GROUP",
@@ -51,6 +50,7 @@ __all__ = (
     "CREATOR_IDENTIFIER_ROLE",
     "CREATOR_THUMBNAIL_ENABLED_ROLE",
     "CREATOR_SORT_ROLE",
+    "PRODUCT_BASE_TYPE_ROLE",
     "PRODUCT_TYPE_ROLE",
     "GROUP_ROLE",
     "CONVERTER_IDENTIFIER_ROLE",

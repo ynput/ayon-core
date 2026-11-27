@@ -41,7 +41,7 @@ class ItemImage(BaseItem):
 
     def fill_data_format(self):
         if re.match(self.fill_data_regex, self.image_path):
-            self.image_path = self.image_path.format(**self.fill_data)
+            self.image_path = self.image_path.format_map(self.fill_data)
 
     def draw(self, image, drawer):
         source_image = Image.open(os.path.normpath(self.image_path))
@@ -101,7 +101,7 @@ class ItemPlaceHolder(BaseItem):
 
     def fill_data_format(self):
         if re.match(self.fill_data_regex, self.image_path):
-            self.image_path = self.image_path.format(**self.fill_data)
+            self.image_path = self.image_path.format_map(self.fill_data)
 
     def draw(self, image, drawer):
         bg_color = self.style["bg-color"]
@@ -503,7 +503,7 @@ class TableField(BaseItem):
     def fill_data_format(self):
         value = self.value
         if re.match(self.fill_data_regex, value):
-            value = value.format(**self.fill_data)
+            value = value.format_map(self.fill_data)
 
         self.orig_value = value
 

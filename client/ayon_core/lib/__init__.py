@@ -2,6 +2,8 @@
 # flake8: noqa E402
 """AYON lib functions."""
 
+from .terminal import Terminal
+from .log import Logger, log_span
 from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,
@@ -14,6 +16,9 @@ from .local_settings import (
     get_local_site_id,
     get_ayon_user_entity,
     get_ayon_username,
+    LocalPreferences,
+    UserPreferences,
+    UserPreferencesNotSupported,
 )
 from .ayon_connection import initialize_ayon_connection
 from .cache import (
@@ -30,9 +35,24 @@ from .vendor_bin_utils import (
     find_executable,
     get_oiio_tools_path,
     get_oiio_tool_args,
+    get_ffmpeg_supported_options,
+    get_ffmpeg_available_encoders,
     get_ffmpeg_tool_path,
     get_ffmpeg_tool_args,
+    is_ffmpeg_option_supported,
+    is_ffmpeg_encoder_available,
     is_oiio_supported,
+)
+
+from .icon_definitions import (
+    IconBase,
+    PathIcon,
+    MaterialSymbolsIcon,
+    AwesomeFontIcon,
+    UrlIcon,
+    AYONUrlIcon,
+    TransparentIcon,
+    get_icon_def_from_data,
 )
 
 from .attribute_definitions import (
@@ -41,6 +61,7 @@ from .attribute_definitions import (
     UIDef,
     UISeparatorDef,
     UILabelDef,
+    ButtonDef,
 
     UnknownDef,
     NumberDef,
@@ -58,7 +79,6 @@ from .env_tools import (
     merge_env_variables,
 )
 
-from .terminal import Terminal
 from .execute import (
     get_ayon_launcher_args,
     get_linux_launcher_args,
@@ -69,9 +89,6 @@ from .execute import (
     run_detached_ayon_launcher_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
-)
-from .log import (
-    Logger,
 )
 
 from .path_templates import (
@@ -122,6 +139,7 @@ from .plugin_tools import (
 
 from .path_tools import (
     format_file_size,
+    open_in_file_browser,
     collect_frames,
     create_hard_link,
     version_up,
@@ -143,6 +161,8 @@ from .ayon_info import (
 terminal = Terminal
 
 __all__ = [
+    "Logger",
+    "log_span",
     "StrEnum",
 
     "IniSettingRegistry",
@@ -155,6 +175,10 @@ __all__ = [
     "get_local_site_id",
     "get_ayon_user_entity",
     "get_ayon_username",
+
+    "LocalPreferences",
+    "UserPreferences",
+    "UserPreferencesNotSupported",
 
     "initialize_ayon_connection",
 
@@ -183,15 +207,29 @@ __all__ = [
     "find_executable",
     "get_oiio_tools_path",
     "get_oiio_tool_args",
+    "get_ffmpeg_supported_options",
+    "get_ffmpeg_available_encoders",
     "get_ffmpeg_tool_path",
     "get_ffmpeg_tool_args",
+    "is_ffmpeg_option_supported",
+    "is_ffmpeg_encoder_available",
     "is_oiio_supported",
+
+    "IconBase",
+    "PathIcon",
+    "MaterialSymbolsIcon",
+    "AwesomeFontIcon",
+    "UrlIcon",
+    "AYONUrlIcon",
+    "TransparentIcon",
+    "get_icon_def_from_data",
 
     "AbstractAttrDef",
 
     "UIDef",
     "UISeparatorDef",
     "UILabelDef",
+    "ButtonDef",
 
     "UnknownDef",
     "NumberDef",
@@ -228,6 +266,7 @@ __all__ = [
     "source_hash",
 
     "format_file_size",
+    "open_in_file_browser",
     "collect_frames",
     "create_hard_link",
     "version_up",
@@ -244,8 +283,6 @@ __all__ = [
     "get_datetime_data",
     "get_timestamp",
     "get_formatted_current_time",
-
-    "Logger",
 
     "is_in_ayon_launcher_process",
     "is_running_from_build",

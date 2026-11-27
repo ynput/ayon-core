@@ -26,7 +26,7 @@ class RenderInstance(object):
     time = attr.ib()  # time of instance creation (get_formatted_current_time)
     source = attr.ib()  # path to source scene file
     label = attr.ib()  # label to show in GUI
-    family = attr.ib()  # product type for pyblish filtering
+    family = attr.ib()  # product base type used for pyblish filtering
     productType = attr.ib()  # product type
     productName = attr.ib()  # product name
     folderPath = attr.ib()  # folder path
@@ -45,6 +45,8 @@ class RenderInstance(object):
     frameStart = attr.ib()  # start frame
     frameEnd = attr.ib()  # start end
     frameStep = attr.ib()  # frame step
+
+    productBaseType = attr.ib(default=None)  # product base type
 
     handleStart = attr.ib(default=None)  # start frame
     handleEnd = attr.ib(default=None)  # start frame

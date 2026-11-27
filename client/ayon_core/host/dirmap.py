@@ -89,8 +89,8 @@ class HostDirmap(ABC):
         self.on_enable_dirmap()
 
         for k, sp in enumerate(mapping["source_path"]):
-            dst = mapping["destination_path"][k]
             try:
+                dst = mapping["destination_path"][k]
                 # add trailing slash if missing
                 sp = os.path.join(sp, '')
                 dst = os.path.join(dst, '')

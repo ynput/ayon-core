@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 from collections import defaultdict
@@ -11,7 +10,9 @@ from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_oiio_info_for_input,
 )
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.lib import (
+    Logger,
     get_ffprobe_data,
     is_oiio_supported,
 )
@@ -41,11 +42,7 @@ class ExportOTIO(LoaderSimpleActionPlugin):
     label = "Export OTIO"
     group_label = None
     order = 35
-    icon = {
-        "type": "material-symbols",
-        "name": "save",
-        "color": "#d8d8d8",
-    }
+    icon = MaterialSymbolsIcon("save", "#d8d8d8")
 
     def is_compatible(
         self, selection: LoaderActionSelection
@@ -536,7 +533,7 @@ def get_image_info_metadata(
         logger (logging.Logger): Logger used for logging.
     """
     if logger is None:
-        logger = logging.getLogger(__name__)
+        logger = Logger.get_logger(__name__)
 
     def _ffprobe_metadata_conversion(metadata):
         """Convert ffprobe metadata unified format."""

@@ -25,7 +25,7 @@ class CollectManagedStagingDir(pyblish.api.InstancePlugin):
     Location of the folder is configured in:
         `ayon+anatomy://_/templates/staging`.
 
-    Which family/task type/subset is applicable is configured in:
+    Which product type/task type/product is applicable is configured in:
         `ayon+settings://core/tools/publish/custom_staging_dir_profiles`
     """
 

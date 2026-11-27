@@ -1,5 +1,12 @@
-import pytest
+import sys
 from pathlib import Path
+
+import pytest
+
+# Test with the vendorized qtmaterialsymbols
+VENDOR_ROOT = Path(__file__).parent.parent / "vendor" / "python"
+if str(VENDOR_ROOT) not in sys.path:
+    sys.path.insert(0, str(VENDOR_ROOT))
 
 collect_ignore = ["vendor", "resources"]
 

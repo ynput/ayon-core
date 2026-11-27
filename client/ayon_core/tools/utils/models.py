@@ -1,10 +1,10 @@
 import re
-import logging
 
-import qtpy
 from qtpy import QtCore
 
-log = logging.getLogger(__name__)
+from ayon_core.lib import Logger
+
+log = Logger.get_logger(__name__)
 
 
 class TreeModel(QtCore.QAbstractItemModel):
@@ -62,11 +62,7 @@ class TreeModel(QtCore.QAbstractItemModel):
                 key = self.Columns[column]
                 item[key] = value
 
-                # passing `list()` for PyQt5 (see PYSIDE-462)
-                if qtpy.API in ("pyqt4", "pyside"):
-                    self.dataChanged.emit(index, index)
-                else:
-                    self.dataChanged.emit(index, index, [role])
+                self.dataChanged.emit(index, index, [role])
 
                 # must return true if successful
                 return True

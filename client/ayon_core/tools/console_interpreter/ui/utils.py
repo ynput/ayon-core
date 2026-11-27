@@ -1,42 +1,42 @@
-import os
 import sys
 import collections
 
 
+class _CustomSTD:
+    def __init__(self, orig_std, write_callback):
+        self.orig_std = orig_std
+        self._valid_orig = bool(orig_std)
+        self._write_callback = write_callback
+
+    def __getattr__(self, attr):
+        return getattr(self.orig_std, attr)
+
+    def __setattr__(self, key, value):
+        if key in ("orig_std", "_valid_orig", "_write_callback"):
+            super().__setattr__(key, value)
+        else:
+            setattr(self.orig_std, key, value)
+
+    def write(self, text):
+        if self._valid_orig:
+            self.orig_std.write(text)
+        self._write_callback(text)
+
+
 class StdOEWrap:
     def __init__(self):
-        self._origin_stdout_write = None
-        self._origin_stderr_write = None
-        self._listening = False
         self.lines = collections.deque()
-
-        if not sys.stdout:
-            sys.stdout = open(os.devnull, "w")
-
-        if not sys.stderr:
-            sys.stderr = open(os.devnull, "w")
-
-        if self._origin_stdout_write is None:
-            self._origin_stdout_write = sys.stdout.write
-
-        if self._origin_stderr_write is None:
-            self._origin_stderr_write = sys.stderr.write
-
         self._listening = True
-        sys.stdout.write = self._stdout_listener
-        sys.stderr.write = self._stderr_listener
+
+        self._stdout_wrap = _CustomSTD(sys.stdout, self._listener)
+        self._stderr_wrap = _CustomSTD(sys.stderr, self._listener)
+
+        sys.stdout = self._stdout_wrap
+        sys.stderr = self._stderr_wrap
 
     def stop_listen(self):
         self._listening = False
 
-    def _stdout_listener(self, text):
+    def _listener(self, text):
         if self._listening:
             self.lines.append(text)
-        if self._origin_stdout_write is not None:
-            self._origin_stdout_write(text)
-
-    def _stderr_listener(self, text):
-        if self._listening:
-            self.lines.append(text)
-        if self._origin_stderr_write is not None:
-            self._origin_stderr_write(text)

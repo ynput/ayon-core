@@ -1,17 +1,31 @@
+from __future__ import annotations
+
+import bisect
+from dataclasses import dataclass
+from datetime import datetime
+from functools import lru_cache
+import logging
 from math import ceil
+import time
+import typing
+
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
 from ayon_core.tools.utils import (
     NiceCheckbox,
     ElideLabel,
     SeparatorWidget,
     IconButton,
+    MultiSelectionComboBox,
     paint_image_with_color,
+    get_qt_icon,
 )
+from ayon_core.pipeline.publish.report import PublishReport
 from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
+from ayon_core.ui.components import AYButton, AYLineEdit, AYSpinBox
 
-# from ayon_core.tools.utils import DeselectableTreeView
 from .constants import (
     ITEM_ID_ROLE,
     ITEM_IS_GROUP_ROLE
@@ -23,14 +37,19 @@ from .model import (
     PluginsModel,
     PluginProxyModel
 )
-from .report_items import PublishReport
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline.publish.report import (
+        ReportLog,
+        PublishPluginReportInfo,
+    )
 
 FILEPATH_ROLE = QtCore.Qt.UserRole + 1
 TRACEBACK_ROLE = QtCore.Qt.UserRole + 2
 IS_DETAIL_ITEM_ROLE = QtCore.Qt.UserRole + 3
 
 
-def get_pretty_milliseconds(value):
+def get_pretty_milliseconds(value: int) -> str:
     if value < 1000:
         return f"{value:.3f}ms"
     value /= 1000
@@ -46,10 +65,13 @@ def get_pretty_milliseconds(value):
 
 
 class PluginLoadReportModel(QtGui.QStandardItemModel):
+    _blocking_icon = None
+
     def __init__(self):
         super().__init__()
         self._traceback_by_filepath = {}
         self._items_by_filepath = {}
+        self._blocking_crashed_paths = set()
         self._is_active = True
         self._need_refresh = False
 
@@ -59,22 +81,23 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
         self._is_active = is_active
         self._update_items()
 
-    def set_report(self, report):
+    def set_report(self, report: PublishReport | None) -> None:
         self._need_refresh = True
         if report is None:
             self._traceback_by_filepath.clear()
             self._update_items()
             return
 
-        filepaths = set(report.crashed_plugin_paths.keys())
+        filepaths = set(report.crashed_filepaths.keys())
         to_remove = set(self._traceback_by_filepath) - filepaths
         for filepath in filepaths:
             self._traceback_by_filepath[filepath] = (
-                report.crashed_plugin_paths[filepath]
+                report.crashed_filepaths[filepath]
             )
 
         for filepath in to_remove:
             self._traceback_by_filepath.pop(filepath)
+        self._blocking_crashed_paths = set(report.blocking_crashed_paths)
         self._update_items()
 
     def _update_items(self):
@@ -83,6 +106,7 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
         parent = self.invisibleRootItem()
         if not self._traceback_by_filepath:
             parent.removeRows(0, parent.rowCount())
+            self._items_by_filepath = {}
             return
 
         new_items = []
@@ -91,12 +115,18 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
             set(self._items_by_filepath) - set(self._traceback_by_filepath)
         )
         for filepath in self._traceback_by_filepath:
-            if filepath in self._items_by_filepath:
-                continue
-            item = QtGui.QStandardItem(filepath)
-            new_items.append(item)
-            new_items_by_filepath[filepath] = item
-            self._items_by_filepath[filepath] = item
+            item = self._items_by_filepath.get(filepath)
+            if item is None:
+                item = QtGui.QStandardItem(filepath)
+                new_items.append(item)
+                new_items_by_filepath[filepath] = item
+                self._items_by_filepath[filepath] = item
+
+            icon = None
+            if filepath.replace("\\", "/") in self._blocking_crashed_paths:
+                icon = self._get_blocking_icon()
+
+            item.setData(icon, QtCore.Qt.DecorationRole)
 
         if new_items:
             parent.appendRows(new_items)
@@ -113,9 +143,17 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
             item = self._items_by_filepath.pop(filepath)
             parent.removeRow(item.row())
 
+    @classmethod
+    def _get_blocking_icon(cls):
+        if cls._blocking_icon is None:
+            cls._blocking_icon = get_qt_icon(
+                MaterialSymbolsIcon("block", color="red")
+            )
+        return cls._blocking_icon
+
 
 class DetailWidget(QtWidgets.QTextEdit):
-    def __init__(self, text, *args, **kwargs):
+    def __init__(self, text: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.setReadOnly(True)
@@ -136,10 +174,11 @@ class DetailWidget(QtWidgets.QTextEdit):
 
 
 class PluginLoadReportWidget(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         view = QtWidgets.QTreeView(self)
+        view.setIndentation(20)
         view.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         view.setTextElideMode(QtCore.Qt.ElideLeft)
         view.setHeaderHidden(True)
@@ -162,7 +201,7 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
     def set_active(self, is_active):
         self._model.set_active(is_active)
 
-    def set_report(self, report):
+    def set_report(self, report: PublishReport | None):
         self._widgets_by_filepath = {}
         self._model.set_report(report)
 
@@ -196,19 +235,25 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         if filepath in self._widgets_by_filepath:
             return
 
-        traceback_txt = index.data(TRACEBACK_ROLE)
+        traceback_txt = index.data(TRACEBACK_ROLE).replace("\n", "<br/>")
         detail_text = (
             "<b>Filepath:</b><br/>"
-            "{}<br/><br/>"
+            f"{filepath}<br/><br/>"
             "<b>Traceback:</b><br/>"
-            "{}"
-        ).format(filepath, traceback_txt.replace("\n", "<br/>"))
+            f"{traceback_txt}"
+        )
         widget = DetailWidget(detail_text, self)
         self._view.setIndexWidget(index, widget)
         self._widgets_by_filepath[filepath] = (widget, index)
 
 
 class ZoomPlainText(QtWidgets.QPlainTextEdit):
+    """Read-only text output which can be zoomed with Ctrl + mouse wheel.
+
+    Uses 'QPlainTextEdit' because 'QTextEdit' cannot lay out documents
+        taller than ~8.4 million pixels (Qt's 'QFIXED_MAX'), so the end
+        of very long logs would not be rendered at all.
+    """
     min_point_size = 1.0
     max_point_size = 200.0
 
@@ -223,6 +268,35 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
         self._anim_timer = anim_timer
         self._scheduled_scalings = 0
         self._point_size = None
+        self._loading_text: str | None = None
+
+    def set_loading_text(self, text: str | None) -> None:
+        """Show text over the output while its content is being loaded.
+
+        Args:
+            text (str | None): Text to show, or None to hide it.
+
+        """
+        if text == self._loading_text:
+            return
+        self._loading_text = text
+        self.viewport().update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._loading_text:
+            return
+        viewport = self.viewport()
+        # Dim the previous content which is replaced by the loaded one
+        bg_color = QtGui.QColor(self.palette().color(QtGui.QPalette.Base))
+        bg_color.setAlphaF(0.8)
+        painter = QtGui.QPainter(viewport)
+        painter.fillRect(viewport.rect(), bg_color)
+        painter.setPen(self.palette().color(QtGui.QPalette.Text))
+        painter.drawText(
+            viewport.rect(), QtCore.Qt.AlignCenter, self._loading_text
+        )
+        painter.end()
 
     def wheelEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -284,9 +358,568 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
             self._scheduled_scalings += 1
 
 
-class DetailsWidget(QtWidgets.QWidget):
-    def __init__(self, parent):
+MATCH_BG_COLOR = QtGui.QColor(255, 213, 79)
+MATCH_FG_COLOR = QtGui.QColor(0, 0, 0)
+# Max characters kept before and after a match for the matches list
+MATCH_CONTEXT_LENGTH = 200
+
+
+@dataclass
+class _LogMatch:
+    """Search match in the logs document with the text around it."""
+    # Search can find many matches, 'slots=True' of dataclass requires
+    #   Python 3.10
+    __slots__ = (
+        "start", "end", "level", "before", "text", "after", "source"
+    )
+
+    start: int
+    end: int
+    level: str
+    before: str
+    text: str
+    after: str
+    source: str
+
+
+def _iter_search_matches(
+    text: str, search_text: str
+) -> typing.Iterator[tuple[int, int]]:
+    """Find caseless matches of the search text.
+
+    Case folding can change length of the text (e.g. 'ß' -> 'ss'), so
+        the matching is done on the folded text and the match ranges are
+        mapped back to the original text.
+
+    Args:
+        text (str): Text to search in.
+        search_text (str): Already casefolded text to search for.
+
+    Yields:
+        tuple[int, int]: Start and end of a match in the original text.
+
+    """
+    if not search_text:
+        return
+    folded_text = text.casefold()
+    start = folded_text.find(search_text)
+    if start == -1:
+        return
+
+    # Case folding never shortens a character, so the same length means
+    #   the offsets are the same as in the original text
+    original_indices = None
+    if len(folded_text) != len(text):
+        # Index of the original character for each folded character
+        original_indices = [
+            index
+            for index, char in enumerate(text)
+            for _ in char.casefold()
+        ]
+
+    while start != -1:
+        end = start + len(search_text)
+        if original_indices is None:
+            yield start, end
+        else:
+            yield original_indices[start], original_indices[end - 1] + 1
+        start = folded_text.find(search_text, end)
+
+
+@lru_cache(maxsize=2 ** 16)
+def _format_timestamp(created: float) -> str:
+    """Format log timestamp, cached as logs are refreshed often."""
+    return datetime.fromtimestamp(created).strftime("%Y/%m/%d %H:%M:%S ")
+
+
+@dataclass
+class _LogEntry:
+    """Log message in the logs document.
+
+    Attributes:
+        position (int): Document position of the start of the message.
+        message (str): Log message.
+        level (str): Log level of the message.
+        source (str): Plugin and instance which logged the message.
+        mapped (bool): Offsets in the message have to be mapped to
+            document positions, as document counts some characters
+            differently (e.g. characters outside of BMP or CRLF).
+
+    """
+    # There is an entry for each log message, 'slots=True' of dataclass
+    #   requires Python 3.10
+    __slots__ = ("position", "message", "level", "source", "mapped")
+
+    position: int
+    message: str
+    level: str
+    source: str
+    mapped: bool
+
+    def get_position(self, offset: int) -> int:
+        """Document position of an offset in the message."""
+        if not self.mapped:
+            return self.position + offset
+        text = self.message[:offset].replace("\r\n", "\n")
+        return self.position + len(text.encode("utf-16-le")) // 2
+
+    def iter_matches(self, search_text: str) -> typing.Iterator[_LogMatch]:
+        """Find matches of the search text in the message.
+
+        Args:
+            search_text (str): Already casefolded text to search for.
+
+        """
+        message = self.message
+        start = 0
+        for match_start, match_end in _iter_search_matches(
+            message, search_text
+        ):
+            # Matches may share a character expanded by case folding
+            match_start = max(match_start, start)
+            if match_start >= match_end:
+                continue
+            start = match_end
+            # Text around the match on the same line
+            before = message[
+                max(0, match_start - MATCH_CONTEXT_LENGTH):match_start
+            ].rpartition("\n")[2]
+            after = message[
+                match_end:match_end + MATCH_CONTEXT_LENGTH
+            ].partition("\n")[0]
+            yield _LogMatch(
+                self.get_position(match_start),
+                self.get_position(match_end),
+                self.level,
+                before,
+                message[match_start:match_end],
+                after,
+                self.source,
+            )
+
+
+class _LogFiller:
+    _color_mapping = (
+        ("TRACEBACK", QtGui.QColor(255, 74, 74)),
+        ("CRITICAL", QtGui.QColor(255, 79, 117)),
+        ("ERROR", QtGui.QColor(255, 77, 88)),
+        ("WARNING", QtGui.QColor(255, 186, 102)),
+        ("INFO", QtGui.QColor(102, 171, 255)),
+        ("DEBUG", QtGui.QColor(127, 140, 141)),
+        ("", QtGui.QColor(127, 140, 141)),
+        ("NOTSET", QtGui.QColor(127, 140, 141)),
+    )
+
+    def __init__(
+        self,
+        output_widget: QtWidgets.QPlainTextEdit,
+        logs: list[tuple[str, ReportLog]],
+        show_timestamp: bool,
+    ) -> None:
+        self.output_widget = output_widget
+        self.show_timestamp = show_timestamp
+        self.logs = logs
+        # Messages with their positions in the document for searching
+        self.entries: list[_LogEntry] = []
+        self.first_line = True
+        self.cursor = None
+        # Do not use the widget's current char format, it is the format
+        #   of the text at its cursor (e.g. a colored log level prefix)
+        default_format = QtGui.QTextCharFormat()
+        prefix_fmts = {}
+        for key, color in self._color_mapping:
+            fmt = QtGui.QTextCharFormat(default_format)
+            fmt.setForeground(color)
+            prefix_fmts[key] = fmt
+
+        self.default_fmt = default_format
+        self.prefix_fmts = prefix_fmts
+
+    def _add_entry(
+        self,
+        message: str,
+        timestamp: str = "",
+        log_level: str = "",
+        source: str = "",
+    ) -> None:
+        if not self.first_line:
+            self.cursor.insertBlock()
+        self.first_line = False
+        if timestamp or log_level:
+            fmt = self.prefix_fmts.get(log_level, self.default_fmt)
+            self.cursor.insertText(
+                f"{timestamp}{log_level}: ", fmt
+            )
+        position = self.cursor.position()
+        self.cursor.insertText(message, self.default_fmt)
+        self.entries.append(_LogEntry(
+            position,
+            message,
+            log_level,
+            source,
+            self.cursor.position() - position != len(message),
+        ))
+
+    def iter_fill(self) -> typing.Iterator[float]:
+        """Fill the output widget with the logs.
+
+        The current logs stay visible until the new document is filled.
+            Yields after each log so the filling can be split into steps
+            and stopped.
+
+        Yields:
+            float: Progress of the filling from 0.0 to 1.0.
+
+        """
+        log_count = max(len(self.logs), 1)
+        # Create copy of a document to avoid live updates in UI
+        src_doc = self.output_widget.document()
+        document = QtGui.QTextDocument(self.output_widget)
+        document.setDefaultStyleSheet(src_doc.defaultStyleSheet())
+        document.setDefaultFont(src_doc.defaultFont())
+        document.setDefaultTextOption(
+            QtGui.QTextOption(src_doc.defaultTextOption())
+        )
+        self.cursor = QtGui.QTextCursor(document)
+
+        for index, (source, log) in enumerate(self.logs):
+            timestamp = ""
+            if self.show_timestamp and log.created is not None:
+                timestamp = _format_timestamp(log.created)
+
+            if log.type == "record":
+                self._add_entry(
+                    log.message, timestamp, log.levelname, source
+                )
+                exc_info = log.exc_info
+                if exc_info:
+                    self._add_entry(exc_info, source=source)
+
+            elif log.type == "error":
+                self._add_entry(
+                    log.traceback, timestamp, "TRACEBACK", source
+                )
+
+            else:
+                print(log.type)
+            yield (index + 1) / log_count
+
+        # Plain text edit requires the plain text layout which, unlike the
+        #   rich text layout, can handle documents of any height. Set it
+        #   after filling, otherwise each insert would lay out its block.
+        document.setDocumentLayout(
+            QtWidgets.QPlainTextDocumentLayout(document)
+        )
+        # Delete the previous logs, the widget deletes only the document
+        #   it created itself
+        old_document = self.output_widget.document()
+        if old_document.parent() is not self.output_widget:
+            old_document = None
+        self.output_widget.setDocument(document)
+        if old_document is not None:
+            old_document.deleteLater()
+
+
+class _LogMatchesModel(QtCore.QAbstractListModel):
+    """Search matches of the logs, the match is in 'UserRole' data.
+
+    While the search is running the last row shows that, it has no match.
+    """
+
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
+        self._matches: list[_LogMatch] = []
+        # Start positions of the matches for searching by position
+        self._match_starts: list[int] = []
+        self._searching = False
+
+    def get_matches(self) -> list[_LogMatch]:
+        return self._matches
+
+    def get_match_count(self) -> int:
+        return len(self._matches)
+
+    def get_matches_in_range(
+        self, start: int, end: int, limit: int
+    ) -> list[_LogMatch]:
+        """Matches starting in the document range, sorted by position."""
+        first = bisect.bisect_left(self._match_starts, start)
+        last = bisect.bisect_right(self._match_starts, end)
+        return self._matches[first:min(last, first + limit)]
+
+    def set_matches(self, matches: list[_LogMatch]) -> None:
+        self.beginResetModel()
+        self._matches = list(matches)
+        self._match_starts = [match.start for match in self._matches]
+        self.endResetModel()
+
+    def add_matches(self, matches: list[_LogMatch]) -> None:
+        """Add matches found after the current ones."""
+        if not matches:
+            return
+        count = len(self._matches)
+        self.beginInsertRows(
+            QtCore.QModelIndex(), count, count + len(matches) - 1
+        )
+        self._matches.extend(matches)
+        self._match_starts.extend(match.start for match in matches)
+        self.endInsertRows()
+
+    def is_searching(self) -> bool:
+        return self._searching
+
+    def set_searching(self, searching: bool) -> None:
+        if self._searching is searching:
+            return
+        row = len(self._matches)
+        if searching:
+            self.beginInsertRows(QtCore.QModelIndex(), row, row)
+            self._searching = True
+            self.endInsertRows()
+        else:
+            self.beginRemoveRows(QtCore.QModelIndex(), row, row)
+            self._searching = False
+            self.endRemoveRows()
+
+    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
+        if parent.isValid():
+            return 0
+        return len(self._matches) + int(self._searching)
+
+    def flags(self, index):
+        if index.row() >= len(self._matches):
+            return QtCore.Qt.NoItemFlags
+        return super().flags(index)
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if not index.isValid() or index.row() >= len(self._matches):
+            return None
+        if role == QtCore.Qt.UserRole:
+            return self._matches[index.row()]
+        return None
+
+
+class _LogMatchDelegate(QtWidgets.QStyledItemDelegate):
+    """Draw a search match with the text around it and its source."""
+    _level_colors = dict(_LogFiller._color_mapping)
+
+    @staticmethod
+    def row_height(metrics: QtGui.QFontMetrics) -> int:
+        return metrics.height() + 8
+
+    def sizeHint(self, option, index) -> QtCore.QSize:
+        return QtCore.QSize(0, self.row_height(option.fontMetrics))
+
+    def paint(self, painter, option, index) -> None:
+        option = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(option, index)
+        option.widget.style().drawPrimitive(
+            QtWidgets.QStyle.PE_PanelItemViewItem,
+            option,
+            painter,
+            option.widget,
+        )
+        match: _LogMatch | None = index.data(QtCore.Qt.UserRole)
+        metrics = option.fontMetrics
+        rect = option.rect.adjusted(8, 0, -8, 0)
+        text_color = option.palette.color(QtGui.QPalette.Text)
+        dimmed_color = QtGui.QColor(text_color)
+        dimmed_color.setAlphaF(0.5)
+
+        painter.save()
+        painter.setFont(option.font)
+        # Row after the matches while the search is running
+        if match is None:
+            painter.setPen(dimmed_color)
+            painter.drawText(
+                rect, QtCore.Qt.AlignCenter, "Searching..."
+            )
+            painter.restore()
+            return
+        # Log level on the left in the color it has in the logs
+        painter.setPen(self._level_colors.get(match.level, dimmed_color))
+        painter.drawText(
+            rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, match.level
+        )
+        # Align the text after the common levels, longer ones push it
+        rect.setLeft(rect.left() + max(
+            metrics.horizontalAdvance("WARNING "),
+            metrics.horizontalAdvance(f"{match.level} "),
+        ))
+
+        # Dimmed and slightly smaller source of the log on the right, sized
+        #   in whole pixels as the hinted glyphs get cramped in between
+        source_font = QtGui.QFont(option.font)
+        source_font.setPixelSize(
+            QtGui.QFontInfo(option.font).pixelSize() - 2
+        )
+        source_metrics = QtGui.QFontMetrics(source_font)
+        source = source_metrics.elidedText(
+            match.source, QtCore.Qt.ElideMiddle, rect.width() // 3
+        )
+        painter.setFont(source_font)
+        painter.setPen(dimmed_color)
+        painter.drawText(
+            rect, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter, source
+        )
+        painter.setFont(option.font)
+        rect.setRight(
+            rect.right() - source_metrics.horizontalAdvance(source) - 16
+        )
+
+        # Elide the text before the match so the match stays visible
+        before = metrics.elidedText(
+            match.before.lstrip(), QtCore.Qt.ElideLeft, rect.width() // 3
+        )
+        for text, is_match in (
+            (before, False),
+            (match.text, True),
+            (match.after, False),
+        ):
+            text = metrics.elidedText(
+                text, QtCore.Qt.ElideRight, rect.width()
+            )
+            text_rect = QtCore.QRect(rect)
+            text_rect.setWidth(metrics.horizontalAdvance(text))
+            painter.setPen(text_color)
+            if is_match:
+                painter.fillRect(
+                    text_rect.adjusted(0, 3, 0, -3), MATCH_BG_COLOR
+                )
+                painter.setPen(MATCH_FG_COLOR)
+            painter.drawText(
+                text_rect, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter, text
+            )
+            rect.setLeft(text_rect.right() + 1)
+        painter.restore()
+
+
+class _LogMatchesView(QtWidgets.QListView):
+    """List of search matches showing a placeholder when it is empty."""
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        model = self.model()
+        if model is not None and model.rowCount():
+            return
+        color = QtGui.QColor(self.palette().color(QtGui.QPalette.Text))
+        color.setAlphaF(0.5)
+        painter = QtGui.QPainter(self.viewport())
+        painter.setPen(color)
+        painter.drawText(
+            self.viewport().rect(), QtCore.Qt.AlignCenter, "No matches"
+        )
+        painter.end()
+
+
+class DetailsWidget(QtWidgets.QWidget):
+    # Max rows of the search matches list visible without scrolling
+    max_visible_matches = 6
+    # Max matches highlighted at once in the visible part of logs
+    max_highlighted_matches = 2000
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+
+        header_widget = QtWidgets.QWidget(self)
+
+        search_field = AYLineEdit(
+            parent=header_widget,
+            variant=AYLineEdit.Variants.Low,
+            name_id="PublishLogSearch",
+        )
+        search_field.setMinimumWidth(180)
+        search_mode_btn = AYButton(
+            parent=header_widget,
+            variant=AYButton.Variants.Nav,
+        )
+        level_filter = MultiSelectionComboBox(
+            parent=header_widget,
+            placeholder="Log levels (all)",
+        )
+        for label, value in (
+            ("Debug", logging.DEBUG),
+            ("Info", logging.INFO),
+            ("Warning", logging.WARNING),
+            ("Error", logging.ERROR),
+            ("Critical", logging.CRITICAL),
+        ):
+            level_filter.addItem(label, value)
+        level_filter.setMinimumWidth(150)
+        level_filter.setToolTip("Filter logs by level")
+        surrounding_lines = AYSpinBox(
+            parent=header_widget,
+            name_id="PublishLogSurroundingLines",
+            minimum=0,
+            maximum=99,
+            value=0,
+        )
+        surrounding_lines.setToolTip(
+            "Include this many log entries before and after each match"
+        )
+
+        # Replaces the surrounding lines field in search mode
+        match_nav_widget = QtWidgets.QWidget(header_widget)
+        prev_match_btn = AYButton(
+            parent=match_nav_widget,
+            variant=AYButton.Variants.Nav,
+            icon="arrow_back",
+            tooltip="Previous match (Shift+Enter)",
+        )
+        next_match_btn = AYButton(
+            parent=match_nav_widget,
+            variant=AYButton.Variants.Nav,
+            icon="arrow_forward",
+            tooltip="Next match (Enter)",
+        )
+        match_nav_layout = QtWidgets.QHBoxLayout(match_nav_widget)
+        match_nav_layout.setContentsMargins(0, 0, 0, 0)
+        match_nav_layout.setSpacing(0)
+        match_nav_layout.addWidget(prev_match_btn, 0)
+        match_nav_layout.addWidget(next_match_btn, 0)
+        surrounding_lines.setFixedWidth(match_nav_widget.sizeHint().width())
+        # Keep focus in the search field so its shortcuts remain usable
+        for btn in (search_mode_btn, prev_match_btn, next_match_btn):
+            btn.setFocusPolicy(QtCore.Qt.NoFocus)
+
+        control_height = search_field.sizeHint().height()
+        for widget in (
+            search_field,
+            level_filter,
+            surrounding_lines,
+        ):
+            widget.setFixedHeight(control_height)
+
+        timestamp_check = NiceCheckbox(parent=header_widget)
+        timestamp_check.setChecked(True)
+        timestamp_label = QtWidgets.QLabel("Show timestamps", header_widget)
+
+        header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(5, 5, 5, 5)
+        search_layout = QtWidgets.QHBoxLayout()
+        search_layout.setSpacing(2)
+        search_layout.addWidget(search_mode_btn, 0)
+        search_layout.addWidget(search_field, 1)
+        search_layout.addWidget(surrounding_lines, 0)
+        search_layout.addWidget(match_nav_widget, 0)
+
+        header_layout.addWidget(level_filter, 0)
+        header_layout.addLayout(search_layout, 1)
+        header_layout.addWidget(timestamp_check, 0)
+        header_layout.addWidget(timestamp_label, 0)
+
+        # List of search matches, controlled from the search field
+        matches_model = _LogMatchesModel(self)
+        matches_view = _LogMatchesView(self)
+        matches_view.setObjectName("PublishLogMatches")
+        matches_view.setModel(matches_model)
+        matches_view.setItemDelegate(_LogMatchDelegate(matches_view))
+        matches_view.setUniformItemSizes(True)
+        matches_view.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarAlwaysOff
+        )
+        matches_view.setFocusPolicy(QtCore.Qt.NoFocus)
+        matches_view.setVisible(False)
 
         output_widget = ZoomPlainText(self)
         output_widget.setObjectName("PublishLogConsole")
@@ -294,89 +927,495 @@ class DetailsWidget(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(output_widget)
+        layout.setSpacing(0)
+        layout.addWidget(header_widget, 0)
+        layout.addWidget(matches_view, 0)
+        layout.addWidget(output_widget, 1)
 
-        self._is_active = True
-        self._need_refresh = False
-        self._output_widget = output_widget
-        self._report_item = None
-        self._instance_filter = set()
-        self._plugin_filter = set()
+        # Do not refresh the logs on each typed character
+        search_timer = QtCore.QTimer(self)
+        search_timer.setSingleShot(True)
+        search_timer.setInterval(300)
 
-    def clear(self):
-        self._output_widget.setPlainText("")
+        # Refresh of logs is done in steps to keep the UI responsive
+        logs_job_timer = QtCore.QTimer(self)
+        logs_job_timer.setSingleShot(True)
+        logs_job_timer.setInterval(0)
+        logs_job_timer.timeout.connect(self._on_logs_job_timer)
 
-    def set_active(self, is_active):
-        if self._is_active is is_active:
-            return
-        self._is_active = is_active
-        self._update_logs()
+        # Only matches in the visible part of logs are highlighted
+        highlight_timer = QtCore.QTimer(self)
+        highlight_timer.setSingleShot(True)
+        highlight_timer.setInterval(0)
+        highlight_timer.timeout.connect(self._update_highlights)
+        # Scrolling to text cursor does not always change the scrollbar
+        output_widget.updateRequest.connect(lambda: highlight_timer.start())
 
-    def set_report(self, report):
-        self._report_item = report
-        self._plugin_filter = set()
-        self._instance_filter = set()
+        highlight_fmt = QtGui.QTextCharFormat()
+        highlight_fmt.setBackground(MATCH_BG_COLOR)
+        highlight_fmt.setForeground(MATCH_FG_COLOR)
+
+        timestamp_check.stateChanged.connect(self._on_timestamp_check)
+        search_field.textChanged.connect(lambda: search_timer.start())
+        search_timer.timeout.connect(self._on_search_changed)
+        search_field.returnPressed.connect(self._on_search_return)
+        search_field.installEventFilter(self)
+        matches_view.selectionModel().currentChanged.connect(
+            self._on_match_changed
+        )
+        matches_view.clicked.connect(self._on_match_changed)
+        matches_view.doubleClicked.connect(self._confirm_match)
+        search_mode_btn.clicked.connect(self._on_search_mode_toggle)
+        prev_match_btn.clicked.connect(lambda: self._go_to_match(-1))
+        next_match_btn.clicked.connect(lambda: self._go_to_match(1))
+        level_filter.value_changed.connect(self._on_level_filter_changed)
+        surrounding_lines.valueChanged.connect(
+            self._on_surrounding_lines_changed
+        )
+
+        self._is_active: bool = True
+        self._need_refresh: bool = False
+        self._logs_job_timer = logs_job_timer
+        # Job yields progress of loading the logs, or None
+        self._logs_job: typing.Iterator[float | None] | None = None
+        # Refresh of logs, the search waits for it
+        self._logs_job_is_refresh = False
+        self._highlight_timer = highlight_timer
+        self._highlight_fmt = highlight_fmt
+        # Visible range and matches of the current highlights
+        self._highlight_state: tuple[int, int, int, int] | None = None
+        # Messages in the logs document
+        self._log_entries: list[_LogEntry] = []
+        # Rows of the matches list visible without scrolling
+        self._matches_view_rows = 0
+
+        self._timestamp_check = timestamp_check
+        self._search_field = search_field
+        self._search_mode_btn = search_mode_btn
+        self._level_filter_widget = level_filter
+        self._surrounding_lines = surrounding_lines
+        self._match_nav_widget = match_nav_widget
+        self._matches_model = matches_model
+        self._matches_view = matches_view
+        self._output_widget: ZoomPlainText = output_widget
+        self._report_item: PublishReport | None = None
+        self._instance_filter: set[str] = set()
+        self._plugin_filter: set[str] = set()
+        self._level_filter: set[int] = set()
+        self._search_text = ""
+        self._surrounding_line_count = 0
+
+        self._set_search_mode(True)
+
+    def eventFilter(self, obj, event) -> bool:
+        """Control the search matches list from the search field."""
+        if obj is not self._search_field:
+            return super().eventFilter(obj, event)
+
+        event_type = event.type()
+        if event_type == QtCore.QEvent.FocusIn:
+            self._update_matches_view()
+
+        elif (
+            event_type == QtCore.QEvent.FocusOut
+            and event.reason() not in (
+                QtCore.Qt.ActiveWindowFocusReason,
+                QtCore.Qt.PopupFocusReason,
+            )
+        ):
+            # The matches list does not take focus, any other widget does
+            self._matches_view.hide()
+
+        elif event_type == QtCore.QEvent.KeyPress:
+            key = event.key()
+            if key == QtCore.Qt.Key_Escape and self._matches_view.isVisible():
+                self._matches_view.hide()
+                return True
+            if (
+                key in (
+                    QtCore.Qt.Key_Up,
+                    QtCore.Qt.Key_Down,
+                    QtCore.Qt.Key_PageUp,
+                    QtCore.Qt.Key_PageDown,
+                )
+                and self._can_show_matches()
+            ):
+                self._update_matches_view()
+                if self._matches_model.rowCount():
+                    QtWidgets.QApplication.sendEvent(
+                        self._matches_view, event
+                    )
+                return True
+        return super().eventFilter(obj, event)
+
+    def _on_timestamp_check(self) -> None:
         self._need_refresh = True
         self._update_logs()
 
-    def set_plugin_filter(self, plugin_filter):
+    def _set_search_mode(self, search_mode: bool) -> None:
+        """Switch between filtering the logs and searching through them."""
+        self._search_mode = search_mode
+        mode, other_mode = "Filter", "search"
+        if search_mode:
+            mode, other_mode = "Search", "filter"
+        self._search_field.setPlaceholderText(f"{mode} logs...")
+        self._search_mode_btn.set_icon(
+            "search" if search_mode else "filter_alt"
+        )
+        self._search_mode_btn.setToolTip(f"Switch to {other_mode}")
+        self._surrounding_lines.setVisible(not search_mode)
+        self._match_nav_widget.setVisible(search_mode)
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_search_mode_toggle(self) -> None:
+        self._set_search_mode(not self._search_mode)
+
+    def _on_search_return(self) -> None:
+        if not self._search_mode:
+            return
+        # Confirm the match that is selected in the matches list
+        if self._matches_view.isVisible():
+            if self._matches_model.rowCount():
+                self._confirm_match()
+            return
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        self._go_to_match(-1 if modifiers & QtCore.Qt.ShiftModifier else 1)
+
+    def _confirm_match(self) -> None:
+        """Hide the matches list and move focus to the logs output."""
+        self._matches_view.hide()
+        self._output_widget.setFocus(QtCore.Qt.OtherFocusReason)
+
+    def _go_to_match(self, step: int) -> None:
+        count = self._matches_model.get_match_count()
+        if not count:
+            return
+        row = self._matches_view.currentIndex().row()
+        if 0 <= row < count:
+            row = (row + step) % count
+        else:
+            row = 0 if step > 0 else count - 1
+        self._matches_view.setCurrentIndex(self._matches_model.index(row))
+
+    def _on_match_changed(self, index: QtCore.QModelIndex) -> None:
+        match: _LogMatch | None = index.data(QtCore.Qt.UserRole)
+        if match is None:
+            return
+        cursor = self._output_widget.textCursor()
+        cursor.setPosition(match.start)
+        cursor.setPosition(match.end, QtGui.QTextCursor.KeepAnchor)
+        self._output_widget.setTextCursor(cursor)
+        self._output_widget.ensureCursorVisible()
+
+    def _add_matches(self, matches: list[_LogMatch]) -> None:
+        if not matches:
+            return
+        is_first = not self._matches_model.get_match_count()
+        self._matches_model.add_matches(matches)
+        self._update_matches_view()
+        if is_first and self._search_mode:
+            self._go_to_match(1)
+        self._highlight_timer.start()
+
+    def _update_highlights(self) -> None:
+        """Highlight the search matches in the visible part of logs."""
+        output_widget = self._output_widget
+        match_count = self._matches_model.get_match_count()
+        start = end = 0
+        if match_count:
+            viewport = output_widget.viewport()
+            first_block = output_widget.firstVisibleBlock()
+            last_block = output_widget.cursorForPosition(
+                QtCore.QPoint(viewport.width(), viewport.height())
+            ).block()
+            start = first_block.position()
+            end = last_block.position() + last_block.length()
+
+        # Setting the highlights requests update of the widget again
+        state = (id(output_widget.document()), match_count, start, end)
+        if state == self._highlight_state:
+            return
+        self._highlight_state = state
+
+        selections = []
+        if match_count:
+            matches = self._matches_model.get_matches_in_range(
+                start, end, self.max_highlighted_matches
+            )
+            document = output_widget.document()
+            for match in matches:
+                cursor = QtGui.QTextCursor(document)
+                cursor.setPosition(match.start)
+                cursor.setPosition(match.end, QtGui.QTextCursor.KeepAnchor)
+                selection = QtWidgets.QTextEdit.ExtraSelection()
+                selection.cursor = cursor
+                selection.format = self._highlight_fmt
+                selections.append(selection)
+        output_widget.setExtraSelections(selections)
+
+    def _can_show_matches(self) -> bool:
+        return bool(
+            self._search_mode
+            and self._search_text
+            and self._search_field.hasFocus()
+        )
+
+    def _update_matches_view(self) -> None:
+        """Show the matches list only while searching in the search field."""
+        view = self._matches_view
+        if not self._can_show_matches():
+            view.hide()
+            self._matches_view_rows = 0
+            return
+        # Keep one row for the 'No matches' placeholder
+        rows = min(
+            max(self._matches_model.rowCount(), 1),
+            self.max_visible_matches,
+        )
+        # Do not shrink the list until all matches are found, it would
+        #   jump on each change of the search text
+        if self._matches_model.is_searching():
+            rows = max(rows, self._matches_view_rows)
+        self._matches_view_rows = rows
+        row_height = _LogMatchDelegate.row_height(view.fontMetrics())
+        view.setFixedHeight(rows * row_height + 2 * view.frameWidth())
+        view.show()
+
+    def _on_search_changed(self) -> None:
+        search_text = self._search_field.text().strip().casefold()
+        if search_text == self._search_text:
+            return
+        self._search_text = search_text
+        # Filter mode shows only the matching logs
+        if not self._search_mode:
+            self._need_refresh = True
+            self._update_logs()
+            return
+
+        # Running refresh of logs searches the new logs when it is done
+        if self._logs_job is not None and self._logs_job_is_refresh:
+            return
+        self._start_logs_job(self._iter_search(), is_refresh=False)
+
+    def _on_level_filter_changed(self) -> None:
+        self._level_filter = set(self._level_filter_widget.value())
+        self._need_refresh = True
+        self._update_logs()
+
+    def _on_surrounding_lines_changed(self, value: int) -> None:
+        self._surrounding_line_count = value
+        self._need_refresh = True
+        self._update_logs()
+
+    def clear(self) -> None:
+        self._logs_job = None
+        self._log_entries = []
+        self._output_widget.set_loading_text(None)
+        self._output_widget.setPlainText("")
+
+    def set_active(self, is_active: bool) -> None:
+        if self._is_active is is_active:
+            return
+        self._is_active = is_active
+        # Continue the refresh which was paused while inactive
+        if is_active and self._logs_job is not None:
+            self._logs_job_timer.start()
+        self._update_logs()
+
+    def set_report(self, report: PublishReport | None) -> None:
+        self._report_item = report
+        self._plugin_filter = set()
+        self._instance_filter = set()
+        self._level_filter_widget.set_value([])
+        self._level_filter = set()
+        self._surrounding_lines.setValue(0)
+        self._surrounding_line_count = 0
+        self._need_refresh = True
+        self._update_logs()
+
+    def set_plugin_filter(self, plugin_filter: set[str]) -> None:
         self._plugin_filter = plugin_filter
         self._need_refresh = True
         self._update_logs()
 
-    def set_instance_filter(self, instance_filter):
+    def set_instance_filter(self, instance_filter: set[str]) -> None:
         self._instance_filter = instance_filter
         self._need_refresh = True
         self._update_logs()
 
-    def _update_logs(self):
+    def _update_logs(self) -> None:
         if not self._is_active or not self._need_refresh:
             return
+        self._need_refresh = False
 
-        if not self._report_item:
+        # Matches of the current logs would be misleading
+        self._matches_model.set_matches([])
+        self._matches_model.set_searching(bool(self._search_text))
+        self._update_matches_view()
+        self._update_highlights()
+
+        report = self._report_item
+        if report is None:
+            self._logs_job = None
+            self._log_entries = []
+            self._matches_model.set_searching(False)
+            self._output_widget.set_loading_text(None)
             self._output_widget.setPlainText("")
             return
 
+        # Replace the job in progress, it is for outdated filters
+        self._output_widget.set_loading_text("Loading logs...")
+        self._start_logs_job(self._iter_update_logs(report), is_refresh=True)
+
+    def _start_logs_job(
+        self, job: typing.Iterator[float | None], is_refresh: bool
+    ) -> None:
+        self._logs_job = job
+        self._logs_job_is_refresh = is_refresh
+        self._logs_job_timer.start()
+
+    def _on_logs_job_timer(self) -> None:
+        """Run the job for a short time and continue later."""
+        job = self._logs_job
+        if job is None or not self._is_active:
+            return
+        # Process input events often enough to keep typing smooth
+        end_time = time.perf_counter() + 0.03
+        progress = None
+        try:
+            while time.perf_counter() < end_time:
+                value = next(job)
+                if value is not None:
+                    progress = value
+        except StopIteration:
+            if self._logs_job is job:
+                self._logs_job = None
+            return
+
+        if self._logs_job_is_refresh and progress is not None:
+            self._output_widget.set_loading_text(
+                f"Loading logs... {int(progress * 100)}%"
+            )
+        self._logs_job_timer.start()
+
+    def _iter_search(self) -> typing.Iterator[None]:
+        """Search the logs, found matches are shown during the search."""
+        search_text = self._search_text
+        self._matches_model.set_matches([])
+        self._matches_model.set_searching(bool(search_text))
+        self._update_matches_view()
+        self._update_highlights()
+        if not search_text:
+            return
+
+        found = []
+        last_add_time = time.perf_counter()
+        for entry in self._log_entries:
+            found.extend(entry.iter_matches(search_text))
+            # Do not update the matches list too often
+            if found and time.perf_counter() - last_add_time > 0.1:
+                self._add_matches(found)
+                found = []
+                last_add_time = time.perf_counter()
+            yield
+
+        self._add_matches(found)
+        self._matches_model.set_searching(False)
+        self._update_matches_view()
+
+    def _iter_update_logs(
+        self, report: PublishReport
+    ) -> typing.Iterator[float | None]:
+        # Logs with their source: the plugin and the instance if it has one
+        plugin_labels = {
+            plugin.id: plugin.label for plugin in report.plugins_info
+        }
+        instance_labels = {
+            instance_id: f" | {instance.label or 'No label'}"
+            for instance_id, instance in report.instances_by_id.items()
+        }
         filtered_logs = []
-        for log in self._report_item.logs:
-            if (
-                self._instance_filter
-                and log.instance_id not in self._instance_filter
-            ):
-                continue
+        for plugin_id, instance_id, log in report.iter_logs(
+            plugin_ids_filter=self._plugin_filter or None,
+            instance_ids_filter=self._instance_filter or None,
+        ):
+            if not self._level_filter or self._log_matches_level(log):
+                filtered_logs.append((
+                    plugin_labels.get(plugin_id, "")
+                    + instance_labels.get(instance_id, ""),
+                    log,
+                ))
+            yield
 
-            if (
-                self._plugin_filter
-                and log.plugin_id not in self._plugin_filter
-            ):
-                continue
-            filtered_logs.append(log)
+        if self._search_text and not self._search_mode:
+            matching_indices = set()
+            for index, (_, log) in enumerate(filtered_logs):
+                if self._log_matches_search(log):
+                    matching_indices.add(index)
+                yield
+            if self._surrounding_line_count:
+                matching_indices = {
+                    context_index
+                    for index in matching_indices
+                    for context_index in range(
+                        max(0, index - self._surrounding_line_count),
+                        min(
+                            len(filtered_logs),
+                            index + self._surrounding_line_count + 1,
+                        ),
+                    )
+                }
+            filtered_logs = [
+                item
+                for index, item in enumerate(filtered_logs)
+                if index in matching_indices
+            ]
 
-        self._set_logs(filtered_logs)
+        show_timestamp = self._timestamp_check.isChecked()
+        filler = _LogFiller(
+            self._output_widget,
+            filtered_logs,
+            show_timestamp,
+        )
+        yield from filler.iter_fill()
+        self._log_entries = filler.entries
+        self._output_widget.set_loading_text(None)
+        # Search in the new logs, changes of search text do not have to
+        #   wait for the refresh anymore
+        self._logs_job_is_refresh = False
+        yield from self._iter_search()
 
-    def _set_logs(self, logs):
-        lines = []
-        for log in logs:
-            if log["type"] == "record":
-                message = "{}: {}".format(log["levelname"], log["msg"])
+    def _log_matches_search(self, log: ReportLog) -> bool:
+        if log.type == "record":
+            searchable_texts = (log.message, log.exc_info)
+        elif log.type == "error":
+            searchable_texts = (log.traceback,)
+        else:
+            return False
+        # Use the same matching as the search in '_LogEntry.iter_matches'
+        return any(
+            next(_iter_search_matches(text, self._search_text), None)
+            for text in searchable_texts
+            if text
+        )
 
-                lines.append(message)
-                exc_info = log["exc_info"]
-                if exc_info:
-                    lines.append(exc_info)
-
-            elif log["type"] == "error":
-                lines.append(log["traceback"])
-
-            else:
-                print(log["type"])
-
-        text = "\n".join(lines)
-        self._output_widget.setPlainText(text)
+    def _log_matches_level(self, log: ReportLog) -> bool:
+        # Traceback entries are stored as exceptions without a logging level,
+        # so they are treated as ERROR entries for level filtering.
+        filter_level = (
+            logging.ERROR if log.type == "error" else log.levelno
+        )
+        return filter_level in self._level_filter
 
 
 class PluginDetailsWidget(QtWidgets.QWidget):
-    def __init__(self, plugin_item, parent):
+    def __init__(
+        self,
+        plugin_info: PublishPluginReportInfo,
+        process_time: float,
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
 
         content_widget = QtWidgets.QFrame(self)
@@ -430,33 +1469,33 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         ):
             label_widget.setObjectName("PluginFormLabel")
 
-        plugin_label = plugin_item.label or plugin_item.name
-        if plugin_item.plugin_type:
+        plugin_label = plugin_info.label or plugin_info.name
+        if plugin_info.plugin_type:
             plugin_label += " ({})".format(
-                plugin_item.plugin_type.capitalize()
+                plugin_info.plugin_type.capitalize()
             )
 
         time_label = "Not started"
-        if plugin_item.passed:
-            time_label = get_pretty_milliseconds(plugin_item.process_time)
-        elif plugin_item.skipped:
+        if plugin_info.passed:
+            time_label = get_pretty_milliseconds(process_time)
+        elif plugin_info.skipped:
             time_label = "Skipped plugin"
 
         families = "N/A"
-        if plugin_item.families:
-            families = ", ".join(plugin_item.families)
+        if plugin_info.families:
+            families = ", ".join(plugin_info.families)
 
         order = "N/A"
-        if plugin_item.order is not None:
-            order = str(plugin_item.order)
+        if plugin_info.order is not None:
+            order = str(plugin_info.order)
 
         plugin_label_widget.setText(plugin_label)
-        plugin_doc_widget.setText(plugin_item.docstring or "N/A")
-        plugin_class_widget.setText(plugin_item.name or "N/A")
+        plugin_doc_widget.setText(plugin_info.docstring or "N/A")
+        plugin_class_widget.setText(plugin_info.name or "N/A")
         plugin_order_widget.setText(order)
         plugin_families_widget.setText(families)
-        plugin_path_widget.setText(plugin_item.filepath or "N/A")
-        plugin_path_widget.setToolTip(plugin_item.filepath or None)
+        plugin_path_widget.setText(plugin_info.filepath or "N/A")
+        plugin_path_widget.setToolTip(plugin_info.filepath or "")
         plugin_time_widget.setText(time_label)
 
         content_layout = QtWidgets.QGridLayout(content_widget)
@@ -469,7 +1508,7 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         row += 1
 
         # Hide docstring if it is empty
-        if plugin_item.docstring:
+        if plugin_info.docstring:
             content_layout.addWidget(plugin_doc_widget, row, 0, 1, 2)
             row += 1
         else:
@@ -495,7 +1534,7 @@ class PluginDetailsWidget(QtWidgets.QWidget):
 
 
 class PluginsDetailsWidget(QtWidgets.QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
         super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
@@ -537,50 +1576,40 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._widgets_by_plugin_id = {}
         self._stretch_item_index = 0
 
-        self._is_active = True
-        self._need_refresh = False
+        self._is_active: bool = True
+        self._need_refresh: bool = False
 
-        self._report_item = None
-        self._plugin_filter = set()
-        self._plugin_ids = None
+        self._report_item: PublishReport | None = None
+        self._plugin_filter: set[str] = set()
 
-    def set_active(self, is_active):
+    def set_active(self, is_active: bool) -> None:
         if self._is_active is is_active:
             return
         self._is_active = is_active
         self._update_widgets()
 
-    def set_plugin_filter(self, plugin_filter):
-        self._need_refresh = True
+    def set_plugin_filter(self, plugin_filter: set[str]) -> None:
+        if plugin_filter == self._plugin_filter:
+            return
+
         self._plugin_filter = plugin_filter
-        self._update_widgets()
+        self._invalidate_filters()
 
     def set_report(self, report):
-        self._plugin_ids = None
         self._plugin_filter = set()
         self._need_refresh = True
         self._report_item = report
         self._update_widgets()
 
-    def _get_plugin_ids(self):
-        if self._plugin_ids is not None:
-            return self._plugin_ids
-
+    def _clear_widgets(self) -> None:
         # Clear layout and clear widgets
+        self._widgets_by_plugin_id.clear()
         while self._content_layout.count():
             item = self._content_layout.takeAt(0)
             widget = item.widget()
             if widget:
                 widget.setVisible(False)
                 widget.deleteLater()
-
-        self._widgets_by_plugin_id.clear()
-
-        plugin_ids = []
-        if self._report_item is not None:
-            plugin_ids = list(self._report_item.plugins_id_order)
-        self._plugin_ids = plugin_ids
-        return plugin_ids
 
     def _update_widgets(self):
         if not self._is_active or not self._need_refresh:
@@ -593,18 +1622,30 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         #   the layout and widget size hints
         self._content_widget.setVisible(False)
 
-        any_visible = False
-        for plugin_id in self._get_plugin_ids():
-            widget = self._widgets_by_plugin_id.get(plugin_id)
-            if widget is None:
-                plugin_item = self._report_item.plugins_items_by_id[plugin_id]
-                widget = PluginDetailsWidget(plugin_item, self._content_widget)
-                self._widgets_by_plugin_id[plugin_id] = widget
-                self._content_layout.addWidget(widget, 0)
+        self._clear_widgets()
+        if self._report_item is None:
+            return
 
-            is_visible = plugin_id in self._plugin_filter
-            widget.setVisible(is_visible)
-            if is_visible:
+        for plugin_info in self._report_item.plugins_info:
+            process_time = 0.0
+            for process_report in plugin_info.process_reports:
+                process_time += process_report.process_time
+            widget = PluginDetailsWidget(
+                plugin_info,
+                process_time,
+                self._content_widget
+            )
+            self._widgets_by_plugin_id[plugin_info.id] = widget
+            self._content_layout.addWidget(widget, 0)
+
+        self._invalidate_filters()
+
+    def _invalidate_filters(self) -> None:
+        any_visible = False
+        for plugin_id, widget in self._widgets_by_plugin_id.items():
+            visible = plugin_id in self._plugin_filter
+            widget.setVisible(visible)
+            if visible:
                 any_visible = True
 
         self._content_widget.setVisible(any_visible)
@@ -853,19 +1894,28 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
             self.close_details_popup()
 
     def set_report_data(self, report_data):
-        report = PublishReport(report_data)
+        report = PublishReport.from_data(report_data)
         self.set_report(report)
 
-    def set_report(self, report):
+    def set_report(self, report: PublishReport | None) -> None:
         self._ignore_selection_changes = True
 
         self._report_item = report
-
-        self._instances_model.set_report(report)
-        self._plugins_model.set_report(report)
+        errored_instance_ids = set()
+        errored_plugin_ids = set()
+        if report is not None:
+            logs_summary = report.get_logs_summary()
+            errored_instance_ids = logs_summary.errored_instance_ids
+            errored_plugin_ids = logs_summary.errored_plugin_ids
+        self._instances_model.set_report(report, errored_instance_ids)
+        self._plugins_model.set_report(report, errored_plugin_ids)
         self._logs_text_widget.set_report(report)
         self._plugin_load_report_widget.set_report(report)
         self._plugins_details_widget.set_report(report)
+        if report is not None and report.blocking_crashed_paths:
+            self._details_tab_widget.setCurrentWidget(
+                self._plugin_load_report_widget
+            )
 
         self._ignore_selection_changes = False
 
