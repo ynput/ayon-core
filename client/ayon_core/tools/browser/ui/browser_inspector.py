@@ -102,7 +102,6 @@ class ReviewInspector(AYContainer):
         # Scrub through the video reviewable while hovering the thumbnail
         self._filmstrip = FilmstripOverlay(
             self._thumbnail,
-            inset=1,
             background=self._thumbnail._bg_color,
         )
         # Click for a full-size preview

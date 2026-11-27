@@ -30,6 +30,7 @@ from typing import Tuple
 
 import ayon_api
 from ayon_core.ui.components.entity_card import AYEntityCard
+from ayon_core.ui.components.entity_thumbnail import AYEntityThumbnail
 from ayon_core.ui.components.task_queue import AsyncTask, AsyncTaskQueue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets
@@ -362,17 +363,17 @@ def _get_loader() -> _FilmstripLoader:
 
 def _paint_frame(
     painter: QtGui.QPainter,
-    area: QtCore.QRectF,
+    clip: QtGui.QPainterPath,
     data: FilmstripData,
     position: float,
     fit: str,
     background: QtGui.QColor | None,
 ) -> None:
-    """Paint the frame at *position* (0-1) and a progress bar into *area*.
+    """Paint the frame at *position* (0-1) and a progress bar into *clip*.
 
     Args:
         painter: Painter of the widget.
-        area: Rect to paint into.
+        clip: Area to paint into.
         data: Filmstrip with the frames.
         position: Relative position (0-1) in the video.
         fit: ``"contain"`` or ``"cover"``.
@@ -380,6 +381,7 @@ def _paint_frame(
     """
     index = min(int(position * data.frames), data.frames - 1)
     source = data.frame_rect(index)
+    area = clip.boundingRect()
     if area.isEmpty() or source.isEmpty():
         return
 
@@ -396,7 +398,8 @@ def _paint_frame(
     painter.setRenderHint(
         QtGui.QPainter.RenderHint.SmoothPixmapTransform, True
     )
-    painter.setClipRect(area)
+    painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+    painter.setClipPath(clip)
     if background is not None:
         painter.fillRect(area, background)
     painter.drawImage(target, data.image, source)
@@ -416,25 +419,24 @@ def _paint_frame(
 class FilmstripOverlay(QtWidgets.QWidget):
     """Hover-scrub preview shown on top of a thumbnail widget.
 
-    The overlay covers its *host* widget and is only visible while a frame
-    is shown. It tracks the cursor over the host by itself. Hosts that do
-    not receive mouse events (e.g. table cell widgets transparent for mouse
-    events) can be driven with :meth:`scrub` and :meth:`stop` instead.
+    The overlay covers its *host* thumbnail and is only visible while a
+    frame is shown, clipped like the image of the host. It tracks the
+    cursor over the host by itself. Hosts that do not receive mouse events
+    (e.g. table cell widgets transparent for mouse events) can be driven
+    with :meth:`scrub` and :meth:`stop` instead.
 
     Args:
         host: Thumbnail widget to show the frames on.
         fit: ``"contain"`` or ``"cover"``, should match how the static
             thumbnail underneath is fitted.
-        inset: Pixels kept free at the host edges, e.g. for its border.
         background: Fill behind the frame, e.g. to hide the static
             thumbnail when the aspect ratios differ.
     """
 
     def __init__(
         self,
-        host: QtWidgets.QWidget,
+        host: AYEntityThumbnail,
         fit: str = "contain",
-        inset: int = 0,
         background: QtGui.QColor | None = None,
     ) -> None:
         super().__init__(host)
@@ -442,7 +444,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
             QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
         )
         self._fit = fit
-        self._inset = inset
         self._background = background
         self._source: _SourceKey | None = None
         self._data: FilmstripData | None = None
@@ -593,14 +594,10 @@ class FilmstripOverlay(QtWidgets.QWidget):
     ) -> None:
         if self._data is None:
             return
-        inset = self._inset
-        area = QtCore.QRectF(self.rect()).adjusted(
-            inset, inset, -inset, -inset
-        )
         painter = QtGui.QPainter(self)
         _paint_frame(
             painter,
-            area,
+            self.parentWidget().get_image_clip_path(),
             self._data,
             self._position,
             self._fit,
@@ -702,10 +699,12 @@ class FilmstripPopup(QtWidgets.QWidget):
     def paintEvent(  # type: ignore[override]
         self, event: QtGui.QPaintEvent
     ) -> None:
+        clip = QtGui.QPainterPath()
+        clip.addRect(QtCore.QRectF(self.rect()))
         painter = QtGui.QPainter(self)
         _paint_frame(
             painter,
-            QtCore.QRectF(self.rect()),
+            clip,
             self._data,
             self._position,
             "contain",
@@ -736,6 +735,6 @@ def get_card_filmstrip(card: AYEntityCard) -> FilmstripOverlay | None:
     body = card._card_body
     filmstrip = body.findChild(FilmstripOverlay)
     if filmstrip is None:
-        filmstrip = FilmstripOverlay(body, fit="cover", inset=1)
+        filmstrip = FilmstripOverlay(body, fit="cover")
     filmstrip.set_source(parts[0], "version", parts[1])
     return filmstrip
