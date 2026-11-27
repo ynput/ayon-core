@@ -516,9 +516,7 @@ class ActionsModel:
                 # category=action["category"],
             ))
 
-        action_items = self._filter_app_executables(
-            project_name, selection.task_id, action_items
-        )
+        action_items = self._filter_app_executables(selection, action_items)
 
         cache.update_data(action_items)
         return cache.get_data()
@@ -568,10 +566,6 @@ class ActionsModel:
             cache.update_data((app_items, {}))
         app_items, validity = cache.get_data()
 
-        # Value is the same for all items
-        if not app_items or not app_items[0]["show_only_available"]:
-            return set()
-
         app_items_to_validate = [
             app_item
             for app_item in app_items
@@ -592,27 +586,23 @@ class ActionsModel:
 
     def _filter_app_executables(
         self,
-        project_name: str | None,
-        task_id: str | None,
+        selection: LauncherActionSelection,
         action_items: list[ActionItem],
     ) -> list[ActionItem]:
         """Filter out application actions without existing executable.
 
-        Order of action items is kept. Nothing is filtered if executables
-            can't be validated.
+        Order of action items is kept. Nothing is filtered if
+            'only_available' setting of applications addon is disabled,
+            or if executables can't be validated.
 
         Args:
-            project_name (str | None): Project name.
-            task_id (str | None): Selected task id.
+            selection (LauncherActionSelection): Selection of actions.
             action_items (list[ActionItem]): Webaction items.
 
         Returns:
             list[ActionItem]: Action items that can be triggered.
 
         """
-        if not project_name or not task_id:
-            return action_items
-
         app_names = {
             self._get_app_name_from_action(action_item)
             for action_item in action_items
@@ -626,9 +616,13 @@ class ActionsModel:
         if not hasattr(addon, "validate_app_items_executable_paths"):
             return action_items
 
+        project_settings = selection.get_project_settings()
+        if not project_settings["applications"]["only_available"]:
+            return action_items
+
         try:
             invalid_app_names = self._get_invalid_app_names(
-                addon, project_name, app_names
+                addon, selection.project_name, app_names
             )
         except Exception:
             self.log.warning(

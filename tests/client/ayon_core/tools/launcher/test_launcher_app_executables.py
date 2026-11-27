@@ -6,14 +6,14 @@ import time
 
 import pytest
 
+from ayon_core.pipeline.actions import LauncherActionSelection
 from ayon_core.tools.launcher.abstract import ActionItem
 from ayon_core.tools.launcher.models.actions import ActionsModel
 
 
 class ApplicationsAddon:
     """Applications addon where only 'maya/2026' has executable."""
-    def __init__(self, show_only_available=True):
-        self.show_only_available = show_only_available
+    def __init__(self):
         self.request_started = threading.Event()
         self.release_request = threading.Event()
         self.release_request.set()
@@ -25,11 +25,7 @@ class ApplicationsAddon:
         self.request_started.set()
         self.release_request.wait(5)
         return [
-            {
-                "full_name": app_name,
-                "executables": {},
-                "show_only_available": self.show_only_available,
-            }
+            {"full_name": app_name, "executables": {}}
             for app_name in ("maya/2026", "nuke/17-1", "houdini/21")
         ]
 
@@ -75,8 +71,17 @@ ACTIONS = [
 ]
 
 
-def _filter(model, actions=ACTIONS):
-    output = model._filter_app_executables("project", "task_id", actions)
+def _filter(model, only_available=True):
+    selection = LauncherActionSelection(
+        "project",
+        "folder_id",
+        "task_id",
+        None,
+        project_settings={
+            "applications": {"only_available": only_available}
+        },
+    )
+    output = model._filter_app_executables(selection, ACTIONS)
     return [action.identifier for action in output]
 
 
@@ -114,12 +119,13 @@ def test_actions_refresh_keeps_validated_applications(monkeypatch):
 
 
 @pytest.mark.unit
-def test_nothing_is_validated_if_disabled():
-    addon = ApplicationsAddon(show_only_available=False)
+def test_nothing_is_requested_if_disabled():
+    addon = ApplicationsAddon()
     model = ActionsModel(Controller(addon))
 
-    assert _filter(model) == [action.identifier for action in ACTIONS]
-    assert addon.validated == []
+    output = _filter(model, only_available=False)
+    assert output == [action.identifier for action in ACTIONS]
+    assert addon.requests == 0
 
 
 @pytest.mark.unit
