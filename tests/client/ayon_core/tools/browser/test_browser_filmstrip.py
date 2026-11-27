@@ -14,7 +14,6 @@ import pytest
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.tools.browser.ui import _browser_filmstrip as filmstrip
-from ayon_core.ui.components.entity_card import AYEntityCard
 
 KEYS = [("project", "version", f"{idx:032x}") for idx in range(10)]
 
@@ -130,10 +129,15 @@ def test_answers_without_filmstrip_stay_cached(qapp, monkeypatch) -> None:
 @pytest.mark.unit
 def test_card_filmstrip_follows_card(qapp, loads) -> None:
     project_name, _, version_id = KEYS[0]
-    card = AYEntityCard(image_src=f"{project_name}/{version_id}/thumb")
+    # Just what is used of 'AYEntityCard'. A real card would create the
+    #   AYON style, which changes the result of the visual tests run later.
+    card = SimpleNamespace(
+        image_src=f"{project_name}/{version_id}/thumb",
+        _card_body=QtWidgets.QWidget(),
+    )
     try:
         # Created only when asked for
-        assert card.findChild(filmstrip.FilmstripOverlay) is None
+        assert card._card_body.findChild(filmstrip.FilmstripOverlay) is None
 
         overlay = filmstrip.get_card_filmstrip(card)
 
@@ -149,7 +153,7 @@ def test_card_filmstrip_follows_card(qapp, loads) -> None:
         card.image_src = ""
         assert filmstrip.get_card_filmstrip(card) is None
     finally:
-        card.deleteLater()
+        card._card_body.deleteLater()
 
 
 @pytest.mark.unit
@@ -188,9 +192,11 @@ def test_sweep_requests_only_the_hovered_filmstrip(
 @pytest.mark.unit
 @pytest.mark.parametrize("ffmpeg_fails", [False, True])
 def test_conversion_leaves_no_temp_files(
-    monkeypatch, tmp_path, ffmpeg_fails
+    monkeypatch, tmp_path_factory, ffmpeg_fails
 ) -> None:
-    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    # 'tmp_path' can be shared between tests (pytest-ayon)
+    temp_dir = tmp_path_factory.mktemp("filmstrip_temp")
+    monkeypatch.setattr(tempfile, "tempdir", str(temp_dir))
     response = SimpleNamespace(
         status_code=200, content=b"avif", raise_for_status=lambda: None
     )
@@ -225,4 +231,4 @@ def test_conversion_leaves_no_temp_files(
         assert image.read() == b"jpeg"
 
     assert ffmpeg_inputs == [b"avif"]
-    assert list(tmp_path.iterdir()) == []
+    assert list(temp_dir.iterdir()) == []
