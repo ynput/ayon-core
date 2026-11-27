@@ -508,14 +508,29 @@ class TasksCombobox(QtWidgets.QComboBox):
 
 
 class VariantInputWidget(PlaceholderLineEdit):
-    """Input widget for variant."""
+    """Input widget for variant.
+
+    Signal 'value_changed' is emitted on each text change, signal
+    'value_committed' when user finished editing (Enter or focus out)
+    or stopped typing for a while.
+    """
     value_changed = QtCore.Signal()
+    value_committed = QtCore.Signal()
+
+    # Commit value after this time (ms) from last text change
+    commit_delay = 1000
 
     def __init__(self, parent):
         super().__init__(parent)
 
         self.setObjectName("VariantInput")
         self.setToolTip(VARIANT_TOOLTIP)
+
+        commit_timer = QtCore.QTimer(self)
+        commit_timer.setSingleShot(True)
+        commit_timer.setInterval(self.commit_delay)
+        commit_timer.timeout.connect(self._on_editing_finished)
+        self._commit_timer = commit_timer
 
         name_pattern = "^[{}]*$".format(PRODUCT_NAME_ALLOWED_SYMBOLS)
         self._name_pattern = name_pattern
@@ -531,6 +546,7 @@ class VariantInputWidget(PlaceholderLineEdit):
         self._is_valid = True
 
         self.textChanged.connect(self._on_text_change)
+        self.editingFinished.connect(self._on_editing_finished)
 
     def is_valid(self):
         """Is variant text valid."""
@@ -572,8 +588,17 @@ class VariantInputWidget(PlaceholderLineEdit):
 
         self._current_value = [self.text()]
         self._has_value_changed = self._current_value != self._origin_value
+        if self._has_value_changed:
+            self._commit_timer.start()
+        else:
+            self._commit_timer.stop()
 
         self.value_changed.emit()
+
+    def _on_editing_finished(self):
+        self._commit_timer.stop()
+        if self._has_value_changed:
+            self.value_committed.emit()
 
     def reset_to_origin(self):
         """Set origin value of selected instances."""
@@ -591,6 +616,7 @@ class VariantInputWidget(PlaceholderLineEdit):
         if variants is None:
             variants = []
 
+        self._commit_timer.stop()
         self._ignore_value_change = True
 
         self._has_value_changed = False
@@ -603,7 +629,10 @@ class VariantInputWidget(PlaceholderLineEdit):
             self.setText("")
 
         elif len(variants) == 1:
-            self.setText(self._current_value[0])
+            # Don't reset text if is same to keep cursor position, value
+            #   may be committed while user is still typing.
+            if self.text() != self._current_value[0]:
+                self.setText(self._current_value[0])
 
         else:
             multiselection_text = self._multiselection_text
@@ -618,12 +647,17 @@ class VariantInputWidget(PlaceholderLineEdit):
 class GlobalAttrsWidget(QtWidgets.QWidget):
     """Global attributes to define context and product name of instances.
 
-    product name is or may be affected on context. Gives abiity to modify
-    context and product name of instance. This change is not autopromoted but
-    must be submitted.
+    product name is or may be affected on context. Gives ability to modify
+    context and product name of instance. Changes are applied to instances
+    automatically once they are complete and valid:
+    - variant when editing is finished (Enter or focus out) or after
+        1 second since last change,
+    - folder when folder dialog is accepted,
+    - task when different task is selected.
 
-    Warning: Until artist hit `Submit` changes must not be propagated to
-    instance data.
+    Changes that would result in invalid context (e.g. folder without
+    the currently selected task) are kept pending until fixed. Pending
+    changes are discarded when selection of instances changes.
 
     Global attributes contain these widgets:
     Variant:           [  text input  ]
@@ -631,7 +665,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     Task:              [   combobox   ]
     Product base type: [   immutable  ]
     product name:      [   immutable  ]
-                          [Submit] [Cancel]
 
     """
     multiselection_text = "< Multiselection >"
@@ -645,6 +678,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self._controller: AbstractPublisherFrontend = controller
         self._current_instances_by_id: dict[str, "InstanceItem"] = {}
         self._invalid_task_item_ids: set[str] = set()
+        self._ignore_task_change: bool = False
 
         variant_input = VariantInputWidget(self)
         folder_value_widget = FoldersFields(controller, self)
@@ -662,18 +696,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         product_base_type_value_widget.set_value()
         product_value_widget.set_value()
 
-        submit_btn = QtWidgets.QPushButton("Confirm", self)
-        cancel_btn = QtWidgets.QPushButton("Cancel", self)
-        submit_btn.setEnabled(False)
-        cancel_btn.setEnabled(False)
-
-        btns_layout = QtWidgets.QHBoxLayout()
-        btns_layout.setContentsMargins(0, 0, 0, 0)
-        btns_layout.addStretch(1)
-        btns_layout.setSpacing(5)
-        btns_layout.addWidget(submit_btn)
-        btns_layout.addWidget(cancel_btn)
-
         main_layout = QtWidgets.QFormLayout(self)
         main_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         main_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
@@ -685,13 +707,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             product_base_type_value_widget
         )
         main_layout.addRow("Product name", product_value_widget)
-        main_layout.addRow(btns_layout)
 
-        variant_input.value_changed.connect(self._on_variant_change)
+        variant_input.value_committed.connect(self._on_variant_commit)
         folder_value_widget.value_changed.connect(self._on_folder_change)
         task_value_widget.value_changed.connect(self._on_task_change)
-        submit_btn.clicked.connect(self._on_submit)
-        cancel_btn.clicked.connect(self._on_cancel)
 
         controller.register_event_callback(
             "create.context.value.changed",
@@ -703,11 +722,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.task_value_widget = task_value_widget
         self._product_base_type_value_widget = product_base_type_value_widget
         self.product_value_widget = product_value_widget
-        self.submit_btn = submit_btn
-        self.cancel_btn = cancel_btn
 
-    def _on_submit(self):
-        """Commit changes for selected instances."""
+    def _apply_changes(self):
+        """Apply changes to selected instances."""
 
         variant_value = None
         folder_path = None
@@ -782,9 +799,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         self.product_value_widget.set_value(product_names)
 
-        self._set_btns_enabled(False)
-        self._set_btns_visible(invalid_tasks)
-
         if variant_value is not None:
             self.variant_input.confirm_value()
 
@@ -797,47 +811,46 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self._controller.set_instances_context_info(changes_by_id)
         self._refresh_items()
 
-    def _on_cancel(self):
-        """Cancel changes and set back to their irigin value."""
-
-        self.variant_input.reset_to_origin()
-        self.folder_value_widget.reset_to_origin()
-        self.task_value_widget.reset_to_origin()
-        self._set_btns_enabled(False)
-
-    def _on_value_change(self):
-        any_invalid = (
-            not self.variant_input.is_valid()
-            or not self.folder_value_widget.is_valid()
-            or not self.task_value_widget.is_valid()
-        )
-        any_changed = (
+    def _has_pending_changes(self) -> bool:
+        return (
             self.variant_input.has_value_changed()
             or self.folder_value_widget.has_value_changed()
             or self.task_value_widget.has_value_changed()
         )
-        self._set_btns_visible(any_changed or any_invalid)
-        self.cancel_btn.setEnabled(any_changed)
-        self.submit_btn.setEnabled(not any_invalid)
 
-    def _on_variant_change(self):
-        self._on_value_change()
+    def _is_valid(self) -> bool:
+        return (
+            self.variant_input.is_valid()
+            and self.folder_value_widget.is_valid()
+            and self.task_value_widget.is_valid()
+        )
+
+    def _try_apply_changes(self):
+        """Apply pending changes if all values are valid.
+
+        Invalid changes are kept pending so user can fix them.
+        """
+        if self._has_pending_changes() and self._is_valid():
+            self._apply_changes()
+
+    def _on_variant_commit(self):
+        self._try_apply_changes()
 
     def _on_folder_change(self):
         folder_paths = self.folder_value_widget.get_selected_items()
-        self.task_value_widget.set_folder_paths(folder_paths)
-        self._on_value_change()
+        # Updating tasks may trigger task change before task widget
+        #   validation is finished, apply changes after it.
+        self._ignore_task_change = True
+        try:
+            self.task_value_widget.set_folder_paths(folder_paths)
+        finally:
+            self._ignore_task_change = False
+        self._try_apply_changes()
 
     def _on_task_change(self):
-        self._on_value_change()
-
-    def _set_btns_visible(self, visible):
-        self.cancel_btn.setVisible(visible)
-        self.submit_btn.setVisible(visible)
-
-    def _set_btns_enabled(self, enabled):
-        self.cancel_btn.setEnabled(enabled)
-        self.submit_btn.setEnabled(enabled)
+        if self._ignore_task_change:
+            return
+        self._try_apply_changes()
 
     def set_current_instances(self, instances):
         """Set currently selected instances.
@@ -846,8 +859,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             instances (List[InstanceItem]): List of selected instances.
                 Empty instances tells that nothing or context is selected.
         """
-        self._set_btns_visible(False)
-
         self._current_instances_by_id = {
             instance.id: instance
             for instance in instances
