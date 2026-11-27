@@ -68,6 +68,8 @@ class HelpDialog(QtWidgets.QDialog):
         help_content = HelpWidget(self)
 
         main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(9, 9, 9, 9)
+        main_layout.setSpacing(6)
         main_layout.addWidget(help_content, 1)
 
         controller.register_event_callback(

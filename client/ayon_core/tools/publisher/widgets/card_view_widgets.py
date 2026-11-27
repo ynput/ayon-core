@@ -84,6 +84,7 @@ class BaseGroupWidget(QtWidgets.QWidget):
         label_layout.addWidget(line_widget, 1)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(label_layout, 0)
 
@@ -220,10 +221,12 @@ class ContextCardWidget(CardWidget):
         )
 
         icon_layout = QtWidgets.QHBoxLayout()
+        icon_layout.setSpacing(6)
         icon_layout.setContentsMargins(5, 5, 5, 5)
         icon_layout.addWidget(icon_widget)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 2, 10, 2)
         layout.addLayout(icon_layout, 0)
         layout.addWidget(label_widget, 1)
@@ -253,10 +256,12 @@ class ConvertorItemCardWidget(CardWidget):
         label_widget = QtWidgets.QLabel(item.label, self)
 
         icon_layout = QtWidgets.QHBoxLayout()
+        icon_layout.setSpacing(6)
         icon_layout.setContentsMargins(10, 5, 5, 5)
         icon_layout.addWidget(icon_widget)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 2, 10, 2)
         layout.addLayout(icon_layout, 0)
         layout.addWidget(label_widget, 1)
@@ -305,6 +310,7 @@ class InstanceCardWidget(CardWidget):
         context_warning = ContextWarningLabel(self)
 
         icon_layout = QtWidgets.QHBoxLayout()
+        icon_layout.setSpacing(6)
         icon_layout.setContentsMargins(10, 5, 5, 5)
         icon_layout.addWidget(icon_widget)
         icon_layout.addWidget(context_warning)
@@ -321,6 +327,8 @@ class InstanceCardWidget(CardWidget):
         expand_btn.setEnabled(False)
 
         top_layout = QtWidgets.QHBoxLayout()
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(6)
         top_layout.addLayout(icon_layout, 0)
         top_layout.addWidget(label_widget, 1)
         top_layout.addWidget(context_warning, 0)
@@ -331,6 +339,7 @@ class InstanceCardWidget(CardWidget):
         detail_widget.setVisible(False)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 2, 10, 2)
         layout.addLayout(top_layout)
         layout.addWidget(detail_widget)
@@ -554,10 +563,12 @@ class InstanceCardView(AbstractInstanceView):
         scroll_area.setWidget(content_widget)
 
         content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.setSpacing(6)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.addStretch(1)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scroll_area)
 

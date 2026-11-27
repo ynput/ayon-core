@@ -34,6 +34,7 @@ class PreCreateWidget(QtWidgets.QWidget):
 
         attributes_widget = AttributesWidget(controller, contet_widget)
         contet_layout = QtWidgets.QVBoxLayout(contet_widget)
+        contet_layout.setSpacing(6)
         contet_layout.setContentsMargins(0, 0, 0, 0)
         contet_layout.addWidget(attributes_widget, 0)
         contet_layout.addStretch(1)
@@ -58,11 +59,13 @@ class PreCreateWidget(QtWidgets.QWidget):
         empty_label.setVisible(False)
 
         empty_layout = QtWidgets.QVBoxLayout(empty_widget)
+        empty_layout.setSpacing(6)
         empty_layout.setContentsMargins(0, 0, 0, 0)
         empty_layout.addWidget(empty_label, 0, QtCore.Qt.AlignCenter)
         empty_layout.addWidget(no_creator_label, 0, QtCore.Qt.AlignCenter)
 
         main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(scroll_area, 1)
         main_layout.addWidget(empty_widget, 1)

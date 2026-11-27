@@ -521,6 +521,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
         flick.activateOn(view)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(view)
 

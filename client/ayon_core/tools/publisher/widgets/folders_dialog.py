@@ -94,11 +94,14 @@ class FoldersDialog(QtWidgets.QDialog):
         cancel_btn = QtWidgets.QPushButton("Cancel", self)
 
         btns_layout = QtWidgets.QHBoxLayout()
+        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.setSpacing(6)
         btns_layout.addStretch(1)
         btns_layout.addWidget(ok_btn)
         btns_layout.addWidget(cancel_btn)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(9, 9, 9, 9)
         layout.setSpacing(5)
         layout.addLayout(header_layout, 0)
         layout.addWidget(folders_widget, 1)

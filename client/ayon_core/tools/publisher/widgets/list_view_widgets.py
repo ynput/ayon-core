@@ -151,6 +151,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         active_checkbox = NiceCheckbox(parent=self)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(2, 0, 2, 0)
         layout.addWidget(product_name_label)
         layout.addStretch(1)
@@ -314,6 +315,7 @@ class ListContextWidget(QtWidgets.QFrame):
         label_widget = QtWidgets.QLabel(CONTEXT_LABEL, self)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(5, 0, 2, 0)
         layout.addWidget(
             label_widget, 1, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
@@ -348,6 +350,7 @@ class InstanceListGroupWidget(BaseClickableFrame):
         toggle_checkbox = NiceCheckbox(parent=self)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(2, 0, 2, 0)
         layout.addWidget(
             name_label, 1, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
@@ -473,6 +476,7 @@ class InstanceListView(AbstractInstanceView):
         instance_view.setModel(proxy_model)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(instance_view)
 

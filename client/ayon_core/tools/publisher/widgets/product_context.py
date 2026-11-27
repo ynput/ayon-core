@@ -675,8 +675,17 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         btns_layout.addWidget(cancel_btn)
 
         main_layout = QtWidgets.QFormLayout(self)
+        main_layout.setContentsMargins(9, 9, 9, 9)
         main_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         main_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
+        # Explicit policies, macOS style defaults differ
+        main_layout.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.AllNonFixedFieldsGrow
+        )
+        main_layout.setLabelAlignment(QtCore.Qt.AlignLeft)
+        main_layout.setFormAlignment(
+            QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
+        )
         main_layout.addRow("Variant", variant_input)
         main_layout.addRow("Folder", folder_value_widget)
         main_layout.addRow("Task", task_value_widget)

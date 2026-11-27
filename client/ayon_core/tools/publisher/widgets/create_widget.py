@@ -71,12 +71,14 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         short_desc_input_layout = QtWidgets.QVBoxLayout(
             short_desc_input_widget
         )
+        short_desc_input_layout.setContentsMargins(9, 9, 9, 9)
         short_desc_input_layout.setSpacing(0)
         short_desc_input_layout.addWidget(product_base_type_label)
         short_desc_input_layout.addWidget(description_label)
         # --------------------------------
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(icon_widget, 0)
         layout.addWidget(short_desc_input_widget, 1)
@@ -172,6 +174,7 @@ class CreateWidget(QtWidgets.QWidget):
         creators_view.setModel(creators_sort_model)
 
         creators_view_layout = QtWidgets.QVBoxLayout(creators_view_widget)
+        creators_view_layout.setSpacing(6)
         creators_view_layout.setContentsMargins(0, 0, 0, 0)
         creators_view_layout.addWidget(creator_view_label, 0)
         creators_view_layout.addWidget(creators_view, 1)
@@ -202,10 +205,19 @@ class CreateWidget(QtWidgets.QWidget):
         product_variant_layout.setContentsMargins(0, 0, 0, 0)
         product_variant_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         product_variant_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
+        # Explicit policies, macOS style defaults differ
+        product_variant_layout.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.AllNonFixedFieldsGrow
+        )
+        product_variant_layout.setLabelAlignment(QtCore.Qt.AlignLeft)
+        product_variant_layout.setFormAlignment(
+            QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop
+        )
         product_variant_layout.addRow("Variant", variant_widget)
         product_variant_layout.addRow("Product", product_name_input)
 
         creator_basics_layout = QtWidgets.QVBoxLayout(creator_basics_widget)
+        creator_basics_layout.setSpacing(6)
         creator_basics_layout.setContentsMargins(0, 0, 0, 0)
         creator_basics_layout.addWidget(product_variant_label, 0)
         creator_basics_layout.addWidget(product_variant_widget, 0)
@@ -213,6 +225,7 @@ class CreateWidget(QtWidgets.QWidget):
         thumbnail_widget = ThumbnailWidget(controller, creators_attrs_top)
 
         creators_attrs_top_layout = QtWidgets.QHBoxLayout(creators_attrs_top)
+        creators_attrs_top_layout.setSpacing(6)
         creators_attrs_top_layout.setContentsMargins(0, 0, 0, 0)
         creators_attrs_top_layout.addWidget(creator_basics_widget, 1)
         creators_attrs_top_layout.addWidget(thumbnail_widget, 0)
@@ -226,11 +239,13 @@ class CreateWidget(QtWidgets.QWidget):
         create_btn.setEnabled(False)
 
         create_btn_wrap_layout = QtWidgets.QHBoxLayout(create_btn_wrapper)
+        create_btn_wrap_layout.setSpacing(6)
         create_btn_wrap_layout.setContentsMargins(0, 0, 0, 0)
         create_btn_wrap_layout.addStretch(1)
         create_btn_wrap_layout.addWidget(create_btn, 0)
 
         creators_attrs_layout = QtWidgets.QVBoxLayout(creators_attrs_widget)
+        creators_attrs_layout.setSpacing(6)
         creators_attrs_layout.setContentsMargins(0, 0, 0, 0)
         creators_attrs_layout.addWidget(creators_attrs_top, 0)
         creators_attrs_layout.addWidget(pre_create_widget, 1)
@@ -242,6 +257,7 @@ class CreateWidget(QtWidgets.QWidget):
         creators_splitter.setStretchFactor(1, 2)
 
         creators_layout = QtWidgets.QVBoxLayout(creators_widget)
+        creators_layout.setSpacing(6)
         creators_layout.setContentsMargins(0, 0, 0, 0)
         creators_layout.addWidget(creator_short_desc_widget, 0)
         creators_layout.addWidget(attr_separator_widget, 0)
@@ -259,6 +275,7 @@ class CreateWidget(QtWidgets.QWidget):
         main_splitter_widget.setStretchFactor(1, 3)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(main_splitter_widget, 1)
 

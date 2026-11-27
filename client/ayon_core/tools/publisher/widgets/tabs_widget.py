@@ -57,6 +57,7 @@ class PublisherTabsWidget(QtWidgets.QFrame):
         btns_layout.setSpacing(0)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(6)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(btns_widget, 0)
         layout.addStretch(1)

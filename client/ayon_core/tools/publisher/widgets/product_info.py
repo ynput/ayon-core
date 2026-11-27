@@ -41,6 +41,7 @@ class ProductInfoWidget(QtWidgets.QWidget):
         thumbnail_widget = ThumbnailWidget(controller, top_widget)
 
         top_layout = QtWidgets.QHBoxLayout(top_widget)
+        top_layout.setSpacing(6)
         top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.addWidget(global_attrs_widget, 7)
         top_layout.addWidget(thumbnail_widget, 3)
@@ -78,6 +79,7 @@ class ProductInfoWidget(QtWidgets.QWidget):
         convert_separator.setMaximumHeight(1)
 
         convert_layout = QtWidgets.QGridLayout(convert_widget)
+        convert_layout.setHorizontalSpacing(6)
         convert_layout.setContentsMargins(5, 0, 5, 0)
         convert_layout.setVerticalSpacing(10)
         convert_layout.addWidget(convert_label, 0, 0, 1, 3)
@@ -92,6 +94,7 @@ class ProductInfoWidget(QtWidgets.QWidget):
             controller, creator_widget
         )
         creator_layout = QtWidgets.QVBoxLayout(creator_widget)
+        creator_layout.setSpacing(6)
         creator_layout.setContentsMargins(0, 0, 0, 0)
         creator_layout.addWidget(convert_widget, 0)
         creator_layout.addWidget(creator_attrs_widget, 1)
@@ -105,6 +108,7 @@ class ProductInfoWidget(QtWidgets.QWidget):
         bottom_separator.setMinimumWidth(1)
 
         bottom_layout = QtWidgets.QHBoxLayout(bottom_widget)
+        bottom_layout.setSpacing(6)
         bottom_layout.setContentsMargins(0, 0, 0, 0)
         bottom_layout.addWidget(creator_widget, 1)
         bottom_layout.addWidget(bottom_separator, 0)
@@ -115,6 +119,8 @@ class ProductInfoWidget(QtWidgets.QWidget):
         top_bottom.setMinimumHeight(1)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(9, 9, 9, 9)
+        layout.setSpacing(6)
         layout.addWidget(top_widget, 0)
         layout.addWidget(top_bottom, 0)
         layout.addWidget(bottom_widget, 1)
