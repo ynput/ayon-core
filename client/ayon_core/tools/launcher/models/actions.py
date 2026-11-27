@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 import os
 import threading
-from typing import Any
+from typing import Any, Iterable
 import uuid
 from urllib.parse import urlencode, urlparse
 import webbrowser
@@ -122,9 +122,10 @@ class ActionsModel:
             levels=2, default_factory=list, lifetime=20,
         )
         # Application executables validity by project name
-        self._app_executables_validity = NestedCacheItem(
+        self._app_items = NestedCacheItem(
             levels=1, lifetime=300
         )
+        self._app_executables_validity = {}
 
         self._variant = get_settings_variant()
 
@@ -148,7 +149,8 @@ class ActionsModel:
             self._actions = None
             self._action_items = {}
             self._webaction_items.reset()
-            self._app_executables_validity.reset()
+            self._app_items.reset()
+            self._app_executables_validity = {}
             self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
@@ -512,81 +514,56 @@ class ActionsModel:
             ))
 
         action_items = self._filter_app_executables(
-            project_name, action_items
+            project_name, selection.task_id, action_items
         )
 
         cache.update_data(action_items)
         return cache.get_data()
 
-    def _get_app_executables_validity(
+    def _get_app_items(
         self, project_name: str | None
-    ) -> dict[str, bool | None] | None:
-        """Get cached validity of application executables for a project.
+    ) -> list[dict[str, Any]]:
+        """Get application items of a project from applications addon.
+
+        Items are cached per project. Cached validity of executables for
+            the project is reset when items are fetched again.
 
         Args:
             project_name (str | None): Project name.
 
         Returns:
-            dict[str, bool | None] | None: Validity by full application
-                name, or 'None' if validation is not available.
+            list[dict[str, Any]]: Application items. Empty if executables
+                can't be validated (applications addon is missing or too
+                old, or the request failed).
 
         """
-        cache = self._app_executables_validity[project_name]
-        if not cache.is_valid:
-            cache.update_data(
-                self._collect_app_executables_validity(project_name)
-            )
-        return cache.get_data()
-
-    def _collect_app_executables_validity(
-        self, project_name: str | None
-    ) -> dict[str, bool | None] | None:
-        """Validate executables of all applications for a project.
-
-        Server does not know if application executable is available on this
-            machine, so it is validated using applications addon.
-
-        Nothing is validated if 'show_only_available' (the
-            'only_available' setting of applications addon) is disabled.
-
-        Args:
-            project_name (str | None): Project name.
-
-        Returns:
-            dict[str, bool | None] | None: Validity by full application
-                name, 'None' value means unknown validity. Returns 'None'
-                if validation is disabled by settings or not available
-                (applications addon is missing or too old, there are no
-                applications, or validation failed).
-
-        """
+        cache = self._app_items[project_name]
+        if cache.is_valid:
+            return cache.get_data()
+        self._app_executables_validity[project_name] = {}
+        app_items = []
+        cache.update_data(app_items)
         try:
             addons_manager = self._controller.get_addons_manager()
             addon = addons_manager.get("applications")
             if addon is None:
-                return None
+                return app_items
             # Older versions of applications addon don't support validation
             if not hasattr(addon, "validate_app_items_executable_paths"):
-                return None
+                return app_items
 
             app_items = addon.get_application_items(
                 project_name,
                 variant=self._variant,
             )
-            if not app_items:
-                return None
+            cache.update_data(app_items)
+            return app_items
 
-            # Value is the same for all items
-            for app_item in app_items:
-                if app_item.get("show_only_available", True) is False:
-                    return None
-
-            return addon.validate_app_items_executable_paths(app_items)
         except Exception:
             self.log.warning(
-                "Failed to validate application executables.", exc_info=True
+                "Failed to get application items.", exc_info=True
             )
-            return None
+            return app_items
 
     @staticmethod
     def _get_app_name_from_action(action_item: ActionItem) -> str | None:
@@ -607,40 +584,103 @@ class ActionsModel:
                 return action_item.identifier[len(prefix):]
         return None
 
+    def _filter_app_actions(
+        self, project_name: str, app_actions: dict[str, ActionItem]
+    ) -> Iterable[ActionItem]:
+        """Filter out application actions without existing executable.
+
+        Only applications of passed actions are validated, results are
+            cached per project and reused for other selections.
+
+        Nothing is filtered if 'show_only_available' (the 'only_available'
+            setting of applications addon) is disabled, or if executables
+            can't be validated.
+
+        Args:
+            project_name (str): Project name.
+            app_actions (dict[str, ActionItem]): Application actions by
+                application full name. The dictionary is modified.
+
+        Returns:
+            Iterable[ActionItem]: Application actions that can be triggered.
+
+        """
+        if not app_actions:
+            return []
+
+        app_items = self._get_app_items(project_name)
+        if not app_items:
+            return app_actions.values()
+
+        # Value is the same for all items
+        if app_items[0].get("show_only_available", True) is False:
+            return app_actions.values()
+
+        validity = self._app_executables_validity[project_name]
+        app_items_to_validate = []
+        for app_item in app_items:
+            app_name = app_item["full_name"]
+            if app_name not in app_actions:
+                continue
+
+            if app_name not in validity:
+                app_items_to_validate.append(app_item)
+            elif validity[app_name] is False:
+                app_actions.pop(app_name)
+
+        if not app_items_to_validate:
+            return app_actions.values()
+
+        addons_manager = self._controller.get_addons_manager()
+        addon = addons_manager.get("applications")
+        try:
+            new_validity = addon.validate_app_items_executable_paths(
+                app_items_to_validate
+            )
+        except Exception:
+            self.log.warning(
+                "Failed to validate application executables.", exc_info=True
+            )
+            return app_actions.values()
+
+        for app_name, valid in new_validity.items():
+            validity[app_name] = valid
+            if valid is False:
+                app_actions.pop(app_name, None)
+
+        return app_actions.values()
+
     def _filter_app_executables(
         self,
         project_name: str | None,
+        task_id: str | None,
         action_items: list[ActionItem],
     ) -> list[ActionItem]:
         """Filter out application actions without existing executable.
 
         Args:
             project_name (str | None): Project name.
+            task_id (str | None): Selected task id.
             action_items (list[ActionItem]): Webaction items.
 
         Returns:
             list[ActionItem]: Action items that can be triggered.
 
         """
-        validity_by_app_name = None
+        if not project_name or not task_id:
+            return action_items
+
         output = []
+        app_actions = {}
         for action_item in action_items:
             app_name = self._get_app_name_from_action(action_item)
-            if app_name is not None and validity_by_app_name is None:
-                validity_by_app_name = self._get_app_executables_validity(
-                    project_name
-                )
-                if validity_by_app_name is None:
-                    # Validation is not available
-                    return action_items
+            if app_name is not None:
+                app_actions[app_name] = action_item
+            else:
+                output.append(action_item)
 
-            # Keep action if validity is unknown
-            if (
-                app_name is not None
-                and validity_by_app_name.get(app_name) is False
-            ):
-                continue
-            output.append(action_item)
+        output.extend(self._filter_app_actions(project_name, app_actions))
+
         return output
 
     def _is_service_user(self) -> bool:
