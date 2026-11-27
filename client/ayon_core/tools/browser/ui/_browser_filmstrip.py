@@ -6,7 +6,8 @@ top to bottom. While the cursor is over a thumbnail the frame matching the
 horizontal cursor position is shown, so moving the cursor "plays" the video.
 
 Requires AYON server 1.17.3 or newer, older servers don't have the
-filmstrip endpoints and nothing is requested from them.
+filmstrip endpoints and nothing is requested from them. Set
+``AYON_BROWSER_DISABLE_FILMSTRIPS=1`` to turn filmstrips off.
 
 The server creates a missing filmstrip on the first request, which can take
 a while. Filmstrips are loaded by their own small worker pool so this does
@@ -34,7 +35,12 @@ from ayon_core.ui.components.task_queue import AsyncTask, AsyncTaskQueue
 from ayon_core.ui.image_cache import ImageCache
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core.lib import CREATE_NO_WINDOW, Logger, get_ffmpeg_tool_args
+from ayon_core.lib import (
+    CREATE_NO_WINDOW,
+    Logger,
+    env_value_to_bool,
+    get_ffmpeg_tool_args,
+)
 from ayon_core.tools.browser.server_capabilities import (
     server_supports_filmstrips,
 )
@@ -217,6 +223,17 @@ def _fetch_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
         columns=int(info["columns"]),
     )
     return data, DEFAULT_MAX_AGE
+
+
+def filmstrips_enabled() -> bool:
+    """Return whether filmstrips are loaded from the server.
+
+    Not on servers without the filmstrip endpoints, nor when turned off with
+    ``AYON_BROWSER_DISABLE_FILMSTRIPS=1``.
+    """
+    if env_value_to_bool("AYON_BROWSER_DISABLE_FILMSTRIPS"):
+        return False
+    return server_supports_filmstrips()
 
 
 def _load_filmstrip(key: _SourceKey) -> tuple[FilmstripData | None, float]:
@@ -473,7 +490,7 @@ class FilmstripOverlay(QtWidgets.QWidget):
 
     def scrub(self, position: float) -> None:
         """Show the frame at the relative *position* (0-1) of the video."""
-        if not server_supports_filmstrips():
+        if not filmstrips_enabled():
             return
         if not self._hovering and self._source_getter is not None:
             self.set_source(*(self._source_getter() or ()))
@@ -510,7 +527,7 @@ class FilmstripOverlay(QtWidgets.QWidget):
         Does nothing when the entity has no filmstrip. A filmstrip that is
         not loaded yet is shown once loaded, unless the cursor left.
         """
-        if self._source is None or not server_supports_filmstrips():
+        if self._source is None or not filmstrips_enabled():
             return
         entry = _peek_filmstrip(self._source)
         if entry is None:
