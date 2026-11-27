@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import tempfile
+import io
 from typing import TYPE_CHECKING, Callable
 
 import ayon_api
@@ -51,14 +51,14 @@ def _browser_card_mapper(row_data: dict) -> dict:
 
 
 def _thumbnail_loader(key: str) -> str:
-    """Fetch a version thumbnail from AYON and persist it to a temp file.
+    """Fetch a version thumbnail from AYON into the image cache.
 
     Args:
         key: Cache key in the form
           ``"<project_name>/<version_id>/<thumbnail_id>"``.
 
     Returns:
-        Absolute path to the saved image file, or empty string when the
+        Absolute path to the cached image file, or empty string when the
         version has no thumbnail.
     """
     with log_span("thumbnail.fetch", key=key):
@@ -68,7 +68,7 @@ def _thumbnail_loader(key: str) -> str:
 
         ic = ImageCache.get_instance()
 
-        def _fetch() -> str:
+        def _fetch() -> str | io.BytesIO:
             log.debug("  |_ Cache miss; fetching from ayon API: %r", key)
             project_name, version_id, thumbnail_id = key.split("/", 2)
             content = ayon_api.get_version_thumbnail(
@@ -81,9 +81,9 @@ def _thumbnail_loader(key: str) -> str:
                 if content.content_type and "jpeg" in content.content_type
                 else ".png"
             )
-            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as fh:
-                fh.write(content.content)
-                return fh.name
+            stream = io.BytesIO(content.content)
+            stream.name = f"thumbnail{ext}"
+            return stream
 
         try:
             return ic.get(key, _fetch)
