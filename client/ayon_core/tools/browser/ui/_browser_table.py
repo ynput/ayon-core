@@ -57,7 +57,7 @@ from ._browser_cell_delegates import (
     UserDelegate,
 )
 from ._browser_model import VisibilityAwarePaginatedTableModel
-from ._browser_filmstrip import FilmstripOverlay, add_card_filmstrip
+from ._browser_filmstrip import FilmstripOverlay, get_card_filmstrip
 from ._browser_thumbnails import (
     LazyThumbnailWidget,
     PlaceholderThumbnail,
@@ -229,11 +229,6 @@ class BrowserTable(AYContainer):
             card_data_mapper=_card_mapper,
         )
         self._card_view.setModel(self._table_filter.filter_model)
-        # Cards are created by the view delegate, wait for them to appear
-        self._card_filmstrips_timer = QtCore.QTimer(self)
-        self._card_filmstrips_timer.setSingleShot(True)
-        self._card_filmstrips_timer.setInterval(0)
-        self._card_filmstrips_timer.timeout.connect(self._add_card_filmstrips)
         self._card_view.viewport().installEventFilter(self)
 
         self._table.header().setSortIndicator(
@@ -528,16 +523,11 @@ class BrowserTable(AYContainer):
             QtCore.QEvent.Type.MouseMove,
             QtCore.QEvent.Type.Leave,
             QtCore.QEvent.Type.Wheel,
+        ) and (
+            obj is self._table.viewport()
+            or obj is self._card_view.viewport()
         ):
-            if obj is self._table.viewport():
-                self._update_thumbnail_scrub(event)
-        elif (
-            event.type() == QtCore.QEvent.Type.ChildAdded
-            and obj is not self._table.viewport()
-            and obj is not self._table.header()
-        ):
-            # A card was created, it is not initialized yet at this point
-            self._card_filmstrips_timer.start()
+            self._update_thumbnail_scrub(obj, event)
 
         if obj is self._table.viewport():
             if event.type() != QtCore.QEvent.Type.Resize:
@@ -553,36 +543,53 @@ class BrowserTable(AYContainer):
         return False
 
     def _get_filmstrip_at(
-        self, pos: QtCore.QPoint
+        self, viewport: QtWidgets.QWidget, pos: QtCore.QPoint
     ) -> FilmstripOverlay | None:
-        """Return the filmstrip of the thumbnail cell at *pos*, if any.
+        """Return the filmstrip of the thumbnail cell or card at *pos*.
 
         Args:
-            pos: Position in the table viewport.
+            viewport: Viewport of the table or of the card view.
+            pos: Position in the viewport.
         """
-        widget = self._table.indexWidget(self._table.indexAt(pos))
-        if isinstance(widget, PlaceholderThumbnail):
-            return widget.get_filmstrip()
-        return None
+        if viewport is self._table.viewport():
+            widget = self._table.indexWidget(self._table.indexAt(pos))
+            if isinstance(widget, PlaceholderThumbnail):
+                return widget.get_filmstrip()
+            return None
 
-    def _update_thumbnail_scrub(self, event: QtCore.QEvent) -> None:
-        """Scrub the filmstrip of the thumbnail cell under the cursor.
+        widget = viewport.childAt(pos)
+        while widget is not None and not isinstance(widget, AYEntityCard):
+            widget = widget.parentWidget()
+        if widget is None:
+            return None
+        return get_card_filmstrip(widget)
+
+    def _update_thumbnail_scrub(
+        self, viewport: QtWidgets.QWidget, event: QtCore.QEvent
+    ) -> None:
+        """Scrub the filmstrip of the thumbnail under the cursor.
 
         Thumbnail cell widgets are transparent for mouse events, so row
-        selection keeps working, and cannot track the cursor themselves.
+        selection keeps working, and card thumbnails are covered by their
+        chips. Neither can track the cursor themselves. The filmstrips are
+        created only for the thumbnails the cursor gets to.
 
         Args:
-            event: Mouse move, wheel or leave event of the table viewport.
+            viewport: Viewport of the table or of the card view.
+            event: Mouse move, wheel or leave event of the viewport.
         """
         filmstrip: FilmstripOverlay | None = None
         position = 0.0
         if event.type() == QtCore.QEvent.Type.MouseMove:
             pos = event.pos()
-            filmstrip = self._get_filmstrip_at(pos)
+            filmstrip = self._get_filmstrip_at(viewport, pos)
             if filmstrip is not None:
                 host = filmstrip.parentWidget()
-                x = host.mapFrom(self._table.viewport(), pos).x()
-                position = x / max(host.width(), 1)
+                local_pos = host.mapFrom(viewport, pos)
+                if host.rect().contains(local_pos):
+                    position = local_pos.x() / max(host.width(), 1)
+                else:
+                    filmstrip = None
 
         previous = self._scrubbed_filmstrip
         if (
@@ -594,12 +601,6 @@ class BrowserTable(AYContainer):
         self._scrubbed_filmstrip = filmstrip
         if filmstrip is not None:
             filmstrip.scrub(position)
-
-    def _add_card_filmstrips(self) -> None:
-        """Add a filmstrip overlay to the cards that do not have one yet."""
-        cards = self._card_view.viewport().findChildren(AYEntityCard)
-        for card in cards:
-            add_card_filmstrip(card)
 
     def _on_viewport_resize(self) -> None:
         """Debounced handler for viewport resize events.

@@ -12,6 +12,7 @@ import pytest
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.tools.browser.ui import _browser_filmstrip as filmstrip
+from ayon_core.ui.components.entity_card import AYEntityCard
 
 KEYS = [("project", "version", f"{idx:032x}") for idx in range(10)]
 
@@ -120,3 +121,28 @@ def test_answers_without_filmstrip_stay_cached(qapp, monkeypatch) -> None:
     assert all(filmstrip._peek_filmstrip(key) for key in without)
     cached = [key for key in with_filmstrip if filmstrip._peek_filmstrip(key)]
     assert cached == with_filmstrip[2:]
+
+
+@pytest.mark.unit
+def test_card_filmstrip_follows_card(qapp, loads) -> None:
+    project_name, _, version_id = KEYS[0]
+    card = AYEntityCard(image_src=f"{project_name}/{version_id}/thumb")
+    try:
+        # Created only when asked for
+        assert card.findChild(filmstrip.FilmstripOverlay) is None
+
+        overlay = filmstrip.get_card_filmstrip(card)
+
+        assert overlay is not None
+        assert overlay._source == KEYS[0]
+        assert filmstrip.get_card_filmstrip(card) is overlay
+
+        # The card view updates cards to show another version
+        card.image_src = f"{project_name}/{KEYS[1][2]}/thumb"
+        assert filmstrip.get_card_filmstrip(card) is overlay
+        assert overlay._source == KEYS[1]
+
+        card.image_src = ""
+        assert filmstrip.get_card_filmstrip(card) is None
+    finally:
+        card.deleteLater()

@@ -179,10 +179,21 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         self._thumb_key: str = key
         self._context_id: str = context_id
         self._load_requested: bool = False
-        # Driven by the table, cell widgets do not receive mouse events
-        self.filmstrip = FilmstripOverlay(self)
-        project_name, version_id = (key.split("/", 2) + ["", ""])[:2]
-        self.filmstrip.set_source(project_name, "version", version_id)
+        self._filmstrip: FilmstripOverlay | None = None
+
+    def get_filmstrip(self) -> FilmstripOverlay:
+        """Return the hover-scrub preview of the thumbnail.
+
+        Created on first use. Driven by the table, cell widgets do not
+        receive mouse events.
+        """
+        if self._filmstrip is None:
+            project_name, version_id = (
+                self._thumb_key.split("/", 2) + ["", ""]
+            )[:2]
+            self._filmstrip = FilmstripOverlay(self)
+            self._filmstrip.set_source(project_name, "version", version_id)
+        return self._filmstrip
 
     def paintEvent(  # type: ignore[override]
         self, event: QtGui.QPaintEvent
@@ -270,7 +281,7 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         """Return the filmstrip overlay of the thumbnail, once created."""
         if self._real is None or not shiboken.isValid(self._real):
             return None
-        return self._real.filmstrip
+        return self._real.get_filmstrip()
 
     def _update_thumbnail_geometry(self) -> None:
         """Resize and center the thumbnail within the current cell."""

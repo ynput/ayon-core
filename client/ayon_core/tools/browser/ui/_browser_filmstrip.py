@@ -27,7 +27,7 @@ import tempfile
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Callable, Optional, Tuple
+from typing import Tuple
 
 import ayon_api
 from ayon_core.ui.components.entity_card import AYEntityCard
@@ -426,9 +426,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
         inset: Pixels kept free at the host edges, e.g. for its border.
         background: Fill behind the frame, e.g. to hide the static
             thumbnail when the aspect ratios differ.
-        source_getter: Called when the cursor enters to update the source
-            (see :meth:`set_source`), for hosts reused for other entities.
-            Returns ``(project_name, entity_type, entity_id)`` or ``None``.
     """
 
     def __init__(
@@ -437,7 +434,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
         fit: str = "contain",
         inset: int = 0,
         background: QtGui.QColor | None = None,
-        source_getter: Callable[[], Optional[_SourceKey]] | None = None,
     ) -> None:
         super().__init__(host)
         self.setAttribute(
@@ -446,7 +442,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
         self._fit = fit
         self._inset = inset
         self._background = background
-        self._source_getter = source_getter
         self._source: _SourceKey | None = None
         self._data: FilmstripData | None = None
         self._position: float = 0.0
@@ -465,15 +460,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
         host.setMouseTracking(True)
         host.installEventFilter(self)
         _get_loader().loaded.connect(self._on_loaded)
-
-    def track(self, widget: QtWidgets.QWidget) -> None:
-        """Also track the cursor over *widget*, which covers the host.
-
-        Args:
-            widget: Widget on top of the host receiving its mouse events.
-        """
-        widget.setMouseTracking(True)
-        widget.installEventFilter(self)
 
     def set_source(
         self,
@@ -504,8 +490,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
         """Show the frame at the relative *position* (0-1) of the video."""
         if not filmstrips_enabled():
             return
-        if not self._hovering and self._source_getter is not None:
-            self.set_source(*(self._source_getter() or ()))
         if self._source is None:
             return
         self._position = min(max(position, 0.0), 1.0)
@@ -724,28 +708,28 @@ class FilmstripPopup(QtWidgets.QWidget):
         painter.end()
 
 
-def add_card_filmstrip(card: AYEntityCard) -> None:
-    """Add a hover-scrub preview to the thumbnail of a version card.
+def get_card_filmstrip(card: AYEntityCard) -> FilmstripOverlay | None:
+    """Return the hover-scrub preview of the thumbnail of a version card.
 
-    Does nothing when the card already has one.
+    Created on first use. The preview is driven by the card view: the
+    chips overlay of the card covers the thumbnail and gets its mouse
+    events. The source follows the card, which can be updated to show
+    another version.
 
     Args:
         card: Card with ``"<project_name>/<version_id>/<thumbnail_id>"``
             as image source.
+
+    Returns:
+        ``None`` when the card shows no version.
     """
-    # TODO: 'AYEntityCard' should expose its thumbnail and overlay widgets
+    parts = str(card.image_src).split("/", 2)
+    if len(parts) != 3 or not parts[0] or not parts[1]:
+        return None
+    # TODO: 'AYEntityCard' should expose its thumbnail widget
     body = card._card_body
-    if body.findChild(FilmstripOverlay) is not None:
-        return
-
-    def _get_source() -> Optional[_SourceKey]:
-        parts = str(card.image_src).split("/", 2)
-        if len(parts) != 3 or not parts[0] or not parts[1]:
-            return None
-        return parts[0], "version", parts[1]
-
-    filmstrip = FilmstripOverlay(
-        body, fit="cover", inset=1, source_getter=_get_source
-    )
-    # The chips overlay covers the thumbnail and receives its mouse events
-    filmstrip.track(card._overlay)
+    filmstrip = body.findChild(FilmstripOverlay)
+    if filmstrip is None:
+        filmstrip = FilmstripOverlay(body, fit="cover", inset=1)
+    filmstrip.set_source(parts[0], "version", parts[1])
+    return filmstrip
