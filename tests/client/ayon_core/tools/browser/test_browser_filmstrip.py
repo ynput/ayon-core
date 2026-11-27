@@ -146,3 +146,36 @@ def test_card_filmstrip_follows_card(qapp, loads) -> None:
         assert filmstrip.get_card_filmstrip(card) is None
     finally:
         card.deleteLater()
+
+
+@pytest.mark.unit
+def test_sweep_requests_only_the_hovered_filmstrip(
+    qapp, loads, overlay
+) -> None:
+    """Sweeping the cursor over thumbnails does not flood the server.
+
+    At most ``FILMSTRIP_WORKERS`` requests are sent at the same time, and
+    the queued requests of thumbnails the cursor left are skipped.
+    """
+    assert filmstrip.FILMSTRIP_WORKERS == 2
+    loader = filmstrip._get_loader()
+    for idx, key in enumerate(KEYS):
+        overlay.set_source(*key)
+        overlay.scrub(0.5)
+        # Hovered past the hover delay
+        assert _spin(qapp, lambda: key in loader._requests)
+        # The first requests occupy both workers
+        expected = min(idx + 1, 2)
+        assert _spin(qapp, lambda: len(loads.calls) >= expected)
+    assert len(loader._requests) == len(KEYS)
+
+    loads.release.set()
+
+    assert _spin(qapp, lambda: not loader._requests)
+    assert sorted(loads.calls[:2]) == KEYS[:2]
+    assert loads.calls[2:] == [KEYS[-1]]
+    # The answer is cached, hovering it again requests nothing
+    overlay.stop()
+    overlay.scrub(0.5)
+    _spin(qapp, lambda: False, 0.1)
+    assert len(loads.calls) == 3
