@@ -391,3 +391,62 @@ def test_worker_logs_reach_publish_records(tmp_path, monkeypatch) -> None:
         record.threadName.startswith("ExtractThumbnail")
         for record in worker_records
     )
+
+
+SEQUENCE = ["shot.{:04d}.exr".format(frame) for frame in range(1000, 1010)]
+
+
+@pytest.mark.parametrize(
+    ("duration_split", "has_slate", "expected"),
+    [
+        (0.0, False, "shot.1000.exr"),
+        (0.5, False, "shot.1005.exr"),
+        (1.0, False, "shot.1009.exr"),
+        # The slate (first file) is never picked
+        (0.0, True, "shot.1001.exr"),
+        (0.5, True, "shot.1005.exr"),
+        (1.0, True, "shot.1009.exr"),
+    ],
+)
+def test_get_sequence_thumbnail_file(
+    duration_split: float, has_slate: bool, expected: str
+) -> None:
+    result = extract_thumbnail.get_sequence_thumbnail_file(
+        SEQUENCE, duration_split, has_slate=has_slate
+    )
+    assert result == expected
+
+
+def test_get_sequence_thumbnail_file_single_slate_frame() -> None:
+    result = extract_thumbnail.get_sequence_thumbnail_file(
+        ["slate.exr"], 0.5, has_slate=True
+    )
+    assert result == "slate.exr"
+
+
+@pytest.mark.parametrize(
+    ("duration_split", "has_slate", "expected"),
+    [
+        (0.0, False, 0.0),
+        (0.5, False, 5.0),
+        # ffmpeg picks the first frame at or after the seek position.
+        # At 10 fps, 0.05s picks the frame after the slate and 9.85s
+        # picks the last frame (starts at 9.9s).
+        (0.0, True, 0.05),
+        (0.5, True, 5.0),
+        (1.0, True, 9.85),
+    ],
+)
+def test_get_video_seek_position(
+    duration_split: float, has_slate: bool, expected: float
+) -> None:
+    result = extract_thumbnail.get_video_seek_position(
+        10.0, duration_split, fps=10.0, has_slate=has_slate
+    )
+    assert result == pytest.approx(expected)
+
+
+def test_get_video_seek_position_short_video() -> None:
+    assert extract_thumbnail.get_video_seek_position(
+        0.05, 0.5, fps=24.0, has_slate=True
+    ) == 0.0
