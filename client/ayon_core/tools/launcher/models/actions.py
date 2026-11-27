@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import collections
 from dataclasses import dataclass, asdict
 import os
 import threading
-from typing import Any, Iterable
+from typing import Any
 import uuid
 from urllib.parse import urlencode, urlparse
 import webbrowser
@@ -584,52 +585,53 @@ class ActionsModel:
                 return action_item.identifier[len(prefix):]
         return None
 
-    def _filter_app_actions(
-        self, project_name: str, app_actions: dict[str, ActionItem]
-    ) -> Iterable[ActionItem]:
-        """Filter out application actions without existing executable.
+    def _get_app_action_ids_to_skip(
+        self, project_name: str, app_action_ids: dict[str, list[str]]
+    ) -> set[str]:
+        """Get identifiers of application actions without valid executable.
 
         Only applications of passed actions are validated, results are
             cached per project and reused for other selections.
 
-        Nothing is filtered if 'show_only_available' (the 'only_available'
+        Nothing is skipped if 'show_only_available' (the 'only_available'
             setting of applications addon) is disabled, or if executables
             can't be validated.
 
         Args:
             project_name (str): Project name.
-            app_actions (dict[str, ActionItem]): Application actions by
-                application full name. The dictionary is modified.
+            app_action_ids (dict[str, list[str]]): Action identifiers by
+                application full name.
 
         Returns:
-            Iterable[ActionItem]: Application actions that can be triggered.
+            set[str]: Identifiers of actions that should not be shown.
 
         """
-        if not app_actions:
-            return []
+        ids_to_skip = set()
+        if not app_action_ids:
+            return ids_to_skip
 
         app_items = self._get_app_items(project_name)
         if not app_items:
-            return app_actions.values()
+            return ids_to_skip
 
         # Value is the same for all items
         if app_items[0].get("show_only_available", True) is False:
-            return app_actions.values()
+            return ids_to_skip
 
         validity = self._app_executables_validity[project_name]
         app_items_to_validate = []
         for app_item in app_items:
             app_name = app_item["full_name"]
-            if app_name not in app_actions:
+            if app_name not in app_action_ids:
                 continue
 
             if app_name not in validity:
                 app_items_to_validate.append(app_item)
             elif validity[app_name] is False:
-                app_actions.pop(app_name)
+                ids_to_skip.update(app_action_ids[app_name])
 
         if not app_items_to_validate:
-            return app_actions.values()
+            return ids_to_skip
 
         addons_manager = self._controller.get_addons_manager()
         addon = addons_manager.get("applications")
@@ -641,14 +643,14 @@ class ActionsModel:
             self.log.warning(
                 "Failed to validate application executables.", exc_info=True
             )
-            return app_actions.values()
+            return ids_to_skip
 
         for app_name, valid in new_validity.items():
             validity[app_name] = valid
             if valid is False:
-                app_actions.pop(app_name, None)
+                ids_to_skip.update(app_action_ids.get(app_name, []))
 
-        return app_actions.values()
+        return ids_to_skip
 
     def _filter_app_executables(
         self,
@@ -657,6 +659,8 @@ class ActionsModel:
         action_items: list[ActionItem],
     ) -> list[ActionItem]:
         """Filter out application actions without existing executable.
+
+        Order of action items is kept.
 
         Args:
             project_name (str | None): Project name.
@@ -670,18 +674,23 @@ class ActionsModel:
         if not project_name or not task_id:
             return action_items
 
-        output = []
-        app_actions = {}
+        app_action_ids = collections.defaultdict(list)
         for action_item in action_items:
             app_name = self._get_app_name_from_action(action_item)
             if app_name is not None:
-                app_actions[app_name] = action_item
-            else:
-                output.append(action_item)
+                app_action_ids[app_name].append(action_item.identifier)
 
-        output.extend(self._filter_app_actions(project_name, app_actions))
+        ids_to_skip = self._get_app_action_ids_to_skip(
+            project_name, app_action_ids
+        )
+        if not ids_to_skip:
+            return action_items
 
-        return output
+        return [
+            action_item
+            for action_item in action_items
+            if action_item.identifier not in ids_to_skip
+        ]
 
     def _is_service_user(self) -> bool:
         """Check if the connection uses a service user API key.
