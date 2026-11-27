@@ -552,14 +552,12 @@ class ActionsModel:
             if addon is None:
                 return None
             # Older versions of applications addon don't support validation
-            params = inspect.signature(addon.get_application_items).parameters
-            if "validate_executables" not in params:
+            if not hasattr(addon, "validate_app_items_executable_paths"):
                 return None
 
             app_items = addon.get_application_items(
                 project_name,
                 variant=self._variant,
-                validate_executables=True,
             )
         except Exception:
             self.log.warning(
@@ -567,14 +565,14 @@ class ActionsModel:
             )
             return None
 
-        output = {}
+        if not app_items:
+            return None
+
         for app_item in app_items:
-            is_valid = app_item.get("has_valid_executable")
-            # Settings allow to show applications without valid executable
-            if not app_item.get("show_only_available", True):
-                is_valid = None
-            output[app_item["full_name"]] = is_valid
-        return output
+            if app_item.get("show_only_available", True) is False:
+                return None
+
+        return addon.validate_app_items_executable_paths(app_items)
 
     @staticmethod
     def _get_app_name_from_action(action_item: ActionItem) -> str | None:
