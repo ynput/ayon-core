@@ -583,6 +583,42 @@ def test_server_supports_browser(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("server_version", "supported"),
+    [
+        pytest.param(
+            (1, 15, 0, "", ""), False,
+            marks=pytest.mark.server_compat("1.17.4"),
+        ),
+        pytest.param(
+            (1, 17, 4, "", ""), False,
+            marks=pytest.mark.server_compat("1.17.4"),
+        ),
+        pytest.param((1, 17, 5, "", ""), True),
+        pytest.param((1, 18, 0, "", "DEVELOP"), True),
+    ],
+)
+def test_server_supports_contains_operator(
+    monkeypatch, server_version: tuple[Any, ...], supported: bool
+) -> None:
+    monkeypatch.setattr(
+        ayon_api, "get_server_version_tuple", lambda: server_version
+    )
+    check = server_capabilities.server_supports_contains_operator
+    # Forget the result cached for another server version.
+    check.cache_clear()
+    try:
+        assert check() is supported
+        # Cached: the server is not asked again.
+        monkeypatch.setattr(
+            ayon_api, "get_server_version_tuple", lambda: (0, 0, 0, "", "")
+        )
+        assert check() is supported
+    finally:
+        check.cache_clear()
+
+
+@pytest.mark.unit
 @pytest.mark.server_compat("1.14.5")
 def test_legacy_loader_is_forced_on_unsupported_server(
     monkeypatch, caplog

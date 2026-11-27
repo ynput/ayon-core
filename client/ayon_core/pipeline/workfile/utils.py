@@ -25,6 +25,7 @@ from .path_resolving import (
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
+    from ayon_core.host.interfaces import SaveWorkfileContext
 
 
 class MissingWorkdirError(Exception):
@@ -336,7 +337,7 @@ def save_current_workfile_to(
     comment: Optional[str] = None,
     description: Optional[str] = None,
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
-) -> None:
+) -> SaveWorkfileContext | None:
     """Save current workfile to new location or context.
 
     Args:
@@ -348,6 +349,11 @@ def save_current_workfile_to(
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
+
+    Returns:
+        SaveWorkfileContext | None: Workfile context used during save logic.
+            Might return None if host did override the method and did not
+            return the output.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -361,7 +367,7 @@ def save_current_workfile_to(
     task_entity = ayon_api.get_task_by_name(
         project_name, folder_entity["id"], task_name
     )
-    host.save_workfile_with_context(
+    return host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,
@@ -379,7 +385,7 @@ def save_workfile_with_current_context(
     comment: Optional[str] = None,
     description: Optional[str] = None,
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
-) -> None:
+) -> SaveWorkfileContext | None:
     """Save current workfile to new location using current context.
 
     Helper function to save workfile using current context. Calls
@@ -392,6 +398,11 @@ def save_workfile_with_current_context(
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
+
+    Returns:
+        SaveWorkfileContext | None: Workfile context used during save logic.
+            Might return None if host did override the method and did not
+            return the output.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -409,7 +420,7 @@ def save_workfile_with_current_context(
                 project_name, folder_entity["id"], task_name
             )
 
-    host.save_workfile_with_context(
+    return host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,
@@ -426,7 +437,7 @@ def save_next_version(
     description: Optional[str] = None,
     *,
     prepared_data: Optional[SaveWorkfileOptionalData] = None,
-) -> None:
+) -> SaveWorkfileContext | None:
     """Save workfile using current context, version and comment.
 
     Helper function to save a workfile using the current context. Last
@@ -440,6 +451,11 @@ def save_next_version(
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
+
+    Returns:
+        SaveWorkfileContext | None: Workfile context used during save logic.
+            Might return None if host did override the method and did not
+            return the output.
 
     """
     from ayon_core.pipeline import Anatomy
@@ -576,7 +592,7 @@ def save_next_version(
         rootless_path = rootless_path.replace("\\", "/")
     prepared_data.rootless_path = rootless_path
 
-    host.save_workfile_with_context(
+    return host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,

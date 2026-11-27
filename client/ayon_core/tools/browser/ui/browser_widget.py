@@ -241,8 +241,10 @@ class BrowserWidget(AYContainer):
     def _is_versions_group_row(row_dict: dict[str, Any]) -> bool:
         """Return whether actions of the row apply to all its versions.
 
-        That is every group header except Product, which stands for its
-        featured version only (Product headers carry ``_product_id``).
+        That is every group header except a Product header of a single
+        product, which stands for its featured version only (those carry
+        ``_product_id``). A Product header merging same-named products of
+        multiple folders applies to all their versions.
         """
         row_id = row_dict.get("id") or ""
         return (
@@ -353,9 +355,11 @@ class BrowserWidget(AYContainer):
             if proxy_idx.column() != 0:
                 continue
             row_dict = proxy_idx.data(QtCore.Qt.ItemDataRole.UserRole) or {}
-            product_id = (
-                row_dict.get("_product_id") or row_dict.get("productId")
-            )
+            group_product_ids = row_dict.get("_product_ids")
+            if group_product_ids:
+                product_ids.update(group_product_ids)
+                continue
+            product_id = row_dict.get("productId")
             if product_id:
                 product_ids.add(product_id)
         return product_ids

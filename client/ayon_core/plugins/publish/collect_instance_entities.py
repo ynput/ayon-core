@@ -9,11 +9,22 @@ Provides:
     instance -> projectEntity
     instance -> folderEntity
     instance -> taskEntity
+
+Entities are taken from the CreateContext cache when the publish was started
+    from a CreateContext (e.g. Publisher).
 """
+from __future__ import annotations
+
+import copy
 import collections
+from typing import TYPE_CHECKING, Any
 
 import pyblish.api
 import ayon_api
+
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.create import CreateContext
 
 
 class CollectInstanceEntities(pyblish.api.ContextPlugin):
@@ -95,12 +106,23 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
             f"Fetching folder entities with paths: {joined_folder_paths}"
         )
 
-        folder_entities_by_path = {
-            folder_entity["path"]: folder_entity
-            for folder_entity in ayon_api.get_folders(
-                project_name, folder_paths=folder_paths
-            )
-        }
+        create_context = context.data.get("create_context")
+        if create_context is not None:
+            # Copy so publish plugins can't change CreateContext cache
+            folder_entities_by_path = {
+                folder_path: copy.deepcopy(folder_entity)
+                for folder_path, folder_entity in (
+                    create_context.get_folder_entities(folder_paths).items()
+                )
+                if folder_entity is not None
+            }
+        else:
+            folder_entities_by_path = {
+                folder_entity["path"]: folder_entity
+                for folder_entity in ayon_api.get_folders(
+                    project_name, folder_paths=folder_paths
+                )
+            }
 
         not_found_folder_paths = set()
         for folder_path, instances in instances_missing_folder.items():
@@ -191,7 +213,18 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
         all_task_names.discard(None)
 
         task_entities = []
-        if all_task_names:
+        create_context = context.data.get("create_context")
+        if create_context is not None:
+            task_entities = self._get_create_context_task_entities(
+                create_context,
+                {
+                    folder_path_by_id[folder_id]: set(by_task_name)
+                    for folder_id, by_task_name in (
+                        instances_missing_task.items()
+                    )
+                },
+            )
+        elif all_task_names:
             task_entities = ayon_api.get_tasks(
                 project_name,
                 folder_ids=all_folder_ids,
@@ -228,3 +261,36 @@ class CollectInstanceEntities(pyblish.api.ContextPlugin):
             self.log.warning(
                 f"Not found task entities with paths {joined_paths}."
             )
+
+    def _get_create_context_task_entities(
+        self,
+        create_context: CreateContext,
+        task_names_by_folder_path: dict[str, set[str]],
+    ) -> list[dict[str, Any]]:
+        """Get copies of task entities from CreateContext cache.
+
+        Args:
+            create_context (CreateContext): CreateContext with cached
+                entities.
+            task_names_by_folder_path (dict[str, set[str]]): Task names
+                by folder path.
+
+        Returns:
+            list[dict[str, Any]]: Found task entities.
+
+        """
+        task_entities_by_folder_path = create_context.get_task_entities(
+            task_names_by_folder_path
+        )
+        output = []
+        for folder_path, task_names in task_names_by_folder_path.items():
+            task_entities_by_name = (
+                task_entities_by_folder_path.get(folder_path) or {}
+            )
+            for task_name in task_names:
+                task_entity = task_entities_by_name.get(task_name)
+                if task_entity is not None:
+                    # Copy so publish plugins can't change CreateContext
+                    #   cache
+                    output.append(copy.deepcopy(task_entity))
+        return output

@@ -282,6 +282,19 @@ class AbstractWorkfilesBackend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
+    def get_current_context(self) -> dict[str, str | None]:
+        """Folder id and task name from current context of host.
+
+        Use it when both are needed, to get the host context only once.
+
+        Returns:
+            dict[str, str | None]: Current context with 'folder_id'
+                and 'task_name'.
+
+        """
+        pass
+
+    @abstractmethod
     def get_current_folder_id(self) -> str | None:
         """Folder id from current context of host.
 
@@ -1050,11 +1063,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
     # General commands
     @abstractmethod
-    def reset(self) -> None:
+    def reset(self, force: bool = False) -> None:
         """Reset everything, models, ui etc.
 
         Triggers 'controller.reset.started' event at the beginning and
         'controller.reset.finished' at the end.
+
+        Args:
+            force (bool): Reset also data shared with other tools, e.g.
+                folders hierarchy. Should be used when user explicitly
+                asks for a refresh.
 
         """
         pass
