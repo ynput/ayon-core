@@ -648,6 +648,24 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
         for idx in missing_indices:
             self._async_file_cacher(parts[idx], _make_slot_callback(idx))
 
+    def get_image_clip_path(self) -> QPainterPath:
+        """Return the area the image is painted in.
+
+        The area keeps the image inset free and has the rounded corners of
+        the background the style draws.
+
+        Returns:
+            Area in widget coordinates.
+        """
+        inset = self._image_inset
+        rect = QRectF(0, 0, *self._size).adjusted(
+            inset, inset, -inset, -inset
+        )
+        radius = self._clip_radius - inset
+        path = QPainterPath()
+        path.addRoundedRect(rect, radius, radius)
+        return path
+
     def paintEvent(self, arg__1: QPaintEvent) -> None:
         """Override the default paint event to render the thumbnail with
         effects.
@@ -685,18 +703,8 @@ class AYEntityThumbnail(StyleMixin, QPushButton):
             x = (size.width() - self._incoming_pixmap.width() // dpr) // 2
             y = (size.height() - self._incoming_pixmap.height() // dpr) // 2
             p.save()
-            inset = self._image_inset
-            clip_rect = QRectF(option.rect).adjusted(
-                inset, inset, -inset, -inset
-            )
-            radius = max(0.0, self._clip_radius - inset)
-            if radius:
-                clip_path = QPainterPath()
-                clip_path.addRoundedRect(clip_rect, radius, radius)
-                p.setRenderHint(QPainter.RenderHint.Antialiasing)
-                p.setClipPath(clip_path)
-            else:
-                p.setClipRect(clip_rect)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.setClipPath(self.get_image_clip_path())
             p.setOpacity(self._opacity)
             if not self._transparent:
                 p.fillRect(option.rect, self._bg_color)

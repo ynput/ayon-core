@@ -21,6 +21,7 @@ from ayon_core.tools.browser.ui.browser_controller import (
 from ayon_core.tools.utils import get_qt_icon
 
 from ._browser_cell_delegates import format_relative_time
+from ._browser_filmstrip import FilmstripOverlay
 from ._browser_thumbnails import _thumbnail_loader
 
 
@@ -97,6 +98,11 @@ class ReviewInspector(AYContainer):
         self._thumbnail = AYEntityThumbnail(
             variant=AYEntityThumbnail.Variants.Entity_Card,
             size=(280, 160),
+        )
+        # Scrub through the video reviewable while hovering the thumbnail
+        self._filmstrip = FilmstripOverlay(
+            self._thumbnail,
+            background=self._thumbnail._bg_color,
         )
         thumb_wrapper = AYHBoxLayout(margin=0, spacing=0)
         thumb_wrapper.setAlignment(QtCore.Qt.AlignCenter)
@@ -350,6 +356,11 @@ class ReviewInspector(AYContainer):
             if tid and vid and pname:
                 thumb_keys.append(f"{pname}/{vid}/{tid}")
             version_ids.append(d.get("_action_version_id") or vid)
+
+        if single and version_ids:
+            self._filmstrip.set_source(project_name, version_ids[0])
+        else:
+            self._filmstrip.set_source()
 
         if thumb_keys:
             thumb_keys = sorted(thumb_keys)  # limit cache misses

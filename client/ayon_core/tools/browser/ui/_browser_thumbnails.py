@@ -13,6 +13,8 @@ from qtpy import QtCore, QtGui, QtWidgets, shiboken
 
 from ayon_core.lib import Logger, log_span
 
+from ._browser_filmstrip import FilmstripOverlay
+
 if TYPE_CHECKING:
     from ._browser_model import VisibilityAwarePaginatedTableModel
 
@@ -177,6 +179,19 @@ class LazyThumbnailWidget(AYEntityThumbnail):
         self._thumb_key: str = key
         self._context_id: str = context_id
         self._load_requested: bool = False
+        self._filmstrip: FilmstripOverlay | None = None
+
+    def get_filmstrip(self) -> FilmstripOverlay:
+        """Return the hover-scrub preview of the thumbnail.
+
+        Created on first use. Driven by the table, cell widgets do not
+        receive mouse events.
+        """
+        if self._filmstrip is None:
+            project_name, version_id, _ = self._thumb_key.split("/", 2)
+            self._filmstrip = FilmstripOverlay(self)
+            self._filmstrip.set_source(project_name, version_id)
+        return self._filmstrip
 
     def paintEvent(  # type: ignore[override]
         self, event: QtGui.QPaintEvent
@@ -259,6 +274,12 @@ class PlaceholderThumbnail(QtWidgets.QWidget):
         )
         self._make_real: Callable | None = make_real
         self._real: LazyThumbnailWidget | None = None
+
+    def get_filmstrip(self) -> FilmstripOverlay | None:
+        """Return the filmstrip overlay, once the thumbnail is created."""
+        if self._real is None or not shiboken.isValid(self._real):
+            return None
+        return self._real.get_filmstrip()
 
     def _update_thumbnail_geometry(self) -> None:
         """Resize and center the thumbnail within the current cell."""
