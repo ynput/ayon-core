@@ -449,6 +449,7 @@ class FilmstripOverlay(QtWidgets.QWidget):
         self._popup_requested: bool = False
         # Source requested from the loader and not loaded yet
         self._pending: _SourceKey | None = None
+        self._loader_connected: bool = False
 
         self._intent_timer = QtCore.QTimer(self)
         self._intent_timer.setSingleShot(True)
@@ -459,7 +460,6 @@ class FilmstripOverlay(QtWidgets.QWidget):
         self.setGeometry(host.rect())
         host.setMouseTracking(True)
         host.installEventFilter(self)
-        _get_loader().loaded.connect(self._on_loaded)
 
     def set_source(
         self,
@@ -546,7 +546,11 @@ class FilmstripOverlay(QtWidgets.QWidget):
         if not self._hovering and not self._popup_requested:
             return
         self._pending = source
-        _get_loader().request(source)
+        loader = _get_loader()
+        if not self._loader_connected:
+            loader.loaded.connect(self._on_loaded)
+            self._loader_connected = True
+        loader.request(source)
 
     def _on_loaded(self, key: _SourceKey) -> None:
         if key != self._pending:

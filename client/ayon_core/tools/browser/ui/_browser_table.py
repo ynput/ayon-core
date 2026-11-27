@@ -57,7 +57,11 @@ from ._browser_cell_delegates import (
     UserDelegate,
 )
 from ._browser_model import VisibilityAwarePaginatedTableModel
-from ._browser_filmstrip import FilmstripOverlay, get_card_filmstrip
+from ._browser_filmstrip import (
+    FilmstripOverlay,
+    filmstrips_enabled,
+    get_card_filmstrip,
+)
 from ._browser_thumbnails import (
     LazyThumbnailWidget,
     PlaceholderThumbnail,
@@ -578,6 +582,8 @@ class BrowserTable(AYContainer):
             viewport: Viewport of the table or of the card view.
             event: Mouse move, wheel or leave event of the viewport.
         """
+        if not filmstrips_enabled():
+            return
         filmstrip: FilmstripOverlay | None = None
         position = 0.0
         if event.type() == QtCore.QEvent.Type.MouseMove:

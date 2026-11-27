@@ -102,6 +102,8 @@ def test_nothing_requested_when_disabled(
 
     assert loads.calls == []
     assert not overlay.isVisible()
+    # The loader and its worker threads are not even started
+    assert filmstrip._loader is None
 
 
 @pytest.mark.unit
