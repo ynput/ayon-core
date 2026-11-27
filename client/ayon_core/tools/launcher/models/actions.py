@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
-import inspect
 import os
 import threading
 from typing import Any
@@ -522,6 +521,16 @@ class ActionsModel:
     def _get_app_executables_validity(
         self, project_name: str | None
     ) -> dict[str, bool | None] | None:
+        """Get cached validity of application executables for a project.
+
+        Args:
+            project_name (str | None): Project name.
+
+        Returns:
+            dict[str, bool | None] | None: Validity by full application
+                name, or 'None' if validation is not available.
+
+        """
         cache = self._app_executables_validity[project_name]
         if not cache.is_valid:
             cache.update_data(
@@ -537,13 +546,18 @@ class ActionsModel:
         Server does not know if application executable is available on this
             machine, so it is validated using applications addon.
 
-        Validity is ignored if 'only_available' setting of applications
-            addon is disabled.
+        Nothing is validated if 'show_only_available' (the
+            'only_available' setting of applications addon) is disabled.
+
+        Args:
+            project_name (str | None): Project name.
 
         Returns:
             dict[str, bool | None] | None: Validity by full application
-                name, 'None' value means unknown or ignored validity.
-                Returns 'None' if validation is not available.
+                name, 'None' value means unknown validity. Returns 'None'
+                if validation is disabled by settings or not available
+                (applications addon is missing or too old, there are no
+                applications, or validation failed).
 
         """
         try:
@@ -559,23 +573,33 @@ class ActionsModel:
                 project_name,
                 variant=self._variant,
             )
+            if not app_items:
+                return None
+
+            # Value is the same for all items
+            for app_item in app_items:
+                if app_item.get("show_only_available", True) is False:
+                    return None
+
+            return addon.validate_app_items_executable_paths(app_items)
         except Exception:
             self.log.warning(
                 "Failed to validate application executables.", exc_info=True
             )
             return None
 
-        if not app_items:
-            return None
-
-        for app_item in app_items:
-            if app_item.get("show_only_available", True) is False:
-                return None
-
-        return addon.validate_app_items_executable_paths(app_items)
-
     @staticmethod
     def _get_app_name_from_action(action_item: ActionItem) -> str | None:
+        """Get application full name from application webaction.
+
+        Args:
+            action_item (ActionItem): Action item.
+
+        Returns:
+            str | None: Application full name, or 'None' if action is not
+                an application launch action of applications addon.
+
+        """
         if action_item.addon_name != "applications":
             return None
         for prefix in APPLICATION_ACTION_PREFIXES:
