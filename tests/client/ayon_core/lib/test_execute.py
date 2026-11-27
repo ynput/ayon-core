@@ -2,7 +2,7 @@ import platform
 
 import pytest
 
-from ayon_core.lib.execute import run_subprocess
+from ayon_core.lib.execute import run_subprocess, _escape_cmd_ampersands
 
 posix_only = pytest.mark.skipif(
     platform.system().lower() == "windows",
@@ -67,3 +67,28 @@ def test_run_subprocess_does_not_run_injected_command(tmp_path):
         run_subprocess(command, shell=True)
 
     assert not marker.exists()
+
+
+@pytest.mark.parametrize(("command", "expected"), [
+    ('ffmpeg -i "C:/a & b/c.mp4"', 'ffmpeg -i "C:/a & b/c.mp4"'),
+    ("ffmpeg -i C:/a&b/c.mp4", "ffmpeg -i C:/a^&b/c.mp4"),
+    (
+        'ffmpeg -i "C:/a & b/c.mp4" -metadata t=x&y -y "C:/o & p.mp4"',
+        'ffmpeg -i "C:/a & b/c.mp4" -metadata t=x^&y -y "C:/o & p.mp4"',
+    ),
+])
+def test_escape_cmd_ampersands_only_outside_quotes(command, expected):
+    assert _escape_cmd_ampersands(command) == expected
+
+
+@pytest.mark.skipif(
+    platform.system().lower() != "windows",
+    reason="cmd.exe quoting",
+)
+@pytest.mark.parametrize("quoted", [True, False])
+def test_run_subprocess_cmd_ampersand_in_path(tmp_path, quoted):
+    path = tmp_path / ("a & b.txt" if quoted else "a&b.txt")
+    path.write_text("content")
+
+    path_arg = f'"{path}"' if quoted else str(path)
+    assert run_subprocess(f"type {path_arg}", shell=True) == "content"
