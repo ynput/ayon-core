@@ -47,9 +47,9 @@ from ayon_core.tools.browser.server_capabilities import (
 
 log = Logger.get_logger(__name__)
 
-# Wait before loading, so sweeping the cursor over a table does not load
-# the filmstrip of every row.
-HOVER_INTENT_DELAY_MS = 120
+# Wait before loading, so moving the cursor over the table rows or cards
+# does not load the filmstrip of every thumbnail it passes.
+HOVER_INTENT_DELAY_MS = 250
 # Entity filmstrips can change (a new reviewable) without the url changing.
 DEFAULT_MAX_AGE = 300
 # Failed requests (e.g. server overloaded with filmstrips to create) are
