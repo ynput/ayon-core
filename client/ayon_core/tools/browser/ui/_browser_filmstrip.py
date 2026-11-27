@@ -57,8 +57,10 @@ DEFAULT_MAX_AGE = 300
 FAILED_MAX_AGE = 60
 # The server may still be creating the filmstrip, retry sooner.
 BUSY_MAX_AGE = 10
-# Creating a filmstrip on the server can take a while. Requests are retried
-# by ayon_api on timeout, which keeps waiting for the same creation.
+# Creating a filmstrip on the server can take a while. The server finishes
+# it also when the request times out, it is requested again after
+# 'BUSY_MAX_AGE'. ayon_api retries a request that timed out, but reports
+# the timeout even when a retry succeeds.
 REQUEST_TIMEOUT = 20
 # Max filmstrip requests at the same time. The server creates only a few
 # filmstrips at a time anyway (``AYON_FILMSTRIP_CONCURRENCY``).
