@@ -463,6 +463,17 @@ class AbstractPublisherCommon(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_autoselect_failed_items(self) -> bool:
+        """Should failed items be selected when showing publish details.
+
+        Returns:
+            bool: True if failed instances and plugins should be selected
+                when switching to the 'Details' tab.
+
+        """
+        pass
+
 
 class AbstractPublisherBackend(AbstractPublisherCommon):
     @abstractmethod
