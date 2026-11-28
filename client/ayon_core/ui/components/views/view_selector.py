@@ -343,10 +343,16 @@ class AYViewSelector(AYButtonMenu):
         # Natural content height, capped — lets the scroll area shrink
         # to fit a short list instead of always reserving max height.
         scroll_content.adjustSize()
-        content_height = scroll_content.sizeHint().height()
+        content_size = scroll_content.sizeHint()
         scroll_area.setFixedHeight(
-            min(content_height, _VIEWS_LIST_MAX_HEIGHT)
+            min(content_size.height(), _VIEWS_LIST_MAX_HEIGHT)
         )
+        # QScrollArea caps its size hint width and leaves no room for an
+        # as-needed scrollbar, which would clip the rows' right edge.
+        content_width = content_size.width()
+        if content_size.height() > _VIEWS_LIST_MAX_HEIGHT:
+            content_width += scroll_area.verticalScrollBar().sizeHint().width()
+        scroll_area.setMinimumWidth(content_width)
         return scroll_area
 
     def _get_view_sections(self) -> list[tuple[str, str, list[View]]]:
