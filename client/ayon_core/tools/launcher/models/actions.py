@@ -249,6 +249,8 @@ class ActionsModel:
             "projectName": project_name,
             "entityType": entity_type,
             "entityIds": entity_ids,
+            # Hint for addon action resolvers, ignored by older servers
+            "clientType": "desktop",
         }
         if form_data is not None:
             request_data["formData"] = form_data
@@ -424,6 +426,8 @@ class ActionsModel:
             "entityType": entity_type,
             "entitySubtypes": entity_subtypes,
             "entityIds": entity_ids,
+            # Hint for addon action resolvers, ignored by older servers
+            "clientType": "desktop",
         }
 
     def _get_webactions(self, selection: LauncherActionSelection):
