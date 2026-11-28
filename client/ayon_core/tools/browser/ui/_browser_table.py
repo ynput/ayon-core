@@ -1982,21 +1982,25 @@ class BrowserTable(AYContainer):
                 "productType", "Type",
                 options=enum_values["productType"],
                 icon="category", entity="Product",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "productBaseType", "Base Type",
                 options=enum_values["productBaseType"],
                 icon="category", entity="Product",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "productStatus", "Status",
                 options=enum_values["productStatus"],
                 icon="arrow_circle_right", entity="Product",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "status", "Status",
                 options=enum_values["status"],
                 icon="arrow_circle_right", entity="Version",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "version", "Version",
@@ -2006,6 +2010,7 @@ class BrowserTable(AYContainer):
             FilterEntry(
                 "author", "Author",
                 icon="person", entity="Version",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "hasReviewables", "Has Reviewables",
@@ -2027,21 +2032,25 @@ class BrowserTable(AYContainer):
                 "folderStatus", "Status",
                 options=enum_values["folderStatus"],
                 icon="arrow_circle_right", entity="Folder",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "task", "Task",
                 icon="task", entity="Task",
                 show_has_value_filters=True,
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "taskType", "Type",
                 options=enum_values["taskType"],
                 icon="task_alt", entity="Task",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "taskStatus", "Status",
                 options=enum_values["taskStatus"],
                 icon="arrow_circle_right", entity="Task",
+                allows_custom_values=True,
             ),
             FilterEntry(
                 "taskTags", "Tags",
@@ -2079,6 +2088,7 @@ class BrowserTable(AYContainer):
                     "representationStatus", "Status",
                     options=enum_values["representationStatus"],
                     icon="arrow_circle_right", entity="Representation",
+                    allows_custom_values=True,
                 ),
                 FilterEntry(
                     "representationTags", "Tags",
@@ -2155,6 +2165,16 @@ class BrowserTable(AYContainer):
                     text_search=attribute_type == "string" and not enum,
                     single_select=is_boolean,
                     show_has_value_filters=allow_empty,
+                    # Typed text is matched against the stored values, so
+                    # it would miss values whose labels read differently.
+                    allows_custom_values=(
+                        attribute_type == "string"
+                        and bool(options)
+                        and all(
+                            option.label == option.value
+                            for option in options
+                        )
+                    ),
                 ))
         core_keys = {item.key for item in filters}
         filters.extend(

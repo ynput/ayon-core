@@ -105,6 +105,7 @@ class ControllerStub:
         self._latest_per_folder = False
         self._group_by_key = GROUP_BY_STATUS_KEY
         self._group_by_options: dict[str, Any] = {}
+        self._product_ids_by_group_name: dict[str, list[str]] = {}
         self._column_manager = BrowserColumnManager()
         self._active_filters: tuple[BrowserFilter, ...] = ()
 
@@ -185,10 +186,27 @@ def test_group_version_ids_follow_all_pages(connection) -> None:
 
 def test_product_group_versions_use_product_ids(connection) -> None:
     controller = ControllerStub()
+    # Same-named products of two folders share the group.
+    controller._product_ids_by_group_name = {
+        "renderMain": ["prod_1", "prod_2"],
+    }
 
-    controller.get_group_version_ids(f"grp:{GROUP_BY_PRODUCT_KEY}:prod_1")
+    controller.get_group_version_ids(
+        f"grp:{GROUP_BY_PRODUCT_KEY}:renderMain"
+    )
 
-    assert connection.calls[0]["productIds"] == ["prod_1"]
+    assert connection.calls[0]["productIds"] == ["prod_1", "prod_2"]
+
+
+def test_unknown_product_group_does_not_query(connection) -> None:
+    controller = ControllerStub()
+
+    version_ids = controller.get_group_version_ids(
+        f"grp:{GROUP_BY_PRODUCT_KEY}:renderMain"
+    )
+
+    assert version_ids == set()
+    assert connection.calls == []
 
 
 def test_group_without_versions_does_not_query(connection) -> None:

@@ -355,11 +355,18 @@ class BaseWorkfileController(
     def get_current_project_name(self) -> str | None:
         return self._current_project_name
 
+    def get_current_context(self) -> dict[str, str | None]:
+        self._update_current_context()
+        return {
+            "folder_id": self._current_folder_id,
+            "task_name": self._current_task_name,
+        }
+
     def get_current_folder_id(self) -> str | None:
-        return self._current_folder_id
+        return self.get_current_context()["folder_id"]
 
     def get_current_task_name(self) -> str | None:
-        return self._current_task_name
+        return self.get_current_context()["task_name"]
 
     def get_current_workfile(self) -> str | None:
         return self._workfiles_model.get_current_workfile()
@@ -453,8 +460,9 @@ class BaseWorkfileController(
         return self._expected_selection.get_expected_selection_data()
 
     def go_to_current_context(self) -> None:
+        context = self.get_current_context()
         self.set_expected_selection(
-            self._current_folder_id, self._current_task_name
+            context["folder_id"], context["task_name"]
         )
 
     # Model functions
@@ -576,7 +584,7 @@ class BaseWorkfileController(
             folder_id, representation_id
         )
 
-    def reset(self) -> None:
+    def reset(self, force: bool = False) -> None:
         if not self._host_is_valid:
             self._emit_event("controller.reset.started")
             self._emit_event("controller.reset.finished")
@@ -613,7 +621,7 @@ class BaseWorkfileController(
         self._settings_model.reset()
         self._users_model.reset()
         self._projects_model.reset()
-        self._hierarchy_model.reset()
+        self._hierarchy_model.reset(force)
         self._thumbnails_model.reset()
         self._workfiles_model.reset()
         self._actions_model.reset()
@@ -775,6 +783,25 @@ class BaseWorkfileController(
         if hasattr(self._host, "get_current_context"):
             return self._host.get_current_context()
         return get_global_context()
+
+    def _update_current_context(self) -> None:
+        if not self._host_is_valid:
+            return
+        context = self._get_host_current_context()
+        folder_path = context["folder_path"]
+        self._current_task_name = context["task_name"]
+        if folder_path == self._current_folder_path:
+            return
+
+        folder_id = None
+        if folder_path:
+            folder_item = self._hierarchy_model.get_folder_item_by_path(
+                self._current_project_name, folder_path
+            )
+            if folder_item is not None:
+                folder_id = folder_item.entity_id
+        self._current_folder_path = folder_path
+        self._current_folder_id = folder_id
 
     # Expected selection
     # - expected selection is used to restore selection after refresh

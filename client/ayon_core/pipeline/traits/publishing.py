@@ -345,6 +345,25 @@ def get_transfers_from_file_location(
     ))
 
 
+def _get_item_ext(representation: Representation) -> str:
+    """Get extension (without dot) of the first file of representation.
+
+    Returns:
+        str: Extension or empty string if representation has no files.
+
+    """
+    file_path = None
+    if representation.contains_trait(FileLocation):
+        file_path = representation.get_trait(FileLocation).file_path
+    elif representation.contains_trait(FileLocations):
+        file_paths = representation.get_trait(FileLocations).file_paths
+        if file_paths:
+            file_path = file_paths[0].file_path
+    if file_path is None:
+        return ""
+    return Path(file_path).suffix.lstrip(".")
+
+
 def get_transfers_from_bundle(
         representation: Representation,
         template_item: IntegrationTemplateItem,
@@ -355,6 +374,13 @@ def get_transfers_from_bundle(
     This will be called recursively for each sub-representation in the
     bundle that is a Bundle itself.
 
+    Every item is resolved with its own copy of the template data, so
+    values set while resolving one item (`ext`, `frame`, `udim`) do not
+    leak into the next one. `Variant` trait of an item is used as
+    `output` in the template data (same as for top-level representations)
+    so items with the same extension can be published side by side.
+    Items without `Variant` inherit `output` of the parent.
+
     Args:
         representation (Representation): Representation to process.
         template_item (IntegrationTemplateItem): Template item.
@@ -362,7 +388,6 @@ def get_transfers_from_bundle(
 
     Mutates:
         transfers (list): List of transfers.
-        template_item (TemplateItem): Template item.
 
     """
     bundle: Bundle = representation.get_trait(Bundle)
@@ -372,17 +397,35 @@ def get_transfers_from_bundle(
             traits=sub_representation_traits)
         # sub presentation transient:
         sub_representation.add_trait(Transient())
+
+        item_template_data = copy.deepcopy(template_item.template_data)
+        for key in ("ext", "frame", "udim"):
+            item_template_data.pop(key, None)
+        # UDIM and common root transfers do not resolve `ext` themselves
+        item_ext = _get_item_ext(sub_representation)
+        if item_ext:
+            item_template_data["ext"] = item_ext
+        with contextlib.suppress(MissingTraitError):
+            item_template_data["output"] = (
+                sub_representation.get_trait(Variant).variant
+            )
+        item_template_item = IntegrationTemplateItem(
+            anatomy=template_item.anatomy,
+            template_data=item_template_data,
+            template_object=template_item.template_object,
+        )
+
         if sub_representation.contains_trait(FileLocations):
             get_transfers_from_file_locations(
-                sub_representation, template_item, transfers
+                sub_representation, item_template_item, transfers
             )
         elif sub_representation.contains_trait(FileLocation):
             get_transfers_from_file_location(
-                sub_representation, template_item, transfers
+                sub_representation, item_template_item, transfers
             )
         elif sub_representation.contains_trait(Bundle):
             get_transfers_from_bundle(
-                sub_representation, template_item, transfers
+                sub_representation, item_template_item, transfers
             )
 
 

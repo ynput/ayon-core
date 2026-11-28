@@ -378,10 +378,9 @@ class SaveAsDialog(QtWidgets.QDialog):
             self._set_context_hint_visible(False)
             return
 
-        current_folder_id = self._controller.get_current_folder_id()
-        current_task_name = self._controller.get_current_task_name()
-        folder_changed = self._folder_id != current_folder_id
-        task_changed = task_name != current_task_name
+        current_context = self._controller.get_current_context()
+        folder_changed = self._folder_id != current_context["folder_id"]
+        task_changed = task_name != current_context["task_name"]
         if not folder_changed and not task_changed:
             self._set_context_hint_visible(False)
             return
