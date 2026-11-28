@@ -342,6 +342,9 @@ class BaseWorkfileController(
     def get_workfile_extensions(self) -> list[str]:
         return list(self._host.get_workfile_extensions())
 
+    def get_workfile_save_extensions(self) -> list[str]:
+        return list(self._host.get_workfile_save_extensions())
+
     def has_unsaved_changes(self) -> bool | None:
         return self._host.workfile_has_unsaved_changes()
 

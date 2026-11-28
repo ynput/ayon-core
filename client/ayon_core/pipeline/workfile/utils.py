@@ -570,16 +570,17 @@ def save_next_version(
     #   uses directory instead of a file.
     # 1. Use the current file extension.
     # 2. Use the last known workfile extension.
-    # 3. Use the first extensions from 'get_workfile_extensions'.
+    # 3. Use the first extensions from 'get_workfile_save_extensions'.
+    # Extensions 1. and 2. are used only if they are save extensions.
     ext = None
-    workfile_extensions = host.get_workfile_extensions()
-    if workfile_extensions:
+    save_extensions = host.get_workfile_save_extensions()
+    if save_extensions:
         if current_path:
             ext = os.path.splitext(current_path)[1]
         elif last_workfile is not None:
             ext = os.path.splitext(last_workfile.filepath)[1]
-        else:
-            ext = next(iter(workfile_extensions))
+        if ext not in save_extensions:
+            ext = next(iter(save_extensions))
         ext = ext.lstrip(".")
 
     if ext:
