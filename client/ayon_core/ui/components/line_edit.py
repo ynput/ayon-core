@@ -6,6 +6,7 @@ from qtmaterialsymbols import get_icon
 from qtpy.QtCore import QRectF, QSize, Qt
 from qtpy.QtGui import QBrush, QColor, QPainter, QPaintEvent, QPalette, QPen
 from qtpy.QtWidgets import (
+    QAction,
     QLineEdit,
     QStyleOptionFrame,
     QWidget,
@@ -29,6 +30,8 @@ class AYLineEdit(StyleMixin, QLineEdit):
         placeholder: Placeholder text to display when empty.
         variant: Visual style variant.
         name_id: Object name for identification.
+        clear_button: Show a trailing button that clears the text. The
+            button is visible only when there is any text.
     """
 
     Variants = QLineEditVariants
@@ -39,6 +42,7 @@ class AYLineEdit(StyleMixin, QLineEdit):
         placeholder: str = "",
         variant: QLineEditVariants = QLineEditVariants.Default,
         name_id: str = "",
+        clear_button: bool = False,
     ) -> None:
         super().__init__(parent)
 
@@ -74,6 +78,30 @@ class AYLineEdit(StyleMixin, QLineEdit):
 
         #  this must be called after the palette has been set for it to stick.
         self.setStyle(get_ayon_style())
+
+        self._clear_action: QAction | None = None
+        if clear_button:
+            self._setup_clear_button()
+
+    def _setup_clear_button(self) -> None:
+        """Add trailing action that clears the text."""
+        style = self.variant_style()
+        icon_color = style.get(
+            "icon-color", style.get("placeholder-color", "#888888")
+        )
+        clear_action = self.addAction(
+            get_icon("close", color=icon_color),
+            QLineEdit.ActionPosition.TrailingPosition,
+        )
+        clear_action.setToolTip("Clear")
+        clear_action.setVisible(bool(self.text()))
+        clear_action.triggered.connect(self.clear)
+        self.textChanged.connect(self._on_text_change_clear_button)
+        self._clear_action = clear_action
+
+    def _on_text_change_clear_button(self, text: str) -> None:
+        if self._clear_action is not None:
+            self._clear_action.setVisible(bool(text))
 
     @property
     def ayon_palette(self) -> QPalette:
