@@ -2,7 +2,8 @@
 
 The :class:`AYViewSelector` is the user-facing entry point for the
 Views feature.  It is a single icon button that opens a dropdown
-listing the available views (grouped by visibility) along with a
+listing the available views (grouped by ownership and sharing,
+matching the frontend's views menu) along with a
 "Create new view" entry and an inline reset button on the current
 view row.
 
@@ -13,6 +14,7 @@ It owns the wiring between :class:`ViewManager` (persistence),
 
 from __future__ import annotations
 
+import copy
 from typing import Callable
 
 import ayon_api
@@ -55,8 +57,8 @@ _DEFAULT_USER_ACCESS: int = 50
 # all rows use the same contents margins.
 _ROW_MIN_HEIGHT: int = 34
 
-# Cap on the height of the scrollable views list (working view + "My
-# views" + "Shared views") before it grows a scrollbar instead of
+# Cap on the height of the scrollable views list (working view + saved
+# view sections) before it grows a scrollbar instead of
 # pushing "Default view" / "Create new view…" further down — mirrors
 # the frontend's views-menu scroll behavior.
 _VIEWS_LIST_MAX_HEIGHT: int = 490
@@ -191,11 +193,10 @@ class AYViewSelector(AYButtonMenu):
         # working view with what we just read from it.
         self._applying_view: bool = False
 
-        # Per-section collapsed state for the dropdown headers ("My
-        # views", "Shared views", "Default view"). Kept for the
-        # lifetime of the selector, mirroring the frontend's
+        # Per-section collapsed state for the dropdown headers. Kept
+        # for the lifetime of the selector, mirroring the frontend's
         # collapsible section headers.
-        self._collapsed_sections: dict[str, bool] = {}
+        self._collapsed_sections: dict[str, bool] = {"all_views": True}
 
         self._dropdown_layout = None  # type: ignore[assignment]
         self._default_view_control = DefaultViewControl(self)
@@ -276,7 +277,7 @@ class AYViewSelector(AYButtonMenu):
         # First open of the menu is what pays for the view list.
         self._ensure_views_listed()
 
-        # The working view + "My views" + "Shared views" portion lives
+        # The working view + saved view sections portion lives
         # in its own scrollable area, capped at _VIEWS_LIST_MAX_HEIGHT,
         # so a long view list scrolls instead of growing the dropdown
         # indefinitely — "Default view" and "Create new view…" stay
@@ -295,9 +296,8 @@ class AYViewSelector(AYButtonMenu):
         self.refresh_dropdown_size()
 
     def _make_views_list_scroll_area(self) -> AYScrollArea:
-        """Build the scrollable working-view + "My views" + "Shared
-        views" portion of the dropdown, capped at
-        ``_VIEWS_LIST_MAX_HEIGHT``.
+        """Build the scrollable working-view + saved view sections
+        portion of the dropdown, capped at ``_VIEWS_LIST_MAX_HEIGHT``.
         """
         # A real, opaquely-painted Popover frame — same variant as the
         # dropdown and its rows — rather than a bare QWidget stylesheet
@@ -322,40 +322,16 @@ class AYViewSelector(AYButtonMenu):
         )
         scroll_content.add_widget(self._make_separator())
 
-        # Exclude working view as it stored with private Visibility
-        private_views = [
-            v for v in self._views
-            if v.visibility == Visibility.PRIVATE
-               and not v.working
-               and v.label != DEFAULT_VIEW_LABEL
-        ]
-        public_views = [
-            v for v in self._views if v.visibility == Visibility.PUBLIC
-        ]
-
-        if private_views:
+        current_id = self._current_view.id if self._current_view else None
+        for section_key, title, views in self._get_view_sections():
             scroll_content.add_widget(
-                self._make_section_header("My views", "my_views")
+                self._make_section_header(title, section_key)
             )
-            if not self._collapsed_sections.get("my_views"):
-                for view in private_views:
-                    scroll_content.add_widget(self._make_row(view))
-
-        if public_views and self._manager.supports_sharing():
-            scroll_content.add_widget(
-                self._make_section_header("Shared views", "shared_views")
-            )
-            if not self._collapsed_sections.get("shared_views"):
-                for view in public_views:
-                    scroll_content.add_widget(self._make_row(view))
-
-        if not self._views:
-            no_views_label = AYLabel("No saved views.", dim=True)
-            # Match the left indent every row's own label gets from its
-            # row's contents margins + the label's own inner margin
-            # (2 + 6 = 8), since this one isn't wrapped in a row.
-            no_views_label.setContentsMargins(8, 4, 8, 4)
-            scroll_content.add_widget(no_views_label)
+            # A collapsed section still shows the view in use.
+            if self._collapsed_sections.get(section_key):
+                views = [v for v in views if v.id == current_id]
+            for view in views:
+                scroll_content.add_widget(self._make_row(view))
 
         scroll_area = AYScrollArea()
         scroll_area.setWidget(scroll_content)
@@ -378,6 +354,42 @@ class AYViewSelector(AYButtonMenu):
             content_width += scroll_area.verticalScrollBar().sizeHint().width()
         scroll_area.setMinimumWidth(content_width)
         return scroll_area
+
+    def _get_view_sections(self) -> list[tuple[str, str, list[View]]]:
+        """Group the saved views into the dropdown's sections.
+
+        Matches the frontend's views menu: ownership wins over sharing,
+        so every view the user owns is in "My views" whatever its
+        visibility. The server lists other users' views only when they
+        are public; those a manager sees only because of their role go
+        to the collapsed "All views (admin only)" section.
+
+        Returns:
+            ``(section_key, title, views)`` tuples in display order,
+            for the sections that have views.
+        """
+        my_views: list[View] = []
+        shared_views: list[View] = []
+        not_shared_views: list[View] = []
+        for view in self._views:
+            # The working view is listed as private, but has its own row.
+            if view.working or view.label == DEFAULT_VIEW_LABEL:
+                continue
+            if self._current_user and view.owner == self._current_user:
+                my_views.append(view)
+            elif view.shared_with_me:
+                shared_views.append(view)
+            else:
+                not_shared_views.append(view)
+
+        sections = [("my_views", "My views", my_views)]
+        # Views of other users are a powerpack feature.
+        if self._manager.supports_sharing():
+            sections.extend((
+                ("shared_views", "Shared with me", shared_views),
+                ("all_views", "All views (admin only)", not_shared_views),
+            ))
+        return [section for section in sections if section[2]]
 
     # ------------------------------------------------------------------
     # Row helpers
@@ -749,7 +761,7 @@ class AYViewSelector(AYButtonMenu):
             # On failure to load, just stop here. Manager would've already
             # emitted the error
             return
-        view_copy = View.from_payload(loaded_view.to_payload())
+        view_copy = copy.deepcopy(loaded_view)
         self._capture_into(view_copy)
         editor = self._create_editor(view_copy)
         if editor.exec() != QDialog.DialogCode.Accepted:

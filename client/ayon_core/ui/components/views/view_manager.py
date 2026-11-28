@@ -99,7 +99,7 @@ class ViewManager(QObject):
     def supports_sharing(self) -> bool:
         """Whether views can be shared with other users.
 
-        Sharing controls in the UI (the "Shared views" section, the
+        Sharing controls in the UI (the other users' view sections, the
         people-with-access editor) are shown only when this returns
         True.  The default implementation has no restrictions.
 

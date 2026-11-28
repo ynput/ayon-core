@@ -61,6 +61,7 @@ _KNOWN_VIEW_KEYS: frozenset[str] = frozenset(
         "position",
         "accessLevel",
         "access",
+        "sharedWithMe",
     }
 )
 
@@ -409,6 +410,9 @@ class View:
             :meth:`can_edit`.
         access: Per-user/per-group access dict mapping names to
             integer access levels.
+        shared_with_me: False for a public view a manager sees only
+            because of their role, not because it is shared with them.
+            Set by the listing endpoint only - never serialised.
     """
 
     id: str = ""
@@ -423,6 +427,7 @@ class View:
     position: int = 0
     access_level: int = DEFAULT_ACCESS_LEVEL
     access: dict[str, int] = field(default_factory=dict)
+    shared_with_me: bool = True
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -470,6 +475,7 @@ class View:
             position=position,
             access_level=access_level,
             access=dict(payload.get("access") or {}),
+            shared_with_me=bool(payload.get("sharedWithMe", True)),
             extra=extra,
         )
 
