@@ -17,7 +17,7 @@ class FilterFarmEnvironments(PreLaunchHook):
     """
     order = 1000
 
-    launch_types = {LaunchTypes.farm_publish}
+    launch_types = {LaunchTypes.farm_render, LaunchTypes.farm_publish}
 
     def execute(self):
         data = self.launch_context.data
