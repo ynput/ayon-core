@@ -1,5 +1,5 @@
 PRODUCT_NAME_ALLOWED_SYMBOLS = "a-zA-Z0-9_."
-DEFAULT_PRODUCT_TEMPLATE = "{family}{Variant}"
+DEFAULT_PRODUCT_TEMPLATE = "{family}{variant:upperfirst}"
 PRE_CREATE_THUMBNAIL_KEY = "thumbnail_source"
 DEFAULT_VARIANT_VALUE = "Main"
 
