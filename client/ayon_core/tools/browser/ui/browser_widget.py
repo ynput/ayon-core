@@ -9,6 +9,7 @@ from ayon_core.ui.components.task_queue import AsyncTask, get_task_queue
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.lib import Logger
+from ayon_core.tools.browser.abstract import DefaultActionTrigger
 from ayon_core.tools.browser.ui.actions_utils import show_actions_menu
 from ayon_core.tools.browser.ui.browser_controller import (
     BrowserWidgetController,
@@ -73,6 +74,8 @@ class BrowserWidget(AYContainer):
         self._prefetch_context_id = f"browser_prefetch_{id(self)}"
         for view in (self._table.table, self._table.card_view):
             view.selection_changed.connect(self._on_view_selection_changed)
+            view.doubleClicked.connect(self._on_double_click)
+            view.installEventFilter(self)
         self._inspector = ReviewInspector(self._controller)
         self._table.display_type_changed.connect(self._inspector.set_view)
         self._table.default_view_message.connect(
@@ -236,6 +239,96 @@ class BrowserWidget(AYContainer):
             if version_id:
                 version_ids.add(version_id)
         return version_ids
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """Run the default action when space bar is pressed in a view."""
+        event_type = event.type()
+        if (
+            obj is self._table.active_view
+            and event_type in (
+                QtCore.QEvent.Type.ShortcutOverride,
+                QtCore.QEvent.Type.KeyPress,
+            )
+            and event.key() == QtCore.Qt.Key.Key_Space
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier
+        ):
+            version_id = self._get_focused_version_id(obj)
+            if event_type == QtCore.QEvent.Type.ShortcutOverride:
+                # Space bar is a hotkey in most hosts (e.g. Maya, Nuke),
+                #   claim it so the key press is delivered to the view
+                if version_id:
+                    event.accept()
+                    return True
+            # Swallow key repeats to not run the action more than once
+            elif event.isAutoRepeat() or self._trigger_default_action(
+                version_id, "spacebar"
+            ):
+                return True
+        return super().eventFilter(obj, event)
+
+    @staticmethod
+    def _get_index_row(index: QtCore.QModelIndex) -> dict[str, Any]:
+        """Return row data of the row at a view index."""
+        if not index.isValid():
+            return {}
+        index = index.sibling(index.row(), 0)
+        return index.data(QtCore.Qt.ItemDataRole.UserRole) or {}
+
+    def _get_focused_version_id(
+        self, view: QtWidgets.QAbstractItemView
+    ) -> str | None:
+        """Return version ID of the row keyboard actions should apply to.
+
+        That is the current row, or the selected row when the view has
+        no current version row (e.g. selection was not made by a click).
+        """
+        version_id = self._get_row_version_id(
+            self._get_index_row(view.currentIndex())
+        )
+        if version_id:
+            return version_id
+        version_ids = self._get_selected_version_ids()
+        if len(version_ids) == 1:
+            return version_ids.pop()
+        return None
+
+    def _on_double_click(self, index: QtCore.QModelIndex) -> None:
+        row_dict = self._get_index_row(index)
+        # Double click on a group header expands or collapses it
+        if (row_dict.get("id") or "").startswith("grp:"):
+            return
+        self._trigger_default_action(
+            self._get_row_version_id(row_dict), "double_click"
+        )
+
+    def _trigger_default_action(
+        self,
+        version_id: str | None,
+        trigger: DefaultActionTrigger,
+    ) -> bool:
+        """Run the action set in settings for a double click or space bar.
+
+        Args:
+            version_id: Version the user interacted with, if any.
+            trigger: What the user did.
+
+        Returns:
+            True if an action is set for the trigger and the version.
+        """
+        project_name = self._controller.current_project
+        if not project_name or not version_id:
+            log.debug(
+                "Default action (%s): no version row to run it on.", trigger
+            )
+            return False
+
+        try:
+            return self._controller.trigger_default_action(
+                project_name, version_id, trigger
+            )
+        except Exception:
+            log.warning("Failed to trigger default action", exc_info=True)
+            return False
 
     @staticmethod
     def _is_versions_group_row(row_dict: dict[str, Any]) -> bool:
